@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "475392538883",
+    "project_id": "pranav-samadhaan",
+    "storage_bucket": "pranav-samadhaan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:475392538883:android:a83316b13a24ef39731136",
+        "android_client_info": {
+          "package_name": "com.onesutra.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "475392538883-6ja9mvphv6lhgpk7f4cdebrbar1ru601.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onesutra.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "475392538883-pjdnncu9pt6bd41qvetn4ehmg60d1jus.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7L7jlU6EyqPcloRQi1sEPQuWuzqvAqcE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "475392538883-pjdnncu9pt6bd41qvetn4ehmg60d1jus.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

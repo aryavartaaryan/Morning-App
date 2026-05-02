@@ -1,0 +1,92 @@
+/**
+ * Compatibility shim — preserves the old API so existing callers
+ * (alarms.tsx, _layout.tsx, etc.) continue to work without edits.
+ * All real logic now lives in `lib/alarmCore.ts`.
+ *
+ * The previous implementation depended on a Kotlin `AlarmModule` that
+ * does not exist in the managed workflow build. Every function below
+ * now routes through Notifee and is fully managed-workflow safe.
+ */
+
+import {
+  ALARM_NOTIF_ID as CORE_ID,
+  ALARM_CHANNEL_ID as CORE_CHANNEL,
+  scheduleAlarm,
+  cancelAlarm,
+  completeAlarmMission,
+  ensureAlarmChannel,
+  checkAlarmPermission,
+  openAlarmPermissionSettings,
+  requestAllAlarmPermissions,
+  getInitialAlarmNotification,
+} from './alarmCore';
+import { Platform } from 'react-native';
+import { getBrahmaMuhurtaResult, type LocationProfile } from './locationIntel';
+import { store, KEYS } from './storage';
+
+export const ALARM_NOTIF_ID = CORE_ID;
+export const ALARM_CHANNEL_ID = CORE_CHANNEL;
+
+export const setupAlarmChannel = ensureAlarmChannel;
+export {
+  cancelAlarm as cancelNativeAlarm,
+  checkAlarmPermission,
+  openAlarmPermissionSettings,
+  requestAllAlarmPermissions,
+  getInitialAlarmNotification,
+  completeAlarmMission,
+};
+
+/** Schedule today's alarm at HH:MM (local time). */
+export async function scheduleNativeAlarm(hour: number, minute: number): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+
+  const body =
+    hour < 6 ? '🌙 Brahma Muhurta. Rise — the world is asleep.' :
+    hour < 9 ? '🌅 Kapha Kala. Move fast or lose the window.' :
+               '☀️ Rise. Your mission is waiting.';
+
+  // Selected mantra is read by alarm-ringing.tsx from KEYS.alarmSettings;
+  // the channel sound (mantra_alarm) is what plays in the foreground
+  // service while the screen is loading.
+  await scheduleAlarm({
+    fireAt: next.getTime(),
+    title: '⏰ OneSutra — Mission Wake',
+    body,
+    sound: 'mantra_alarm',
+  });
+}
+
+/** No-ops kept for source compatibility. Mantra is now read at ring-time. */
+export async function setNativeAlarmSound(_mantraId: string): Promise<void> { /* noop */ }
+export async function setNativeAlarmSoundPath(_path: string): Promise<void> { /* noop */ }
+export async function stopNativeAlarmSound(): Promise<void> {
+  // Equivalent to mission-complete: silence + foreground service teardown.
+  await completeAlarmMission();
+}
+
+// ── Brahma Muhurta auto-scheduling (unchanged behaviour) ──────────────
+export async function scheduleBrahmaMuhurtaAlarm(lat: number, lon: number): Promise<void> {
+  const bm = getBrahmaMuhurtaResult(lat, lon);
+  await scheduleNativeAlarm(bm.wakeHour, bm.wakeMin);
+  const today = new Date().toISOString().split('T')[0];
+  await store.set(KEYS.lastAlarmDate, today);
+}
+
+export async function checkAndRescheduleDaily(): Promise<void> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = await store.get(KEYS.lastAlarmDate);
+    if (lastDate === today) return;
+    const location = await store.getJSON<LocationProfile>(KEYS.location);
+    if (!location?.lat || !location?.lon) return;
+    await scheduleBrahmaMuhurtaAlarm(location.lat, location.lon);
+  } catch (e) {
+    console.warn('[BrahmaMuhurta] Daily reschedule failed:', e);
+  }
+}

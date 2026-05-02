@@ -1,0 +1,316 @@
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar,
+  Dimensions,
+} from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
+} from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system/legacy';
+import { speakBodhi, stopBodhi } from '@/lib/speech';
+import { stopNativeAlarmSound } from '@/lib/nativeAlarm';
+import { getLocalMantraPath } from '@/lib/mantraDownload';
+import { store, KEYS } from '@/lib/storage';
+import { type AlarmSettings } from '@/lib/notifications';
+import { saveHabitLog, todayStr } from '@/lib/habitLogs';
+import { auth } from '@/lib/firebase';
+import {
+  MISSIONS, WAKE_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings,
+  getKalaMessage, WAKE_QUOTES,
+} from '@/lib/missionAlarm';
+
+// Maps AlarmSettings.selectedMantraId → WAKE_SOUNDS id
+const MANTRA_TO_WAKE: Record<string, string> = {
+  gayatri:    'gayatri',
+  lalitha:    'lalitha',
+  shivtandav: 'shiv_tandav',
+};
+
+const { width } = Dimensions.get('window');
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const fmtTime = () => {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const p = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${pad(h12)}:${pad(m)} ${p}`;
+};
+
+export default function AlarmRingingScreen() {
+  const router = useRouter();
+  const [ms, setMs] = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
+  const [userName, setUserName] = useState('Champion');
+  const [timeStr, setTimeStr] = useState(fmtTime());
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const stopWakeAudio = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    } catch { /* ignore */ }
+  };
+
+  const playWakeAudio = async (url: string, startDucked = false) => {
+    await stopWakeAudio();
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        // Start at low volume if Bodhi will speak immediately, so there's no loud burst
+        { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
+      );
+      soundRef.current = sound;
+    } catch (e) { console.warn('[AlarmRinging] Wake audio error:', e); }
+  };
+
+  const outerScale = useSharedValue(1);
+  const outerOpacity = useSharedValue(0.35);
+  const innerScale = useSharedValue(1);
+
+  const outerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: outerScale.value }],
+    opacity: outerOpacity.value,
+  }));
+  const innerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: innerScale.value }],
+  }));
+
+  useEffect(() => {
+    outerScale.value = withRepeat(
+      withSequence(withTiming(1.25, { duration: 1400, easing: Easing.inOut(Easing.ease) }), withTiming(1, { duration: 1400 })), -1,
+    );
+    outerOpacity.value = withRepeat(
+      withSequence(withTiming(0.7, { duration: 1400 }), withTiming(0.25, { duration: 1400 })), -1,
+    );
+    innerScale.value = withRepeat(
+      withSequence(withTiming(1.08, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1,
+    );
+  }, []);
+
+  useEffect(() => {
+    activateKeepAwakeAsync();
+    return () => deactivateKeepAwake();
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setTimeStr(fmtTime()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    // Always block hardware back — mission completion is the only exit
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      // Stop native AlarmSoundService (was playing STREAM_ALARM from Kotlin);
+      // JS takes over audio from here.
+      await stopNativeAlarmSound();
+
+      const saved = await store.getJSON<MissionSettings>(KEYS.missionSettings);
+      const settings = saved ? { ...DEFAULT_MISSION_SETTINGS, ...saved } : DEFAULT_MISSION_SETTINGS;
+      setMs(settings);
+
+      const dosha = await store.getJSON<{ name?: string }>(KEYS.dosha);
+      const name = dosha?.name ?? 'Champion';
+      setUserName(name);
+
+      // ── Wake audio: local downloaded mantra first, CDN fallback ─────────────
+      // Read the selected mantra from AlarmSettings (set by the user in the alarm page)
+      const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
+      const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
+
+      let audioUri: string | null = null;
+      try {
+        const localPath = getLocalMantraPath(mantraId);
+        const info = await FileSystem.getInfoAsync(localPath);
+        if (info.exists) {
+          audioUri = localPath; // use locally-downloaded file (works offline)
+        }
+      } catch { /* ignore FS errors */ }
+
+      if (!audioUri) {
+        // CDN fallback — look up by mantra ID first, then by saved wakeSound
+        const wakeSoundId = MANTRA_TO_WAKE[mantraId] ?? mantraId;
+        const wakeSound =
+          WAKE_SOUNDS.find(s => s.id === wakeSoundId) ??
+          WAKE_SOUNDS.find(s => s.id === settings.wakeSound) ??
+          WAKE_SOUNDS[0];
+        audioUri = wakeSound.audioUrl ?? null;
+      }
+
+      if (audioUri) await playWakeAudio(audioUri, settings.bodhiMorningBrief);
+
+      if (settings.bodhiMorningBrief) {
+        const mission = MISSIONS.find(m => m.id === settings.selectedMission);
+        const mantraLabel = mantraId === 'lalitha' ? 'Lalitha Sahasranama'
+          : mantraId === 'shivtandav' ? 'Shiv Tandav'
+          : 'Gayatri Mantra';
+        const hour = new Date().getHours();
+        const kalaLine = hour < 10 ? 'the golden morning window is open' : 'it\'s time to lock in';
+        const script = `Good morning ${name}. It's ${fmtTime()}, ${kalaLine}. Your ${mantraLabel} is playing. Mission today: ${mission?.name}. You're on a ${settings.streak || 1}-day streak — don't break it now. ${mission?.hype} Let's go.`;
+        speakBodhi(script).then(async () => {
+          try { if (soundRef.current) await soundRef.current.setVolumeAsync(1.0); } catch { }
+        });
+      }
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    })();
+    return () => { stopBodhi(); stopWakeAudio(); };
+  }, []);
+
+  const mission = MISSIONS.find(m => m.id === ms.selectedMission) ?? MISSIONS[4];
+  const hour = new Date().getHours();
+  const kala = getKalaMessage(hour);
+  const today = new Date().getDay();
+  const quote = WAKE_QUOTES[today % WAKE_QUOTES.length];
+
+  const handleStart = async () => {
+    // Auto-log wake_early — mission start = confirmed wake
+    const user = auth.currentUser;
+    if (user) {
+      const now = new Date();
+      const hh = now.getHours();
+      const mm = now.getMinutes();
+      saveHabitLog({
+        habitId: 'wake_early',
+        habitName: 'Wake Early',
+        userId: user.uid,
+        date: todayStr(),
+        status: 'done',
+        wakeTime: `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
+      }).catch(() => {});
+    }
+    stopBodhi();
+    // Transfer wake audio as background music into mission — don't stop it
+    if (soundRef.current) {
+      try {
+        await soundRef.current.setVolumeAsync(0.18); // quiet background level
+        (global as any).__missionBgSound = soundRef.current;
+        soundRef.current = null; // hand off ownership — don't unload
+      } catch { await stopWakeAudio(); }
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.replace(`/mission?id=${mission.id}` as never);
+  };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar hidden />
+
+      {/* Pulsing rings */}
+      <View style={styles.ringWrap} pointerEvents="none">
+        <Animated.View style={[styles.outerRing, outerStyle, { borderColor: mission.color + '50' }]} />
+        <Animated.View style={[styles.middleRing, { borderColor: mission.color + '30' }]} />
+        <Animated.View style={[styles.centerCircle, innerStyle, { backgroundColor: mission.color + '18' }]}>
+          <Text style={styles.missionIcon}>{mission.icon}</Text>
+        </Animated.View>
+      </View>
+
+      {/* Time */}
+      <Text style={styles.time}>{timeStr}</Text>
+      <Text style={[styles.kala, { color: mission.color }]}>{kala}</Text>
+      <Text style={styles.streak}>
+        Hey {userName} 🔥 Day {ms.streak || 1} — Keep it alive
+      </Text>
+
+      {/* Quote */}
+      <Text style={styles.quote}>"{quote}"</Text>
+
+      {/* Mission card */}
+      <View style={[styles.missionCard, { borderColor: mission.color + '45' }]}>
+        <Text style={styles.missionLabel}>TODAY'S MISSION</Text>
+        <Text style={styles.missionName}>{mission.icon}  {mission.name}</Text>
+        <Text style={styles.missionTagline}>{mission.tagline}</Text>
+        <View style={[styles.chip, { backgroundColor: mission.color + '20', borderColor: mission.color + '50' }]}>
+          <Text style={[styles.chipText, { color: mission.color }]}>{mission.ayuChip}</Text>
+        </View>
+      </View>
+
+      {/* CTA */}
+      <TouchableOpacity
+        style={[styles.startBtn, { backgroundColor: mission.color }]}
+        onPress={handleStart}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.startBtnText}>Start Mission  →</Text>
+      </TouchableOpacity>
+
+      <View style={styles.lockBadge}>
+        <Text style={styles.lockText}>🔒 Complete the mission to stop the alarm</Text>
+      </View>
+    </View>
+  );
+}
+
+const ACCENT = '#F5820A';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1, backgroundColor: '#0A0A0A', alignItems: 'center',
+    justifyContent: 'center', paddingHorizontal: 28,
+  },
+  ringWrap: {
+    position: 'absolute', top: '10%',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  outerRing: {
+    position: 'absolute', width: 220, height: 220,
+    borderRadius: 110, borderWidth: 1.5,
+  },
+  middleRing: {
+    position: 'absolute', width: 160, height: 160,
+    borderRadius: 80, borderWidth: 1,
+  },
+  centerCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  missionIcon: { fontSize: 40 },
+  time: {
+    fontSize: 60, fontWeight: '900', color: '#FFFFFF',
+    letterSpacing: -2, marginTop: 200,
+  },
+  kala: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginTop: 6, textAlign: 'center' },
+  streak: { fontSize: 13, fontWeight: '700', color: '#FFFFFF80', marginTop: 8, textAlign: 'center' },
+  quote: {
+    fontSize: 12, color: '#FFFFFF45', textAlign: 'center',
+    marginTop: 14, lineHeight: 19, fontStyle: 'italic', paddingHorizontal: 12,
+  },
+  missionCard: {
+    width: '100%', borderWidth: 1, borderRadius: 22, padding: 22,
+    alignItems: 'center', gap: 8, marginTop: 22,
+    backgroundColor: '#FFFFFF06',
+  },
+  missionLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 1.8 },
+  missionName: { fontSize: 22, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  missionTagline: { fontSize: 12, color: '#FFFFFF70', textAlign: 'center', lineHeight: 18 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 99,
+    borderWidth: 1, marginTop: 4,
+  },
+  chipText: { fontSize: 11, fontWeight: '800' },
+  startBtn: {
+    width: '100%', borderRadius: 99, paddingVertical: 19,
+    alignItems: 'center', marginTop: 24,
+  },
+  startBtnText: { fontSize: 17, fontWeight: '900', color: '#000000', letterSpacing: 0.5 },
+  skipBtn: { paddingVertical: 16, marginTop: 4 },
+  skipText: { fontSize: 11, color: '#FFFFFF30', textAlign: 'center' },
+  lockBadge: {
+    marginTop: 16, paddingHorizontal: 16, paddingVertical: 7,
+    backgroundColor: '#FFFFFF08', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF15',
+  },
+  lockText: { fontSize: 10, color: '#FFFFFF40', fontWeight: '700' },
+});

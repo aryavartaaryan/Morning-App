@@ -1,0 +1,23 @@
+import notifee, { EventType } from '@notifee/react-native';
+import { NativeModules } from 'react-native';
+
+// MUST be outside and before AppRegistry — runs in the background headless JS task
+// when the app is killed and a notifee event fires (alarm delivered, action pressed).
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  const { notification, pressAction } = detail;
+
+  // Stop native AlarmSoundService on any press while app is killed
+  if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+    try {
+      const AlarmNative = NativeModules.AlarmModule;
+      if (AlarmNative?.stopAlarmSound) await AlarmNative.stopAlarmSound();
+    } catch { /* ignore */ }
+
+    // Explicit dismiss action — cancel the notification too
+    if (pressAction?.id === 'dismiss' && notification?.id) {
+      await notifee.cancelNotification(notification.id);
+    }
+  }
+});
+
+require('expo-router/entry');

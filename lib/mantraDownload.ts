@@ -1,0 +1,43 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
+const MANTRA_DIR = (FileSystem.documentDirectory ?? '') + 'mantras/';
+
+export function getLocalMantraPath(id: string): string {
+  return MANTRA_DIR + id + '.mp3';
+}
+
+export async function isMantraDownloaded(id: string): Promise<boolean> {
+  try {
+    const info = await FileSystem.getInfoAsync(getLocalMantraPath(id));
+    return info.exists;
+  } catch { return false; }
+}
+
+export async function downloadMantra(
+  id: string,
+  url: string,
+  onProgress?: (progress: number) => void,
+): Promise<string | null> {
+  try {
+    const dirInfo = await FileSystem.getInfoAsync(MANTRA_DIR);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(MANTRA_DIR, { intermediates: true });
+    }
+    const dest = getLocalMantraPath(id);
+    const dl = FileSystem.createDownloadResumable(url, dest, {}, (data) => {
+      if (data.totalBytesExpectedToWrite > 0) {
+        onProgress?.(data.totalBytesWritten / data.totalBytesExpectedToWrite);
+      }
+    });
+    const result = await dl.downloadAsync();
+    return result?.uri ?? null;
+  } catch { return null; }
+}
+
+export async function deleteMantra(id: string): Promise<void> {
+  try {
+    const path = getLocalMantraPath(id);
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) await FileSystem.deleteAsync(path);
+  } catch {}
+}
