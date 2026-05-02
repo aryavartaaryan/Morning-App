@@ -13,7 +13,7 @@ import { auth } from '@/lib/firebase';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 
 const { width, height } = Dimensions.get('window');
-const ACCENT = '#f97316';
+const ACCENT = '#10b981';
 
 export default function HabitAlarmRingingScreen() {
   const router = useRouter();
@@ -121,68 +121,90 @@ export default function HabitAlarmRingingScreen() {
   return (
     <View style={S.screen}>
       <StatusBar hidden />
-      <View style={S.glowTop} pointerEvents="none" />
+      {/* Ambient glow */}
+      <View style={[S.bgGlow, { opacity: phase === 'active' ? 1 : 0.5 }]} pointerEvents="none" />
 
-      <View style={S.centerWrap}>
-        <View style={S.ringWrap} pointerEvents="none">
-          <Animated.View style={[S.outerRing, outerStyle, { borderColor: ACCENT + '55' }]} />
-          <View style={[S.midRing, { borderColor: ACCENT + '25' }]} />
-          <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: ACCENT + '18', borderColor: ACCENT + '45' }]}>
-            {phase === 'countdown'
-              ? <Text style={[S.countdownNum, { color: ACCENT }]}>{countdown}</Text>
-              : <Text style={S.flameEmoji}>🔥</Text>}
-          </Animated.View>
+      {phase === 'countdown' ? (
+        /* ── Countdown 3-2-1 ── */
+        <View style={S.centerWrap}>
+          <View style={S.ringWrap} pointerEvents="none">
+            <Animated.View style={[S.outerRing, outerStyle, { borderColor: ACCENT + '55' }]} />
+            <View style={[S.midRing, { borderColor: ACCENT + '25' }]} />
+            <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: ACCENT + '18', borderColor: ACCENT + '50' }]}>
+              <Text style={[S.countdownNum, { color: ACCENT }]}>{countdown}</Text>
+            </Animated.View>
+          </View>
+          <Text style={S.countdownLabel}>{emoji}  {habitLabel}</Text>
+          <Text style={S.countdownSub}>HABIT ALARM ACTIVATED</Text>
         </View>
-
-        <Text style={S.habitName}>{habitLabel}</Text>
-
-        {phase === 'countdown' ? (
-          <View style={{ alignItems: 'center', gap: 4, marginTop: 8 }}>
-            <Text style={S.cueMain}>Time for your habit goal!</Text>
-            <Text style={S.cueSub}>Do it and hit 'Complete'</Text>
+      ) : (
+        /* ── Commitment Screen ── */
+        <View style={S.commitWrap}>
+          <View style={S.commitTop}>
+            <View style={[S.typeBadge, { borderColor: ACCENT + '50', backgroundColor: ACCENT + '12' }]}>
+              <Text style={[S.typeBadgeTxt, { color: ACCENT }]}>🌿  HABIT ALARM  ·  LOCKED</Text>
+            </View>
+            <Animated.View style={[S.emojiRing, innerStyle, { borderColor: ACCENT + '45', backgroundColor: ACCENT + '10' }]}>
+              <Text style={S.bigEmoji}>{emoji}</Text>
+            </Animated.View>
+            <Text style={S.commitHabitName}>{habitLabel}</Text>
+            <View style={S.riskBanner}>
+              <Text style={S.riskEmoji}>🔥</Text>
+              <Text style={S.riskTxt}>Your streak is at risk — act now!</Text>
+            </View>
           </View>
-        ) : (
-          <View style={S.progressBadge}>
-            <Text style={{ fontSize: 14 }}>🔥</Text>
-            <Text style={S.progressBadgeTxt}>Habit in progress</Text>
+
+          <View style={S.commitBottom}>
+            <Text style={S.commitQuestion}>Ready to do this right now?</Text>
+            <TouchableOpacity style={[S.commitBtn, { backgroundColor: ACCENT }]} onPress={handleComplete} activeOpacity={0.88}>
+              <Text style={S.commitBtnTxt}>✊  I COMMIT — I'LL DO IT NOW</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={S.skipBtn} onPress={handleQuit} activeOpacity={0.7}>
+              <Text style={S.skipTxt}>Skip this time (streak will reset)</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </View>
+      )}
 
-      <View style={S.lockBadge}><Text style={S.lockTxt}>🔒  Complete your habit to dismiss</Text></View>
-
-      <View style={S.btnRow}>
-        <TouchableOpacity style={S.quitBtn} onPress={handleQuit} activeOpacity={0.8}>
-          <Text style={S.quitTxt}>Quit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={S.completeBtn} onPress={handleComplete} activeOpacity={0.85}>
-          <Text style={S.completeTxt}>✓  Complete</Text>
-        </TouchableOpacity>
-      </View>
+      {phase !== 'countdown' && (
+        <View style={S.lockBar}>
+          <Text style={S.lockBarTxt}>🔒  Dismiss only by committing</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const S = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#040410' },
-  glowTop: { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: ACCENT + '10', borderBottomLeftRadius: width, borderBottomRightRadius: width },
-  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  ringWrap: { alignItems: 'center', justifyContent: 'center', width: 230, height: 230, marginBottom: 24 },
-  outerRing: { position: 'absolute', width: 230, height: 230, borderRadius: 115, borderWidth: 1.5 },
-  midRing: { position: 'absolute', width: 165, height: 165, borderRadius: 83, borderWidth: 1 },
-  innerCircle: { width: 110, height: 110, borderRadius: 55, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  countdownNum: { fontSize: 52, fontWeight: '100', letterSpacing: -2 },
-  flameEmoji: { fontSize: 48 },
-  habitName: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', letterSpacing: -0.5 },
-  cueMain: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', marginTop: 2 },
-  cueSub: { fontSize: 13, color: '#FFFFFF60', textAlign: 'center', marginTop: 2 },
-  progressBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACCENT + '18', borderWidth: 1, borderColor: ACCENT + '40', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, marginTop: 12 },
-  progressBadgeTxt: { fontSize: 13, fontWeight: '800', color: ACCENT },
-  lockBadge: { alignSelf: 'center', marginBottom: 16, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#FFFFFF05', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF0E' },
-  lockTxt: { fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 0.3 },
-  btnRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 22, paddingBottom: 44 },
-  quitBtn: { flex: 1, borderRadius: 18, paddingVertical: 18, alignItems: 'center', backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF18' },
-  quitTxt: { fontSize: 15, fontWeight: '700', color: '#FFFFFF60' },
-  completeBtn: { flex: 2, borderRadius: 18, paddingVertical: 18, alignItems: 'center', backgroundColor: ACCENT },
-  completeTxt: { fontSize: 15, fontWeight: '900', color: '#000000EA' },
+  screen:           { flex: 1, backgroundColor: '#03100A' },
+  bgGlow:           { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.65, backgroundColor: '#10b98118', borderBottomLeftRadius: width * 0.8, borderBottomRightRadius: width * 0.8 },
+  // Countdown
+  centerWrap:       { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  ringWrap:         { alignItems: 'center', justifyContent: 'center', width: 230, height: 230, marginBottom: 28 },
+  outerRing:        { position: 'absolute', width: 230, height: 230, borderRadius: 115, borderWidth: 1.5 },
+  midRing:          { position: 'absolute', width: 165, height: 165, borderRadius: 83, borderWidth: 1 },
+  innerCircle:      { width: 110, height: 110, borderRadius: 55, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  countdownNum:     { fontSize: 58, fontWeight: '100', letterSpacing: -2 },
+  countdownLabel:   { fontSize: 22, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginTop: 4 },
+  countdownSub:     { fontSize: 10, color: ACCENT + '80', marginTop: 12, letterSpacing: 2.5, fontWeight: '700' },
+  // Commitment
+  commitWrap:       { flex: 1, paddingHorizontal: 24 },
+  commitTop:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
+  typeBadge:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 99, paddingHorizontal: 18, paddingVertical: 7 },
+  typeBadgeTxt:     { fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
+  emojiRing:        { width: 126, height: 126, borderRadius: 63, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  bigEmoji:         { fontSize: 54 },
+  commitHabitName:  { fontSize: 30, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', letterSpacing: -0.5 },
+  riskBanner:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f9731610', borderWidth: 1, borderColor: '#f9731630', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  riskEmoji:        { fontSize: 16 },
+  riskTxt:          { fontSize: 12, fontWeight: '700', color: '#fdba74' },
+  // Bottom buttons
+  commitBottom:     { paddingBottom: 48, gap: 10 },
+  commitQuestion:   { fontSize: 12, color: '#FFFFFF30', textAlign: 'center', fontWeight: '600', letterSpacing: 0.4, marginBottom: 6 },
+  commitBtn:        { borderRadius: 20, paddingVertical: 22, alignItems: 'center', shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 },
+  commitBtnTxt:     { fontSize: 16, fontWeight: '900', color: '#001A0A', letterSpacing: 0.2 },
+  skipBtn:          { alignItems: 'center', paddingVertical: 12 },
+  skipTxt:          { fontSize: 12, color: '#FFFFFF18', fontWeight: '600' },
+  lockBar:          { alignSelf: 'center', marginBottom: 14, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFFFFF04', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF08' },
+  lockBarTxt:       { fontSize: 9, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 0.5 },
 });

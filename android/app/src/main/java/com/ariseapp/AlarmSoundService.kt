@@ -88,7 +88,7 @@ class AlarmSoundService : Service() {
         const val NOTIF_ID = 1001
         const val PREFS_NAME = "alarm_prefs"
         const val KEY_SOUND = "alarm_sound"
-        const val ACTION_SET_VOLUME = "com.ariseapp.SET_ALARM_VOLUME"
+        const val ACTION_SET_VOLUME = "com.onesutra.app.SET_ALARM_VOLUME"
         const val EXTRA_VOLUME = "volume"
     }
 
@@ -111,7 +111,7 @@ class AlarmSoundService : Service() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "ariseapp:alarmwakelock"
+            "onesutra:alarmwakelock"
         ).also { it.acquire(10 * 60 * 1000L) } // max 10 min
 
         // Mark alarm as active in SharedPreferences BEFORE launching app
@@ -196,7 +196,7 @@ class AlarmSoundService : Service() {
             val launch = if (!alarmScreenLaunched) {
                 // FIRST call: deep-link so Expo Router navigates to /alarm-ringing
                 alarmScreenLaunched = true
-                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("ariseapp://alarm-ringing")).apply {
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("onesutra://alarm-ringing")).apply {
                     addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
@@ -224,7 +224,7 @@ class AlarmSoundService : Service() {
 
     private fun buildFullScreenPendingIntent(): PendingIntent {
         // Deep link → Expo Router routes directly to /alarm-ringing, bypassing home screen
-        val uri = android.net.Uri.parse("ariseapp://alarm-ringing")
+        val uri = android.net.Uri.parse("onesutra://alarm-ringing")
         val launch = Intent(Intent.ACTION_VIEW, uri).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -241,8 +241,8 @@ class AlarmSoundService : Service() {
     private fun buildNotification(): Notification {
         val pi = buildFullScreenPendingIntent()
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("⏰ Arise — Wake Alarm")
-            .setContentText("Rise and own your day. 🌅")
+            .setContentTitle("⏰ OneSutra Wake Alarm")
+            .setContentText("Brahma Muhurta — Rise and begin your sacred day. 🙏")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(pi)
             // setFullScreenIntent(highPriority=true) is what makes the screen turn
@@ -262,7 +262,7 @@ class AlarmSoundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
                 CHANNEL_ID,
-                "Arise Alarm",
+                "OneSutra Alarm",
                 NotificationManager.IMPORTANCE_MAX  // MAX = urgent, triggers fullScreenIntent reliably
             ).apply {
                 setSound(null, null)

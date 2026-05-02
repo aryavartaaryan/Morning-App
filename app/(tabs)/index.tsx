@@ -118,6 +118,26 @@ function Toggle({ value, onToggle, color = '#a78bfa' }: { value: boolean; onTogg
   );
 }
 
+const DS = ['S','M','T','W','T','F','S'] as const;
+function DayDots({ days, color = '#10b981' }: { days?: number[]; color?: string }) {
+  const isAll = !days || days.length === 0 || days.length === 7;
+  return (
+    <View style={{ flexDirection: 'row', gap: 5, marginTop: 8 }}>
+      {DS.map((d, i) => {
+        const on = isAll || days!.includes(i);
+        return (
+          <View key={i} style={{ alignItems: 'center', gap: 2 }}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: on ? color + '22' : 'transparent', borderWidth: 1, borderColor: on ? color + '60' : '#FFFFFF12', alignItems: 'center', justifyContent: 'center' }}>
+              {on && <Text style={{ fontSize: 9, fontWeight: '900', color }}>{`\u2713`}</Text>}
+            </View>
+            <Text style={{ fontSize: 7, fontWeight: on ? '800' : '400', color: on ? color + 'CC' : '#FFFFFF25' }}>{d}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const DRUM_H = 52;
 const HOURS   = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
@@ -294,6 +314,7 @@ export default function AlarmTab() {
   const [dlProgress, setDlProgress]           = useState<Record<string, number>>({});
   const [alarmEntries, setAlarmEntries]       = useState<AlarmEntry[]>([]);
   const [fabOpen, setFabOpen]                 = useState(false);
+  const [menuOpenId, setMenuOpenId]           = useState<string | null>(null);
   const [showWakeEdit, setShowWakeEdit]       = useState(false);
   const [addType, setAddType]                 = useState<'habit'|'quick'|null>(null);
   const [editEntry, setEditEntry]             = useState<AlarmEntry | null>(null);
@@ -643,48 +664,65 @@ export default function AlarmTab() {
       {/* Alarm list */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }} showsVerticalScrollIndicator={false}>
         {/* Wake Alarm Card */}
-        <TouchableOpacity style={[S.alarmCard, settings.wakeAlarm.enabled && S.alarmCardActive]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.85}>
-          <View style={S.alarmCardInner}>
-            <View style={S.alarmLeft}>
-              <View style={S.alarmTypePill}>
-                <Text style={S.alarmTypeEmoji}>⏰</Text>
-                <Text style={S.alarmTypeTxt}>WAKE ALARM</Text>
-                {missionSettings.lockInMode && <Text style={{ fontSize: 9, color: '#ef4444' }}>🔒 LOCK IN</Text>}
-              </View>
-              <Text style={[S.alarmTime, settings.wakeAlarm.enabled ? S.alarmTimeOn : S.alarmTimeOff]}>
-                {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
-              </Text>
-              <Text style={S.alarmSub}>{playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.name ?? 'Mission'}</Text>
-              <Text style={[S.alarmSub, { color: '#FFFFFF25', marginTop: 1 }]}>Every day  ·  Tap to configure</Text>
-            </View>
-            <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color={ACCENT} />
-          </View>
-        </TouchableOpacity>
-
-        {/* Habit + Quick Alarm Cards */}
-        {alarmEntries.map(entry => (
-          <TouchableOpacity key={entry.id} style={[S.alarmCard, entry.enabled && (entry.type === 'habit' ? S.alarmCardHabit : S.alarmCardQuick)]} onPress={() => openEditEntry(entry)} activeOpacity={0.85}>
+        <View style={[S.alarmCard, settings.wakeAlarm.enabled && S.alarmCardActive]}>
+          <TouchableOpacity onPress={() => setShowWakeEdit(true)} activeOpacity={0.85}>
             <View style={S.alarmCardInner}>
               <View style={S.alarmLeft}>
                 <View style={S.alarmTypePill}>
-                  <Text style={S.alarmTypeEmoji}>{entry.type === 'habit' ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
-                  <Text style={S.alarmTypeTxt}>{entry.type === 'habit' ? 'HABIT ALARM' : 'QUICK ALARM'}</Text>
+                  <Text style={S.alarmTypeEmoji}>⏰</Text>
+                  <Text style={S.alarmTypeTxt}>WAKE ALARM</Text>
+                  {missionSettings.lockInMode && <Text style={{ fontSize: 9, color: '#ef4444' }}>🔒</Text>}
                 </View>
-                <Text style={[S.alarmTime, entry.enabled ? (entry.type === 'habit' ? S.alarmTimeHabit : S.alarmTimeQuick) : S.alarmTimeOff]}>
-                  {fmt12(entry.hour, entry.minute)}
+                <Text style={[S.alarmTime, settings.wakeAlarm.enabled ? S.alarmTimeOn : S.alarmTimeOff]}>
+                  {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
                 </Text>
-                <Text style={S.alarmSub}>{entry.label}</Text>
-                <Text style={[S.alarmSub, { color: '#FFFFFF25', marginTop: 1 }]}>{formatDays(entry.days)}</Text>
+                <Text style={S.alarmSub}>{playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.name ?? 'Mission'}</Text>
+                <DayDots days={undefined} color={ACCENT} />
               </View>
-              <View style={{ alignItems: 'center', gap: 10 }}>
-                <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={entry.type === 'habit' ? '#10b981' : '#f97316'} />
-                <TouchableOpacity onPress={() => deleteEntry(entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={{ color: '#f43f5e60', fontSize: 10, fontWeight: '700' }}>Remove</Text>
-                </TouchableOpacity>
-              </View>
+              <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color={ACCENT} />
             </View>
           </TouchableOpacity>
-        ))}
+        </View>
+
+        {/* Habit + Quick Alarm Cards */}
+        {alarmEntries.map(entry => {
+          const isMenuOpen = menuOpenId === entry.id;
+          const cardColor  = entry.type === 'habit' ? '#10b981' : '#f97316';
+          return (
+            <View key={entry.id} style={[S.alarmCard, entry.enabled && (entry.type === 'habit' ? S.alarmCardHabit : S.alarmCardQuick)]}>
+              <View style={S.alarmCardInner}>
+                <TouchableOpacity style={S.alarmLeft} onPress={() => { setMenuOpenId(null); openEditEntry(entry); }} activeOpacity={0.85}>
+                  <View style={S.alarmTypePill}>
+                    <Text style={S.alarmTypeEmoji}>{entry.type === 'habit' ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
+                    <Text style={S.alarmTypeTxt}>{entry.type === 'habit' ? 'HABIT ALARM' : 'QUICK ALARM'}</Text>
+                  </View>
+                  <Text style={[S.alarmTime, entry.enabled ? (entry.type === 'habit' ? S.alarmTimeHabit : S.alarmTimeQuick) : S.alarmTimeOff]}>
+                    {fmt12(entry.hour, entry.minute)}
+                  </Text>
+                  <Text style={S.alarmSub}>{entry.label}</Text>
+                  <DayDots days={entry.days} color={cardColor} />
+                </TouchableOpacity>
+                <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                  <TouchableOpacity onPress={() => setMenuOpenId(isMenuOpen ? null : entry.id)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={S.kebabBtn}>
+                    <View style={S.kebabDot} /><View style={S.kebabDot} /><View style={S.kebabDot} />
+                  </TouchableOpacity>
+                  <Toggle value={entry.enabled} onToggle={() => { setMenuOpenId(null); toggleEntry(entry.id); }} color={cardColor} />
+                </View>
+              </View>
+              {isMenuOpen && (
+                <View style={S.cardMenu}>
+                  <TouchableOpacity style={S.cardMenuItem} onPress={() => { setMenuOpenId(null); openEditEntry(entry); }}>
+                    <Text style={S.cardMenuTxt}>✎  Edit alarm</Text>
+                  </TouchableOpacity>
+                  <View style={{ height: 1, backgroundColor: '#FFFFFF08' }} />
+                  <TouchableOpacity style={S.cardMenuItem} onPress={() => { setMenuOpenId(null); deleteEntry(entry.id); }}>
+                    <Text style={[S.cardMenuTxt, { color: '#f43f5e' }]}>🗑  Delete alarm</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        })}
 
         {alarmEntries.length === 0 && (
           <View style={S.emptyHint}>
@@ -951,4 +989,9 @@ const S = StyleSheet.create({
   customInput: { backgroundColor: '#FFFFFF07', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14, marginBottom: 8 },
   saveBtn: { backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 99, paddingVertical: 14, alignItems: 'center' },
   saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15 },
+  kebabBtn:    { paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center' },
+  kebabDot:    { width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: '#FFFFFF45', marginVertical: 2.5 },
+  cardMenu:    { marginHorizontal: 16, marginBottom: 14, backgroundColor: '#0E0E20', borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF0E', overflow: 'hidden' },
+  cardMenuItem:{ paddingHorizontal: 20, paddingVertical: 15 },
+  cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFFA0' },
 });

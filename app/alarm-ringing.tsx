@@ -266,6 +266,15 @@ export default function AlarmRingingScreen() {
       const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
       const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
 
+      // ── Play correct mantra audio via JS layer ─────────────────────
+      if (!cancelled) {
+        const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
+        const localPath = getLocalMantraPath(mantraId);
+        const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+        const audioSrc = (localInfo as any).exists ? (localInfo as any).uri : wakeSound.audioUrl;
+        if (audioSrc) await playWakeAudio(audioSrc, settings.bodhiMorningBrief);
+      }
+
       // ── KEEP native AlarmSoundService running ──────────────────────
       // The foreground service handles alarm audio, wake locks, and
       // Home-button relaunch watchdogs. Stopping it (the old code) was
