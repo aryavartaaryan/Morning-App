@@ -86,22 +86,61 @@ export default function HabitAlarmRingingScreen() {
     return () => sub.remove();
   }, [stopped]);
 
-  // Bring-to-front notification when home pressed
+  // Keep-alive: persistent fullScreen notification fires IMMEDIATELY on mount
+  // so Android treats the process as high-priority (similar to a foreground service).
+  // Re-fires every time the app backgrounds so it can never be lost.
+  // Completely isolated from the wake alarm (different channel + notif ID).
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const bttfId = 'habit-alarm-bttf';
-    const fireBttf = async () => {
+    const NOTIF_ID = 'habit-alarm-lock';
+    const CHAN_ID   = 'arise-habit-alarms';
+
+    const fire = async () => {
       try {
-        await notifee.createChannel({ id: 'onesutra-habit-alarms', name: 'OneSutra Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
-        await notifee.displayNotification({ id: bttfId, title: `${emoji} ${habitLabel}`, body: 'Return to complete your habit.', android: { channelId: 'onesutra-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, ongoing: true, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any });
+        await notifee.createChannel({
+          id: CHAN_ID, name: 'Arise Habit Alarms',
+          importance: AndroidImportance.HIGH, bypassDnd: true,
+          visibility: AndroidVisibility.PUBLIC,
+        } as any);
+        await notifee.displayNotification({
+          id: NOTIF_ID,
+          title: `${emoji}  ${habitLabel}`,
+          body: 'Tap to return and commit to your habit.',
+          android: {
+            channelId: CHAN_ID,
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            ongoing: true,
+            autoCancel: false,
+            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            pressAction:      { id: 'default', launchActivity: 'default' },
+          } as any,
+        });
       } catch { /* ignore */ }
     };
+
+    fire(); // ← fires immediately on mount, pins process in Android's eyes
+
     const sub = AppState.addEventListener('change', next => {
-      if (!stopped && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) { appStateRef.current = next; fireBttf(); }
-      else if (!stopped && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') { appStateRef.current = next; notifee.cancelNotification(bttfId).catch(() => {}); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); }
-      else { appStateRef.current = next; }
+      if (!stopped && appStateRef.current === 'active' &&
+          (next === 'background' || next === 'inactive')) {
+        appStateRef.current = next;
+        fire(); // re-fire in case notification was dismissed
+      } else if (!stopped &&
+          (appStateRef.current === 'background' || appStateRef.current === 'inactive') &&
+          next === 'active') {
+        appStateRef.current = next;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      } else {
+        appStateRef.current = next;
+      }
     });
-    return () => { sub.remove(); notifee.cancelNotification(bttfId).catch(() => {}); };
+
+    return () => {
+      sub.remove();
+      notifee.cancelNotification(NOTIF_ID).catch(() => {});
+    };
   }, [stopped, emoji, habitLabel]);
 
   const stopAudio = async () => {
