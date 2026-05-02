@@ -123,7 +123,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "f5c8ddaa-5bc5-49fa-9e8c-83620e2798d4"
+      }
     },
     "owner": "ayuraone"
   }
