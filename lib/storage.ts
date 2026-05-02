@@ -38,4 +38,5 @@ export const KEYS = {
   permissionsPrompted: 'onesutra_perms_v1',  // Set after first-launch permission walk-through
   alarmActive: 'onesutra_alarm_active_v1',   // '1' while alarm is ringing; cleared on mission complete
   multiAlarms: 'onesutra_multi_alarms_v1',   // AlarmEntry[] — habit + quick alarms
+  brahmaMuhurtaNotif: 'arise_brahma_muhurta_v1', // boolean — daily BM notification enabled
 };

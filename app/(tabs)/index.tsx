@@ -28,6 +28,10 @@ import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getLocalMantraPath, isMantraDownloaded, downloadMantra } from '@/lib/mantraDownload';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
+import {
+  getBrahmaMuhurtaInfo, scheduleBrahmaMuhurtaNotif, cancelBrahmaMuhurtaNotif,
+  SCIENCE_ALIASES, type BrahmaMuhurtaInfo,
+} from '@/lib/brahmaMuhurta';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const ACCENT = '#F5820A';
@@ -298,6 +302,118 @@ function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
   return 'night';
 }
 
+// ── Brahma Muhurta Card ─────────────────────────────────────────────────────
+const BM_INDIGO = '#818cf8';
+const BM_VIOLET = '#a78bfa';
+
+function BrahmaMuhurtaCard({
+  bmInfo, enabled, onToggle, scienceIdx, hasGPS,
+}: {
+  bmInfo: BrahmaMuhurtaInfo | null;
+  enabled: boolean;
+  onToggle: () => void;
+  scienceIdx: number;
+  hasGPS: boolean;
+}) {
+  const alias = SCIENCE_ALIASES[scienceIdx % SCIENCE_ALIASES.length];
+  const statusColor = !bmInfo ? '#666'
+    : bmInfo.status === 'active'   ? '#34d399'
+    : bmInfo.status === 'upcoming' ? BM_INDIGO
+    : '#FFFFFF28';
+
+  const countdownStr = bmInfo
+    ? bmInfo.status === 'active'
+      ? `⏳ ${bmInfo.minutesRemaining} min remaining`
+      : bmInfo.status === 'upcoming'
+      ? `⏰ In ${bmInfo.minutesUntil >= 60 ? `${Math.floor(bmInfo.minutesUntil / 60)}h ${bmInfo.minutesUntil % 60}m` : `${bmInfo.minutesUntil} min`}`
+      : null
+    : null;
+
+  return (
+    <View style={bmS.wrap}>
+      <LinearGradient
+        colors={['rgba(67,56,202,0.22)', 'rgba(109,40,217,0.10)', 'rgba(0,0,0,0)']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      />
+      {/* Header */}
+      <View style={bmS.headerRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+          <Text style={{ fontSize: 20 }}>🌙</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={bmS.sectionLabel}>BRAHMA MUHURTA</Text>
+            <Text style={bmS.sciTitle} numberOfLines={1}>{alias.emoji}  {alias.title}</Text>
+          </View>
+        </View>
+        {bmInfo && (
+          <View style={[bmS.statusPill, { borderColor: statusColor + '55', backgroundColor: statusColor + '18' }]}>
+            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: statusColor, marginRight: 5 }} />
+            <Text style={[bmS.statusTxt, { color: statusColor }]}>
+              {bmInfo.status === 'active' ? 'ACTIVE NOW' : bmInfo.status === 'upcoming' ? 'UPCOMING' : 'PASSED'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Time band */}
+      {bmInfo ? (
+        <View style={bmS.timeBand}>
+          <Text style={bmS.timeMain}>{bmInfo.startLabel}</Text>
+          <Text style={bmS.timeSep}>—</Text>
+          <Text style={bmS.timeEnd}>{bmInfo.endLabel}</Text>
+        </View>
+      ) : (
+        <Text style={bmS.noGps}>📍 Enable GPS for accurate times</Text>
+      )}
+
+      {/* Countdown + sunrise row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+        {countdownStr && (
+          <View style={[bmS.countPill, { borderColor: statusColor + '40', backgroundColor: statusColor + '12' }]}>
+            <Text style={[bmS.countTxt, { color: statusColor }]}>{countdownStr}</Text>
+          </View>
+        )}
+        {bmInfo && (
+          <Text style={bmS.sunriseTxt}>☀️ Sunrise {bmInfo.sunriseLabel}{hasGPS ? '  ·  GPS ✓' : ''}</Text>
+        )}
+      </View>
+
+      {/* Science description */}
+      <Text style={bmS.sciDesc} numberOfLines={2}>{alias.desc}</Text>
+
+      {/* Footer toggle */}
+      <View style={bmS.footerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={bmS.alertLabel}>Daily Alert</Text>
+          <Text style={bmS.alertSub}>Notify me at Brahma Muhurta each day</Text>
+        </View>
+        <Toggle value={enabled} onToggle={onToggle} color={BM_INDIGO} />
+      </View>
+    </View>
+  );
+}
+
+const bmS = StyleSheet.create({
+  wrap: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: BM_INDIGO + '22', backgroundColor: BM_INDIGO + '06', overflow: 'hidden', padding: 18 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
+  sectionLabel: { fontSize: 8, fontWeight: '900', color: BM_INDIGO + 'BB', letterSpacing: 1.8 },
+  sciTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginTop: 1 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5 },
+  statusTxt: { fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  timeBand: { flexDirection: 'row', alignItems: 'baseline', gap: 0, marginBottom: 2 },
+  timeMain: { fontSize: 34, fontWeight: '200', color: '#fff', letterSpacing: -1 },
+  timeSep: { fontSize: 18, color: '#FFFFFF28', fontWeight: '200', paddingHorizontal: 8 },
+  timeEnd: { fontSize: 26, fontWeight: '200', color: '#FFFFFF60', letterSpacing: -0.5 },
+  noGps: { fontSize: 13, color: '#FFFFFF35', marginVertical: 12 },
+  countPill: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
+  countTxt: { fontSize: 11, fontWeight: '700' },
+  sunriseTxt: { fontSize: 10, color: '#FFFFFF30', fontWeight: '500' },
+  sciDesc: { fontSize: 10, color: '#FFFFFF32', lineHeight: 15, marginTop: 10, marginBottom: 14 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#FFFFFF0A', paddingTop: 12, gap: 12 },
+  alertLabel: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  alertSub: { fontSize: 10, color: '#FFFFFF30', marginTop: 1 },
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Main Screen
 // ══════════════════════════════════════════════════════════════════════════════
@@ -335,6 +451,10 @@ export default function AlarmTab() {
   const [weatherLoading, setWeatherLoading]   = useState(true);
   const [solarTimes, setSolarTimes]           = useState<SolarTimes | null>(null);
   const [bgUri, setBgUri]                     = useState<string | null>(null);
+  const [brahmaMuhurtaEnabled, setBrahmaMuhurtaEnabled] = useState(false);
+  const [bmInfo, setBmInfo]                   = useState<BrahmaMuhurtaInfo | null>(null);
+  const [scienceIdx, setScienceIdx]           = useState(0);
+  const [hasGPS, setHasGPS]                   = useState(false);
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -348,8 +468,23 @@ export default function AlarmTab() {
 
   useEffect(() => {
     store.getJSON<{ lat: number; lon: number }>(KEYS.location)
-      .then(loc => { if (loc?.lat && loc?.lon) setSolarTimes(getSolarTimes(loc.lat, loc.lon)); })
+      .then(loc => { if (loc?.lat && loc?.lon) { setSolarTimes(getSolarTimes(loc.lat, loc.lon)); setHasGPS(true); } })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    store.get(KEYS.brahmaMuhurtaNotif).then(v => { if (v === '1') setBrahmaMuhurtaEnabled(true); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!solarTimes) return;
+    const nowH = liveClock.getHours() + liveClock.getMinutes() / 60;
+    setBmInfo(getBrahmaMuhurtaInfo(solarTimes, nowH));
+  }, [solarTimes, liveClock]);
+
+  useEffect(() => {
+    const t = setInterval(() => setScienceIdx(i => (i + 1) % SCIENCE_ALIASES.length), 6000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -456,6 +591,21 @@ export default function AlarmTab() {
   const setWakeTime  = (h: number, m: number) => persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: h, minute: m } });
   const applyPreset  = (p: typeof PRESETS[0]) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: p.hour, minute: p.minute } }); };
   const toggleBrahma = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); persistAndApply({ ...settings, brahmaReminder: !settings.brahmaReminder }); };
+
+  const toggleBrahmaMuhurtaAlert = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = !brahmaMuhurtaEnabled;
+    setBrahmaMuhurtaEnabled(next);
+    await store.set(KEYS.brahmaMuhurtaNotif, next ? '1' : '0');
+    if (next) {
+      const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location).catch(() => null);
+      if (loc?.lat && loc?.lon) {
+        await scheduleBrahmaMuhurtaNotif(loc.lat, loc.lon);
+      }
+    } else {
+      await cancelBrahmaMuhurtaNotif();
+    }
+  };
   const updateMission = async (patch: Partial<MissionSettings>) => { const u = { ...missionSettings, ...patch }; setMissionSettings(u); await store.setJSON(KEYS.missionSettings, u); };
 
   const chantMantra = (mantra: typeof MANTRAS[0], repeat = true) => {
@@ -663,6 +813,15 @@ export default function AlarmTab() {
 
       {/* Alarm list */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }} showsVerticalScrollIndicator={false}>
+        {/* Brahma Muhurta Card */}
+        <BrahmaMuhurtaCard
+          bmInfo={bmInfo}
+          enabled={brahmaMuhurtaEnabled}
+          onToggle={toggleBrahmaMuhurtaAlert}
+          scienceIdx={scienceIdx}
+          hasGPS={hasGPS}
+        />
+
         {/* Wake Alarm Card */}
         <View style={[S.alarmCard, settings.wakeAlarm.enabled && S.alarmCardActive]}>
           <TouchableOpacity onPress={() => setShowWakeEdit(true)} activeOpacity={0.85}>
