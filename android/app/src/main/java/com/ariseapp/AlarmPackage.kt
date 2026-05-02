@@ -1,4 +1,4 @@
-package com.onesutra.app
+package com.ariseapp
 
 import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule

@@ -1,4 +1,4 @@
-package com.onesutra.app
+package com.ariseapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.app.KeyguardManager

@@ -1,4 +1,4 @@
-package com.onesutra.app
+package com.ariseapp
 
 import android.app.AlarmManager
 import android.app.PendingIntent

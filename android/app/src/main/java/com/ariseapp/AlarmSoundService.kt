@@ -1,4 +1,4 @@
-package com.onesutra.app
+package com.ariseapp
 
 import android.app.*
 import android.content.Context
