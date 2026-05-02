@@ -11,6 +11,7 @@ import { store, KEYS } from '@/lib/storage';
 import { saveHabitLog, todayStr } from '@/lib/habitLogs';
 import { auth } from '@/lib/firebase';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
+import { WAKE_SOUNDS } from '@/lib/missionAlarm';
 
 const { width, height } = Dimensions.get('window');
 const ACCENT = '#10b981';
@@ -49,10 +50,11 @@ export default function HabitAlarmRingingScreen() {
       try {
         const cfg = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
         const mantraId = cfg?.selectedMantraId ?? 'gayatri';
+        const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
         const localPath = getLocalMantraPath(mantraId);
-        const localInfo = await FileSystem.getInfoAsync(localPath);
-        const src = localInfo.exists ? { uri: localPath } : require('../assets/sounds/mantra_alarm.wav');
+        const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+        const src = (localInfo as any).exists ? { uri: (localInfo as any).uri } : { uri: wakeSound.audioUrl };
         if (cancelled) return;
         const { sound } = await Audio.Sound.createAsync(src, { shouldPlay: true, isLooping: true, volume: 1.0 });
         if (cancelled) { sound.unloadAsync(); return; }
