@@ -94,8 +94,8 @@ export default function HabitAlarmRingingScreen() {
     const bttfId = 'habit-alarm-bttf';
     const fireBttf = async () => {
       try {
-        await notifee.createChannel({ id: 'onesutra-habit-alarms', name: 'OneSutra Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
-        await notifee.displayNotification({ id: bttfId, title: `${emoji} ${habitLabel}`, body: 'Return to complete your habit.', android: { channelId: 'onesutra-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, ongoing: true, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any });
+        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Arise Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+        await notifee.displayNotification({ id: bttfId, title: `${emoji} ${habitLabel}`, body: 'Return to complete your habit.', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, ongoing: true, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any });
       } catch { /* ignore */ }
     };
     const sub = AppState.addEventListener('change', next => {

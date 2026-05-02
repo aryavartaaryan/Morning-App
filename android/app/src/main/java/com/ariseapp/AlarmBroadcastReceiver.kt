@@ -14,7 +14,7 @@ import java.util.Calendar
 
 class AlarmBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d("OneSutraAlarm", "AlarmBroadcastReceiver fired at ${System.currentTimeMillis()}")
+        Log.d("AriseAlarm", "AlarmBroadcastReceiver fired at ${System.currentTimeMillis()}")
         showToast(context, "[DBG 1/3] Alarm broadcast received ✅")
 
         // 1. Start the foreground service that plays the alarm and shows full-screen UI.
@@ -27,7 +27,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             }
             showToast(context, "[DBG 2/3] AlarmSoundService start sent ✅")
         } catch (e: Exception) {
-            Log.e("OneSutraAlarm", "Failed to start AlarmSoundService", e)
+            Log.e("AriseAlarm", "Failed to start AlarmSoundService", e)
             showToast(context, "[DBG] Service start FAILED ❌: ${e.message}")
         }
 
@@ -61,10 +61,10 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             } else {
                 am.setAlarmClock(AlarmManager.AlarmClockInfo(next.timeInMillis, pi), pi)
             }
-            Log.d("OneSutraAlarm", "Rescheduled next alarm for ${next.time}")
+            Log.d("AriseAlarm", "Rescheduled next alarm for ${next.time}")
             showToast(context, "[DBG 3/3] Next alarm set for ${next.time} ✅")
         } catch (e: Exception) {
-            Log.e("OneSutraAlarm", "Failed to reschedule alarm", e)
+            Log.e("AriseAlarm", "Failed to reschedule alarm", e)
             showToast(context, "[DBG] Reschedule FAILED ❌: ${e.message}")
         }
     }

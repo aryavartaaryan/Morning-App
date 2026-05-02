@@ -178,7 +178,7 @@ export default function AlarmRingingScreen() {
           title: '⏰ Alarm Ringing!',
           body: 'Return to complete your mission and stop the alarm.',
           android: {
-            channelId: 'onesutra-alarms-v4',
+            channelId: 'arise-alarms',
             importance: AndroidImportance.HIGH,
             category: AndroidCategory.ALARM,
             visibility: AndroidVisibility.PUBLIC,

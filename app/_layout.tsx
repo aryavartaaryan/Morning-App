@@ -171,8 +171,8 @@ function BodhiNotificationListener() {
 
       // ── Android: ensure notification channel is ready on every app open ──
       if (Platform.OS === 'android') {
-        Notifications.setNotificationChannelAsync('onesutra-alarms', {
-          name: 'OneSutra Alarms',
+        Notifications.setNotificationChannelAsync('arise-alarms', {
+          name: 'Arise Alarms',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'mantra_alarm.wav',
           vibrationPattern: [0, 250, 250, 250],

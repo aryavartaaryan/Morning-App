@@ -22,7 +22,7 @@ class AlarmPackage : BaseReactPackage() {
             mapOf(
                 "AlarmModule" to ReactModuleInfo(
                     "AlarmModule",                       // name
-                    "com.onesutra.app.AlarmModule",      // class name
+                    "com.ariseapp.AlarmModule",           // class name
                     false,                               // canOverrideExistingModule
                     false,                               // needsEagerInit
                     false,                               // isCxxModule

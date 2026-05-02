@@ -703,8 +703,8 @@ export default function AlarmsScreen() {
     if (Platform.OS === 'android' && entry.type === 'habit') {
       try {
         await notifee.createChannel({
-          id: 'onesutra-habit-alarms',
-          name: 'OneSutra Habit Alarms',
+          id: 'arise-habit-alarms',
+          name: 'Arise Habit Alarms',
           importance: AndroidImportance.HIGH,
           sound: 'mantra_alarm',
           vibration: true,
@@ -722,7 +722,7 @@ export default function AlarmsScreen() {
             title,
             body: 'Time for your habit! Tap to confirm. 🙏',
             android: {
-              channelId: 'onesutra-habit-alarms',
+              channelId: 'arise-habit-alarms',
               importance: AndroidImportance.HIGH,
               category: AndroidCategory.ALARM,
               visibility: AndroidVisibility.PUBLIC,

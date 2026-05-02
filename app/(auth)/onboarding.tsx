@@ -33,7 +33,7 @@ interface LifeStep {
 const LIFE_EN: LifeStep[] = [
   {
     id: 'intentions', emoji: '🌿', type: 'multi',
-    q: 'What brings you to OneSutra?',
+    q: 'What brings you to Arise?',
     sub: "We'll personalize your journey based on your intentions.",
     options: [
       { id: 'discipline', label: '🌅 Build Discipline', desc: 'Consistent daily rituals' },
@@ -111,7 +111,7 @@ const LIFE_EN: LifeStep[] = [
 const LIFE_HI: LifeStep[] = [
   {
     id: 'intentions', emoji: '🌿', type: 'multi',
-    q: 'OneSutra में आप क्यों आए हैं?',
+    q: 'Arise में आप क्यों आए हैं?',
     sub: "हम आपके इरादों के आधार पर आपकी यात्रा को व्यक्तिगत बनाएंगे।",
     options: [
       { id: 'discipline', label: '🌅 अनुशासन बनाना', desc: 'नियमित दैनिक अनुष्ठान' },

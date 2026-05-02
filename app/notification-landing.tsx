@@ -79,9 +79,9 @@ const SCREENS: Record<string, {
 
 const FALLBACK = {
   emoji: '✦', period: 'ONESUTRA', color: Colors.gold, gradientEnd: '#1c1400',
-  headline: 'OneSutra Reminder', subhead: 'Your Ayurvedic day needs you',
+  headline: 'Arise Reminder', subhead: 'Your Ayurvedic day needs you',
   message: 'Open the app to log your habits and stay aligned with your Dinacharya.',
-  ctaLabel: 'Open OneSutra →', speechKey: '',
+  ctaLabel: 'Open Arise →', speechKey: ''
 };
 
 export default function NotificationLandingScreen() {
@@ -211,7 +211,7 @@ export default function NotificationLandingScreen() {
           </View>
 
           {/* ── Brand footer ── */}
-          <Text style={s.footer}>OneSutra · Dinacharya System · Ayurvedic Intelligence</Text>
+          <Text style={s.footer}>Arise · Dinacharya System · Ayurvedic Intelligence</Text>
           <View style={{ height: 8 }} />
         </Animated.View>
       </SafeAreaView>

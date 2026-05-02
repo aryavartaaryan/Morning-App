@@ -28,13 +28,13 @@ class BootReceiver : BroadcastReceiver() {
             action != Intent.ACTION_MY_PACKAGE_REPLACED
         ) return
 
-        Log.d("OneSutraAlarm", "BootReceiver fired (action=$action) — checking for saved alarm")
+        Log.d("AriseAlarm", "BootReceiver fired (action=$action) — checking for saved alarm")
 
         val prefs = context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
         val hour = prefs.getInt("alarm_hour", -1)
         val minute = prefs.getInt("alarm_minute", -1)
         if (hour < 0 || minute < 0) {
-            Log.d("OneSutraAlarm", "BootReceiver: no saved alarm_hour/alarm_minute — skipping")
+            Log.d("AriseAlarm", "BootReceiver: no saved alarm_hour/alarm_minute — skipping")
             return
         }
 
@@ -59,13 +59,13 @@ class BootReceiver : BroadcastReceiver() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
                 am.setWindow(AlarmManager.RTC_WAKEUP, next.timeInMillis, 60_000L, pi)
-                Log.d("OneSutraAlarm", "BootReceiver: rescheduled (inexact) for ${next.time}")
+                Log.d("AriseAlarm", "BootReceiver: rescheduled (inexact) for ${next.time}")
             } else {
                 am.setAlarmClock(AlarmManager.AlarmClockInfo(next.timeInMillis, pi), pi)
-                Log.d("OneSutraAlarm", "BootReceiver: rescheduled (exact) for ${next.time}")
+                Log.d("AriseAlarm", "BootReceiver: rescheduled (exact) for ${next.time}")
             }
         } catch (e: Exception) {
-            Log.e("OneSutraAlarm", "BootReceiver: failed to reschedule alarm", e)
+            Log.e("AriseAlarm", "BootReceiver: failed to reschedule alarm", e)
         }
     }
 }
