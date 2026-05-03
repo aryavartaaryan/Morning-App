@@ -371,6 +371,7 @@ const SCORE_META: Record<number, { label: string; color: string; emoji: string }
 // ── Panchang Card ─────────────────────────────────────────────────────────
 function PanchangCard() {
   const [expanded, setExpanded] = React.useState(false);
+  const [showExplore, setShowExplore] = useState(false);
   const p            = getPanchangData();
   const moon         = getMoonPhase();
   const vaar         = VAARS[p.vaarIdx];
@@ -384,6 +385,7 @@ function PanchangCard() {
   const isSpecialMoon = moon.emoji === '🌕' || moon.emoji === '🌑';
 
   return (
+    <>
     <TouchableOpacity
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setExpanded(e => !e); }}
       activeOpacity={0.9}
@@ -506,8 +508,19 @@ function PanchangCard() {
             </View>
           </View>
         )}
+
+        {/* Explore Cosmos button */}
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); setShowExplore(true); }}
+          activeOpacity={0.8}
+          style={[PC.exploreBtn, { borderColor: vaar.color + '40', backgroundColor: vaar.color + '10' }]}>
+          <Text style={[PC.exploreTxt, { color: vaar.color }]}>🌌  Explore Cosmic Science — Moon, Tithi, Nakshatra</Text>
+          <Text style={[PC.exploreArrow, { color: vaar.color }]}>→</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
+    {showExplore && <PanchangExploreModal onClose={() => setShowExplore(false)} />}
+    </>
   );
 }
 
@@ -633,8 +646,309 @@ function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () =>
   );
 }
 
+// ── Deep-dive science data ────────────────────────────────────────────────
+const DOSHA_SCIENCE = {
+  vata: {
+    sanskrit: 'वात', elements: 'Air + Space', devanagari: 'वायु + आकाश',
+    color: '#a78bfa', emoji: '🌬️',
+    tagline: 'The principle of movement & neural electricity',
+    biology: 'Every nerve impulse, breath, heartbeat, and muscle contraction is Vata — pure kinetic energy. In neuroscience, Vata maps to the sympathetic nervous system and all electrical signalling in the body.',
+    neuro: 'Dopamine · Norepinephrine · Acetylcholine',
+    functions: ['Nerve conduction velocity: 70–120 m/s', 'Respiratory rhythm & lung expansion', 'Cardiac electrical conduction (HIS-Purkinje)', 'Peristalsis & gut motility', 'Cognitive processing speed & working memory', 'Motor coordination & reaction time'],
+    peakWindow: 'Pre-dawn 2–6 AM  ·  Afternoon 2–6 PM',
+    peakWhy: 'Plasma dopamine and norepinephrine peak in the afternoon Vata window (confirmed chrono-pharmacology). Spirometry shows lung vital capacity peaks at 3–4 PM. Reaction time, motor coordination and athletic performance records are predominantly broken in this window.',
+    imbalance: ['Anxiety & racing thoughts — excess sympathetic firing', 'Insomnia — elevated nocturnal norepinephrine', 'Constipation — weakened peristaltic waves', 'Joint cracking & dryness — low synovial fluid', 'Restlessness & inability to focus'],
+    balance: ['Warm, cooked, slightly oily foods (grounding)', 'Fixed sleep/wake schedule — regulates cortisol', 'Abhyanga: warm sesame oil self-massage', 'Slow rhythmic breathing (4-7-8 technique)', 'Walking barefoot on earth — grounding (earthing)'],
+  },
+  pitta: {
+    sanskrit: 'पित्त', elements: 'Fire + Water', devanagari: 'अग्नि + जल',
+    color: '#fb923c', emoji: '🔥',
+    tagline: 'The principle of metabolic fire & transformation',
+    biology: 'Pitta governs all biochemical transformations — digestion, hormone synthesis, liver detoxification, and cellular energy (ATP). In biochemistry, Pitta maps to the metabolic-endocrine axis.',
+    neuro: 'Cortisol · Insulin · Thyroid (T3/T4) · Digestive enzymes',
+    functions: ['HCl & pepsin secretion for protein digestion', 'Bile acid production & fat emulsification', 'Cytochrome P450 liver detox (Phase I & II)', 'Core body temperature regulation', 'Pancreatic lipase & amylase secretion', 'Retinal processing & visual acuity'],
+    peakWindow: 'Midday 10 AM–2 PM  ·  Night 10 PM–2 AM',
+    peakWhy: 'Gastric acid secretion peaks at solar noon (intragastric pH studies confirm lowest pH at 12–1 PM). Core temperature highest at 2–3 PM. Insulin sensitivity is optimal at midday. Night Pitta: liver Phase I & II detox enzymes peak during deep sleep — the body literally cleans itself.',
+    imbalance: ['Acid reflux & heartburn — excess HCl', 'Skin inflammation & acne — prostaglandin + androgen excess', 'Anger & irritability — elevated cortisol', 'Loose stools — excess bile secretion', 'Premature grey hair — melanocyte oxidative burnout'],
+    balance: ['Cooling foods: cucumber, coconut, coriander, mint', 'Avoid eating when stressed or angry', 'Evening moonlight walk (reduces cortisol)', 'Coconut oil scalp & body application', 'Sheetali pranayama (cooling breath through rolled tongue)'],
+  },
+  kapha: {
+    sanskrit: 'कफ', elements: 'Earth + Water', devanagari: 'पृथ्वी + जल',
+    color: '#34d399', emoji: '🌿',
+    tagline: 'The principle of structure, immunity & anabolism',
+    biology: 'Kapha governs all structural building — muscle synthesis, bone density, joint lubrication, immune defence, and long-term memory. In physiology, Kapha is the anabolic-immune axis.',
+    neuro: 'Growth Hormone · Testosterone · Estrogen · Serotonin · Oxytocin',
+    functions: ['Synovial fluid production — joint lubrication', 'Lymphatic immune circulation & lymphocyte count', 'Collagen & connective tissue synthesis', 'Muscle glycogen storage & protein synthesis', 'Mucus membrane protection (gut & respiratory)', 'Long-term memory consolidation (hippocampus)'],
+    peakWindow: 'Morning 6–10 AM  ·  Evening 6–10 PM',
+    peakWhy: 'Morning cortisol peak triggers an anabolic hormone cascade — growth hormone and testosterone co-peak in the first 2 hours after sunrise. Lymphocyte count is measurably highest in morning blood draws. Strength training in the Kapha window maximises muscle protein synthesis rates.',
+    imbalance: ['Lethargy & oversleeping — low dopamine, serotonin dominance', 'Weight gain — insulin resistance, slow metabolic rate', 'Congestion & excess mucus — lymphatic stagnation', 'Depression & emotional attachment — serotonin dysregulation', 'Type 2 diabetes risk — chronic Kapha imbalance'],
+    balance: ['Vigorous exercise before 10 AM (burns Kapha)', 'Light, dry, spicy, astringent foods', 'Dry brushing & dry sauna (stimulate lymph)', 'Intermittent fasting (16:8 minimum)', 'Kapalabhati pranayama — 100+ rapid exhales'],
+  },
+} as const;
+
+// ── Dosha Explore Modal ──────────────────────────────────────────────────
+function DoshaExploreModal({ active, onClose }: { active: DoshaPeriod; onClose: () => void }) {
+  const [expanded, setExpanded] = useState<string | null>(active.dosha);
+  const order: ('vata' | 'pitta' | 'kapha')[] = ['vata', 'pitta', 'kapha'];
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={EX.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <View style={EX.sheet}>
+          <View style={EX.handle} />
+          {/* Header */}
+          <View style={EX.sheetHeader}>
+            <View>
+              <Text style={EX.sheetCap}>AYURVEDIC SCIENCE</Text>
+              <Text style={EX.sheetTitle}>The Three Doshas</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={{ color: '#FFFFFF30', fontSize: 22, fontWeight: '200' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+            {/* Intro */}
+            <View style={EX.introBox}>
+              <Text style={EX.introText}>
+                Ayurveda's 3-Dosha model is a <Text style={{ color: '#fbbf24', fontWeight: '800' }}>circadian biology framework</Text> refined over 5,000 years — mapping the body's 24-hour hormonal and neurological cycles to three elemental archetypes. Modern chronobiology confirms the same patterns independently.
+              </Text>
+            </View>
+
+            {/* Active badge */}
+            <View style={[EX.activePill, { borderColor: DOSHA_SCIENCE[active.dosha].color + '60', backgroundColor: DOSHA_SCIENCE[active.dosha].color + '12' }]}>
+              <View style={[EX.activeDot, { backgroundColor: DOSHA_SCIENCE[active.dosha].color }]} />
+              <Text style={[EX.activeTxt, { color: DOSHA_SCIENCE[active.dosha].color }]}>
+                You are currently in {active.label} — {active.englishLabel}
+              </Text>
+            </View>
+
+            {/* Dosha cards */}
+            {order.map(key => {
+              const d = DOSHA_SCIENCE[key];
+              const isOpen = expanded === key;
+              const isActive = active.dosha === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  activeOpacity={0.8}
+                  style={[EX.dCard, { borderColor: d.color + (isOpen ? '55' : '22'), backgroundColor: isOpen ? d.color + '0A' : '#FFFFFF03' }]}
+                  onPress={() => setExpanded(isOpen ? null : key)}>
+
+                  {/* Card header row */}
+                  <View style={EX.dCardHeader}>
+                    <Text style={{ fontSize: 24 }}>{d.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[EX.dName, { color: d.color }]}>{d.emoji === '🌬️' ? 'Vata' : d.emoji === '🔥' ? 'Pitta' : 'Kapha'}</Text>
+                        <Text style={[EX.dSanskrit, { color: d.color + '80' }]}>{d.sanskrit}</Text>
+                        {isActive && <View style={[EX.nowBadge, { backgroundColor: d.color + '20', borderColor: d.color + '50' }]}><Text style={[EX.nowTxt, { color: d.color }]}>NOW</Text></View>}
+                      </View>
+                      <Text style={EX.dElements}>{d.elements}  ·  {d.devanagari}</Text>
+                      <Text style={[EX.dTagline, { color: d.color + '90' }]}>{d.tagline}</Text>
+                    </View>
+                    <Text style={{ color: '#FFFFFF30', fontSize: 16 }}>{isOpen ? '▲' : '▼'}</Text>
+                  </View>
+
+                  {/* Expanded content */}
+                  {isOpen && (
+                    <View style={{ marginTop: 14, gap: 14 }}>
+                      {/* Biology */}
+                      <View style={[EX.sciBlock, { borderColor: d.color + '25' }]}>
+                        <Text style={[EX.sciBlockTitle, { color: d.color }]}>🔬  Biological Mapping</Text>
+                        <Text style={EX.sciBlockBody}>{d.biology}</Text>
+                      </View>
+
+                      {/* Neuro */}
+                      <View style={EX.neuRow}>
+                        <Text style={EX.neuLabel}>KEY BIOCHEMICALS</Text>
+                        <Text style={[EX.neuVal, { color: d.color + 'CC' }]}>{d.neuro}</Text>
+                      </View>
+
+                      {/* Functions */}
+                      <View>
+                        <Text style={[EX.secHead, { color: d.color + 'AA' }]}>BODY FUNCTIONS GOVERNED</Text>
+                        {d.functions.map((f, i) => (
+                          <View key={i} style={EX.listRow}>
+                            <View style={[EX.dot, { backgroundColor: d.color + '80' }]} />
+                            <Text style={EX.listTxt}>{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Peak window */}
+                      <View style={[EX.sciBlock, { borderColor: d.color + '25' }]}>
+                        <Text style={[EX.sciBlockTitle, { color: d.color }]}>⏰  Peak Circadian Window</Text>
+                        <Text style={[EX.peakTime, { color: d.color }]}>{d.peakWindow}</Text>
+                        <Text style={EX.sciBlockBody}>{d.peakWhy}</Text>
+                      </View>
+
+                      {/* Imbalance */}
+                      <View>
+                        <Text style={EX.imbalHead}>⚠  SIGNS OF IMBALANCE</Text>
+                        {d.imbalance.map((f, i) => (
+                          <View key={i} style={EX.listRow}>
+                            <View style={[EX.dot, { backgroundColor: '#f43f5e60' }]} />
+                            <Text style={[EX.listTxt, { color: '#FFFFFF40' }]}>{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Balance */}
+                      <View>
+                        <Text style={[EX.secHead, { color: '#10b98190' }]}>✓  HOW TO BALANCE {key.toUpperCase()}</Text>
+                        {d.balance.map((f, i) => (
+                          <View key={i} style={EX.listRow}>
+                            <View style={[EX.dot, { backgroundColor: '#10b98170' }]} />
+                            <Text style={EX.listTxt}>{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+
+            {/* Footer note */}
+            <View style={EX.footerNote}>
+              <Text style={EX.footerTxt}>
+                The Dosha clock runs on solar time — each period shifts with your local sunrise and sunset, not the clock. This is why Ayurvedic timing is hyper-personalised and differs from generic "eat lunch at noon" advice.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Panchang Explore Modal ────────────────────────────────────────────────
+function PanchangExploreModal({ onClose }: { onClose: () => void }) {
+  const moon = getMoonPhase();
+  const p    = getPanchangData();
+  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+  const yoga      = YOGAS[p.yogaIdx];
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={EX.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <View style={EX.sheet}>
+          <View style={EX.handle} />
+          {/* Header */}
+          <View style={EX.sheetHeader}>
+            <View>
+              <Text style={EX.sheetCap}>VEDIC COSMIC SCIENCE</Text>
+              <Text style={EX.sheetTitle}>Today's Cosmic Blueprint</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={{ color: '#FFFFFF30', fontSize: 22, fontWeight: '200' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+
+            {/* Today summary */}
+            <View style={EX.cosmoHero}>
+              <MoonSVG tithiNum={moon.tithiNum} size={52} />
+              <View style={{ flex: 1 }}>
+                <Text style={EX.cosmoTitle}>{moon.name}  ·  {moon.illumination}% lit</Text>
+                <Text style={EX.cosmoSub}>{p.tithiName}  ·  {p.paksha} Paksha  ·  Day {p.tithiInPaksha}</Text>
+                <Text style={EX.cosmoSub2}>{nakshatra.emoji}  {nakshatra.name}  ·  {nakshatra.en}</Text>
+              </View>
+            </View>
+
+            {/* Moon Science */}
+            <View style={EX.exploreSection}>
+              <Text style={EX.exploreSectionTitle}>🌊  The Moon–Body Connection</Text>
+              <Text style={EX.exploreSectionSub}>Physics · Biology · Chronobiology</Text>
+              <View style={[EX.sciBlock, { borderColor: '#60a5fa25', marginTop: 10 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#60a5fa' }]}>Gravitational Physics</Text>
+                <Text style={EX.sciBlockBody}>
+                  The Moon exerts a measurable tidal force on Earth: 3.3 × 10⁻⁵ m/s² gravitational acceleration at the surface. While small, this force moves oceans — and your body is 60–70% water. The same tidal mechanics act on every fluid-filled cavity: cerebrospinal fluid, blood plasma, lymph, and intercellular fluid.
+                </Text>
+              </View>
+              <View style={[EX.sciBlock, { borderColor: '#a78bfa25', marginTop: 8 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#a78bfa' }]}>Chronobiology Research</Text>
+                <Text style={EX.sciBlockBody}>
+                  A landmark 2013 study (Cajochen et al., University of Basel) measured melatonin, sleep EEG, and cortisol across full lunar cycles in a light-controlled lab. Result: around full moon, melatonin was 30% lower, deep sleep reduced by 20 min, and subjects took 5 min longer to fall asleep — with no visual access to the moon. The mechanism is likely geomagnetic, not optical.
+                </Text>
+              </View>
+              <View style={[EX.sciBlock, { borderColor: '#34d39925', marginTop: 8 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#34d399' }]}>Biological Cycles</Text>
+                <Text style={EX.sciBlockBody}>
+                  The female reproductive cycle averages 27.3–29.5 days — nearly identical to the lunar synodic month (29.53 days). This is not coincidence: our evolutionary ancestors, living in natural light, had their endocrine systems entrained by lunar light cycles for millions of years. The Moon is humanity's oldest clock.
+                </Text>
+              </View>
+            </View>
+
+            {/* Tithi Science */}
+            <View style={EX.exploreSection}>
+              <Text style={EX.exploreSectionTitle}>📐  What is a Tithi? Orbital Mechanics</Text>
+              <Text style={EX.exploreSectionSub}>{p.tithiName}  ·  {p.paksha} Paksha  ·  Day {p.tithiInPaksha} of 15</Text>
+              <View style={[EX.sciBlock, { borderColor: '#fbbf2425', marginTop: 10 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#fbbf24' }]}>The Mathematics</Text>
+                <Text style={EX.sciBlockBody}>
+                  A Tithi is defined as every 12° of angular separation between the Sun and Moon as seen from Earth. Since 360° ÷ 12° = 30, there are exactly 30 Tithis in a lunar month — 15 waxing (Shukla Paksha) and 15 waning (Krishna Paksha).{'\n\n'}This is pure orbital mechanics, not mythology. The Vedic astronomers were calculating synodic angles to arc-minute precision over 3,000 years ago.
+                </Text>
+              </View>
+              <View style={[EX.sciBlock, { borderColor: '#fbbf2425', marginTop: 8 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#fbbf24' }]}>Paksha Biology — Anabolic vs Catabolic</Text>
+                <Text style={EX.sciBlockBody}>
+                  <Text style={{ fontWeight: '800', color: '#fbbf24CC' }}>Shukla Paksha (Waxing Moon): </Text>
+                  As the Moon-Sun angular separation increases, the resultant tidal force on body fluids increases. Plants absorb more water through roots (confirmed in agriculture studies). Cells show higher nutrient uptake. This is the anabolic phase — ideal for building, growing, and adding.{'\n\n'}
+                  <Text style={{ fontWeight: '800', color: '#94a3b8CC' }}>Krishna Paksha (Waning Moon): </Text>
+                  As the angle decreases, fluid tension reduces. The body prioritises elimination and detoxification. Ayurveda prescribes fasting, cleansing, and surgical procedures in Krishna Paksha for this reason — confirmed by reduced bleeding risk in surgery (studied in German hospitals in the 1990s).
+                </Text>
+              </View>
+              <View style={[EX.highlightPill, { borderColor: '#a78bfa30', backgroundColor: '#a78bfa0C' }]}>
+                <Text style={EX.highlightPillText}>
+                  Today: <Text style={{ color: '#a78bfaDD', fontWeight: '800' }}>{p.tithiName}</Text> — {p.paksha === 'Shukla' ? 'Waxing phase · Build, grow, take in' : 'Waning phase · Release, detox, reduce'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Nakshatra Science */}
+            <View style={EX.exploreSection}>
+              <Text style={EX.exploreSectionTitle}>{nakshatra.emoji}  Nakshatra — The Lunar Mansions</Text>
+              <Text style={EX.exploreSectionSub}>{nakshatra.name}  ·  {nakshatra.en}</Text>
+              <View style={[EX.sciBlock, { borderColor: '#f9a8d425', marginTop: 10 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#f9a8d4' }]}>The Stellar System</Text>
+                <Text style={EX.sciBlockBody}>
+                  The 27 Nakshatras divide the Moon's 27.3-day sidereal orbit into 27 equal segments of 13°20' each, each corresponding to a specific star cluster or asterism that the Moon passes through each day.{'\n\n'}This is the Moon's position relative to FIXED stars (sidereal), not relative to the Sun (synodic). These are two different coordinate systems — the Nakshatra tells you WHERE in the galaxy the Moon is pointing its gravitational vector.
+                </Text>
+              </View>
+              <View style={[EX.sciBlock, { borderColor: '#f9a8d425', marginTop: 8 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#f9a8d4' }]}>Today: {nakshatra.name} — {nakshatra.en}</Text>
+                <Text style={EX.sciBlockBody}>{nakshatra.energy}</Text>
+              </View>
+            </View>
+
+            {/* Yoga Science */}
+            <View style={[EX.exploreSection, { marginBottom: 8 }]}>
+              <Text style={EX.exploreSectionTitle}>✨  Yoga — The Sun-Moon Harmony</Text>
+              <Text style={EX.exploreSectionSub}>{yoga.en}  ·  {yoga.auspicious ? 'Auspicious' : 'Challenging'}</Text>
+              <View style={[EX.sciBlock, { borderColor: '#10b98125', marginTop: 10 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#10b981' }]}>The Calculation</Text>
+                <Text style={EX.sciBlockBody}>
+                  A Yoga is calculated by adding the longitude of the Sun and the Moon (in degrees), then dividing by 13°20'. This gives 27 Yogas — measuring the combined solar-lunar electromagnetic influence on Earth's environment on that day.{'\n\n'}
+                  <Text style={{ fontWeight: '800', color: yoga.auspicious ? '#10b981CC' : '#f87171CC' }}>Today's Yoga: {yoga.en} — {yoga.meaning}</Text>
+                </Text>
+              </View>
+            </View>
+
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Current Period Card (always fully expanded) ──────────────────────────
 function CurrentPeriodCard({ period }: { period: DoshaPeriod }) {
+  const [showExplore, setShowExplore] = useState(false);
   const rem  = period.minutesRemaining;
   const remStr = rem >= 60
     ? `${Math.floor(rem / 60)}h ${rem % 60}m left`
@@ -643,6 +957,7 @@ function CurrentPeriodCard({ period }: { period: DoshaPeriod }) {
   const totalM  = Math.round(durH * 60);
   const progress = totalM > 0 ? Math.min(1, Math.max(0, (totalM - rem) / totalM)) : 0;
   return (
+    <>
     <View style={[CP.card, { borderColor: period.color + '50' }]}>
       <LinearGradient
         colors={[period.color + '20', period.color + '07', 'transparent']}
@@ -698,7 +1013,18 @@ function CurrentPeriodCard({ period }: { period: DoshaPeriod }) {
           </View>
         ))}
       </View>
+      {/* Explore button */}
+      <View style={[CP.divider, { marginTop: 12 }]} />
+      <TouchableOpacity
+        onPress={() => setShowExplore(true)}
+        activeOpacity={0.8}
+        style={[CP.exploreBtn, { borderColor: period.color + '40', backgroundColor: period.color + '10' }]}>
+        <Text style={[CP.exploreTxt, { color: period.color }]}>🔬  Explore Doshas — Science of Vata, Pitta & Kapha</Text>
+        <Text style={[CP.exploreArrow, { color: period.color }]}>→</Text>
+      </TouchableOpacity>
     </View>
+    {showExplore && <DoshaExploreModal active={period} onClose={() => setShowExplore(false)} />}
+    </>
   );
 }
 
@@ -1234,6 +1560,9 @@ const CP = StyleSheet.create({
   name:        { fontSize: 22, fontWeight: '900', lineHeight: 26 },
   engLabel:    { fontSize: 10, fontWeight: '700', marginTop: 1 },
   sciSub:      { fontSize: 10, color: '#FFFFFF50', fontWeight: '600', marginTop: 2 },
+  exploreBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, marginTop: 4 },
+  exploreTxt:  { fontSize: 12, fontWeight: '800', flex: 1 },
+  exploreArrow:{ fontSize: 16, fontWeight: '800' },
   countdown:   { fontSize: 15, fontWeight: '900' },
   timeRange:   { fontSize: 10, color: '#FFFFFF40', textAlign: 'right', marginTop: 2 },
   progressTrack: { height: 3, borderRadius: 2, backgroundColor: '#FFFFFF10', marginBottom: 16, overflow: 'hidden' },
@@ -1309,6 +1638,54 @@ const PC = StyleSheet.create({
   biTag:           { fontSize: 7, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.2, marginBottom: 2 },
   biSanskrit:      { fontSize: 13, fontWeight: '900' },
   biEnglish:       { fontSize: 9, color: '#FFFFFF45', fontWeight: '500' },
+  exploreBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, marginTop: 10, marginBottom: 2 },
+  exploreTxt:      { fontSize: 12, fontWeight: '800', flex: 1 },
+  exploreArrow:    { fontSize: 16, fontWeight: '800' },
+});
+
+const EX = StyleSheet.create({
+  overlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet:       { backgroundColor: '#0d0d1f', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%', paddingHorizontal: 18 },
+  handle:      { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginTop: 12, marginBottom: 4 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08', marginBottom: 14 },
+  sheetCap:    { fontSize: 8, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2, marginBottom: 4 },
+  sheetTitle:  { fontSize: 22, fontWeight: '900', color: '#fff' },
+  introBox:    { backgroundColor: '#FFFFFF05', borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF0A', padding: 14, marginBottom: 14 },
+  introText:   { fontSize: 13, color: '#FFFFFF70', lineHeight: 20 },
+  activePill:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  activeDot:   { width: 8, height: 8, borderRadius: 4 },
+  activeTxt:   { fontSize: 12, fontWeight: '800', flex: 1 },
+  dCard:       { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 10 },
+  dCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  dName:       { fontSize: 18, fontWeight: '900' },
+  dSanskrit:   { fontSize: 14, fontWeight: '700' },
+  nowBadge:    { borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
+  nowTxt:      { fontSize: 7, fontWeight: '900', letterSpacing: 1.5 },
+  dElements:   { fontSize: 10, color: '#FFFFFF40', fontWeight: '500', marginTop: 2 },
+  dTagline:    { fontSize: 11, fontWeight: '600', marginTop: 3 },
+  sciBlock:    { borderWidth: 1, borderRadius: 14, padding: 12 },
+  sciBlockTitle: { fontSize: 11, fontWeight: '900', marginBottom: 6 },
+  sciBlockBody:  { fontSize: 12, color: '#FFFFFF60', lineHeight: 19 },
+  neuRow:      { backgroundColor: '#FFFFFF05', borderRadius: 12, padding: 11 },
+  neuLabel:    { fontSize: 7, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.5, marginBottom: 4 },
+  neuVal:      { fontSize: 13, fontWeight: '800' },
+  secHead:     { fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginBottom: 8 },
+  imbalHead:   { fontSize: 8, fontWeight: '900', color: '#f43f5e70', letterSpacing: 1.5, marginBottom: 8 },
+  peakTime:    { fontSize: 13, fontWeight: '900', marginBottom: 6 },
+  listRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 5 },
+  dot:         { width: 5, height: 5, borderRadius: 3, marginTop: 6 },
+  listTxt:     { fontSize: 12, color: '#FFFFFF65', lineHeight: 18, flex: 1 },
+  footerNote:  { backgroundColor: '#a78bfa06', borderRadius: 16, borderWidth: 1, borderColor: '#a78bfa15', padding: 14, marginTop: 6 },
+  footerTxt:   { fontSize: 11, color: '#FFFFFF35', lineHeight: 17, fontStyle: 'italic' },
+  cosmoHero:   { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: '#FFFFFF05', borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF0A', padding: 16, marginBottom: 16 },
+  cosmoTitle:  { fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 3 },
+  cosmoSub:    { fontSize: 11, color: '#a78bfaCC', fontWeight: '600', marginBottom: 2 },
+  cosmoSub2:   { fontSize: 11, color: '#fbbf24AA', fontWeight: '600' },
+  exploreSection:    { marginBottom: 14 },
+  exploreSectionTitle: { fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 2 },
+  exploreSectionSub:   { fontSize: 10, color: '#FFFFFF35', fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
+  highlightPill:   { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 8 },
+  highlightPillText: { fontSize: 12, color: '#FFFFFF60', lineHeight: 18 },
 });
 
 const BMX = StyleSheet.create({
