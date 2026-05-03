@@ -565,13 +565,8 @@ function SmartWeatherCard({
     );
   }
 
-  // After morning — show current-hour advice + upcoming chips
+  // After morning — show current-hour advice only
   const adv = getHourlyAdvice(code, temp);
-  const upcoming = hourly
-    .slice(1, 13)
-    .map(pt => ({ ...pt, note: getTinyTip(pt.weatherCode, pt.temp) }))
-    .filter(pt => pt.note !== null)
-    .slice(0, 5);
 
   return (
     <View style={[WS.card, { borderColor: adv.color + '35' }]}>
@@ -590,22 +585,6 @@ function SmartWeatherCard({
             </View>
           ))}
         </View>
-        {upcoming.length > 0 && (
-          <View style={WS.upcomingRow}>
-            <Text style={WS.upcomingLabel}>UPCOMING</Text>
-            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-              {upcoming.map((pt, i) => (
-                <View key={i} style={[WS.chip, { borderColor: pt.note!.color + '40' }]}>
-                  <Text style={{ fontSize: 13 }}>{pt.emoji}</Text>
-                  <View>
-                    <Text style={[WS.chipHour, { color: pt.note!.color }]}>{hrLabel(pt.hour)}</Text>
-                    <Text style={WS.chipTip}>{pt.note!.icon} {pt.note!.tip}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
       </View>
     </View>
   );
