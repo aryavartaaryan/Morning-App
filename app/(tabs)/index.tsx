@@ -996,6 +996,11 @@ export default function DailyTab() {
         {/* Vedic Cosmic Calendar (Panchang) — shown first */}
         <PanchangCard />
 
+        {/* Hourly forecast strip — slide to see upcoming hours, tap end for 7-day */}
+        {weather?.hourly && weather.hourly.length > 0 && (
+          <HourlyStrip hourly={weather.hourly} onMore={() => setShow7Day(true)} />
+        )}
+
         {/* Current-hour weather explanation + activities */}
         {weather && (
           <SmartWeatherCard
