@@ -19,6 +19,7 @@ import {
   AlarmSettings, DEFAULT_ALARM_SETTINGS,
 } from '@/lib/notifications';
 import { getBgSource } from '@/lib/bgImages';
+import Svg, { Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
 
 const ACCENT = '#F5820A';
 
@@ -143,29 +144,71 @@ function fmtSolar(dec: number): string {
 
 // ── Moon phase — pure math, no API ───────────────────────────────────────
 function getMoonPhase(date: Date = new Date()): {
-  emoji: string; name: string; tithi: string; illumination: number; paksha: string;
+  emoji: string; name: string; tithi: string; illumination: number; paksha: string; tithiNum: number;
 } {
   const KNOWN_NEW_MOON = new Date('2000-01-06T18:14:00Z').getTime();
   const CYCLE = 29.53058867;
   const ageRaw = (date.getTime() - KNOWN_NEW_MOON) / (1000 * 60 * 60 * 24);
   const age = ((ageRaw % CYCLE) + CYCLE) % CYCLE;
   const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
+  const waxing = age < CYCLE / 2;
 
   // Tithi (1-30)
-  const tithiNum = Math.floor((age / CYCLE) * 30) + 1;
+  const tithiNum = Math.min(30, Math.floor((age / CYCLE) * 30) + 1);
   const paksha = tithiNum <= 15 ? 'Shukla' : 'Krishna';
   const tithiInPaksha = tithiNum <= 15 ? tithiNum : tithiNum - 15;
   const TITHI_NAMES = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima / Amavasya'];
   const tithi = `${TITHI_NAMES[tithiInPaksha] ?? tithiInPaksha}`;
 
-  if (age < 1.85)  return { emoji: '🌑', name: 'New Moon',        tithi, illumination: illum, paksha };
-  if (age < 7.38)  return { emoji: '🌒', name: 'Waxing Crescent', tithi, illumination: illum, paksha };
-  if (age < 9.22)  return { emoji: '🌓', name: 'First Quarter',   tithi, illumination: illum, paksha };
-  if (age < 14.77) return { emoji: '🌔', name: 'Waxing Gibbous',  tithi, illumination: illum, paksha };
-  if (age < 16.61) return { emoji: '🌕', name: 'Full Moon',       tithi, illumination: illum, paksha };
-  if (age < 22.15) return { emoji: '🌖', name: 'Waning Gibbous',  tithi, illumination: illum, paksha };
-  if (age < 23.99) return { emoji: '🌗', name: 'Last Quarter',    tithi, illumination: illum, paksha };
-  return             { emoji: '🌘', name: 'Waning Crescent',  tithi, illumination: illum, paksha };
+  // Illumination-based phase (more accurate than fixed age thresholds)
+  if (illum >= 98) return { emoji: '�', name: 'Full Moon',         tithi, illumination: illum, paksha, tithiNum };
+  if (illum <= 2)  return { emoji: '�', name: 'New Moon',          tithi, illumination: illum, paksha, tithiNum };
+  if (illum < 45)  return { emoji: waxing ? '�' : '🌘', name: waxing ? 'Waxing Crescent' : 'Waning Crescent', tithi, illumination: illum, paksha, tithiNum };
+  if (illum < 55)  return { emoji: waxing ? '�' : '🌗', name: waxing ? 'First Quarter'   : 'Last Quarter',    tithi, illumination: illum, paksha, tithiNum };
+  return             { emoji: waxing ? '�' : '🌖', name: waxing ? 'Waxing Gibbous'  : 'Waning Gibbous',  tithi, illumination: illum, paksha, tithiNum };
+}
+
+// ── Accurate SVG Moon Shape (tithi-based) ────────────────────────────────
+function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
+  const r = size / 2;
+  const isWaxing  = tithiNum <= 15;
+  const isPurnima = tithiNum === 15;
+  const isAmavasya = tithiNum === 0 || tithiNum === 30;
+  const rawIllum  = isPurnima ? 1 : isAmavasya ? 0
+    : isWaxing ? tithiNum / 15
+    : 1 - (tithiNum - 15) / 15;
+
+  const moonFill = '#fef3c7';
+  const darkFill = '#0c0c1a';
+
+  if (rawIllum < 0.02) {
+    return (
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill} stroke="#2d2d4e" strokeWidth={0.8} />
+      </Svg>
+    );
+  }
+  if (rawIllum > 0.98) {
+    return (
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={moonFill} />
+      </Svg>
+    );
+  }
+
+  const rx = Math.max(0.5, r * Math.abs(Math.cos(Math.PI * rawIllum)));
+  const outerSweep      = isWaxing ? 1 : 0;
+  const terminatorSweep = (isWaxing === (rawIllum >= 0.5)) ? 1 : 0;
+  const c = r;
+  const s = size;
+  const pathD = `M ${c} 0 A ${r} ${r} 0 1 ${outerSweep} ${c} ${s} A ${rx} ${r} 0 0 ${terminatorSweep} ${c} 0 Z`;
+
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill} />
+      <SvgPath d={pathD} fill={moonFill} />
+    </Svg>
+  );
 }
 
 // ── Panchang data ─────────────────────────────────────────────────────────
@@ -403,11 +446,25 @@ function PanchangCard() {
           </Text>
         </View>
 
+        {/* ── Tithi · Nakshatra bilingual strip ── */}
+        <View style={PC.biRow}>
+          <View style={[PC.biCell, { borderColor: '#a78bfa20' }]}>
+            <Text style={PC.biTag}>🌙 TITHI  ·  लुनर दिन</Text>
+            <Text style={[PC.biSanskrit, { color: '#a78bfa' }]}>{p.tithiName}</Text>
+            <Text style={PC.biEnglish}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon · Day {p.tithiInPaksha}</Text>
+          </View>
+          <View style={[PC.biCell, { borderColor: '#fbbf2420' }]}>
+            <Text style={PC.biTag}>{nakshatra.emoji} NAKSHATRA  ·  नक्षत्र</Text>
+            <Text style={[PC.biSanskrit, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
+            <Text style={PC.biEnglish}>{nakshatra.en}</Text>
+          </View>
+        </View>
+
         {/* ── Moon Ritual ── */}
         <View style={PC.ritualRow}>
-          <Text style={{ fontSize: 14 }}>{moon.emoji}</Text>
+          <MoonSVG tithiNum={moon.tithiNum} size={28} />
           <View style={{ flex: 1 }}>
-            <Text style={PC.ritualPrompt}>{moonRitual.prompt}</Text>
+            <Text style={PC.ritualPrompt}>{moonRitual.prompt}  ·  {moon.illumination}% lit</Text>
             <Text style={PC.ritualText}>{moonRitual.action}</Text>
           </View>
         </View>
@@ -626,6 +683,7 @@ function CurrentPeriodCard({ period }: { period: DoshaPeriod }) {
         <Text style={CP.emoji}>{period.emoji}</Text>
         <View style={{ flex: 1 }}>
           <Text style={[CP.name, { color: period.color }]}>{period.label}</Text>
+          <Text style={[CP.engLabel, { color: period.color + '80' }]}>{period.englishLabel}</Text>
           <Text style={CP.sciSub}>{period.sciEmoji}  {period.sciTitle}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
@@ -683,6 +741,7 @@ function NextPeriodCard({ period }: { period: DoshaPeriod }) {
           </View>
           <Text style={NP.name}>{period.label}</Text>
         </View>
+        <Text style={[NP.engLabel, { color: period.color + '70' }]}>{period.englishLabel}</Text>
         <Text style={NP.sci}>{period.sciEmoji}  {period.sciTitle}</Text>
         <Text style={NP.time}>{period.startLabel} → {period.endLabel}</Text>
       </View>
@@ -869,8 +928,8 @@ export default function DailyTab() {
           </View>
 
           {/* Clock */}
-          <View style={{ alignItems: 'center', paddingBottom: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+          <View style={{ alignItems: 'center', paddingBottom: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
               <Text style={D.clockTime}>{timeStr}</Text>
               <Text style={D.clockAmpm}>{ampmStr}</Text>
             </View>
@@ -882,19 +941,23 @@ export default function DailyTab() {
             const moon = getMoonPhase();
             return (
               <>
-                <View style={[D.solarRow, { marginTop: 6, marginBottom: 2 }]}>
-                  {[
+                <View style={[D.solarRow, { marginTop: 4, marginBottom: 2 }]}>
+                  {([
                     { emoji: '🌅', label: 'Sunrise',    val: fmtSolar(solarTimes.sunrise)   },
                     { emoji: '☀️',  label: 'Solar Noon', val: fmtSolar(solarTimes.solarNoon) },
                     { emoji: '🌇', label: 'Sunset',     val: fmtSolar(solarTimes.sunset)    },
-                    { emoji: moon.emoji, label: moon.name, val: `${moon.illumination}%`      },
-                  ].map((item, i) => (
+                  ] as { emoji: string; label: string; val: string }[]).map((item, i) => (
                     <View key={i} style={D.solarCell}>
-                      <Text style={{ fontSize: 16 }}>{item.emoji}</Text>
+                      <Text style={{ fontSize: 15 }}>{item.emoji}</Text>
                       <Text style={D.solarVal}>{item.val}</Text>
                       <Text style={D.solarLabel}>{item.label}</Text>
                     </View>
                   ))}
+                  <View style={D.solarCell}>
+                    <MoonSVG tithiNum={moon.tithiNum} size={26} />
+                    <Text style={D.solarVal}>{moon.illumination}%</Text>
+                    <Text style={D.solarLabel}>{moon.name}</Text>
+                  </View>
                 </View>
                 <View style={D.tithiRow}>
                   <Text style={D.tithiText}>
@@ -930,24 +993,19 @@ export default function DailyTab() {
         contentContainerStyle={{ paddingBottom: 110, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}>
 
-        {/* Hourly forecast strip */}
-        {weather?.hourly && weather.hourly.length > 0 && (
-          <HourlyStrip hourly={weather.hourly} onMore={() => setShow7Day(true)} />
-        )}
+        {/* Vedic Cosmic Calendar (Panchang) — shown first */}
+        <PanchangCard />
 
-        {/* Morning: day-plan suggestion  |  After morning: current-hour advice + upcoming chips */}
+        {/* Current-hour weather explanation + activities */}
         {weather && (
           <SmartWeatherCard
-            code={weather.weatherCode}
-            temp={weather.temp}
+            code={weather.hourly?.[0]?.weatherCode ?? weather.weatherCode}
+            temp={weather.hourly?.[0]?.temp ?? weather.temp}
             humidity={weather.humidity}
             hourly={weather.hourly}
             isMorning={hh < Math.floor(solarTimes?.solarNoon ?? 12)}
           />
         )}
-
-        {/* Vedic Cosmic Calendar (Panchang) */}
-        <PanchangCard />
 
         {/* Current period — fully expanded */}
         {currentPeriod ? (
@@ -1020,9 +1078,9 @@ const D = StyleSheet.create({
   },
   appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
   refreshBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  clockTime: { fontSize: 72, fontWeight: '100', color: '#fff', letterSpacing: -3 },
-  clockAmpm: { fontSize: 18, fontWeight: '300', color: ACCENT, paddingBottom: 14 },
-  clockDate: { fontSize: 12, color: '#FFFFFF50', fontWeight: '600', letterSpacing: 0.5 },
+  clockTime: { fontSize: 48, fontWeight: '200', color: '#fff', letterSpacing: -2 },
+  clockAmpm: { fontSize: 15, fontWeight: '300', color: ACCENT, paddingBottom: 9 },
+  clockDate: { fontSize: 11, color: '#FFFFFF50', fontWeight: '600', letterSpacing: 0.5 },
   weatherSummary: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
     gap: 8, paddingHorizontal: 18, paddingBottom: 8,
@@ -1060,11 +1118,11 @@ const D = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 10, backgroundColor: ACCENT + '10',
   },
   solarRow: {
-    flexDirection: 'row', marginHorizontal: 16, marginTop: 14, marginBottom: 4,
-    borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF08',
+    flexDirection: 'row', marginHorizontal: 16, marginTop: 6, marginBottom: 2,
+    borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF08',
     backgroundColor: '#FFFFFF04', overflow: 'hidden',
   },
-  solarCell:  { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 14 },
+  solarCell:  { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 9 },
   solarVal:   { fontSize: 12, fontWeight: '800', color: '#fff' },
   solarLabel: { fontSize: 8, color: '#FFFFFF35', fontWeight: '600' },
   tithiRow:   { alignItems: 'center', paddingBottom: 8 },
@@ -1190,7 +1248,8 @@ const CP = StyleSheet.create({
   nameRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
   emoji:       { fontSize: 44 },
   name:        { fontSize: 22, fontWeight: '900', lineHeight: 26 },
-  sciSub:      { fontSize: 10, color: '#FFFFFF50', fontWeight: '600', marginTop: 4 },
+  engLabel:    { fontSize: 10, fontWeight: '700', marginTop: 1 },
+  sciSub:      { fontSize: 10, color: '#FFFFFF50', fontWeight: '600', marginTop: 2 },
   countdown:   { fontSize: 15, fontWeight: '900' },
   timeRange:   { fontSize: 10, color: '#FFFFFF40', textAlign: 'right', marginTop: 2 },
   progressTrack: { height: 3, borderRadius: 2, backgroundColor: '#FFFFFF10', marginBottom: 16, overflow: 'hidden' },
@@ -1216,7 +1275,8 @@ const NP = StyleSheet.create({
   nextBadge: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
   nextTxt:  { fontSize: 7, fontWeight: '900', letterSpacing: 1.8 },
   name:     { fontSize: 15, fontWeight: '800', color: '#FFFFFFCC' },
-  sci:      { fontSize: 10, color: '#FFFFFF40', fontWeight: '500', marginBottom: 4 },
+  engLabel: { fontSize: 9, fontWeight: '700', marginBottom: 3, marginTop: 1 },
+  sci:      { fontSize: 10, color: '#FFFFFF40', fontWeight: '500', marginBottom: 2 },
   time:     { fontSize: 10, color: '#FFFFFF30', fontWeight: '500' },
   right:    { alignItems: 'flex-end', gap: 3 },
   inLabel:  { fontSize: 7, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.5 },
@@ -1260,6 +1320,11 @@ const PC = StyleSheet.create({
   triEn:           { fontSize: 8, color: '#FFFFFF25', fontWeight: '500', marginTop: 3 },
   infoNote:        { backgroundColor: '#a78bfa08', borderWidth: 1, borderColor: '#a78bfa18', borderRadius: 14, padding: 12 },
   infoNoteText:    { fontSize: 10, color: '#a78bfa65', lineHeight: 15 },
+  biRow:           { flexDirection: 'row', gap: 8, marginBottom: 10, marginTop: 2 },
+  biCell:          { flex: 1, borderWidth: 1, borderRadius: 14, backgroundColor: '#FFFFFF04', padding: 10, gap: 3 },
+  biTag:           { fontSize: 7, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.2, marginBottom: 2 },
+  biSanskrit:      { fontSize: 13, fontWeight: '900' },
+  biEnglish:       { fontSize: 9, color: '#FFFFFF45', fontWeight: '500' },
 });
 
 const BMX = StyleSheet.create({

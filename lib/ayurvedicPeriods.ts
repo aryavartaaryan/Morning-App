@@ -23,6 +23,7 @@ export interface DoshaPeriod {
   emoji: string;
   color: string;
   bgColor: string;
+  englishLabel: string;
   sciEmoji: string;
   sciTitle: string;
   sciDesc: string;
@@ -51,6 +52,7 @@ const PERIOD_TEMPLATES = [
     id: 'night_vata',
     dosha: 'vata' as DoshaType,
     label: 'Night Vata',
+    englishLabel: 'Pre-Dawn Clarity Window',
     emoji: '✨',
     color: '#818cf8',
     bgColor: 'rgba(129,140,248,0.09)',
@@ -64,6 +66,7 @@ const PERIOD_TEMPLATES = [
     id: 'morning_kapha',
     dosha: 'kapha' as DoshaType,
     label: 'Morning Kapha',
+    englishLabel: 'Morning Strength Hour',
     emoji: '🌿',
     color: '#34d399',
     bgColor: 'rgba(52,211,153,0.08)',
@@ -77,6 +80,7 @@ const PERIOD_TEMPLATES = [
     id: 'midday_pitta',
     dosha: 'pitta' as DoshaType,
     label: 'Midday Pitta',
+    englishLabel: 'Noon Metabolic Peak',
     emoji: '🔥',
     color: '#fb923c',
     bgColor: 'rgba(251,146,60,0.08)',
@@ -90,6 +94,7 @@ const PERIOD_TEMPLATES = [
     id: 'afternoon_vata',
     dosha: 'vata' as DoshaType,
     label: 'Afternoon Vata',
+    englishLabel: 'Afternoon Active Period',
     emoji: '🌬️',
     color: '#a78bfa',
     bgColor: 'rgba(167,139,250,0.08)',
@@ -103,6 +108,7 @@ const PERIOD_TEMPLATES = [
     id: 'evening_kapha',
     dosha: 'kapha' as DoshaType,
     label: 'Evening Kapha',
+    englishLabel: 'Evening Wind-Down Phase',
     emoji: '🌅',
     color: '#34d399',
     bgColor: 'rgba(52,211,153,0.06)',
@@ -116,6 +122,7 @@ const PERIOD_TEMPLATES = [
     id: 'night_pitta',
     dosha: 'pitta' as DoshaType,
     label: 'Night Pitta',
+    englishLabel: 'Overnight Repair Phase',
     emoji: '🌕',
     color: '#fbbf24',
     bgColor: 'rgba(251,191,36,0.06)',
