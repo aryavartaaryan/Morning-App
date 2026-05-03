@@ -1,4 +1,4 @@
-package com.ariseapp
+package com.solrize
 
 import android.app.*
 import android.content.Context
@@ -88,7 +88,7 @@ class AlarmSoundService : Service() {
         const val NOTIF_ID = 1001
         const val PREFS_NAME = "alarm_prefs"
         const val KEY_SOUND = "alarm_sound"
-        const val ACTION_SET_VOLUME = "com.ariseapp.SET_ALARM_VOLUME"
+        const val ACTION_SET_VOLUME = "com.solrize.SET_ALARM_VOLUME"
         const val EXTRA_VOLUME = "volume"
     }
 
@@ -196,7 +196,7 @@ class AlarmSoundService : Service() {
             val launch = if (!alarmScreenLaunched) {
                 // FIRST call: deep-link so Expo Router navigates to /alarm-ringing
                 alarmScreenLaunched = true
-                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("ariseapp://alarm-ringing")).apply {
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("solrize://alarm-ringing")).apply {
                     addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
@@ -224,7 +224,7 @@ class AlarmSoundService : Service() {
 
     private fun buildFullScreenPendingIntent(): PendingIntent {
         // Deep link → Expo Router routes directly to /alarm-ringing, bypassing home screen
-        val uri = android.net.Uri.parse("ariseapp://alarm-ringing")
+        val uri = android.net.Uri.parse("solrize://alarm-ringing")
         val launch = Intent(Intent.ACTION_VIEW, uri).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or

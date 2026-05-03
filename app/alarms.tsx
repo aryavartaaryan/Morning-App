@@ -704,7 +704,7 @@ export default function AlarmsScreen() {
       try {
         await notifee.createChannel({
           id: 'arise-habit-alarms',
-          name: 'Arise Habit Alarms',
+          name: 'SolRize Habit Alarms',
           importance: AndroidImportance.HIGH,
           sound: 'mantra_alarm',
           vibration: true,

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency } from '@notifee/react-native';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { Colors } from '@/constants/theme';
@@ -35,14 +36,38 @@ const SLEEP_TIPS = [
 export default function SleepTab() {
   const [wakeHour, setWakeHour]     = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.hour);
   const [wakeMinute, setWakeMinute] = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.minute);
-  const [bedtimeAlert, setBedtimeAlert] = useState(false);
+  const [bedtimeAlert, setBedtimeAlert]   = useState(false);
+  const [eveningMantra, setEveningMantra] = useState(false);
   const now = new Date();
 
   useEffect(() => {
     store.getJSON<AlarmSettings>(KEYS.alarmSettings).then(s => {
       if (s?.wakeAlarm) { setWakeHour(s.wakeAlarm.hour); setWakeMinute(s.wakeAlarm.minute); }
+      setEveningMantra(s?.eveningMantra ?? false);
     });
   }, []);
+
+  const scheduleEveningMantraNotif = async () => {
+    try {
+      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'SolRize Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+      const next = new Date(); next.setHours(21, 30, 0, 0);
+      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+      await notifee.createTriggerNotification(
+        { id: 'evening-mantra-daily', title: '🔱  Shiv Sankalpa Suktam', body: 'Sacred Mind Hymn · 9:30 PM', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any, data: { type: 'evening-mantra' } },
+        { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { allowWhileIdle: true } } as any,
+      );
+    } catch (e) { console.warn('[EveningMantra] schedule:', e); }
+  };
+  const cancelEveningMantraNotif = async () => { await notifee.cancelTriggerNotification('evening-mantra-daily').catch(() => {}); };
+
+  const toggleEveningMantra = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newVal = !eveningMantra;
+    setEveningMantra(newVal);
+    const s = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
+    await store.setJSON(KEYS.alarmSettings, { ...(s ?? DEFAULT_ALARM_SETTINGS), eveningMantra: newVal });
+    if (newVal) scheduleEveningMantraNotif(); else cancelEveningMantraNotif();
+  };
 
   const getBedtime = (hoursBack: number) => {
     const totalMins  = wakeHour * 60 + wakeMinute - Math.round(hoursBack * 60) - 15;
@@ -134,6 +159,16 @@ export default function SleepTab() {
             <Text style={S.toggleSub}>Remind me 30 min before ideal bedtime</Text>
           </View>
           <Switch value={bedtimeAlert} onValueChange={v => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBedtimeAlert(v); }} trackColor={{ false: '#222', true: SLEEP_COLOR + '80' }} thumbColor={bedtimeAlert ? SLEEP_COLOR : '#666'} />
+        </View>
+
+        {/* Evening mantra toggle */}
+        <View style={[S.toggleCard, { borderColor: '#818cf820', marginTop: 4 }]}>
+          <Text style={{ fontSize: 18 }}>🔱</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={S.toggleTitle}>Evening Mantra</Text>
+            <Text style={S.toggleSub}>Shiv Sankalpa Suktam · 9:30 PM every night</Text>
+          </View>
+          <Switch value={eveningMantra} onValueChange={toggleEveningMantra} trackColor={{ false: '#222', true: '#818cf880' }} thumbColor={eveningMantra ? '#818cf8' : '#666'} />
         </View>
 
         {/* Sleep science tips */}

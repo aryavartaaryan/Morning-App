@@ -37,7 +37,7 @@ export const SCIENCE_ALIASES = [
   {
     emoji: '💓',
     title: 'HRV Golden Hour',
-    desc: 'Heart Rate Variability coherence peaks before sunrise. The optimal window for pranayama, breathwork & nervous system reset.',
+    desc: 'Heart Rate Variability coherence peaks before sunrise. The optimal window for breathwork & deep nervous system reset.',
   },
   {
     emoji: '☀️',

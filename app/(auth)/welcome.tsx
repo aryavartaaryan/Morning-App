@@ -65,8 +65,8 @@ export default function WelcomeScreen() {
             }, { transform: [{ scale: pulseAnim }] }]}>
               <Text style={{ fontSize: height < 700 ? 34 : 42, color: Colors.gold }}>ॐ</Text>
             </Animated.View>
-            <Text style={{ fontSize: height < 700 ? 28 : 34, fontWeight: '900', color: Colors.text, letterSpacing: -1 }}>Arise</Text>
-            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 3 }}>Ancient Wisdom · Modern Intelligence</Text>
+            <Text style={{ fontSize: height < 700 ? 28 : 34, fontWeight: '900', color: Colors.text, letterSpacing: -1 }}>SolRize</Text>
+            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 3 }}>Rise with the sun · Ancient Wisdom · Modern Intelligence</Text>
           </View>
 
           {/* ── Feature grid ── */}

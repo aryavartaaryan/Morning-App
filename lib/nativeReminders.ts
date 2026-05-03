@@ -10,6 +10,7 @@
 
 import notifee, {
   AndroidImportance,
+  AndroidCategory,
   AndroidVisibility,
   TriggerType,
   RepeatFrequency,
@@ -83,7 +84,7 @@ export async function setupReminderChannel(): Promise<void> {
     sound: 'mantra_alarm',
     vibration: true,
     vibrationPattern: [0, 300, 200, 300],
-    bypassDnd: false,
+    bypassDnd: true,
     visibility: AndroidVisibility.PUBLIC,
   });
 }
@@ -112,17 +113,18 @@ export async function scheduleAllNativeReminders(): Promise<void> {
         android: {
           channelId: REMINDER_CHANNEL_ID,
           importance: AndroidImportance.HIGH,
+          category: AndroidCategory.ALARM,
           visibility: AndroidVisibility.PUBLIC,
           sound: 'mantra_alarm',
           vibrationPattern: [0, 300, 200, 300],
-          // ── Full-screen intent: covers lock screen when display is off ──────
+          // ── Full-screen intent: pops over all apps like an alarm ────────────
           fullScreenAction: {
             id: 'default',
             launchActivity: 'default',
           },
           pressAction: { id: 'default', launchActivity: 'default' },
-          // Show on lock screen even if app is in background
           showTimestamp: true,
+          ongoing: false,
         },
       },
       {
@@ -149,12 +151,21 @@ export async function cancelAllNativeReminders(): Promise<void> {
 }
 
 // ── Get initial reminder notification (app opened from killed state) ──────────
+const PENDING_SLOT_KEY = 'onesutra_pending_slot_v1';
 export async function getInitialReminderNotification(): Promise<string | null> {
   try {
+    // Path 1: fullScreenAction launched the app — notification is still attached
     const initial = await notifee.getInitialNotification();
     const data = initial?.notification?.data as Record<string, string> | undefined;
     if (data?.type === REMINDER_DATA_TYPE && data?.slotId) {
       return data.slotId;
+    }
+    // Path 2: background event handler stored the slotId before the app loaded
+    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+    const pending = await AsyncStorage.getItem(PENDING_SLOT_KEY);
+    if (pending) {
+      await AsyncStorage.removeItem(PENDING_SLOT_KEY);
+      return pending;
     }
   } catch { /* ignore */ }
   return null;

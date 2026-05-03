@@ -10,9 +10,9 @@ import * as Haptics from 'expo-haptics';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { store, KEYS } from '@/lib/storage';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
+import { getBgSource } from '@/lib/bgImages';
 
 const { width } = Dimensions.get('window');
-const BG = 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&q=60&auto=format';
 
 const LANGUAGES = [
   { code: 'en', flag: '🇬🇧', name: 'English',  native: 'English',   available: true  },
@@ -35,8 +35,11 @@ const BODHI_GREET: Record<string, string> = {
 export default function LanguageScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<LangCode | null>(null);
+  const [authBg, setAuthBg]      = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const orbPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => { getBgSource('auth').then(setAuthBg).catch(() => {}); }, []);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start();
@@ -72,7 +75,7 @@ export default function LanguageScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#04020E' }}>
       <ImageBackground
-        source={{ uri: BG }}
+        source={authBg ? { uri: authBg } : undefined}
         style={StyleSheet.absoluteFillObject}
         imageStyle={{ opacity: 0.18, resizeMode: 'cover' }}
       />

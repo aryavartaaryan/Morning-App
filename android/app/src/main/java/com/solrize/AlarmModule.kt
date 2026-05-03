@@ -1,4 +1,4 @@
-package com.ariseapp
+package com.solrize
 
 import android.app.AlarmManager
 import android.app.NotificationManager

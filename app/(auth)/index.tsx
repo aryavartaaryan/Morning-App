@@ -10,10 +10,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useGoogleAuth, GoogleAuthResult } from '@/lib/googleAuth';
+import { getBgSource } from '@/lib/bgImages';
 
 const { width, height } = Dimensions.get('window');
-
-const BG = 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&q=60&auto=format';
 
 const FEATURES = [
   { emoji: '🔥', title: 'Streak', sub: 'Your daily fire streak' },
@@ -35,8 +34,11 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authBg, setAuthBg]   = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => { getBgSource('auth').then(setAuthBg).catch(() => {}); }, []);
 
   // ── Google Sign-In handler ──────────────────────────────────────────────────
   const handleGoogleResult = (result: GoogleAuthResult) => {
@@ -109,7 +111,7 @@ export default function LoginScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#04020E' }}>
-      <ImageBackground source={{ uri: BG }} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.28, resizeMode: 'cover' }} />
+      <ImageBackground source={authBg ? { uri: authBg } : undefined} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.28, resizeMode: 'cover' }} />
       <LinearGradient
         colors={['rgba(4,2,18,0.55)', 'rgba(4,2,18,0.72)', 'rgba(4,2,18,0.96)']}
         locations={[0, 0.45, 1]}

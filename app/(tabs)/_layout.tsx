@@ -6,7 +6,8 @@ import { Colors } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
 
 const TABS = [
-  { name: 'index',    route: '/(tabs)',          iconOn: 'alarm'       as const, icon: 'alarm-outline'      as const, label: 'Alarm',    color: '#F5820A' },
+  { name: 'index',    route: '/(tabs)',           iconOn: 'sunny'       as const, icon: 'sunny-outline'       as const, label: 'Daily',    color: '#F5820A' },
+  { name: 'alarms',  route: '/(tabs)/alarms',   iconOn: 'alarm'       as const, icon: 'alarm-outline'      as const, label: 'Alarms',   color: '#f97316' },
   { name: 'sleep',   route: '/(tabs)/sleep',    iconOn: 'moon'        as const, icon: 'moon-outline'       as const, label: 'Sleep',    color: '#60a5fa' },
   { name: 'reports', route: '/(tabs)/reports',  iconOn: 'bar-chart'   as const, icon: 'bar-chart-outline'  as const, label: 'Reports',  color: '#10b981' },
   { name: 'settings',route: '/(tabs)/settings', iconOn: 'settings'    as const, icon: 'settings-outline'   as const, label: 'Settings', color: '#a78bfa' },
@@ -55,6 +56,7 @@ export default function TabLayout() {
       tabBar={() => <CustomTabBar />}
     >
       <Tabs.Screen name="index" />
+      <Tabs.Screen name="alarms" />
       <Tabs.Screen name="sleep" />
       <Tabs.Screen name="reports" />
       <Tabs.Screen name="settings" />

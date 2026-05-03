@@ -13,12 +13,18 @@ import { auth } from '@/lib/firebase';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 import { WAKE_SOUNDS } from '@/lib/missionAlarm';
 
+const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
+  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
+  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+};
+
 const { width, height } = Dimensions.get('window');
 const ACCENT = '#10b981';
+const HABIT_FS_ID = 'habit-alarm-service';
 
 export default function HabitAlarmRingingScreen() {
   const router = useRouter();
-  const { habitKey, habitEmoji, label } = useLocalSearchParams<{ habitKey?: string; habitEmoji?: string; label?: string }>();
+  const { habitKey, habitEmoji, label, mantraId: mantraIdParam } = useLocalSearchParams<{ habitKey?: string; habitEmoji?: string; label?: string; mantraId?: string }>();
   const habitLabel = label ?? 'Habit Alarm';
   const emoji = habitEmoji ?? '🌿';
 
@@ -49,14 +55,23 @@ export default function HabitAlarmRingingScreen() {
     (async () => {
       try {
         const cfg = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
-        const mantraId = cfg?.selectedMantraId ?? 'gayatri';
+        const mantraId = (mantraIdParam as string | undefined) ?? cfg?.selectedMantraId ?? 'gayatri';
+        const bundledAsset = BUNDLED_MANTRA_ASSETS[mantraId];
         const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
         const localPath = getLocalMantraPath(mantraId);
         const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
-        const src = (localInfo as any).exists ? { uri: (localInfo as any).uri } : { uri: wakeSound.audioUrl };
+        const src = bundledAsset ? bundledAsset
+          : (localInfo as any).exists ? { uri: (localInfo as any).uri }
+          : wakeSound.audioUrl ? { uri: wakeSound.audioUrl }
+          : require('../assets/sounds/mantra_alarm.wav');
         if (cancelled) return;
-        const { sound } = await Audio.Sound.createAsync(src, { shouldPlay: true, isLooping: true, volume: 1.0 });
+        let sound: Audio.Sound;
+        try {
+          ({ sound } = await Audio.Sound.createAsync(src, { shouldPlay: true, isLooping: true, volume: 1.0 }));
+        } catch {
+          ({ sound } = await Audio.Sound.createAsync(require('../assets/sounds/mantra_alarm.wav'), { shouldPlay: true, isLooping: true, volume: 1.0 }));
+        }
         if (cancelled) { sound.unloadAsync(); return; }
         soundRef.current = sound;
       } catch (e) { console.warn('[HabitAlarm] audio:', e); }
@@ -69,7 +84,11 @@ export default function HabitAlarmRingingScreen() {
     };
   }, []);
 
-  useEffect(() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Vibration.vibrate([0, 500, 200, 500, 200, 500]); }, []);
+  useEffect(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+    return () => { Vibration.cancel(); };
+  }, []);
 
   // Countdown 3-2-1 then activate
   useEffect(() => {
@@ -82,43 +101,78 @@ export default function HabitAlarmRingingScreen() {
   // Block back button
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!stopped) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); Vibration.vibrate([0, 200, 100, 200]); return true; }
+      if (!stopped) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); return true; }
       return false;
     });
     return () => sub.remove();
   }, [stopped]);
 
-  // Bring-to-front notification when home pressed
+  // ── Foreground service — keeps screen alive through Home button ──────────
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const bttfId = 'habit-alarm-bttf';
-    const fireBttf = async () => {
+    (async () => {
       try {
-        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Arise Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
-        await notifee.displayNotification({ id: bttfId, title: `${emoji} ${habitLabel}`, body: 'Return to complete your habit.', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, ongoing: true, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any });
-      } catch { /* ignore */ }
+        await notifee.createChannel({
+          id: 'arise-habit-alarms', name: 'SolRize Habit Alarms',
+          importance: AndroidImportance.HIGH, bypassDnd: true,
+          visibility: AndroidVisibility.PUBLIC,
+        } as any);
+        await notifee.displayNotification({
+          id: HABIT_FS_ID,
+          title: `${emoji}  ${habitLabel}`,
+          body: 'Complete your habit to dismiss.',
+          android: {
+            channelId: 'arise-habit-alarms',
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            ongoing: true,
+            asForegroundService: true,
+            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            pressAction:       { id: 'default', launchActivity: 'default' },
+          } as any,
+        });
+      } catch (e) { console.warn('[HabitAlarm] foreground service start:', e); }
+    })();
+    return () => {
+      notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
     };
+  }, []);
+
+  // ── Safety net: restart audio if Android paused it while backgrounded ──
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
     const sub = AppState.addEventListener('change', next => {
-      if (!stopped && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) { appStateRef.current = next; fireBttf(); }
-      else if (!stopped && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') { appStateRef.current = next; notifee.cancelNotification(bttfId).catch(() => {}); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); }
-      else { appStateRef.current = next; }
+      if (!stopped
+        && (appStateRef.current === 'background' || appStateRef.current === 'inactive')
+        && next === 'active') {
+        soundRef.current?.getStatusAsync().then((st: any) => {
+          if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
+        }).catch(() => {});
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      appStateRef.current = next;
     });
-    return () => { sub.remove(); notifee.cancelNotification(bttfId).catch(() => {}); };
-  }, [stopped, emoji, habitLabel]);
+    return () => sub.remove();
+  }, [stopped]);
 
   const stopAudio = async () => {
     try { if (soundRef.current) { await soundRef.current.stopAsync(); await soundRef.current.unloadAsync(); soundRef.current = null; } } catch { /* ignore */ }
   };
 
+  const stopForegroundService = () => {
+    notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
+  };
+
   const handleComplete = async () => {
-    setStopped(true); await stopAudio(); Vibration.cancel();
+    setStopped(true); await stopAudio(); Vibration.cancel(); stopForegroundService();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
     if (user && habitKey) saveHabitLog({ habitId: habitKey, habitName: habitLabel, userId: user.uid, date: todayStr(), status: 'done' }).catch(() => {});
     router.replace('/(tabs)' as never);
   };
 
-  const handleQuit = async () => { setStopped(true); await stopAudio(); Vibration.cancel(); router.replace('/(tabs)' as never); };
+  const handleQuit = async () => { setStopped(true); await stopAudio(); Vibration.cancel(); stopForegroundService(); router.replace('/(tabs)' as never); };
 
   return (
     <View style={S.screen}>

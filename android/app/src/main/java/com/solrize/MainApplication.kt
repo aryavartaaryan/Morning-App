@@ -1,4 +1,4 @@
-package com.ariseapp
+package com.solrize
 
 import android.app.Application
 import android.content.res.Configuration

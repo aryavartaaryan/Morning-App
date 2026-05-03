@@ -1,4 +1,4 @@
-package com.ariseapp
+package com.solrize
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.app.KeyguardManager

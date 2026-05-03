@@ -14,6 +14,8 @@ import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
+import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
+import { ensureAllBgsCached } from '@/lib/bgImages';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
@@ -54,7 +56,7 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
       {/* Center */}
       <View style={SS.center}>
         <Animated.Text style={[SS.arise, { opacity: titleOp, transform: [{ scale: titleSc }] }]}>
-          Arise
+          SolRize
         </Animated.Text>
         <Animated.View style={[SS.subBlock, { opacity: subOp }]}>
           <Text style={SS.tagline}>YOUR DAY  ·  BY DESIGN</Text>
@@ -62,7 +64,7 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
         </Animated.View>
       </View>
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: subOp }]}>ARISE  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: subOp }]}>SOLRIZE  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -152,6 +154,25 @@ function BodhiNotificationListener() {
     return () => sub.remove();
   }, [segments]);
 
+  // ── When app is LAUNCHED by a notifee notification (habit alarm / evening mantra) ──
+  useEffect(() => {
+    try {
+      const notifee = require('@notifee/react-native').default;
+      notifee.getInitialNotification().then((initial: any) => {
+        if (!initial) return;
+        const data = initial.notification?.data as Record<string, string> | undefined;
+        if (data?.type === 'evening-mantra') {
+          setTimeout(() => router.replace('/habit-alarm-ringing?habitKey=evening_mantra&habitEmoji=%F0%9F%94%B1&label=Shiv%20Sankalpa%20Suktam&mantraId=shiv_sankalpa_suktam' as never), 300);
+        } else if (data?.type === 'habit-alarm') {
+          const hk = encodeURIComponent(data?.alarmId ?? '');
+          const he = encodeURIComponent(data?.habitEmoji ?? '🌿');
+          const hl = encodeURIComponent(data?.label ?? 'Habit Alarm');
+          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}` as never), 300);
+        }
+      }).catch(() => {});
+    } catch { /* ignore */ }
+  }, []);
+
   // ── When app is LAUNCHED by a slot reminder (full-screen intent tap) ─────
   useEffect(() => {
     getInitialReminderNotification().then(slotId => {
@@ -172,7 +193,7 @@ function BodhiNotificationListener() {
       // ── Android: ensure notification channel is ready on every app open ──
       if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync('arise-alarms', {
-          name: 'Arise Alarms',
+          name: 'SolRize Alarms',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'mantra_alarm.wav',
           vibrationPattern: [0, 250, 250, 250],
@@ -247,6 +268,12 @@ function BodhiNotificationListener() {
             return;
           }
 
+          // Evening mantra delivered or pressed while app is in foreground
+          if ((type === EventType.DELIVERED || type === EventType.PRESS) && data?.type === 'evening-mantra') {
+            router.push('/habit-alarm-ringing?habitKey=evening_mantra&habitEmoji=%F0%9F%94%B1&label=Shiv%20Sankalpa%20Suktam&mantraId=shiv_sankalpa_suktam' as never);
+            return;
+          }
+
           // Habit alarm delivered or pressed while app is in foreground
           if ((type === EventType.DELIVERED || type === EventType.PRESS) && data?.type === 'habit-alarm') {
             const habitKey = encodeURIComponent((data?.alarmId ?? '') as string);
@@ -257,7 +284,7 @@ function BodhiNotificationListener() {
           }
 
           if (data?.type !== REMINDER_DATA_TYPE) return;
-          if (type === EventType.PRESS) {
+          if (type === EventType.DELIVERED || type === EventType.PRESS) {
             const slotId = data?.slotId;
             if (slotId) router.push(`/notification-landing?slotId=${slotId}` as never);
           }
@@ -274,6 +301,11 @@ function BodhiNotificationListener() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    ensureAllMantrasDownloaded().catch(() => {});
+    ensureAllBgsCached().catch(() => {});
+  }, []);
+
   const [fontsLoaded] = useFonts({
     Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
     Nunito_800ExtraBold, Nunito_900Black,

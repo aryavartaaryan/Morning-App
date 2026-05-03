@@ -31,6 +31,11 @@ const MANTRA_TO_WAKE: Record<string, string> = {
   shivtandav: 'shiv_tandav',
 };
 
+const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
+  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
+  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+};
+
 const { width, height } = Dimensions.get('window');
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmtTime = () => {
@@ -68,7 +73,7 @@ export default function AlarmRingingScreen() {
     } catch { /* ignore */ }
   };
 
-  const playWakeAudio = async (uri: string, startDucked = false) => {
+  const playWakeAudio = async (uri: string | null, startDucked = false, bundledAsset?: any) => {
     await stopWakeAudio();
     try {
       await Audio.setAudioModeAsync({
@@ -78,12 +83,21 @@ export default function AlarmRingingScreen() {
         interruptionModeIOS: 1,
         interruptionModeAndroid: 1,
       });
+      const source = bundledAsset ?? (uri ? { uri } : require('../assets/sounds/mantra_alarm.wav'));
       const { sound } = await Audio.Sound.createAsync(
-        { uri },
+        source,
         { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
       );
       soundRef.current = sound;
-    } catch (e) { console.warn('[AlarmRinging] Wake audio error:', e); }
+    } catch {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/sounds/mantra_alarm.wav'),
+          { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
+        );
+        soundRef.current = sound;
+      } catch (e2) { console.warn('[AlarmRinging] Wake audio fallback error:', e2); }
+    }
   };
 
   // ── Animations ──────────────────────────────────────────────────────────────
@@ -133,7 +147,6 @@ export default function AlarmRingingScreen() {
       withTiming(0, { duration: 60 }),
     );
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    Vibration.vibrate([0, 200, 100, 200]);
   };
 
   // ── Keep screen awake ───────────────────────────────────────────────────────
@@ -215,7 +228,7 @@ export default function AlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
-        Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+        Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         triggerShake();
       } else {
@@ -242,7 +255,7 @@ export default function AlarmRingingScreen() {
         setSnoozeCountdown(null);
         // Re-trigger alarm sounds when snooze ends — restore native volume
         await setNativeAlarmVolume(1.0);
-        Vibration.vibrate([0, 600, 300, 600, 300, 600]);
+        Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     }, 1000);
@@ -269,18 +282,18 @@ export default function AlarmRingingScreen() {
       // ── Play correct mantra audio via JS layer ─────────────────────
       if (!cancelled) {
         const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
+        const bundledAsset = BUNDLED_MANTRA_ASSETS[mantraId];
         const localPath = getLocalMantraPath(mantraId);
         const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
-        const audioSrc = (localInfo as any).exists ? (localInfo as any).uri : wakeSound.audioUrl;
-        if (audioSrc) await playWakeAudio(audioSrc, settings.bodhiMorningBrief);
+        const audioSrc: string | null = bundledAsset ? null
+          : (localInfo as any).exists ? (localInfo as any).uri
+          : (wakeSound.audioUrl ?? null);
+        await playWakeAudio(audioSrc, settings.bodhiMorningBrief, bundledAsset);
       }
 
-      // ── KEEP native AlarmSoundService running ──────────────────────
-      // The foreground service handles alarm audio, wake locks, and
-      // Home-button relaunch watchdogs. Stopping it (the old code) was
-      // the root cause of the "Home button escapes alarm" bug.
-      // We do NOT call stopNativeAlarmSound() here — native audio
-      // survives Activity backgrounding, Home press, and recents swipe.
+      // ── Native AlarmSoundService stays alive DURING alarm ─────────
+      // It is stopped in stopAlarmCompletely() right before navigating
+      // to the mission screen. JS audio (__missionBgSound) takes over.
 
       if (settings.bodhiMorningBrief && !cancelled) {
         // Duck native alarm volume while Bodhi speaks, then restore
@@ -301,12 +314,13 @@ export default function AlarmRingingScreen() {
       }
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      Vibration.vibrate([0, 500, 200, 500]);
+      Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
     })();
     return () => {
       cancelled = true;
       stopBodhi();
       stopWakeAudio();
+      Vibration.cancel();
     };
   }, []);
 
@@ -327,7 +341,10 @@ export default function AlarmRingingScreen() {
       (global as any).__missionBgSound = soundRef.current;
       soundRef.current = null;
     }
-    // Native alarm sound keeps playing during mission — stopped in mission.tsx on completion
+    // Stop native AlarmSoundService BEFORE navigating to mission.
+    // If left running, its fullScreenAction notification relaunches the alarm
+    // screen when the camera opens (sky mission) — causing double audio.
+    await stopNativeAlarmSound();
     await cancelNativeAlarm();
     Vibration.cancel();
   };

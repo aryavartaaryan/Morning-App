@@ -12,33 +12,32 @@ import notifee, { EventType } from '@notifee/react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
-const ALARM_ACTIVE_KEY = 'onesutra_alarm_active_v1';
+const ALARM_NOTIF_ID       = 'onesutra-wake-alarm';
+const HABIT_ALARM_NOTIF_ID = 'habit-alarm-service';
+const ALARM_ACTIVE_KEY     = 'onesutra_alarm_active_v1';
+const PENDING_SLOT_KEY     = 'onesutra_pending_slot_v1';
 
-// ─── 1. FOREGROUND SERVICE RUNNER ───────────────────────────────────────
-// Notifee invokes this when a notification scheduled with
-// `asForegroundService: true` is delivered. The returned Promise must
-// stay pending for as long as the service should run. The Android OS
-// keeps the JVM and a wake-lock alive while this Promise is unresolved,
-// which is what makes the alarm survive HOME button.
+// ─── 1. FOREGROUND SERVICE RUNNER ───────────────────────────────────────────────────────────────────────────────
+// Handles BOTH wake alarm (onesutra-wake-alarm) and habit alarm
+// (habit-alarm-service). Keeps the Android JVM + wake-lock alive so
+// pressing HOME does not kill the ringing screen.
 notifee.registerForegroundService(notification => {
   return new Promise(resolve => {
-    // Mark the alarm as active so app/_layout.tsx routes to /alarm-ringing
-    // when the user opens the app from the notification.
-    AsyncStorage.setItem(ALARM_ACTIVE_KEY, '1').catch(() => {});
+    const watchId = notification.id ?? ALARM_NOTIF_ID;
 
-    // The audio is played by the notification channel itself
-    // (loopSound: true on the ALARM channel routes to STREAM_ALARM).
-    // We only need to keep the Promise alive so the service stays up.
+    // For wake alarm only: mark active so _layout.tsx can route correctly.
+    if (watchId === ALARM_NOTIF_ID) {
+      AsyncStorage.setItem(ALARM_ACTIVE_KEY, '1').catch(() => {});
+    }
 
-    // Resolve when the notification is cancelled (mission completed).
+    // Resolve (end service) once the watched notification is cancelled.
     const interval = setInterval(async () => {
       try {
         const visible = await notifee.getDisplayedNotifications();
-        const stillUp = visible.some(n => n.notification.id === ALARM_NOTIF_ID);
+        const stillUp = visible.some(n => n.notification.id === watchId);
         if (!stillUp) {
           clearInterval(interval);
-          resolve(); // ends the foreground service
+          resolve();
         }
       } catch { /* ignore polling error */ }
     }, 1500);
@@ -50,7 +49,18 @@ notifee.registerForegroundService(notification => {
 // notification (taps it, presses Stop action, etc.). MUST be registered
 // before any React rendering happens.
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  const id = detail.notification?.id;
+  const id   = detail.notification?.id;
+  const data = detail.notification?.data ?? {};
+
+  // ── Slot reminder (Ayurvedic period alert) ──────────────────────────────
+  if (data.type === 'slot-reminder') {
+    if ((type === EventType.DELIVERED || type === EventType.PRESS) && data.slotId) {
+      // Store slotId so _layout.tsx can route to /notification-landing on app open
+      await AsyncStorage.setItem(PENDING_SLOT_KEY, data.slotId).catch(() => {});
+    }
+    return;
+  }
+
   if (id !== ALARM_NOTIF_ID) return;
 
   if (type === EventType.DELIVERED) {

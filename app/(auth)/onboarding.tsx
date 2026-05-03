@@ -10,6 +10,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { auth, db } from '@/lib/firebase';
 import { store, KEYS } from '@/lib/storage';
+import { getBgSource } from '@/lib/bgImages';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { scheduleNativeAlarm } from '@/lib/nativeAlarm';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
@@ -33,7 +34,7 @@ interface LifeStep {
 const LIFE_EN: LifeStep[] = [
   {
     id: 'intentions', emoji: '🌿', type: 'multi',
-    q: 'What brings you to Arise?',
+    q: 'What brings you to SolRize?',
     sub: "We'll personalize your journey based on your intentions.",
     options: [
       { id: 'discipline', label: '🌅 Build Discipline', desc: 'Consistent daily rituals' },
@@ -111,7 +112,7 @@ const LIFE_EN: LifeStep[] = [
 const LIFE_HI: LifeStep[] = [
   {
     id: 'intentions', emoji: '🌿', type: 'multi',
-    q: 'Arise में आप क्यों आए हैं?',
+    q: 'SolRize में आप क्यों आए हैं?',
     sub: "हम आपके इरादों के आधार पर आपकी यात्रा को व्यक्तिगत बनाएंगे।",
     options: [
       { id: 'discipline', label: '🌅 अनुशासन बनाना', desc: 'नियमित दैनिक अनुष्ठान' },
@@ -195,7 +196,6 @@ const BODHI_INTRO: Record<string, string> = {
 
 const { width, height } = Dimensions.get('window');
 const GEMINI_KEY = 'AIzaSyANg_oPfwORFiYwvWCs53hO2NSiw96xA8k';
-const BG = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=90&auto=format&fit=crop';
 
 // ── Prakriti Quiz ─────────────────────────────────────────
 interface Answer { id: string; label: string; desc: string; v: number; p: number; k: number; }
@@ -431,6 +431,7 @@ const PRAKRITI_INTRO: Record<string, string> = {
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const [obBg, setObBg]   = useState<string | null>(null);
   const [lang, setLang] = useState('en');
   const [phase, setPhase] = useState<Phase>('steps');
   const [stepIdx, setStepIdx] = useState(0);
@@ -461,6 +462,8 @@ export default function OnboardingScreen() {
   const [brahmaMuhurta, setBrahmaMuhurta] = useState<BrahmaMuhurtaResult | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationSkipped, setLocationSkipped] = useState(false);
+
+  useEffect(() => { getBgSource('onboarding').then(setObBg).catch(() => {}); }, []);
 
   useEffect(() => {
     store.get(KEYS.language).then(l => { if (l) setLang(l); });
@@ -651,7 +654,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ImageBackground source={{ uri: BG }} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.14, resizeMode: 'cover' }} />
+      <ImageBackground source={obBg ? { uri: obBg } : undefined} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.14, resizeMode: 'cover' }} />
       <LinearGradient
         colors={['rgba(7,22,62,0.97)', 'rgba(4,13,42,0.99)', 'rgba(2,7,22,1)']}
         locations={[0, 0.5, 1]}

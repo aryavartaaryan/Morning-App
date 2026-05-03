@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Arise",
+    "name": "SolRize—Rise with the Sun",
     "slug": "arise-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "ariseapp",
+    "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,16 +15,16 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.ariseapp",
+      "bundleIdentifier": "com.solrize",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
           "fetch",
           "processing"
         ],
-        "NSUserNotificationsUsageDescription": "Arise uses notifications to ring your wake alarm.",
+        "NSUserNotificationsUsageDescription": "SolRize uses notifications to ring your wake alarm.",
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.ariseapp.alarm-reschedule"
+          "com.solrize.alarm-reschedule"
         ]
       },
       "entitlements": {
@@ -37,7 +37,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.ariseapp",
+      "package": "com.solrize",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -82,26 +82,26 @@
             "./assets/sounds/mantra_alarm.wav"
           ],
           "androidMode": "default",
-          "androidCollapsedTitle": "Arise",
+          "androidCollapsedTitle": "SolRize",
           "iosDisplayInForeground": true
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Arise to access your camera for mission completion."
+          "cameraPermission": "Allow SolRize to access your camera for mission completion."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Arise to access your photos for mission completion."
+          "photosPermission": "Allow SolRize to access your photos for mission completion."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Arise to show local weather on your alarm screen."
+          "locationWhenInUsePermission": "Allow SolRize to show local weather on your alarm screen."
         }
       ],
       [
@@ -111,7 +111,7 @@
             "minSdkVersion": 26,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "extraProguardRules": "-keep class app.notifee.** { *; }\n-keep class com.ariseapp.** { *; }"
+            "extraProguardRules": "-keep class app.notifee.** { *; }\n-keep class com.solrize.** { *; }"
           },
           "ios": {
             "deploymentTarget": "15.1"

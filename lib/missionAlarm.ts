@@ -128,6 +128,18 @@ export const WAKE_SOUNDS = [
     icon: '✨',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3',
   },
+  {
+    id: 'bhagya_suktam',
+    label: 'Bhagya Suktam',
+    icon: '🌟',
+    audioUrl: '',
+  },
+  {
+    id: 'shiv_sankalpa_suktam',
+    label: 'Shiv Sankalpa Suktam',
+    icon: '🔱',
+    audioUrl: '',
+  },
 ];
 
 export function getKalaMessage(hour: number): string {

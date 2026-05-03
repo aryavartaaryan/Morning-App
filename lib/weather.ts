@@ -1,5 +1,23 @@
 import * as Location from 'expo-location';
 
+export interface HourlyPoint {
+  hour: number;
+  temp: number;
+  weatherCode: number;
+  emoji: string;
+}
+
+export interface DailyPoint {
+  date: string;
+  dayLabel: string;
+  maxTemp: number;
+  minTemp: number;
+  weatherCode: number;
+  emoji: string;
+  condition: string;
+  precipitation: number;
+}
+
 export interface WeatherData {
   temp: number;
   feelsLike: number;
@@ -8,6 +26,10 @@ export interface WeatherData {
   condition: string;
   emoji: string;
   city?: string;
+  hourly: HourlyPoint[];
+  daily: DailyPoint[];
+  lat?: number;
+  lon?: number;
 }
 
 const WMO: Record<number, { condition: string; emoji: string }> = {
@@ -50,7 +72,9 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weathercode` +
-      `&timezone=auto`;
+      `&hourly=temperature_2m,weathercode` +
+      `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum` +
+      `&forecast_days=7&timezone=auto`;
 
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -65,6 +89,44 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       city = place?.city ?? place?.subregion ?? undefined;
     } catch { /* silent — city is optional */ }
 
+    // Build 24-hour forecast strip starting from current hour
+    const nowHour = new Date().getHours();
+    const hourlyTemps: number[] = json.hourly?.temperature_2m ?? [];
+    const hourlyCodes: number[] = json.hourly?.weathercode ?? [];
+    const hourly: HourlyPoint[] = [];
+    for (let i = 0; i < 48 && hourly.length < 24; i++) {
+      const h = (json.hourly?.time?.[i] as string | undefined);
+      if (!h) continue;
+      const parsedHour = new Date(h).getHours();
+      if (hourly.length === 0 && parsedHour !== nowHour && i < nowHour) continue;
+      const code = hourlyCodes[i] ?? 0;
+      hourly.push({ hour: parsedHour, temp: Math.round(hourlyTemps[i] ?? 0), weatherCode: code, emoji: getWeatherInfo(code).emoji });
+    }
+
+    // Build 7-day daily forecast
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dailyDates: string[]  = json.daily?.time ?? [];
+    const dailyMax: number[]    = json.daily?.temperature_2m_max ?? [];
+    const dailyMin: number[]    = json.daily?.temperature_2m_min ?? [];
+    const dailyCodes: number[]  = json.daily?.weathercode ?? [];
+    const dailyPrec: number[]   = json.daily?.precipitation_sum ?? [];
+    const daily: DailyPoint[] = dailyDates.map((dateStr: string, i: number) => {
+      const d    = new Date(dateStr);
+      const code = dailyCodes[i] ?? 0;
+      const inf  = getWeatherInfo(code);
+      const isToday = i === 0;
+      return {
+        date:         dateStr,
+        dayLabel:     isToday ? 'Today' : DAY_NAMES[d.getDay()],
+        maxTemp:      Math.round(dailyMax[i] ?? 0),
+        minTemp:      Math.round(dailyMin[i] ?? 0),
+        weatherCode:  code,
+        emoji:        inf.emoji,
+        condition:    inf.condition,
+        precipitation: Math.round((dailyPrec[i] ?? 0) * 10) / 10,
+      };
+    });
+
     return {
       temp: Math.round(c.temperature_2m),
       feelsLike: Math.round(c.apparent_temperature),
@@ -73,6 +135,10 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       condition: info.condition,
       emoji: info.emoji,
       city,
+      hourly,
+      daily,
+      lat: latitude,
+      lon: longitude,
     };
   } catch {
     return null;

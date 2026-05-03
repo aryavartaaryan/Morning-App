@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:475392538883:android:a83316b13a24ef39731136",
         "android_client_info": {
-          "package_name": "com.onesutra.app"
+          "package_name": "com.solrize"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "475392538883-6ja9mvphv6lhgpk7f4cdebrbar1ru601.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.onesutra.app",
+            "package_name": "com.solrize",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },

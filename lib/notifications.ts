@@ -166,6 +166,7 @@ export interface CustomReminder {
 export interface AlarmSettings {
   wakeAlarm: { enabled: boolean; hour: number; minute: number };
   brahmaReminder: boolean;
+  eveningMantra: boolean;
   checkinReminder: boolean;
   habitAlerts: Record<string, boolean>;
   customReminders: CustomReminder[];
@@ -174,6 +175,7 @@ export interface AlarmSettings {
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   wakeAlarm: { enabled: false, hour: 5, minute: 30 },
   brahmaReminder: true,
+  eveningMantra: false,
   checkinReminder: true,
   habitAlerts: {},
   customReminders: [],

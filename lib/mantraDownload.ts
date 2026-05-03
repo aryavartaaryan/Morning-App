@@ -34,6 +34,21 @@ export async function downloadMantra(
   } catch { return null; }
 }
 
+const MANTRA_CATALOG: { id: string; url: string }[] = [
+  { id: 'gayatri',    url: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
+  { id: 'lalitha',    url: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
+  { id: 'shivtandav', url: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
+];
+
+export async function ensureAllMantrasDownloaded(): Promise<void> {
+  for (const m of MANTRA_CATALOG) {
+    try {
+      const already = await isMantraDownloaded(m.id);
+      if (!already) await downloadMantra(m.id, m.url);
+    } catch { /* ignore per-mantra failures */ }
+  }
+}
+
 export async function deleteMantra(id: string): Promise<void> {
   try {
     const path = getLocalMantraPath(id);
