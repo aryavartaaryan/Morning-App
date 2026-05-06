@@ -2429,14 +2429,24 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
             />
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
             <GlassPulseOverlay />
-            <Text style={{ fontSize: 7, fontWeight: '900', color: card.color, letterSpacing: 1.5, marginBottom: 7 }}>{card.label}</Text>
-            <Text style={{ fontSize: 26, marginBottom: 5 }}>{card.emoji}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', lineHeight: 18, marginBottom: 7 }}>{card.title}</Text>
-            <View style={{ height: 1, backgroundColor: card.color + '45', marginBottom: 7 }} />
+            {/* Label pill badge */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 9 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: card.color, letterSpacing: 1.2 }}>{card.label}</Text>
+            </View>
+            {/* Emoji or premium avoid circle */}
+            {card.emoji === '✕' ? (
+              <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1.5, borderColor: card.color + '90', backgroundColor: card.color + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 7 }}>
+                <Text style={{ fontSize: 15, color: card.color, fontWeight: '900', lineHeight: 18 }}>✕</Text>
+              </View>
+            ) : (
+              <Text style={{ fontSize: 26, marginBottom: 7 }}>{card.emoji}</Text>
+            )}
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18, marginBottom: 7 }}>{card.title}</Text>
+            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 7 }} />
             {card.tips.map((tip, j) => (
               <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: card.color + 'CC', marginTop: 4, flexShrink: 0 }} />
-                <Text style={{ fontSize: 10, color: '#FFFFFFD0', lineHeight: 15, flex: 1 }}>{tip}</Text>
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: card.color + 'DD', marginTop: 4, flexShrink: 0 }} />
+                <Text style={{ fontSize: 10, color: '#FFFFFFDC', lineHeight: 15, flex: 1 }}>{tip}</Text>
               </View>
             ))}
             <View style={{ position: 'absolute', bottom: 9, right: 10 }}>

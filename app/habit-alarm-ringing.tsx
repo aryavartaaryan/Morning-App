@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, Vibration, AppState, Platform, NativeModules } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
@@ -28,6 +29,8 @@ export default function HabitAlarmRingingScreen() {
   const [phase, setPhase] = useState<'countdown' | 'active'>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [stopped, setStopped] = useState(false);
+  const [showStreakView, setShowStreakView] = useState(false);
+  const [streakData, setStreakData] = useState<{ streak: number; weekDays: boolean[] } | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
@@ -225,6 +228,37 @@ export default function HabitAlarmRingingScreen() {
 
   const stopAudio = async () => stopAlarmAudio(soundRef);
 
+  const localDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const updateLocalStreak = async (key: string): Promise<{ streak: number; weekDays: boolean[] }> => {
+    const today = new Date();
+    const todayS = localDateStr(today);
+    const yest = new Date(today); yest.setDate(yest.getDate() - 1);
+    const yesterdayS = localDateStr(yest);
+    type SR = { streak: number; lastDate: string; history: string[] };
+    const all = (await store.getJSON<Record<string, SR>>(KEYS.habitAlarmStreaks)) ?? {};
+    const cur: SR = all[key] ?? { streak: 0, lastDate: '', history: [] };
+    let newStreak: number;
+    if (cur.lastDate === todayS) {
+      newStreak = cur.streak;
+    } else if (cur.lastDate === yesterdayS || cur.lastDate === '') {
+      newStreak = cur.streak + 1;
+    } else {
+      newStreak = 1;
+    }
+    const history = [...(cur.history ?? []).filter((d: string) => d !== todayS), todayS].slice(-30);
+    await store.setJSON(KEYS.habitAlarmStreaks, { ...all, [key]: { streak: newStreak, lastDate: todayS, history } });
+    const weekDays: boolean[] = Array(7).fill(false);
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+      weekDays[i] = history.includes(localDateStr(d));
+    }
+    return { streak: newStreak, weekDays };
+  };
+
   const stopForegroundService = () => {
     notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
   };
@@ -239,7 +273,18 @@ export default function HabitAlarmRingingScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
     if (!isQuick && user && habitKey) saveHabitLog({ habitId: habitKey, habitName: habitLabel, userId: user.uid, date: todayStr(), status: 'done' }).catch(() => {});
-    router.replace('/(tabs)' as never);
+    if (!isQuick && habitKey) {
+      try {
+        const sd = await updateLocalStreak(habitKey);
+        setStreakData(sd);
+        setShowStreakView(true);
+        setTimeout(() => router.replace('/(tabs)' as never), 3500);
+      } catch {
+        router.replace('/(tabs)' as never);
+      }
+    } else {
+      router.replace('/(tabs)' as never);
+    }
   };
 
   const handleQuit = async () => { setStopped(true); await stopAudio(); stopNative(); Vibration.cancel(); stopForegroundService(); notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {}); router.replace('/(tabs)' as never); };
@@ -299,6 +344,51 @@ export default function HabitAlarmRingingScreen() {
       {phase !== 'countdown' && (
         <View style={S.lockBar}>
           <Text style={S.lockBarTxt}>{isQuick ? '🔒  Dismiss by tapping above' : '🔒  Dismiss only by committing'}</Text>
+        </View>
+      )}
+
+      {/* ── Alarmy-style streak celebration overlay ── */}
+      {showStreakView && streakData && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,16,10,0.97)', alignItems: 'center', justifyContent: 'center', zIndex: 999, paddingHorizontal: 28 }}>
+          <LinearGradient
+            colors={['#10b98118', '#10b98108']}
+            style={{ width: '100%', borderRadius: 28, borderWidth: 1.5, borderColor: '#10b98135', padding: 32, alignItems: 'center' }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '900', color: '#10b98170', letterSpacing: 2, marginBottom: 2 }}>{emoji}  {habitLabel}</Text>
+            <Text style={{ fontSize: 88, fontWeight: '100', color: '#10b981', letterSpacing: -4, lineHeight: 100 }}>{streakData.streak}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#10b981CC', letterSpacing: 2.5, marginBottom: 28 }}>DAY STREAK  🔥</Text>
+
+            {/* SMTWTFS week pills */}
+            <View style={{ flexDirection: 'row', gap: 7, marginBottom: 28 }}>
+              {['S','M','T','W','T','F','S'].map((d, i) => {
+                const done = streakData.weekDays[i];
+                const isToday = i === new Date().getDay();
+                return (
+                  <View key={i} style={{
+                    width: 36, height: 44, borderRadius: 10, borderWidth: 1.5,
+                    borderColor: done ? '#10b981' : isToday ? '#10b98150' : '#FFFFFF15',
+                    backgroundColor: done ? '#10b98125' : isToday ? '#10b98108' : 'transparent',
+                    alignItems: 'center', justifyContent: 'center', gap: 5
+                  }}>
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: done ? '#10b981' : isToday ? '#10b98180' : '#FFFFFF25' }}>{d}</Text>
+                    {done && <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />}
+                  </View>
+                );
+              })}
+            </View>
+
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFFBB', textAlign: 'center', lineHeight: 22 }}>
+              {streakData.streak === 1 ? 'First step taken 🌱\nEvery legend starts here.' : streakData.streak >= 30 ? `${streakData.streak} days — elite level! 👑\nYou are the 1%.` : streakData.streak >= 7 ? `${streakData.streak} days strong! 🏆\nBuilding an unbreakable routine.` : `Keep going! ${streakData.streak} days in 💪`}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)' as never)}
+              style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 15, borderRadius: 16, backgroundColor: '#10b98122', borderWidth: 1, borderColor: '#10b98155' }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#10b981', letterSpacing: 0.3 }}>Continue  →</Text>
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
       )}
     </View>

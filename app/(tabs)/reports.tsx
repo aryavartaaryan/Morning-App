@@ -19,10 +19,13 @@ const fmt12 = (h: number, m: number) => {
 
 const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+type HabitStreakRecord = { streak: number; lastDate: string; history: string[] };
+
 export default function ReportsTab() {
   const [settings, setSettings]           = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [mission, setMission]             = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [entries, setEntries]             = useState<AlarmEntry[]>([]);
+  const [habitStreaks, setHabitStreaks]   = useState<Record<string, HabitStreakRecord>>({});
   const today = new Date();
 
   useEffect(() => {
@@ -30,11 +33,28 @@ export default function ReportsTab() {
       const s  = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
       const ms = await store.getJSON<MissionSettings>(KEYS.missionSettings);
       const e  = await store.getJSON<AlarmEntry[]>(KEYS.multiAlarms);
+      const hs = await store.getJSON<Record<string, HabitStreakRecord>>(KEYS.habitAlarmStreaks);
       if (s)  setSettings(s);
       if (ms) setMission({ ...DEFAULT_MISSION_SETTINGS, ...ms });
       if (e)  setEntries(e);
+      if (hs) setHabitStreaks(hs);
     })();
   }, []);
+
+  const habitEntries = entries.filter(e => e.type === 'habit');
+
+  const getWeekDays = (history: string[]): boolean[] => {
+    const weekDays: boolean[] = Array(7).fill(false);
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      weekDays[i] = history.includes(ds);
+    }
+    return weekDays;
+  };
 
   const activeCount    = (settings.wakeAlarm.enabled ? 1 : 0) + entries.filter(e => e.enabled).length;
   const totalAlarms    = 1 + entries.length;
@@ -151,6 +171,57 @@ export default function ReportsTab() {
             </View>
           ))}
         </View>
+
+        {/* ── Habit Alarm Streaks ── */}
+        {habitEntries.length > 0 && (
+          <>
+            <Text style={S.sectionLabel}>HABIT ALARM STREAKS</Text>
+            <View style={[S.inventoryCard, { marginBottom: 0 }]}>
+              {habitEntries.map((entry, i) => {
+                const rec = habitStreaks[entry.habitKey ?? ''];
+                const streak = rec?.streak ?? 0;
+                const weekDays = rec ? getWeekDays(rec.history ?? []) : Array(7).fill(false);
+                return (
+                  <View key={entry.id} style={[S.alarmRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }, i < habitEntries.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <View style={[S.alarmRowIcon, { backgroundColor: '#10b98118' }]}>
+                        <Text style={{ fontSize: 14 }}>{entry.habitEmoji ?? '🌿'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={S.alarmRowTime}>{entry.label}</Text>
+                        <Text style={S.alarmRowType}>{fmt12(entry.hour, entry.minute)}</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 28, fontWeight: '100', color: streak > 0 ? '#10b981' : '#FFFFFF20', letterSpacing: -1 }}>{streak}</Text>
+                        <Text style={{ fontSize: 8, fontWeight: '900', color: streak > 0 ? '#10b98170' : '#FFFFFF20', letterSpacing: 1 }}>{streak === 1 ? 'DAY' : 'DAYS'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 5, paddingHorizontal: 4 }}>
+                      {['S','M','T','W','T','F','S'].map((d, idx) => {
+                        const done = weekDays[idx];
+                        const isToday = idx === new Date().getDay();
+                        return (
+                          <View key={idx} style={{
+                            width: 32, height: 36, borderRadius: 8, borderWidth: 1.5,
+                            borderColor: done ? '#10b981' : isToday ? '#10b98145' : '#FFFFFF12',
+                            backgroundColor: done ? '#10b98120' : 'transparent',
+                            alignItems: 'center', justifyContent: 'center', gap: 3
+                          }}>
+                            <Text style={{ fontSize: 8, fontWeight: '900', color: done ? '#10b981' : isToday ? '#10b98175' : '#FFFFFF25' }}>{d}</Text>
+                            {done && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#10b981' }} />}
+                          </View>
+                        );
+                      })}
+                    </View>
+                    {streak === 0 && (
+                      <Text style={{ fontSize: 10, color: '#FFFFFF25', paddingHorizontal: 4 }}>Complete this habit alarm to start streak</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Motivation card */}
         {mission.streak >= 7 && (

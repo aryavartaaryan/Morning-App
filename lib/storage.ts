@@ -41,4 +41,5 @@ export const KEYS = {
   brahmaMuhurtaNotif: 'arise_brahma_muhurta_v1', // boolean — daily BM notification enabled
   wakeLog:            'onesutra_wake_log_v1',     // WakeLogEntry — today's alarm wake record
   sunriseStreak:      'onesutra_sunrise_streak_v1', // SunriseStreak — before-sunrise wake streak
+  habitAlarmStreaks:  'onesutra_habit_alarm_streaks_v1', // Record<habitKey, { streak, lastDate, history }>
 };
