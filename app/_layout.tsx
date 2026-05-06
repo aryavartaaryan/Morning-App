@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -21,7 +22,10 @@ import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndResche
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
+import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
+import { MoodSheet } from '@/components/MoodSheet';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { MoodKey } from '@/components/MoodSheet';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -124,11 +128,17 @@ function BodhiNotificationListener() {
 
   // ── When app is LAUNCHED by wake alarm (phone was sleeping/app was killed) ──
   useEffect(() => {
-    getInitialAlarmNotification().then(initial => {
+    getInitialAlarmNotification().then(async (initial) => {
       if (initial && !alarmRoutedRef.current) {
+        const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
         alarmRoutedRef.current = true;
-        console.log('[Layout] App launched from alarm notification → routing to /alarm-ringing');
-        setTimeout(() => router.replace('/alarm-ringing' as never), 150);
+        if (missionId && !(segments as string[]).includes('mission')) {
+          console.log('[Layout] App launched mid-mission → routing to /mission');
+          setTimeout(() => router.replace(`/mission?id=${missionId}` as never), 150);
+        } else if (!missionId) {
+          console.log('[Layout] App launched from alarm notification → routing to /alarm-ringing');
+          setTimeout(() => router.replace('/alarm-ringing' as never), 150);
+        }
       }
     }).catch(() => { });
   }, []);
@@ -143,16 +153,45 @@ function BodhiNotificationListener() {
       if (state !== 'active') return;
       if (alarmRoutedRef.current) return; // already routed this alarm cycle
       if ((segments as string[]).includes('alarm-ringing')) return; // already on screen
-      getInitialAlarmNotification().then(fired => {
+      getInitialAlarmNotification().then(async (fired) => {
         if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('alarm-ringing')) {
+          const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
           alarmRoutedRef.current = true;
-          console.log('[Layout] App foregrounded from alarm (background path) → /alarm-ringing');
-          router.push('/alarm-ringing' as never);
+          if (missionId) {
+            if (!(segments as string[]).includes('mission')) {
+              console.log('[Layout] App foregrounded mid-mission → /mission');
+              router.push(`/mission?id=${missionId}` as never);
+            }
+          } else {
+            console.log('[Layout] App foregrounded from alarm (background path) → /alarm-ringing');
+            router.push('/alarm-ringing' as never);
+          }
         }
       }).catch(() => { });
     });
     return () => sub.remove();
   }, [segments]);
+
+  // ── When app is LAUNCHED by a habit alarm fullScreenAction (app was killed) ───
+  // index.js background handler writes PENDING_HABIT_KEY to AsyncStorage on
+  // EventType.DELIVERED. We read + clear it here so the alarm screen opens
+  // automatically even when getInitialNotification() returns null (fullScreen
+  // action launches the activity without a user "tap").
+  useEffect(() => {
+    const PENDING_HABIT_KEY = 'onesutra_pending_habit_v1';
+    AsyncStorage.getItem(PENDING_HABIT_KEY)
+      .then((raw: string | null) => {
+        if (!raw) return;
+        AsyncStorage.removeItem(PENDING_HABIT_KEY).catch(() => {});
+        const alarm = JSON.parse(raw);
+        const hk = encodeURIComponent(alarm.habitKey ?? '');
+        const he = encodeURIComponent(alarm.habitEmoji ?? '🌿');
+        const hl = encodeURIComponent(alarm.label ?? 'Habit Alarm');
+        const at = alarm.alarmType ?? 'habit';
+        setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}` as never), 400);
+      })
+      .catch(() => {});
+  }, []);
 
   // ── When app is LAUNCHED by a notifee notification (habit alarm / evening mantra) ──
   useEffect(() => {
@@ -164,10 +203,11 @@ function BodhiNotificationListener() {
         if (data?.type === 'evening-mantra') {
           setTimeout(() => router.replace('/habit-alarm-ringing?habitKey=evening_mantra&habitEmoji=%F0%9F%94%B1&label=Shiv%20Sankalpa%20Suktam&mantraId=shiv_sankalpa_suktam' as never), 300);
         } else if (data?.type === 'habit-alarm') {
-          const hk = encodeURIComponent(data?.alarmId ?? '');
+          const hk = encodeURIComponent(data?.habitKey ?? data?.alarmId ?? '');
           const he = encodeURIComponent(data?.habitEmoji ?? '🌿');
           const hl = encodeURIComponent(data?.label ?? 'Habit Alarm');
-          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}` as never), 300);
+          const at = data?.alarmType ?? 'habit';
+          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}` as never), 300);
         }
       }).catch(() => {});
     } catch { /* ignore */ }
@@ -232,7 +272,8 @@ function BodhiNotificationListener() {
           const habitKey = encodeURIComponent((data?.alarmId ?? '') as string);
           const habitEmoji = encodeURIComponent((data?.habitEmoji ?? '🌿') as string);
           const habitLabel = encodeURIComponent((data?.label ?? 'Habit Alarm') as string);
-          setTimeout(() => router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}` as never), 800);
+          const alarmType = data?.alarmType ?? 'habit';
+          setTimeout(() => router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}` as never), 800);
           return;
         }
 
@@ -279,7 +320,8 @@ function BodhiNotificationListener() {
             const habitKey = encodeURIComponent((data?.alarmId ?? '') as string);
             const habitEmoji = encodeURIComponent((data?.habitEmoji ?? '🌿') as string);
             const habitLabel = encodeURIComponent((data?.label ?? 'Habit Alarm') as string);
-            router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}` as never);
+            const alarmType = data?.alarmType ?? 'habit';
+            router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}` as never);
             return;
           }
 
@@ -298,6 +340,19 @@ function BodhiNotificationListener() {
     };
   }, []);
   return null;
+}
+
+function GlobalMoodLayer() {
+  const { moodPhase, preMood, confirmMood, skipMood } = useSoundPlayer();
+  return (
+    <MoodSheet
+      visible={moodPhase !== null}
+      mode={moodPhase === 'result' ? 'result' : (moodPhase ?? 'pre')}
+      preMood={preMood}
+      onSelect={(key: MoodKey) => confirmMood(key)}
+      onSkip={() => skipMood()}
+    />
+  );
 }
 
 export default function RootLayout() {
@@ -323,6 +378,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg }}>
       <SafeAreaProvider>
+      <SoundPlayerProvider>
+        <GlobalMoodLayer />
         <StatusBar style="light" />
         <AuthGuard onAuthReady={() => setAuthReady(true)} />
         <BodhiNotificationListener />
@@ -334,8 +391,10 @@ export default function RootLayout() {
           <Stack.Screen name="notification-landing" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         </Stack>
+      </SoundPlayerProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

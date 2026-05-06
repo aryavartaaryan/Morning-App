@@ -14,9 +14,13 @@ import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
-import { stopNativeAlarmSound, cancelNativeAlarm, setNativeAlarmVolume } from '@/lib/nativeAlarm';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { stopNativeAlarmSound, setNativeAlarmVolume } from '@/lib/nativeAlarm';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 import { store, KEYS } from '@/lib/storage';
+import { getSolarTimes } from '@/lib/solar';
+import { recordWake } from '@/lib/sunriseStreak';
 import { type AlarmSettings } from '@/lib/notifications';
 import { saveHabitLog, todayStr } from '@/lib/habitLogs';
 import { auth } from '@/lib/firebase';
@@ -61,6 +65,7 @@ export default function AlarmRingingScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const missionStartedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // ── Audio helpers ──────────────────────────────────────────────────────────
   const stopWakeAudio = async () => {
@@ -75,6 +80,10 @@ export default function AlarmRingingScreen() {
 
   const playWakeAudio = async (uri: string | null, startDucked = false, bundledAsset?: any) => {
     await stopWakeAudio();
+    // Silence the native AlarmSoundService MediaPlayer — JS audio takes over from here.
+    // Native service keeps running for wake lock / fullScreen notification, but its
+    // audio output is muted so we never get two mantras playing simultaneously.
+    await setNativeAlarmVolume(0).catch(() => {});
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -155,6 +164,12 @@ export default function AlarmRingingScreen() {
     return () => { deactivateKeepAwake('alarm-ringing'); };
   }, []);
 
+  // ── Silence ambient sound player when alarm starts ──────────────────────────
+  useEffect(() => {
+    stopAmbientSound(false).catch(() => {});
+    dismissMoodSheet();
+  }, []);
+
   // ── Clock ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const t = setInterval(() => setTimeStr(fmtTime()), 15_000);
@@ -186,12 +201,19 @@ export default function AlarmRingingScreen() {
     const fireBttfNotif = async () => {
       if (Platform.OS !== 'android') return;
       try {
+        // Create a silent channel so the notification does NOT play a sound
+        // (using 'arise-alarms' plays mantra_alarm.wav which interrupts the looping audio)
+        await notifee.createChannel({
+          id: 'alarm-bttf-silent',
+          name: 'Alarm Return Prompt',
+          importance: AndroidImportance.HIGH,
+        });
         const id = await notifee.displayNotification({
           id: 'alarm-bttf',
           title: '⏰ Alarm Ringing!',
           body: 'Return to complete your mission and stop the alarm.',
           android: {
-            channelId: 'arise-alarms',
+            channelId: 'alarm-bttf-silent',
             importance: AndroidImportance.HIGH,
             category: AndroidCategory.ALARM,
             visibility: AndroidVisibility.PUBLIC,
@@ -296,12 +318,12 @@ export default function AlarmRingingScreen() {
       // to the mission screen. JS audio (__missionBgSound) takes over.
 
       if (settings.bodhiMorningBrief && !cancelled) {
-        // Duck native alarm volume while Bodhi speaks, then restore
-        await setNativeAlarmVolume(0.06);
         const mission = MISSIONS.find(m => m.id === settings.selectedMission);
         const mantraLabel =
-          mantraId === 'lalitha' ? 'Lalitha Sahasranama' :
-          mantraId === 'shivtandav' ? 'Shiv Tandav' : 'Gayatri Mantra';
+          mantraId === 'lalitha'              ? 'Lalitha Sahasranama' :
+          mantraId === 'shivtandav'           ? 'Shiv Tandav' :
+          mantraId === 'bhagya_suktam'        ? 'Bhagya Suktam' :
+          mantraId === 'shiv_sankalpa_suktam' ? 'Shiv Sankalpa Suktam' : 'Gayatri Mantra';
         const hour = new Date().getHours();
         const kalaLine = hour < 10 ? 'the golden morning window is open' : "it's time to lock in";
         const script =
@@ -309,8 +331,20 @@ export default function AlarmRingingScreen() {
           `Mission today: ${mission?.name}. You're on a ${settings.streak || 1}-day streak — don't break it now. ` +
           `${mission?.hype} Let's go.`;
         speakBodhi(script).then(async () => {
-          await setNativeAlarmVolume(1.0);
-        });
+          if (cancelled) return;
+          // speakBodhi sets shouldDuckAndroid:true globally — restore full alarm audio mode
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 1,
+            interruptionModeAndroid: 1,
+          }).catch(() => {});
+          // Restore mantra volume if it was ducked for Bodhi speech
+          if (soundRef.current) {
+            await soundRef.current.setVolumeAsync(1.0).catch(() => {});
+          }
+        }).catch(() => {});
       }
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -341,11 +375,11 @@ export default function AlarmRingingScreen() {
       (global as any).__missionBgSound = soundRef.current;
       soundRef.current = null;
     }
-    // Stop native AlarmSoundService BEFORE navigating to mission.
-    // If left running, its fullScreenAction notification relaunches the alarm
-    // screen when the camera opens (sky mission) — causing double audio.
-    await stopNativeAlarmSound();
-    await cancelNativeAlarm();
+    // Mute native AlarmSoundService audio but KEEP the service running.
+    // alarm_fired_pending stays true → isAlarmActive() = true in MainActivity
+    // → onUserLeaveHint + lifecycle watchdog keep blocking HOME on mission screen.
+    // The service (and both watchdogs) are stopped in mission.tsx handleComplete().
+    await setNativeAlarmVolume(0).catch(() => {});
     Vibration.cancel();
   };
 
@@ -364,7 +398,19 @@ export default function AlarmRingingScreen() {
       }).catch(() => {});
     }
 
+    // Record wake time & update sunrise streak
+    try {
+      const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location);
+      if (loc?.lat && loc?.lon) {
+        const solar = await getSolarTimes(loc.lat, loc.lon);
+        await recordWake(solar.sunrise);
+      } else {
+        await recordWake(6.25); // fallback ~6:15 AM
+      }
+    } catch { /* non-blocking */ }
+
     await stopAlarmCompletely();
+    await AsyncStorage.setItem('onesutra_mission_active_v1', mission.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace(`/mission?id=${mission.id}` as never);
   };

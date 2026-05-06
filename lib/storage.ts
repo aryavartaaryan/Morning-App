@@ -39,4 +39,6 @@ export const KEYS = {
   alarmActive: 'onesutra_alarm_active_v1',   // '1' while alarm is ringing; cleared on mission complete
   multiAlarms: 'onesutra_multi_alarms_v1',   // AlarmEntry[] — habit + quick alarms
   brahmaMuhurtaNotif: 'arise_brahma_muhurta_v1', // boolean — daily BM notification enabled
+  wakeLog:            'onesutra_wake_log_v1',     // WakeLogEntry — today's alarm wake record
+  sunriseStreak:      'onesutra_sunrise_streak_v1', // SunriseStreak — before-sunrise wake streak
 };

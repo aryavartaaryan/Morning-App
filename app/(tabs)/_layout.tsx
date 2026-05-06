@@ -1,9 +1,89 @@
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { Text, View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { useRef, useEffect } from 'react';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const fmtTimer = (s: number) => `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
+
+function GlobalPlayerBar() {
+  const { playingId, isPaused, sessionSecs, playingMeta, togglePause, stopSound } = useSoundPlayer();
+  const slideAnim = useRef(new Animated.Value(80)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: playingId ? 0 : 80,
+      useNativeDriver: true,
+      speed: 22,
+      bounciness: 3,
+    }).start();
+  }, [!!playingId]);
+
+  if (!playingMeta) return null;
+
+  return (
+    <Animated.View style={[GP.wrap, { transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={[playingMeta.top + 'F0', playingMeta.bot + 'F8']}
+        style={GP.grad}
+      >
+        <View style={[GP.liveDot, { backgroundColor: isPaused ? '#555' : playingMeta.color }]} />
+        <Text style={{ fontSize: 16 }}>{playingMeta.emoji}</Text>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={[GP.name, { color: playingMeta.color }]} numberOfLines={1}>
+            {playingMeta.label}
+          </Text>
+          <Text style={GP.sub}>
+            {isPaused ? 'Paused' : fmtTimer(sessionSecs) + ' left'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); togglePause(); }}
+          style={GP.btn}
+        >
+          <Ionicons name={isPaused ? 'play' : 'pause'} size={17} color={playingMeta.color} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(true); }}
+          style={[GP.btn, { marginLeft: 6, backgroundColor: '#FFFFFF0A' }]}
+        >
+          <Ionicons name="stop" size={15} color="#FFFFFF40" />
+        </TouchableOpacity>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
+const GP = StyleSheet.create({
+  wrap: {
+    marginHorizontal: 14,
+    marginBottom: 6,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    elevation: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  grad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
+  name:    { fontSize: 12, fontWeight: '800', letterSpacing: 0.1 },
+  sub:     { fontSize: 10, color: '#FFFFFF50', marginTop: 1 },
+  btn:     { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF14', alignItems: 'center', justifyContent: 'center' },
+});
 
 const TABS = [
   { name: 'index',    route: '/(tabs)',           iconOn: 'sunny'       as const, icon: 'sunny-outline'       as const, label: 'Daily',    color: '#F5820A' },
@@ -21,6 +101,7 @@ function CustomTabBar() {
 
   return (
     <View style={[styles.wrapper, { paddingBottom: bottomPad }]}>
+      <GlobalPlayerBar />
       <View style={styles.pill}>
         {TABS.map(tab => {
           const focused = path === '/' ? tab.name === 'index' : path.endsWith(tab.name);

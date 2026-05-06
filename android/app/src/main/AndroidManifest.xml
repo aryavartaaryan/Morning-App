@@ -91,5 +91,20 @@
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="alarm"/>
     </service>
+
+    <!-- HabitAlarmBroadcastReceiver — wakes device and starts HabitAlarmSoundService -->
+    <receiver
+      android:name=".HabitAlarmBroadcastReceiver"
+      android:exported="false"/>
+
+    <!-- HabitAlarmSoundService — plays mantra + unbreakable screen for habit/quick alarms -->
+    <service
+      android:name=".HabitAlarmSoundService"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback|specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="alarm"/>
+    </service>
   </application>
 </manifest>

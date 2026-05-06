@@ -27,6 +27,8 @@ export interface PrakritiPlan {
 // Needs: grounding, warmth, routine, slow movement, oily nourishment
 const V: DActivity[] = [
   { habitId:'wake_early',       emoji:'🌙', name:'Rise & Ground',         time:'6:00 AM', startMin:360, endMin:390, duration:'—',         note:'Rise gently — no alarm shock. Lie still 2 min, take 5 deep breaths before standing.' },
+  { habitId:'morning_prayer',   emoji:'🙏', name:'Prayer',                 time:'6:01 AM', startMin:361, endMin:371, duration:'10 min',     note:'Offer gratitude at your altar or facing East. A Vata mind becomes deeply grounded when anchored in devotion each morning.' },
+  { habitId:'morning_stretch',  emoji:'🤸', name:'Stretching',             time:'6:11 AM', startMin:371, endMin:376, duration:'5 min',      note:'Gentle neck rolls, spinal twists and forward bends. Vata joints need lubrication and warmth before any vigorous movement.' },
   { habitId:'warm_water',       emoji:'💧', name:'Warm Ginger Water',     time:'6:05 AM', startMin:365, endMin:390, duration:'2 glasses',  note:'Warm water + fresh ginger + lemon. Drink within 30 min of waking — flushes overnight Ama and awakens Agni gently.' },
   { habitId:'morning_cleanse',  emoji:'🪷', name:'Abhyanga & Cleanse',    time:'6:20 AM', startMin:380, endMin:450, duration:'20 min',     note:'Sesame oil Abhyanga (5 min self-massage), Dant Manjan, answer urge, warm oil bath.' },
   { habitId:'meditation',       emoji:'🧘', name:'Morning Meditation',      time:'6:50 AM', startMin:410, endMin:450, duration:'10 min',     note:'Sit in stillness and watch the breath. The most powerful Vata-calming practice — 10 min of morning silence.' },
@@ -48,6 +50,8 @@ const V: DActivity[] = [
 // Needs: cooling, calming, moderation, cooling oil, no midday sun
 const P: DActivity[] = [
   { habitId:'wake_early',       emoji:'🌙', name:'Pre-dawn Rise',         time:'5:45 AM', startMin:345, endMin:390, duration:'—',         note:'Rise before Pitta ignites. The Vata pre-dawn hour preserves coolness and mental clarity.' },
+  { habitId:'morning_prayer',   emoji:'🙏', name:'Prayer',                 time:'5:46 AM', startMin:346, endMin:356, duration:'10 min',     note:'Chant Aditya Hridayam or Surya Mantra. Channels Pitta fire into devotion and clarity before the mind heats up.' },
+  { habitId:'morning_stretch',  emoji:'🤸', name:'Stretching',             time:'5:56 AM', startMin:357, endMin:362, duration:'5 min',      note:'Forward bends and twists to cool Pitta heat. Gentle and deliberate — never competitive or forceful.' },
   { habitId:'warm_water',       emoji:'💧', name:'Cooling Hydration',     time:'5:50 AM', startMin:350, endMin:375, duration:'2 glasses',  note:'Room-temp water with fennel seeds or fresh coconut water — NOT warm. Drink within 25 min of waking to cool Pitta fire at dawn.' },
   { habitId:'morning_cleanse',  emoji:'🪷', name:'Coconut Abhyanga',      time:'6:10 AM', startMin:370, endMin:420, duration:'20 min',     note:'Coconut oil Abhyanga, Dant Manjan, answer urge, lukewarm (not hot) shower.' },
   { habitId:'morning_walk',     emoji:'�', name:'Barefoot Morning Walk',  time:'6:35 AM', startMin:395, endMin:450, duration:'25–30 min',  note:'Walk barefoot on earth or grass at a peaceful pace. Morning dew on the feet — Pitta\'s most cooling medicine.' },
@@ -69,6 +73,8 @@ const P: DActivity[] = [
 // Needs: vigour, stimulation, heat, dry massage, early rising, light food
 const K: DActivity[] = [
   { habitId:'wake_early',       emoji:'🌙', name:'Pre-Kapha Rise',        time:'5:15 AM', startMin:315, endMin:360, duration:'—',         note:'MUST rise before 6 AM. Kapha accumulates 6–10 AM — sleeping in creates all-day heaviness.' },
+  { habitId:'morning_prayer',   emoji:'🙏', name:'Prayer',                 time:'5:16 AM', startMin:316, endMin:326, duration:'10 min',     note:'Recite Hanuman Chalisa or Vishnu Sahasranamam. Prayer activates Kapha prana before the body tries to pull you back to sleep.' },
+  { habitId:'morning_stretch',  emoji:'🤸', name:'Stretching',             time:'5:26 AM', startMin:327, endMin:332, duration:'5 min',      note:'Dynamic stretches — arm circles, shoulder rolls, standing twists. Kapha needs vigorous stimulation to overcome morning inertia.' },
   { habitId:'warm_water',       emoji:'💧', name:'Stimulating Detox',     time:'5:20 AM', startMin:320, endMin:345, duration:'2 glasses',  note:'Warm water with ginger, lemon, black pepper, and raw honey. Drink immediately on waking — ignites Kapha Agni and flushes overnight Ama.' },
   { habitId:'morning_cleanse',  emoji:'🪷', name:'Garshana & Cleanse',    time:'5:35 AM', startMin:335, endMin:395, duration:'15 min',     note:'Dry-brush Garshana 5 min (activates lymph), Dant Manjan, answer urge, warm-hot shower.' },
   { habitId:'morning_walk',     emoji:'�', name:'Brisk Barefoot Walk',   time:'6:00 AM', startMin:360, endMin:445, duration:'30–40 min',  note:'Walk briskly barefoot on earth, sand, or grass. Kapha must move every morning — this single walk transforms your whole day.' },

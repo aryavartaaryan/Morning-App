@@ -100,8 +100,10 @@ class MainActivity : ReactActivity() {
    */
   private fun isAlarmActive(): Boolean {
     return try {
-      val prefs = getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-      prefs.getBoolean("alarm_fired_pending", false)
+      if (getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+              .getBoolean("alarm_fired_pending", false)) return true
+      getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+          .getBoolean(HabitAlarmModule.KEY_ACTIVE, false)
     } catch (e: Exception) {
       false
     }

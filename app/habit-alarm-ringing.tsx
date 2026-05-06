@@ -1,38 +1,37 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, Vibration, AppState, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, Vibration, AppState, Platform, NativeModules } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
 import { store, KEYS } from '@/lib/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { saveHabitLog, todayStr } from '@/lib/habitLogs';
 import { auth } from '@/lib/firebase';
-import { getLocalMantraPath } from '@/lib/mantraDownload';
-import { WAKE_SOUNDS } from '@/lib/missionAlarm';
-
-const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
-  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
-  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
-};
+import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
 
 const { width, height } = Dimensions.get('window');
 const ACCENT = '#10b981';
 const HABIT_FS_ID = 'habit-alarm-service';
+const ACTIVE_HABIT_NOTIF_KEY = 'onesutra_active_habit_notif_v1';
 
 export default function HabitAlarmRingingScreen() {
   const router = useRouter();
-  const { habitKey, habitEmoji, label, mantraId: mantraIdParam } = useLocalSearchParams<{ habitKey?: string; habitEmoji?: string; label?: string; mantraId?: string }>();
-  const habitLabel = label ?? 'Habit Alarm';
-  const emoji = habitEmoji ?? '🌿';
+  const { habitKey, habitEmoji, label, mantraId: mantraIdParam, alarmType } = useLocalSearchParams<{ habitKey?: string; habitEmoji?: string; label?: string; mantraId?: string; alarmType?: string }>();
+  const habitLabel = label ?? (alarmType === 'quick' ? 'Quick Alarm' : 'Habit Alarm');
+  const emoji = habitEmoji ?? (alarmType === 'quick' ? '⚡' : '🌿');
+  const isQuick = alarmType === 'quick';
 
   const [phase, setPhase] = useState<'countdown' | 'active'>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [stopped, setStopped] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const bttfNotifIdRef = useRef<string | null>(null);
+  const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // Animations
   const outerScale = useSharedValue(1);
@@ -49,38 +48,30 @@ export default function HabitAlarmRingingScreen() {
 
   useEffect(() => { activateKeepAwakeAsync('habit-alarm'); return () => { deactivateKeepAwake('habit-alarm'); }; }, []);
 
-  // Play mantra audio
+  useEffect(() => {
+    stopAmbientSound(false).catch(() => {});
+    dismissMoodSheet();
+  }, []);
+
+  // Mute the native HabitAlarmSoundService (instant start when killed) so JS takes over
+  useEffect(() => {
+    NativeModules.HabitAlarmModule?.setHabitAlarmVolume?.(0).catch?.(() => {});
+  }, []);
+
+  // Play mantra audio — uses shared alarm audio core (same logic as working morning alarm)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const cfg = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
         const mantraId = (mantraIdParam as string | undefined) ?? cfg?.selectedMantraId ?? 'gayatri';
-        const bundledAsset = BUNDLED_MANTRA_ASSETS[mantraId];
-        const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
-        const localPath = getLocalMantraPath(mantraId);
-        const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
-        const src = bundledAsset ? bundledAsset
-          : (localInfo as any).exists ? { uri: (localInfo as any).uri }
-          : wakeSound.audioUrl ? { uri: wakeSound.audioUrl }
-          : require('../assets/sounds/mantra_alarm.wav');
         if (cancelled) return;
-        let sound: Audio.Sound;
-        try {
-          ({ sound } = await Audio.Sound.createAsync(src, { shouldPlay: true, isLooping: true, volume: 1.0 }));
-        } catch {
-          ({ sound } = await Audio.Sound.createAsync(require('../assets/sounds/mantra_alarm.wav'), { shouldPlay: true, isLooping: true, volume: 1.0 }));
-        }
-        if (cancelled) { sound.unloadAsync(); return; }
-        soundRef.current = sound;
+        await playAlarmAudio(soundRef, mantraId);
       } catch (e) { console.warn('[HabitAlarm] audio:', e); }
     })();
     return () => {
       cancelled = true;
-      soundRef.current?.stopAsync().catch(() => {});
-      soundRef.current?.unloadAsync().catch(() => {});
-      soundRef.current = null;
+      stopAlarmAudio(soundRef);
     };
   }, []);
 
@@ -107,11 +98,26 @@ export default function HabitAlarmRingingScreen() {
     return () => sub.remove();
   }, [stopped]);
 
-  // ── Foreground service — keeps screen alive through Home button ──────────
+  // ── Foreground service — only start if native HabitAlarmSoundService is NOT running ──
+  // When native service is active it already holds the FGS. Starting a second one is
+  // redundant and can cause ANRs on some OEM ROMs.
   useEffect(() => {
     if (Platform.OS !== 'android') return;
+    let notifeeStarted = false;
     (async () => {
       try {
+        const nativeActive = await NativeModules.HabitAlarmModule?.wasHabitAlarmFired?.() ?? false;
+        if (nativeActive) {
+          // Native service is running — just cancel any stale trigger notification
+          AsyncStorage.getItem(ACTIVE_HABIT_NOTIF_KEY).then(notifId => {
+            if (!notifId) return;
+            notifee.cancelNotification(notifId).catch(() => {});
+            notifee.cancelTriggerNotification(notifId).catch(() => {});
+            AsyncStorage.removeItem(ACTIVE_HABIT_NOTIF_KEY).catch(() => {});
+          }).catch(() => {});
+          return;
+        }
+        // No native service — start notifee FGS as fallback
         await notifee.createChannel({
           id: 'arise-habit-alarms', name: 'SolRize Habit Alarms',
           importance: AndroidImportance.HIGH, bypassDnd: true,
@@ -132,47 +138,111 @@ export default function HabitAlarmRingingScreen() {
             pressAction:       { id: 'default', launchActivity: 'default' },
           } as any,
         });
+        notifeeStarted = true;
+        AsyncStorage.getItem(ACTIVE_HABIT_NOTIF_KEY).then(notifId => {
+          if (!notifId) return;
+          notifee.cancelNotification(notifId).catch(() => {});
+          notifee.cancelTriggerNotification(notifId).catch(() => {});
+          AsyncStorage.removeItem(ACTIVE_HABIT_NOTIF_KEY).catch(() => {});
+        }).catch(() => {});
       } catch (e) { console.warn('[HabitAlarm] foreground service start:', e); }
     })();
     return () => {
-      notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
+      if (notifeeStarted) notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
     };
   }, []);
 
-  // ── Safety net: restart audio if Android paused it while backgrounded ──
+  // ── Re-open screen when HOME is pressed (mirrors morning alarm protection) ──
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const sub = AppState.addEventListener('change', next => {
-      if (!stopped
-        && (appStateRef.current === 'background' || appStateRef.current === 'inactive')
-        && next === 'active') {
+    if (stopped) return;
+
+    const BTTF_ID = 'habit-bttf';
+
+    const fireBttfNotif = async () => {
+      if (Platform.OS !== 'android') return;
+      try {
+        await notifee.createChannel({
+          id: 'alarm-bttf-silent',
+          name: 'Alarm Return Prompt',
+          importance: AndroidImportance.HIGH,
+        });
+        await notifee.displayNotification({
+          id: BTTF_ID,
+          title: `${emoji}  ${habitLabel}`,
+          body: 'Return to dismiss your alarm.',
+          android: {
+            channelId: 'alarm-bttf-silent',
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            ongoing: true,
+            asForegroundService: false,
+            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            pressAction: { id: 'default', launchActivity: 'default' },
+          } as any,
+        });
+        bttfNotifIdRef.current = BTTF_ID;
+      } catch (e) { console.warn('[HabitAlarm] bttf notif error:', e); }
+    };
+
+    const cancelBttfNotif = () => {
+      notifee.cancelNotification(bttfNotifIdRef.current ?? BTTF_ID).catch(() => {});
+      bttfNotifIdRef.current = null;
+    };
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (
+        !stopped &&
+        appStateRef.current === 'active' &&
+        (nextState === 'background' || nextState === 'inactive')
+      ) {
+        appStateRef.current = nextState;
+        fireBttfNotif();
         soundRef.current?.getStatusAsync().then((st: any) => {
           if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
         }).catch(() => {});
+      } else if (
+        !stopped &&
+        (appStateRef.current === 'background' || appStateRef.current === 'inactive') &&
+        nextState === 'active'
+      ) {
+        appStateRef.current = nextState;
+        cancelBttfNotif();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        soundRef.current?.getStatusAsync().then((st: any) => {
+          if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
+        }).catch(() => {});
+      } else {
+        appStateRef.current = nextState;
       }
-      appStateRef.current = next;
     });
-    return () => sub.remove();
-  }, [stopped]);
 
-  const stopAudio = async () => {
-    try { if (soundRef.current) { await soundRef.current.stopAsync(); await soundRef.current.unloadAsync(); soundRef.current = null; } } catch { /* ignore */ }
-  };
+    return () => {
+      sub.remove();
+      cancelBttfNotif();
+    };
+  }, [stopped, emoji, habitLabel]);
+
+  const stopAudio = async () => stopAlarmAudio(soundRef);
 
   const stopForegroundService = () => {
     notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
   };
 
+  const stopNative = () => {
+    NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.().catch?.(() => {});
+  };
+
   const handleComplete = async () => {
-    setStopped(true); await stopAudio(); Vibration.cancel(); stopForegroundService();
+    setStopped(true); await stopAudio(); stopNative(); Vibration.cancel(); stopForegroundService();
+    notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
-    if (user && habitKey) saveHabitLog({ habitId: habitKey, habitName: habitLabel, userId: user.uid, date: todayStr(), status: 'done' }).catch(() => {});
+    if (!isQuick && user && habitKey) saveHabitLog({ habitId: habitKey, habitName: habitLabel, userId: user.uid, date: todayStr(), status: 'done' }).catch(() => {});
     router.replace('/(tabs)' as never);
   };
 
-  const handleQuit = async () => { setStopped(true); await stopAudio(); Vibration.cancel(); stopForegroundService(); router.replace('/(tabs)' as never); };
+  const handleQuit = async () => { setStopped(true); await stopAudio(); stopNative(); Vibration.cancel(); stopForegroundService(); notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {}); router.replace('/(tabs)' as never); };
 
   return (
     <View style={S.screen}>
@@ -191,40 +261,44 @@ export default function HabitAlarmRingingScreen() {
             </Animated.View>
           </View>
           <Text style={S.countdownLabel}>{emoji}  {habitLabel}</Text>
-          <Text style={S.countdownSub}>HABIT ALARM ACTIVATED</Text>
+          <Text style={S.countdownSub}>{isQuick ? 'QUICK ALARM ACTIVATED' : 'HABIT ALARM ACTIVATED'}</Text>
         </View>
       ) : (
         /* ── Commitment Screen ── */
         <View style={S.commitWrap}>
           <View style={S.commitTop}>
             <View style={[S.typeBadge, { borderColor: ACCENT + '50', backgroundColor: ACCENT + '12' }]}>
-              <Text style={[S.typeBadgeTxt, { color: ACCENT }]}>🌿  HABIT ALARM  ·  LOCKED</Text>
+              <Text style={[S.typeBadgeTxt, { color: ACCENT }]}>{isQuick ? '⚡  QUICK ALARM  ·  LOCKED' : '🌿  HABIT ALARM  ·  LOCKED'}</Text>
             </View>
             <Animated.View style={[S.emojiRing, innerStyle, { borderColor: ACCENT + '45', backgroundColor: ACCENT + '10' }]}>
               <Text style={S.bigEmoji}>{emoji}</Text>
             </Animated.View>
             <Text style={S.commitHabitName}>{habitLabel}</Text>
-            <View style={S.riskBanner}>
-              <Text style={S.riskEmoji}>🔥</Text>
-              <Text style={S.riskTxt}>Your streak is at risk — act now!</Text>
-            </View>
+            {!isQuick && (
+              <View style={S.riskBanner}>
+                <Text style={S.riskEmoji}>🔥</Text>
+                <Text style={S.riskTxt}>Your streak is at risk — act now!</Text>
+              </View>
+            )}
           </View>
 
           <View style={S.commitBottom}>
-            <Text style={S.commitQuestion}>Ready to do this right now?</Text>
+            <Text style={S.commitQuestion}>{isQuick ? 'Tap below to dismiss your alarm.' : 'Ready to do this right now?'}</Text>
             <TouchableOpacity style={[S.commitBtn, { backgroundColor: ACCENT }]} onPress={handleComplete} activeOpacity={0.88}>
-              <Text style={S.commitBtnTxt}>✊  I COMMIT — I'LL DO IT NOW</Text>
+              <Text style={S.commitBtnTxt}>{isQuick ? '✓  DISMISS ALARM' : '✊  I COMMIT — I’LL DO IT NOW'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={S.skipBtn} onPress={handleQuit} activeOpacity={0.7}>
-              <Text style={S.skipTxt}>Skip this time (streak will reset)</Text>
-            </TouchableOpacity>
+            {!isQuick && (
+              <TouchableOpacity style={S.skipBtn} onPress={handleQuit} activeOpacity={0.7}>
+                <Text style={S.skipTxt}>Skip this time (streak will reset)</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
 
       {phase !== 'countdown' && (
         <View style={S.lockBar}>
-          <Text style={S.lockBarTxt}>🔒  Dismiss only by committing</Text>
+          <Text style={S.lockBarTxt}>{isQuick ? '🔒  Dismiss by tapping above' : '🔒  Dismiss only by committing'}</Text>
         </View>
       )}
     </View>

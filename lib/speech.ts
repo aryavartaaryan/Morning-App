@@ -139,7 +139,7 @@ export async function speakBodhi(text: string): Promise<void> {
     await FileSystem.writeAsStringAsync(uri, wavB64, { encoding: FileSystem.EncodingType.Base64 });
     if (myGen !== speakGen) return;
 
-    try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false, shouldDuckAndroid: true }); } catch {}
+    try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: true }); } catch {}
     const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
     if (myGen !== speakGen) { sound.unloadAsync(); return; }
     activeSound = sound;

@@ -12,10 +12,12 @@ import notifee, { EventType } from '@notifee/react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ALARM_NOTIF_ID       = 'onesutra-wake-alarm';
-const HABIT_ALARM_NOTIF_ID = 'habit-alarm-service';
-const ALARM_ACTIVE_KEY     = 'onesutra_alarm_active_v1';
-const PENDING_SLOT_KEY     = 'onesutra_pending_slot_v1';
+const ALARM_NOTIF_ID        = 'onesutra-wake-alarm';
+const HABIT_ALARM_NOTIF_ID  = 'habit-alarm-service';
+const ALARM_ACTIVE_KEY      = 'onesutra_alarm_active_v1';
+const PENDING_SLOT_KEY      = 'onesutra_pending_slot_v1';
+const PENDING_HABIT_KEY      = 'onesutra_pending_habit_v1';
+const ACTIVE_HABIT_NOTIF_KEY = 'onesutra_active_habit_notif_v1';
 
 // ─── 1. FOREGROUND SERVICE RUNNER ───────────────────────────────────────────────────────────────────────────────
 // Handles BOTH wake alarm (onesutra-wake-alarm) and habit alarm
@@ -55,8 +57,27 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   // ── Slot reminder (Ayurvedic period alert) ──────────────────────────────
   if (data.type === 'slot-reminder') {
     if ((type === EventType.DELIVERED || type === EventType.PRESS) && data.slotId) {
-      // Store slotId so _layout.tsx can route to /notification-landing on app open
       await AsyncStorage.setItem(PENDING_SLOT_KEY, data.slotId).catch(() => {});
+    }
+    return;
+  }
+
+  // ── Habit alarm fired while app was killed ───────────────────────────────
+  // Store the alarm payload so _layout.tsx can route to /habit-alarm-ringing
+  // when MainActivity is launched by the fullScreenAction intent.
+  // getInitialNotification() alone is unreliable for fullScreenAction launches
+  // (user never "tapped" the notification), so AsyncStorage is the safety net.
+  if (data.type === 'habit-alarm') {
+    if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+      await AsyncStorage.setItem(PENDING_HABIT_KEY, JSON.stringify({
+        habitKey:   data.habitKey   ?? data.alarmId ?? id ?? '',
+        habitEmoji: data.habitEmoji ?? '🌿',
+        label:      data.label      ?? 'Habit Alarm',
+        alarmType:  data.alarmType  ?? 'habit',
+      })).catch(() => {});
+      // Store the notification ID so habit-alarm-ringing.tsx can cancel
+      // the trigger's foreground service once the screen mounts.
+      await AsyncStorage.setItem(ACTIVE_HABIT_NOTIF_KEY, id ?? '').catch(() => {});
     }
     return;
   }

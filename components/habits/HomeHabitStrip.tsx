@@ -9,6 +9,8 @@ import type { HabitLogEntry } from '@/lib/habitLogs';
 // Names aligned with HABIT_LABELS in index.tsx for consistency with Dinacharya page
 export const ALL_HABIT_DEFS: Record<string, { emoji: string; name: string; color: string; slot: string; type: 'LOG' | 'TRACK' | 'MEAL' }> = {
   wake_early:      { emoji: '🌙', name: 'Wake Early',            color: '#a78bfa', slot: 'Brahma',  type: 'LOG'   },
+  morning_prayer:  { emoji: '🙏', name: 'Prayer',               color: '#fbbf24', slot: 'Brahma',  type: 'LOG'   },
+  morning_stretch: { emoji: '🤸', name: 'Stretching',           color: '#34d399', slot: 'Brahma',  type: 'LOG'   },
   warm_water:      { emoji: '💧', name: 'Morning Hydration',     color: '#60a5fa', slot: 'Brahma',  type: 'LOG'   },
   morning_cleanse: { emoji: '🪷', name: 'Morning Cleanse',       color: '#38bdf8', slot: 'Brahma',  type: 'LOG'   },
   meditation:      { emoji: '🧘', name: 'Meditation',            color: '#c084fc', slot: 'Brahma',  type: 'TRACK' },

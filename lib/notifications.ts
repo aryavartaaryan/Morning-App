@@ -173,12 +173,13 @@ export interface AlarmSettings {
   selectedMantraId?: string;
 }
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
-  wakeAlarm: { enabled: false, hour: 5, minute: 30 },
+  wakeAlarm: { enabled: false, hour: 4, minute: 0 },
   brahmaReminder: true,
   eveningMantra: false,
   checkinReminder: true,
   habitAlerts: {},
   customReminders: [],
+  selectedMantraId: 'bhagya_suktam',
 };
 
 // ── Per-habit expiry window (minutes from midnight, alert 15 min before end) ─

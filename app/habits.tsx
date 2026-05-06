@@ -34,6 +34,7 @@ const DOSHA_COLORS: Record<string, string> = {
 
 const ACTIVITY_TO_TYPE: Record<string, InteractionType> = {
   wake_early: 'wake_early', warm_water: 'warm_water', morning_cleanse: 'cleanse',
+  morning_prayer: 'yesno', morning_stretch: 'yesno',
   meditation: 'meditation',
   morning_walk: 'walk', evening_walk: 'walk', sunlight: 'yesno',
   breakfast: 'meal', lunch: 'meal', dinner: 'meal',
@@ -114,6 +115,8 @@ type CardStatus = 'perfect' | 'late' | 'partial' | 'missed' | 'pending' | 'locke
 const HABIT_BTN: Record<string, { icon: string; label: string; color: string; doneLabel: string }> = {
   // SIMPLE
   wake_early: { icon: '✓', label: 'LOGGED', color: '#F5A623', doneLabel: 'LOGGED' },
+  morning_prayer: { icon: '🙏', label: 'PRAYED', color: '#fbbf24', doneLabel: 'PRAYED' },
+  morning_stretch: { icon: '🤸', label: 'STRETCHED', color: '#34d399', doneLabel: 'DONE' },
   warm_water: { icon: '✓', label: 'DONE', color: '#007AFF', doneLabel: 'DONE' },
   sunlight: { icon: '✓', label: 'DONE', color: '#fbbf24', doneLabel: 'DONE' },
   walk: { icon: '✓', label: '100 STEPS', color: '#34d399', doneLabel: 'DONE' },

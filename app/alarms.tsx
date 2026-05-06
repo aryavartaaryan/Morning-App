@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
-  TextInput, Alert, Animated, Dimensions, NativeModules, Platform, ToastAndroid,
+  TextInput, Alert, Animated, Dimensions, NativeModules, Platform, ToastAndroid, ImageBackground,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,7 +25,7 @@ import {
   setNativeAlarmSound, setNativeAlarmSoundPath,
   requestAllAlarmPermissions,
 } from '@/lib/nativeAlarm';
-import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency } from '@notifee/react-native';
+import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 
@@ -34,6 +34,7 @@ const { width } = Dimensions.get('window');
 
 const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
+  bhagya_suktam: 'bhagya_suktam', shiv_sankalpa: 'shiv_sankalpa_suktam',
 };
 
 const PRESETS = [
@@ -51,21 +52,24 @@ const fmt12 = (h: number, m: number) => {
 };
 
 const AYU_HABITS = [
-  { key: 'wake_early', label: 'Wake Early', emoji: '🌙' },
-  { key: 'warm_water', label: 'Warm Water', emoji: '💧' },
-  { key: 'meditation', label: 'Meditation', emoji: '🧘' },
-  { key: 'pranayama', label: 'Pranayama', emoji: '🌬️' },
-  { key: 'sunlight', label: 'Sunlight', emoji: '☀️' },
-  { key: 'breakfast', label: 'Breakfast', emoji: '🌾' },
-  { key: 'main_meal', label: 'Main Meal', emoji: '🍛' },
-  { key: 'walk', label: 'Shatapavali Walk', emoji: '🚶' },
-  { key: 'herbal_tea', label: 'Herbal Tea', emoji: '🍵' },
-  { key: 'evening_walk', label: 'Evening Walk', emoji: '🌆' },
-  { key: 'light_dinner', label: 'Light Dinner', emoji: '🥗' },
-  { key: 'screen_free', label: 'Screen-free Time', emoji: '📵' },
-  { key: 'journaling', label: 'Journaling', emoji: '📓' },
-  { key: 'sleep', label: 'Sleep by 10 PM', emoji: '🌑' },
-  { key: 'custom', label: 'Custom Habit', emoji: '✨' },
+  { key: 'wake_early',      label: 'Wake Early',       emoji: '🌙' },
+  { key: 'morning_prayer',  label: 'Prayer',           emoji: '🙏' },
+  { key: 'morning_stretch', label: 'Stretching',       emoji: '🤸' },
+  { key: 'hydrate',         label: 'Hydrate',          emoji: '💧' },
+  { key: 'shower',       label: 'Shower',           emoji: '�' },
+  { key: 'meditation',   label: 'Meditation',       emoji: '🧘' },
+  { key: 'sunlight',     label: 'Sunlight',         emoji: '☀️' },
+  { key: 'breakfast',    label: 'Breakfast',        emoji: '🌾' },
+  { key: 'main_meal',    label: 'Main Meal',        emoji: '🍛' },
+  { key: 'walk',         label: 'Shatapavali Walk', emoji: '🚶' },
+  { key: 'herbal_tea',   label: 'Herbal Tea',       emoji: '🍵' },
+  { key: 'evening_walk', label: 'Evening Walk',     emoji: '🌆' },
+  { key: 'light_dinner', label: 'Light Dinner',     emoji: '🥗' },
+  { key: 'screen_free',  label: 'Screen-free Time', emoji: '📵' },
+  { key: 'workout',      label: 'Workout',          emoji: '🏋️' },
+  { key: 'journaling',   label: 'Journaling',       emoji: '📓' },
+  { key: 'sleep',        label: 'Sleep by 10 PM',   emoji: '🌑' },
+  { key: 'custom',       label: 'Custom Habit',     emoji: '✨' },
 ];
 
 export interface AlarmEntry {
@@ -85,18 +89,35 @@ const MANTRAS = [
     hint: 'ॐ भूर्भुवः स्वः', pitch: 0.85, rate: 0.70,
     text: 'Om Bhur Bhuva Swaha, Tat Savitur Varenyam, Bhargo Devasya Dhimahi, Dhiyo Yo Nah Prachodayat. Om Shanti Shanti Shanti.',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3',
+    bundledSrc: null as any,
   },
   {
     id: 'lalitha', label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6',
     hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65,
     text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3',
+    bundledSrc: null as any,
   },
   {
     id: 'shivtandav', label: 'Shiv Tandav', emoji: '🔱', color: '#a78bfa',
     hint: 'ॐ नमः शिवाय', pitch: 0.75, rate: 0.68,
     text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3',
+    bundledSrc: null as any,
+  },
+  {
+    id: 'bhagya_suktam', label: 'Bhagya Suktam', emoji: '🌟', color: '#fde68a',
+    hint: 'ॐ श्री सूक्तम्', pitch: 0.80, rate: 0.65,
+    text: 'Om Hiranyavarnaam Harineem Suvarna Rajata Srajaam. Chandraam Hiranmayeem Lakshmeem Jaatavedo Ma Aavaha.',
+    audioUrl: '',
+    bundledSrc: require('../assets/sounds/bhagya-suktam.mp3'),
+  },
+  {
+    id: 'shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd',
+    hint: 'ॐ यज्जाग्रतो', pitch: 0.78, rate: 0.62,
+    text: 'Yaj Jaagrato Dooaram Udaiti Daivam. Tad U Suptasya Tathaivati. Tan Me Manah Shiva Sankalpam Astu.',
+    audioUrl: '',
+    bundledSrc: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
   },
 ];
 
@@ -110,41 +131,77 @@ function Toggle({ value, onToggle, color = '#a78bfa' }: { value: boolean; onTogg
 }
 
 const DRUM_H = 52;
+const DRUM_REPEAT = 5;  // repeat values 5× for free infinite scroll in both directions
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 function DrumColumn({ values, selected, onChange }: {
   values: number[]; selected: number; onChange: (v: number) => void;
 }) {
-  const ref = useRef<ScrollView>(null);
-  const lastEmit = useRef(selected);
-  const momentumStarted = useRef(false);
-  const didMount = useRef(false);
+  const count = values.length;
+  // Build an array that is DRUM_REPEAT copies of values so the user can
+  // scroll freely in both directions without ever hitting a wall.
+  const repeated = useMemo(
+    () => Array.from({ length: count * DRUM_REPEAT }, (_, i) => values[i % count]),
+    [count],
+  );
+  // Middle copy starts at index (2 * count)
+  const midOffset = 2 * count;
 
+  const ref = useRef<ScrollView>(null);
+  const momentumStarted = useRef(false);
+  const lastEmit = useRef(selected);
+  const [selIdx, setSelIdx] = useState(() => midOffset + values.indexOf(selected));
+  const selIdxRef = useRef(selIdx);
+
+  const updateSel = (idx: number) => {
+    selIdxRef.current = idx;
+    setSelIdx(idx);
+  };
+
+  // Initial position: scroll to middle copy
   useEffect(() => {
-    if (didMount.current) return;
-    didMount.current = true;
-    const idx = values.indexOf(selected);
-    setTimeout(() => ref.current?.scrollTo({ y: idx * DRUM_H, animated: false }), 100);
+    const idx = midOffset + values.indexOf(selected);
+    updateSel(idx);
+    setTimeout(() => ref.current?.scrollTo({ y: idx * DRUM_H, animated: false }), 80);
   }, []);
 
+  // External changes (e.g. preset buttons) — animate to nearest occurrence
   useEffect(() => {
-    if (lastEmit.current !== selected) {
-      const idx = values.indexOf(selected);
-      ref.current?.scrollTo({ y: idx * DRUM_H, animated: true });
-      lastEmit.current = selected;
+    if (lastEmit.current === selected) return;
+    lastEmit.current = selected;
+    const cur = selIdxRef.current;
+    let best = midOffset + values.indexOf(selected);
+    let minD = Math.abs(best - cur);
+    for (let i = 0; i < repeated.length; i++) {
+      if (repeated[i] === selected) {
+        const d = Math.abs(i - cur);
+        if (d < minD) { minD = d; best = i; }
+      }
     }
+    updateSel(best);
+    ref.current?.scrollTo({ y: best * DRUM_H, animated: true });
   }, [selected]);
 
-  const snap = (y: number) => {
-    const idx = Math.max(0, Math.min(Math.round(y / DRUM_H), values.length - 1));
-    const v = values[idx];
+  const handleSnap = (y: number) => {
+    let idx = Math.round(y / DRUM_H);
+    idx = Math.max(0, Math.min(idx, repeated.length - 1));
+    const v = repeated[idx];
     if (v !== lastEmit.current) {
       lastEmit.current = v;
       onChange(v);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    ref.current?.scrollTo({ y: idx * DRUM_H, animated: false });
+    // If landed in the 1st or 5th copy, silently teleport to the same value
+    // in the middle (3rd) copy so there is always room to scroll both ways.
+    if (idx < count || idx >= count * (DRUM_REPEAT - 1)) {
+      const mid = midOffset + values.indexOf(v);
+      updateSel(mid);
+      setTimeout(() => ref.current?.scrollTo({ y: mid * DRUM_H, animated: false }), 0);
+    } else {
+      updateSel(idx);
+      ref.current?.scrollTo({ y: idx * DRUM_H, animated: false });
+    }
   };
 
   return (
@@ -155,26 +212,27 @@ function DrumColumn({ values, selected, onChange }: {
         snapToInterval={DRUM_H}
         decelerationRate="fast"
         scrollEventThrottle={16}
-        nestedScrollEnabled={true}
+        nestedScrollEnabled
         onScrollBeginDrag={() => { momentumStarted.current = false; }}
         onMomentumScrollBegin={() => { momentumStarted.current = true; }}
-        onMomentumScrollEnd={e => { momentumStarted.current = false; snap(e.nativeEvent.contentOffset.y); }}
-        onScrollEndDrag={e => { if (!momentumStarted.current) snap(e.nativeEvent.contentOffset.y); }}
+        onMomentumScrollEnd={e => { momentumStarted.current = false; handleSnap(e.nativeEvent.contentOffset.y); }}
+        onScrollEndDrag={e => { if (!momentumStarted.current) handleSnap(e.nativeEvent.contentOffset.y); }}
       >
         <View style={{ height: DRUM_H }} />
-        {values.map(v => (
-          <View key={v} style={{ height: DRUM_H, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{
-              fontSize: v === selected ? 42 : 26,
-              fontWeight: v === selected ? '100' : '300',
-              color: v === selected ? '#FFFFFF' : '#FFFFFF28',
-              letterSpacing: -1.5,
-              textAlign: 'center',
-            }}>
-              {String(v).padStart(2, '0')}
-            </Text>
-          </View>
-        ))}
+        {repeated.map((v, i) => {
+          const isSel = i === selIdx;
+          return (
+            <View key={i} style={{ height: DRUM_H, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{
+                fontSize: isSel ? 42 : 26,
+                fontWeight: isSel ? '100' : '300',
+                color: isSel ? '#FFFFFF' : '#FFFFFF28',
+                letterSpacing: -1.5,
+                textAlign: 'center',
+              }}>{String(v).padStart(2, '0')}</Text>
+            </View>
+          );
+        })}
         <View style={{ height: DRUM_H }} />
       </ScrollView>
     </View>
@@ -182,6 +240,18 @@ function DrumColumn({ values, selected, onChange }: {
 }
 
 function TimeAdjuster({ hour, minute, onChange }: { hour: number; minute: number; onChange: (h: number, m: number) => void }) {
+  const prevMinRef = useRef(minute);
+  useEffect(() => { prevMinRef.current = minute; }, [minute]);
+
+  const handleMinuteChange = (m: number) => {
+    const prev = prevMinRef.current;
+    prevMinRef.current = m;
+    let h = hour;
+    if (prev - m > 30) h = (hour + 1) % 24;          // 59 → 0 : carry hour forward
+    else if (m - prev > 30) h = (hour - 1 + 24) % 24; // 0 → 59 : borrow hour back
+    onChange(h, m);
+  };
+
   return (
     <View style={{ paddingVertical: 10 }}>
       <View>
@@ -190,7 +260,7 @@ function TimeAdjuster({ hour, minute, onChange }: { hour: number; minute: number
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
           <DrumColumn values={HOURS} selected={hour} onChange={h => onChange(h, minute)} />
           <Text style={{ fontSize: 36, fontWeight: '100', color: '#FFFFFF35', paddingHorizontal: 8, marginTop: 0, alignSelf: 'center' }}>:</Text>
-          <DrumColumn values={MINUTES} selected={minute} onChange={m => onChange(hour, m)} />
+          <DrumColumn values={MINUTES} selected={minute} onChange={handleMinuteChange} />
           <Text style={{ fontSize: 17, fontWeight: '800', color: '#a78bfa', paddingLeft: 12, alignSelf: 'center', letterSpacing: 0.5 }}>
             {hour < 12 ? 'AM' : 'PM'}
           </Text>
@@ -212,8 +282,8 @@ export default function AlarmsScreen() {
   const [selectedMantraId, setSelectedMantraId] = useState('gayatri');
   const saveAnim = useRef(new Animated.Value(0)).current;
   const alarmActiveRef = useRef(false);
-  const [dlStatus, setDlStatus] = useState<Record<string, 'idle' | 'downloading' | 'downloaded'>>(
-    { gayatri: 'idle', lalitha: 'idle', shivtandav: 'idle' }
+  const [dlStatus, setDlStatus] = useState<Record<string, 'idle' | 'downloading' | 'downloaded' | 'bundled'>>(
+    { gayatri: 'idle', lalitha: 'idle', shivtandav: 'idle', bhagya_suktam: 'bundled', shiv_sankalpa: 'bundled' }
   );
   const [dlProgress, setDlProgress] = useState<Record<string, number>>({});
 
@@ -223,6 +293,7 @@ export default function AlarmsScreen() {
   // ── FAB state ──────────────────────────────────────────────────────────────
   const [fabOpen, setFabOpen] = useState(false);
   const fabAnim = useRef(new Animated.Value(0)).current;
+  const habitScrollRef = useRef<ScrollView>(null);
 
   // ── Modal state ────────────────────────────────────────────────────────────
   const [showWakeEdit, setShowWakeEdit] = useState(false);
@@ -254,6 +325,9 @@ export default function AlarmsScreen() {
   const [liveClock, setLiveClock] = useState(new Date());
   const [prakritiWake, setPrakritiWake] = useState<{ label: string; hour: number; minute: number; color: string } | null>(null);
   const [alarmModal, setAlarmModal] = useState(false);
+  const [settingsSoundOpen, setSettingsSoundOpen] = useState(false);
+  const [modalSoundOpen, setModalSoundOpen] = useState(false);
+  const [modalMissionOpen, setModalMissionOpen] = useState(false);
   const [alarmType, setAlarmType] = useState<'mantra' | 'gayatri'>('mantra');
 
   useEffect(() => {
@@ -289,8 +363,9 @@ export default function AlarmsScreen() {
         }
       }
       // Check which mantras are already downloaded
-      const statuses: Record<string, 'idle' | 'downloading' | 'downloaded'> = {};
+      const statuses: Record<string, 'idle' | 'downloading' | 'downloaded' | 'bundled'> = {};
       for (const m of MANTRAS) {
+        if (m.bundledSrc) { statuses[m.id] = 'bundled'; continue; }
         statuses[m.id] = (await isMantraDownloaded(m.id)) ? 'downloaded' : 'idle';
       }
       setDlStatus(statuses);
@@ -521,13 +596,14 @@ export default function AlarmsScreen() {
     // Keep MissionSettings.wakeSound in sync so alarm-ringing.tsx plays the same mantra
     const wakeSoundId = MANTRA_TO_WAKE_SOUND[id] ?? 'gayatri';
     updateMission({ wakeSound: wakeSoundId });
-    // If already downloaded, update native path immediately so the service plays the right file
+    // If bundled locally or already downloaded, no CDN download needed
+    const m = MANTRAS.find(x => x.id === id);
+    if (m?.bundledSrc) return;
     if (dlStatus[id] === 'downloaded') {
       setNativeAlarmSoundPath(getLocalMantraPath(id)).catch(() => {});
       return;
     }
     if (dlStatus[id] === 'downloading') return;
-    const m = MANTRAS.find(x => x.id === id);
     if (!m?.audioUrl) return;
     setDlStatus(s => ({ ...s, [id]: 'downloading' }));
     setDlProgress(s => ({ ...s, [id]: 0 }));
@@ -547,6 +623,19 @@ export default function AlarmsScreen() {
     alarmActiveRef.current = true;
     setAlarmType(overrideType === 'mantra' ? 'mantra' : 'gayatri');
     setAlarmModal(true);
+
+    // ── Step 0a: Bundled asset (bhagya_suktam, shiv_sankalpa) ─────────────────
+    if (mantra.bundledSrc) {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false, staysActiveInBackground: true });
+        const { sound } = await Audio.Sound.createAsync(
+          mantra.bundledSrc,
+          { shouldPlay: true, volume: 1.0, isLooping: true },
+        );
+        (global as any).__alarmSound = sound;
+        return;
+      } catch (_) { /* fall through */ }
+    }
 
     // ── Step 0: Try local downloaded file (offline-first, instant) ───────────
     try {
@@ -697,10 +786,21 @@ export default function AlarmsScreen() {
   // ── Multi-alarm entry handlers ─────────────────────────────────────────────
   const scheduleEntryNotif = async (entry: AlarmEntry) => {
     if (!entry.enabled) return;
-    const title = entry.type === 'habit' ? `${entry.habitEmoji ?? '🌿'} ${entry.label}` : `⚡ ${entry.label || 'Quick Alarm'}`;
+    const title = entry.type === 'habit'
+      ? `${entry.habitEmoji ?? '🌿'} ${entry.label}`
+      : `⚡ ${entry.label || 'Quick Alarm'}`;
 
-    // Habit alarms on Android: use notifee full-screen intent (rings even when screen is off)
-    if (Platform.OS === 'android' && entry.type === 'habit') {
+    // Cancel any stale notifications for this entry before rescheduling
+    await notifee.cancelTriggerNotification(`habit-${entry.id}`).catch(() => {});
+    await Notifications.cancelScheduledNotificationAsync(`alarm-${entry.id}`).catch(() => {});
+
+    const now = new Date();
+    const next = new Date();
+    next.setHours(entry.hour, entry.minute, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+
+    // ── Android: notifee full-screen intent (same mechanism as wake alarm) ──
+    if (Platform.OS === 'android') {
       try {
         await notifee.createChannel({
           id: 'arise-habit-alarms',
@@ -712,15 +812,11 @@ export default function AlarmsScreen() {
           bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);
-        const now = new Date();
-        const next = new Date();
-        next.setHours(entry.hour, entry.minute, 0, 0);
-        if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
         await notifee.createTriggerNotification(
           {
             id: `habit-${entry.id}`,
             title,
-            body: 'Time for your habit! Tap to confirm. 🙏',
+            body: entry.type === 'habit' ? 'Time for your habit! Tap to begin. 🙏' : 'Your alarm is ringing! ⏰',
             android: {
               channelId: 'arise-habit-alarms',
               importance: AndroidImportance.HIGH,
@@ -729,30 +825,50 @@ export default function AlarmsScreen() {
               fullScreenAction: { id: 'default', launchActivity: 'default' },
               pressAction: { id: 'default', launchActivity: 'default' },
             } as any,
-            data: { type: 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '🌿', label: entry.label },
+            data: {
+              type: 'habit-alarm',
+              alarmId: entry.id,
+              habitKey: entry.habitKey ?? entry.id,
+              habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : '🌿'),
+              label: entry.label,
+              alarmType: entry.type,
+            },
           },
-          { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { allowWhileIdle: true } } as any,
+          {
+            type: TriggerType.TIMESTAMP,
+            timestamp: next.getTime(),
+            repeatFrequency: RepeatFrequency.DAILY,
+            alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+          } as any,
         );
+        ToastAndroid?.show?.(`🔔 Alarm set · ${fmt12(entry.hour, entry.minute)}`, ToastAndroid.SHORT);
         return;
-      } catch (e) { console.warn('[Alarms] notifee habit alarm failed, falling back:', e); }
+      } catch (e: any) {
+        console.warn('[Alarms] notifee scheduling failed:', e?.message ?? e);
+      }
     }
 
-    // Quick alarms + iOS: expo-notifications
-    await Notifications.scheduleNotificationAsync({
-      identifier: `alarm-${entry.id}`,
-      content: {
-        title,
-        body: entry.type === 'habit' ? 'Time for your habit. Will you do it today? 🙏' : 'Your alarm is ringing!',
-        sound: 'mantra_alarm.wav',
-        data: { type: entry.type === 'habit' ? 'habit-alarm' : 'quick-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label },
-      },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: entry.hour, minute: entry.minute },
-    });
+    // ── iOS + Android fallback: expo-notifications DAILY trigger ──
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `alarm-${entry.id}`,
+        content: {
+          title,
+          body: entry.type === 'habit' ? 'Time for your habit! 🙏' : 'Your alarm is ringing! ⏰',
+          sound: 'mantra_alarm.wav',
+          data: { type: 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, alarmType: entry.type },
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: entry.hour, minute: entry.minute },
+      });
+    } catch (e2: any) {
+      console.warn('[Alarms] expo-notifications fallback failed:', e2);
+    }
   };
 
   const cancelEntryNotif = async (entryId: string) => {
     await Notifications.cancelScheduledNotificationAsync(`alarm-${entryId}`).catch(() => {});
     await notifee.cancelTriggerNotification(`habit-${entryId}`).catch(() => {});
+    await notifee.cancelNotification(`habit-${entryId}`).catch(() => {});
   };
 
   const saveEntries = async (entries: AlarmEntry[]) => {
@@ -803,6 +919,7 @@ export default function AlarmsScreen() {
     setAddType(null);
     setEditEntry(null);
     setFormLabel('');
+    setFormHabitKey('');
     setShowCustomHabitInput(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -811,8 +928,8 @@ export default function AlarmsScreen() {
     setFormHour(type === 'habit' ? 7 : new Date().getHours());
     setFormMinute(type === 'habit' ? 0 : 0);
     setFormLabel('');
-    setFormHabitKey('meditation');
-    setFormHabitEmoji('🧘');
+    setFormHabitKey(type === 'habit' ? '' : 'meditation');
+    setFormHabitEmoji(type === 'habit' ? '' : '🧘');
     setShowCustomHabitInput(false);
     setEditEntry(null);
     setAddType(type);
@@ -838,6 +955,23 @@ export default function AlarmsScreen() {
   const playingMantra = MANTRAS.find(m => m.id === selectedMantraId) ?? MANTRAS[0];
   const allPermsOk = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
+  const nextAlarmEntry = (() => {
+    const now = liveClock.getHours() * 60 + liveClock.getMinutes();
+    let bestDiff = Infinity;
+    let best: { hour: number; minute: number } | null = null;
+    if (settings.wakeAlarm.enabled) {
+      const t = settings.wakeAlarm.hour * 60 + settings.wakeAlarm.minute;
+      const d = t > now ? t - now : t + 1440 - now;
+      if (d < bestDiff) { bestDiff = d; best = { hour: settings.wakeAlarm.hour, minute: settings.wakeAlarm.minute }; }
+    }
+    alarmEntries.filter(e => e.enabled).forEach(e => {
+      const t = e.hour * 60 + e.minute;
+      const d = t > now ? t - now : t + 1440 - now;
+      if (d < bestDiff) { bestDiff = d; best = { hour: e.hour, minute: e.minute }; }
+    });
+    return best;
+  })();
+
   const nextLabel = (() => {
     const now = liveClock.getHours() * 60 + liveClock.getMinutes();
     const candidates: number[] = [];
@@ -858,35 +992,39 @@ export default function AlarmsScreen() {
 
   return (
     <View style={S.screen}>
-      {/* Header gradient */}
-      <LinearGradient colors={['#16052E', '#0D0120', '#060610']} style={S.headerGrad}>
-        <SafeAreaView edges={['top']}>
-          <View style={S.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
-              <Text style={S.backTxt}>← Back</Text>
-            </TouchableOpacity>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={S.headerTitle}>⏰ Smart Alarmy</Text>
-              <Text style={S.headerSub}>Sacred Wake Intelligence</Text>
+      {/* ── Hero Header ── */}
+      <ImageBackground source={require('../assets/images/hanumanji.png')} style={S.heroBg} resizeMode="cover">
+        <LinearGradient colors={['rgba(4,2,10,0.10)', 'rgba(6,6,16,0.55)', '#060610']} locations={[0, 0.65, 1]} style={S.heroGrad}>
+          <SafeAreaView edges={['top']}>
+            <View style={S.heroTop}>
+              <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+                <Text style={S.backTxt}>← Back</Text>
+              </TouchableOpacity>
+              <Animated.View style={{ opacity: saveAnim }}>
+                <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>✓ SAVED</Text>
+              </Animated.View>
             </View>
-            <Animated.View style={{ width: 56, alignItems: 'flex-end', opacity: saveAnim }}>
-              <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '800' }}>✓ SAVED</Text>
-            </Animated.View>
-          </View>
-          {/* Countdown banner */}
-          {nextLabel ? (
-            <View style={S.countdownBanner}>
-              <View style={S.countdownDot} />
-              <Text style={S.countdownTxt}>Ring in {nextLabel}</Text>
-              <Text style={S.countdownChevron}>›</Text>
+            <View style={S.heroCenter}>
+              {nextAlarmEntry ? (
+                <>
+                  <Text style={S.heroLabel}>NEXT ALARM</Text>
+                  <Text style={S.heroTime}>{fmt12(nextAlarmEntry.hour, nextAlarmEntry.minute)}</Text>
+                  <View style={S.heroBadge}>
+                    <View style={S.heroDot} />
+                    <Text style={S.heroBadgeTxt}>Rings in {nextLabel}</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={S.heroLabel}>ALARMS</Text>
+                  <Text style={S.heroNoAlarm}>No alarms set</Text>
+                  <Text style={S.heroNoAlarmSub}>Tap + to add one  🔕</Text>
+                </>
+              )}
             </View>
-          ) : (
-            <View style={S.countdownBanner}>
-              <Text style={S.countdownOffTxt}>No alarms active  🔕</Text>
-            </View>
-          )}
-        </SafeAreaView>
-      </LinearGradient>
+          </SafeAreaView>
+        </LinearGradient>
+      </ImageBackground>
 
       {/* Permissions bar (Android, only when needed) */}
       {Platform.OS === 'android' && !allPermsOk && (
@@ -917,7 +1055,7 @@ export default function AlarmsScreen() {
             <Text style={{ fontSize: 13, color: '#FFFFFF40', textAlign: 'center', lineHeight: 20 }}>
               Set your sleep goal and track your sleep patterns.{'\n'}Coming soon — wake alarm data will feed insights here.
             </Text>
-            <View style={{ width: '100%', borderRadius: 20, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', padding: 20, marginTop: 12, gap: 12 }}>
+            <View style={{ width: '100%', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 20, marginTop: 12, gap: 12 }}>
               {[
                 { label: 'Recommended Sleep', value: '10:00 PM – 5:30 AM', emoji: '🌑' },
                 { label: 'Your Wake Alarm', value: fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute), emoji: '⏰' },
@@ -945,14 +1083,14 @@ export default function AlarmsScreen() {
               { label: 'Active Alarms', value: String([settings.wakeAlarm.enabled ? 1 : 0, ...alarmEntries.filter(e => e.enabled)].length), emoji: '⏰', color: '#a78bfa' },
               { label: 'Missions Done', value: String(missionSettings.streak || 0), emoji: '✅', color: '#10b981' },
             ].map(s => (
-              <View key={s.label} style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: s.color + '25', backgroundColor: s.color + '08', padding: 14, alignItems: 'center', gap: 6 }}>
+              <View key={s.label} style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: s.color + '55', backgroundColor: s.color + '18', padding: 14, alignItems: 'center', gap: 6, overflow: 'hidden', shadowColor: s.color, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 4 }}>
                 <Text style={{ fontSize: 28 }}>{s.emoji}</Text>
                 <Text style={{ fontSize: 28, fontWeight: '900', color: s.color }}>{s.value}</Text>
                 <Text style={{ fontSize: 9, color: '#FFFFFF35', fontWeight: '700', textAlign: 'center' }}>{s.label.toUpperCase()}</Text>
               </View>
             ))}
           </View>
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', padding: 18, gap: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 18, gap: 14 }}>
             <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.2 }}>ALARM HISTORY</Text>
             {alarmEntries.length === 0 && !settings.wakeAlarm.enabled ? (
               <Text style={{ color: '#FFFFFF30', fontSize: 12, textAlign: 'center', paddingVertical: 20 }}>No alarms set yet. Add one on the Alarm tab.</Text>
@@ -977,7 +1115,7 @@ export default function AlarmsScreen() {
       {activeTab === 'settings' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5, marginBottom: 16 }}>SYSTEM SETTINGS</Text>
-          <View style={{ backgroundColor: '#FFFFFF04', borderWidth: 1, borderColor: '#FFFFFF0A', borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
             {([
               { emoji: '🔒', label: 'Lock In Mode', sub: "Alarm won't stop until mission done", val: missionSettings.lockInMode, onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }), color: '#ef4444' },
               { emoji: '🤖', label: 'Bodhi Morning Brief', sub: 'AI speaks your personalized morning intel', val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }), color: '#a78bfa' },
@@ -994,24 +1132,37 @@ export default function AlarmsScreen() {
               </View>
             ))}
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5, marginBottom: 12 }}>ALARM SOUND</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-              {MANTRAS.map(m => {
-                const active = selectedMantraId === m.id;
-                return (
-                  <TouchableOpacity key={m.id} onPress={() => handleMantraSelect(m.id)} style={[S.mantraChip, active && { borderColor: m.color, backgroundColor: m.color + '18' }]}>
-                    <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
-                    <Text style={{ color: active ? m.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{m.label}</Text>
-                    <Text style={{ color: m.color + '80', fontSize: 7, textAlign: 'center' }}>{m.hint}</Text>
-                    <Text style={{ color: dlStatus[m.id] === 'downloaded' ? '#10b981' : dlStatus[m.id] === 'downloading' ? m.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
-                      {dlStatus[m.id] === 'downloaded' ? '✓ Offline' : dlStatus[m.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[m.id] ?? 0) * 100)}%` : '☁ Online'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSettingsSoundOpen(v => !v); }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}
+          >
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 }}>ALARM SOUND</Text>
+              <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
+                {MANTRAS.find(mn => mn.id === selectedMantraId)?.emoji}  {MANTRAS.find(mn => mn.id === selectedMantraId)?.label}
+              </Text>
             </View>
-          </ScrollView>
+            <Text style={{ color: '#FFFFFF25', fontSize: 14 }}>{settingsSoundOpen ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          {settingsSoundOpen && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+                {MANTRAS.map(mn => {
+                  const active = selectedMantraId === mn.id;
+                  return (
+                    <TouchableOpacity key={mn.id} onPress={() => handleMantraSelect(mn.id)} style={[S.mantraChip, active && { borderColor: mn.color, backgroundColor: mn.color + '18' }]}>
+                      <Text style={{ fontSize: 24 }}>{mn.emoji}</Text>
+                      <Text style={{ color: active ? mn.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{mn.label}</Text>
+                      <Text style={{ color: mn.color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>
+                      <Text style={{ color: dlStatus[mn.id] === 'downloaded' || dlStatus[mn.id] === 'bundled' ? '#10b981' : dlStatus[mn.id] === 'downloading' ? mn.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
+                        {dlStatus[mn.id] === 'downloaded' ? '✓ Offline' : dlStatus[mn.id] === 'bundled' ? '✓ Bundled' : dlStatus[mn.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[mn.id] ?? 0) * 100)}%` : '☁ Online'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
           {!batteryOptOk && (
             <TouchableOpacity onPress={() => NativeModules.AlarmModule?.requestBatteryOptimizationExemption?.()} style={{ backgroundColor: '#f9731610', borderWidth: 1, borderColor: '#f9731630', borderRadius: 16, padding: 16, marginBottom: 12 }}>
               <Text style={{ color: '#f97316', fontWeight: '800', fontSize: 13 }}>⚡ Enable Battery Optimization Exemption</Text>
@@ -1025,18 +1176,25 @@ export default function AlarmsScreen() {
       {activeTab === 'alarm' && <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }} showsVerticalScrollIndicator={false}>
 
         {/* ── Wake Alarm Card ── */}
-        <TouchableOpacity style={[S.alarmCard, settings.wakeAlarm.enabled && S.alarmCardActive]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.85}>
-          <View style={S.alarmCardInner}>
-            <View style={S.alarmLeft}>
-              <View style={S.alarmTypePill}>
-                <Text style={S.alarmTypeEmoji}>⏰</Text>
-                <Text style={S.alarmTypeTxt}>WAKE ALARM</Text>
-                {missionSettings.lockInMode && <Text style={{ fontSize: 9, color: '#ef4444' }}>🔒</Text>}
+        <TouchableOpacity style={[S.slimCard, S.slimCardWake]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.82}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.04)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.38)' }} />
+          <View style={[S.slimBar, { backgroundColor: settings.wakeAlarm.enabled ? '#a78bfa' : 'rgba(255,255,255,0.10)' }]} />
+          <View style={S.slimBody}>
+            <View style={S.slimLeft}>
+              <View style={S.slimPill}>
+                <Text style={{ fontSize: 10 }}>⏰</Text>
+                <Text style={S.slimPillTxt}>WAKE ALARM</Text>
+                {missionSettings.lockInMode && <Text style={{ fontSize: 8, color: '#ef4444' }}>🔒</Text>}
               </View>
-              <Text style={[S.alarmTime, settings.wakeAlarm.enabled ? S.alarmTimeOn : S.alarmTimeOff]}>
+              <Text style={[S.slimTime, { color: settings.wakeAlarm.enabled ? '#fff' : '#FFFFFF28' }]}>
                 {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
               </Text>
-              <Text style={S.alarmSub}>
+              <Text style={S.slimSub} numberOfLines={1}>
                 {playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(m => m.id === missionSettings.selectedMission)?.name ?? 'Mission'}
               </Text>
             </View>
@@ -1045,28 +1203,44 @@ export default function AlarmsScreen() {
         </TouchableOpacity>
 
         {/* ── Habit / Quick Alarm Cards ── */}
-        {alarmEntries.map(entry => (
-          <TouchableOpacity key={entry.id} style={[S.alarmCard, entry.enabled && (entry.type === 'habit' ? S.alarmCardHabit : S.alarmCardQuick)]} onPress={() => openEditEntry(entry)} activeOpacity={0.85}>
-            <View style={S.alarmCardInner}>
-              <View style={S.alarmLeft}>
-                <View style={S.alarmTypePill}>
-                  <Text style={S.alarmTypeEmoji}>{entry.type === 'habit' ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
-                  <Text style={S.alarmTypeTxt}>{entry.type === 'habit' ? 'HABIT ALARM' : 'QUICK ALARM'}</Text>
+        {alarmEntries.map(entry => {
+          const isHabit  = entry.type === 'habit';
+          const accentC  = '#a78bfa';
+          const timeC    = entry.enabled ? '#FFFFFF' : '#FFFFFF28';
+          return (
+            <TouchableOpacity
+              key={entry.id}
+              style={[S.slimCard, isHabit ? S.slimCardHabit : S.slimCardQuick]}
+              onPress={() => openEditEntry(entry)}
+              activeOpacity={0.82}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
+              <View style={[S.slimBar, { backgroundColor: entry.enabled ? (isHabit ? '#6ee7b7' : '#f97316') : 'rgba(255,255,255,0.10)' }]} />
+              <View style={S.slimBody}>
+                <View style={S.slimLeft}>
+                  <View style={S.slimPill}>
+                    <Text style={{ fontSize: 10 }}>{isHabit ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
+                    <Text style={S.slimPillTxt}>{isHabit ? 'HABIT' : 'QUICK'}</Text>
+                  </View>
+                  <Text style={[S.slimTime, { color: timeC }]}>
+                    {fmt12(entry.hour, entry.minute)}
+                  </Text>
+                  <Text style={S.slimSub} numberOfLines={1}>{entry.label}</Text>
                 </View>
-                <Text style={[S.alarmTime, entry.enabled ? (entry.type === 'habit' ? S.alarmTimeHabit : S.alarmTimeQuick) : S.alarmTimeOff]}>
-                  {fmt12(entry.hour, entry.minute)}
-                </Text>
-                <Text style={S.alarmSub}>{entry.label}</Text>
+                <View style={S.slimRight}>
+                  <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={accentC} />
+                  <TouchableOpacity onPress={() => deleteEntry(entry.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={S.slimDelete}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={{ alignItems: 'center', gap: 10 }}>
-                <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={entry.type === 'habit' ? '#10b981' : '#f97316'} />
-                <TouchableOpacity onPress={() => deleteEntry(entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={{ color: '#f43f5e60', fontSize: 10, fontWeight: '700' }}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
 
         {/* Empty state */}
         {alarmEntries.length === 0 && (
@@ -1159,42 +1333,68 @@ export default function AlarmsScreen() {
                 })}
               </View>
 
-              {/* Alarm Sound */}
-              <Text style={S.sheetSection}>ALARM SOUND</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-                  {MANTRAS.map(m => {
-                    const active = selectedMantraId === m.id;
+              {/* Alarm Sound — accordion */}
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setModalSoundOpen(v => !v); }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, marginTop: 8, borderTopWidth: 1, borderTopColor: '#FFFFFF0A' }}
+              >
+                <View>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>ALARM SOUND</Text>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 3 }}>
+                    {MANTRAS.find(mn => mn.id === selectedMantraId)?.emoji}  {MANTRAS.find(mn => mn.id === selectedMantraId)?.label}
+                  </Text>
+                </View>
+                <Text style={{ color: '#FFFFFF35', fontSize: 16 }}>{modalSoundOpen ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              {modalSoundOpen && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+                    {MANTRAS.map(mn => {
+                      const active = selectedMantraId === mn.id;
+                      return (
+                        <TouchableOpacity key={mn.id} onPress={() => handleMantraSelect(mn.id)} style={[S.mantraChip, active && { borderColor: mn.color, backgroundColor: mn.color + '18' }]}>
+                          <Text style={{ fontSize: 24 }}>{mn.emoji}</Text>
+                          <Text style={{ color: active ? mn.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{mn.label}</Text>
+                          <Text style={{ color: mn.color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>
+                          <Text style={{ color: dlStatus[mn.id] === 'downloaded' || dlStatus[mn.id] === 'bundled' ? '#10b981' : dlStatus[mn.id] === 'downloading' ? mn.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
+                            {dlStatus[mn.id] === 'downloaded' ? '✓ Offline' : dlStatus[mn.id] === 'bundled' ? '✓ Bundled' : dlStatus[mn.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[mn.id] ?? 0) * 100)}%` : '☁ Online'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              {/* Mission — accordion */}
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setModalMissionOpen(v => !v); }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#FFFFFF0A' }}
+              >
+                <View>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>MORNING MISSION</Text>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 3 }}>
+                    {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.icon}  {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.name}
+                  </Text>
+                </View>
+                <Text style={{ color: '#FFFFFF35', fontSize: 16 }}>{modalMissionOpen ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              {modalMissionOpen && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16, marginTop: 8 }}>
+                  {MISSIONS.map(ms => {
+                    const active = missionSettings.selectedMission === ms.id;
                     return (
-                      <TouchableOpacity key={m.id} onPress={() => handleMantraSelect(m.id)} style={[S.mantraChip, active && { borderColor: m.color, backgroundColor: m.color + '18' }]}>
-                        <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
-                        <Text style={{ color: active ? m.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{m.label}</Text>
-                        <Text style={{ color: m.color + '80', fontSize: 7, textAlign: 'center' }}>{m.hint}</Text>
-                        <Text style={{ color: dlStatus[m.id] === 'downloaded' ? '#10b981' : dlStatus[m.id] === 'downloading' ? m.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
-                          {dlStatus[m.id] === 'downloaded' ? '✓ Offline' : dlStatus[m.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[m.id] ?? 0) * 100)}%` : '☁ Online'}
-                        </Text>
+                      <TouchableOpacity key={ms.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ selectedMission: ms.id }); }}
+                        style={[S.missionChip, { borderColor: active ? ms.color : 'rgba(255,255,255,0.18)', backgroundColor: active ? ms.color + '20' : 'rgba(255,255,255,0.09)' }]}
+                      >
+                        <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
+                        {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-              </ScrollView>
-
-              {/* Mission */}
-              <Text style={S.sheetSection}>MORNING MISSION  (alarm won't stop until complete)</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {MISSIONS.map(m => {
-                  const active = missionSettings.selectedMission === m.id;
-                  return (
-                    <TouchableOpacity key={m.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ selectedMission: m.id }); }}
-                      style={[S.missionChip, { borderColor: active ? m.color : '#FFFFFF12', backgroundColor: active ? m.color + '15' : '#FFFFFF05' }]}
-                    >
-                      <Text style={{ fontSize: 22 }}>{m.icon}</Text>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: active ? m.color : Colors.textMuted, textAlign: 'center' }}>{m.name}</Text>
-                      {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: m.color }} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              )}
 
               {/* System toggles */}
               <Text style={S.sheetSection}>SYSTEM SETTINGS</Text>
@@ -1240,45 +1440,55 @@ export default function AlarmsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity onPress={() => setShowWakeEdit(false)} style={S.sheetDoneBtn}>
-                <Text style={S.sheetDoneTxt}>Done</Text>
-              </TouchableOpacity>
-              <View style={{ height: 48 }} />
+              <View style={{ height: 12 }} />
             </ScrollView>
+            {/* Done button pinned outside ScrollView — always visible */}
+            <TouchableOpacity onPress={() => setShowWakeEdit(false)} style={[S.sheetDoneBtn, { margin: 16, marginTop: 8 }]}>
+              <Text style={S.sheetDoneTxt}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* ── Add / Edit Habit Alarm Modal ── */}
-      <Modal visible={addType === 'habit' || editEntry?.type === 'habit'} animationType="slide" transparent onRequestClose={() => { setAddType(null); setEditEntry(null); }}>
-        <View style={S.sheetOverlay}>
-          <View style={[S.sheet, { maxHeight: '85%' }]}>
-            <View style={S.sheetHandle} />
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={S.sheetTitle}>🌿  Habit Alarm</Text>
-              <Text style={{ color: Colors.textMuted, fontSize: 12, marginBottom: 12 }}>No mission — just tap confirm when it rings.</Text>
-              <TimeAdjuster hour={formHour} minute={formMinute} onChange={(h, m) => { setFormHour(h); setFormMinute(m); }} />
-              <Text style={S.sheetSection}>CHOOSE HABIT</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                {AYU_HABITS.filter(h => h.key !== 'custom').map(h => {
-                  const active = formHabitKey === h.key;
-                  return (
-                    <TouchableOpacity key={h.key} onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setFormHabitKey(h.key);
-                      setFormHabitEmoji(h.emoji);
-                      setFormLabel(h.label);
-                      setShowCustomHabitInput(false);
-                    }}
-                      style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98115' }]}
-                    >
-                      <Text style={{ fontSize: 20 }}>{h.emoji}</Text>
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center' }}>{h.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+      {/* ── Add / Edit Habit Alarm — Step 1: Pick a habit (FULL SCREEN) ── */}
+      <Modal
+        visible={(addType === 'habit' || editEntry?.type === 'habit') && formHabitKey === ''}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => { setAddType(null); setEditEntry(null); }}
+      >
+        <View style={{ flex: 1, backgroundColor: '#060610' }}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity onPress={() => { setAddType(null); setEditEntry(null); }} style={{ padding: 4 }}>
+                <Text style={{ color: '#FFFFFF50', fontSize: 22, fontWeight: '300' }}>✕</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 }}>CHOOSE HABIT</Text>
+              <View style={{ width: 32 }} />
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+              <Text style={{ color: Colors.textMuted, fontSize: 13, marginBottom: 20, lineHeight: 18 }}>
+                Select a habit to set a daily alarm for.
+              </Text>
+              <Text style={S.sheetSection}>AYURVEDIC HABITS</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                {AYU_HABITS.filter(h => h.key !== 'custom').map(h => (
+                  <TouchableOpacity key={h.key} onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setFormHabitKey(h.key);
+                    setFormHabitEmoji(h.emoji);
+                    setFormLabel(h.label);
+                    setShowCustomHabitInput(false);
+                  }}
+                    style={[S.habitChip, { width: (width - 40 - 30) / 4 }]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              {/* ── Custom Habit row ── */}
               <TouchableOpacity
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1287,25 +1497,133 @@ export default function AlarmsScreen() {
                   setShowCustomHabitInput(true);
                   setFormLabel('');
                 }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 8, borderColor: formHabitKey === 'custom' ? '#a78bfa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#a78bfa12' : '#FFFFFF04' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: 18, padding: 16, borderColor: '#FFFFFF14', backgroundColor: '#FFFFFF04' }}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 22 }}>✨</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#a78bfa' : '#fff' }}>Custom Habit</Text>
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name — reminder will be set for it</Text>
+                <View style={{ width: 50, height: 50, borderRadius: 14, backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 24 }}>✨</Text>
                 </View>
-                {formHabitKey === 'custom' && <Text style={{ fontSize: 12, color: '#a78bfa', fontWeight: '900' }}>✓</Text>}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Custom Habit</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>Type any habit name</Text>
+                </View>
+                <Text style={{ color: '#FFFFFF25', fontSize: 18 }}>›</Text>
               </TouchableOpacity>
-              {showCustomHabitInput && (
-                <TextInput style={S.customInput} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
-              )}
-              <TouchableOpacity onPress={saveNewEntry} style={[S.saveBtn, { marginTop: 8 }]}>
-                <Text style={S.saveBtnTxt}>{editEntry ? '✓ Update Habit Alarm' : '✓ Save Habit Alarm'}</Text>
-              </TouchableOpacity>
-              <View style={{ height: 48 }} />
             </ScrollView>
-          </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* ── Add / Edit Habit Alarm — Step 2: Full-screen alarm setter ── */}
+      <Modal
+        visible={(addType === 'habit' || editEntry?.type === 'habit') && formHabitKey !== ''}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => { setFormHabitKey(''); setShowCustomHabitInput(false); if (editEntry) { setEditEntry(null); setAddType(null); } }}
+      >
+        <View style={{ flex: 1, backgroundColor: '#060610' }}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+
+            {/* ── Top bar ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity
+                onPress={() => { setFormHabitKey(''); setShowCustomHabitInput(false); }}
+                style={{ paddingVertical: 4, paddingRight: 12 }}
+              >
+                <Text style={{ color: '#FFFFFF50', fontSize: 15, fontWeight: '600' }}>← Back</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2.5 }}>SET ALARM</Text>
+              <View style={{ width: 60 }} />
+            </View>
+
+            {/* ── Habit badge ── */}
+            <View style={{ alignItems: 'center', paddingTop: 22, paddingBottom: 10, gap: 8 }}>
+              <View style={{ width: 80, height: 80, borderRadius: 26, backgroundColor: '#10b98115', borderWidth: 1.5, borderColor: '#10b98130', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 40 }}>{formHabitEmoji}</Text>
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', marginTop: 4 }}>
+                {formLabel || 'Custom Habit'}
+              </Text>
+              <TouchableOpacity onPress={() => { setFormHabitKey(''); setShowCustomHabitInput(false); }} activeOpacity={0.7}>
+                <Text style={{ fontSize: 12, color: '#10b98165', fontWeight: '700', letterSpacing: 0.3 }}>✎  Change habit</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Custom label input ── */}
+            {showCustomHabitInput && (
+              <TextInput
+                style={[S.customInput, { marginHorizontal: 24, marginBottom: 8 }]}
+                placeholder="e.g. Oil Pulling, Face Wash..."
+                placeholderTextColor={Colors.textDim}
+                value={formLabel}
+                onChangeText={setFormLabel}
+                autoFocus
+              />
+            )}
+
+            {/* ── Time picker — large, centered ── */}
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+              <TimeAdjuster
+                hour={formHour}
+                minute={formMinute}
+                onChange={(h, m) => { setFormHour(h); setFormMinute(m); }}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#7C3AED' }} />
+                <Text style={{ fontSize: 13, color: '#FFFFFF25', fontWeight: '700', letterSpacing: 0.4 }}>
+                  {fmt12(formHour, formMinute)}  ·  Daily
+                </Text>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#7C3AED' }} />
+              </View>
+            </View>
+
+            {/* ── Quick presets ── */}
+            <View style={{ paddingHorizontal: 20, marginBottom: 14 }}>
+              <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF22', letterSpacing: 2, marginBottom: 10 }}>QUICK PRESETS</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {PRESETS.map(p => {
+                  const active = formHour === p.hour && formMinute === p.minute;
+                  return (
+                    <TouchableOpacity
+                      key={p.label}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormHour(p.hour); setFormMinute(p.minute); }}
+                      style={[S.presetChip, { flex: 1 }, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
+                      <Text style={S.presetChipLabel}>{p.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── Shower tip (context card) ── */}
+            {formHabitKey === 'shower' && (
+              <View style={{ marginHorizontal: 20, marginBottom: 14, borderRadius: 16, borderWidth: 1, borderColor: '#38bdf835', backgroundColor: '#0ea5e90C', padding: 14, flexDirection: 'row', gap: 10 }}>
+                <Text style={{ fontSize: 20 }}>🌊</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#38bdf8', letterSpacing: 1, marginBottom: 3 }}>BATHING WISDOM</Text>
+                  <Text style={{ fontSize: 11, color: '#e0f2fe', lineHeight: 17 }}>Open-air bath with natural water — strengthens skin, sharpens senses, builds vitality.</Text>
+                </View>
+              </View>
+            )}
+
+            {/* ── SET ALARM button ── */}
+            <TouchableOpacity
+              onPress={saveNewEntry}
+              style={{ marginHorizontal: 20, marginBottom: 10, backgroundColor: '#7C3AED', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10, shadowColor: '#7C3AED', shadowOpacity: 0.55, shadowRadius: 20, elevation: 8 }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 20 }}>🔔</Text>
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 }}>
+                {editEntry
+                  ? `Update Alarm  ·  ${fmt12(formHour, formMinute)}`
+                  : `Set Alarm  ·  ${fmt12(formHour, formMinute)}`}
+              </Text>
+            </TouchableOpacity>
+
+          </SafeAreaView>
         </View>
       </Modal>
 
@@ -1354,25 +1672,27 @@ export default function AlarmsScreen() {
 }
 
 const S = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#060610' },
-  headerGrad: { paddingBottom: 10 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
-  backBtn: { width: 56, paddingVertical: 4 },
-  backTxt: { color: '#FFFFFF45', fontSize: 13, fontWeight: '600' },
-  headerTitle: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
-  headerSub: { fontSize: 9, color: '#c084fc70', marginTop: 1, fontWeight: '700', letterSpacing: 0.9 },
-  countdownBanner: { marginHorizontal: 16, marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#a78bfa08', borderWidth: 1, borderColor: '#a78bfa20', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 7 },
-  countdownDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#a78bfa' },
-  countdownTxt: { flex: 1, fontSize: 12, fontWeight: '700', color: '#c4b5fd' },
-  countdownChevron: { fontSize: 16, color: '#a78bfa80' },
-  countdownOffTxt: { fontSize: 12, color: '#FFFFFF20', fontWeight: '500' },
+  screen:          { flex: 1, backgroundColor: '#060610' },
+  heroBg:          { width: '100%', height: 185 },
+  heroGrad:        { flex: 1 },
+  heroTop:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 6, paddingBottom: 6 },
+  backBtn:         { paddingVertical: 6, paddingRight: 12 },
+  backTxt:         { color: '#FFFFFF55', fontSize: 13, fontWeight: '600' },
+  heroCenter:      { alignItems: 'center', paddingBottom: 8, paddingTop: 2 },
+  heroLabel:       { fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 2.5, marginBottom: 4 },
+  heroTime:        { fontSize: 48, fontWeight: '200', color: '#fff', letterSpacing: -2, lineHeight: 56 },
+  heroBadge:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: 'rgba(167,139,250,0.22)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.50)', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 6 },
+  heroDot:         { width: 6, height: 6, borderRadius: 3, backgroundColor: '#a78bfa' },
+  heroBadgeTxt:    { fontSize: 12, fontWeight: '700', color: '#c4b5fd' },
+  heroNoAlarm:     { fontSize: 28, fontWeight: '200', color: '#FFFFFF30', letterSpacing: -0.5, marginTop: 4 },
+  heroNoAlarmSub:  { fontSize: 12, color: '#FFFFFF25', marginTop: 6 },
   permsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9731610', borderBottomWidth: 1, borderBottomColor: '#f9731625', paddingHorizontal: 16, paddingVertical: 10 },
   permsText: { flex: 1, color: '#f97316', fontSize: 11, fontWeight: '700' },
   permsChevron: { color: '#f97316', fontSize: 14, fontWeight: '900' },
-  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', overflow: 'hidden' },
-  alarmCardActive: { borderColor: '#a78bfa28', backgroundColor: '#a78bfa05' },
-  alarmCardHabit: { borderColor: '#10b98128', backgroundColor: '#10b98105' },
-  alarmCardQuick: { borderColor: '#f9731628', backgroundColor: '#f9731605' },
+  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden', elevation: 6, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 5 } },
+  alarmCardActive: { borderColor: 'rgba(255,255,255,0.24)' },
+  alarmCardHabit: { borderColor: 'rgba(167,139,250,0.30)' },
+  alarmCardQuick: { borderColor: 'rgba(249,115,22,0.30)' },
   alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, gap: 12 },
   alarmLeft: { flex: 1, gap: 3 },
   alarmTypePill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -1384,6 +1704,25 @@ const S = StyleSheet.create({
   alarmTimeHabit: { color: '#6ee7b7' },
   alarmTimeQuick: { color: '#fdba74' },
   alarmSub: { fontSize: 11, color: '#FFFFFF40', fontWeight: '500' },
+  // ── Slim premium card styles ──────────────────────────────────────────────
+  slimCard: {
+    marginHorizontal: 16, marginTop: 6, borderRadius: 18, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)', backgroundColor: 'rgba(255,255,255,0.09)',
+    flexDirection: 'row', overflow: 'hidden',
+    elevation: 7, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 6 },
+  },
+  slimCardWake:  { borderColor: 'rgba(255,255,255,0.22)' },
+  slimCardHabit: { borderColor: 'rgba(255,255,255,0.22)' },
+  slimCardQuick: { borderColor: 'rgba(255,255,255,0.22)' },
+  slimBar:  { width: 2, borderRadius: 1, marginVertical: 10, marginHorizontal: 4 },
+  slimBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingRight: 14, paddingLeft: 10 },
+  slimLeft: { flex: 1, gap: 2 },
+  slimPill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 1 },
+  slimPillTxt: { fontSize: 8, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 },
+  slimTime: { fontSize: 28, fontWeight: '200', letterSpacing: -1, lineHeight: 33 },
+  slimSub:  { fontSize: 10, color: '#FFFFFF38', fontWeight: '500', marginTop: 1 },
+  slimRight:{ alignItems: 'center', gap: 8 },
+  slimDelete: { fontSize: 11, color: '#f43f5e50', fontWeight: '900', paddingTop: 2 },
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
@@ -1392,30 +1731,30 @@ const S = StyleSheet.create({
   fabTxt: { fontSize: 30, color: '#fff', fontWeight: '200', lineHeight: 36, marginTop: 2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
   fabMenu: { position: 'absolute', bottom: 162, right: 24, gap: 8, alignItems: 'flex-end', zIndex: 10 },
-  fabMenuItem: { backgroundColor: '#0D0D20', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 6 },
+  fabMenuItem: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 8, shadowColor: '#000', shadowOpacity: 0.30, shadowRadius: 16, shadowOffset: { width: 0, height: 5 } },
   fabMenuItemTxt: { fontSize: 14, fontWeight: '800' },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },
   sheetTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginBottom: 6 },
   sheetSection: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginTop: 16, marginBottom: 8 },
-  presetChip: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05', padding: 10, alignItems: 'center', gap: 2 },
+  presetChip: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 10, alignItems: 'center', gap: 2 },
   presetChipTime: { fontSize: 12, fontWeight: '900' },
   presetChipLabel: { fontSize: 8, color: '#FFFFFF30', fontWeight: '600' },
-  prakritiRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 6, backgroundColor: '#FFFFFF04' },
-  mantraChip: { width: 104, borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05', padding: 10, alignItems: 'center', gap: 4 },
+  prakritiRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.09)' },
+  mantraChip: { width: 104, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 10, alignItems: 'center', gap: 4 },
   missionChip: { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: 'center', gap: 4, width: (width - 40 - 8) / 2 },
-  settingsCard: { backgroundColor: '#FFFFFF04', borderWidth: 1, borderColor: '#FFFFFF0A', borderRadius: 18, marginBottom: 10, overflow: 'hidden' },
+  settingsCard: { backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 18, marginBottom: 10, overflow: 'hidden' },
   settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   streakBanner: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: 1, borderColor: ACCENT + '30', padding: 14, marginBottom: 14, marginTop: 4 },
   testBtn: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
   sheetDoneBtn: { backgroundColor: '#7C3AED25', borderWidth: 1, borderColor: '#7C3AED50', borderRadius: 99, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
   sheetDoneTxt: { color: '#a78bfa', fontWeight: '900', fontSize: 15 },
-  habitChip: { borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF04', padding: 10, alignItems: 'center', gap: 4, width: (width - 40 - 24) / 4 },
-  customInput: { backgroundColor: '#FFFFFF07', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14, marginBottom: 8 },
+  habitChip: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 10, alignItems: 'center', gap: 4, width: (width - 40 - 24) / 4 },
+  customInput: { backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14, marginBottom: 8 },
   saveBtn: { backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 99, paddingVertical: 14, alignItems: 'center' },
   saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15 },
-  tabBar: { flexDirection: 'row', backgroundColor: 'rgba(12,12,28,0.98)', borderTopWidth: 1, borderTopColor: '#FFFFFF0C', paddingTop: 8, paddingHorizontal: 4 },
+  tabBar: { flexDirection: 'row', backgroundColor: 'rgba(12,12,28,0.96)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.14)', paddingTop: 8, paddingHorizontal: 4 },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 2 },
   tabIconWrap: { width: 44, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.1 },

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
+  AppState, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -9,7 +10,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
+import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
 import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
@@ -21,6 +24,7 @@ import {
 } from '@/lib/missionAlarm';
 
 const { width } = Dimensions.get('window');
+const MISSION_FS_ID = 'mission-alarm-fs';
 const GEMINI_KEY = 'AIzaSyANg_oPfwORFiYwvWCs53hO2NSiw96xA8k';
 // Exact same model + URL as AyuIntel/Vaidya — verified working for image recognition
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
@@ -690,6 +694,9 @@ export default function MissionScreen() {
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appStateRef = useRef(AppState.currentState);
+  const bttfNotifIdRef = useRef<string | null>(null);
+  const missionCompletedRef = useRef(false);
 
   useEffect(() => {
     activateKeepAwakeAsync();
@@ -709,14 +716,124 @@ export default function MissionScreen() {
         bg.unloadAsync().catch(() => { });
         (global as any).__missionBgSound = null;
       }
+      // Abnormal exit: clean up native alarm service and mission guard
+      if (!missionCompletedRef.current) {
+        AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
+        stopNativeAlarmSound().catch(() => {});
+        cancelNativeAlarm().catch(() => {});
+      }
     };
   }, []);
 
+  // ── Mission foreground service — prevents HOME-button escape ─────────────────────
+  // alarm-ringing.tsx cancelled the wake-alarm FGS when navigating here.
+  // Without a new FGS, pressing HOME lets Android kill the process and the
+  // background mantra audio stops — the alarm is beaten. This service keeps
+  // the JVM + audio alive until the mission is actually completed.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || done) return;
+    let active = true;
+    (async () => {
+      try {
+        await notifee.createChannel({
+          id: 'alarm-bttf-silent',
+          name: 'Alarm Return Prompt',
+          importance: AndroidImportance.HIGH,
+        });
+        if (!active) return;
+        await notifee.displayNotification({
+          id: MISSION_FS_ID,
+          title: '🎯 Mission In Progress — Alarm Active',
+          body: 'Complete your mission to stop the alarm.',
+          android: {
+            channelId: 'alarm-bttf-silent',
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            ongoing: true,
+            autoCancel: false,
+            asForegroundService: true,
+            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            pressAction: { id: 'default', launchActivity: 'default' },
+          },
+        });
+      } catch (e) { console.warn('[Mission] FGS start error:', e); }
+    })();
+    return () => {
+      active = false;
+      notifee.cancelNotification(MISSION_FS_ID).catch(() => {});
+    };
+  }, [done]);
+
+  // ── Block HOME button during mission (mirrors alarm-ringing.tsx protection) ──
+  useEffect(() => {
+    if (done) return;
+
+    const fireBttfNotif = async () => {
+      if (Platform.OS !== 'android') return;
+      try {
+        await notifee.createChannel({
+          id: 'alarm-bttf-silent',
+          name: 'Alarm Return Prompt',
+          importance: AndroidImportance.HIGH,
+        });
+        await notifee.displayNotification({
+          id: 'mission-bttf',
+          title: '🎯 Mission In Progress!',
+          body: 'Return to complete your mission and stop the alarm.',
+          android: {
+            channelId: 'alarm-bttf-silent',
+            importance: AndroidImportance.HIGH,
+            category: AndroidCategory.ALARM,
+            visibility: AndroidVisibility.PUBLIC,
+            ongoing: true,
+            asForegroundService: false,
+            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            pressAction: { id: 'default', launchActivity: 'default' },
+          },
+        });
+        bttfNotifIdRef.current = 'mission-bttf';
+      } catch (e) { console.warn('[Mission] bttf notif error:', e); }
+    };
+
+    const cancelBttfNotif = () => {
+      notifee.cancelNotification(bttfNotifIdRef.current ?? 'mission-bttf').catch(() => {});
+      bttfNotifIdRef.current = null;
+    };
+
+    const stateSub = AppState.addEventListener('change', (nextState) => {
+      if (
+        !done &&
+        appStateRef.current === 'active' &&
+        (nextState === 'background' || nextState === 'inactive')
+      ) {
+        appStateRef.current = nextState;
+        fireBttfNotif();
+      } else if (
+        !done &&
+        (appStateRef.current === 'background' || appStateRef.current === 'inactive') &&
+        nextState === 'active'
+      ) {
+        appStateRef.current = nextState;
+        cancelBttfNotif();
+      } else {
+        appStateRef.current = nextState;
+      }
+    });
+
+    return () => {
+      stateSub.remove();
+      cancelBttfNotif();
+    };
+  }, [done]);
+
   const handleComplete = useCallback(async () => {
+    missionCompletedRef.current = true;
     clearInterval(timerRef.current!);
     setDone(true);
 
-    // ── 1. Stop native alarm service + background mantra ─────────────────
+    // ── 1. Clear mission guard + stop native alarm service + background mantra ─
+    await AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
     await stopNativeAlarmSound();
     const bg = (global as any).__missionBgSound;
     if (bg) {

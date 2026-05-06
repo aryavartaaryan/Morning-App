@@ -14,19 +14,25 @@ import com.facebook.react.module.model.ReactModuleInfoProvider
 class AlarmPackage : BaseReactPackage() {
 
     override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
-        return if (name == "AlarmModule") AlarmModule(reactContext) else null
+        return when (name) {
+            "AlarmModule"      -> AlarmModule(reactContext)
+            "HabitAlarmModule" -> HabitAlarmModule(reactContext)
+            else               -> null
+        }
     }
 
     override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
         return ReactModuleInfoProvider {
             mapOf(
                 "AlarmModule" to ReactModuleInfo(
-                    "AlarmModule",                       // name
-                    "com.solrize.AlarmModule",           // class name
-                    false,                               // canOverrideExistingModule
-                    false,                               // needsEagerInit
-                    false,                               // isCxxModule
-                    false                                // isTurboModule
+                    "AlarmModule",
+                    "com.solrize.AlarmModule",
+                    false, false, false, false
+                ),
+                "HabitAlarmModule" to ReactModuleInfo(
+                    "HabitAlarmModule",
+                    "com.solrize.HabitAlarmModule",
+                    false, false, false, false
                 )
             )
         }

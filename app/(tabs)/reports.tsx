@@ -9,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import type { AlarmEntry } from './index';
 
 const GREEN = '#10b981';
+const ACCENT = '#F5820A';
 const pad   = (n: number) => String(n).padStart(2, '0');
 const fmt12 = (h: number, m: number) => {
   const ap  = h < 12 ? 'AM' : 'PM';
