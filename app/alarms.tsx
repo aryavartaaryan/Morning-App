@@ -1178,12 +1178,12 @@ export default function AlarmsScreen() {
         {/* ── Wake Alarm Card ── */}
         <TouchableOpacity style={[S.slimCard, S.slimCardWake]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.82}>
           <LinearGradient
-            colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.04)', 'transparent']}
+            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.38)' }} />
-          <View style={[S.slimBar, { backgroundColor: settings.wakeAlarm.enabled ? '#a78bfa' : 'rgba(255,255,255,0.10)' }]} />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+          <View style={[S.slimBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.08)' }]} />
           <View style={S.slimBody}>
             <View style={S.slimLeft}>
               <View style={S.slimPill}>
@@ -1214,12 +1214,12 @@ export default function AlarmsScreen() {
               onPress={() => openEditEntry(entry)}
               activeOpacity={0.82}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)', 'transparent']}
+                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
-              <View style={[S.slimBar, { backgroundColor: entry.enabled ? (isHabit ? '#6ee7b7' : '#f97316') : 'rgba(255,255,255,0.10)' }]} />
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+              <View style={[S.slimBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.08)' }]} />
               <View style={S.slimBody}>
                 <View style={S.slimLeft}>
                   <View style={S.slimPill}>
@@ -1707,9 +1707,9 @@ const S = StyleSheet.create({
   // ── Slim premium card styles ──────────────────────────────────────────────
   slimCard: {
     marginHorizontal: 16, marginTop: 6, borderRadius: 18, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)', backgroundColor: 'rgba(255,255,255,0.09)',
+    borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(8,8,22,0.68)',
     flexDirection: 'row', overflow: 'hidden',
-    elevation: 7, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 6 },
+    elevation: 7, shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 6 },
   },
   slimCardWake:  { borderColor: 'rgba(255,255,255,0.22)' },
   slimCardHabit: { borderColor: 'rgba(255,255,255,0.22)' },

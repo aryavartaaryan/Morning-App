@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions,
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -867,25 +867,41 @@ function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () =>
               <Text style={{ color: '#FFFFFF30', fontSize: 22, fontWeight: '200' }}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32, gap: 8 }}>
             {daily.map((day, i) => {
               const sugg = getWeatherSuggestion(day.weatherCode, day.maxTemp, 60);
+              const isToday = i === 0;
               return (
-                <View key={i} style={[SD.dayRow, i > 0 && SD.dayRowBorder]}>
-                  <View style={SD.dayLeft}>
-                    <Text style={[SD.dayLabel, i === 0 && { color: ACCENT }]}>{day.dayLabel}</Text>
-                    <Text style={SD.dayDate}>{day.date.slice(5).replace('-', ' / ')}</Text>
+                <View key={i} style={[
+                  SD.dayCard,
+                  { borderColor: isToday ? ACCENT + '80' : sugg.color + '38', backgroundColor: isToday ? ACCENT + '12' : sugg.color + '0C' },
+                ]}>
+                  <LinearGradient
+                    colors={[isToday ? ACCENT + '22' : sugg.color + '18', 'rgba(4,4,18,0.55)', 'rgba(2,2,14,0.78)']}
+                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.65)' }} />
+                  {/* Left accent bar */}
+                  <View style={{ width: 3, borderRadius: 2, alignSelf: 'stretch', backgroundColor: sugg.color + 'CC', marginRight: 12 }} />
+                  {/* Day label */}
+                  <View style={{ width: 54 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: isToday ? ACCENT : '#fff', letterSpacing: 0.2 }}>{day.dayLabel}</Text>
+                    <Text style={{ fontSize: 8, color: '#FFFFFF35', marginTop: 2, fontWeight: '600' }}>{day.date.slice(5).replace('-', ' / ')}</Text>
                   </View>
-                  <Text style={SD.dayEmoji}>{day.emoji}</Text>
-                  <View style={SD.dayMid}>
-                    <Text style={SD.dayCond}>{day.condition}</Text>
-                    {day.precipitation > 0 && <Text style={SD.dayPrec}>💧 {day.precipitation} mm</Text>}
+                  {/* Emoji */}
+                  <Text style={{ fontSize: 28, width: 38, textAlign: 'center' }}>{day.emoji}</Text>
+                  {/* Condition + suggestion */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: '#FFFFFFBB', fontWeight: '700', lineHeight: 16 }}>{day.condition}</Text>
+                    {day.precipitation > 0 && <Text style={{ fontSize: 9, color: '#60a5fa', fontWeight: '700', marginTop: 2 }}>💧 {day.precipitation} mm</Text>}
+                    <Text style={{ fontSize: 8, color: sugg.color + 'CC', fontWeight: '800', marginTop: 3, letterSpacing: 0.5 }}>{sugg.title}</Text>
                   </View>
-                  <View style={SD.dayTemps}>
-                    <Text style={SD.dayMax}>{day.maxTemp}°</Text>
-                    <Text style={SD.dayMin}>{day.minTemp}°</Text>
+                  {/* Temps */}
+                  <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff' }}>{day.maxTemp}°</Text>
+                    <Text style={{ fontSize: 10, color: '#FFFFFF38', fontWeight: '700' }}>{day.minTemp}°</Text>
                   </View>
-                  <View style={[SD.suggDot, { backgroundColor: sugg.color }]} />
                 </View>
               );
             })}
@@ -2072,7 +2088,8 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
         {/* Card content */}
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingBottom: 110 }}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={true}
+          indicatorStyle="white">
           <Text style={{ fontSize: 72, marginBottom: 20, textAlign: 'center' }}>{card.emoji}</Text>
           <Text style={{ fontSize: 27, fontWeight: '900', color: '#FFFFFF', lineHeight: 35, marginBottom: 18, textAlign: 'center' }}>{card.title}</Text>
           <View style={{ height: 1.5, backgroundColor: card.color + '65', marginBottom: 22, marginHorizontal: 8 }} />
@@ -2083,6 +2100,7 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
             </View>
           ))}
           <Text style={{ fontSize: 11, color: '#FFFFFF30', marginTop: 20, textAlign: 'center', fontWeight: '600', letterSpacing: 0.5 }}>{idx + 1} of {total}</Text>
+          <Text style={{ fontSize: 9, color: '#FFFFFF20', marginTop: 6, textAlign: 'center', fontWeight: '700', letterSpacing: 1.2 }}>↓  scroll for full content</Text>
         </ScrollView>
 
         {/* Invisible left/right tap zones */}
@@ -2118,47 +2136,10 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
   );
 }
 
-const HES_SCROLL_SPEED = 0.42; // px per animation frame — gentle, unbroken, peaceful glide
-
-// ── Hourly Environment Suggestion Strip (horizontal swipe + continuous auto-scroll) ─────
+// ── Hourly Environment Suggestion — vertical action list ─────────────────
 function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
-  const scrollRef      = useRef<ScrollView>(null);
-  const pausedRef      = useRef(false);
-  const posRef         = useRef(0);
-  const dirRef         = useRef(1);
-  const maxPosRef      = useRef(0);
-  const rafRef         = useRef<number>(0);
-  const resumeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [storyIdx, setStoryIdx] = useState<number | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    const tick = () => {
-      if (!pausedRef.current && maxPosRef.current > 0) {
-        posRef.current += HES_SCROLL_SPEED * dirRef.current;
-        if (posRef.current >= maxPosRef.current) {
-          posRef.current = maxPosRef.current;
-          dirRef.current = -1;
-        } else if (posRef.current <= 0) {
-          posRef.current = 0;
-          dirRef.current = 1;
-        }
-        scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  const pauseScroll = () => {
-    pausedRef.current = true;
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-  };
-  const scheduleResume = () => {
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 2500);
-  };
 
   const hour = new Date().getHours();
   const s    = getHourlyEnvSuggestion(period, weather, hour);
@@ -2200,122 +2181,196 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     label: '⚠️  AVOID THIS HOUR',
   }));
 
-  const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
+  const weatherCards = getWeatherCards(weather);
+  const allCards: HESCard[] = [sciCard, envCard, ...weatherCards, ...doCards, ...dontCards];
+  const doStartIdx   = 2 + weatherCards.length;
+  const dontStartIdx = doStartIdx + doCards.length;
 
   return (
     <>
-    <View style={{ marginBottom: 10 }}>
+    <View style={{ marginTop: 18, marginBottom: 10 }}>
       {/* Header — tappable → opens Ayurvedic Science explore */}
       <TouchableOpacity
         onPress={() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+          <Text style={{ fontSize: 24 }}>{period.emoji}</Text>
           <View>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#D4A84B60', backgroundColor: '#D4A84B1A' }}>
-              <Text style={{ fontSize: 11 }}>⚗️</Text>
-              <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE TODAY'S COSMIC SCIENCE</Text>
-              <View style={{ width: 15, height: 15, borderRadius: 8, backgroundColor: '#D4A84B35', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', lineHeight: 11 }}>↗</Text>
-              </View>
-            </View>
+            <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
+            <Text style={{ fontSize: 10, color: '#D4A84BAA', fontWeight: '700', marginTop: 2 }}>Explore Ayurvedic science  ›</Text>
           </View>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 0 }}>
-          <Text style={{ fontSize: 28, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, lineHeight: 33 }}>{remStr}</Text>
-          <Text style={{ fontSize: 12, fontWeight: '800', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
-          <Text style={{ fontSize: 11, fontWeight: '600', color: '#FFFFFF55', letterSpacing: 0.4, marginTop: 2 }}>{period.startLabel} → {period.endLabel}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 18 }}>{remStr}</Text>
+          <Text style={{ fontSize: 9, fontWeight: '700', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
+          <Text style={{ fontSize: 9, fontWeight: '500', color: '#FFFFFF45', letterSpacing: 0.3, marginTop: 1 }}>{period.startLabel} – {period.endLabel}</Text>
         </View>
       </TouchableOpacity>
 
-      <View>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingRight: 24 }}
-        decelerationRate="fast"
-        snapToInterval={178}
-        snapToAlignment="start"
-        scrollEventThrottle={16}
-        onContentSizeChange={(w) => { maxPosRef.current = Math.max(0, w - SCREEN_W); }}
-        onScrollBeginDrag={() => {
-          pausedRef.current = true;
-          if (resumeTimer.current) clearTimeout(resumeTimer.current);
-        }}
-        onScrollEndDrag={(e) => {
-          posRef.current = e.nativeEvent.contentOffset.x;
-          scheduleResume();
-        }}
-        onMomentumScrollEnd={(e) => {
-          posRef.current = e.nativeEvent.contentOffset.x;
-          scheduleResume();
-        }}
-      >
-        {allCards.map((card, i) => (
+      {/* ── Vertical action rows ── */}
+      <View style={{ marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: period.color + '35', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+        <LinearGradient
+          colors={[period.color + '1A', 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.6 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+
+        {/* Active Phase row */}
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(0); }}
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 12 }}>
+          <Text style={{ fontSize: 20 }}>{sciCard.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 7, color: period.color, fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>{sciCard.label}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{sciCard.title}</Text>
+            <Text style={{ fontSize: 10, color: '#FFFFFFAA', marginTop: 2 }} numberOfLines={1}>{period.sciEmoji}  {period.sciTitle}</Text>
+          </View>
+          <Text style={{ fontSize: 16, color: period.color + '90', fontWeight: '700' }}>›</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 12 }} />
+
+        {/* DO rows */}
+        {doCards.map((card, i) => (
           <TouchableOpacity
-            key={i}
-            activeOpacity={0.85}
-            onPress={() => { pauseScroll(); setStoryIdx(i); }}
-            style={[HES.card, { borderColor: card.color + '55' }]}>
-            <LinearGradient
-              colors={[card.color + '28', 'rgba(4,4,18,0.48)', 'rgba(2,2,14,0.70)']}
-              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-            <GlassPulseOverlay />
-            {/* Label pill badge */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 9 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: card.color, letterSpacing: 1.2 }}>{card.label}</Text>
+            key={`do-${i}`}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(doStartIdx + i); }}
+            activeOpacity={0.7}
+            style={[{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]}>
+            <Text style={{ fontSize: 20 }}>{card.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, color: period.color, fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>DO THIS HOUR</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{card.title}</Text>
             </View>
-            {/* Emoji icon */}
-            <Text style={{ fontSize: 26, marginBottom: 7 }}>{card.emoji}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18, marginBottom: 7 }}>{card.title}</Text>
-            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 7 }} />
-            {card.tips.map((tip, j) => (
-              <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: card.color + 'DD', marginTop: 4, flexShrink: 0 }} />
-                <Text style={{ fontSize: 10, color: '#FFFFFFDC', lineHeight: 15, flex: 1 }}>{tip}</Text>
-              </View>
-            ))}
-            <View style={{ position: 'absolute', bottom: 9, right: 10 }}>
-              <Text style={{ fontSize: 8, color: card.color + '80', fontWeight: '800', letterSpacing: 0.5 }}>expand ↗</Text>
-            </View>
+            <Text style={{ fontSize: 16, color: period.color + '90', fontWeight: '700' }}>›</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+
+        {dontCards.length > 0 && (
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 12 }} />
+        )}
+
+        {/* AVOID rows */}
+        {dontCards.map((card, i) => (
+          <TouchableOpacity
+            key={`dont-${i}`}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(dontStartIdx + i); }}
+            activeOpacity={0.7}
+            style={[{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]}>
+            <Text style={{ fontSize: 20 }}>{card.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, color: '#f43f5eCC', fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>AVOID THIS HOUR</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{card.title}</Text>
+            </View>
+            <Text style={{ fontSize: 16, color: '#f43f5eAA', fontWeight: '700' }}>›</Text>
+          </TouchableOpacity>
+        ))}
       </View>
+
+      <Text style={{ textAlign: 'center', fontSize: 8, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2, marginTop: 8 }}>
+        TAP ANY ROW  ·  {allCards.length} INSIGHTS INSIDE
+      </Text>
     </View>
 
     {storyIdx !== null && (
       <HESStoryModal
         cards={allCards}
         initialIndex={storyIdx}
-        onClose={() => { setStoryIdx(null); scheduleResume(); }}
+        onClose={() => setStoryIdx(null)}
       />
     )}
     </>
   );
 }
 
-const HES = StyleSheet.create({
-  card: {
-    width: 168,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.62)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 13,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.40,
-    shadowRadius: 26,
-    elevation: 14,
-  },
-});
+
+// ── Period Expanded Preview Card (replaces CurrentPeriodCard below the strip) ─────────────
+function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
+  const [storyIdx, setStoryIdx] = useState<number | null>(null);
+
+  const hour = new Date().getHours();
+  const s    = getHourlyEnvSuggestion(period, weather, hour);
+
+  const sciCard: HESCard = {
+    emoji: period.emoji,
+    title: period.englishLabel,
+    tips: [period.sciEmoji + '  ' + period.sciTitle, period.sciDesc],
+    color: period.color,
+    label: '◎  ACTIVE PHASE',
+  };
+  const envCard: HESCard   = { emoji: s.emoji, title: s.title, tips: s.desc.split(' · '), color: period.color, label: '⇟  ENV SIGNAL' };
+  const doCards: HESCard[] = period.activities.map(a => ({ emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  DO THIS HOUR' }));
+  const dontCards: HESCard[] = period.avoidances.map(a => ({ emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⚠️  AVOID THIS HOUR' }));
+  const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
+  const card = allCards[0];
+
+  return (
+    <>
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setStoryIdx(0); }}
+        activeOpacity={0.88}
+        style={{ marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: card.color + '70', backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+        <LinearGradient
+          colors={[card.color + '2E', 'rgba(4,4,18,0.55)', 'rgba(2,2,14,0.82)']}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
+        <GlassPulseOverlay />
+
+        <View style={{ padding: 18 }}>
+          {/* Header row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20' }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: card.color, letterSpacing: 1.4 }}>{card.label}</Text>
+            </View>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: card.color + '45', backgroundColor: card.color + '14', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={{ fontSize: 9, fontWeight: '900', color: card.color, letterSpacing: 0.5 }}>TAP TO EXPLORE ALL</Text>
+              <Text style={{ fontSize: 11, color: card.color, fontWeight: '700' }}>↗</Text>
+            </View>
+          </View>
+
+          {/* Emoji + title */}
+          <Text style={{ fontSize: 38, marginBottom: 10 }}>{card.emoji}</Text>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', lineHeight: 27, marginBottom: 12 }}>{card.title}</Text>
+
+          {/* Divider */}
+          <View style={{ height: 1.5, backgroundColor: card.color + '60', marginBottom: 14 }} />
+
+          {/* Full tips */}
+          {card.tips.map((tip, j) => (
+            <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: card.color, marginTop: 6, flexShrink: 0 }} />
+              <Text style={{ fontSize: 13, color: '#FFFFFFD0', lineHeight: 20, flex: 1, fontWeight: '500' }}>{tip}</Text>
+            </View>
+          ))}
+
+          {/* Footer: dot indicators + count + scroll cue */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: card.color + '20' }}>
+            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', flex: 1 }}>
+              {allCards.slice(0, Math.min(allCards.length, 9)).map((_, i) => (
+                <View key={i} style={{ width: i === 0 ? 18 : 5, height: 5, borderRadius: 3, backgroundColor: i === 0 ? card.color : '#FFFFFF22' }} />
+              ))}
+              {allCards.length > 9 && <Text style={{ fontSize: 8, color: '#FFFFFF35', fontWeight: '800', marginLeft: 2 }}>+{allCards.length - 9}</Text>}
+            </View>
+            <Text style={{ fontSize: 9, color: '#FFFFFF45', fontWeight: '700' }}>{allCards.length} insights inside</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {storyIdx !== null && (
+        <HESStoryModal
+          cards={allCards}
+          initialIndex={storyIdx}
+          onClose={() => setStoryIdx(null)}
+        />
+      )}
+    </>
+  );
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Weather Summary Bar — compact inline row below solar bar
@@ -2349,6 +2404,134 @@ const WSB = StyleSheet.create({
   hum:   { fontSize: 11, color: '#7dd3fcCC', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   hi:    { fontSize: 11, color: '#f87171DD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   lo:    { fontSize: 11, color: '#60a5faDD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Weather Section — collapsible summary card with hourly forecast strip
+// ══════════════════════════════════════════════════════════════════════════════
+function WeatherSection({
+  weather,
+  solarTimes,
+  onMore,
+}: {
+  weather: WeatherData;
+  solarTimes: SolarTimes | null;
+  onMore: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const animVal    = useRef(new Animated.Value(0)).current;
+  const chevronAnim = useRef(new Animated.Value(0)).current;
+
+  const toggle = () => {
+    const toValue = expanded ? 0 : 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.parallel([
+      Animated.spring(animVal,    { toValue, useNativeDriver: false, friction: 9, tension: 52 }),
+      Animated.timing(chevronAnim, { toValue, duration: 280, useNativeDriver: true }),
+    ]).start();
+    setExpanded(!expanded);
+  };
+
+  const stripMaxH    = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 148] });
+  const stripOpacity = animVal.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, 0, 1] });
+  const chevronRot   = chevronAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+
+  const maxT = weather.daily?.[0]?.maxTemp ?? null;
+  const minT = weather.daily?.[0]?.minTemp ?? null;
+
+  return (
+    <View style={WSEC.container}>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.01)']}
+        start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.38)' }} />
+
+      {/* ── Summary row (always visible) — tap to expand ── */}
+      <TouchableOpacity onPress={toggle} activeOpacity={0.78} style={WSEC.summaryRow}>
+        <View style={WSEC.leftGroup}>
+          <Text style={WSEC.emoji}>{weather.emoji}</Text>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={WSEC.temp}>{weather.temp}°</Text>
+              <Text style={WSEC.cond}>{weather.condition}</Text>
+            </View>
+            {weather.city ? <Text style={WSEC.city}>{weather.city}</Text> : null}
+          </View>
+        </View>
+
+        <View style={WSEC.rightGroup}>
+          <Text style={WSEC.hum}>💧 {weather.humidity}%</Text>
+          {(maxT !== null || minT !== null) && (
+            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+              {maxT !== null && <Text style={WSEC.hi}>↑{maxT}°</Text>}
+              {minT !== null && <Text style={WSEC.lo}>↓{minT}°</Text>}
+            </View>
+          )}
+          {!expanded && (
+            <View style={WSEC.forecastPill}>
+              <Text style={WSEC.forecastPillTxt}>FORECAST</Text>
+            </View>
+          )}
+          <Animated.View style={[WSEC.chevronWrap, { transform: [{ rotate: chevronRot }] }]}>
+            <Text style={WSEC.chevron}>⌄</Text>
+          </Animated.View>
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Expandable hourly forecast ── */}
+      <Animated.View style={{ maxHeight: stripMaxH, opacity: stripOpacity, overflow: 'hidden' }}>
+        <View style={WSEC.divider} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 }}>
+          <Text style={WSEC.forecastLabel}>HOURLY FORECAST</Text>
+          <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF28', letterSpacing: 1.2 }}>TAP CARD FOR 7 DAYS  →</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 16 }}
+        >
+          {weather.hourly?.map((pt, i) => (
+            <View key={i} style={[W.hourCell, i === 0 && W.hourCellNow]}>
+              <Text style={[W.hourLabel, i === 0 && { color: ACCENT }]}>{i === 0 ? 'NOW' : hrLabel(pt.hour)}</Text>
+              <Text style={W.hourEmoji}>{nightAwareEmoji(pt.emoji, pt.hour, solarTimes)}</Text>
+              <Text style={W.hourTemp}>{pt.temp}°</Text>
+            </View>
+          ))}
+          <TouchableOpacity onPress={onMore} style={W.moreBtn} activeOpacity={0.8}>
+            <Text style={W.moreTxt}>7 Days</Text>
+            <Text style={W.moreArrow}>→</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Animated.View>
+    </View>
+  );
+}
+
+const WSEC = StyleSheet.create({
+  container: {
+    marginHorizontal: 16, marginTop: 6, marginBottom: 10,
+    borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 14, elevation: 7,
+  },
+  summaryRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
+  leftGroup:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rightGroup:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  emoji:       { fontSize: 22 },
+  temp:        { fontSize: 17, fontWeight: '900', color: '#FFFFFFEE', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  cond:        { fontSize: 12, color: '#FFFFFFCC', fontWeight: '600', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  city:        { fontSize: 10, color: '#FFFFFF70', fontWeight: '600', marginTop: 2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  hum:         { fontSize: 11, color: '#7dd3fcCC', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  hi:          { fontSize: 11, color: '#f87171DD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  lo:          { fontSize: 11, color: '#60a5faDD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  chevronWrap: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  chevron:     { fontSize: 15, color: '#FFFFFF55', fontWeight: '700', lineHeight: 18 },
+  divider:     { height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginHorizontal: 12 },
+  forecastLabel: { fontSize: 7, fontWeight: '900', color: '#FFFFFF45', letterSpacing: 1.6 },
+  forecastPill:   { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.07)' },
+  forecastPillTxt:{ fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.42)', letterSpacing: 1.3 },
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2693,31 +2876,19 @@ export default function DailyTab() {
           onCosmicPress={() => router.push('/cosmic-explore' as never)}
         />
 
-        {/* WEATHER SUMMARY ROW */}
-        {weather && <WeatherSummaryBar weather={weather} />}
-
-        {/* HOURLY STRIP — weather forecast + night-aware icons */}
-        {weather?.hourly && weather.hourly.length > 0 && (
-          <HourlyStrip hourly={weather.hourly} onMore={() => setShow7Day(true)} solarTimes={solarTimes} />
+        {/* WEATHER SECTION — collapsible (tap to expand hourly forecast) */}
+        {weather && (
+          <WeatherSection
+            weather={weather}
+            solarTimes={solarTimes}
+            onMore={() => setShow7Day(true)}
+          />
         )}
 
         {/* BIO CIRCADIAN ENVIRONMENT CYCLE */}
         {currentPeriod ? (
           <View>
-            <View style={[D.sectionRow, { marginTop: 22, marginBottom: 10, alignItems: 'flex-start', justifyContent: 'flex-end' }]}>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[D.sectionSub, { color: currentPeriod.color + 'CC' }]}>{currentPeriod.label}</Text>
-                <Text style={[D.sectionSub, { color: '#FFFFFF30', marginTop: 2 }]}>Solar time · Active now</Text>
-              </View>
-            </View>
             {!(brahmaInfo?.status === 'active') && <HourlyEnvSuggestion period={currentPeriod} weather={weather} />}
-            <CurrentPeriodCard
-              period={currentPeriod}
-              liveClock={liveClock}
-              onExplore={(dosha, label, start, end) =>
-                router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: dosha, periodLabel: label, periodStart: start, periodEnd: end } } as never)
-              }
-            />
             {brahmaInfo?.status === 'active' && (
               <View style={{ paddingHorizontal: 16 }}>
                 <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
@@ -2873,27 +3044,22 @@ const WS = StyleSheet.create({
 });
 
 const SD = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000080' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000088' },
   sheet: {
-    backgroundColor: '#0C0C1E', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, maxHeight: '82%',
+    backgroundColor: '#080814', borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, maxHeight: '85%',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
   },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  sheetTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  dayRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14 },
-  dayRowBorder: { borderTopWidth: 1, borderTopColor: '#FFFFFF07' },
-  dayLeft: { width: 52 },
-  dayLabel: { fontSize: 13, fontWeight: '800', color: '#fff' },
-  dayDate:  { fontSize: 9, color: '#FFFFFF30', marginTop: 2 },
-  dayEmoji: { fontSize: 26, width: 36, textAlign: 'center' },
-  dayMid:   { flex: 1, gap: 2 },
-  dayCond:  { fontSize: 11, color: '#FFFFFF65', fontWeight: '600' },
-  dayPrec:  { fontSize: 10, color: '#60a5fa', fontWeight: '600' },
-  dayTemps: { alignItems: 'flex-end', gap: 2 },
-  dayMax:   { fontSize: 15, fontWeight: '800', color: '#fff' },
-  dayMin:   { fontSize: 11, color: '#FFFFFF35', fontWeight: '600' },
-  suggDot:  { width: 8, height: 8, borderRadius: 4 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  sheetTitle: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.2 },
+  dayCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 18, borderWidth: 1, overflow: 'hidden',
+    paddingVertical: 13, paddingRight: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32, shadowRadius: 16, elevation: 8,
+  },
 });
 
 const P = StyleSheet.create({

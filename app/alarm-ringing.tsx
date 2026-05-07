@@ -63,6 +63,8 @@ export default function AlarmRingingScreen() {
   const [snoozedFor, setSnoozedFor] = useState<number | null>(null);
   const [alarmStopped, setAlarmStopped] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const alarmStoppedRef = useRef(false);
+  const lastVibeRestartRef = useRef(0);
   const missionStartedRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
@@ -158,6 +160,9 @@ export default function AlarmRingingScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
   };
 
+  // ── Sync alarmStopped → ref so setTimeout callbacks read it without stale closure ──
+  useEffect(() => { alarmStoppedRef.current = alarmStopped; }, [alarmStopped]);
+
   // ── Keep screen awake ───────────────────────────────────────────────────────
   useEffect(() => {
     activateKeepAwakeAsync('alarm-ringing');
@@ -177,12 +182,22 @@ export default function AlarmRingingScreen() {
   }, []);
 
   // ── BLOCK hardware back button completely ───────────────────────────────────
-  // Note: MainActivity.kt also overrides onBackPressed natively as a second
+  // Note: MainActivity.kt also overrides dispatchKeyEvent natively as a second
   // layer of defence. This JS handler is the first layer.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!alarmStopped) {
+        // Cancel the looping vibration FIRST so the haptic from triggerShake
+        // fires clean — without this, the impulse layers on top of the loop
+        // and each back press makes the vibration progressively worse.
+        Vibration.cancel();
         triggerShake();
+        // Restart the loop after the shake animation completes (5×60ms = 300ms)
+        setTimeout(() => {
+          if (!alarmStoppedRef.current) {
+            Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+          }
+        }, 350);
         return true; // blocks back — MainActivity also swallows it natively
       }
       return false;
@@ -250,10 +265,16 @@ export default function AlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
-        Vibration.cancel();
-        Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        triggerShake();
+        // Debounce: rapid app-switcher presses fire multiple foreground events within
+        // milliseconds of each other. Only restart vibration+haptic if 400ms has passed
+        // since the last restart — prevents patterns stacking and unrhythmic vibration.
+        const now = Date.now();
+        if (now - lastVibeRestartRef.current > 400) {
+          lastVibeRestartRef.current = now;
+          Vibration.cancel();
+          Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+          triggerShake();
+        }
       } else {
         appStateRef.current = nextState;
       }

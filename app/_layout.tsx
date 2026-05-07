@@ -19,6 +19,7 @@ import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
 import { ensureAllBgsCached } from '@/lib/bgImages';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
+import * as ImagePicker from 'expo-image-picker';
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
@@ -99,6 +100,10 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
       scheduleAllNativeReminders().catch(() => {});
       checkAndRescheduleDaily().catch(() => {});
       setTimeout(() => requestAllAlarmPermissions().catch(() => {}), 2500);
+      setTimeout(() => {
+        ImagePicker.requestCameraPermissionsAsync().catch(() => {});
+        ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => {});
+      }, 3500);
     } catch { /* Expo Go */ }
     // Route straight to tabs unless already there or on alarm screens
     const root = segments[0] as string;

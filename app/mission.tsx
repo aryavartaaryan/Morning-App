@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
-  AppState, Platform,
+  AppState, Platform, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -13,7 +13,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound } from '@/lib/nativeAlarm';
+import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, setNativePickerActive } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -132,7 +132,24 @@ function CameraMission({
 
   const pickImage = async () => {
     if (suppressBttf) suppressBttf.current = true;
+    await setNativePickerActive(true);
     try {
+      const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Camera Permission Blocked',
+            'Camera access is blocked. Please go to Settings → Apps → SolRize → Permissions and enable Camera.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert('Camera Permission Required', 'Please allow camera access to complete this mission.');
+        }
+        return;
+      }
       const result = await ImagePicker.launchCameraAsync({
         base64: true, quality: 0.7, allowsEditing: false,
       });
@@ -142,13 +159,31 @@ function CameraMission({
         setFailMsg('');
       }
     } finally {
+      await setNativePickerActive(false);
       if (suppressBttf) suppressBttf.current = false;
     }
   };
 
   const pickGallery = async () => {
     if (suppressBttf) suppressBttf.current = true;
+    await setNativePickerActive(true);
     try {
+      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Gallery Permission Blocked',
+            'Photo library access is blocked. Please go to Settings → Apps → SolRize → Permissions and enable Storage / Photos.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert('Gallery Permission Required', 'Please allow photo library access to complete this mission.');
+        }
+        return;
+      }
       const result = await ImagePicker.launchImageLibraryAsync({
         base64: true, quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
@@ -158,6 +193,7 @@ function CameraMission({
         setFailMsg('');
       }
     } finally {
+      await setNativePickerActive(false);
       if (suppressBttf) suppressBttf.current = false;
     }
   };

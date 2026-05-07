@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, NativeModules, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, NativeModules, Platform, Linking } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -67,6 +68,34 @@ export default function SettingsTab() {
     await requestAllAlarmPermissions();
     await checkPerms();
     setCheckingPerms(false);
+  };
+
+  const CAMERA_MISSIONS = new Set(['sky_check', 'make_bed', 'hydrate']);
+
+  const handleSelectMission = async (ms: typeof MISSIONS[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (CAMERA_MISSIONS.has(ms.id)) {
+      const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Camera Permission Required',
+            'This mission uses the camera. Please enable Camera permission for SolRize in your device Settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert(
+            'Camera Permission Required',
+            'This mission requires camera access. Please allow it when prompted to select this mission.',
+          );
+        }
+        return;
+      }
+    }
+    saveMission({ ...mission, selectedMission: ms.id });
   };
 
   const handleResetStreak = () => {
@@ -169,7 +198,7 @@ export default function SettingsTab() {
           {MISSIONS.map((ms, i) => {
             const active = mission.selectedMission === ms.id;
             return (
-              <TouchableOpacity key={ms.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); saveMission({ ...mission, selectedMission: ms.id }); }} style={[S.soundRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF08' }]} activeOpacity={0.75}>
+              <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms)} style={[S.soundRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF08' }]} activeOpacity={0.75}>
                 <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
                 <View style={{ flex: 1, paddingLeft: 10 }}>
                   <Text style={[S.soundLabel, { color: active ? ms.color : '#fff' }]}>{ms.name}</Text>

@@ -7,7 +7,9 @@
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
@@ -83,9 +85,11 @@
     </receiver>
 
     <!-- AlarmSoundService — plays mantra on STREAM_ALARM, shows fullScreen notification -->
+    <!-- stopWithTask="false": service survives recents swipe — audio never stops (Alarmy-grade) -->
     <service
       android:name=".AlarmSoundService"
       android:exported="false"
+      android:stopWithTask="false"
       android:foregroundServiceType="mediaPlayback|specialUse">
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -98,9 +102,11 @@
       android:exported="false"/>
 
     <!-- HabitAlarmSoundService — plays mantra + unbreakable screen for habit/quick alarms -->
+    <!-- stopWithTask="false": service survives recents swipe — audio never stops (Alarmy-grade) -->
     <service
       android:name=".HabitAlarmSoundService"
       android:exported="false"
+      android:stopWithTask="false"
       android:foregroundServiceType="mediaPlayback|specialUse">
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

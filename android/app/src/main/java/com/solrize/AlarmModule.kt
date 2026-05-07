@@ -188,6 +188,21 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
         }
     }
 
+    // ── Signal that a system image-picker (camera / gallery) is active ───────
+    // While picker_active=true the AlarmSoundService lifecycle watchdog will NOT
+    // call startActivity() when MainActivity is paused — otherwise it immediately
+    // brings the app back to front and dismisses the camera/gallery overlay.
+    @ReactMethod
+    fun setPickerActive(active: Boolean, promise: Promise) {
+        try {
+            reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("picker_active", active).apply()
+            promise.resolve("OK")
+        } catch (e: Exception) {
+            promise.reject("PICKER_ERROR", e.message, e)
+        }
+    }
+
     // ── Called by JS on every app launch to check if we woke up from alarm ──
     // NON-DESTRUCTIVE read — we intentionally do NOT clear the flag here.
     // Only stopAlarmSound() clears it, which is the single source of truth

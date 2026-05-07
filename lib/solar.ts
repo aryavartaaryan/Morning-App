@@ -11,8 +11,8 @@ export interface SolarTimes {
   solarNoon: number;  // local decimal hours
 }
 
-export function getSolarTimes(lat: number, lon: number): SolarTimes {
-  const now = new Date();
+export function getSolarTimes(lat: number, lon: number, date?: Date): SolarTimes {
+  const now = date ?? new Date();
   // Device's UTC offset in hours (positive east)
   const utcOffsetHours = -now.getTimezoneOffset() / 60;
 

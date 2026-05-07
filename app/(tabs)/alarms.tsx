@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
   TextInput, Alert, Animated, Dimensions, NativeModules, Platform,
-  ToastAndroid, ImageBackground,
+  ToastAndroid, ImageBackground, Linking,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -411,6 +412,34 @@ export default function AlarmsTab() {
 
   const updateMission = async (patch: Partial<MissionSettings>) => { const u = { ...missionSettings, ...patch }; setMissionSettings(u); await store.setJSON(KEYS.missionSettings, u); };
 
+  const CAMERA_MISSIONS = new Set(['sky_check', 'make_bed', 'hydrate']);
+
+  const handleSelectMission = async (missionId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (CAMERA_MISSIONS.has(missionId)) {
+      const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Camera Permission Required',
+            'This mission uses the camera. Please enable Camera permission for SolRize in your device Settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert(
+            'Camera Permission Required',
+            'This mission requires camera access. Please allow it when prompted to select this mission.',
+          );
+        }
+        return;
+      }
+    }
+    updateMission({ selectedMission: missionId });
+  };
+
   const chantMantra = (mantra: typeof MANTRAS[0], repeat = true) => {
     Speech.stop();
     Speech.speak(mantra.text, { language: 'en-IN', pitch: mantra.pitch, rate: mantra.rate, onDone: () => { if (repeat && alarmActiveRef.current) chantMantra(mantra, repeat); } });
@@ -613,11 +642,11 @@ export default function AlarmsTab() {
           <Text style={S.sectionHeaderTxt}>🌅  MORNING WAKE-UP</Text>
           <View style={S.sectionHeaderLine} />
         </View>
-        <View style={[S.alarmCard, settings.wakeAlarm.enabled && S.alarmCardActive]}>
-          <LinearGradient colors={[ACCENT + '28', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+        <View style={S.alarmCard}>
+          <LinearGradient colors={['rgba(255,255,255,0.10)', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
           <GlassPulseOverlay />
-          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? ACCENT : '#FFFFFF18' }]} />
+          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.28)' : '#FFFFFF14' }]} />
           <TouchableOpacity onPress={() => setShowWakeEdit(true)} activeOpacity={0.85} style={{ flex: 1 }}>
             <View style={S.alarmCardInner}>
               <View style={S.alarmLeft}>
@@ -630,9 +659,9 @@ export default function AlarmsTab() {
                   {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
                 </Text>
                 <Text style={S.alarmSub}>{playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.name ?? 'Mission'}</Text>
-                <DayDots days={undefined} color={ACCENT} />
+                <DayDots days={undefined} color='#FFFFFF' />
               </View>
-              <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color={ACCENT} />
+              <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color='#FFFFFF' />
             </View>
           </TouchableOpacity>
         </View>
@@ -640,13 +669,12 @@ export default function AlarmsTab() {
         {/* Habit + Quick Alarm Cards */}
         {alarmEntries.map(entry => {
           const isMenuOpen = menuOpenId === entry.id;
-          const cardColor  = entry.type === 'habit' ? '#10b981' : '#f97316';
           return (
-            <View key={entry.id} style={[S.alarmCard, entry.enabled && (entry.type === 'habit' ? S.alarmCardHabit : S.alarmCardQuick)]}>
-              <LinearGradient colors={[cardColor + '28', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+            <View key={entry.id} style={S.alarmCard}>
+              <LinearGradient colors={['rgba(255,255,255,0.10)', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
               <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
               <GlassPulseOverlay />
-              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? cardColor : '#FFFFFF18' }]} />
+              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.28)' : '#FFFFFF14' }]} />
               <View style={{ flex: 1 }}>
                 <View style={S.alarmCardInner}>
                   <TouchableOpacity style={S.alarmLeft} onPress={() => { setMenuOpenId(null); openEditEntry(entry); }} activeOpacity={0.85}>
@@ -654,17 +682,17 @@ export default function AlarmsTab() {
                       <Text style={S.alarmTypeEmoji}>{entry.type === 'habit' ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
                       <Text style={S.alarmTypeTxt}>{entry.type === 'habit' ? 'HABIT ALARM' : 'QUICK ALARM'}</Text>
                     </View>
-                    <Text style={[S.alarmTime, entry.enabled ? (entry.type === 'habit' ? S.alarmTimeHabit : S.alarmTimeQuick) : S.alarmTimeOff]}>
+                    <Text style={[S.alarmTime, entry.enabled ? S.alarmTimeOn : S.alarmTimeOff]}>
                       {fmt12(entry.hour, entry.minute)}
                     </Text>
                     <Text style={S.alarmSub}>{entry.label}</Text>
-                    <DayDots days={entry.days} color={cardColor} />
+                    <DayDots days={entry.days} color='#FFFFFF' />
                   </TouchableOpacity>
                   <View style={{ alignItems: 'flex-end', gap: 8 }}>
                     <TouchableOpacity onPress={() => setMenuOpenId(isMenuOpen ? null : entry.id)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={S.kebabBtn}>
                       <View style={S.kebabDot} /><View style={S.kebabDot} /><View style={S.kebabDot} />
                     </TouchableOpacity>
-                    <Toggle value={entry.enabled} onToggle={() => { setMenuOpenId(null); toggleEntry(entry.id); }} color={cardColor} />
+                    <Toggle value={entry.enabled} onToggle={() => { setMenuOpenId(null); toggleEntry(entry.id); }} color='#FFFFFF' />
                   </View>
                 </View>
                 {isMenuOpen && (
@@ -753,7 +781,7 @@ export default function AlarmsTab() {
               <Text style={S.sheetSection}>MORNING MISSION  (alarm won't stop until done)</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                 {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
-                  <TouchableOpacity key={ms.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ selectedMission: ms.id }); }} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
+                  <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
                     <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
                     {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
@@ -806,7 +834,7 @@ export default function AlarmsTab() {
                 <Text style={{ fontSize: 16, color: '#FFFFFF80', fontWeight: '600' }}>✕</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', letterSpacing: 0.2 }}>🌿  Habit Alarm</Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', letterSpacing: 0.2 }}>Habit Alarm</Text>
                 <Text style={{ fontSize: 11, color: '#FFFFFF55', marginTop: 3, lineHeight: 16 }}>
                   Add habit alarms with gentle sounds to make your life disciplined and increase your productivity.
                 </Text>
@@ -883,36 +911,35 @@ export default function AlarmsTab() {
                 <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
               )}
 
+
             </ScrollView>
           </View>
 
-          {/* ── Habit wisdom tip — always visible, above time picker ── */}
-          {formHabitKey && formHabitKey !== 'custom' && formHabitKey !== '' && HABIT_WISDOM[formHabitKey] && (() => {
-            const w = HABIT_WISDOM[formHabitKey];
-            return (
-              <View style={{ borderRadius: 16, borderWidth: 1, borderColor: w.color + '45', backgroundColor: w.color + '10', paddingVertical: 11, paddingHorizontal: 14, marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12, borderColor: w.color + '55', borderWidth: 1, backgroundColor: w.color + '1A', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Text style={{ fontSize: 20 }}>{w.icon}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.4, marginBottom: 3 }}>{w.title}</Text>
-                  <Text style={{ fontSize: 10.5, color: '#FFFFFFBB', lineHeight: 15 }} numberOfLines={2}>{w.body}</Text>
-                </View>
-              </View>
-            );
-          })()}
-
           {/* ── Fixed Bottom: Time + Days + Save ── */}
           <View style={{ backgroundColor: '#0E0E20', borderTopWidth: 1, borderTopColor: '#FFFFFF10', paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 16 }}>
-            {formHabitKey !== '' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Text style={{ fontSize: 18 }}>{formHabitKey === 'custom' ? '✨' : AYU_HABITS.find(h => h.key === formHabitKey)?.emoji ?? '🌿'}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#10b981', flex: 1 }}>
-                  {formHabitKey === 'custom' ? (formLabel || 'Custom Habit') : AYU_HABITS.find(h => h.key === formHabitKey)?.label ?? ''}
-                </Text>
-                <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
-              </View>
-            )}
+            {formHabitKey !== '' && (() => {
+              const w = formHabitKey !== 'custom' ? HABIT_WISDOM[formHabitKey] : null;
+              if (w) {
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, borderColor: w.color + '45', backgroundColor: w.color + '0D', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 10 }}>
+                    <View style={{ width: 34, height: 34, borderRadius: 10, borderColor: w.color + '55', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Text style={{ fontSize: 17 }}>{w.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.4, marginBottom: 2 }}>{w.title}</Text>
+                      <Text style={{ fontSize: 10, color: '#FFFFFFBB', lineHeight: 14 }} numberOfLines={2}>{w.body}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 18 }}>✨</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#a78bfa', flex: 1 }}>{formLabel || 'Custom Habit'}</Text>
+                  <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
+                </View>
+              );
+            })()}
             <Text style={[S.sheetSection, { marginTop: 0, marginBottom: 2, marginHorizontal: 0 }]}>SET TIME</Text>
             <TimeAdjuster hour={formHour} minute={formMinute} onChange={(hr, mn) => { setFormHour(hr); setFormMinute(mn); }} />
             <Text style={[S.sheetSection, { marginTop: 8, marginBottom: 6, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
@@ -969,9 +996,9 @@ const S = StyleSheet.create({
   sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFB8', letterSpacing: 2.0 },
   sectionHeaderLine: { flex: 1, height: 1, backgroundColor: '#FFFFFF22' },
   alarmCard: { marginHorizontal: 16, marginTop: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', flexDirection: 'row', elevation: 14, shadowColor: '#000', shadowOpacity: 0.40, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
-  alarmCardActive: { borderColor: ACCENT + '99', backgroundColor: 'rgba(255,255,255,0.10)', shadowColor: ACCENT, shadowOpacity: 0.44, shadowRadius: 26, elevation: 16 },
-  alarmCardHabit: { borderColor: 'rgba(16,185,129,0.65)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#10b981', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
-  alarmCardQuick: { borderColor: 'rgba(249,115,22,0.65)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#f97316', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
+  alarmCardActive: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.09)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
+  alarmCardHabit: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
+  alarmCardQuick: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
   alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 13, paddingLeft: 12, gap: 12 },
   alarmAccentBar: { width: 4, alignSelf: 'stretch' },
   alarmLeft: { flex: 1, gap: 2 },
@@ -981,8 +1008,8 @@ const S = StyleSheet.create({
   alarmTime: { fontSize: 36, letterSpacing: -2, lineHeight: 40, fontWeight: '300' },
   alarmTimeOn: { color: '#FFFFFF' },
   alarmTimeOff: { color: '#FFFFFF50' },
-  alarmTimeHabit: { color: '#4ade80' },
-  alarmTimeQuick: { color: '#fb923c' },
+  alarmTimeHabit: { color: '#FFFFFF' },
+  alarmTimeQuick: { color: '#FFFFFF' },
   alarmSub: { fontSize: 11, color: '#FFFFFFAA', fontWeight: '600', marginTop: 1 },
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },

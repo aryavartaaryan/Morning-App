@@ -32,6 +32,7 @@ export default function HabitAlarmRingingScreen() {
   const [showStreakView, setShowStreakView] = useState(false);
   const [streakData, setStreakData] = useState<{ streak: number; weekDays: boolean[] } | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const lastVibeRestartRef = useRef(0);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
@@ -211,10 +212,18 @@ export default function HabitAlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         soundRef.current?.getStatusAsync().then((st: any) => {
           if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
         }).catch(() => {});
+        // Debounce: rapid app-switcher presses fire multiple foreground events within
+        // milliseconds. Only restart vibration+haptic once per 400ms window.
+        const now = Date.now();
+        if (now - lastVibeRestartRef.current > 400) {
+          lastVibeRestartRef.current = now;
+          Vibration.cancel();
+          Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
       } else {
         appStateRef.current = nextState;
       }

@@ -34,6 +34,7 @@ const AlarmNative: {
   openFullScreenIntentSettings(): Promise<string>;
   canDrawOverlays(): Promise<boolean>;
   requestOverlayPermission(): Promise<string>;
+  setPickerActive(active: boolean): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -118,7 +119,17 @@ export async function scheduleNativeAlarm(hour: number, minute: number): Promise
   );
 }
 
-// ── Instantly update mantra preference (call from alarms.tsx on mantra change) ─
+// ── Gate the native bringToFront watchdog during camera/gallery pickers ────────────
+// Call setNativePickerActive(true) BEFORE launching ImagePicker, and
+// setNativePickerActive(false) in the finally block after it resolves.
+// Without this, AlarmSoundService.onActivityPaused() fires when the camera
+// opens and immediately brings MainActivity back to front, closing the picker.
+export async function setNativePickerActive(active: boolean): Promise<void> {
+  if (Platform.OS !== 'android' || !AlarmNative?.setPickerActive) return;
+  try { await AlarmNative.setPickerActive(active); } catch { /* ignore */ }
+}
+
+// ── Instantly update mantra preference (call from alarms.tsx on mantra change) ──
 export async function setNativeAlarmSound(mantraId: string): Promise<void> {
   if (!AlarmNative?.setAlarmSound) return;
   try { await AlarmNative.setAlarmSound(mantraId); } catch { /* ignore */ }

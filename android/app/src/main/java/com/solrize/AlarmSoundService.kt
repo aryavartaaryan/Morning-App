@@ -22,33 +22,42 @@ class AlarmSoundService : Service() {
     // the alarm-ringing component and plays the audio a second time.
     private var alarmScreenLaunched = false
 
-    // ── Primary watchdog: ActivityLifecycleCallbacks ─────────────────────────
+    // Accurate foreground flag: set by lifecycle watchdog, avoids deprecated
+    // ActivityManager.getRunningAppProcesses() which is restricted on Android 11+.
+    @Volatile private var mainActivityResumed = false
+
+    // ── Primary watchdog: ActivityLifecycleCallbacks ─────────────────────────────────────
     // Fires the instant MainActivity.onPause() is called (e.g. HOME press).
     // Because we call startActivity() on the live Activity object, there are
     // ZERO BAL restrictions — this works on every Android version.
     private val lifecycleWatchdog = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityResumed(a: Activity) {
+            if (a is MainActivity) mainActivityResumed = true
+        }
         override fun onActivityPaused(activity: Activity) {
-            if (activity is MainActivity && isAlarmActive()) {
-                try {
-                    // FLAG_ACTIVITY_NEW_TASK is mandatory here: by the time onActivityPaused
-                    // fires the Activity is mid-transition to background, and Android 10+
-                    // will silently drop a startActivity without NEW_TASK in that state.
-                    activity.startActivity(
-                        Intent(activity, MainActivity::class.java).apply {
-                            addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                                Intent.FLAG_ACTIVITY_NO_ANIMATION
-                            )
-                        }
-                    )
-                } catch (_: Exception) {}
+            if (activity is MainActivity) {
+                mainActivityResumed = false
+                if (isAlarmActive() && !isPickerActive()) {
+                    try {
+                        // FLAG_ACTIVITY_NEW_TASK is mandatory here: by the time onActivityPaused
+                        // fires the Activity is mid-transition to background, and Android 10+
+                        // will silently drop a startActivity without NEW_TASK in that state.
+                        activity.startActivity(
+                            Intent(activity, MainActivity::class.java).apply {
+                                addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                                )
+                            }
+                        )
+                    } catch (_: Exception) {}
+                }
             }
         }
         override fun onActivityCreated(a: Activity, b: Bundle?) {}
         override fun onActivityStarted(a: Activity) {}
-        override fun onActivityResumed(a: Activity) {}
         override fun onActivityStopped(a: Activity) {}
         override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
         override fun onActivityDestroyed(a: Activity) {}
@@ -61,27 +70,27 @@ class AlarmSoundService : Service() {
     private val bringToFrontHandler = Handler(Looper.getMainLooper())
     private val bringToFrontRunnable = object : Runnable {
         override fun run() {
-            if (isAlarmActive() && !isAppInForeground()) {
+            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
                 launchApp()
             }
             bringToFrontHandler.postDelayed(this, 500)
         }
     }
 
-    private fun isAppInForeground(): Boolean {
-        return try {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val procs = am.runningAppProcesses ?: return false
-            procs.any {
-                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
-                it.pkgList.contains(packageName)
-            }
-        } catch (_: Exception) { false }
-    }
+    // Uses mainActivityResumed tracked by the lifecycle watchdog — accurate on all Android
+    // versions without relying on the deprecated/restricted getRunningAppProcesses() API.
+    private fun isAppInForeground(): Boolean = mainActivityResumed
 
     private fun isAlarmActive(): Boolean =
         getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean("alarm_fired_pending", false)
+
+    // True while the user is inside the system camera or gallery picker.
+    // When the picker is open, MainActivity goes to the background legitimately
+    // — the watchdogs must NOT bring the app back to front in this window.
+    private fun isPickerActive(): Boolean =
+        getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean("picker_active", false)
 
     companion object {
         const val CHANNEL_ID = "arise_alarm_service_v1"
@@ -274,6 +283,26 @@ class AlarmSoundService : Service() {
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .createNotificationChannel(ch)
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (isAlarmActive()) {
+            // User swiped the app from recents while alarm is active.
+            // START_STICKY alone is ignored by many OEM ROMs (MIUI, ColorOS, OneUI).
+            // Belt-and-suspenders: schedule an AlarmManager restart in 1 second so
+            // audio comes back even when the OS refuses to honour START_STICKY.
+            try {
+                val restart = PendingIntent.getService(
+                    applicationContext, 99,
+                    Intent(applicationContext, AlarmSoundService::class.java),
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+                (getSystemService(Context.ALARM_SERVICE) as AlarmManager)
+                    .set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        android.os.SystemClock.elapsedRealtime() + 1_000L, restart)
+            } catch (_: Exception) {}
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {

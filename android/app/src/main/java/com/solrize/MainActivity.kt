@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 
 import com.facebook.react.ReactActivity
@@ -134,6 +135,19 @@ class MainActivity : ReactActivity() {
       } catch (_: Exception) {}
     }
     super.onUserLeaveHint()
+  }
+
+  /**
+   * Lowest-level key event intercept.
+   * Catches KEYCODE_BACK before React Native, before Android 13+ predictive-back
+   * gesture system, and before onBackPressed/invokeDefaultOnBackPressed.
+   * This is the real unbreakable lock — Alarmy-grade.
+   */
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    if (isAlarmActive() && event.keyCode == KeyEvent.KEYCODE_BACK) {
+      return true // consume both ACTION_DOWN and ACTION_UP — no animation, no navigation
+    }
+    return super.dispatchKeyEvent(event)
   }
 
   /**

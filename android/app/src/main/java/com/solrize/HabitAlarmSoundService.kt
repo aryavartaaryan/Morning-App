@@ -34,57 +34,62 @@ class HabitAlarmSoundService : Service() {
     // and use a plain MainActivity intent — prevents Expo Router from re-mounting the screen.
     private var alarmScreenLaunched = false
 
-    // ── Primary watchdog: ActivityLifecycleCallbacks ─────────────────────────
+    // Accurate foreground flag tracked by lifecycle watchdog (same pattern as AlarmSoundService).
+    @Volatile private var mainActivityResumed = false
+
+    // ── Primary watchdog: ActivityLifecycleCallbacks ─────────────────────────────
     private val lifecycleWatchdog = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityResumed(a: Activity) {
+            if (a is MainActivity) mainActivityResumed = true
+        }
         override fun onActivityPaused(activity: Activity) {
-            if (activity is MainActivity && isHabitAlarmActive()) {
-                try {
-                    activity.startActivity(
-                        Intent(activity, MainActivity::class.java).apply {
-                            addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                                Intent.FLAG_ACTIVITY_NO_ANIMATION
-                            )
-                        }
-                    )
-                } catch (_: Exception) {}
+            if (activity is MainActivity) {
+                mainActivityResumed = false
+                if (isHabitAlarmActive() && !isPickerActive()) {
+                    try {
+                        activity.startActivity(
+                            Intent(activity, MainActivity::class.java).apply {
+                                addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                                )
+                            }
+                        )
+                    } catch (_: Exception) {}
+                }
             }
         }
         override fun onActivityCreated(a: Activity, b: Bundle?) {}
         override fun onActivityStarted(a: Activity) {}
-        override fun onActivityResumed(a: Activity) {}
         override fun onActivityStopped(a: Activity) {}
         override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
         override fun onActivityDestroyed(a: Activity) {}
     }
 
-    // ── Secondary watchdog: 500 ms polling ───────────────────────────────────
+    // ── Secondary watchdog: 500 ms polling ────────────────────────────────────
     private val bringToFrontHandler = Handler(Looper.getMainLooper())
     private val bringToFrontRunnable = object : Runnable {
         override fun run() {
-            if (isHabitAlarmActive() && !isAppInForeground()) {
+            if (isHabitAlarmActive() && !isAppInForeground() && !isPickerActive()) {
                 launchApp()
             }
             bringToFrontHandler.postDelayed(this, 500)
         }
     }
 
-    private fun isAppInForeground(): Boolean {
-        return try {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val procs = am.runningAppProcesses ?: return false
-            procs.any {
-                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
-                it.pkgList.contains(packageName)
-            }
-        } catch (_: Exception) { false }
-    }
+    // Lifecycle-based check — replaces deprecated getRunningAppProcesses() (broken on Android 11+).
+    private fun isAppInForeground(): Boolean = mainActivityResumed
 
     private fun isHabitAlarmActive(): Boolean =
         getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(HabitAlarmModule.KEY_ACTIVE, false)
+
+    // Reads picker_active from the wake-alarm prefs (set by AlarmModule.setPickerActive).
+    private fun isPickerActive(): Boolean =
+        getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean("picker_active", false)
 
     companion object {
         const val CHANNEL_ID         = "arise_habit_alarm_service_v1"
@@ -106,12 +111,31 @@ class HabitAlarmSoundService : Service() {
             return START_STICKY
         }
 
-        // Read params from intent extras (supplied by HabitAlarmBroadcastReceiver)
-        habitKey   = intent?.getStringExtra("habit_key")   ?: habitKey
-        habitEmoji = intent?.getStringExtra("habit_emoji") ?: habitEmoji
-        habitLabel = intent?.getStringExtra("habit_label") ?: habitLabel
-        alarmType  = intent?.getStringExtra("alarm_type")  ?: alarmType
-        mantraPath = intent?.getStringExtra("mantra_path") ?: mantraPath
+        // Read params from intent extras (supplied by HabitAlarmBroadcastReceiver).
+        // On START_STICKY restart intent is null — restore from SharedPreferences so the
+        // correct habit screen is shown instead of defaulting to the wake-up alarm route.
+        val paramPrefs = getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+        if (intent != null) {
+            habitKey   = intent.getStringExtra("habit_key")   ?: habitKey
+            habitEmoji = intent.getStringExtra("habit_emoji") ?: habitEmoji
+            habitLabel = intent.getStringExtra("habit_label") ?: habitLabel
+            alarmType  = intent.getStringExtra("alarm_type")  ?: alarmType
+            mantraPath = intent.getStringExtra("mantra_path") ?: mantraPath
+            // Persist active params so a START_STICKY null-intent restart can restore them
+            paramPrefs.edit()
+                .putString("active_habit_key",   habitKey)
+                .putString("active_habit_emoji", habitEmoji)
+                .putString("active_habit_label", habitLabel)
+                .putString("active_alarm_type",  alarmType)
+                .putString("active_mantra_path", mantraPath)
+                .apply()
+        } else {
+            habitKey   = paramPrefs.getString("active_habit_key",   "") ?: ""
+            habitEmoji = paramPrefs.getString("active_habit_emoji", "🌿") ?: "🌿"
+            habitLabel = paramPrefs.getString("active_habit_label", "Habit Alarm") ?: "Habit Alarm"
+            alarmType  = paramPrefs.getString("active_alarm_type",  "habit") ?: "habit"
+            mantraPath = paramPrefs.getString("active_mantra_path", "") ?: ""
+        }
 
         // Acquire wake lock — CPU stays alive while alarm plays
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -274,6 +298,25 @@ class HabitAlarmSoundService : Service() {
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .createNotificationChannel(ch)
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (isHabitAlarmActive()) {
+            // App swiped from recents while habit alarm is active.
+            // Schedule AlarmManager self-restart in 1s as backup for ROMs that ignore START_STICKY.
+            // Note: with android:stopWithTask="false" this is belt-and-suspenders only.
+            try {
+                val restart = PendingIntent.getService(
+                    applicationContext, 100,
+                    Intent(applicationContext, HabitAlarmSoundService::class.java),
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+                (getSystemService(Context.ALARM_SERVICE) as AlarmManager)
+                    .set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        android.os.SystemClock.elapsedRealtime() + 1_000L, restart)
+            } catch (_: Exception) {}
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
