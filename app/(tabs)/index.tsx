@@ -188,6 +188,37 @@ function getMoonPhase(date: Date = new Date()): {
   return             { emoji: waxing ? '�' : '🌖', name: waxing ? 'Waxing Gibbous'  : 'Waning Gibbous',  tithi, illumination: illum, paksha, tithiNum };
 }
 
+// ── Next Purnima / Amavasya countdown ───────────────────────────────────
+function getNextLunarEvents() {
+  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
+  const CYCLE = 29.53058867;
+  const HALF  = CYCLE / 2;
+  const now   = new Date();
+  const age   = (((now.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE + CYCLE) % CYCLE;
+  const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
+  const isFullToday = illum >= 97;
+  const isNewToday  = illum <= 3;
+  let daysToFull = HALF - age;
+  if (daysToFull <= 0) daysToFull += CYCLE;
+  if (isFullToday) daysToFull = 0;
+  let daysToNew = CYCLE - age;
+  if (daysToNew >= CYCLE) daysToNew = 0;
+  if (isNewToday)  daysToNew  = 0;
+  const fmtS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const fmtL: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+  const fullDate = new Date(now.getTime() + daysToFull * 86400000);
+  const newDate  = new Date(now.getTime() + daysToNew  * 86400000);
+  return {
+    daysToFull: Math.round(daysToFull),
+    daysToNew:  Math.round(daysToNew),
+    fullDateStr:  fullDate.toLocaleDateString('en-US', fmtS),
+    newDateStr:   newDate.toLocaleDateString('en-US', fmtS),
+    fullDateLong: fullDate.toLocaleDateString('en-US', fmtL),
+    newDateLong:  newDate.toLocaleDateString('en-US', fmtL),
+    isFullToday, isNewToday,
+  };
+}
+
 // ── Accurate SVG Moon Shape (tithi-based) ────────────────────────────────
 function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
   const r = size / 2;
@@ -651,7 +682,7 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
           onPress={(e) => { e.stopPropagation?.(); onExplore(); }}
           activeOpacity={0.8}
           style={[PC.exploreBtn, { borderColor: vaar.color + '40', backgroundColor: vaar.color + '10' }]}>
-          <Text style={[PC.exploreTxt, { color: vaar.color }]}>🌌  Explore Cosmic Science — Moon, Tithi, Nakshatra</Text>
+          <Text style={[PC.exploreTxt, { color: vaar.color }]}>🌌  Explore Today's Cosmic Science</Text>
           <Text style={[PC.exploreArrow, { color: vaar.color }]}>→</Text>
         </TouchableOpacity>
       </View>
@@ -694,7 +725,7 @@ function TodayGlanceStrip({ currentPeriod, nextPeriod, weather }: {
 
   return (
     <View style={{ marginTop: 8, marginBottom: 2 }}>
-      <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF22', letterSpacing: 1.8, marginLeft: 20, marginBottom: 7 }}>
+      <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF99', letterSpacing: 1.8, marginLeft: 20, marginBottom: 7, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
         TODAY AT A GLANCE
       </Text>
       <ScrollView
@@ -720,8 +751,8 @@ function TodayGlanceStrip({ currentPeriod, nextPeriod, weather }: {
             elevation: 4,
           }}>
             <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: item.color, textAlign: 'center', lineHeight: 13 }} numberOfLines={1}>{item.label}</Text>
-            <Text style={{ fontSize: 8, color: '#FFFFFF40', fontWeight: '600', textAlign: 'center', lineHeight: 11 }} numberOfLines={1}>{item.sub}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: item.color, textAlign: 'center', lineHeight: 13, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }} numberOfLines={1}>{item.label}</Text>
+            <Text style={{ fontSize: 8, color: '#FFFFFFBB', fontWeight: '700', textAlign: 'center', lineHeight: 11, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }} numberOfLines={1}>{item.sub}</Text>
           </View>
         ))}
       </ScrollView>
@@ -2184,7 +2215,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#D4A84B60', backgroundColor: '#D4A84B1A' }}>
               <Text style={{ fontSize: 11 }}>⚗️</Text>
-              <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE SCIENCE</Text>
+              <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE TODAY'S COSMIC SCIENCE</Text>
               <View style={{ width: 15, height: 15, borderRadius: 8, backgroundColor: '#D4A84B35', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', lineHeight: 11 }}>↗</Text>
               </View>
@@ -2310,18 +2341,18 @@ function WeatherSummaryBar({ weather }: { weather: WeatherData }) {
 const WSB = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 7, gap: 5 },
   emoji: { fontSize: 18 },
-  temp:  { fontSize: 16, fontWeight: '900', color: '#FFFFFFDD' },
-  cond:  { fontSize: 12, color: '#FFFFFF55', fontWeight: '500', flexShrink: 1 },
-  sep:   { fontSize: 12, color: '#FFFFFF20' },
-  city:  { fontSize: 12, color: '#FFFFFF30', fontWeight: '500', flexShrink: 1 },
+  temp:  { fontSize: 16, fontWeight: '900', color: '#FFFFFFEE', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  cond:  { fontSize: 12, color: '#FFFFFFCC', fontWeight: '600', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  sep:   { fontSize: 12, color: '#FFFFFF50' },
+  city:  { fontSize: 12, color: '#FFFFFFAA', fontWeight: '600', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   spacer:{ flex: 1 },
-  hum:   { fontSize: 11, color: '#7dd3fc80', fontWeight: '700' },
-  hi:    { fontSize: 11, color: '#f87171AA', fontWeight: '700' },
-  lo:    { fontSize: 11, color: '#60a5faAA', fontWeight: '700' },
+  hum:   { fontSize: 11, color: '#7dd3fcCC', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  hi:    { fontSize: 11, color: '#f87171DD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  lo:    { fontSize: 11, color: '#60a5faDD', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Cosmic Orbit Strip — unified solar ephemeris · lunar phase · cosmic almanac
+// Cosmic Orbit Strip — compact solar ephemeris + lunar phase + CTA
 // ══════════════════════════════════════════════════════════════════════════════
 function CosmicOrbitStrip({
   solarTimes,
@@ -2330,11 +2361,26 @@ function CosmicOrbitStrip({
   solarTimes: SolarTimes | null;
   onCosmicPress: () => void;
 }) {
-  const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
-  const p         = React.useMemo(() => getPanchangData(), []);
-  const vaar      = VAARS[p.vaarIdx];
-  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
-  const vMonth    = getVedicMonth();
+  const moon  = React.useMemo(() => getMoonPhase(new Date()), []);
+  const p     = React.useMemo(() => getPanchangData(), []);
+  const lunar = React.useMemo(() => getNextLunarEvents(), []);
+  const vaar  = VAARS[p.vaarIdx];
+
+  const nextEvent = lunar.isFullToday
+    ? { icon: '🌕', label: 'Full Moon Today!', color: '#fbbf24' }
+    : lunar.isNewToday
+    ? { icon: '🌑', label: 'New Moon Today!', color: '#a78bfa' }
+    : lunar.daysToFull <= lunar.daysToNew
+    ? { icon: '🌕', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' }
+    : { icon: '🌑', label: `New Moon in ${lunar.daysToNew}d`, color: '#a78bfa' };
+
+  const pakshaPh    = p.paksha === 'Shukla' ? 'Waxing' : 'Waning';
+  const tithiOrd    = TITHI_ORDINALS[p.tithiInPaksha] ?? `${p.tithiInPaksha}th`;
+  const tithiEnglish = p.tithiName === 'Purnima'
+    ? 'Full Moon Day'
+    : p.tithiName === 'Amavasya'
+    ? 'New Moon Day'
+    : `${tithiOrd} ${pakshaPh} Day`;
 
   const now  = new Date();
   const curH = now.getHours() + now.getMinutes() / 60;
@@ -2346,7 +2392,11 @@ function CosmicOrbitStrip({
   }
 
   return (
-    <View style={COS.card}>
+    <TouchableOpacity
+      style={COS.card}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCosmicPress(); }}
+      activeOpacity={0.88}
+    >
       <LinearGradient
         colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.01)']}
         start={{ x: 0, y: 0 }} end={{ x: 0.65, y: 1 }}
@@ -2358,11 +2408,10 @@ function CosmicOrbitStrip({
         style={StyleSheet.absoluteFillObject}
       />
       <View style={COS.topLine} />
-      <GlassPulseOverlay />
 
-      {/* ── Row 1 : Solar arc + Lunar phase ── */}
+      {/* ── Solar Arc + Lunar Phase ── */}
       <View style={COS.row1}>
-        <SunIcon size={36} />
+        <SunIcon size={32} />
 
         {solarTimes ? (
           <>
@@ -2393,74 +2442,70 @@ function CosmicOrbitStrip({
 
         <View style={COS.vSep} />
         <View style={COS.moonWrap}>
-          <MoonSVG tithiNum={moon.tithiNum} size={30} />
-          <View style={{ marginLeft: 6 }}>
+          <MoonSVG tithiNum={moon.tithiNum} size={28} />
+          <View style={{ marginLeft: 5 }}>
             <Text style={COS.sTime}>{moon.illumination}%</Text>
             <Text style={COS.sLbl}>Lunar Phase</Text>
           </View>
         </View>
       </View>
 
-      {/* ── Divider ── */}
-      <View style={COS.hDiv} />
-
-      {/* ── Row 2 : Cosmic almanac + CTA ── */}
-      <View style={COS.row2}>
-        <View style={[COS.starDot, { top: 5,  right: 80,  width: 1.5, height: 1.5, opacity: 0.38 }]} />
-        <View style={[COS.starDot, { top: 12, right: 118, width: 1,   height: 1,   opacity: 0.22 }]} />
-
-        <View style={{ flex: 1 }}>
-          {/* Day name + planetary ruler */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-            <Text style={[COS.regent, { color: vaar.color }]}>✦  {ENGLISH_DAYS[p.vaarIdx]}</Text>
-            <View style={[COS.dot3, { backgroundColor: vaar.color + '55' }]} />
-            <Text style={{ fontSize: 9, fontWeight: '700', color: vaar.color + 'AA' }}>({vaar.planet} Day)</Text>
-          </View>
-          {/* Tithi ordinal + Nakshatra */}
-          <Text style={[COS.cMeta, { marginBottom: 2 }]} numberOfLines={1}>
-            {p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha] ?? p.tithiInPaksha} day  ·  {nakshatra.name}
+      {/* ── Tithi + Lunar Event info row ── */}
+      <View style={COS.infoRow}>
+        <View style={COS.infoLeft}>
+          <Text style={{ fontSize: 11, marginRight: 4 }}>🌙</Text>
+          <Text style={COS.infoTithi}>
+            <Text style={{ color: '#a78bfaDD', fontWeight: '900' }}>{p.tithiName}</Text>
+            <Text style={{ color: '#FFFFFF45' }}>  ·  {tithiEnglish}</Text>
           </Text>
-          {/* Vedic month + Paksha */}
-          <Text style={COS.cSub}>{vMonth.name}  ·  {p.paksha} Paksha</Text>
         </View>
-
-        <TouchableOpacity
-          onPress={onCosmicPress}
-          activeOpacity={0.76}
-          style={[COS.ctaBtn, { borderColor: vaar.color + '60', backgroundColor: vaar.color + '1A', minWidth: 74 }]}
-        >
-          <Text style={[COS.ctaTxt, { color: vaar.color, fontSize: 8 }]}>Explore Cosmic{"\n"}Science  ›</Text>
-        </TouchableOpacity>
+        <View style={COS.infoRight}>
+          <Text style={{ fontSize: 11 }}>{nextEvent.icon}</Text>
+          <Text style={[COS.infoLunar, { color: nextEvent.color }]}>{nextEvent.label}</Text>
+        </View>
       </View>
-    </View>
+
+      {/* ── Explore Today's Cosmic Date CTA ── */}
+      <View style={COS.ctaRow}>
+        <Text style={[COS.ctaDayLabel, { color: vaar.color }]}>
+          {ENGLISH_DAYS[p.vaarIdx]}  ·  {vaar.planet} Day
+        </Text>
+        <View style={[COS.ctaPill, { borderColor: vaar.color + '55', backgroundColor: vaar.color + '12' }]}>
+          <Text style={{ fontSize: 10, marginRight: 3 }}>🌌</Text>
+          <Text style={[COS.ctaPillTxt, { color: vaar.color }]}>Explore Today's Cosmic Date</Text>
+          <Text style={[COS.ctaArrow, { color: vaar.color + 'BB' }]}>›</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const COS = StyleSheet.create({
   card: {
     marginHorizontal: 16, marginTop: 6, marginBottom: 8,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
     backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 8,
   },
   topLine:  { height: 1, backgroundColor: 'rgba(255,255,255,0.42)' },
-  row1:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8 },
-  row2:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9 },
-  hDiv:     { height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginHorizontal: 8 },
-  vSep:     { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.11)', marginHorizontal: 5 },
+  row1:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 9, paddingBottom: 8 },
+  vSep:     { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.11)', marginHorizontal: 5 },
   sCell:    { flex: 1, alignItems: 'center' },
-  sTime:    { fontSize: 11, fontWeight: '800', color: '#FFFFFFCC', letterSpacing: 0.1 },
-  sLbl:     { fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.7, marginTop: 2, textTransform: 'uppercase' },
+  sTime:    { fontSize: 11, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  sLbl:     { fontSize: 7, fontWeight: '700', color: '#FFFFFFBB', letterSpacing: 0.7, marginTop: 2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   moonWrap: { flexDirection: 'row', alignItems: 'center', paddingLeft: 3 },
-  regent:   { fontSize: 12, fontWeight: '900', letterSpacing: 0.2 },
-  dot3:     { width: 3, height: 3, borderRadius: 2 },
-  cMeta:    { fontSize: 9, fontWeight: '600', color: '#FFFFFF55', flex: 1 },
-  cSub:     { fontSize: 8, fontWeight: '500', color: '#FFFFFF30', letterSpacing: 0.3 },
-  ctaBtn:   { borderWidth: 1, borderRadius: 11, paddingHorizontal: 11, paddingVertical: 7, alignItems: 'center', minWidth: 66 },
-  ctaTxt:   { fontSize: 9, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center', lineHeight: 13 },
-  starDot:  { position: 'absolute', borderRadius: 50, backgroundColor: '#FFFFFF' },
+  ctaRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 9, paddingTop: 5, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', gap: 8 },
+  ctaDayLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  ctaPill:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 2 },
+  ctaPillTxt:  { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
+  ctaArrow:    { fontSize: 11, fontWeight: '900', marginLeft: 2 },
+  infoRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', gap: 8 },
+  infoLeft:  { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  infoRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoTithi: { fontSize: 10, fontWeight: '700', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  infoLunar: { fontSize: 10, fontWeight: '900', letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2787,9 +2832,9 @@ const W = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.30, shadowRadius: 14, elevation: 6,
   },
   hourCellNow: { backgroundColor: ACCENT + '22', borderColor: ACCENT + '55' },
-  hourLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 0.5 },
+  hourLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFFCC', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   hourEmoji: { fontSize: 20 },
-  hourTemp:  { fontSize: 12, fontWeight: '800', color: '#fff' },
+  hourTemp:  { fontSize: 12, fontWeight: '900', color: '#FFFFFFEE', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   moreBtn: {
     alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 16, backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '60',

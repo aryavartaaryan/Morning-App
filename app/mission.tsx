@@ -123,32 +123,42 @@ const hdr = StyleSheet.create({
 
 // ── Camera mission (sky check / make bed / hydrate) ───────────────────────────
 function CameraMission({
-  missionId, color, instructions, onComplete,
-}: { missionId: string; color: string; instructions: string; onComplete: () => void }) {
+  missionId, color, instructions, onComplete, suppressBttf,
+}: { missionId: string; color: string; instructions: string; onComplete: () => void; suppressBttf?: React.MutableRefObject<boolean> }) {
   const [imageB64, setImageB64] = useState<string | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [failMsg, setFailMsg] = useState('');
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchCameraAsync({
-      base64: true, quality: 0.7, allowsEditing: false,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageB64(result.assets[0].base64 ?? null);
-      setFailMsg('');
+    if (suppressBttf) suppressBttf.current = true;
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        base64: true, quality: 0.7, allowsEditing: false,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+        setImageB64(result.assets[0].base64 ?? null);
+        setFailMsg('');
+      }
+    } finally {
+      if (suppressBttf) suppressBttf.current = false;
     }
   };
 
   const pickGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      base64: true, quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageB64(result.assets[0].base64 ?? null);
-      setFailMsg('');
+    if (suppressBttf) suppressBttf.current = true;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        base64: true, quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+        setImageB64(result.assets[0].base64 ?? null);
+        setFailMsg('');
+      }
+    } finally {
+      if (suppressBttf) suppressBttf.current = false;
     }
   };
 
@@ -697,6 +707,7 @@ export default function MissionScreen() {
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
   const missionCompletedRef = useRef(false);
+  const pickerActiveRef = useRef(false);
 
   useEffect(() => {
     activateKeepAwakeAsync();
@@ -771,6 +782,7 @@ export default function MissionScreen() {
 
     const fireBttfNotif = async () => {
       if (Platform.OS !== 'android') return;
+      if (pickerActiveRef.current) return;
       try {
         await notifee.createChannel({
           id: 'alarm-bttf-silent',
@@ -904,6 +916,7 @@ export default function MissionScreen() {
             color={mission.color}
             instructions="Step outside and photograph the morning sky — sunrise, clouds, golden hour, anything. Even sky through a window counts. 🌅"
             onComplete={handleComplete}
+            suppressBttf={pickerActiveRef}
           />
         )}
         {missionId === 'make_bed' && (
@@ -912,6 +925,7 @@ export default function MissionScreen() {
             color={mission.color}
             instructions={'The US Navy SEALs swear by it. Ayurveda\'s been saying it for 5000 years. A clean space = a clear mind.\n\nMake your bed. Take a photo of it done. 🛏️'}
             onComplete={handleComplete}
+            suppressBttf={pickerActiveRef}
           />
         )}
         {missionId === 'morning_mantra' && (
@@ -926,6 +940,7 @@ export default function MissionScreen() {
             color={mission.color}
             instructions={"You've been fasting for 7–8 hours. Your cells are dehydrated.\n\nDrink a full glass of water. Then photograph the empty glass. 💧"}
             onComplete={handleComplete}
+            suppressBttf={pickerActiveRef}
           />
         )}
         {missionId === 'affirmations' && (

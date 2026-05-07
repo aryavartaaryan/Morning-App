@@ -256,6 +256,37 @@ function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
   );
 }
 
+// ── Next Purnima / Amavasya countdown ──────────────────────────────────
+function getNextLunarEvents() {
+  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
+  const CYCLE = 29.53058867;
+  const HALF  = CYCLE / 2;
+  const now   = new Date();
+  const age   = (((now.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE + CYCLE) % CYCLE;
+  const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
+  const isFullToday = illum >= 97;
+  const isNewToday  = illum <= 3;
+  let daysToFull = HALF - age;
+  if (daysToFull <= 0) daysToFull += CYCLE;
+  if (isFullToday) daysToFull = 0;
+  let daysToNew = CYCLE - age;
+  if (daysToNew >= CYCLE) daysToNew = 0;
+  if (isNewToday) daysToNew = 0;
+  const fmtS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const fmtL: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+  const fullDate = new Date(now.getTime() + daysToFull * 86400000);
+  const newDate  = new Date(now.getTime() + daysToNew  * 86400000);
+  return {
+    daysToFull: Math.round(daysToFull),
+    daysToNew:  Math.round(daysToNew),
+    fullDateStr:  fullDate.toLocaleDateString('en-US', fmtS),
+    newDateStr:   newDate.toLocaleDateString('en-US', fmtS),
+    fullDateLong: fullDate.toLocaleDateString('en-US', fmtL),
+    newDateLong:  newDate.toLocaleDateString('en-US', fmtL),
+    isFullToday, isNewToday,
+  };
+}
+
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function SciBlock({ title, body, borderColor, titleColor }: { title: string; body: string; borderColor: string; titleColor: string }) {
@@ -295,6 +326,7 @@ export default function CosmicExploreScreen() {
   const vaarAction  = VAAR_ACTIONS[p.vaarIdx] ?? '';
   const vMonth      = getVedicMonth();
   const isSpecialMoon = moon.emoji === '🌕' || moon.emoji === '🌑';
+  const lunar       = getNextLunarEvents();
 
   const today = new Date();
   const dayOpts: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
@@ -315,7 +347,7 @@ export default function CosmicExploreScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={S.headerCap}>VEDIC COSMIC SCIENCE</Text>
-            <Text style={S.headerTitle}>Today's Cosmic Blueprint</Text>
+            <Text style={S.headerTitle}>Today's Cosmic Date</Text>
           </View>
         </View>
         <View style={S.headerDivider} />
@@ -342,8 +374,8 @@ export default function CosmicExploreScreen() {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={S.heroMoonName}>{moon.name}</Text>
               <Text style={S.heroIllum}>{p.paksha} Paksha  ·  {moon.name}</Text>
-              <Text style={S.heroTithi}>{p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha]} day  ·  {vMonth.name}</Text>
-              <Text style={S.heroNakshatra}>{nakshatra.emoji}  {nakshatra.name}  ·  {nakshatra.en}</Text>
+              <Text style={S.heroTithi}>{p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha]} day  ·  {vMonth.name} — Vedic Month</Text>
+              <Text style={S.heroNakshatra}>{nakshatra.emoji}  {nakshatra.name}  ·  Nakshatra (Lunar Constellation)  ·  {nakshatra.en}</Text>
             </View>
           </View>
 
@@ -351,6 +383,77 @@ export default function CosmicExploreScreen() {
           <Text style={S.heroDate}>{dateLabel}</Text>
 
         </LinearGradient>
+
+        {/* ══ PANCHANG QUICK VIEW — Today’s Cosmic Snapshot ══ */}
+        <View style={S.snapCard}>
+          <LinearGradient
+            colors={[vaar.color + '10', '#FFFFFF04', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+
+          <Text style={S.snapTag}>TODAY’S PANCHANG  ·  5 LIMBS OF VEDIC TIME</Text>
+
+          {/* 4-cell grid: Vaar / Tithi / Nakshatra / Yoga */}
+          <View style={S.snapGrid}>
+            <View style={[S.snapCell, { borderColor: vaar.color + '35' }]}>
+              <Text style={S.snapEmoji}>{vaar.emoji}</Text>
+              <Text style={[S.snapCellTitle, { color: vaar.color }]}>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][p.vaarIdx]}</Text>
+              <Text style={S.snapCellSub}>{vaar.planet} Day</Text>
+            </View>
+            <View style={[S.snapCell, { borderColor: '#a78bfa35' }]}>
+              <Text style={S.snapEmoji}>🌙</Text>
+              <Text style={[S.snapCellTitle, { color: '#a78bfa' }]}>{p.tithiName}</Text>
+              <Text style={S.snapCellSub}>{p.paksha} · Day {p.tithiInPaksha}</Text>
+            </View>
+            <View style={[S.snapCell, { borderColor: '#fbbf2435' }]}>
+              <Text style={S.snapEmoji}>{nakshatra.emoji}</Text>
+              <Text style={[S.snapCellTitle, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
+              <Text style={S.snapCellSub}>{nakshatra.en}</Text>
+            </View>
+            <View style={[S.snapCell, { borderColor: yoga.auspicious ? '#10b98135' : '#f8717135' }]}>
+              <Text style={S.snapEmoji}>{yoga.auspicious ? '✨' : '🌀'}</Text>
+              <Text style={[S.snapCellTitle, { color: yoga.auspicious ? '#10b981' : '#f87171' }]}>{yoga.name}</Text>
+              <Text style={S.snapCellSub}>{yoga.en}</Text>
+            </View>
+          </View>
+
+          {/* Vedic month + Paksha info */}
+          <View style={S.snapInfoRow}>
+            <Text style={S.snapInfoTxt}>
+              📅  <Text style={{ color: '#60a5faBB', fontWeight: '800' }}>{vMonth.name}</Text>  ·  Vedic Month  ·  {vMonth.en}  ·{' '}
+              <Text style={{ color: p.paksha === 'Shukla' ? '#34d399BB' : '#94a3b8BB', fontWeight: '800' }}>{p.paksha} Paksha</Text>
+            </Text>
+          </View>
+
+          {/* Lunar event countdown strip */}
+          <View style={S.snapLunarRow}>
+            <View style={S.snapLunarItem}>
+              <Text style={{ fontSize: 18 }}>🌕</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={S.snapLunarLabel}>PURNIMA  ·  FULL MOON</Text>
+                <Text style={S.snapLunarVal}>
+                  {lunar.isFullToday
+                    ? <Text style={{ color: '#fbbf24EE' }}>✦  Today is Purnima!</Text>
+                    : <><Text style={{ color: '#fbbf24DD', fontWeight: '800' }}>in {lunar.daysToFull} day{lunar.daysToFull !== 1 ? 's' : ''}</Text><Text style={{ color: '#FFFFFF35' }}>  ·  {lunar.fullDateStr}</Text></>}
+                </Text>
+              </View>
+            </View>
+            <View style={S.snapLunarSep} />
+            <View style={S.snapLunarItem}>
+              <Text style={{ fontSize: 18 }}>🌑</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={S.snapLunarLabel}>AMAVASYA  ·  NEW MOON</Text>
+                <Text style={S.snapLunarVal}>
+                  {lunar.isNewToday
+                    ? <Text style={{ color: '#a78bfaEE' }}>✦  Today is Amavasya!</Text>
+                    : <><Text style={{ color: '#a78bfaDD', fontWeight: '800' }}>in {lunar.daysToNew} day{lunar.daysToNew !== 1 ? 's' : ''}</Text><Text style={{ color: '#FFFFFF35' }}>  ·  {lunar.newDateStr}</Text></>}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* ══ SECTION 1: COSMIC CALENDAR ══ */}
         <View style={S.dividerRow}>
@@ -409,10 +512,10 @@ export default function CosmicExploreScreen() {
             </View>
           </View>
           <View style={[S.miniCard, { borderColor: '#fbbf2430' }]}>
-            <Text style={S.miniCardTag}>{nakshatra.emoji}  NAKSHATRA  ·  STAR HOUSE</Text>
+            <Text style={S.miniCardTag}>{nakshatra.emoji}  NAKSHATRA  ·  LUNAR CONSTELLATION</Text>
             <Text style={[S.miniCardTitle, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
-            <Text style={S.miniCardSub}>{nakshatra.en}</Text>
-            <Text style={S.miniCardSub}>Moon Mansion {p.nakshatraIdx + 1}/27</Text>
+            <Text style={[S.miniCardSub, { color: '#FFFFFF80', fontWeight: '700' }]}>Nakshatra = Constellation (Sanskrit)</Text>
+            <Text style={S.miniCardSub}>{nakshatra.en}  ·  {p.nakshatraIdx + 1} of 27</Text>
             <View style={[S.miniPill, { backgroundColor: '#fbbf2412', borderColor: '#fbbf2430' }]}>
               <Text style={[S.miniPillText, { color: '#fbbf24CC' }]}>{nakshatra.energy.split('.')[0]}</Text>
             </View>
@@ -453,6 +556,62 @@ export default function CosmicExploreScreen() {
           </View>
         </View>
 
+        {/* ══ UPCOMING LUNAR EVENTS CARD ══ */}
+        <View style={[S.card, { borderColor: '#FFFFFF12', marginBottom: 10 }]}>
+          <LinearGradient colors={['#a78bfa08', '#fbbf2405', 'transparent']} style={StyleSheet.absoluteFillObject} />
+          <View style={S.cardHeader}>
+            <Text style={S.cardTag}>🌙  UPCOMING LUNAR EVENTS  ·  LIVE ORBITAL COUNTDOWN</Text>
+          </View>
+
+          {/* ─ Purnima (Full Moon) ─ */}
+          <View style={S.lunarEventRow}>
+            <Text style={{ fontSize: 30 }}>🌕</Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
+                <Text style={S.lunarEventName}>Purnima — Full Moon</Text>
+                {lunar.isFullToday
+                  ? <View style={[S.lunarTodayPill, { backgroundColor: '#fbbf2420', borderColor: '#fbbf2455' }]}>
+                      <Text style={[S.lunarTodayTxt, { color: '#fbbf24' }]}>TODAY</Text>
+                    </View>
+                  : <Text style={S.lunarEventDays}>in {lunar.daysToFull} day{lunar.daysToFull !== 1 ? 's' : ''}</Text>}
+              </View>
+              {!lunar.isFullToday && (
+                <Text style={S.lunarEventDate}>{lunar.fullDateLong}</Text>
+              )}
+              <View style={[S.lunarEventBox, { borderColor: '#fbbf2428', backgroundColor: '#fbbf240A' }]}>
+                <Text style={[S.lunarEventSci, { color: '#fbbf24BB' }]}>
+                  {'Peak tidal gravitational force  ·  Maximum cerebrospinal fluid (CSF) pressure  ·  Serotonin–melatonin inflection point  ·  Heightened neural electromagnetic excitation  ·  Heightened dream vividness  ·  Best for: gratitude, release, high-energy action & celebration'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={S.lunarEventDivider} />
+
+          {/* ─ Amavasya (New Moon) ─ */}
+          <View style={S.lunarEventRow}>
+            <Text style={{ fontSize: 30 }}>🌑</Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
+                <Text style={S.lunarEventName}>Amavasya — New Moon</Text>
+                {lunar.isNewToday
+                  ? <View style={[S.lunarTodayPill, { backgroundColor: '#a78bfa20', borderColor: '#a78bfa55' }]}>
+                      <Text style={[S.lunarTodayTxt, { color: '#a78bfa' }]}>TODAY</Text>
+                    </View>
+                  : <Text style={[S.lunarEventDays, { color: '#a78bfaCC' }]}>in {lunar.daysToNew} day{lunar.daysToNew !== 1 ? 's' : ''}</Text>}
+              </View>
+              {!lunar.isNewToday && (
+                <Text style={S.lunarEventDate}>{lunar.newDateLong}</Text>
+              )}
+              <View style={[S.lunarEventBox, { borderColor: '#a78bfa28', backgroundColor: '#a78bfa0A' }]}>
+                <Text style={[S.lunarEventSci, { color: '#a78bfaBB' }]}>
+                  {'Zero tidal load on body fluids  ·  Minimum cerebrospinal fluid (CSF) pressure  ·  Dopamine reset window  ·  Maximum melatonin synthesis  ·  Synaptic consolidation phase  ·  Neural detox protocol  ·  Pineal gland activation peak  ·  Best for: new intentions, fasting, deep meditation, introspection & inner reset'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {/* Expandable tri-cell detail */}
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setExpandedCalendar(e => !e); }}
@@ -473,8 +632,9 @@ export default function CosmicExploreScreen() {
             <View style={[S.triCell, { borderColor: '#fbbf2422' }]}>
               <Text style={S.triEmoji}>{nakshatra.emoji}</Text>
               <Text style={[S.triTitle, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
+              <Text style={[S.triSub, { color: '#fbbf24AA', fontWeight: '700' }]}>Nakshatra = Constellation</Text>
               <Text style={S.triSub}>{nakshatra.en}</Text>
-              <Text style={S.triSub}>Moon Mansion</Text>
+              <Text style={S.triSub}>Moon Mansion {p.nakshatraIdx + 1} of 27</Text>
               <Text style={S.triEn}>{nakshatra.energy.split('.')[0]}</Text>
             </View>
             <View style={[S.triCell, { borderColor: yoga.auspicious ? '#10b98122' : '#f8717122' }]}>
@@ -555,8 +715,14 @@ export default function CosmicExploreScreen() {
 
         {/* Nakshatra Science */}
         <View style={S.exploreSection}>
-          <SectionHeader emoji={nakshatra.emoji} title="Nakshatra — The Lunar Mansions" sub={`SIDEREAL ASTRONOMY  ·  ${nakshatra.name}  ·  ${nakshatra.en}`} />
+          <SectionHeader emoji={nakshatra.emoji} title="Nakshatra — Lunar Star Constellations" sub={`SIDEREAL ASTRONOMY  ·  TODAY: ${nakshatra.name.toUpperCase()} (CONSTELLATION ${p.nakshatraIdx + 1} OF 27)  ·  ${nakshatra.en.toUpperCase()}`} />
 
+          <SciBlock
+            title={`What is a Nakshatra? (Plain English)`}
+            body={`Nakshatra (नक्षत्र) simply means 'constellation' or 'star cluster' in Sanskrit. The sky is divided into 27 Nakshatras — 27 groups of stars that the Moon passes through during its 27.3-day journey around Earth. Think of them as 27 'star neighbourhoods' that the Moon visits, roughly one per day.\n\nToday's Nakshatra is ${nakshatra.name} (${nakshatra.emoji}) — the ${p.nakshatraIdx + 1}th of 27 constellations. In English, ${nakshatra.name} means '${nakshatra.en}' and it is associated with the Corvus (Crow) star group in the constellation Virgo. This is not an opinion or belief — it is the real, calculated position of the Moon in the night sky right now, using the same orbital mathematics that NASA uses for spacecraft navigation.`}
+            borderColor="#fbbf2420"
+            titleColor="#fbbf24"
+          />
           <SciBlock
             title="The Stellar Coordinate System"
             body={`The 27 Nakshatras divide the Moon's 27.3-day sidereal orbit into 27 equal arcs of 13°20' each — one per day. Each arc corresponds to a specific star or star cluster that the Moon transits through that day.\n\nThis is the Moon's position relative to FIXED stars (sidereal reference frame), as opposed to the Tithi which measures the Moon relative to the Sun (synodic reference frame). These are two entirely different coordinate systems — and Vedic astronomy tracked both simultaneously for 5,000 years.\n\nModern astronomy uses the same sidereal reference frame (ICRS — the International Celestial Reference System) for navigation satellites and deep space missions. The Nakshatra system predates it by millennia.`}
@@ -569,6 +735,34 @@ export default function CosmicExploreScreen() {
             borderColor="#f9a8d425"
             titleColor="#f9a8d4"
           />
+        </View>
+
+        {/* Vedic Month Science */}
+        <View style={S.exploreSection}>
+          <SectionHeader emoji="📅" title="Vedic Month — The Lunisolar Calendar" sub={`CHANDRA MAASA  ·  TODAY: ${vMonth.name.toUpperCase()} (${vMonth.sanskrit})  ·  SUN IN ${vMonth.rashi.toUpperCase()}  ·  ${vMonth.en.toUpperCase()}`} />
+
+          <SciBlock
+            title={`What is a Vedic Month? — ${vMonth.name} (Plain English)`}
+            body={`A Vedic month (Chandra Maasa = 'Lunar Month') is NOT the same as a Gregorian month. It is defined by the Moon's orbit combined with the Sun's position in the sky — making it a lunisolar system, not a purely solar one.\n\nThe current Vedic month is ${vMonth.name} (${vMonth.sanskrit}), roughly corresponding to ${vMonth.en} in the Gregorian calendar. A Vedic month lasts one full lunar cycle — approximately 29.5 days — and is NAMED by the zodiac sign (Rashi) that the Sun occupies at the closing Full Moon (Purnima) of that month.\n\nIn plain English: look at where the Sun sits in the starry sky on the night of the Full Moon — that zodiac neighbourhood names the entire month.`}
+            borderColor="#60a5fa25"
+            titleColor="#60a5fa"
+          />
+          <SciBlock
+            title="How It's Calculated: Sun × Moon × Orbital Mechanics"
+            body={`Step 1 — LOCATE THE SUN: Compute the Sun's sidereal longitude using the Lahiri ayanamsha (23.85° offset from tropical ecliptic). This maps the Sun's position onto the real star-background sky, not just the seasonal/tropical position.\n\nStep 2 — FIND THE CLOSING PURNIMA: If today is in Shukla Paksha (waxing Moon, age < 14.77 days), the closing Full Moon is still ahead in this lunation. If in Krishna Paksha (waning Moon), that Purnima has passed and the next one closes the upcoming month.\n\nStep 3 — PROJECT THE SUN FORWARD: The Sun advances ~0.9856° per day. Project its sidereal longitude forward to the exact closing Purnima date.\n\nStep 4 — NAME THE MONTH: 360° ÷ 12 = 30° per Rashi (zodiac sign). Whichever Rashi bracket the projected Sun falls into — that Rashi names the month.\n\nThis is the Purnimanta system (North India). The Amanta system (South India) ends months at New Moon instead of Full Moon — the same sky, two naming conventions. Both are exact orbital calculations, not estimates.\n\nThe Jewish calendar, Chinese lunisolar calendar, and Babylonian MUL.APIN system all use equivalent mathematics — independently arrived at by separate civilisations, because the Moon–Sun cycle is the most precise natural timekeeping signal available to any civilisation on Earth.`}
+            borderColor="#60a5fa25"
+            titleColor="#60a5fa"
+          />
+          <View style={[S.highlightPill, { borderColor: '#60a5fa30', backgroundColor: '#60a5fa0C' }]}>
+            <Text style={S.highlightText}>
+              {'Current Vedic Month: '}
+              <Text style={{ color: '#60a5faDD', fontWeight: '800' }}>{vMonth.name} ({vMonth.sanskrit})</Text>
+              {'  ·  Sun in '}
+              <Text style={{ color: '#60a5faAA', fontWeight: '700' }}>{vMonth.rashi}</Text>
+              {'  ·  '}
+              <Text style={{ color: '#FFFFFF55' }}>{vMonth.en}  ·  {p.paksha} Paksha</Text>
+            </Text>
+          </View>
         </View>
 
         {/* Yoga Science */}
@@ -647,7 +841,7 @@ const S = StyleSheet.create({
   heroMoonName:  { fontSize: 20, fontWeight: '900', color: '#fff' },
   heroIllum:     { fontSize: 12, color: '#a78bfaCC', fontWeight: '700', marginTop: 1 },
   heroTithi:     { fontSize: 12, color: '#fbbf24AA', fontWeight: '600', marginTop: 1 },
-  heroNakshatra: { fontSize: 11, color: '#FFFFFF60', fontWeight: '600', marginTop: 2 },
+  heroNakshatra: { fontSize: 11, color: '#fbbf24BB', fontWeight: '700', marginTop: 2 },
   heroDate:      { fontSize: 10, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 0.5, marginBottom: 12 },
   scoreRow:      { borderWidth: 1, borderRadius: 14, padding: 12 },
   scoreBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
@@ -720,10 +914,35 @@ const S = StyleSheet.create({
   highlightPill:  { borderWidth: 1, borderRadius: 14, padding: 13, marginTop: 6 },
   highlightText:  { fontSize: 12, color: '#FFFFFF65', lineHeight: 19 },
 
+  lunarEventRow:    { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 2 },
+  lunarEventName:   { fontSize: 14, fontWeight: '900', color: '#FFFFFFDD' },
+  lunarEventDays:   { fontSize: 12, fontWeight: '800', color: '#fbbf24CC' },
+  lunarEventDate:   { fontSize: 10, color: '#FFFFFF55', marginBottom: 7, marginTop: 1 },
+  lunarEventBox:    { borderWidth: 1, borderRadius: 12, padding: 10, marginTop: 5 },
+  lunarEventSci:    { fontSize: 10, lineHeight: 17, fontWeight: '600' },
+  lunarEventDivider:{ height: 1, backgroundColor: '#FFFFFF08', marginVertical: 14 },
+  lunarTodayPill:   { borderWidth: 1, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  lunarTodayTxt:    { fontSize: 7, fontWeight: '900', letterSpacing: 1 },
+
   closingCard:    { marginHorizontal: 16, marginTop: 10, borderRadius: 24, borderWidth: 1, padding: 20, overflow: 'hidden' },
   closingEmoji:   { fontSize: 32, marginBottom: 10, textAlign: 'center' },
   closingTitle:   { fontSize: 18, fontWeight: '900', color: '#a78bfa', textAlign: 'center', marginBottom: 14 },
   closingBody:    { fontSize: 12, color: '#FFFFFF60', lineHeight: 21 },
   closingDivider: { height: 1, backgroundColor: '#a78bfa20', marginVertical: 14 },
   closingFoot:    { fontSize: 10, color: '#FFFFFF30', lineHeight: 17, fontStyle: 'italic' },
+
+  snapCard:       { marginHorizontal: 16, marginTop: 12, marginBottom: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden', paddingHorizontal: 14, paddingTop: 13, paddingBottom: 14 },
+  snapTag:        { fontSize: 7, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 12 },
+  snapGrid:       { flexDirection: 'row', gap: 7, marginBottom: 11 },
+  snapCell:       { flex: 1, borderWidth: 1, borderRadius: 14, backgroundColor: '#FFFFFF03', paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', gap: 3 },
+  snapEmoji:      { fontSize: 16, marginBottom: 1 },
+  snapCellTitle:  { fontSize: 9, fontWeight: '900', textAlign: 'center', letterSpacing: -0.2, lineHeight: 12 },
+  snapCellSub:    { fontSize: 7, color: '#FFFFFF38', textAlign: 'center', fontWeight: '600', lineHeight: 10 },
+  snapInfoRow:    { backgroundColor: '#FFFFFF05', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10, marginBottom: 10 },
+  snapInfoTxt:    { fontSize: 10, color: '#FFFFFF55', fontWeight: '600', lineHeight: 16 },
+  snapLunarRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', paddingTop: 10 },
+  snapLunarItem:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  snapLunarSep:   { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)' },
+  snapLunarLabel: { fontSize: 6, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 3 },
+  snapLunarVal:   { fontSize: 10, fontWeight: '700', color: '#FFFFFFCC' },
 });

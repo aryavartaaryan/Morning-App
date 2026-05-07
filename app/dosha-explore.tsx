@@ -12,7 +12,7 @@ const DOSHAS_FULL = {
     name: 'Vata', sanskrit: 'वात', devanagari: 'वायु + आकाश',
     elements: 'Air + Space', elementEquation: 'AIR  +  SPACE  =  MOVEMENT',
     westernSystem: 'Sympathetic Nervous System · Peripheral Nervous System · Enteric Nervous System',
-    color: '#a78bfa', emoji: '🌬️',
+    color: '#a78bfa', emoji: '💨',
     tagline: 'The principle of movement & neural electricity',
     biology: 'Vata maps to the Autonomic Nervous System — specifically the sympathetic (fight-or-flight) branch and the entire peripheral nervous system. Every action potential (70 mV impulse) traveling at 70–120 m/s through myelinated nerve fibres is pure Vata. The enteric nervous system ("gut brain") — 500 million neurons lining the GI tract — is entirely Vata-governed.',
     elementAir: {
@@ -120,7 +120,7 @@ const DOSHAS_FULL = {
     name: 'Kapha', sanskrit: 'कफ', devanagari: 'पृथ्वी + जल',
     elements: 'Earth + Water', elementEquation: 'EARTH  +  WATER  =  STRUCTURE',
     westernSystem: 'Anabolic Hormone Axis · Lymphatic-Immune System · Structural Biology · Connective Tissue',
-    color: '#34d399', emoji: '🌿',
+    color: '#34d399', emoji: '💧',
     tagline: 'The principle of structure, immunity & anabolic repair',
     biology: 'Kapha maps to the anabolic-immune axis — growth, structural integrity, and immune defence. Growth hormone (GH), IGF-1, testosterone, estrogen, and oxytocin are all Kapha hormones. The entire lymphatic system — your body\'s "second circulatory system" with 600+ lymph nodes — is Kapha. In systems biology, Kapha is anabolism: building, not burning.',
     elementAir: {
@@ -295,20 +295,49 @@ type DoshaKey = 'vata' | 'pitta' | 'kapha';
 const ORDER: DoshaKey[] = ['vata', 'pitta', 'kapha'];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+const SUNRISE_REF: Record<string, string> = {
+  'Pre-Dawn  2–6 AM':   '4 – 0 hours before sunrise',
+  'Afternoon  2–6 PM':  '8 – 12 hours after sunrise',
+  'Midday  10 AM–2 PM': '4 – 8 hours after sunrise',
+  'Night  10 PM–2 AM':  '16 – 20 hours after sunrise',
+  'Morning  6–10 AM':   'At sunrise · 0 – 4 hours after',
+  'Evening  6–10 PM':   '12 – 16 hours after sunrise',
+};
+
+function getSunriseRef(start: string, end: string): string {
+  const parse = (t: string): number => {
+    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return 6;
+    let h = parseInt(m[1]);
+    if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h;
+  };
+  const SR = 6;
+  const ds = parse(start) - SR;
+  const de = parse(end) - SR;
+  const f = (d: number) =>
+    d < 0 ? `${Math.abs(d)}h before sunrise` : d === 0 ? 'at sunrise' : `${d}h after sunrise`;
+  return `${f(ds)} · ends ${f(de)}`;
+}
+
 function Divider({ label, color }: { label: string; color: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 28, marginBottom: 14 }}>
       <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
-      <Text style={{ fontSize: 7, fontWeight: '900', color: color + '90', letterSpacing: 1.5, textAlign: 'center', flexShrink: 1 }}>{label}</Text>
+      <Text style={{ fontSize: 8, fontWeight: '900', color: color + '95', letterSpacing: 1.8, textAlign: 'center', flexShrink: 1 }}>{label}</Text>
       <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
     </View>
   );
 }
 
-function SciCard({ title, body, color }: { title: string; body: string; color: string }) {
+function SciCard({ title, body, color, subtitle }: { title: string; body: string; color: string; subtitle?: string }) {
   return (
     <View style={[S.sciCard, { borderColor: color + '25' }]}>
       <Text style={[S.sciCardTitle, { color }]}>{title}</Text>
+      {subtitle ? (
+        <Text style={{ fontSize: 9, color: color + '75', fontWeight: '800', letterSpacing: 1.4, marginTop: 2, marginBottom: 7, textTransform: 'uppercase' }}>{subtitle}</Text>
+      ) : null}
       <Text style={S.sciCardBody}>{body}</Text>
     </View>
   );
@@ -337,7 +366,7 @@ export default function DoshaExplorePage() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={S.hdrCap}>AYURVEDIC SCIENCE  ·  CHRONOBIOLOGY</Text>
-            <Text style={S.hdrTitle}>Ayurveda Expert</Text>
+            <Text style={S.hdrTitle}>Ayurved Science</Text>
           </View>
           <View style={[S.liveBadge, { borderColor: C + '55', backgroundColor: C + '14' }]}>
             <View style={[S.liveDot, { backgroundColor: C }]} />
@@ -350,22 +379,30 @@ export default function DoshaExplorePage() {
 
           {/* ══ CURRENT PERIOD HERO ══════════════════════════════════════════ */}
           <LinearGradient colors={[C + '22', C + '07', 'transparent']} style={[S.hero, { borderColor: C + '30' }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-              <Text style={{ fontSize: 54 }}>{ap.emoji}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+              <View style={{ width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: C + '18', borderWidth: 1.5, borderColor: C + '35' }}>
+                <Text style={{ fontSize: 32 }}>{ap.emoji}</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <View style={[S.nowBadge, { borderColor: C + '55', backgroundColor: C + '18' }]}>
                   <View style={[S.nowDot, { backgroundColor: C }]} />
                   <Text style={[S.nowTxt, { color: C }]}>ACTIVE NOW</Text>
                 </View>
-                <Text style={[S.heroName, { color: C, marginTop: 5 }]}>{ap.name} Period</Text>
-                <Text style={{ fontSize: 10, color: '#FFFFFF55', marginTop: 3 }}>{ap.elements}  ·  {ap.tagline}</Text>
+                <Text style={[S.heroName, { color: C, marginTop: 6 }]}>{ap.name} Period</Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFF65', marginTop: 4, lineHeight: 17 }}>{ap.elements}  ·  {ap.tagline}</Text>
+                <Text style={{ fontSize: 9, color: C + '85', fontWeight: '800', letterSpacing: 0.9, marginTop: 6, lineHeight: 15 }}>{ap.westernSystem}</Text>
                 {params.periodStart ? (
-                  <Text style={{ fontSize: 11, color: C + 'AA', fontWeight: '700', marginTop: 4 }}>{params.periodStart} → {params.periodEnd}</Text>
+                  <View style={{ marginTop: 10, gap: 4 }}>
+                    <Text style={{ fontSize: 14, color: C + 'EE', fontWeight: '800', letterSpacing: 0.2 }}>{params.periodStart} → {params.periodEnd}</Text>
+                    {params.periodEnd ? (
+                      <Text style={{ fontSize: 10, color: C + '80', fontWeight: '700', letterSpacing: 0.3 }}>☀️  {getSunriseRef(params.periodStart, params.periodEnd)}</Text>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
             </View>
-            <View style={[S.infoBox, { borderColor: C + '22', backgroundColor: C + '0A' }]}>
-              <Text style={S.infoTxt}>{ap.biology}</Text>
+            <View style={[S.infoBox, { borderColor: C + '25', backgroundColor: C + '0B' }]}>
+              <Text style={[S.infoTxt, { fontSize: 12, lineHeight: 20, color: '#FFFFFF72' }]}>{ap.biology}</Text>
             </View>
           </LinearGradient>
 
@@ -408,7 +445,7 @@ export default function DoshaExplorePage() {
                 </View>
               ))}
             </View>
-            <Text style={[S.infoTxt, { marginTop: 14, color: '#FFFFFF45' }]}>The Dosha clock shifts daily with your local sunrise & sunset. It runs on solar time, not fixed clock time — hyper-personalised to your exact location and season.</Text>
+            <Text style={[S.infoTxt, { marginTop: 14, color: '#FFFFFF58' }]}>The Dosha clock shifts daily with your local sunrise & sunset. It runs on solar time, not fixed clock time — hyper-personalised to your exact location and season.</Text>
           </View>
 
           {/* ══ THREE DOSHAS ══════════════════════════════════════════════════ */}
@@ -426,14 +463,14 @@ export default function DoshaExplorePage() {
             })}
           </View>
 
-          <SciCard title={'🔬  ' + d.name + '  —  Biological Mapping'} body={d.biology} color={d.color} />
+          <SciCard title={'🔬  ' + d.name + '  —  Biological Mapping'} subtitle={d.westernSystem} body={d.biology} color={d.color} />
 
           <View style={[S.card, { borderColor: d.color + '22' }]}>
             <Text style={[S.tag, { color: d.color + '80' }]}>⚗  KEY BIOCHEMICALS  ·  HORMONES & NEUROTRANSMITTERS</Text>
             {d.neuro.map((n, i) => (
-              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '18', borderRadius: 12, padding: 10, backgroundColor: d.color + '06' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: d.color + 'EE' }}>{n.name}</Text>
-                <Text style={{ fontSize: 10, color: '#FFFFFF50', lineHeight: 15, marginTop: 2 }}>{n.role}</Text>
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '22', borderRadius: 14, padding: 13, backgroundColor: d.color + '07' }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: d.color + 'EE' }}>{n.name}</Text>
+                <Text style={{ fontSize: 12, color: '#FFFFFF62', lineHeight: 19, marginTop: 4 }}>{n.role}</Text>
               </View>
             ))}
           </View>
@@ -441,14 +478,19 @@ export default function DoshaExplorePage() {
           <View style={[S.card, { borderColor: d.color + '22' }]}>
             <Text style={[S.tag, { color: d.color + '80' }]}>⏰  CIRCADIAN PEAK WINDOWS  ·  CHRONOBIOLOGY</Text>
             {d.peakWindows.map((w, i) => (
-              <View key={i} style={{ marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <Text style={{ fontSize: 18 }}>{w.icon}</Text>
-                  <View style={[S.chip, { borderColor: d.color + '45', backgroundColor: d.color + '15' }]}>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: d.color }}>{w.time}</Text>
+              <View key={i} style={{ marginTop: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 22 }}>{w.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={[S.chip, { borderColor: d.color + '50', backgroundColor: d.color + '18', alignSelf: 'flex-start' }]}>
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: d.color }}>{w.time}</Text>
+                    </View>
+                    {SUNRISE_REF[w.time] ? (
+                      <Text style={{ fontSize: 10, color: d.color + '75', fontWeight: '700', marginTop: 5, letterSpacing: 0.3 }}>☀️  {SUNRISE_REF[w.time]}</Text>
+                    ) : null}
                   </View>
                 </View>
-                <Text style={{ fontSize: 11, color: '#FFFFFF55', lineHeight: 17 }}>{w.science}</Text>
+                <Text style={{ fontSize: 12, color: '#FFFFFF65', lineHeight: 20 }}>{w.science}</Text>
               </View>
             ))}
           </View>
@@ -456,11 +498,11 @@ export default function DoshaExplorePage() {
           <View style={[S.card, { borderColor: d.color + '20' }]}>
             <Text style={[S.tag, { color: d.color + '80' }]}>⚡  BODY SYSTEMS GOVERNED</Text>
             {d.functions.map((f, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 10 }}>
-                <Text style={{ fontSize: 16, minWidth: 24 }}>{f.icon}</Text>
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 13 }}>
+                <Text style={{ fontSize: 20, minWidth: 28 }}>{f.icon}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: d.color + 'EE' }}>{f.name}</Text>
-                  <Text style={{ fontSize: 10, color: '#FFFFFF40', lineHeight: 14, marginTop: 1 }}>{f.detail}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: d.color + 'EE' }}>{f.name}</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF52', lineHeight: 17, marginTop: 3 }}>{f.detail}</Text>
                 </View>
               </View>
             ))}
@@ -468,31 +510,31 @@ export default function DoshaExplorePage() {
 
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={[S.halfCard, { borderColor: d.color + '28', flex: 1 }]}>
-              <Text style={[S.tag, { color: d.color + '80', marginBottom: 8 }]}>✓  DO NOW</Text>
+              <Text style={[S.tag, { color: d.color + '80', marginBottom: 10 }]}>✓  DO NOW</Text>
               {d.doNow.map((a, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-                  <Text style={{ color: d.color, fontWeight: '900', fontSize: 10 }}>✓</Text>
-                  <Text style={{ fontSize: 10, color: '#FFFFFFCC', lineHeight: 15, flex: 1 }}>{a}</Text>
+                <View key={i} style={{ flexDirection: 'row', gap: 7, marginBottom: 9 }}>
+                  <Text style={{ color: d.color, fontWeight: '900', fontSize: 12, marginTop: 1 }}>✓</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17, flex: 1 }}>{a}</Text>
                 </View>
               ))}
             </View>
             <View style={[S.halfCard, { borderColor: '#f43f5e28', flex: 1 }]}>
-              <Text style={[S.tag, { color: '#f43f5e80', marginBottom: 8 }]}>✕  AVOID</Text>
+              <Text style={[S.tag, { color: '#f43f5e80', marginBottom: 10 }]}>✕  AVOID</Text>
               {d.avoid.map((a, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-                  <Text style={{ color: '#f43f5e', fontWeight: '900', fontSize: 10 }}>✕</Text>
-                  <Text style={{ fontSize: 10, color: '#FFFFFF60', lineHeight: 15, flex: 1 }}>{a}</Text>
+                <View key={i} style={{ flexDirection: 'row', gap: 7, marginBottom: 9 }}>
+                  <Text style={{ color: '#f43f5e', fontWeight: '900', fontSize: 12, marginTop: 1 }}>✕</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF65', lineHeight: 17, flex: 1 }}>{a}</Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <View style={[S.card, { borderColor: '#f43f5e15' }]}>
+          <View style={[S.card, { borderColor: '#f43f5e18' }]}>
             <Text style={[S.tag, { color: '#f43f5e80' }]}>⚠  SIGNS OF IMBALANCE</Text>
             {d.imbalance.map((it, i) => (
-              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: '#f43f5e18', borderRadius: 12, padding: 10, backgroundColor: '#f43f5e06' }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#f43f5eCC', marginBottom: 3 }}>{it.symptom}</Text>
-                <Text style={{ fontSize: 10, color: '#FFFFFF45', lineHeight: 15 }}>{it.science}</Text>
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: '#f43f5e22', borderRadius: 15, padding: 13, backgroundColor: '#f43f5e07' }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#f43f5eCC', marginBottom: 5 }}>{it.symptom}</Text>
+                <Text style={{ fontSize: 12, color: '#FFFFFF55', lineHeight: 19 }}>{it.science}</Text>
               </View>
             ))}
           </View>
@@ -500,9 +542,9 @@ export default function DoshaExplorePage() {
           <View style={[S.card, { borderColor: d.color + '18' }]}>
             <Text style={[S.tag, { color: d.color + '80' }]}>◎  REBALANCING PRACTICES  ·  EVIDENCE-BASED</Text>
             {d.balance.map((b, i) => (
-              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '18', borderRadius: 12, padding: 10, backgroundColor: d.color + '06' }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: d.color + 'EE', marginBottom: 4 }}>{b.practice}</Text>
-                <Text style={{ fontSize: 10, color: '#FFFFFF45', lineHeight: 15 }}>{b.science}</Text>
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '22', borderRadius: 15, padding: 13, backgroundColor: d.color + '07' }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: d.color + 'EE', marginBottom: 5 }}>{b.practice}</Text>
+                <Text style={{ fontSize: 12, color: '#FFFFFF55', lineHeight: 19 }}>{b.science}</Text>
               </View>
             ))}
           </View>
@@ -519,29 +561,29 @@ export default function DoshaExplorePage() {
               <View style={[S.expandCard, { borderColor: r.color + (rasaOpen === r.name ? '55' : '22') }]}>
                 {rasaOpen === r.name && <LinearGradient colors={[r.color + '12', 'transparent']} style={StyleSheet.absoluteFillObject} />}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 28 }}>{r.emoji}</Text>
+                  <Text style={{ fontSize: 30 }}>{r.emoji}</Text>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '900', color: r.color }}>{r.name}</Text>
-                      <Text style={{ fontSize: 10, color: '#FFFFFF40', fontWeight: '600' }}>{r.english}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: r.color }}>{r.name}</Text>
+                      <Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '700' }}>{r.english}</Text>
                     </View>
-                    <Text style={{ fontSize: 9, color: '#FFFFFF45', marginTop: 2 }}>{r.elements}  ·  {r.effect}</Text>
+                    <Text style={{ fontSize: 10, color: '#FFFFFF50', marginTop: 3, lineHeight: 15 }}>{r.elements}  ·  {r.effect}</Text>
                   </View>
-                  <Text style={{ color: r.color, fontSize: 11, fontWeight: '900' }}>{rasaOpen === r.name ? '▲' : '▼'}</Text>
+                  <Text style={{ color: r.color, fontSize: 12, fontWeight: '900' }}>{rasaOpen === r.name ? '▲' : '▼'}</Text>
                 </View>
                 {rasaOpen === r.name && (
-                  <View style={{ marginTop: 12, gap: 8 }}>
-                    <View style={[S.infoBox, { borderColor: r.color + '30', backgroundColor: r.color + '0C' }]}>
+                  <View style={{ marginTop: 14, gap: 10 }}>
+                    <View style={[S.infoBox, { borderColor: r.color + '35', backgroundColor: r.color + '0D' }]}>
                       <Text style={[S.infoLabel, { color: r.color + '90' }]}>DOSHA IMPACT</Text>
-                      <Text style={{ fontSize: 11, color: r.color + 'EE', fontWeight: '700' }}>{r.dosha}</Text>
+                      <Text style={{ fontSize: 13, color: r.color + 'EE', fontWeight: '800', lineHeight: 19 }}>{r.dosha}</Text>
                     </View>
-                    <View style={[S.infoBox, { borderColor: '#FFFFFF12' }]}>
+                    <View style={[S.infoBox, { borderColor: '#FFFFFF14' }]}>
                       <Text style={S.infoLabel}>FOOD SOURCES</Text>
-                      <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{r.examples}</Text>
+                      <Text style={{ fontSize: 12, color: '#FFFFFFCC', lineHeight: 19 }}>{r.examples}</Text>
                     </View>
-                    <View style={[S.infoBox, { borderColor: '#FFFFFF12' }]}>
+                    <View style={[S.infoBox, { borderColor: '#FFFFFF14' }]}>
                       <Text style={S.infoLabel}>BIOCHEMISTRY</Text>
-                      <Text style={{ fontSize: 11, color: '#FFFFFF60', lineHeight: 17 }}>{r.science}</Text>
+                      <Text style={{ fontSize: 12, color: '#FFFFFF68', lineHeight: 20 }}>{r.science}</Text>
                     </View>
                   </View>
                 )}
@@ -561,15 +603,15 @@ export default function DoshaExplorePage() {
               <View style={[S.expandCard, { borderColor: p.color + (prakOpen === p.type ? '50' : '22') }]}>
                 {prakOpen === p.type && <LinearGradient colors={[p.color + '10', 'transparent']} style={StyleSheet.absoluteFillObject} />}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 26 }}>{p.emoji}</Text>
+                  <Text style={{ fontSize: 28 }}>{p.emoji}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: p.color }}>{p.type}</Text>
-                    <Text style={{ fontSize: 9, color: '#FFFFFF40', marginTop: 2 }}>{p.body}</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: p.color }}>{p.type}</Text>
+                    <Text style={{ fontSize: 10, color: '#FFFFFF50', marginTop: 3, lineHeight: 15 }}>{p.body}</Text>
                   </View>
-                  <Text style={{ color: p.color, fontSize: 11, fontWeight: '900' }}>{prakOpen === p.type ? '▲' : '▼'}</Text>
+                  <Text style={{ color: p.color, fontSize: 12, fontWeight: '900' }}>{prakOpen === p.type ? '▲' : '▼'}</Text>
                 </View>
                 {prakOpen === p.type && (
-                  <View style={{ marginTop: 12, gap: 8 }}>
+                  <View style={{ marginTop: 14, gap: 10 }}>
                     {([
                       { label: 'MIND & PERSONALITY', val: p.mind },
                       { label: 'STRENGTHS', val: p.strength },
@@ -577,9 +619,9 @@ export default function DoshaExplorePage() {
                       { label: 'IDEAL DIET', val: p.diet },
                       { label: 'DAILY ROUTINE', val: p.routine },
                     ] as const).map((row, j) => (
-                      <View key={j} style={[S.infoBox, { borderColor: p.color + '22', backgroundColor: p.color + '08' }]}>
+                      <View key={j} style={[S.infoBox, { borderColor: p.color + '25', backgroundColor: p.color + '09' }]}>
                         <Text style={[S.infoLabel, { color: p.color + '90' }]}>{row.label}</Text>
-                        <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{row.val}</Text>
+                        <Text style={{ fontSize: 12, color: '#FFFFFFCC', lineHeight: 19 }}>{row.val}</Text>
                       </View>
                     ))}
                   </View>
@@ -589,13 +631,13 @@ export default function DoshaExplorePage() {
           ))}
 
           {/* ══ CLOSING ════════════════════════════════════════════════════ */}
-          <View style={[S.card, { borderColor: '#a78bfa22', marginTop: 24 }]}>
-            <LinearGradient colors={['#a78bfa0A', '#7c3aed05', 'transparent']} style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 10 }}>🕉️</Text>
-            <Text style={{ fontSize: 16, fontWeight: '900', color: '#a78bfa', textAlign: 'center', marginBottom: 12 }}>Ayurveda: The Eye of Life</Text>
-            <Text style={S.infoTxt}>{'The 3-Dosha system is a 5,000-year-old circadian biology framework mapping the body\'s 24-hour hormonal oscillations to three elemental archetypes. The 2017 Nobel Prize in Physiology confirmed that every cell runs a molecular CLOCK gene — matching Vata/Pitta/Kapha periods with remarkable precision.\n\nThe Shad Rasa maps to modern phytochemistry. Prakriti maps to metabolic phenotypes. The ancients encoded what science is rediscovering — that the cosmos is not separate from your body.'}</Text>
-            <View style={{ height: 1, backgroundColor: '#FFFFFF0C', marginVertical: 14 }} />
-            <Text style={{ fontSize: 10, color: '#FFFFFF40', lineHeight: 16 }}>🔬  Doshas shift with your local sunrise & sunset — hyper-personalised to your exact location. Solar chronobiology, not fixed clock time.</Text>
+          <View style={[S.card, { borderColor: '#a78bfa28', marginTop: 24 }]}>
+            <LinearGradient colors={['#a78bfa0C', '#7c3aed06', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>🕉️</Text>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#a78bfa', textAlign: 'center', marginBottom: 14, letterSpacing: -0.3 }}>Ayurveda: The Eye of Life</Text>
+            <Text style={[S.infoTxt, { fontSize: 13, lineHeight: 22, color: '#FFFFFF72' }]}>{'The 3-Dosha system is a 5,000-year-old circadian biology framework mapping the body\'s 24-hour hormonal oscillations to three elemental archetypes. The 2017 Nobel Prize in Physiology confirmed that every cell runs a molecular CLOCK gene — matching Vata/Pitta/Kapha periods with remarkable precision.\n\nThe Shad Rasa maps to modern phytochemistry. Prakriti maps to metabolic phenotypes. The ancients encoded what science is rediscovering — that the cosmos is not separate from your body.'}</Text>
+            <View style={{ height: 1, backgroundColor: '#FFFFFF10', marginVertical: 16 }} />
+            <Text style={{ fontSize: 11, color: '#FFFFFF50', lineHeight: 18 }}>🔬  Doshas shift with your local sunrise & sunset — hyper-personalised to your exact location. Solar chronobiology, not fixed clock time.</Text>
           </View>
           <View style={{ height: 50 }} />
 
@@ -607,35 +649,35 @@ export default function DoshaExplorePage() {
 
 const S = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#06061a' },
-  hdr:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10, gap: 12 },
-  back:      { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF18', alignItems: 'center', justifyContent: 'center' },
+  hdr:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12, gap: 12 },
+  back:      { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF18', alignItems: 'center', justifyContent: 'center' },
   backTxt:   { fontSize: 20, color: '#FFFFFFEE', fontWeight: '200' },
-  hdrCap:    { fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 2, marginBottom: 2 },
-  hdrTitle:  { fontSize: 20, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: -0.3 },
+  hdrCap:    { fontSize: 8, fontWeight: '900', color: '#FFFFFF45', letterSpacing: 2.2, marginBottom: 3 },
+  hdrTitle:  { fontSize: 22, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: -0.5 },
   liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   liveDot:   { width: 6, height: 6, borderRadius: 3 },
   liveTxt:   { fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
-  scroll:    { paddingHorizontal: 16, paddingTop: 10 },
-  hero:      { borderRadius: 22, borderWidth: 1, overflow: 'hidden', padding: 16, marginBottom: 6 },
-  heroName:  { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  scroll:    { paddingHorizontal: 16, paddingTop: 12 },
+  hero:      { borderRadius: 24, borderWidth: 1, overflow: 'hidden', padding: 18, marginBottom: 10 },
+  heroName:  { fontSize: 30, fontWeight: '900', letterSpacing: -0.5 },
   nowBadge:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
   nowDot:    { width: 6, height: 6, borderRadius: 3 },
   nowTxt:    { fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
-  card:      { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 10, overflow: 'hidden' },
-  sciCard:   { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 10, backgroundColor: '#FFFFFF04' },
-  sciCardTitle: { fontSize: 12, fontWeight: '900', color: '#FFFFFFCC', marginBottom: 6 },
-  sciCardBody:  { fontSize: 11, color: '#FFFFFF60', lineHeight: 18 },
-  tag:       { fontSize: 8, fontWeight: '900', letterSpacing: 1.6 },
-  cardH:     { fontSize: 16, fontWeight: '900' },
-  cardSub:   { fontSize: 12, color: '#FFFFFF60' },
-  infoBox:   { borderWidth: 1, borderRadius: 12, padding: 10 },
-  infoLabel: { fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.4, marginBottom: 4 },
-  infoTxt:   { fontSize: 11, color: '#FFFFFF65', lineHeight: 18 },
-  tabs:      { flexDirection: 'row', marginBottom: 10, borderRadius: 18, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF0C', overflow: 'hidden' },
-  tab:       { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabTxt:    { fontSize: 12, fontWeight: '900' },
+  card:      { borderWidth: 1, borderRadius: 22, padding: 18, marginBottom: 12, overflow: 'hidden' },
+  sciCard:   { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 12, backgroundColor: '#FFFFFF05' },
+  sciCardTitle: { fontSize: 13, fontWeight: '900', color: '#FFFFFFCC', marginBottom: 6 },
+  sciCardBody:  { fontSize: 12, color: '#FFFFFF68', lineHeight: 20 },
+  tag:       { fontSize: 9, fontWeight: '900', letterSpacing: 1.8, marginBottom: 4 },
+  cardH:     { fontSize: 17, fontWeight: '900' },
+  cardSub:   { fontSize: 13, color: '#FFFFFF65' },
+  infoBox:   { borderWidth: 1, borderRadius: 14, padding: 13 },
+  infoLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF45', letterSpacing: 1.5, marginBottom: 5 },
+  infoTxt:   { fontSize: 12, color: '#FFFFFF68', lineHeight: 20 },
+  tabs:      { flexDirection: 'row', marginBottom: 12, borderRadius: 20, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF0C', overflow: 'hidden' },
+  tab:       { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 3, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabTxt:    { fontSize: 13, fontWeight: '900' },
   tabDot:    { width: 5, height: 5, borderRadius: 3, position: 'absolute', top: 6, right: 10 },
-  chip:      { borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
-  halfCard:  { borderWidth: 1, borderRadius: 18, padding: 14 },
-  expandCard:{ borderWidth: 1, borderRadius: 20, padding: 14, marginBottom: 10, overflow: 'hidden' },
+  chip:      { borderWidth: 1, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5, alignSelf: 'flex-start' },
+  halfCard:  { borderWidth: 1, borderRadius: 20, padding: 16 },
+  expandCard:{ borderWidth: 1, borderRadius: 22, padding: 16, marginBottom: 12, overflow: 'hidden' },
 });

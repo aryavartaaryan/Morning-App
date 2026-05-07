@@ -250,6 +250,7 @@ export default function AlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
+        Vibration.cancel();
         Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         triggerShake();
@@ -277,6 +278,7 @@ export default function AlarmRingingScreen() {
         setSnoozeCountdown(null);
         // Re-trigger alarm sounds when snooze ends — restore native volume
         await setNativeAlarmVolume(1.0);
+        Vibration.cancel();
         Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -330,13 +332,10 @@ export default function AlarmRingingScreen() {
           `Good morning ${name}. It's ${fmtTime()}, ${kalaLine}. Your ${mantraLabel} is playing. ` +
           `Mission today: ${mission?.name}. You're on a ${settings.streak || 1}-day streak — don't break it now. ` +
           `${mission?.hype} Let's go.`;
-        // Duck mantra to 15 % while Bodhi speaks — mantra always started at full 1.0 above
-        if (soundRef.current) {
-          soundRef.current.setVolumeAsync(0.15).catch(() => {});
-        }
+        // Mantra stays at full volume — both alarm and Bodhi play simultaneously
         speakBodhi(script).then(async () => {
           if (cancelled) return;
-          // speakBodhi sets shouldDuckAndroid:true globally — restore full alarm audio mode
+          // speakBodhi sets shouldDuckAndroid:true globally — restore alarm audio mode
           await Audio.setAudioModeAsync({
             playsInSilentModeIOS: true,
             staysActiveInBackground: true,
@@ -344,12 +343,8 @@ export default function AlarmRingingScreen() {
             interruptionModeIOS: 1,
             interruptionModeAndroid: 1,
           }).catch(() => {});
-          // Restore mantra to full volume after Bodhi finishes
-          if (soundRef.current) {
-            await soundRef.current.setVolumeAsync(1.0).catch(() => {});
-          }
         }).catch(async () => {
-          // TTS failed — restore full volume immediately so alarm is never stuck quiet
+          // TTS failed — restore audio mode so alarm is never affected
           await Audio.setAudioModeAsync({
             playsInSilentModeIOS: true,
             staysActiveInBackground: true,
@@ -357,9 +352,6 @@ export default function AlarmRingingScreen() {
             interruptionModeIOS: 1,
             interruptionModeAndroid: 1,
           }).catch(() => {});
-          if (soundRef.current) {
-            soundRef.current.setVolumeAsync(1.0).catch(() => {});
-          }
         });
       }
 
