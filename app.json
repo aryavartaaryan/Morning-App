@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SolRize—Rise with the Sun",
-    "slug": "arise-app",
+    "slug": "ariseapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -126,7 +126,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cd2349ce-e53b-45cb-9cb7-bd75e6b2a4d4"
+        "projectId": "3cb6f0ce-b825-4978-9dfb-88f86711ae09"
       }
     }
   }

@@ -78,7 +78,7 @@ export default function AlarmRingingScreen() {
     } catch { /* ignore */ }
   };
 
-  const playWakeAudio = async (uri: string | null, startDucked = false, bundledAsset?: any) => {
+  const playWakeAudio = async (uri: string | null, bundledAsset?: any) => {
     await stopWakeAudio();
     // Silence the native AlarmSoundService MediaPlayer — JS audio takes over from here.
     // Native service keeps running for wake lock / fullScreen notification, but its
@@ -95,14 +95,14 @@ export default function AlarmRingingScreen() {
       const source = bundledAsset ?? (uri ? { uri } : require('../assets/sounds/mantra_alarm.wav'));
       const { sound } = await Audio.Sound.createAsync(
         source,
-        { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
+        { shouldPlay: true, isLooping: true, volume: 1.0 },
       );
       soundRef.current = sound;
     } catch {
       try {
         const { sound } = await Audio.Sound.createAsync(
           require('../assets/sounds/mantra_alarm.wav'),
-          { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
+          { shouldPlay: true, isLooping: true, volume: 1.0 },
         );
         soundRef.current = sound;
       } catch (e2) { console.warn('[AlarmRinging] Wake audio fallback error:', e2); }
@@ -310,7 +310,7 @@ export default function AlarmRingingScreen() {
         const audioSrc: string | null = bundledAsset ? null
           : (localInfo as any).exists ? (localInfo as any).uri
           : (wakeSound.audioUrl ?? null);
-        await playWakeAudio(audioSrc, settings.bodhiMorningBrief, bundledAsset);
+        await playWakeAudio(audioSrc, bundledAsset);
       }
 
       // ── Native AlarmSoundService stays alive DURING alarm ─────────
@@ -330,6 +330,10 @@ export default function AlarmRingingScreen() {
           `Good morning ${name}. It's ${fmtTime()}, ${kalaLine}. Your ${mantraLabel} is playing. ` +
           `Mission today: ${mission?.name}. You're on a ${settings.streak || 1}-day streak — don't break it now. ` +
           `${mission?.hype} Let's go.`;
+        // Duck mantra to 15 % while Bodhi speaks — mantra always started at full 1.0 above
+        if (soundRef.current) {
+          soundRef.current.setVolumeAsync(0.15).catch(() => {});
+        }
         speakBodhi(script).then(async () => {
           if (cancelled) return;
           // speakBodhi sets shouldDuckAndroid:true globally — restore full alarm audio mode
@@ -340,11 +344,23 @@ export default function AlarmRingingScreen() {
             interruptionModeIOS: 1,
             interruptionModeAndroid: 1,
           }).catch(() => {});
-          // Restore mantra volume if it was ducked for Bodhi speech
+          // Restore mantra to full volume after Bodhi finishes
           if (soundRef.current) {
             await soundRef.current.setVolumeAsync(1.0).catch(() => {});
           }
-        }).catch(() => {});
+        }).catch(async () => {
+          // TTS failed — restore full volume immediately so alarm is never stuck quiet
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 1,
+            interruptionModeAndroid: 1,
+          }).catch(() => {});
+          if (soundRef.current) {
+            soundRef.current.setVolumeAsync(1.0).catch(() => {});
+          }
+        });
       }
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

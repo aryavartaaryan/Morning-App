@@ -413,18 +413,18 @@ function getPanchangData(date: Date = new Date()) {
 // Rashi (sidereal sign) → Vedic Saura Maasa (solar month)
 // Order: Mesha=0 … Meena=11
 const RASHI_TO_VEDIC_MONTH = [
-  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Mesha'     },
-  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Vrishabha' },
-  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Mithuna'   },
-  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Karka'     },
-  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Simha'     },
-  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Kanya'     },
-  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Tula'      },
-  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Vrischika' },
-  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Dhanu'     },
-  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Makara'    },
-  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Kumbha'    },
-  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Meena'     },
+  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Mesha',     en: 'Apr–May' },
+  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Vrishabha', en: 'May–Jun' },
+  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Mithuna',   en: 'Jun–Jul' },
+  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Karka',     en: 'Jul–Aug' },
+  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Simha',     en: 'Aug–Sep' },
+  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Kanya',     en: 'Sep–Oct' },
+  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Tula',      en: 'Oct–Nov' },
+  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Vrischika', en: 'Nov–Dec' },
+  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Dhanu',     en: 'Dec–Jan' },
+  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Makara',    en: 'Jan–Feb' },
+  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Kumbha',    en: 'Feb–Mar' },
+  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Meena',     en: 'Mar–Apr' },
 ];
 function getVedicMonth(date: Date = new Date()) {
   const dJ2000 = (date.getTime() - 946728000000) / 86400000;
@@ -863,281 +863,6 @@ function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () =>
   );
 }
 
-// ── Deep-dive science data ────────────────────────────────────────────────
-const DOSHA_SCIENCE = {
-  vata: {
-    sanskrit: 'वात', elements: 'Air + Space', devanagari: 'वायु + आकाश',
-    color: '#a78bfa', emoji: '🌬️',
-    tagline: 'The principle of movement & neural electricity',
-    biology: 'Every nerve impulse, breath, heartbeat, and muscle contraction is Vata — pure kinetic energy. In neuroscience, Vata maps to the sympathetic nervous system and all electrical signalling in the body.',
-    neuro: 'Dopamine · Norepinephrine · Acetylcholine',
-    functions: ['Nerve conduction velocity: 70–120 m/s', 'Respiratory rhythm & lung expansion', 'Cardiac electrical conduction (HIS-Purkinje)', 'Peristalsis & gut motility', 'Cognitive processing speed & working memory', 'Motor coordination & reaction time'],
-    peakWindow: 'Pre-dawn 2–6 AM  ·  Afternoon 2–6 PM',
-    peakWhy: 'Plasma dopamine and norepinephrine peak in the afternoon Vata window (confirmed chrono-pharmacology). Spirometry shows lung vital capacity peaks at 3–4 PM. Reaction time, motor coordination and athletic performance records are predominantly broken in this window.',
-    imbalance: ['Anxiety & racing thoughts — excess sympathetic firing', 'Insomnia — elevated nocturnal norepinephrine', 'Constipation — weakened peristaltic waves', 'Joint cracking & dryness — low synovial fluid', 'Restlessness & inability to focus'],
-    balance: ['Warm, cooked, slightly oily foods (grounding)', 'Fixed sleep/wake schedule — regulates cortisol', 'Abhyanga: warm sesame oil self-massage', 'Slow rhythmic breathing (4-7-8 technique)', 'Walking barefoot on earth — grounding (earthing)'],
-  },
-  pitta: {
-    sanskrit: 'पित्त', elements: 'Fire + Water', devanagari: 'अग्नि + जल',
-    color: '#fb923c', emoji: '🔥',
-    tagline: 'The principle of metabolic fire & transformation',
-    biology: 'Pitta governs all biochemical transformations — digestion, hormone synthesis, liver detoxification, and cellular energy (ATP). In biochemistry, Pitta maps to the metabolic-endocrine axis.',
-    neuro: 'Cortisol · Insulin · Thyroid (T3/T4) · Digestive enzymes',
-    functions: ['HCl & pepsin secretion for protein digestion', 'Bile acid production & fat emulsification', 'Cytochrome P450 liver detox (Phase I & II)', 'Core body temperature regulation', 'Pancreatic lipase & amylase secretion', 'Retinal processing & visual acuity'],
-    peakWindow: 'Midday 10 AM–2 PM  ·  Night 10 PM–2 AM',
-    peakWhy: 'Gastric acid secretion peaks at solar noon (intragastric pH studies confirm lowest pH at 12–1 PM). Core temperature highest at 2–3 PM. Insulin sensitivity is optimal at midday. Night Pitta: liver Phase I & II detox enzymes peak during deep sleep — the body literally cleans itself.',
-    imbalance: ['Acid reflux & heartburn — excess HCl', 'Skin inflammation & acne — prostaglandin + androgen excess', 'Anger & irritability — elevated cortisol', 'Loose stools — excess bile secretion', 'Premature grey hair — melanocyte oxidative burnout'],
-    balance: ['Cooling foods: cucumber, coconut, coriander, mint', 'Avoid eating when stressed or angry', 'Evening moonlight walk (reduces cortisol)', 'Coconut oil scalp & body application', 'Sheetali pranayama (cooling breath through rolled tongue)'],
-  },
-  kapha: {
-    sanskrit: 'कफ', elements: 'Earth + Water', devanagari: 'पृथ्वी + जल',
-    color: '#34d399', emoji: '🌿',
-    tagline: 'The principle of structure, immunity & anabolism',
-    biology: 'Kapha governs all structural building — muscle synthesis, bone density, joint lubrication, immune defence, and long-term memory. In physiology, Kapha is the anabolic-immune axis.',
-    neuro: 'Growth Hormone · Testosterone · Estrogen · Serotonin · Oxytocin',
-    functions: ['Synovial fluid production — joint lubrication', 'Lymphatic immune circulation & lymphocyte count', 'Collagen & connective tissue synthesis', 'Muscle glycogen storage & protein synthesis', 'Mucus membrane protection (gut & respiratory)', 'Long-term memory consolidation (hippocampus)'],
-    peakWindow: 'Morning 6–10 AM  ·  Evening 6–10 PM',
-    peakWhy: 'Morning cortisol peak triggers an anabolic hormone cascade — growth hormone and testosterone co-peak in the first 2 hours after sunrise. Lymphocyte count is measurably highest in morning blood draws. Strength training in the Kapha window maximises muscle protein synthesis rates.',
-    imbalance: ['Lethargy & oversleeping — low dopamine, serotonin dominance', 'Weight gain — insulin resistance, slow metabolic rate', 'Congestion & excess mucus — lymphatic stagnation', 'Depression & emotional attachment — serotonin dysregulation', 'Type 2 diabetes risk — chronic Kapha imbalance'],
-    balance: ['Vigorous exercise before 10 AM (burns Kapha)', 'Light, dry, spicy, astringent foods', 'Dry brushing & dry sauna (stimulate lymph)', 'Intermittent fasting (16:8 minimum)', 'Kapalabhati pranayama — 100+ rapid exhales'],
-  },
-} as const;
-
-// ── Dosha Explore Modal ──────────────────────────────────────────────────
-function DoshaExploreModal({ active, onClose }: { active: DoshaPeriod; onClose: () => void }) {
-  const [expanded, setExpanded] = useState<string | null>(active.dosha);
-  const order: ('vata' | 'pitta' | 'kapha')[] = ['vata', 'pitta', 'kapha'];
-  const ds = DOSHA_SCIENCE[active.dosha];
-
-  const TIMELINE = [
-    { color: '#818cf8', label: '✨ Vata', time: '2–6am', flex: 1.8 },
-    { color: '#34d399', label: '🌿 Kapha', time: '6–10am', flex: 1.7 },
-    { color: '#fb923c', label: '🔥 Pitta', time: '10–2pm', flex: 1.7 },
-    { color: '#a78bfa', label: '🌬️ Vata', time: '2–6pm', flex: 1.8 },
-    { color: '#34d399', label: '🌅 Kapha', time: '6–10pm', flex: 1.7 },
-    { color: '#fbbf24', label: '🌕 Pitta', time: '10–2am', flex: 1.7 },
-  ];
-
-  return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={EX.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
-        <View style={EX.sheet}>
-          <LinearGradient
-            colors={[ds.color + '22', 'transparent']}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 140, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
-            pointerEvents="none"
-          />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: ds.color + '80', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
-
-          <View style={EX.handle} />
-
-          {/* Header */}
-          <View style={EX.sheetHeader}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ds.color }} />
-                <Text style={EX.sheetCap}>AYURVEDIC CHRONOBIOLOGY</Text>
-              </View>
-              <Text style={EX.sheetTitle}>The Three Doshas</Text>
-              <Text style={EX.sheetSub}>5,000 years  ·  confirmed by modern science</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={EX.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={EX.closeTxt}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 52 }}>
-
-            {/* ── Circadian Timeline ── */}
-            <View style={EX.timelineCard}>
-              <Text style={EX.timelineLabel}>24-HOUR DOSHA CLOCK  ·  SOLAR CYCLE</Text>
-              <View style={EX.timelineBar}>
-                {TIMELINE.map((seg, i) => (
-                  <View key={i} style={{
-                    flex: seg.flex, height: 10, backgroundColor: seg.color,
-                    marginRight: i < 5 ? 2 : 0,
-                    borderTopLeftRadius: i === 0 ? 5 : 0, borderBottomLeftRadius: i === 0 ? 5 : 0,
-                    borderTopRightRadius: i === 5 ? 5 : 0, borderBottomRightRadius: i === 5 ? 5 : 0,
-                  }} />
-                ))}
-              </View>
-              <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                {TIMELINE.map((seg, i) => (
-                  <View key={i} style={{ flex: seg.flex, alignItems: 'center', gap: 2 }}>
-                    <Text style={{ fontSize: 7, color: seg.color, fontWeight: '800', textAlign: 'center' }}>{seg.label}</Text>
-                    <Text style={{ fontSize: 6, color: '#FFFFFF40', textAlign: 'center' }}>{seg.time}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* ── Intro ── */}
-            <View style={EX.introBox}>
-              <Text style={EX.introText}>
-                Ayurveda's 3-Dosha model is a{' '}
-                <Text style={{ color: '#fbbf24', fontWeight: '900' }}>circadian biology framework</Text>
-                {' '}refined over 5,000 years — mapping the body's 24-hour hormonal and neurological cycles to three elemental archetypes.{' '}
-                <Text style={{ color: '#FFFFFFEE', fontWeight: '700' }}>Modern chronobiology independently confirms the same patterns.</Text>
-              </Text>
-            </View>
-
-            {/* ── Active Period Banner ── */}
-            <View style={[EX.activePill, { borderColor: ds.color + '70', backgroundColor: ds.color + '14' }]}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ds.color }} />
-              <View style={{ flex: 1 }}>
-                <Text style={[EX.activeTxt, { color: ds.color }]}>Active Now: {active.label}</Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFF80', marginTop: 2 }}>{active.englishLabel}  ·  {active.startLabel} → {active.endLabel}</Text>
-              </View>
-            </View>
-
-            {/* ── Dosha Cards ── */}
-            {order.map(key => {
-              const d = DOSHA_SCIENCE[key];
-              const isOpen = expanded === key;
-              const isActive = active.dosha === key;
-              const name = key === 'vata' ? 'Vata' : key === 'pitta' ? 'Pitta' : 'Kapha';
-              return (
-                <View key={key} style={[EX.dCard, { borderColor: d.color + (isOpen ? '70' : '28') }]}>
-                  {isOpen && (
-                    <LinearGradient
-                      colors={[d.color + '18', 'transparent']}
-                      start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.65 }}
-                      style={StyleSheet.absoluteFillObject}
-                      pointerEvents="none"
-                    />
-                  )}
-                  {isOpen && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: d.color + '80', borderTopLeftRadius: 20, borderTopRightRadius: 20 }} />}
-
-                  {/* Card header — always visible, tappable */}
-                  <TouchableOpacity activeOpacity={0.85} onPress={() => setExpanded(isOpen ? null : key)}>
-                    <View style={EX.dCardHeader}>
-                      <View style={[EX.dEmojiBox, { backgroundColor: d.color + '18', borderColor: d.color + '45' }]}>
-                        <Text style={{ fontSize: 30 }}>{d.emoji}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <Text style={[EX.dName, { color: d.color }]}>{name}</Text>
-                          <Text style={[EX.dSanskrit, { color: d.color + '90' }]}>{d.sanskrit}</Text>
-                          {isActive && (
-                            <View style={[EX.nowBadge, { backgroundColor: d.color + '22', borderColor: d.color + '60' }]}>
-                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: d.color, marginRight: 3 }} />
-                              <Text style={[EX.nowTxt, { color: d.color }]}>NOW</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={{ fontSize: 10, color: d.color + '99', fontWeight: '700', marginTop: 3 }}>{d.elements}  ·  {d.devanagari}</Text>
-                        <Text style={[EX.dTagline, { color: '#FFFFFFCC' }]}>{d.tagline}</Text>
-                      </View>
-                      <View style={[EX.expandIcon, { backgroundColor: d.color + '18', borderColor: d.color + '40' }]}>
-                        <Text style={{ color: d.color, fontSize: 10, fontWeight: '900' }}>{isOpen ? '▲' : '▼'}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* ── Expanded content ── */}
-                  {isOpen && (
-                    <View style={{ marginTop: 20, gap: 16 }}>
-
-                      {/* Biology */}
-                      <View style={[EX.sciBlock, { borderColor: d.color + '38' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: d.color }} />
-                          <Text style={[EX.sciBlockTitle, { color: d.color }]}>🔬  Biological Mapping</Text>
-                        </View>
-                        <Text style={EX.sciBlockBody}>{d.biology}</Text>
-                      </View>
-
-                      {/* Biochemicals as chips */}
-                      <View>
-                        <Text style={[EX.secHead, { color: '#FFFFFF80', marginBottom: 10 }]}>⚗  KEY BIOCHEMICALS</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                          {d.neuro.split(' · ').map((n, i) => (
-                            <View key={i} style={[EX.biochemChip, { backgroundColor: d.color + '18', borderColor: d.color + '55' }]}>
-                              <Text style={{ fontSize: 12, fontWeight: '800', color: d.color + 'EE' }}>{n}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      {/* Body functions 2-col grid */}
-                      <View>
-                        <Text style={[EX.secHead, { color: '#FFFFFF80', marginBottom: 10 }]}>⚡  BODY FUNCTIONS GOVERNED</Text>
-                        <View style={EX.funcGrid}>
-                          {d.functions.map((f, i) => (
-                            <View key={i} style={[EX.funcCell, { borderColor: d.color + '30', backgroundColor: d.color + '0C' }]}>
-                              <View style={[EX.funcDot, { backgroundColor: d.color }]} />
-                              <Text style={EX.funcTxt}>{f}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      {/* Peak window */}
-                      <View style={[EX.sciBlock, { borderColor: d.color + '38' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: d.color }} />
-                          <Text style={[EX.sciBlockTitle, { color: d.color }]}>⏰  Peak Circadian Window</Text>
-                        </View>
-                        <View style={EX.peakBar}>
-                          <View style={{ width: '55%', height: '100%', backgroundColor: d.color + 'CC', borderRadius: 4 }} />
-                        </View>
-                        <Text style={[EX.peakTime, { color: d.color, marginTop: 8 }]}>{d.peakWindow}</Text>
-                        <Text style={EX.sciBlockBody}>{d.peakWhy}</Text>
-                      </View>
-
-                      {/* Imbalance warning rows */}
-                      <View>
-                        <Text style={[EX.secHead, { color: '#f43f5e80', marginBottom: 10 }]}>⚠  SIGNS OF IMBALANCE</Text>
-                        <View style={{ gap: 7 }}>
-                          {d.imbalance.map((f, i) => (
-                            <View key={i} style={EX.imbalRow}>
-                              <Text style={{ fontSize: 11, color: '#f43f5eDD', fontWeight: '900', flexShrink: 0 }}>⚠</Text>
-                              <Text style={EX.imbalTxt}>{f}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      {/* Balance action rows */}
-                      <View>
-                        <Text style={[EX.secHead, { color: '#10b98190', marginBottom: 10 }]}>✓  RESTORE BALANCE</Text>
-                        <View style={{ gap: 7 }}>
-                          {d.balance.map((f, i) => (
-                            <View key={i} style={EX.balRow}>
-                              <View style={EX.balIcon}>
-                                <Text style={{ fontSize: 10, color: '#10b981', fontWeight: '900' }}>✓</Text>
-                              </View>
-                              <Text style={EX.balTxt}>{f}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-
-            {/* Footer note */}
-            <View style={EX.footerNote}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa80', letterSpacing: 1.8, marginBottom: 8 }}>◉  SOLAR TIME NOTE</Text>
-              <Text style={EX.footerTxt}>
-                The Dosha clock runs on{' '}
-                <Text style={{ color: '#fbbf24CC', fontWeight: '900' }}>solar time</Text>
-                {' '}— each period shifts with your local sunrise and sunset, not the clock. This is why Ayurvedic timing is hyper-personalised and differs from generic "eat lunch at noon" advice.
-              </Text>
-            </View>
-
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ── Panchang Explore Modal ────────────────────────────────────────────────
 function PanchangExploreModal({ onClose }: { onClose: () => void }) {
   const moon = getMoonPhase();
@@ -1278,7 +1003,7 @@ function CurrentPeriodCard({
   period: DoshaPeriod; liveClock: Date;
   onExplore?: (dosha: string, label: string, start: string, end: string) => void;
 }) {
-  const [showExplore, setShowExplore] = useState(false);
+  const router = useRouter();
   const rem  = period.minutesRemaining;
   const remStr = rem >= 60
     ? `${Math.floor(rem / 60)}h ${rem % 60}m left`
@@ -1328,10 +1053,9 @@ function CurrentPeriodCard({
 
       {/* Name + countdown row — tappable to explore */}
       <TouchableOpacity
-        onPress={() => onExplore ? onExplore(period.dosha, period.label, period.startLabel, period.endLabel) : setShowExplore(true)}
+        onPress={() => onExplore ? onExplore(period.dosha, period.label, period.startLabel, period.endLabel) : router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.75}
         style={CP.nameRow}>
-        <Text style={CP.emoji}>{period.emoji}</Text>
         <View style={{ flex: 1 }}>
           <Text style={[CP.name, { color: '#fff' }]}>{period.englishLabel}</Text>
           <Text style={[CP.engLabel, { color: period.color }]}>{period.label}</Text>
@@ -1340,7 +1064,7 @@ function CurrentPeriodCard({
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
           <Text style={[CP.countdown, { color: period.color }]}>{remStr}</Text>
           <Text style={CP.timeRange}>{period.startLabel} → {period.endLabel}</Text>
-          <Text style={[CP.exploreTapHint, { color: period.color + '80' }]}>tap to explore ↗</Text>
+          <Text style={[CP.exploreTapHint, { color: '#D4A84B90' }]}>tap to explore ↗</Text>
         </View>
       </TouchableOpacity>
 
@@ -1363,7 +1087,7 @@ function CurrentPeriodCard({
       <View style={[CP.listGrid, { marginBottom: 14 }]}>
         {period.activities.map((a, i) => (
           <View key={i} style={[CP.doCard, { backgroundColor: period.color + '18', borderColor: period.color + '45' }]}>
-            <Text style={[CP.doCheck, { color: period.color }]}>✓</Text>
+            <Text style={{ fontSize: 14, marginTop: 1 }}>{getActivityEmoji(a)}</Text>
             <Text style={CP.doTxt}>{a}</Text>
           </View>
         ))}
@@ -1379,7 +1103,7 @@ function CurrentPeriodCard({
       <View style={CP.listGrid}>
         {period.avoidances.map((a, i) => (
           <View key={i} style={[CP.dontCard, { backgroundColor: '#f43f5e14', borderColor: '#f43f5e42' }]}>
-            <Text style={CP.dontX}>✕</Text>
+            <Text style={{ fontSize: 14, marginTop: 1 }}>{getAvoidanceEmoji(a)}</Text>
             <Text style={CP.dontTxt}>{a}</Text>
           </View>
         ))}
@@ -1388,23 +1112,22 @@ function CurrentPeriodCard({
       {/* Explore More CTA */}
       <View style={[CP.divider, { marginTop: 12 }]} />
       <TouchableOpacity
-        onPress={() => onExplore ? onExplore(period.dosha, period.label, period.startLabel, period.endLabel) : setShowExplore(true)}
+        onPress={() => onExplore ? onExplore(period.dosha, period.label, period.startLabel, period.endLabel) : router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.8}>
         <LinearGradient
-          colors={[period.color + '22', period.color + '0C']}
+          colors={['#D4A84B22', '#D4A84B0C']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          style={[CP.exploreBtn, { borderColor: period.color + '45' }]}>
+          style={[CP.exploreBtn, { borderColor: '#D4A84B45' }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[CP.exploreTxt, { color: period.color }]}>🔬  Explore Full Ayurvedic Science</Text>
-            <Text style={{ fontSize: 9, color: period.color + '70', marginTop: 2, fontWeight: '600' }}>Elements · Biochemicals · Research · Chronobiology</Text>
+            <Text style={[CP.exploreTxt, { color: '#D4A84B' }]}>🔬  Explore Full Ayurvedic Science</Text>
+            <Text style={{ fontSize: 9, color: '#D4A84B70', marginTop: 2, fontWeight: '600' }}>Elements · Biochemicals · Research · Chronobiology</Text>
           </View>
-          <View style={[CP.exploreChevron, { backgroundColor: period.color + '25', borderColor: period.color + '50' }]}>
-            <Text style={[CP.exploreArrow, { color: period.color }]}>→</Text>
+          <View style={[CP.exploreChevron, { backgroundColor: '#D4A84B25', borderColor: '#D4A84B50' }]}>
+            <Text style={[CP.exploreArrow, { color: '#D4A84B' }]}>→</Text>
           </View>
         </LinearGradient>
       </TouchableOpacity>
     </View>
-    {showExplore && <DoshaExploreModal active={period} onClose={() => setShowExplore(false)} />}
     </>
   );
 }
@@ -1916,12 +1639,50 @@ function TodayHeroCard({
   );
 }
 
+// ── Activity / Avoidance emoji helpers ────────────────────────────────────────
+function getActivityEmoji(text: string): string {
+  if (/yoga|sun salutation/i.test(text)) return '🧘';
+  if (/strength|weight|training|gym/i.test(text)) return '🏋️';
+  if (/pranayama|kapalbhati|breath/i.test(text)) return '🫁';
+  if (/breakfast|meal|nourish|food/i.test(text)) return '🥗';
+  if (/massage|abhyanga|oil/i.test(text)) return '🧴';
+  if (/walk|sunlight/i.test(text)) return '🌅';
+  if (/meditation|dhyana|mantra|sankalpa/i.test(text)) return '🕉️';
+  if (/study|scripture|reading|learn/i.test(text)) return '📖';
+  if (/prayer|gratitude/i.test(text)) return '🙏';
+  if (/work|focus|cognitive|strategy|decision|meeting/i.test(text)) return '🎯';
+  if (/cold shower|shower/i.test(text)) return '🚿';
+  if (/brush/i.test(text)) return '✨';
+  if (/fasting|fast/i.test(text)) return '⏱️';
+  if (/stillness|quiet/i.test(text)) return '🌙';
+  return '⚡';
+}
+
+function getAvoidanceEmoji(text: string): string {
+  if (/sleep|nap/i.test(text)) return '😴';
+  if (/caffeine|coffee/i.test(text)) return '☕';
+  if (/phone|social|media/i.test(text)) return '📵';
+  if (/screen|digital|bright/i.test(text)) return '📺';
+  if (/food|fried|breakfast|dairy|sweet|oily|heavy/i.test(text)) return '🍔';
+  if (/anger|conflict|argument|heated/i.test(text)) return '⚡';
+  if (/sun|heat|midday/i.test(text)) return '☀️';
+  if (/cold|ice|raw/i.test(text)) return '❄️';
+  if (/noise|loud|conversation/i.test(text)) return '🔊';
+  if (/exertion|intense|physical/i.test(text)) return '🏃';
+  if (/multi.*task|multitask/i.test(text)) return '🌀';
+  if (/schedule|irregular/i.test(text)) return '🗓️';
+  if (/spicy|acidic/i.test(text)) return '🌶️';
+  if (/skip|delay.*lunch|skipping/i.test(text)) return '🍽️';
+  if (/overwork|burnout|without.*break/i.test(text)) return '🔋';
+  return '⚠️';
+}
+
 // ── Compact Cosmic Pill Button (homepage → cosmic-explore) ─────────────────
 function CosmicPill({ onPress }: { onPress: () => void }) {
-  const p         = getPanchangData();
-  const moon      = getMoonPhase();
-  const vaar      = VAARS[p.vaarIdx];
-  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+  const p      = getPanchangData();
+  const moon   = getMoonPhase();
+  const vaar   = VAARS[p.vaarIdx];
+  const vMonth = getVedicMonth();
 
   return (
     <TouchableOpacity
@@ -1946,14 +1707,33 @@ function CosmicPill({ onPress }: { onPress: () => void }) {
 
       {/* Labels */}
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={[CPL.title, { color: vaar.color }]}>✦  Cosmic Date</Text>
-          <View style={[CPL.sep, { backgroundColor: vaar.color + '55' }]} />
-          <Text style={CPL.meta} numberOfLines={1}>
-            {vaar.planet} Day  ·  {p.tithiName}  ·  {nakshatra.name}
-          </Text>
+        <Text style={[CPL.title, { color: vaar.color }]}>✦  Cosmic Date</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 5, alignItems: 'flex-start' }}>
+          <View style={{ alignItems: 'flex-start', minWidth: 50 }}>
+            <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>TITHI</Text>
+            <Text style={{ fontSize: 9, color: '#a78bfaCC', fontWeight: '800', lineHeight: 13 }}>{p.tithiName}</Text>
+            <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>Day {p.tithiInPaksha}</Text>
+          </View>
+          <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
+          <View style={{ alignItems: 'flex-start', minWidth: 52 }}>
+            <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>VAAR</Text>
+            <Text style={{ fontSize: 9, color: vaar.color + 'CC', fontWeight: '800', lineHeight: 13 }}>{vaar.vedicName}</Text>
+            <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>{vaar.planet} Day</Text>
+          </View>
+          <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
+          <View style={{ alignItems: 'flex-start', minWidth: 46 }}>
+            <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>PAKSHA</Text>
+            <Text style={{ fontSize: 9, color: '#a78bfaCC', fontWeight: '800', lineHeight: 13 }}>{p.paksha}</Text>
+            <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'}</Text>
+          </View>
+          <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
+          <View style={{ alignItems: 'flex-start', minWidth: 48 }}>
+            <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>MAAS</Text>
+            <Text style={{ fontSize: 9, color: '#fbbf24CC', fontWeight: '800', lineHeight: 13 }}>{vMonth.name}</Text>
+            <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>{vMonth.en}</Text>
+          </View>
         </View>
-        <Text style={CPL.cta}>See today's cosmic energy  ›</Text>
+        <Text style={[CPL.cta, { marginTop: 5 }]}>See today's cosmic energy  ›</Text>
       </View>
 
       {/* Chevron badge */}
@@ -2305,24 +2085,37 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
   );
 }
 
-// ── Hourly Environment Suggestion Strip (horizontal swipe + auto-scroll) ─────
+const HES_SCROLL_SPEED = 0.42; // px per animation frame — gentle, unbroken, peaceful glide
+
+// ── Hourly Environment Suggestion Strip (horizontal swipe + continuous auto-scroll) ─────
 function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
-  const scrollRef   = useRef<ScrollView>(null);
-  const autoIdxRef  = useRef(0);
-  const lenRef      = useRef(0);
-  const pausedRef   = useRef(false);
-  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [storyIdx, setStoryIdx]       = useState<number | null>(null);
-  const [showExplore, setShowExplore] = useState(false);
+  const scrollRef      = useRef<ScrollView>(null);
+  const pausedRef      = useRef(false);
+  const posRef         = useRef(0);
+  const dirRef         = useRef(1);
+  const maxPosRef      = useRef(0);
+  const rafRef         = useRef<number>(0);
+  const resumeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [storyIdx, setStoryIdx] = useState<number | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (!pausedRef.current && lenRef.current > 0) {
-        autoIdxRef.current = (autoIdxRef.current + 1) % lenRef.current;
-        (scrollRef.current as any)?.scrollTo({ x: autoIdxRef.current * 178, animated: true });
+    const tick = () => {
+      if (!pausedRef.current && maxPosRef.current > 0) {
+        posRef.current += HES_SCROLL_SPEED * dirRef.current;
+        if (posRef.current >= maxPosRef.current) {
+          posRef.current = maxPosRef.current;
+          dirRef.current = -1;
+        } else if (posRef.current <= 0) {
+          posRef.current = 0;
+          dirRef.current = 1;
+        }
+        scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
       }
-    }, 3200);
-    return () => clearInterval(timer);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
   const pauseScroll = () => {
@@ -2331,7 +2124,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
   };
   const scheduleResume = () => {
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 4000);
+    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 2500);
   };
 
   const hour = new Date().getHours();
@@ -2359,7 +2152,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
   };
 
   const doCards: HESCard[] = period.activities.map(a => ({
-    emoji: period.emoji,
+    emoji: getActivityEmoji(a),
     title: a,
     tips: [period.sciTitle + '  ·  ' + period.label],
     color: period.color,
@@ -2367,39 +2160,43 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
   }));
 
   const dontCards: HESCard[] = period.avoidances.map(a => ({
-    emoji: '✕',
+    emoji: getAvoidanceEmoji(a),
     title: a,
     tips: ['Avoid during ' + period.label],
     color: '#f43f5e',
-    label: '✕  AVOID THIS HOUR',
+    label: '⚠️  AVOID THIS HOUR',
   }));
 
   const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
-  lenRef.current = allCards.length;
 
   return (
     <>
     <View style={{ marginBottom: 10 }}>
       {/* Header — tappable → opens Ayurvedic Science explore */}
       <TouchableOpacity
-        onPress={() => setShowExplore(true)}
+        onPress={() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-          <Text style={{ fontSize: 22 }}>{period.emoji}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
           <View>
-            <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 18 }}>{period.englishLabel}</Text>
-            <Text style={{ fontSize: 9, color: period.color + 'CC', fontWeight: '700', letterSpacing: 0.5 }}>Tap to explore science  ↗</Text>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#D4A84B60', backgroundColor: '#D4A84B1A' }}>
+              <Text style={{ fontSize: 11 }}>⚗️</Text>
+              <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE SCIENCE</Text>
+              <View style={{ width: 15, height: 15, borderRadius: 8, backgroundColor: '#D4A84B35', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', lineHeight: 11 }}>↗</Text>
+              </View>
+            </View>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 0 }}>
-          <Text style={{ fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, lineHeight: 28 }}>{remStr}</Text>
-          <Text style={{ fontSize: 9, fontWeight: '800', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
-          <Text style={{ fontSize: 8, fontWeight: '600', color: '#FFFFFF45', letterSpacing: 0.4, marginTop: 1 }}>{period.startLabel} → {period.endLabel}</Text>
+          <Text style={{ fontSize: 28, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, lineHeight: 33 }}>{remStr}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: '#FFFFFF55', letterSpacing: 0.4, marginTop: 2 }}>{period.startLabel} → {period.endLabel}</Text>
         </View>
       </TouchableOpacity>
 
-      <View onStartShouldSetResponderCapture={() => { pauseScroll(); return false; }}>
+      <View>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -2408,12 +2205,19 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         decelerationRate="fast"
         snapToInterval={178}
         snapToAlignment="start"
+        scrollEventThrottle={16}
+        onContentSizeChange={(w) => { maxPosRef.current = Math.max(0, w - SCREEN_W); }}
+        onScrollBeginDrag={() => {
+          pausedRef.current = true;
+          if (resumeTimer.current) clearTimeout(resumeTimer.current);
+        }}
         onScrollEndDrag={(e) => {
-          autoIdxRef.current = Math.round(e.nativeEvent.contentOffset.x / 178);
+          posRef.current = e.nativeEvent.contentOffset.x;
           scheduleResume();
         }}
         onMomentumScrollEnd={(e) => {
-          autoIdxRef.current = Math.round(e.nativeEvent.contentOffset.x / 178);
+          posRef.current = e.nativeEvent.contentOffset.x;
+          scheduleResume();
         }}
       >
         {allCards.map((card, i) => (
@@ -2433,14 +2237,8 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
             <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 9 }}>
               <Text style={{ fontSize: 8, fontWeight: '900', color: card.color, letterSpacing: 1.2 }}>{card.label}</Text>
             </View>
-            {/* Emoji or premium avoid circle */}
-            {card.emoji === '✕' ? (
-              <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1.5, borderColor: card.color + '90', backgroundColor: card.color + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 7 }}>
-                <Text style={{ fontSize: 15, color: card.color, fontWeight: '900', lineHeight: 18 }}>✕</Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 26, marginBottom: 7 }}>{card.emoji}</Text>
-            )}
+            {/* Emoji icon */}
+            <Text style={{ fontSize: 26, marginBottom: 7 }}>{card.emoji}</Text>
             <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18, marginBottom: 7 }}>{card.title}</Text>
             <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 7 }} />
             {card.tips.map((tip, j) => (
@@ -2465,7 +2263,6 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         onClose={() => { setStoryIdx(null); scheduleResume(); }}
       />
     )}
-    {showExplore && <DoshaExploreModal active={period} onClose={() => setShowExplore(false)} />}
     </>
   );
 }
@@ -2522,73 +2319,139 @@ const WSB = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Solar + Moon Top Bar (always-visible, above scroll content)
+// Cosmic Orbit Strip — unified solar ephemeris · lunar phase · cosmic almanac
 // ══════════════════════════════════════════════════════════════════════════════
-function SolarMoonTopBar({ solarTimes }: { solarTimes: SolarTimes | null }) {
-  const moon = React.useMemo(() => {
-    const now = new Date();
-    return getMoonPhase(now);
-  }, []);
+function CosmicOrbitStrip({
+  solarTimes,
+  onCosmicPress,
+}: {
+  solarTimes: SolarTimes | null;
+  onCosmicPress: () => void;
+}) {
+  const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
+  const p         = React.useMemo(() => getPanchangData(), []);
+  const vaar      = VAARS[p.vaarIdx];
+  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+
+  const now  = new Date();
+  const curH = now.getHours() + now.getMinutes() / 60;
+  let SunIcon: React.ComponentType<{ size?: number }> = NoonSunSVG;
+  if (solarTimes) {
+    if (curH <= solarTimes.sunrise + 0.75)     SunIcon = RisingSunSVG;
+    else if (curH >= solarTimes.sunset - 0.75) SunIcon = SettingSunSVG;
+    else                                        SunIcon = NoonSunSVG;
+  }
 
   return (
-    <View style={SMB.strip}>
-      <LinearGradient colors={['rgba(255,255,255,0.15)','rgba(255,255,255,0.04)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.40)' }} />
+    <View style={COS.card}>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.01)']}
+        start={{ x: 0, y: 0 }} end={{ x: 0.65, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <LinearGradient
+        colors={[vaar.color + '14', 'transparent']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={COS.topLine} />
       <GlassPulseOverlay />
-      {solarTimes ? (
-        <>
-          <View style={SMB.cell}>
-            <Text style={SMB.emoji}>🌅</Text>
-            <Text style={SMB.time}>{fmtSolar(solarTimes.sunrise)}</Text>
-            <Text style={SMB.label}>Sunrise</Text>
+
+      {/* ── Row 1 : Solar arc + Lunar phase ── */}
+      <View style={COS.row1}>
+        <SunIcon size={36} />
+
+        {solarTimes ? (
+          <>
+            <View style={COS.vSep} />
+            <View style={COS.sCell}>
+              <Text style={COS.sTime}>{fmtSolar(solarTimes.sunrise)}</Text>
+              <Text style={COS.sLbl}>Sunrise</Text>
+            </View>
+            <View style={COS.vSep} />
+            <View style={COS.sCell}>
+              <Text style={[COS.sTime, { color: '#fbbf24DD' }]}>{fmtSolar(solarTimes.solarNoon)}</Text>
+              <Text style={COS.sLbl}>Solar Zenith</Text>
+            </View>
+            <View style={COS.vSep} />
+            <View style={COS.sCell}>
+              <Text style={COS.sTime}>{fmtSolar(solarTimes.sunset)}</Text>
+              <Text style={COS.sLbl}>Sunset</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={COS.vSep} />
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={COS.sLbl}>Activate GPS  ·  Solar Ephemeris Pending</Text>
+            </View>
+          </>
+        )}
+
+        <View style={COS.vSep} />
+        <View style={COS.moonWrap}>
+          <MoonSVG tithiNum={moon.tithiNum} size={30} />
+          <View style={{ marginLeft: 6 }}>
+            <Text style={COS.sTime}>{moon.illumination}%</Text>
+            <Text style={COS.sLbl}>Lunar Phase</Text>
           </View>
-          <View style={SMB.sep} />
-          <View style={SMB.cell}>
-            <Text style={SMB.emoji}>☀️</Text>
-            <Text style={SMB.time}>{fmtSolar(solarTimes.solarNoon)}</Text>
-            <Text style={SMB.label}>Solar Noon</Text>
+        </View>
+      </View>
+
+      {/* ── Divider ── */}
+      <View style={COS.hDiv} />
+
+      {/* ── Row 2 : Cosmic almanac + CTA ── */}
+      <View style={COS.row2}>
+        <View style={[COS.starDot, { top: 5,  right: 80,  width: 1.5, height: 1.5, opacity: 0.38 }]} />
+        <View style={[COS.starDot, { top: 12, right: 118, width: 1,   height: 1,   opacity: 0.22 }]} />
+
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+            <Text style={[COS.regent, { color: vaar.color }]}>✦  {vaar.planet} Regent</Text>
+            <View style={[COS.dot3, { backgroundColor: vaar.color + '55' }]} />
+            <Text style={COS.cMeta} numberOfLines={1}>{p.tithiName}  ·  {nakshatra.name}</Text>
           </View>
-          <View style={SMB.sep} />
-          <View style={SMB.cell}>
-            <Text style={SMB.emoji}>🌇</Text>
-            <Text style={SMB.time}>{fmtSolar(solarTimes.sunset)}</Text>
-            <Text style={SMB.label}>Sunset</Text>
-          </View>
-          <View style={SMB.sep} />
-        </>
-      ) : (
-        <>
-          <View style={SMB.cell}>
-            <Text style={SMB.emoji}>🛰</Text>
-            <Text style={SMB.label}>Enable GPS</Text>
-          </View>
-          <View style={SMB.sep} />
-        </>
-      )}
-      <View style={SMB.cell}>
-        <Text style={SMB.emoji}>{moon.emoji}</Text>
-        <Text style={SMB.time}>{moon.illumination}%</Text>
-        <Text style={SMB.label}>{moon.name}</Text>
+          <Text style={COS.cSub}>{p.paksha} Paksha  ·  Stellar almanac active</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={onCosmicPress}
+          activeOpacity={0.76}
+          style={[COS.ctaBtn, { borderColor: vaar.color + '60', backgroundColor: vaar.color + '1A' }]}
+        >
+          <Text style={[COS.ctaTxt, { color: vaar.color }]}>Cosmic{"\n"}Field  ›</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const SMB = StyleSheet.create({
-  strip: {
-    flexDirection: 'row', alignItems: 'stretch',
+const COS = StyleSheet.create({
+  card: {
     marginHorizontal: 16, marginTop: 6, marginBottom: 8,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.11)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)',
+    borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 10,
   },
-  cell:  { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 2 },
-  sep:   { width: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginVertical: 10 },
-  emoji: { fontSize: 20, marginBottom: 2 },
-  time:  { fontSize: 11, fontWeight: '800', color: '#FFFFFFCC' },
-  label: { fontSize: 8,  fontWeight: '600', color: '#FFFFFF45', letterSpacing: 0.3 },
+  topLine:  { height: 1, backgroundColor: 'rgba(255,255,255,0.42)' },
+  row1:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8 },
+  row2:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9 },
+  hDiv:     { height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginHorizontal: 8 },
+  vSep:     { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.11)', marginHorizontal: 5 },
+  sCell:    { flex: 1, alignItems: 'center' },
+  sTime:    { fontSize: 11, fontWeight: '800', color: '#FFFFFFCC', letterSpacing: 0.1 },
+  sLbl:     { fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.7, marginTop: 2, textTransform: 'uppercase' },
+  moonWrap: { flexDirection: 'row', alignItems: 'center', paddingLeft: 3 },
+  regent:   { fontSize: 12, fontWeight: '900', letterSpacing: 0.2 },
+  dot3:     { width: 3, height: 3, borderRadius: 2 },
+  cMeta:    { fontSize: 9, fontWeight: '600', color: '#FFFFFF55', flex: 1 },
+  cSub:     { fontSize: 8, fontWeight: '500', color: '#FFFFFF30', letterSpacing: 0.3 },
+  ctaBtn:   { borderWidth: 1, borderRadius: 11, paddingHorizontal: 11, paddingVertical: 7, alignItems: 'center', minWidth: 66 },
+  ctaTxt:   { fontSize: 9, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center', lineHeight: 13 },
+  starDot:  { position: 'absolute', borderRadius: 50, backgroundColor: '#FFFFFF' },
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2770,14 +2633,14 @@ export default function DailyTab() {
           </TouchableOpacity>
         )}
 
-        {/* SOLAR + MOON TOP BAR */}
-        <SolarMoonTopBar solarTimes={solarTimes} />
+        {/* COSMIC ORBIT STRIP — unified solar ephemeris · lunar phase · cosmic almanac */}
+        <CosmicOrbitStrip
+          solarTimes={solarTimes}
+          onCosmicPress={() => router.push('/cosmic-explore' as never)}
+        />
 
         {/* WEATHER SUMMARY ROW */}
         {weather && <WeatherSummaryBar weather={weather} />}
-
-        {/* COSMIC DATE PILL — compact entry to today's cosmic almanac */}
-        <CosmicPill onPress={() => router.push('/cosmic-explore' as never)} />
 
         {/* HOURLY STRIP — weather forecast + night-aware icons */}
         {weather?.hourly && weather.hourly.length > 0 && (

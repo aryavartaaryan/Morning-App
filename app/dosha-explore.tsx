@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, SafeAreaView,
+  StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -171,258 +171,433 @@ const DOSHAS_FULL = {
   },
 } as const;
 
+// ══ WHAT IS AYURVEDA ═══════════════════════════════════════════════════════════
+const AYURVEDA = {
+  etymology: '"Ayur" = Life  ·  "Veda" = Knowledge / Science',
+  tagline: 'The 5,000-Year Science of Life',
+  meaning: 'Ayurveda literally means "The Science of Life." It is the world\'s oldest holistic healing system — a complete science of living that integrates diet, sleep, breath, movement, and consciousness with the laws of nature and cosmic cycles.',
+  core: 'Ayurveda understands the body as a microcosm of the universe — composed of the same five elements (Pancha Mahabhuta): Earth, Water, Fire, Air, and Space. These combine into three biological forces called Doshas that govern every physical and mental process in the body.',
+  uniqueness: 'Unlike modern medicine which focuses on disease treatment, Ayurveda is fundamentally preventive — it maps your unique constitution (Prakriti) and aligns daily rhythm (Dinacharya), food (Ahara), and behaviour with the laws of nature.',
+  origin: 'First systematized in the Charaka Samhita (~1000 BCE) and Sushruta Samhita (~600 BCE), Ayurveda predates Greek medicine and is considered the mother of all healing traditions. Modern chronobiology (Nobel Prize 2017) independently confirms its circadian framework.',
+};
+
+// ══ SHAD RASA — THE SIX TASTES ════════════════════════════════════════════════
+const SHAD_RASA = [
+  {
+    name: 'Madhura', english: 'Sweet', emoji: '🍯', color: '#fbbf24',
+    elements: 'Earth + Water',
+    effect: 'Nourishing, building, grounding, anabolic',
+    dosha: 'Balances Vata & Pitta  ·  Aggravates Kapha',
+    examples: 'Rice, wheat, milk, ghee, dates, sweet potato, honey',
+    science: 'Triggers insulin release and tryptophan uptake → serotonin synthesis. Anabolic hormones (GH, IGF-1) increase. Opioid receptors activated → calming. Excess → insulin resistance, obesity, diabetes risk.',
+  },
+  {
+    name: 'Amla', english: 'Sour', emoji: '🍋', color: '#a3e635',
+    elements: 'Earth + Fire',
+    effect: 'Stimulating, digestive, heating, cleansing',
+    dosha: 'Balances Vata  ·  Aggravates Pitta & Kapha',
+    examples: 'Lemon, yogurt, tamarind, vinegar, fermented foods, amla berry',
+    science: 'Acidic compounds stimulate HCl secretion and salivary amylase. Organic acids (citric, malic) chelate minerals for absorption. Probiotics in fermented sour foods → gut microbiome diversity.',
+  },
+  {
+    name: 'Lavana', english: 'Salty', emoji: '🧂', color: '#38bdf8',
+    elements: 'Water + Fire',
+    effect: 'Hydrating, softening, mildly stimulating',
+    dosha: 'Balances Vata  ·  Aggravates Pitta & Kapha',
+    examples: 'Sea salt, rock salt, seaweed, soy sauce, pickles, mineral-rich foods',
+    science: 'Sodium-potassium ATPase pump regulates all cellular action potentials — essential for nerve function. Chloride ions necessary for HCl production. Excess → hypertension, water retention, endothelial inflammation.',
+  },
+  {
+    name: 'Katu', english: 'Pungent', emoji: '🌶️', color: '#f87171',
+    elements: 'Fire + Air',
+    effect: 'Heating, stimulating, drying, metabolism-boosting',
+    dosha: 'Balances Kapha  ·  Aggravates Vata & Pitta',
+    examples: 'Ginger, black pepper, chilli, garlic, onion, mustard, asafoetida',
+    science: 'Capsaicin activates TRPV1 receptor → thermogenesis. Allicin (garlic) → vasodilation via NO pathway. Gingerols → COX-2 inhibition (anti-inflammatory). Piperine → 2000% increase in curcumin bioavailability.',
+  },
+  {
+    name: 'Tikta', english: 'Bitter', emoji: '🌿', color: '#34d399',
+    elements: 'Air + Space',
+    effect: 'Detoxifying, anti-inflammatory, cooling, fat-reducing',
+    dosha: 'Balances Pitta & Kapha  ·  Aggravates Vata',
+    examples: 'Turmeric, neem, bitter melon, fenugreek, dark greens, coffee',
+    science: 'Bitter compounds activate TAS2R receptors → stimulate bile flow (choleretic) → liver detox. Curcumin inhibits NF-κB → anti-inflammatory. Berberine activates AMPK → metabolic enzyme action similar to metformin.',
+  },
+  {
+    name: 'Kashaya', english: 'Astringent', emoji: '🍃', color: '#94a3b8',
+    elements: 'Air + Earth',
+    effect: 'Drying, firming, haemostatic, tissue-toning',
+    dosha: 'Balances Pitta & Kapha  ·  Aggravates Vata',
+    examples: 'Pomegranate, unripe banana, lentils, beans, green tea, turmeric',
+    science: 'Tannins and polyphenols cross-link proteins → tissue tightening, reduced secretions. Quercetin → mast cell stabilisation → anti-allergic. Gallic acid → inhibits MMP matrix metalloproteinases → wound healing.',
+  },
+];
+
+// ══ PRAKRITI — CONSTITUTIONAL TYPES ═══════════════════════════════════════════
+const PRAKRITI_TYPES = [
+  {
+    type: 'Vata Prakriti', emoji: '🌬️', color: '#a78bfa',
+    body: 'Thin frame, light bones, dry skin, cool extremities, variable appetite',
+    mind: 'Creative, quick, enthusiastic — can be anxious and scattered',
+    strength: 'Fast metabolism, creative thinking, agile movement, rapid learning',
+    challenge: 'Irregular digestion, cold sensitivity, anxiety-prone, poor sleep',
+    diet: 'Warm, cooked, oily — sweet, sour, salty tastes. Sesame oil, ghee, root vegetables, soups.',
+    routine: 'Fixed wake/sleep schedule is essential. Daily warm oil Abhyanga. Avoid irregular travel.',
+  },
+  {
+    type: 'Pitta Prakriti', emoji: '🔥', color: '#fb923c',
+    body: 'Medium muscular frame, warm body temperature, sharp features, strong digestion',
+    mind: 'Intelligent, focused, decisive, competitive — can be irritable and controlling',
+    strength: 'Sharp intellect, strong digestion, natural leadership, precision and focus',
+    challenge: 'Inflammation, skin issues, anger, perfectionism, heat sensitivity',
+    diet: 'Cooling, sweet, bitter, astringent. Coconut, cucumber, coriander, mint, pomegranate.',
+    routine: 'Avoid midday sun. Evening moonlight walks. Limit alcohol and spicy food. Meditate daily.',
+  },
+  {
+    type: 'Kapha Prakriti', emoji: '🌿', color: '#34d399',
+    body: 'Larger solid frame, cool moist skin, slow metabolism, strong endurance',
+    mind: 'Calm, loving, patient, stable — can be resistant to change and lethargic',
+    strength: 'Endurance, emotional stability, strong immunity, excellent long-term memory',
+    challenge: 'Weight gain, congestion, depression, oversleeping, emotional attachment',
+    diet: 'Light, warm, dry, spicy, bitter, astringent. Avoid dairy, cold and heavy foods.',
+    routine: 'Wake before 6 AM. Daily vigorous exercise is non-negotiable. Kapalabhati pranayama.',
+  },
+  {
+    type: 'Vata-Pitta', emoji: '⚡', color: '#f9a8d4',
+    body: 'Lean to medium frame, combination of Vata lightness and Pitta sharpness',
+    mind: 'Creative AND analytical — driven, energetic, prone to anxiety and irritability',
+    strength: 'Versatile, high-energy, creative with execution ability',
+    challenge: 'Managing both wind and fire — irregular digestion AND inflammation',
+    diet: 'Warm, moderately oily foods. Balance sweet/cooling (Pitta) with grounding (Vata).',
+    routine: 'Regular schedule (Vata) + cooling practices (Pitta). Avoid extremes of temperature.',
+  },
+  {
+    type: 'Pitta-Kapha', emoji: '🌊', color: '#60a5fa',
+    body: 'Medium to large muscular frame, strong stamina, robust constitution',
+    mind: 'Determined, steady, goal-oriented — can be stubborn and possessive',
+    strength: 'Excellent physical endurance, strong digestion, stable emotional core',
+    challenge: 'Inflammatory disorders AND congestion/weight gain simultaneously',
+    diet: 'Light, bitter, astringent, cooling. Reduce both sweet (Kapha) and spicy (Pitta).',
+    routine: 'Exercise vigorously but avoid overheating. Favour morning workouts.',
+  },
+  {
+    type: 'Sama Prakriti', emoji: '☯️', color: '#a78bfa',
+    body: 'Balanced frame — rare and considered ideal in Ayurveda',
+    mind: 'Well-rounded — creative, intelligent, and stable simultaneously',
+    strength: 'Excellent adaptability, resilience, balanced digestion and immunity',
+    challenge: 'Maintaining balance — any extreme throws off the equilibrium',
+    diet: 'Seasonal eating: warming in winter, cooling in summer, light in monsoon.',
+    routine: 'Seasonal Dinacharya adjustments. Moderate of all practices.',
+  },
+];
+
 type DoshaKey = 'vata' | 'pitta' | 'kapha';
 const ORDER: DoshaKey[] = ['vata', 'pitta', 'kapha'];
 
-// ── Section divider component ────────────────────────────────────────────────
-function SectionHeader({ label, color }: { label: string; color: string }) {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function Divider({ label, color }: { label: string; color: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, marginBottom: 12 }}>
-      <View style={{ flex: 1, height: 1, backgroundColor: color + '22' }} />
-      <Text style={{ fontSize: 8, fontWeight: '900', color: color + 'AA', letterSpacing: 2 }}>{label}</Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: color + '22' }} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 28, marginBottom: 14 }}>
+      <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+      <Text style={{ fontSize: 7, fontWeight: '900', color: color + '90', letterSpacing: 1.5, textAlign: 'center', flexShrink: 1 }}>{label}</Text>
+      <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
     </View>
   );
 }
 
+function SciCard({ title, body, color }: { title: string; body: string; color: string }) {
+  return (
+    <View style={[S.sciCard, { borderColor: color + '25' }]}>
+      <Text style={[S.sciCardTitle, { color }]}>{title}</Text>
+      <Text style={S.sciCardBody}>{body}</Text>
+    </View>
+  );
+}
+
+
 export default function DoshaExplorePage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    activeDosha?: string; periodLabel?: string;
-    periodStart?: string; periodEnd?: string;
-  }>();
-  const activeDosha = (params.activeDosha ?? null) as DoshaKey | null;
-  const [selected, setSelected] = useState<DoshaKey>(activeDosha ?? 'vata');
-
-  const d = DOSHAS_FULL[selected];
+  const params = useLocalSearchParams<{ activeDosha?: string; periodLabel?: string; periodStart?: string; periodEnd?: string; }>();
+  const adk = (params.activeDosha ?? 'vata') as DoshaKey;
+  const [sel, setSel] = useState<DoshaKey>(adk);
+  const [rasaOpen, setRasaOpen] = useState<string | null>(null);
+  const [prakOpen, setPrakOpen] = useState<string | null>(null);
+  const d = DOSHAS_FULL[sel];
+  const ap = DOSHAS_FULL[adk];
+  const C = ap.color;
 
   return (
-    <View style={S.root}>
-      <StatusBar barStyle="light-content" />
-
+    <View style={S.screen}>
+      <LinearGradient colors={['#07071a', '#050515']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={{ flex: 1 }}>
-
-        {/* ── Fixed Header ── */}
-        <View style={S.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={S.backBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={S.backArrow}>←</Text>
+        {/* HEADER */}
+        <View style={S.hdr}>
+          <TouchableOpacity onPress={() => router.back()} style={S.back} activeOpacity={0.7}>
+            <Text style={S.backTxt}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={S.cap}>AYURVEDIC SCIENCE  ·  CHRONOBIOLOGY</Text>
-            <Text style={S.bioCircadianTitle}>BIO CIRCADIAN</Text>
-            <Text style={S.bioCircadianSub}>ENVIRONMENT CYCLE</Text>
+            <Text style={S.hdrCap}>AYURVEDIC SCIENCE  ·  CHRONOBIOLOGY</Text>
+            <Text style={S.hdrTitle}>Ayurveda Expert</Text>
           </View>
-          {activeDosha && (
-            <View style={[S.liveBadge, { borderColor: DOSHAS_FULL[activeDosha].color + '55', backgroundColor: DOSHAS_FULL[activeDosha].color + '14' }]}>
-              <View style={[S.liveDot, { backgroundColor: DOSHAS_FULL[activeDosha].color }]} />
-              <Text style={[S.liveTxt, { color: DOSHAS_FULL[activeDosha].color }]}>LIVE</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Active period pill ── */}
-        {activeDosha && (
-          <View style={[S.nowPill, { borderColor: DOSHAS_FULL[activeDosha].color + '50', backgroundColor: DOSHAS_FULL[activeDosha].color + '12' }]}>
-            <View style={[S.nowDot, { backgroundColor: DOSHAS_FULL[activeDosha].color }]} />
-            <Text style={[S.nowTxt, { color: DOSHAS_FULL[activeDosha].color }]}>
-              {params.periodLabel ?? activeDosha.toUpperCase()}  ·  ACTIVE NOW
-              {params.periodStart ? `  ·  ${params.periodStart} → ${params.periodEnd}` : ''}
-            </Text>
+          <View style={[S.liveBadge, { borderColor: C + '55', backgroundColor: C + '14' }]}>
+            <View style={[S.liveDot, { backgroundColor: C }]} />
+            <Text style={[S.liveTxt, { color: C }]}>LIVE</Text>
           </View>
-        )}
-
-        {/* ── Dosha selector tabs ── */}
-        <View style={S.tabs}>
-          {ORDER.map(key => {
-            const isActive = selected === key;
-            const isNow = activeDosha === key;
-            return (
-              <TouchableOpacity
-                key={key}
-                onPress={() => setSelected(key)}
-                activeOpacity={0.8}
-                style={[S.tab, isActive && { borderBottomColor: DOSHAS_FULL[key].color, borderBottomWidth: 2 }]}>
-                <Text style={{ fontSize: 18 }}>{DOSHAS_FULL[key].emoji}</Text>
-                <Text style={[S.tabTxt, { color: isActive ? DOSHAS_FULL[key].color : '#FFFFFF40' }]}>
-                  {DOSHAS_FULL[key].name}
-                </Text>
-                <Text style={{ fontSize: 7, color: isActive ? DOSHAS_FULL[key].color + '90' : '#FFFFFF25', fontWeight: '700' }}>
-                  {DOSHAS_FULL[key].elements}
-                </Text>
-                {isNow && <View style={[S.tabDot, { backgroundColor: DOSHAS_FULL[key].color }]} />}
-              </TouchableOpacity>
-            );
-          })}
         </View>
+        <View style={{ height: 1, backgroundColor: '#FFFFFF08', marginHorizontal: 18 }} />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80, paddingTop: 6 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scroll}>
 
-          {/* ══ HERO IDENTITY ══════════════════════════════════════════════ */}
-          <LinearGradient
-            colors={[d.color + '22', d.color + '08', 'transparent']}
-            style={[S.heroCard, { borderColor: d.color + '35' }]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <Text style={{ fontSize: 56 }}>{d.emoji}</Text>
-              <Text style={[S.heroName, { color: d.color }]}>{d.name}</Text>
-              <Text style={S.heroSanskrit}>{d.sanskrit}  ·  {d.devanagari}</Text>
-              {/* Element equation — prominent */}
-              <View style={[S.equationBox, { borderColor: d.color + '50', backgroundColor: d.color + '14' }]}>
-                <Text style={[S.equationTxt, { color: d.color }]}>{d.elementEquation}</Text>
+          {/* ══ CURRENT PERIOD HERO ══════════════════════════════════════════ */}
+          <LinearGradient colors={[C + '22', C + '07', 'transparent']} style={[S.hero, { borderColor: C + '30' }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+              <Text style={{ fontSize: 54 }}>{ap.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={[S.nowBadge, { borderColor: C + '55', backgroundColor: C + '18' }]}>
+                  <View style={[S.nowDot, { backgroundColor: C }]} />
+                  <Text style={[S.nowTxt, { color: C }]}>ACTIVE NOW</Text>
+                </View>
+                <Text style={[S.heroName, { color: C, marginTop: 5 }]}>{ap.name} Period</Text>
+                <Text style={{ fontSize: 10, color: '#FFFFFF55', marginTop: 3 }}>{ap.elements}  ·  {ap.tagline}</Text>
+                {params.periodStart ? (
+                  <Text style={{ fontSize: 11, color: C + 'AA', fontWeight: '700', marginTop: 4 }}>{params.periodStart} → {params.periodEnd}</Text>
+                ) : null}
               </View>
-              <Text style={[S.heroTagline, { color: d.color + 'CC' }]}>{d.tagline}</Text>
+            </View>
+            <View style={[S.infoBox, { borderColor: C + '22', backgroundColor: C + '0A' }]}>
+              <Text style={S.infoTxt}>{ap.biology}</Text>
             </View>
           </LinearGradient>
 
-          {/* ══ WESTERN SCIENCE MAPPING ════════════════════════════════════ */}
-          <SectionHeader label="MODERN SCIENTIFIC MAPPING" color={d.color} />
-          <View style={[S.bioCard, { borderColor: d.color + '28', backgroundColor: d.color + '07' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Text style={{ fontSize: 16 }}>🔬</Text>
-              <Text style={[S.bioCardLabel, { color: d.color }]}>BIOLOGICAL SYSTEM  ·  WESTERN EQUIVALENT</Text>
+          {/* ══ WHAT IS AYURVEDA ══════════════════════════════════════════════ */}
+          <Divider label="WHAT IS AYURVEDA  ·  THE SCIENCE OF LIFE" color="#a78bfa" />
+          <View style={[S.card, { borderColor: '#a78bfa22' }]}>
+            <LinearGradient colors={['#a78bfa0B', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={[S.tag, { color: '#a78bfa90' }]}>🕉️  ETYMOLOGY</Text>
+            <Text style={[S.cardH, { color: '#a78bfa', marginTop: 6 }]}>{AYURVEDA.etymology}</Text>
+            <Text style={[S.cardSub, { marginTop: 4 }]}>{AYURVEDA.tagline}</Text>
+          </View>
+          {([
+            { title: 'Meaning & Scope', body: AYURVEDA.meaning, color: '#a78bfa' },
+            { title: 'Five Elements & Three Doshas', body: AYURVEDA.core, color: '#60a5fa' },
+            { title: 'Preventive vs. Curative Medicine', body: AYURVEDA.uniqueness, color: '#34d399' },
+            { title: 'Historical Origin & Modern Validation', body: AYURVEDA.origin, color: '#fbbf24' },
+          ] as const).map((b, i) => <SciCard key={i} title={b.title} body={b.body} color={b.color} />)}
+
+          {/* ══ 24-HOUR DOSHA CLOCK ════════════════════════════════════════ */}
+          <Divider label="DOSHA CLOCK  ·  24-HOUR CIRCADIAN CYCLE" color="#fbbf24" />
+          <View style={[S.card, { borderColor: '#fbbf2418' }]}>
+            <Text style={[S.tag, { color: '#fbbf2490', marginBottom: 12 }]}>☀️  SOLAR CIRCADIAN RHYTHM</Text>
+            <View style={{ flexDirection: 'row', height: 14, gap: 2 }}>
+              {([
+                { c: '#a78bfa', f: 1.8 }, { c: '#34d399', f: 1.7 }, { c: '#fb923c', f: 1.7 },
+                { c: '#a78bfa', f: 1.8 }, { c: '#34d399', f: 1.7 }, { c: '#fbbf24', f: 1.7 },
+              ] as const).map((s, i, a) => (
+                <View key={i} style={{ flex: s.f, backgroundColor: s.c, borderTopLeftRadius: i === 0 ? 7 : 0, borderBottomLeftRadius: i === 0 ? 7 : 0, borderTopRightRadius: i === a.length - 1 ? 7 : 0, borderBottomRightRadius: i === a.length - 1 ? 7 : 0 }} />
+              ))}
             </View>
-            <View style={[S.systemBox, { borderColor: d.color + '30', backgroundColor: d.color + '0C' }]}>
-              <Text style={[S.systemTxt, { color: d.color + 'EE' }]}>{d.westernSystem}</Text>
+            <View style={{ flexDirection: 'row', marginTop: 6 }}>
+              {([
+                { c: '#a78bfa', f: 1.8, l: 'Vata', t: '2–6a' }, { c: '#34d399', f: 1.7, l: 'Kapha', t: '6–10a' },
+                { c: '#fb923c', f: 1.7, l: 'Pitta', t: '10–2p' }, { c: '#a78bfa', f: 1.8, l: 'Vata', t: '2–6p' },
+                { c: '#34d399', f: 1.7, l: 'Kapha', t: '6–10p' }, { c: '#fbbf24', f: 1.7, l: 'Pitta', t: '10–2a' },
+              ] as const).map((s, i) => (
+                <View key={i} style={{ flex: s.f, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 7, color: s.c, fontWeight: '900' }}>{s.l}</Text>
+                  <Text style={{ fontSize: 5.5, color: '#FFFFFF35' }}>{s.t}</Text>
+                </View>
+              ))}
             </View>
-            <Text style={S.bioBody}>{d.biology}</Text>
+            <Text style={[S.infoTxt, { marginTop: 14, color: '#FFFFFF45' }]}>The Dosha clock shifts daily with your local sunrise & sunset. It runs on solar time, not fixed clock time — hyper-personalised to your exact location and season.</Text>
           </View>
 
-          {/* ══ ELEMENT SCIENCE ════════════════════════════════════════════ */}
-          <SectionHeader label="ELEMENT SCIENCE  ·  WHAT EACH ELEMENT IS IN YOUR BODY" color={d.color} />
-          <View style={{ gap: 10 }}>
-            {/* Element 1 */}
-            <View style={[S.elementCard, { borderColor: d.color + '30', backgroundColor: d.color + '08' }]}>
-              <Text style={[S.elementTitle, { color: d.color }]}>{d.elementAir.title}</Text>
-              <Text style={S.elementBody}>{d.elementAir.body}</Text>
-              <View style={[S.moleculeBox, { borderColor: d.color + '25' }]}>
-                <Text style={S.moleculeLabel}>MOLECULES / MARKERS</Text>
-                <Text style={[S.moleculeTxt, { color: d.color + 'BB' }]}>{d.elementAir.molecules}</Text>
-              </View>
-            </View>
-            {/* Element 2 */}
-            <View style={[S.elementCard, { borderColor: d.color + '30', backgroundColor: d.color + '08' }]}>
-              <Text style={[S.elementTitle, { color: d.color }]}>{d.elementSpace.title}</Text>
-              <Text style={S.elementBody}>{d.elementSpace.body}</Text>
-              <View style={[S.moleculeBox, { borderColor: d.color + '25' }]}>
-                <Text style={S.moleculeLabel}>MOLECULES / MARKERS</Text>
-                <Text style={[S.moleculeTxt, { color: d.color + 'BB' }]}>{d.elementSpace.molecules}</Text>
-              </View>
-            </View>
+          {/* ══ THREE DOSHAS ══════════════════════════════════════════════════ */}
+          <Divider label="THE THREE DOSHAS  ·  TRIDOSHA SCIENCE" color="#FFFFFF" />
+          <View style={S.tabs}>
+            {ORDER.map(k => {
+              const ia = sel === k, inow = adk === k;
+              return (
+                <TouchableOpacity key={k} onPress={() => setSel(k)} activeOpacity={0.8} style={[S.tab, ia && { borderBottomColor: DOSHAS_FULL[k].color, borderBottomWidth: 2 }]}>
+                  <Text style={{ fontSize: 18 }}>{DOSHAS_FULL[k].emoji}</Text>
+                  <Text style={[S.tabTxt, { color: ia ? DOSHAS_FULL[k].color : '#FFFFFF35' }]}>{DOSHAS_FULL[k].name}</Text>
+                  {inow && <View style={[S.tabDot, { backgroundColor: DOSHAS_FULL[k].color }]} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* ══ KEY BIOCHEMICALS ═══════════════════════════════════════════ */}
-          <SectionHeader label="KEY BIOCHEMICALS  ·  HORMONES & NEUROTRANSMITTERS" color={d.color} />
-          <View style={{ gap: 8 }}>
+          <SciCard title={'🔬  ' + d.name + '  —  Biological Mapping'} body={d.biology} color={d.color} />
+
+          <View style={[S.card, { borderColor: d.color + '22' }]}>
+            <Text style={[S.tag, { color: d.color + '80' }]}>⚗  KEY BIOCHEMICALS  ·  HORMONES & NEUROTRANSMITTERS</Text>
             {d.neuro.map((n, i) => (
-              <View key={i} style={[S.neuroCard, { borderColor: d.color + '28', backgroundColor: d.color + '07' }]}>
-                <View style={[S.neuroBadge, { backgroundColor: d.color + '20', borderColor: d.color + '45' }]}>
-                  <Text style={[S.neuroBadgeTxt, { color: d.color }]}>{n.name}</Text>
-                </View>
-                <Text style={S.neuroRole}>{n.role}</Text>
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '18', borderRadius: 12, padding: 10, backgroundColor: d.color + '06' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: d.color + 'EE' }}>{n.name}</Text>
+                <Text style={{ fontSize: 10, color: '#FFFFFF50', lineHeight: 15, marginTop: 2 }}>{n.role}</Text>
               </View>
             ))}
           </View>
 
-          {/* ══ BODY FUNCTIONS ═════════════════════════════════════════════ */}
-          <SectionHeader label="BODY SYSTEMS GOVERNED" color={d.color} />
-          <View style={{ gap: 8 }}>
-            {d.functions.map((f, i) => (
-              <View key={i} style={[S.funcRow, { borderColor: d.color + '22', backgroundColor: d.color + '06' }]}>
-                <Text style={{ fontSize: 18, minWidth: 28 }}>{f.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[S.funcName, { color: d.color + 'EE' }]}>{f.name}</Text>
-                  <Text style={S.funcDetail}>{f.detail}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* ══ CIRCADIAN PEAK WINDOWS ═════════════════════════════════════ */}
-          <SectionHeader label="CIRCADIAN PEAK WINDOWS  ·  CHRONOBIOLOGY" color={d.color} />
-          <View style={[S.peakFactCard, { borderColor: d.color + '30', backgroundColor: d.color + '08' }]}>
-            <Text style={[S.peakFactLabel, { color: d.color }]}>🧬  RESEARCH HIGHLIGHT</Text>
-            <Text style={S.peakFactText}>{d.peakFact}</Text>
-          </View>
-          <View style={{ gap: 10, marginTop: 10 }}>
+          <View style={[S.card, { borderColor: d.color + '22' }]}>
+            <Text style={[S.tag, { color: d.color + '80' }]}>⏰  CIRCADIAN PEAK WINDOWS  ·  CHRONOBIOLOGY</Text>
             {d.peakWindows.map((w, i) => (
-              <View key={i} style={[S.windowCard, { borderColor: d.color + '35', backgroundColor: d.color + '0A' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 22 }}>{w.icon}</Text>
-                  <View style={[S.windowTimePill, { borderColor: d.color + '50', backgroundColor: d.color + '18' }]}>
-                    <Text style={[S.windowTimeTxt, { color: d.color }]}>{w.time}</Text>
+              <View key={i} style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 18 }}>{w.icon}</Text>
+                  <View style={[S.chip, { borderColor: d.color + '45', backgroundColor: d.color + '15' }]}>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: d.color }}>{w.time}</Text>
                   </View>
                 </View>
-                <Text style={S.windowScience}>{w.science}</Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFF55', lineHeight: 17 }}>{w.science}</Text>
               </View>
             ))}
           </View>
 
-          {/* ══ DO's ═══════════════════════════════════════════════════════ */}
-          <SectionHeader label={`✓  DO DURING ${d.name.toUpperCase()} PERIOD`} color={d.color} />
-          <View style={{ gap: 8 }}>
-            {d.doNow.map((a, i) => (
-              <View key={i} style={[S.doCard, { borderColor: d.color + '30', backgroundColor: d.color + '0C' }]}>
-                <View style={[S.doCheckCircle, { borderColor: d.color + '60', backgroundColor: d.color + '22' }]}>
-                  <Text style={[S.doCheckTxt, { color: d.color }]}>✓</Text>
+          <View style={[S.card, { borderColor: d.color + '20' }]}>
+            <Text style={[S.tag, { color: d.color + '80' }]}>⚡  BODY SYSTEMS GOVERNED</Text>
+            {d.functions.map((f, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 10 }}>
+                <Text style={{ fontSize: 16, minWidth: 24 }}>{f.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: d.color + 'EE' }}>{f.name}</Text>
+                  <Text style={{ fontSize: 10, color: '#FFFFFF40', lineHeight: 14, marginTop: 1 }}>{f.detail}</Text>
                 </View>
-                <Text style={S.doItemTxt}>{a}</Text>
               </View>
             ))}
           </View>
 
-          {/* ══ DON'Ts ═════════════════════════════════════════════════════ */}
-          <SectionHeader label={`✕  AVOID DURING ${d.name.toUpperCase()} PERIOD`} color="#f43f5e" />
-          <View style={{ gap: 8 }}>
-            {d.avoid.map((a, i) => (
-              <View key={i} style={S.dontCard}>
-                <View style={S.dontXCircle}>
-                  <Text style={S.dontXTxt}>✕</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={[S.halfCard, { borderColor: d.color + '28', flex: 1 }]}>
+              <Text style={[S.tag, { color: d.color + '80', marginBottom: 8 }]}>✓  DO NOW</Text>
+              {d.doNow.map((a, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+                  <Text style={{ color: d.color, fontWeight: '900', fontSize: 10 }}>✓</Text>
+                  <Text style={{ fontSize: 10, color: '#FFFFFFCC', lineHeight: 15, flex: 1 }}>{a}</Text>
                 </View>
-                <Text style={S.dontItemTxt}>{a}</Text>
+              ))}
+            </View>
+            <View style={[S.halfCard, { borderColor: '#f43f5e28', flex: 1 }]}>
+              <Text style={[S.tag, { color: '#f43f5e80', marginBottom: 8 }]}>✕  AVOID</Text>
+              {d.avoid.map((a, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+                  <Text style={{ color: '#f43f5e', fontWeight: '900', fontSize: 10 }}>✕</Text>
+                  <Text style={{ fontSize: 10, color: '#FFFFFF60', lineHeight: 15, flex: 1 }}>{a}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={[S.card, { borderColor: '#f43f5e15' }]}>
+            <Text style={[S.tag, { color: '#f43f5e80' }]}>⚠  SIGNS OF IMBALANCE</Text>
+            {d.imbalance.map((it, i) => (
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: '#f43f5e18', borderRadius: 12, padding: 10, backgroundColor: '#f43f5e06' }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#f43f5eCC', marginBottom: 3 }}>{it.symptom}</Text>
+                <Text style={{ fontSize: 10, color: '#FFFFFF45', lineHeight: 15 }}>{it.science}</Text>
               </View>
             ))}
           </View>
 
-          {/* ══ SIGNS OF IMBALANCE ═════════════════════════════════════════ */}
-          <SectionHeader label={`⚠  SIGNS OF EXCESS ${d.name.toUpperCase()}`} color="#f43f5e" />
-          <View style={{ gap: 8 }}>
-            {d.imbalance.map((item, i) => (
-              <View key={i} style={S.imbalanceCard}>
-                <Text style={S.imbalanceSymptom}>{item.symptom}</Text>
-                <Text style={S.imbalanceScience}>{item.science}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* ══ REBALANCING PRACTICES ══════════════════════════════════════ */}
-          <SectionHeader label={`◎  REBALANCING ${d.name.toUpperCase()}  ·  EVIDENCE-BASED`} color={d.color} />
-          <View style={{ gap: 8 }}>
+          <View style={[S.card, { borderColor: d.color + '18' }]}>
+            <Text style={[S.tag, { color: d.color + '80' }]}>◎  REBALANCING PRACTICES  ·  EVIDENCE-BASED</Text>
             {d.balance.map((b, i) => (
-              <View key={i} style={[S.balanceCard, { borderColor: d.color + '28', backgroundColor: d.color + '07' }]}>
-                <Text style={[S.balancePractice, { color: d.color + 'EE' }]}>{b.practice}</Text>
-                <View style={[S.balanceSciBox, { borderColor: d.color + '20' }]}>
-                  <Text style={S.balanceSciTxt}>{b.science}</Text>
-                </View>
+              <View key={i} style={{ marginTop: 10, borderWidth: 1, borderColor: d.color + '18', borderRadius: 12, padding: 10, backgroundColor: d.color + '06' }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: d.color + 'EE', marginBottom: 4 }}>{b.practice}</Text>
+                <Text style={{ fontSize: 10, color: '#FFFFFF45', lineHeight: 15 }}>{b.science}</Text>
               </View>
             ))}
           </View>
 
-          {/* ══ CHRONOBIOLOGY FOOTER ═══════════════════════════════════════ */}
-          <View style={S.footerCard}>
-            <Text style={[S.footerTitle, { color: d.color }]}>☀️  Ayurveda = Chronobiology</Text>
-            <Text style={S.footerBody}>
-              The 3-Dosha system is a{' '}
-              <Text style={{ color: '#fbbf24CC', fontWeight: '700' }}>5,000-year-old circadian biology framework</Text>
-              {' '}— mapping the body's 24-hour hormonal and neurological oscillations to three elemental archetypes.{'\n\n'}
-              Modern chronobiology (Pittendrigh, Rosbash, Hall, Young — Nobel Prize 2017) independently confirmed that every cell in the human body runs a molecular CLOCK gene. These biological rhythms match the Vata/Pitta/Kapha periods with remarkable precision.{'\n\n'}
-              <Text style={{ color: '#FFFFFF55' }}>Dosha periods shift daily with your local sunrise & sunset — not a fixed clock. This makes the system hyper-personalised to your exact location and season.</Text>
-            </Text>
+          {/* ══ SHAD RASA  ════════════════════════════════════════════════════ */}
+          <Divider label="SHAD RASA  ·  THE SIX TASTES OF AYURVEDA" color="#fbbf24" />
+          <View style={[S.card, { borderColor: '#fbbf2418' }]}>
+            <LinearGradient colors={['#fbbf2408', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={[S.tag, { color: '#fbbf2490' }]}>🌿  RASA SCIENCE</Text>
+            <Text style={[S.infoTxt, { marginTop: 8 }]}>Ayurveda identifies six fundamental tastes (Shad Rasa). Eating all six daily ensures complete nutritional and bio-energetic balance. Each taste maps to elemental forces, dosha effects, and specific receptor pathways confirmed by modern phytochemistry.</Text>
           </View>
+          {SHAD_RASA.map((r, i) => (
+            <TouchableOpacity key={i} onPress={() => setRasaOpen(rasaOpen === r.name ? null : r.name)} activeOpacity={0.8}>
+              <View style={[S.expandCard, { borderColor: r.color + (rasaOpen === r.name ? '55' : '22') }]}>
+                {rasaOpen === r.name && <LinearGradient colors={[r.color + '12', 'transparent']} style={StyleSheet.absoluteFillObject} />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ fontSize: 28 }}>{r.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '900', color: r.color }}>{r.name}</Text>
+                      <Text style={{ fontSize: 10, color: '#FFFFFF40', fontWeight: '600' }}>{r.english}</Text>
+                    </View>
+                    <Text style={{ fontSize: 9, color: '#FFFFFF45', marginTop: 2 }}>{r.elements}  ·  {r.effect}</Text>
+                  </View>
+                  <Text style={{ color: r.color, fontSize: 11, fontWeight: '900' }}>{rasaOpen === r.name ? '▲' : '▼'}</Text>
+                </View>
+                {rasaOpen === r.name && (
+                  <View style={{ marginTop: 12, gap: 8 }}>
+                    <View style={[S.infoBox, { borderColor: r.color + '30', backgroundColor: r.color + '0C' }]}>
+                      <Text style={[S.infoLabel, { color: r.color + '90' }]}>DOSHA IMPACT</Text>
+                      <Text style={{ fontSize: 11, color: r.color + 'EE', fontWeight: '700' }}>{r.dosha}</Text>
+                    </View>
+                    <View style={[S.infoBox, { borderColor: '#FFFFFF12' }]}>
+                      <Text style={S.infoLabel}>FOOD SOURCES</Text>
+                      <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{r.examples}</Text>
+                    </View>
+                    <View style={[S.infoBox, { borderColor: '#FFFFFF12' }]}>
+                      <Text style={S.infoLabel}>BIOCHEMISTRY</Text>
+                      <Text style={{ fontSize: 11, color: '#FFFFFF60', lineHeight: 17 }}>{r.science}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {/* ══ PRAKRITI ══════════════════════════════════════════════════════ */}
+          <Divider label="PRAKRITI  ·  YOUR CONSTITUTIONAL TYPE" color="#34d399" />
+          <View style={[S.card, { borderColor: '#34d39918' }]}>
+            <LinearGradient colors={['#34d39908', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={[S.tag, { color: '#34d39990' }]}>🧬  WHAT IS PRAKRITI?</Text>
+            <Text style={[S.infoTxt, { marginTop: 8 }]}>Prakriti is your unique constitutional blueprint — the innate ratio of Vata, Pitta, and Kapha established at conception. It determines your physical characteristics, metabolic tendencies, psychological patterns, and disease susceptibilities. Understanding your Prakriti is the foundation of personalised Ayurvedic recommendations.</Text>
+          </View>
+          {PRAKRITI_TYPES.map((p, i) => (
+            <TouchableOpacity key={i} onPress={() => setPrakOpen(prakOpen === p.type ? null : p.type)} activeOpacity={0.8}>
+              <View style={[S.expandCard, { borderColor: p.color + (prakOpen === p.type ? '50' : '22') }]}>
+                {prakOpen === p.type && <LinearGradient colors={[p.color + '10', 'transparent']} style={StyleSheet.absoluteFillObject} />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ fontSize: 26 }}>{p.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: p.color }}>{p.type}</Text>
+                    <Text style={{ fontSize: 9, color: '#FFFFFF40', marginTop: 2 }}>{p.body}</Text>
+                  </View>
+                  <Text style={{ color: p.color, fontSize: 11, fontWeight: '900' }}>{prakOpen === p.type ? '▲' : '▼'}</Text>
+                </View>
+                {prakOpen === p.type && (
+                  <View style={{ marginTop: 12, gap: 8 }}>
+                    {([
+                      { label: 'MIND & PERSONALITY', val: p.mind },
+                      { label: 'STRENGTHS', val: p.strength },
+                      { label: 'CHALLENGES', val: p.challenge },
+                      { label: 'IDEAL DIET', val: p.diet },
+                      { label: 'DAILY ROUTINE', val: p.routine },
+                    ] as const).map((row, j) => (
+                      <View key={j} style={[S.infoBox, { borderColor: p.color + '22', backgroundColor: p.color + '08' }]}>
+                        <Text style={[S.infoLabel, { color: p.color + '90' }]}>{row.label}</Text>
+                        <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{row.val}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {/* ══ CLOSING ════════════════════════════════════════════════════ */}
+          <View style={[S.card, { borderColor: '#a78bfa22', marginTop: 24 }]}>
+            <LinearGradient colors={['#a78bfa0A', '#7c3aed05', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 10 }}>🕉️</Text>
+            <Text style={{ fontSize: 16, fontWeight: '900', color: '#a78bfa', textAlign: 'center', marginBottom: 12 }}>Ayurveda: The Eye of Life</Text>
+            <Text style={S.infoTxt}>{'The 3-Dosha system is a 5,000-year-old circadian biology framework mapping the body\'s 24-hour hormonal oscillations to three elemental archetypes. The 2017 Nobel Prize in Physiology confirmed that every cell runs a molecular CLOCK gene — matching Vata/Pitta/Kapha periods with remarkable precision.\n\nThe Shad Rasa maps to modern phytochemistry. Prakriti maps to metabolic phenotypes. The ancients encoded what science is rediscovering — that the cosmos is not separate from your body.'}</Text>
+            <View style={{ height: 1, backgroundColor: '#FFFFFF0C', marginVertical: 14 }} />
+            <Text style={{ fontSize: 10, color: '#FFFFFF40', lineHeight: 16 }}>🔬  Doshas shift with your local sunrise & sunset — hyper-personalised to your exact location. Solar chronobiology, not fixed clock time.</Text>
+          </View>
+          <View style={{ height: 50 }} />
 
         </ScrollView>
       </SafeAreaView>
@@ -431,86 +606,36 @@ export default function DoshaExplorePage() {
 }
 
 const S = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: '#040308' },
-
-  header:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10, gap: 12 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00000055', borderWidth: 1, borderColor: '#FFFFFF25', alignItems: 'center', justifyContent: 'center' },
-  backArrow: { fontSize: 20, color: '#FFFFFFEE', fontWeight: '200' },
-  cap:              { fontSize: 8, fontWeight: '900', color: '#FFFFFF50', letterSpacing: 2, marginBottom: 3 },
-  title:            { fontSize: 20, fontWeight: '900', color: '#FFFFFFF0', letterSpacing: -0.5 },
-  bioCircadianTitle:{ fontSize: 18, fontWeight: '900', color: '#FFFFFFCC', letterSpacing: 0.6, lineHeight: 22 },
-  bioCircadianSub:  { fontSize: 12, fontWeight: '700', color: '#FFFFFF55', letterSpacing: 1.4, lineHeight: 17 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  screen:    { flex: 1, backgroundColor: '#06061a' },
+  hdr:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10, gap: 12 },
+  back:      { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF18', alignItems: 'center', justifyContent: 'center' },
+  backTxt:   { fontSize: 20, color: '#FFFFFFEE', fontWeight: '200' },
+  hdrCap:    { fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 2, marginBottom: 2 },
+  hdrTitle:  { fontSize: 20, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: -0.3 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   liveDot:   { width: 6, height: 6, borderRadius: 3 },
   liveTxt:   { fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
-
-  nowPill: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginHorizontal: 16, marginBottom: 10 },
-  nowDot:  { width: 7, height: 7, borderRadius: 4 },
-  nowTxt:  { fontSize: 10, fontWeight: '800', flex: 1 },
-
-  tabs:    { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, borderRadius: 18, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF0C', overflow: 'hidden' },
-  tab:     { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabTxt:  { fontSize: 12, fontWeight: '900' },
-  tabDot:  { width: 5, height: 5, borderRadius: 3, position: 'absolute', top: 6, right: 10 },
-
-  heroCard:  { borderRadius: 22, borderWidth: 1, overflow: 'hidden', marginBottom: 4 },
-  heroName:  { fontSize: 38, fontWeight: '900', letterSpacing: -1, marginTop: 10 },
-  heroSanskrit: { fontSize: 13, color: '#FFFFFF55', fontWeight: '600', marginTop: 4 },
-  equationBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 9, marginTop: 14, marginBottom: 10 },
-  equationTxt: { fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
-  heroTagline: { fontSize: 12, fontWeight: '600', textAlign: 'center', lineHeight: 18, paddingHorizontal: 24 },
-
-  bioCard:  { borderWidth: 1, borderRadius: 18, padding: 16 },
-  bioCardLabel: { fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
-  systemBox:  { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
-  systemTxt:  { fontSize: 11, fontWeight: '700', lineHeight: 18 },
-  bioBody:  { fontSize: 12, color: '#FFFFFF65', lineHeight: 19 },
-
-  elementCard: { borderWidth: 1, borderRadius: 16, padding: 14 },
-  elementTitle: { fontSize: 13, fontWeight: '900', marginBottom: 8 },
-  elementBody: { fontSize: 12, color: '#FFFFFF60', lineHeight: 18, marginBottom: 10 },
-  moleculeBox: { borderTopWidth: 1, paddingTop: 10 },
-  moleculeLabel: { fontSize: 7, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.6, marginBottom: 5 },
-  moleculeTxt: { fontSize: 10, fontWeight: '700', lineHeight: 16 },
-
-  neuroCard:  { borderWidth: 1, borderRadius: 14, padding: 12, gap: 6 },
-  neuroBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  neuroBadgeTxt: { fontSize: 11, fontWeight: '900' },
-  neuroRole: { fontSize: 12, color: '#FFFFFF60', lineHeight: 17 },
-
-  funcRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11 },
-  funcName: { fontSize: 12, fontWeight: '800', marginBottom: 2 },
-  funcDetail: { fontSize: 10, color: '#FFFFFF50', lineHeight: 15 },
-
-  peakFactCard: { borderWidth: 1, borderRadius: 16, padding: 14 },
-  peakFactLabel: { fontSize: 9, fontWeight: '900', letterSpacing: 1.4, marginBottom: 8 },
-  peakFactText: { fontSize: 12, color: '#FFFFFF65', lineHeight: 18 },
-
-  windowCard: { borderWidth: 1, borderRadius: 16, padding: 14 },
-  windowTimePill: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
-  windowTimeTxt: { fontSize: 12, fontWeight: '900' },
-  windowScience: { fontSize: 12, color: '#FFFFFF60', lineHeight: 18 },
-
-  doCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11 },
-  doCheckCircle: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  doCheckTxt: { fontSize: 11, fontWeight: '900' },
-  doItemTxt: { fontSize: 12, color: '#FFFFFFCC', lineHeight: 18, flex: 1 },
-
-  dontCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, backgroundColor: '#f43f5e07', borderColor: '#f43f5e22' },
-  dontXCircle: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: '#f43f5e55', backgroundColor: '#f43f5e18', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  dontXTxt: { fontSize: 11, fontWeight: '900', color: '#f43f5e' },
-  dontItemTxt: { fontSize: 12, color: '#FFFFFF65', lineHeight: 18, flex: 1 },
-
-  imbalanceCard: { borderWidth: 1, borderRadius: 14, padding: 14, borderColor: '#f43f5e20', backgroundColor: '#f43f5e06' },
-  imbalanceSymptom: { fontSize: 13, fontWeight: '800', color: '#f43f5eCC', marginBottom: 5 },
-  imbalanceScience: { fontSize: 11, color: '#FFFFFF50', lineHeight: 17 },
-
-  balanceCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8 },
-  balancePractice: { fontSize: 13, fontWeight: '800', lineHeight: 18 },
-  balanceSciBox: { borderTopWidth: 1, paddingTop: 8 },
-  balanceSciTxt: { fontSize: 11, color: '#FFFFFF55', lineHeight: 17 },
-
-  footerCard:  { marginTop: 24, marginBottom: 8, padding: 18, borderRadius: 20, backgroundColor: '#FFFFFF04', borderWidth: 1, borderColor: '#FFFFFF0C' },
-  footerTitle: { fontSize: 14, fontWeight: '900', marginBottom: 10 },
-  footerBody:  { fontSize: 12, color: '#FFFFFF80', lineHeight: 20 },
+  scroll:    { paddingHorizontal: 16, paddingTop: 10 },
+  hero:      { borderRadius: 22, borderWidth: 1, overflow: 'hidden', padding: 16, marginBottom: 6 },
+  heroName:  { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  nowBadge:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
+  nowDot:    { width: 6, height: 6, borderRadius: 3 },
+  nowTxt:    { fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
+  card:      { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 10, overflow: 'hidden' },
+  sciCard:   { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 10, backgroundColor: '#FFFFFF04' },
+  sciCardTitle: { fontSize: 12, fontWeight: '900', color: '#FFFFFFCC', marginBottom: 6 },
+  sciCardBody:  { fontSize: 11, color: '#FFFFFF60', lineHeight: 18 },
+  tag:       { fontSize: 8, fontWeight: '900', letterSpacing: 1.6 },
+  cardH:     { fontSize: 16, fontWeight: '900' },
+  cardSub:   { fontSize: 12, color: '#FFFFFF60' },
+  infoBox:   { borderWidth: 1, borderRadius: 12, padding: 10 },
+  infoLabel: { fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.4, marginBottom: 4 },
+  infoTxt:   { fontSize: 11, color: '#FFFFFF65', lineHeight: 18 },
+  tabs:      { flexDirection: 'row', marginBottom: 10, borderRadius: 18, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF0C', overflow: 'hidden' },
+  tab:       { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabTxt:    { fontSize: 12, fontWeight: '900' },
+  tabDot:    { width: 5, height: 5, borderRadius: 3, position: 'absolute', top: 6, right: 10 },
+  chip:      { borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  halfCard:  { borderWidth: 1, borderRadius: 18, padding: 14 },
+  expandCard:{ borderWidth: 1, borderRadius: 20, padding: 14, marginBottom: 10, overflow: 'hidden' },
 });

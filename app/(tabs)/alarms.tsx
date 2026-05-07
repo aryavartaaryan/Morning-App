@@ -308,6 +308,7 @@ export default function AlarmsTab() {
   const [formHabitEmoji, setFormHabitEmoji] = useState('🧘');
   const [formDays, setFormDays]             = useState<number[]>([]);
   const [showCustomHabitInput, setShowCustomHabitInput] = useState(false);
+  const [habitPage, setHabitPage] = useState(0);
   const [missionSettings, setMissionSettings] = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [permStatus, setPermStatus]         = useState({ notifications: true, exactAlarm: true, batteryOpt: true, fullScreen: true });
   const [liveClock, setLiveClock]           = useState(new Date());
@@ -548,6 +549,8 @@ export default function AlarmsTab() {
   const openAddModal  = (type: 'habit'|'quick') => { setFormHour(type === 'habit' ? 7 : new Date().getHours()); setFormMinute(0); setFormLabel(''); setFormHabitKey(type === 'habit' ? '' : 'meditation'); setFormHabitEmoji(type === 'habit' ? '' : '🧘'); setFormDays([]); setShowCustomHabitInput(false); setEditEntry(null); setAddType(type); };
   const openEditEntry = (entry: AlarmEntry) => { setFormHour(entry.hour); setFormMinute(entry.minute); setFormLabel(entry.label); setFormHabitKey(entry.habitKey ?? 'custom'); setFormHabitEmoji(entry.habitEmoji ?? '✨'); setFormDays(entry.days ?? []); setShowCustomHabitInput(entry.habitKey === 'custom'); setEditEntry(entry); setAddType(null); };
 
+  const habitsForPicker = AYU_HABITS.filter(h => h.key !== 'custom');
+  const habitPages = Array.from({ length: Math.ceil(habitsForPicker.length / 8) }, (_, i) => habitsForPicker.slice(i * 8, (i + 1) * 8));
   const playingMantra = MANTRAS.find(m => m.id === selectedMantraId) ?? MANTRAS[0];
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
   const now           = liveClock.getHours() * 60 + liveClock.getMinutes();
@@ -798,20 +801,18 @@ export default function AlarmsTab() {
 
           {/* ── Header ── */}
           <SafeAreaView edges={['top']} style={{ backgroundColor: '#0C0C1C' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF0C' }}>
-              <TouchableOpacity onPress={() => { setAddType(null); setEditEntry(null); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF0E', alignItems: 'center', justifyContent: 'center', marginRight: 14 }} activeOpacity={0.7}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#FFFFFF0C', gap: 12 }}>
+              <TouchableOpacity onPress={() => { setAddType(null); setEditEntry(null); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF0E', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 }} activeOpacity={0.7}>
                 <Text style={{ fontSize: 16, color: '#FFFFFF80', fontWeight: '600' }}>✕</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', letterSpacing: 0.2 }}>🌿  Habit Alarm</Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFF40', marginTop: 2 }}>
-                  {formHabitKey && formHabitKey !== 'custom'
-                    ? `${AYU_HABITS.find(h => h.key === formHabitKey)?.emoji ?? ''} ${AYU_HABITS.find(h => h.key === formHabitKey)?.label ?? ''} selected`
-                    : 'Select a habit below'}
+                <Text style={{ fontSize: 11, color: '#FFFFFF55', marginTop: 3, lineHeight: 16 }}>
+                  Add habit alarms with gentle sounds to make your life disciplined and increase your productivity.
                 </Text>
               </View>
               {formHabitKey !== '' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, marginTop: 2, flexShrink: 0 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
                   <Text style={{ fontSize: 10, fontWeight: '900', color: '#10b981' }}>READY</Text>
                 </View>
@@ -819,101 +820,104 @@ export default function AlarmsTab() {
             </View>
           </SafeAreaView>
 
-          {/* ── Habit Grid (scrollable) ── */}
+          {/* ── Habit section ── */}
           <View style={{ flex: 1 }}>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Motivational title banner */}
-            <View style={{ borderRadius: 18, borderWidth: 1, borderColor: '#10b98128', backgroundColor: '#10b98108', padding: 16, marginBottom: 16 }}>
-              <Text style={{ fontSize: 10, fontWeight: '900', color: '#10b981', letterSpacing: 1.6, marginBottom: 6 }}>BUILD YOUR DISCIPLINE SYSTEM</Text>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', lineHeight: 21, marginBottom: 5 }}>Add soft habit alarms with gentle sounds for a predictive, disciplined life.</Text>
-              <Text style={{ fontSize: 11, color: '#FFFFFF55', lineHeight: 17 }}>Each habit below is rooted in overall wellness. Tap any habit to learn why it matters, set your time, and build your streak.</Text>
-            </View>
-            <Text style={S.sheetSection}>CHOOSE HABIT</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-              {AYU_HABITS.filter(h => h.key !== 'custom').map(h => {
-                const active = formHabitKey === h.key;
-                return (
-                  <TouchableOpacity key={h.key} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }} style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.06 }] }]} activeOpacity={0.75}>
-                    <Text style={{ fontSize: 24 }}>{h.emoji}</Text>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
-                    {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 2 }} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[S.sheetSection, { marginHorizontal: 16, marginTop: 14, marginBottom: 10 }]}>CHOOSE HABIT</Text>
 
-            {/* Custom habit row */}
-            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 10, borderColor: formHabitKey === 'custom' ? '#a78bfa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#a78bfa14' : '#FFFFFF04' }} activeOpacity={0.8}>
-              <Text style={{ fontSize: 22 }}>✨</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#a78bfa' : '#fff' }}>Custom Habit</Text>
-                <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
+              {/* ── Horizontal pager: each page = 4 cols × 2 rows ── */}
+              <View style={{ marginBottom: 2 }}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  scrollEventThrottle={16}
+                  nestedScrollEnabled
+                  onMomentumScrollEnd={e => {
+                    const pg = Math.round(e.nativeEvent.contentOffset.x / width);
+                    setHabitPage(pg);
+                  }}
+                >
+                  {habitPages.map((page, pageIdx) => (
+                    <View key={pageIdx} style={{ width, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
+                      {page.map(h => {
+                        const active = formHabitKey === h.key;
+                        return (
+                          <TouchableOpacity
+                            key={h.key}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }}
+                            style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.05 }] }]}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
+                            <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
+                            {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 1 }} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </ScrollView>
+
+                {/* Page indicator dots */}
+                {habitPages.length > 1 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 8, paddingBottom: 4 }}>
+                    {habitPages.map((_, i) => (
+                      <View key={i} style={{ width: i === habitPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === habitPage ? '#10b981' : '#FFFFFF22' }} />
+                    ))}
+                  </View>
+                )}
               </View>
-              {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#a78bfa', fontWeight: '900' }}>✓</Text>}
-            </TouchableOpacity>
-            {showCustomHabitInput && (
-              <TextInput style={[S.customInput, { marginBottom: 10 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
-            )}
 
-            {/* Dynamic habit wisdom tip — shows for any selected habit */}
-            {formHabitKey && formHabitKey !== 'custom' && formHabitKey !== '' && HABIT_WISDOM[formHabitKey] && (() => {
-              const w = HABIT_WISDOM[formHabitKey];
-              return (
-                <View style={{ borderRadius: 16, borderWidth: 1, borderColor: w.color + '40', backgroundColor: w.color + '0E', padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 10, borderColor: w.color + '50', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                    <Text style={{ fontSize: 18 }}>{w.icon}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.3, marginBottom: 4 }}>{w.title}</Text>
-                    <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{w.body}</Text>
-                  </View>
+              {/* ── Custom habit row ── */}
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderColor: formHabitKey === 'custom' ? '#a78bfa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#a78bfa14' : '#FFFFFF04' }} activeOpacity={0.8}>
+                <Text style={{ fontSize: 22 }}>✨</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#a78bfa' : '#fff' }}>Custom Habit</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
                 </View>
-              );
-            })()}
-          </ScrollView>
-          {/* Scroll fade hint */}
-          <LinearGradient
-            colors={['transparent', '#0C0C1C']}
-            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 56 }}
-            pointerEvents="none"
-          />
-          <View style={{ position: 'absolute', bottom: 8, left: 0, right: 0, alignItems: 'center' }} pointerEvents="none">
-            <Text style={{ fontSize: 8, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 1.2 }}>▼  scroll for more habits  ▼</Text>
-          </View>
+                {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#a78bfa', fontWeight: '900' }}>✓</Text>}
+              </TouchableOpacity>
+              {showCustomHabitInput && (
+                <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
+              )}
+
+              {/* ── Dynamic habit wisdom tip ── */}
+              {formHabitKey && formHabitKey !== 'custom' && formHabitKey !== '' && HABIT_WISDOM[formHabitKey] && (() => {
+                const w = HABIT_WISDOM[formHabitKey];
+                return (
+                  <View style={{ borderRadius: 16, borderWidth: 1, borderColor: w.color + '40', backgroundColor: w.color + '0E', padding: 14, marginHorizontal: 16, marginTop: 8, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 10, borderColor: w.color + '50', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                      <Text style={{ fontSize: 18 }}>{w.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.3, marginBottom: 4 }}>{w.title}</Text>
+                      <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{w.body}</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+            </ScrollView>
           </View>
 
           {/* ── Fixed Bottom: Time + Days + Save ── */}
           <View style={{ backgroundColor: '#0E0E20', borderTopWidth: 1, borderTopColor: '#FFFFFF10', paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 16 }}>
-            {/* Selected habit pill */}
             {formHabitKey !== '' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <Text style={{ fontSize: 18 }}>
-                  {formHabitKey === 'custom' ? '✨' : AYU_HABITS.find(h => h.key === formHabitKey)?.emoji ?? '🌿'}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 18 }}>{formHabitKey === 'custom' ? '✨' : AYU_HABITS.find(h => h.key === formHabitKey)?.emoji ?? '🌿'}</Text>
                 <Text style={{ fontSize: 12, fontWeight: '800', color: '#10b981', flex: 1 }}>
                   {formHabitKey === 'custom' ? (formLabel || 'Custom Habit') : AYU_HABITS.find(h => h.key === formHabitKey)?.label ?? ''}
                 </Text>
                 <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
               </View>
             )}
-
-            {/* Time picker */}
             <Text style={[S.sheetSection, { marginTop: 0, marginBottom: 2, marginHorizontal: 0 }]}>SET TIME</Text>
             <TimeAdjuster hour={formHour} minute={formMinute} onChange={(hr, mn) => { setFormHour(hr); setFormMinute(mn); }} />
-
-            {/* Day selector */}
             <Text style={[S.sheetSection, { marginTop: 8, marginBottom: 6, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
             <DaySelector days={formDays} onChange={setFormDays} />
-
-            {/* Save button */}
-            <TouchableOpacity
-              onPress={saveNewEntry}
-              disabled={formHabitKey === ''}
-              style={[S.saveBtn, { marginTop: 10, opacity: formHabitKey === '' ? 0.4 : 1 }]}
-              activeOpacity={0.8}>
-              <Text style={S.saveBtnTxt}>
-                {editEntry ? '✓  Update Habit Alarm' : '✓  Save Habit Alarm'}
-              </Text>
+            <TouchableOpacity onPress={saveNewEntry} disabled={formHabitKey === ''} style={[S.saveBtn, { marginTop: 10, opacity: formHabitKey === '' ? 0.4 : 1 }]} activeOpacity={0.8}>
+              <Text style={S.saveBtnTxt}>{editEntry ? '✓  Update Habit Alarm' : '✓  Save Habit Alarm'}</Text>
             </TouchableOpacity>
           </View>
 
