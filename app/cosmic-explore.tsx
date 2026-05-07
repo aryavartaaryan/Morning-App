@@ -82,7 +82,9 @@ const VAARS = [
   { vedicName: 'Shani Vaar',  planet: 'Saturn',  emoji: '🪐', color: '#a5b4fc', energy: 'Discipline, karma & enduring effort',   science: 'Saturn\'s 29.5-year orbit mirrors the human biological "Saturn Return" — documented in endocrinology as periods of hormonal restructuring at ages 28-30 and 58-60. Its ringed electromagnetic field creates measurable VLF radio emissions that affect Earth\'s ionosphere.' },
 ];
 
-const TITHI_NAMES = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima'];
+const TITHI_NAMES    = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima'];
+const ENGLISH_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TITHI_ORDINALS = ['','First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth','Ninth','Tenth','Eleventh','Twelfth','Thirteenth','Fourteenth','Full Moon'];
 const TITHI_ENERGY: Record<string, string> = {
   Pratipada: 'New beginnings & fresh intentions', Dwitiya: 'Building on new foundations',
   Tritiya: 'Growth & creative momentum', Chaturthi: 'Remove obstacles — pray to Ganesha',
@@ -184,6 +186,39 @@ function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithiName: s
   return Math.max(1, Math.min(10, score));
 }
 
+// Rashi → Vedic Saura Maasa (solar month)
+const RASHI_TO_VEDIC_MONTH = [
+  { name: 'Vaishakha',    sanskrit: 'वैशाख',      rashi: 'Mesha',     en: 'Apr–May' },
+  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',    rashi: 'Vrishabha', en: 'May–Jun' },
+  { name: 'Ashadha',      sanskrit: 'आषाढ़',      rashi: 'Mithuna',   en: 'Jun–Jul' },
+  { name: 'Shravana',     sanskrit: 'श्रावण',     rashi: 'Karka',     en: 'Jul–Aug' },
+  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',    rashi: 'Simha',     en: 'Aug–Sep' },
+  { name: 'Ashwin',       sanskrit: 'आश्विन',     rashi: 'Kanya',     en: 'Sep–Oct' },
+  { name: 'Kartik',       sanskrit: 'कार्तिक',    rashi: 'Tula',      en: 'Oct–Nov' },
+  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष', rashi: 'Vrischika', en: 'Nov–Dec' },
+  { name: 'Pausha',       sanskrit: 'पौष',         rashi: 'Dhanu',     en: 'Dec–Jan' },
+  { name: 'Magha',        sanskrit: 'माघ',         rashi: 'Makara',    en: 'Jan–Feb' },
+  { name: 'Phalguna',     sanskrit: 'फाल्गुन',    rashi: 'Kumbha',    en: 'Feb–Mar' },
+  { name: 'Chaitra',      sanskrit: 'चैत्र',      rashi: 'Meena',     en: 'Mar–Apr' },
+];
+function getVedicMonth(date: Date = new Date()) {
+  const dJ2000 = (date.getTime() - 946728000000) / 86400000;
+  const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
+  const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
+  const gRad = gdeg * Math.PI / 180;
+  const sunTropical = ((Ldeg + 1.915 * Math.sin(gRad) + 0.020 * Math.sin(2 * gRad)) % 360 + 360) % 360;
+  const ayanamsha   = 23.85 + 0.0136 * (dJ2000 / 365.25);
+  const siderealSun = ((sunTropical - ayanamsha) % 360 + 360) % 360;
+  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
+  const CYCLE    = 29.53058867;
+  const moonAge  = ((((date.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE) + CYCLE) % CYCLE;
+  const halfCycle = CYCLE / 2;
+  const daysToClosingPurnima = moonAge < halfCycle ? halfCycle - moonAge : CYCLE - moonAge + halfCycle;
+  const sunAtClosingPurnima = ((siderealSun + daysToClosingPurnima * 0.9856) % 360 + 360) % 360;
+  const rashiIdx = Math.floor(sunAtClosingPurnima / 30) % 12;
+  return RASHI_TO_VEDIC_MONTH[rashiIdx];
+}
+
 // ── Moon SVG ────────────────────────────────────────────────────────────────
 
 function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
@@ -258,6 +293,7 @@ export default function CosmicExploreScreen() {
   const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Sacred lunar energy';
   const moonRitual  = MOON_RITUALS[moon.emoji] ?? { prompt: 'Lunar energy', action: 'Connect with the moon tonight.' };
   const vaarAction  = VAAR_ACTIONS[p.vaarIdx] ?? '';
+  const vMonth      = getVedicMonth();
   const isSpecialMoon = moon.emoji === '🌕' || moon.emoji === '🌑';
 
   const today = new Date();
@@ -299,7 +335,7 @@ export default function CosmicExploreScreen() {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={S.heroMoonName}>{moon.name}</Text>
               <Text style={S.heroIllum}>{moon.illumination}% illuminated  ·  {p.paksha} Paksha</Text>
-              <Text style={S.heroTithi}>{p.tithiName}  ·  Day {p.tithiInPaksha} of 15</Text>
+              <Text style={S.heroTithi}>{p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha]} day  ·  {vMonth.name}</Text>
               <Text style={S.heroNakshatra}>{nakshatra.emoji}  {nakshatra.name}  ·  {nakshatra.en}</Text>
             </View>
           </View>
@@ -340,10 +376,10 @@ export default function CosmicExploreScreen() {
         <View style={[S.card, { borderColor: vaar.color + '40' }]}>
           <LinearGradient colors={[vaar.color + '15', 'transparent']} style={StyleSheet.absoluteFillObject} />
           <View style={S.cardHeader}>
-            <Text style={S.cardTag}>{vaar.emoji}  PLANETARY DAY ENERGY</Text>
+            <Text style={S.cardTag}>{vaar.emoji}  {ENGLISH_DAYS[p.vaarIdx].toUpperCase()}  ·  PLANETARY DAY</Text>
           </View>
           <Text style={[S.vaarTitle, { color: vaar.color }]}>{vaar.energy}</Text>
-          <Text style={S.vaarSub}>{vaar.planet} Day  ·  <Text style={{ fontStyle: 'italic', color: '#FFFFFF35' }}>{vaar.vedicName}</Text></Text>
+          <Text style={S.vaarSub}>{ENGLISH_DAYS[p.vaarIdx]}  ·  ({vaar.planet} Day)  ·  <Text style={{ fontStyle: 'italic', color: '#FFFFFF35' }}>{vaar.vedicName}</Text></Text>
           <View style={[S.infoBox, { backgroundColor: vaar.color + '0C', borderColor: vaar.color + '25' }]}>
             <Text style={S.infoLabel}>PLANETARY SCIENCE</Text>
             <Text style={S.infoText}>{vaar.science}</Text>
@@ -360,7 +396,7 @@ export default function CosmicExploreScreen() {
             <Text style={S.miniCardTag}>🌙  TITHI  ·  LUNAR DAY</Text>
             <Text style={[S.miniCardTitle, { color: '#a78bfa' }]}>{p.tithiName}</Text>
             <Text style={S.miniCardSub}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon</Text>
-            <Text style={S.miniCardSub}>Day {p.tithiInPaksha} of 15</Text>
+            <Text style={S.miniCardSub}>{TITHI_ORDINALS[p.tithiInPaksha]} day  ·  {vMonth.name}</Text>
             <View style={[S.miniPill, { backgroundColor: '#a78bfa12', borderColor: '#a78bfa30' }]}>
               <Text style={[S.miniPillText, { color: '#a78bfaCC' }]}>{tithiEnergy}</Text>
             </View>
@@ -420,7 +456,7 @@ export default function CosmicExploreScreen() {
               <Text style={S.triEmoji}>🌙</Text>
               <Text style={[S.triTitle, { color: '#a78bfa' }]}>{p.tithiName}</Text>
               <Text style={S.triSub}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon</Text>
-              <Text style={S.triSub}>{p.paksha} Paksha  ·  Day {p.tithiInPaksha}</Text>
+              <Text style={S.triSub}>{p.paksha} Paksha  ·  {TITHI_ORDINALS[p.tithiInPaksha]} ({p.tithiInPaksha}) day</Text>
               <Text style={S.triEn}>{tithiEnergy}</Text>
             </View>
             <View style={[S.triCell, { borderColor: '#fbbf2422' }]}>
@@ -479,7 +515,7 @@ export default function CosmicExploreScreen() {
 
         {/* Tithi Science */}
         <View style={S.exploreSection}>
-          <SectionHeader emoji="📐" title="What is a Tithi?" sub={`ORBITAL MECHANICS  ·  ${p.tithiName}  ·  ${p.paksha} Paksha  ·  Day ${p.tithiInPaksha} of 15`} />
+          <SectionHeader emoji="📐" title="What is a Tithi?" sub={`ORBITAL MECHANICS  ·  ${p.tithiName}  ·  ${TITHI_ORDINALS[p.tithiInPaksha]} day  ·  ${p.paksha} Paksha  ·  ${vMonth.name}`} />
 
           <SciBlock
             title="The Mathematics of Lunar Angular Separation"
@@ -545,7 +581,7 @@ export default function CosmicExploreScreen() {
 
         {/* Vaar Science (Planet Science) */}
         <View style={S.exploreSection}>
-          <SectionHeader emoji={vaar.emoji} title={`${vaar.planet} Day Science`} sub={`PLANETARY ELECTROMAGNETIC INFLUENCE  ·  ${vaar.vedicName}`} />
+          <SectionHeader emoji={vaar.emoji} title={`${ENGLISH_DAYS[p.vaarIdx]} — ${vaar.planet} Day Science`} sub={`PLANETARY ELECTROMAGNETIC INFLUENCE  ·  ${vaar.vedicName}`} />
           <SciBlock
             title={`Why the ${vaar.planet} Governs Today`}
             body={vaar.science}
