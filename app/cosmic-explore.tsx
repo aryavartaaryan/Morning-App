@@ -331,10 +331,17 @@ export default function CosmicExploreScreen() {
           colors={[vaar.color + '15', '#FFFFFF05', 'transparent']}
           style={S.heroGrad}>
           <View style={S.heroRow}>
-            <MoonSVG tithiNum={moon.tithiNum} size={72} />
+            <View style={{ alignItems: 'center' }}>
+              <MoonSVG tithiNum={moon.tithiNum} size={72} />
+              <View style={{ marginTop: 7, flexDirection: 'row', alignItems: 'baseline', gap: 2, backgroundColor: '#FFFFFF0C', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: '#a78bfa40' }}>
+                <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: -0.5 }}>{moon.illumination}</Text>
+                <Text style={{ fontSize: 10, fontWeight: '900', color: '#a78bfaBB' }}>%</Text>
+                <Text style={{ fontSize: 7, fontWeight: '800', color: '#FFFFFF35', letterSpacing: 0.8, marginLeft: 2 }}>LIT</Text>
+              </View>
+            </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={S.heroMoonName}>{moon.name}</Text>
-              <Text style={S.heroIllum}>{moon.illumination}% illuminated  ·  {p.paksha} Paksha</Text>
+              <Text style={S.heroIllum}>{p.paksha} Paksha  ·  {moon.name}</Text>
               <Text style={S.heroTithi}>{p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha]} day  ·  {vMonth.name}</Text>
               <Text style={S.heroNakshatra}>{nakshatra.emoji}  {nakshatra.name}  ·  {nakshatra.en}</Text>
             </View>
@@ -433,7 +440,11 @@ export default function CosmicExploreScreen() {
         <View style={[S.ritualCard, { borderColor: '#a78bfa25' }]}>
           <LinearGradient colors={['#a78bfa0C', 'transparent']} style={StyleSheet.absoluteFillObject} />
           <View style={S.ritualInner}>
-            <MoonSVG tithiNum={moon.tithiNum} size={38} />
+            <View style={{ alignItems: 'center' }}>
+              <MoonSVG tithiNum={moon.tithiNum} size={38} />
+              <Text style={{ fontSize: 11, fontWeight: '900', color: '#a78bfaDD', marginTop: 5, letterSpacing: -0.3 }}>{moon.illumination}%</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF30', letterSpacing: 0.5 }}>LIT</Text>
+            </View>
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={S.ritualLabel}>🌙  LUNAR RITUAL FOR TODAY</Text>
               <Text style={S.ritualPrompt}>{moonRitual.prompt}  ·  {moon.illumination}% lit</Text>
