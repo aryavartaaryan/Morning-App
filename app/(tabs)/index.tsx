@@ -370,6 +370,8 @@ const VAARS = [
   { vedicName: 'Shani Vaar',  planet: 'Saturn',  emoji: '🪐', color: '#a5b4fc', energy: 'Discipline, karma & enduring effort' },
 ];
 
+const ENGLISH_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TITHI_ORDINALS = ['','First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth','Ninth','Tenth','Eleventh','Twelfth','Thirteenth','Fourteenth','Full Moon'];
 const TITHI_NAMES = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima'];
 const TITHI_ENERGY: Record<string, string> = {
   Pratipada: 'New beginnings & fresh intentions', Dwitiya: 'Building on new foundations',
@@ -2332,6 +2334,7 @@ function CosmicOrbitStrip({
   const p         = React.useMemo(() => getPanchangData(), []);
   const vaar      = VAARS[p.vaarIdx];
   const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+  const vMonth    = getVedicMonth();
 
   const now  = new Date();
   const curH = now.getHours() + now.getMinutes() / 60;
@@ -2407,20 +2410,26 @@ function CosmicOrbitStrip({
         <View style={[COS.starDot, { top: 12, right: 118, width: 1,   height: 1,   opacity: 0.22 }]} />
 
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-            <Text style={[COS.regent, { color: vaar.color }]}>✦  {vaar.planet} Regent</Text>
+          {/* Day name + planetary ruler */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+            <Text style={[COS.regent, { color: vaar.color }]}>✦  {ENGLISH_DAYS[p.vaarIdx]}</Text>
             <View style={[COS.dot3, { backgroundColor: vaar.color + '55' }]} />
-            <Text style={COS.cMeta} numberOfLines={1}>{p.tithiName}  ·  {nakshatra.name}</Text>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: vaar.color + 'AA' }}>({vaar.planet} Day)</Text>
           </View>
-          <Text style={COS.cSub}>{p.paksha} Paksha  ·  Stellar almanac active</Text>
+          {/* Tithi ordinal + Nakshatra */}
+          <Text style={[COS.cMeta, { marginBottom: 2 }]} numberOfLines={1}>
+            {p.tithiName}  ·  {TITHI_ORDINALS[p.tithiInPaksha] ?? p.tithiInPaksha} day  ·  {nakshatra.name}
+          </Text>
+          {/* Vedic month + Paksha */}
+          <Text style={COS.cSub}>{vMonth.name}  ·  {p.paksha} Paksha</Text>
         </View>
 
         <TouchableOpacity
           onPress={onCosmicPress}
           activeOpacity={0.76}
-          style={[COS.ctaBtn, { borderColor: vaar.color + '60', backgroundColor: vaar.color + '1A' }]}
+          style={[COS.ctaBtn, { borderColor: vaar.color + '60', backgroundColor: vaar.color + '1A', minWidth: 74 }]}
         >
-          <Text style={[COS.ctaTxt, { color: vaar.color }]}>Cosmic{"\n"}Field  ›</Text>
+          <Text style={[COS.ctaTxt, { color: vaar.color, fontSize: 8 }]}>Explore Cosmic{"\n"}Science  ›</Text>
         </TouchableOpacity>
       </View>
     </View>
