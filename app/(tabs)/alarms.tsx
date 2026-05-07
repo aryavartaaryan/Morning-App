@@ -57,7 +57,7 @@ const AYU_HABITS = [
   { key: 'prayer',       label: 'Prayer',           emoji: '🙏' },
   { key: 'stretch',      label: 'Stretch',          emoji: '🤸' },
   { key: 'sunlight',     label: 'Sunlight',         emoji: '☀️' },
-  { key: 'breakfast',    label: 'Breakfast',        emoji: '🌾' },
+  { key: 'breakfast',    label: 'Breakfast',        emoji: '�' },
   { key: 'main_meal',    label: 'Main Meal',        emoji: '🍛' },
   { key: 'walk',         label: 'Post-Meal Walk',   emoji: '🚶' },
   { key: 'herbal_tea',   label: 'Herbal Tea',       emoji: '🍵' },
@@ -75,15 +75,15 @@ const HABIT_WISDOM: Record<string, { icon: string; title: string; color: string;
   wake_early:   { icon: '🌅', color: '#a78bfa', title: 'RISE BEFORE THE WORLD',      body: 'Waking early gives you quiet, uninterrupted time before the day\'s noise begins. Your mind is freshest in the early hours — use it for focus, intention, and calm before the world wakes up.' },
   hydrate:      { icon: '💧', color: '#38bdf8', title: 'MORNING HYDRATION',           body: 'You lose water overnight through breathing. Starting the day with water rehydrates your body, clears brain fog, and kick-starts your digestion — one of the simplest habits with outsized returns.' },
   shower:       { icon: '🚿', color: '#38bdf8', title: 'REFRESH YOUR SYSTEM',         body: 'A morning shower wakes the body, sharpens the mind, and creates a clean psychological boundary between sleep and the active day. Cold water boosts alertness and circulation instantly.' },
-  meditation:   { icon: '�', color: '#a78bfa', title: 'TRAIN YOUR MIND',             body: 'Even 10 minutes of morning stillness reduces anxiety, improves focus, and builds emotional resilience. Meditation is the one habit that makes every other habit easier.' },
+  meditation:   { icon: '🙏', color: '#a78bfa', title: 'TRAIN YOUR MIND',             body: 'Even 10 minutes of morning stillness reduces anxiety, improves focus, and builds emotional resilience. Meditation is the one habit that makes every other habit easier.' },
   prayer:       { icon: '🙏', color: '#fbbf24', title: 'ANCHOR YOUR DAY',             body: 'Morning prayer or gratitude anchors your intention for the day. It shifts the mind from reactive to purposeful — building inner strength and a sense of meaning before anything else.' },
   stretch:      { icon: '🤸', color: '#34d399', title: 'WAKE YOUR BODY',              body: 'Gentle morning stretches loosen stiff joints, improve blood flow, and signal the body that it\'s time to be active. Just 5 minutes reverses the effects of 7–8 hours of stillness overnight.' },
   sunlight:     { icon: '☀️', color: '#fbbf24', title: 'MORNING LIGHT MATTERS',       body: 'Natural morning light resets your body clock, lifts your mood, and programs better sleep tonight. Step outside for 10 minutes — it\'s the most powerful free wellness tool available.' },
-  breakfast:    { icon: '�', color: '#f97316', title: 'FUEL THE START',              body: 'Eating a balanced breakfast within the first 2 hours of waking stabilises blood sugar, prevents energy crashes, and gives your brain the fuel it needs for peak morning performance.' },
-  main_meal:    { icon: '�️', color: '#f59e0b', title: 'EAT BIG AT MIDDAY',          body: 'Your body\'s digestion is strongest around midday. Making lunch your biggest meal helps your body process food more efficiently, sustains energy longer, and avoids afternoon sluggishness.' },
+  breakfast:    { icon: '🍳', color: '#f97316', title: 'FUEL THE START',              body: 'Eating a balanced breakfast within the first 2 hours of waking stabilises blood sugar, prevents energy crashes, and gives your brain the fuel it needs for peak morning performance.' },
+  main_meal:    { icon: '🍴', color: '#f59e0b', title: 'EAT BIG AT MIDDAY',          body: 'Your body\'s digestion is strongest around midday. Making lunch your biggest meal helps your body process food more efficiently, sustains energy longer, and avoids afternoon sluggishness.' },
   walk:         { icon: '🚶', color: '#34d399', title: 'MOVE AFTER MEALS',            body: 'A short walk after eating improves digestion, lowers blood sugar, and prevents the post-meal energy crash. Just 10–15 minutes of walking after a meal makes a measurable difference.' },
   herbal_tea:   { icon: '🍵', color: '#a3e635', title: 'A RITUAL OF CALM',            body: 'A daily herbal tea ritual creates a mindful pause in your day. Calming herbs like chamomile or ginger reduce stress, support digestion, and build a consistent moment of self-care.' },
-  evening_walk: { icon: '�', color: '#fb923c', title: 'UNWIND AND MOVE',             body: 'An evening walk is one of the most effective natural stress relievers. It lowers cortisol, clears mental fatigue, and prepares your body and mind for deep, restorative sleep.' },
+  evening_walk: { icon: '🌆', color: '#fb923c', title: 'UNWIND AND MOVE',             body: 'An evening walk is one of the most effective natural stress relievers. It lowers cortisol, clears mental fatigue, and prepares your body and mind for deep, restorative sleep.' },
   light_dinner: { icon: '🥗', color: '#34d399', title: 'EAT LIGHT AT NIGHT',          body: 'Your digestion slows significantly after sunset. A light dinner reduces bloating, improves sleep quality, and helps your body focus on repair and recovery overnight instead of digestion.' },
   screen_free:  { icon: '📵', color: '#a78bfa', title: 'PROTECT YOUR SLEEP',          body: 'Screens before bed suppress the sleep hormone melatonin by up to 50%. Even 30 minutes of screen-free wind-down dramatically improves sleep onset, depth, and morning energy levels.' },
   journaling:   { icon: '📓', color: '#c084fc', title: 'CLEAR YOUR MIND',             body: 'Writing down your thoughts offloads mental clutter and helps you process the day. Just 5 minutes of journaling before bed reduces overthinking, improves mood, and sharpens next-day clarity.' },
@@ -883,23 +883,24 @@ export default function AlarmsTab() {
                 <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
               )}
 
-              {/* ── Dynamic habit wisdom tip ── */}
-              {formHabitKey && formHabitKey !== 'custom' && formHabitKey !== '' && HABIT_WISDOM[formHabitKey] && (() => {
-                const w = HABIT_WISDOM[formHabitKey];
-                return (
-                  <View style={{ borderRadius: 16, borderWidth: 1, borderColor: w.color + '40', backgroundColor: w.color + '0E', padding: 14, marginHorizontal: 16, marginTop: 8, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 10, borderColor: w.color + '50', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                      <Text style={{ fontSize: 18 }}>{w.icon}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.3, marginBottom: 4 }}>{w.title}</Text>
-                      <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 17 }}>{w.body}</Text>
-                    </View>
-                  </View>
-                );
-              })()}
             </ScrollView>
           </View>
+
+          {/* ── Habit wisdom tip — always visible, above time picker ── */}
+          {formHabitKey && formHabitKey !== 'custom' && formHabitKey !== '' && HABIT_WISDOM[formHabitKey] && (() => {
+            const w = HABIT_WISDOM[formHabitKey];
+            return (
+              <View style={{ borderRadius: 16, borderWidth: 1, borderColor: w.color + '45', backgroundColor: w.color + '10', paddingVertical: 11, paddingHorizontal: 14, marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, borderColor: w.color + '55', borderWidth: 1, backgroundColor: w.color + '1A', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Text style={{ fontSize: 20 }}>{w.icon}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.4, marginBottom: 3 }}>{w.title}</Text>
+                  <Text style={{ fontSize: 10.5, color: '#FFFFFFBB', lineHeight: 15 }} numberOfLines={2}>{w.body}</Text>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* ── Fixed Bottom: Time + Days + Save ── */}
           <View style={{ backgroundColor: '#0E0E20', borderTopWidth: 1, borderTopColor: '#FFFFFF10', paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 16 }}>

@@ -59,7 +59,7 @@ const AYU_HABITS = [
   { key: 'shower',       label: 'Shower',           emoji: '�' },
   { key: 'meditation',   label: 'Meditation',       emoji: '🧘' },
   { key: 'sunlight',     label: 'Sunlight',         emoji: '☀️' },
-  { key: 'breakfast',    label: 'Breakfast',        emoji: '🌾' },
+  { key: 'breakfast',    label: 'Breakfast',        emoji: '�' },
   { key: 'main_meal',    label: 'Main Meal',        emoji: '🍛' },
   { key: 'walk',         label: 'Shatapavali Walk', emoji: '🚶' },
   { key: 'herbal_tea',   label: 'Herbal Tea',       emoji: '🍵' },
