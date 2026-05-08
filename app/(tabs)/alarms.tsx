@@ -138,7 +138,7 @@ const DS = ['S','M','T','W','T','F','S'] as const;
 function DayDots({ days, color = '#10b981' }: { days?: number[]; color?: string }) {
   const isAll = !days || days.length === 0 || days.length === 7;
   return (
-    <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
+    <View style={{ flexDirection: 'row', gap: 3, marginTop: 4 }}>
       {DS.map((d, i) => {
         const on = isAll || days!.includes(i);
         return (
@@ -643,10 +643,9 @@ export default function AlarmsTab() {
           <View style={S.sectionHeaderLine} />
         </View>
         <View style={S.alarmCard}>
-          <LinearGradient colors={['rgba(255,255,255,0.10)', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-          <GlassPulseOverlay />
-          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.28)' : '#FFFFFF14' }]} />
+          <LinearGradient colors={['rgba(255,255,255,0.07)', 'rgba(4,4,18,0.22)', 'rgba(2,2,14,0.38)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
+          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.22)' : '#FFFFFF0C' }]} />
           <TouchableOpacity onPress={() => setShowWakeEdit(true)} activeOpacity={0.85} style={{ flex: 1 }}>
             <View style={S.alarmCardInner}>
               <View style={S.alarmLeft}>
@@ -671,10 +670,9 @@ export default function AlarmsTab() {
           const isMenuOpen = menuOpenId === entry.id;
           return (
             <View key={entry.id} style={S.alarmCard}>
-              <LinearGradient colors={['rgba(255,255,255,0.10)', 'rgba(4,4,18,0.45)', 'rgba(2,2,14,0.68)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-              <GlassPulseOverlay />
-              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.28)' : '#FFFFFF14' }]} />
+              <LinearGradient colors={['rgba(255,255,255,0.07)', 'rgba(4,4,18,0.22)', 'rgba(2,2,14,0.38)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
+              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.22)' : '#FFFFFF0C' }]} />
               <View style={{ flex: 1 }}>
                 <View style={S.alarmCardInner}>
                   <TouchableOpacity style={S.alarmLeft} onPress={() => { setMenuOpenId(null); openEditEntry(entry); }} activeOpacity={0.85}>
@@ -995,22 +993,22 @@ const S = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 6, marginBottom: 0, gap: 10 },
   sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFB8', letterSpacing: 2.0 },
   sectionHeaderLine: { flex: 1, height: 1, backgroundColor: '#FFFFFF22' },
-  alarmCard: { marginHorizontal: 16, marginTop: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', flexDirection: 'row', elevation: 14, shadowColor: '#000', shadowOpacity: 0.40, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
+  alarmCard: { marginHorizontal: 16, marginTop: 6, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', flexDirection: 'row', elevation: 6, shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   alarmCardActive: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.09)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
   alarmCardHabit: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
   alarmCardQuick: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
-  alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 13, paddingLeft: 12, gap: 12 },
+  alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 9, paddingLeft: 11, gap: 12 },
   alarmAccentBar: { width: 4, alignSelf: 'stretch' },
   alarmLeft: { flex: 1, gap: 2 },
   alarmTypePill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
   alarmTypeEmoji: { fontSize: 12 },
   alarmTypeTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFAA', letterSpacing: 1.5 },
-  alarmTime: { fontSize: 36, letterSpacing: -2, lineHeight: 40, fontWeight: '300' },
+  alarmTime: { fontSize: 26, letterSpacing: -1, lineHeight: 30, fontWeight: '300' },
   alarmTimeOn: { color: '#FFFFFF' },
   alarmTimeOff: { color: '#FFFFFF50' },
   alarmTimeHabit: { color: '#FFFFFF' },
   alarmTimeQuick: { color: '#FFFFFF' },
-  alarmSub: { fontSize: 11, color: '#FFFFFFAA', fontWeight: '600', marginTop: 1 },
+  alarmSub: { fontSize: 10, color: '#FFFFFF80', fontWeight: '600', marginTop: 1 },
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },

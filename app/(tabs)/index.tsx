@@ -2136,10 +2136,47 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
   );
 }
 
-// ── Hourly Environment Suggestion — vertical action list ─────────────────
+const HES_SCROLL_SPEED = 0.18; // px per animation frame — slow, calm, premium glide
+
+// ── Hourly Environment Suggestion Strip (horizontal swipe + continuous auto-scroll) ─────
 function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
+  const scrollRef      = useRef<ScrollView>(null);
+  const pausedRef      = useRef(false);
+  const posRef         = useRef(0);
+  const dirRef         = useRef(1);
+  const maxPosRef      = useRef(0);
+  const rafRef         = useRef<number>(0);
+  const resumeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [storyIdx, setStoryIdx] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const tick = () => {
+      if (!pausedRef.current && maxPosRef.current > 0) {
+        posRef.current += HES_SCROLL_SPEED * dirRef.current;
+        if (posRef.current >= maxPosRef.current) {
+          posRef.current = maxPosRef.current;
+          dirRef.current = -1;
+        } else if (posRef.current <= 0) {
+          posRef.current = 0;
+          dirRef.current = 1;
+        }
+        scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const pauseScroll = () => {
+    pausedRef.current = true;
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+  };
+  const scheduleResume = () => {
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 2500);
+  };
 
   const hour = new Date().getHours();
   const s    = getHourlyEnvSuggestion(period, weather, hour);
@@ -2181,24 +2218,26 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     label: '⚠️  AVOID THIS HOUR',
   }));
 
-  const weatherCards = getWeatherCards(weather);
-  const allCards: HESCard[] = [sciCard, envCard, ...weatherCards, ...doCards, ...dontCards];
-  const doStartIdx   = 2 + weatherCards.length;
-  const dontStartIdx = doStartIdx + doCards.length;
+  const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
 
   return (
     <>
-    <View style={{ marginTop: 18, marginBottom: 10 }}>
+    <View style={{ marginBottom: 10 }}>
       {/* Header — tappable → opens Ayurvedic Science explore */}
       <TouchableOpacity
         onPress={() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-          <Text style={{ fontSize: 24 }}>{period.emoji}</Text>
           <View>
-            <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
-            <Text style={{ fontSize: 10, color: '#D4A84BAA', fontWeight: '700', marginTop: 2 }}>Explore Ayurvedic science  ›</Text>
+            <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 1.4, marginBottom: 3 }}>CURRENT BODY RHYTHM PERIOD</Text>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#D4A84B60', backgroundColor: '#D4A84B1A' }}>
+              <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE AYURVEDIC SCIENCE</Text>
+              <View style={{ width: 15, height: 15, borderRadius: 8, backgroundColor: '#D4A84B35', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', lineHeight: 11 }}>↗</Text>
+              </View>
+            </View>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
@@ -2208,84 +2247,98 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         </View>
       </TouchableOpacity>
 
-      {/* ── Vertical action rows ── */}
-      <View style={{ marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: period.color + '35', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-        <LinearGradient
-          colors={[period.color + '1A', 'transparent']}
-          start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.6 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.22)' }} />
-
-        {/* Active Phase row */}
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(0); }}
-          activeOpacity={0.7}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 12 }}>
-          <Text style={{ fontSize: 20 }}>{sciCard.emoji}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 7, color: period.color, fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>{sciCard.label}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{sciCard.title}</Text>
-            <Text style={{ fontSize: 10, color: '#FFFFFFAA', marginTop: 2 }} numberOfLines={1}>{period.sciEmoji}  {period.sciTitle}</Text>
-          </View>
-          <Text style={{ fontSize: 16, color: period.color + '90', fontWeight: '700' }}>›</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 12 }} />
-
-        {/* DO rows */}
-        {doCards.map((card, i) => (
+      <View>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingRight: 24 }}
+        decelerationRate="fast"
+        snapToInterval={136}
+        snapToAlignment="start"
+        scrollEventThrottle={16}
+        onContentSizeChange={(w) => { maxPosRef.current = Math.max(0, w - SCREEN_W); }}
+        onScrollBeginDrag={() => {
+          pausedRef.current = true;
+          if (resumeTimer.current) clearTimeout(resumeTimer.current);
+        }}
+        onScrollEndDrag={(e) => {
+          posRef.current = e.nativeEvent.contentOffset.x;
+          scheduleResume();
+        }}
+        onMomentumScrollEnd={(e) => {
+          posRef.current = e.nativeEvent.contentOffset.x;
+          scheduleResume();
+        }}
+      >
+        {allCards.map((card, i) => (
           <TouchableOpacity
-            key={`do-${i}`}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(doStartIdx + i); }}
-            activeOpacity={0.7}
-            style={[{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]}>
-            <Text style={{ fontSize: 20 }}>{card.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 7, color: period.color, fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>DO THIS HOUR</Text>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{card.title}</Text>
+            key={i}
+            activeOpacity={0.85}
+            onPress={() => { pauseScroll(); setStoryIdx(i); }}
+            style={[HES.card, { borderColor: card.color + '55' }]}>
+            <LinearGradient
+              colors={[card.color + '28', 'rgba(4,4,18,0.48)', 'rgba(2,2,14,0.70)']}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
+            <GlassPulseOverlay />
+            {/* Label pill badge */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 7 }}>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: card.color, letterSpacing: 1.0 }}>{card.label}</Text>
             </View>
-            <Text style={{ fontSize: 16, color: period.color + '90', fontWeight: '700' }}>›</Text>
+            {/* Emoji icon */}
+            <Text style={{ fontSize: 20, marginBottom: 5 }}>{card.emoji}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF', lineHeight: 14, marginBottom: 5 }}>{card.title}</Text>
+            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 5 }} />
+            {card.tips.map((tip, j) => (
+              <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginBottom: 3 }}>
+                <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: card.color + 'DD', marginTop: 4, flexShrink: 0 }} />
+                <Text style={{ fontSize: 8, color: '#FFFFFFDC', lineHeight: 12, flex: 1 }}>{tip}</Text>
+              </View>
+            ))}
+            <View style={{ position: 'absolute', bottom: 7, right: 8 }}>
+              <Text style={{ fontSize: 7, color: card.color + '80', fontWeight: '800', letterSpacing: 0.5 }}>expand ↗</Text>
+            </View>
           </TouchableOpacity>
         ))}
-
-        {dontCards.length > 0 && (
-          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 12 }} />
-        )}
-
-        {/* AVOID rows */}
-        {dontCards.map((card, i) => (
-          <TouchableOpacity
-            key={`dont-${i}`}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStoryIdx(dontStartIdx + i); }}
-            activeOpacity={0.7}
-            style={[{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]}>
-            <Text style={{ fontSize: 20 }}>{card.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 7, color: '#f43f5eCC', fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 }}>AVOID THIS HOUR</Text>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 }}>{card.title}</Text>
-            </View>
-            <Text style={{ fontSize: 16, color: '#f43f5eAA', fontWeight: '700' }}>›</Text>
-          </TouchableOpacity>
-        ))}
+      </ScrollView>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 9, paddingBottom: 2, gap: 8 }}>
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginLeft: 16 }} />
+        <Text style={{ fontSize: 8, color: '#FFFFFF28', fontWeight: '700', letterSpacing: 1.4 }}>←  SWIPE TO EXPLORE  →</Text>
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }} />
       </View>
-
-      <Text style={{ textAlign: 'center', fontSize: 8, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2, marginTop: 8 }}>
-        TAP ANY ROW  ·  {allCards.length} INSIGHTS INSIDE
-      </Text>
+      </View>
     </View>
 
     {storyIdx !== null && (
       <HESStoryModal
         cards={allCards}
         initialIndex={storyIdx}
-        onClose={() => setStoryIdx(null)}
+        onClose={() => { setStoryIdx(null); scheduleResume(); }}
       />
     )}
     </>
   );
 }
 
+const HES = StyleSheet.create({
+  card: {
+    width: 126,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.62)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.38,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+});
 
 // ── Period Expanded Preview Card (replaces CurrentPeriodCard below the strip) ─────────────
 function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
@@ -2535,7 +2588,174 @@ const WSEC = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Cosmic Orbit Strip — compact solar ephemeris + lunar phase + CTA
+// Cosmic Detail Sheet  — full cosmic almanac, slides up on strip tap
+// ══════════════════════════════════════════════════════════════════════════════
+function CosmicDetailSheet({
+  solarTimes, onCosmicPress, onClose,
+}: {
+  solarTimes: SolarTimes | null;
+  onCosmicPress: () => void;
+  onClose: () => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const moon  = React.useMemo(() => getMoonPhase(new Date()), []);
+  const p     = React.useMemo(() => getPanchangData(), []);
+  const lunar = React.useMemo(() => getNextLunarEvents(), []);
+  const vaar  = VAARS[p.vaarIdx];
+  const vm    = getVedicMonth();
+
+  useEffect(() => {
+    Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 10, tension: 68 }).start();
+  }, []);
+
+  const close = () => {
+    Animated.timing(slideAnim, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => onClose());
+  };
+
+  const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
+
+  const nakshatras = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
+  const yogas      = ['Vishkambha','Priti','Ayushman','Saubhagya','Shobhana','Atiganda','Sukarman','Dhriti','Shula','Ganda','Vriddhi','Dhruva','Vyaghata','Harshana','Vajra','Siddhi','Vyatipata','Variyana','Parigha','Shiva','Siddha','Sadhya','Shubha','Shukla','Brahma','Indra','Vaidhriti'];
+  const nakshatra  = nakshatras[p.nakshatraIdx] ?? '—';
+  const yoga       = yogas[p.yogaIdx] ?? '—';
+  const nextEvent  = lunar.daysToFull <= lunar.daysToNew
+    ? { icon: '🌕', label: `Full Moon  ·  ${lunar.daysToFull === 0 ? 'Today' : `in ${lunar.daysToFull}d`}`, date: lunar.fullDateLong, color: '#fbbf24' }
+    : { icon: '🌑', label: `New Moon  ·  ${lunar.daysToNew === 0 ? 'Today' : `in ${lunar.daysToNew}d`}`,   date: lunar.newDateLong,  color: '#a78bfa' };
+
+  const now  = new Date();
+  const curH = now.getHours() + now.getMinutes() / 60;
+  let SunIcon: React.ComponentType<{ size?: number }> = NoonSunSVG;
+  if (solarTimes) {
+    if (curH <= solarTimes.sunrise + 0.75)     SunIcon = RisingSunSVG;
+    else if (curH >= solarTimes.sunset - 0.75) SunIcon = SettingSunSVG;
+  }
+
+  const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Cosmic alignment in progress';
+
+  return (
+    <Modal visible animationType="none" transparent statusBarTranslucent onRequestClose={close}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,5,0.60)' }}>
+        {/* Tap-outside to close */}
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1} />
+
+        <Animated.View style={{ transform: [{ translateY }], backgroundColor: '#05050E', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%', overflow: 'hidden' }}>
+          {/* Cosmic accent line */}
+          <LinearGradient colors={[vaar.color + 'CC', '#a78bfa88', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 2 }} />
+          {/* Handle */}
+          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 48 }}>
+
+            {/* ── Header ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08', marginBottom: 18 }}>
+              <View>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa', letterSpacing: 2.2, marginBottom: 4 }}>TODAY'S COSMIC ALMANAC</Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF' }}>🌌  {ENGLISH_DAYS[p.vaarIdx]},  {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</Text>
+                <Text style={{ fontSize: 10, color: vaar.color + 'CC', fontWeight: '700', marginTop: 3 }}>{vaar.vedicName}  ·  {vaar.planet} Day  ·  {vm?.name}</Text>
+              </View>
+              <TouchableOpacity onPress={close} style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFFFFF55', fontSize: 14, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Solar Arc ── */}
+            {solarTimes ? (
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,168,50,0.25)', padding: 14, marginBottom: 14 }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#fbbf24', letterSpacing: 2, marginBottom: 12 }}>☀️  SOLAR EPHEMERIS</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ alignItems: 'center', gap: 5 }}>
+                    <RisingSunSVG size={30} />
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunrise)}</Text>
+                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Sunrise</Text>
+                  </View>
+                  <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2430', marginHorizontal: 10 }} />
+                  <View style={{ alignItems: 'center', gap: 5 }}>
+                    <NoonSunSVG size={30} />
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#fbbf24DD' }}>{fmtSolar(solarTimes.solarNoon)}</Text>
+                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Solar Zenith</Text>
+                  </View>
+                  <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2430', marginHorizontal: 10 }} />
+                  <View style={{ alignItems: 'center', gap: 5 }}>
+                    <SettingSunSVG size={30} />
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunset)}</Text>
+                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Sunset</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF0C', padding: 14, marginBottom: 14, alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, color: '#FFFFFF30', fontWeight: '600' }}>🛰  Enable GPS for solar ephemeris</Text>
+              </View>
+            )}
+
+            {/* ── Moon + Tithi ── */}
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(167,139,250,0.28)', padding: 14, marginBottom: 14 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <MoonSVG tithiNum={moon.tithiNum} size={52} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{moon.name}  ·  {moon.illumination}% lit</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#a78bfaDD', marginBottom: 4 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
+                  <Text style={{ fontSize: 10, color: '#FFFFFF55', lineHeight: 15, fontStyle: 'italic' }}>{tithiEnergy}</Text>
+                </View>
+              </View>
+              {/* Next lunar event */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#FFFFFF08' }}>
+                <Text style={{ fontSize: 20 }}>{nextEvent.icon}</Text>
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: nextEvent.color }}>{nextEvent.label}</Text>
+                  <Text style={{ fontSize: 9, color: '#FFFFFF35', marginTop: 2 }}>{nextEvent.date}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Nakshatra + Yoga + Vaar ── */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(251,191,36,0.22)', padding: 12 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fbbf24', letterSpacing: 1.6, marginBottom: 8 }}>⭐  NAKSHATRA</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{nakshatra}</Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF45', fontWeight: '500' }}>Moon's mansion today</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(110,231,183,0.22)', padding: 12 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#6ee7b7', letterSpacing: 1.6, marginBottom: 8 }}>✦  YOGA</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{yoga}</Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF45', fontWeight: '500' }}>Sun + Moon union</Text>
+              </View>
+            </View>
+
+            {/* ── Vaar / Planet Day ── */}
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: vaar.color + '30', padding: 14, marginBottom: 18 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: vaar.color, letterSpacing: 2, marginBottom: 10 }}>{vaar.emoji}  PLANETARY DAY  ·  VAAR</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: 36 }}>{vaar.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{vaar.vedicName}</Text>
+                  <Text style={{ fontSize: 11, color: vaar.color + 'CC', fontWeight: '700', marginBottom: 5 }}>{vaar.planet} Day  ·  {vm?.name ?? ''}</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF65', lineHeight: 16, fontStyle: 'italic' }}>{vaar.energy}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── CTA ── */}
+            <TouchableOpacity
+              onPress={() => { close(); setTimeout(onCosmicPress, 300); }}
+              activeOpacity={0.85}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 15, borderColor: '#a78bfa50', backgroundColor: '#a78bfa16' }}>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#a78bfaDD' }}>🌌  Explore Full Cosmic Date</Text>
+              <Text style={{ fontSize: 16, color: '#a78bfaDD', fontWeight: '900' }}>→</Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Cosmic Orbit Strip — ultra-slim pill, tap to open CosmicDetailSheet
 // ══════════════════════════════════════════════════════════════════════════════
 function CosmicOrbitStrip({
   solarTimes,
@@ -2548,148 +2768,409 @@ function CosmicOrbitStrip({
   const p     = React.useMemo(() => getPanchangData(), []);
   const lunar = React.useMemo(() => getNextLunarEvents(), []);
   const vaar  = VAARS[p.vaarIdx];
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const nextEvent = lunar.isFullToday
-    ? { icon: '🌕', label: 'Full Moon Today!', color: '#fbbf24' }
-    : lunar.isNewToday
-    ? { icon: '🌑', label: 'New Moon Today!', color: '#a78bfa' }
-    : lunar.daysToFull <= lunar.daysToNew
-    ? { icon: '🌕', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' }
-    : { icon: '🌑', label: `New Moon in ${lunar.daysToNew}d`, color: '#a78bfa' };
-
-  const pakshaPh    = p.paksha === 'Shukla' ? 'Waxing' : 'Waning';
-  const tithiOrd    = TITHI_ORDINALS[p.tithiInPaksha] ?? `${p.tithiInPaksha}th`;
-  const tithiEnglish = p.tithiName === 'Purnima'
-    ? 'Full Moon Day'
-    : p.tithiName === 'Amavasya'
-    ? 'New Moon Day'
-    : `${tithiOrd} ${pakshaPh} Day`;
-
-  const now  = new Date();
-  const curH = now.getHours() + now.getMinutes() / 60;
-  let SunIcon: React.ComponentType<{ size?: number }> = NoonSunSVG;
-  if (solarTimes) {
-    if (curH <= solarTimes.sunrise + 0.75)     SunIcon = RisingSunSVG;
-    else if (curH >= solarTimes.sunset - 0.75) SunIcon = SettingSunSVG;
-    else                                        SunIcon = NoonSunSVG;
-  }
+  const nextEvent = lunar.daysToFull <= lunar.daysToNew
+    ? { icon: '🌕', label: `New Moon in ${lunar.daysToNew}d`, color: '#a78bfa' }
+    : { icon: '🌑', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' };
 
   return (
-    <TouchableOpacity
-      style={COS.card}
-      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCosmicPress(); }}
-      activeOpacity={0.88}
-    >
-      <LinearGradient
-        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.01)']}
-        start={{ x: 0, y: 0 }} end={{ x: 0.65, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <LinearGradient
-        colors={[vaar.color + '14', 'transparent']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={COS.topLine} />
+    <>
+      <TouchableOpacity
+        style={COS.strip}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+        activeOpacity={0.80}>
+        <LinearGradient colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={[vaar.color + '18', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
 
-      {/* ── Solar Arc + Lunar Phase ── */}
-      <View style={COS.row1}>
-        <SunIcon size={32} />
+        {/* Moon */}
+        <MoonSVG tithiNum={moon.tithiNum} size={18} />
 
-        {solarTimes ? (
-          <>
-            <View style={COS.vSep} />
-            <View style={COS.sCell}>
-              <Text style={COS.sTime}>{fmtSolar(solarTimes.sunrise)}</Text>
-              <Text style={COS.sLbl}>Sunrise</Text>
-            </View>
-            <View style={COS.vSep} />
-            <View style={COS.sCell}>
-              <Text style={[COS.sTime, { color: '#fbbf24DD' }]}>{fmtSolar(solarTimes.solarNoon)}</Text>
-              <Text style={COS.sLbl}>Solar Zenith</Text>
-            </View>
-            <View style={COS.vSep} />
-            <View style={COS.sCell}>
-              <Text style={COS.sTime}>{fmtSolar(solarTimes.sunset)}</Text>
-              <Text style={COS.sLbl}>Sunset</Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={COS.vSep} />
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={COS.sLbl}>Activate GPS  ·  Solar Ephemeris Pending</Text>
-            </View>
-          </>
-        )}
-
-        <View style={COS.vSep} />
-        <View style={COS.moonWrap}>
-          <MoonSVG tithiNum={moon.tithiNum} size={28} />
-          <View style={{ marginLeft: 5 }}>
-            <Text style={COS.sTime}>{moon.illumination}%</Text>
-            <Text style={COS.sLbl}>Lunar Phase</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ── Tithi + Lunar Event info row ── */}
-      <View style={COS.infoRow}>
-        <View style={COS.infoLeft}>
-          <Text style={{ fontSize: 11, marginRight: 4 }}>🌙</Text>
-          <Text style={COS.infoTithi}>
-            <Text style={{ color: '#a78bfaDD', fontWeight: '900' }}>{p.tithiName}</Text>
-            <Text style={{ color: '#FFFFFF45' }}>  ·  {tithiEnglish}</Text>
-          </Text>
-        </View>
-        <View style={COS.infoRight}>
-          <Text style={{ fontSize: 11 }}>{nextEvent.icon}</Text>
-          <Text style={[COS.infoLunar, { color: nextEvent.color }]}>{nextEvent.label}</Text>
-        </View>
-      </View>
-
-      {/* ── Explore Today's Cosmic Date CTA ── */}
-      <View style={COS.ctaRow}>
-        <Text style={[COS.ctaDayLabel, { color: vaar.color }]}>
-          {ENGLISH_DAYS[p.vaarIdx]}  ·  {vaar.planet} Day
+        {/* Tithi */}
+        <Text style={COS.stripTithi} numberOfLines={1}>
+          <Text style={{ color: '#a78bfaEE', fontWeight: '900' }}>{p.tithiName}</Text>
+          <Text style={{ color: '#FFFFFF40' }}>  ·  {p.paksha} Paksha</Text>
         </Text>
-        <View style={[COS.ctaPill, { borderColor: vaar.color + '55', backgroundColor: vaar.color + '12' }]}>
-          <Text style={{ fontSize: 10, marginRight: 3 }}>🌌</Text>
-          <Text style={[COS.ctaPillTxt, { color: vaar.color }]}>Explore Today's Cosmic Date</Text>
-          <Text style={[COS.ctaArrow, { color: vaar.color + 'BB' }]}>›</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+
+        {/* Separator */}
+        <View style={COS.stripSep} />
+
+        {/* Next event */}
+        <Text style={{ fontSize: 10 }}>{nextEvent.icon}</Text>
+        <Text style={[COS.stripEvent, { color: nextEvent.color }]}>{nextEvent.label}</Text>
+
+        {/* Separator */}
+        <View style={COS.stripSep} />
+
+        {/* Vaar */}
+        <Text style={{ fontSize: 12 }}>{vaar.emoji}</Text>
+        <Text style={[COS.stripVaar, { color: vaar.color }]}>{ENGLISH_DAYS[p.vaarIdx]}</Text>
+
+        {/* Expand chevron */}
+        <Text style={COS.stripChevron}>⌄</Text>
+      </TouchableOpacity>
+
+      {sheetOpen && (
+        <CosmicDetailSheet
+          solarTimes={solarTimes}
+          onCosmicPress={onCosmicPress}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
 const COS = StyleSheet.create({
-  card: {
-    marginHorizontal: 16, marginTop: 6, marginBottom: 8,
-    borderRadius: 18,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+  strip: {
+    marginHorizontal: 16, marginTop: 6, marginBottom: 6,
+    borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 8,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 9,
+    gap: 7,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
   },
+  stripTithi:   { fontSize: 10, fontWeight: '700', flex: 1, color: '#FFFFFF80' },
+  stripSep:     { width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.14)' },
+  stripEvent:   { fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
+  stripVaar:    { fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
+  stripChevron: { fontSize: 13, color: '#FFFFFF30', fontWeight: '700', marginLeft: 2 },
+  // Legacy keys kept to avoid any residual reference errors
+  card: { marginHorizontal: 16, marginTop: 6, marginBottom: 8, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
   topLine:  { height: 1, backgroundColor: 'rgba(255,255,255,0.42)' },
   row1:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 9, paddingBottom: 8 },
   vSep:     { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.11)', marginHorizontal: 5 },
   sCell:    { flex: 1, alignItems: 'center' },
-  sTime:    { fontSize: 11, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  sLbl:     { fontSize: 7, fontWeight: '700', color: '#FFFFFFBB', letterSpacing: 0.7, marginTop: 2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  sTime:    { fontSize: 11, fontWeight: '800', color: '#FFFFFFEE' },
+  sLbl:     { fontSize: 7, fontWeight: '700', color: '#FFFFFFBB', letterSpacing: 0.7, marginTop: 2 },
   moonWrap: { flexDirection: 'row', alignItems: 'center', paddingLeft: 3 },
-  ctaRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 9, paddingTop: 5, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', gap: 8 },
-  ctaDayLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  ctaRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 9, paddingTop: 5 },
+  ctaDayLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   ctaPill:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 2 },
   ctaPillTxt:  { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   ctaArrow:    { fontSize: 11, fontWeight: '900', marginLeft: 2 },
-  infoRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', gap: 8 },
+  infoRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 7 },
   infoLeft:  { flexDirection: 'row', alignItems: 'center', flex: 1 },
   infoRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  infoTithi: { fontSize: 10, fontWeight: '700', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  infoLunar: { fontSize: 10, fontWeight: '900', letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  infoTithi: { fontSize: 10, fontWeight: '700', flexShrink: 1 },
+  infoLunar: { fontSize: 10, fontWeight: '900', letterSpacing: 0.2 },
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Phase Detail Bottom Sheet  — premium deep-dive on the active dosha period
+// ══════════════════════════════════════════════════════════════════════════════
+function PhaseDetailSheet({
+  period, onClose,
+}: {
+  period: DoshaPeriod;
+  onClose: () => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const router    = useRouter();
+
+  useEffect(() => {
+    Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 9, tension: 65 }).start();
+  }, []);
+
+  const close = () => {
+    Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => onClose());
+  };
+
+  const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [700, 0] });
+
+  const rem    = period.minutesRemaining;
+  const durM   = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+  const prog   = Math.min(1, Math.max(0, (durM - rem) / durM));
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  const MINI_R = 22; const MINI_C = 2 * Math.PI * MINI_R;
+
+  return (
+    <Modal visible animationType="none" transparent statusBarTranslucent onRequestClose={close}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' }}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1} />
+
+        <Animated.View style={{ transform: [{ translateY }], backgroundColor: '#06060F', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '91%', overflow: 'hidden' }}>
+          {/* Colored top accent line */}
+          <View style={{ height: 2.5, backgroundColor: period.color + '90' }} />
+          {/* Handle */}
+          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
+            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 52 }}>
+
+            {/* ── Header row ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#FFFFFF0A', marginBottom: 20 }}>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: period.color, letterSpacing: 2.2 }}>CURRENT BODY RHYTHM PERIOD</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 4 }}>
+                  <Text style={{ fontSize: 30 }}>{period.emoji}</Text>
+                  <View>
+                    <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFF', lineHeight: 25 }}>{period.englishLabel}</Text>
+                    <Text style={{ fontSize: 10, color: period.color + 'CC', fontWeight: '700', marginTop: 2 }}>{remStr} remaining  ·  {period.startLabel} – {period.endLabel}</Text>
+                  </View>
+                </View>
+              </View>
+              <TouchableOpacity onPress={close} style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFFFFF60', fontSize: 14, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Mini ring + progress ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: period.color + '28', padding: 16, marginBottom: 22 }}>
+              <Svg width={52} height={52} viewBox="0 0 52 52">
+                <SvgCircle cx={26} cy={26} r={MINI_R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5} />
+                <SvgCircle cx={26} cy={26} r={MINI_R} fill="none" stroke={period.color} strokeWidth={5} strokeLinecap="round"
+                  strokeDasharray={String(MINI_C)} strokeDashoffset={String(MINI_C * (1 - prog))}
+                  transform="rotate(-90, 26, 26)" />
+              </Svg>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFCC' }}>{Math.round(prog * 100)}% through this phase</Text>
+                <View style={{ height: 5, backgroundColor: '#FFFFFF0C', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
+                  <View style={{ height: 5, width: `${Math.round(prog * 100)}%` as any, backgroundColor: period.color, borderRadius: 3 }} />
+                </View>
+                <Text style={{ fontSize: 9, color: '#FFFFFF35', marginTop: 5, fontWeight: '600' }}>{period.startLabel}  →  {period.endLabel}</Text>
+              </View>
+            </View>
+
+            {/* ── What's happening — the deep science ── */}
+            <Text style={{ fontSize: 8, fontWeight: '900', color: period.color, letterSpacing: 2.2, marginBottom: 12 }}>WHAT'S HAPPENING IN YOUR BODY</Text>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 22, borderWidth: 1, borderColor: period.color + '35', padding: 20, marginBottom: 22 }}>
+              <Text style={{ fontSize: 26, marginBottom: 12 }}>{period.sciEmoji}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: period.color, lineHeight: 24, marginBottom: 12 }}>{period.sciTitle}</Text>
+              <Text style={{ fontSize: 13.5, color: '#FFFFFFB8', lineHeight: 23, fontWeight: '400' }}>{period.sciDesc}</Text>
+            </View>
+
+            {/* ── Do Now ── */}
+            <Text style={{ fontSize: 8, fontWeight: '900', color: period.color, letterSpacing: 2.2, marginBottom: 12 }}>✓  DO NOW</Text>
+            <View style={{ gap: 8, marginBottom: 22 }}>
+              {period.activities.map((act, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderColor: period.color + '35', backgroundColor: period.color + '0C' }}>
+                  <Text style={{ fontSize: 20 }}>{getActivityEmoji(act)}</Text>
+                  <Text style={{ fontSize: 13, color: '#FFFFFFCC', fontWeight: '600', flex: 1, lineHeight: 20 }}>{act}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ── Avoid Now ── */}
+            <Text style={{ fontSize: 8, fontWeight: '900', color: '#f43f5eCC', letterSpacing: 2.2, marginBottom: 12 }}>⚠️  AVOID NOW</Text>
+            <View style={{ gap: 8, marginBottom: 28 }}>
+              {period.avoidances.map((av, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderColor: '#f43f5e30', backgroundColor: '#f43f5e0A' }}>
+                  <Text style={{ fontSize: 20 }}>{getAvoidanceEmoji(av)}</Text>
+                  <Text style={{ fontSize: 13, color: '#FFFFFFCC', fontWeight: '600', flex: 1, lineHeight: 20 }}>{av}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* ── CTA ── */}
+            <TouchableOpacity
+              onPress={() => {
+                close();
+                setTimeout(() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never), 320);
+              }}
+              activeOpacity={0.85}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 16, borderColor: period.color + '50', backgroundColor: period.color + '16' }}>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: period.color }}>🔬  Explore Full Ayurvedic Science</Text>
+              <Text style={{ fontSize: 16, color: period.color, fontWeight: '900' }}>→</Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Phase Ring Hero  — ring + science card + one auto-sliding Do/Avoid strip
+// ══════════════════════════════════════════════════════════════════════════════
+function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [storyIdx,  setStoryIdx]  = useState<number | null>(null);
+
+  // Auto-scroll refs
+  const scrollRef   = useRef<ScrollView>(null);
+  const pausedRef   = useRef(false);
+  const posRef      = useRef(0);
+  const dirRef      = useRef(1);
+  const maxPosRef   = useRef(0);
+  const rafRef      = useRef<number>(0);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pulse animation
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.055, duration: 2400, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,     duration: 2400, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  // Auto-scroll animation (same gentle glide as before)
+  const GLIDE = 0.18;
+  useEffect(() => {
+    const tick = () => {
+      if (!pausedRef.current && maxPosRef.current > 0) {
+        posRef.current += GLIDE * dirRef.current;
+        if (posRef.current >= maxPosRef.current) { posRef.current = maxPosRef.current; dirRef.current = -1; }
+        else if (posRef.current <= 0)            { posRef.current = 0;                 dirRef.current =  1; }
+        scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const pauseScroll   = () => { pausedRef.current = true; if (resumeTimer.current) clearTimeout(resumeTimer.current); };
+  const scheduleResume = () => {
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 2500);
+  };
+
+  // Build card arrays
+  const hour = new Date().getHours();
+  const s    = getHourlyEnvSuggestion(period, weather, hour);
+  const sciCard: HESCard  = { emoji: period.sciEmoji, title: period.sciTitle, tips: [period.sciDesc.length > 90 ? period.sciDesc.slice(0, 90) + '…' : period.sciDesc], color: period.color, label: '◉  PHASE SCIENCE' };
+  const envCard: HESCard  = { emoji: s.emoji, title: s.title, tips: s.desc.split(' · '), color: period.color, label: '↟  ENV SIGNAL' };
+  const wCards            = getWeatherCards(weather);
+  const doCards: HESCard[]   = period.activities.map(a => ({ emoji: getActivityEmoji(a),  title: a, tips: ['During ' + period.label],           color: period.color, label: '✓  DO NOW'  }));
+  const dontCards: HESCard[] = period.avoidances.map(a => ({ emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label],      color: '#f43f5e',    label: '⚠️  AVOID' }));
+  const allCards: HESCard[]  = [sciCard, envCard, ...wCards, ...doCards, ...dontCards];
+  const stripCards            = [...doCards, ...dontCards];
+  const stripOffset           = 2 + wCards.length;   // index in allCards where doCards begin
+
+  const rem    = period.minutesRemaining;
+  const durM   = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+  const prog   = Math.min(1, Math.max(0, (durM - rem) / durM));
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+
+  const SIZE = 210; const STROKE = 11;
+  const R = (SIZE - STROKE * 2) / 2;
+  const C = 2 * Math.PI * R;
+
+  return (
+    <>
+      <View style={{ marginHorizontal: 16, marginTop: 20, marginBottom: 6 }}>
+
+        {/* ── Section label ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: period.color }} />
+            <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF55', letterSpacing: 1.8 }}>ACTIVE NOW  ·  BODY RHYTHM</Text>
+          </View>
+          <Text style={{ fontSize: 9, fontWeight: '700', color: period.color + 'AA' }}>{period.startLabel} – {period.endLabel}</Text>
+        </View>
+
+        {/* ── Ring Hero ── */}
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSheetOpen(true); }}
+          activeOpacity={0.92}
+          style={{ alignItems: 'center', marginBottom: 18 }}>
+          <Animated.View style={{ position: 'absolute', width: SIZE + 40, height: SIZE + 40, borderRadius: (SIZE + 40) / 2, backgroundColor: 'rgba(14,165,233,0.06)', transform: [{ scale: pulseAnim }] }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 18, height: SIZE + 18, borderRadius: (SIZE + 18) / 2, backgroundColor: 'rgba(14,165,233,0.11)', transform: [{ scale: pulseAnim }] }} />
+          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="rgba(186,230,253,0.09)" strokeWidth={STROKE} />
+            <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE} strokeLinecap="round"
+              strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
+              transform={`rotate(-90, ${SIZE / 2}, ${SIZE / 2})`} opacity={0.88} />
+          </Svg>
+          {/* Center content */}
+          <View style={{ position: 'absolute', top: 0, left: 0, width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+            <Text style={{ fontSize: 50, lineHeight: 60 }}>{period.emoji}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF90', textAlign: 'center', paddingHorizontal: 22, lineHeight: 17 }} numberOfLines={2}>{period.englishLabel}</Text>
+            <Text style={{ fontSize: 26, fontWeight: '900', color: '#7dd3fc', letterSpacing: -0.5, marginTop: 6 }}>{remStr}</Text>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>remaining</Text>
+            {/* Updated pill — glassy sky blue */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 9, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.40)', backgroundColor: 'rgba(14,165,233,0.13)' }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: '#38bdf8', letterSpacing: 0.8 }}>✦  Decode Your {period.englishLabel}</Text>
+              <Text style={{ fontSize: 9, color: '#38bdf8' }}>→</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* ── Science explanation card ── */}
+        <View style={{ borderRadius: 18, borderWidth: 1, borderColor: period.color + '35', padding: 14, marginBottom: 14, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+          <LinearGradient colors={[period.color + '1A', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.20)' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <Text style={{ fontSize: 28 }}>{period.sciEmoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: period.color, letterSpacing: 1.8, marginBottom: 5 }}>WHAT'S HAPPENING IN YOUR BODY</Text>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFDD', lineHeight: 19, marginBottom: 5 }}>{period.sciTitle}</Text>
+              <Text style={{ fontSize: 11, color: '#FFFFFF65', lineHeight: 17 }} numberOfLines={3}>{period.sciDesc}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Strip label ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.6 }}>📖  DAILY INSIGHTS  ·  TAP ANY CARD</Text>
+          <Text style={{ fontSize: 8, color: '#FFFFFF22', fontWeight: '600' }}>auto-slides</Text>
+        </View>
+      </View>
+
+      {/* ── One auto-sliding strip — Do's (green) + Avoid (red) ── */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingRight: 24 }}
+        decelerationRate="fast"
+        snapToInterval={108}
+        snapToAlignment="start"
+        scrollEventThrottle={16}
+        onContentSizeChange={(w) => { maxPosRef.current = Math.max(0, w - SCREEN_W); }}
+        onScrollBeginDrag={() => { pausedRef.current = true; if (resumeTimer.current) clearTimeout(resumeTimer.current); }}
+        onScrollEndDrag={(e) => { posRef.current = e.nativeEvent.contentOffset.x; scheduleResume(); }}
+        onMomentumScrollEnd={(e) => { posRef.current = e.nativeEvent.contentOffset.x; scheduleResume(); }}>
+        {stripCards.map((card, i) => (
+          <TouchableOpacity
+            key={i}
+            activeOpacity={0.85}
+            onPress={() => { pauseScroll(); setStoryIdx(stripOffset + i); }}
+            style={[PRH.card, { borderColor: card.color + '55', width: 108 }]}>
+            <LinearGradient colors={[card.color + '28', 'rgba(4,4,18,0.50)', 'rgba(2,2,14,0.72)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.55)' }} />
+            {/* Label badge */}
+            <View style={{ alignSelf: 'flex-start', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 6 }}>
+              <Text style={{ fontSize: 6.5, fontWeight: '900', color: card.color, letterSpacing: 0.8 }}>{card.label}</Text>
+            </View>
+            <Text style={{ fontSize: 18, marginBottom: 5 }}>{card.emoji}</Text>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFFFFF', lineHeight: 13, marginBottom: 4 }}>{card.title}</Text>
+            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 4 }} />
+            <Text style={{ fontSize: 7.5, color: '#FFFFFFCC', lineHeight: 11 }} numberOfLines={2}>{card.tips[0]}</Text>
+            <View style={{ position: 'absolute', bottom: 6, right: 7 }}>
+              <Text style={{ fontSize: 6.5, color: card.color + '80', fontWeight: '800', letterSpacing: 0.4 }}>expand ↗</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Swipe hint */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 8, paddingBottom: 4, gap: 8 }}>
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginLeft: 16 }} />
+        <Text style={{ fontSize: 7.5, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2 }}>←  SWIPE TO EXPLORE  →</Text>
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }} />
+      </View>
+
+      {/* Bottom sheet on ring tap */}
+      {sheetOpen && <PhaseDetailSheet period={period} onClose={() => setSheetOpen(false)} />}
+
+      {/* Story modal on card tap */}
+      {storyIdx !== null && (
+        <HESStoryModal cards={allCards} initialIndex={storyIdx} onClose={() => { setStoryIdx(null); scheduleResume(); }} />
+      )}
+    </>
+  );
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Main Daily Screen
@@ -2885,10 +3366,10 @@ export default function DailyTab() {
           />
         )}
 
-        {/* BIO CIRCADIAN ENVIRONMENT CYCLE */}
+        {/* BIO CIRCADIAN — PHASE RING HERO */}
         {currentPeriod ? (
           <View>
-            {!(brahmaInfo?.status === 'active') && <HourlyEnvSuggestion period={currentPeriod} weather={weather} />}
+            <PhaseRingHero period={currentPeriod} weather={weather} />
             {brahmaInfo?.status === 'active' && (
               <View style={{ paddingHorizontal: 16 }}>
                 <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
@@ -3307,6 +3788,22 @@ const BMX = StyleSheet.create({
   aliasRow:    { flexDirection: 'row', gap: 10, paddingVertical: 9, alignItems: 'flex-start' },
   aliasTitle:  { fontSize: 11, fontWeight: '800', color: '#a78bfa', marginBottom: 3 },
   aliasDesc:   { fontSize: 10, color: '#FFFFFF45', lineHeight: 15 },
+});
+
+const PRH = StyleSheet.create({
+  card: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    padding: 9,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.34,
+    shadowRadius: 16,
+    elevation: 8,
+  },
 });
 
 const MSB = StyleSheet.create({
