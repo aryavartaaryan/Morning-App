@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle as SvgCircle } from 'react-native-svg';
 
 // ── Full scientific dosha data ─────────────────────────────────────────────
 const DOSHAS_FULL = {
@@ -346,7 +347,7 @@ function SciCard({ title, body, color, subtitle }: { title: string; body: string
 
 export default function DoshaExplorePage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ activeDosha?: string; periodLabel?: string; periodStart?: string; periodEnd?: string; }>();
+  const params = useLocalSearchParams<{ activeDosha?: string; periodLabel?: string; periodStart?: string; periodEnd?: string; sciEmoji?: string; sciTitle?: string; sciDesc?: string; minutesRemaining?: string; durMinutes?: string; activities?: string; avoidances?: string; }>();
   const adk = (params.activeDosha ?? 'vata') as DoshaKey;
   const [sel, setSel] = useState<DoshaKey>(adk);
   const [rasaOpen, setRasaOpen] = useState<string | null>(null);
@@ -354,6 +355,21 @@ export default function DoshaExplorePage() {
   const d = DOSHAS_FULL[sel];
   const ap = DOSHAS_FULL[adk];
   const C = ap.color;
+
+  const pd = params.sciDesc ? {
+    sciEmoji: params.sciEmoji ?? '💪',
+    sciTitle: params.sciTitle ?? '',
+    sciDesc:  params.sciDesc ?? '',
+    minutesRemaining: parseInt(params.minutesRemaining ?? '0'),
+    durMinutes: Math.max(1, parseInt(params.durMinutes ?? '1')),
+    activities: (() => { try { return JSON.parse(params.activities ?? '[]') as string[]; } catch { return [] as string[]; } })(),
+    avoidances: (() => { try { return JSON.parse(params.avoidances ?? '[]') as string[]; } catch { return [] as string[]; } })(),
+  } : null;
+  const pdProg  = pd ? Math.min(1, Math.max(0, (pd.durMinutes - pd.minutesRemaining) / pd.durMinutes)) : 0.5;
+  const remStr  = pd ? (pd.minutesRemaining >= 60 ? `${Math.floor(pd.minutesRemaining / 60)}h ${pd.minutesRemaining % 60}m` : `${pd.minutesRemaining}m`) : '';
+  const RR = 38; const RC = 2 * Math.PI * RR;
+  const getActEmoji = (t: string) => { const s = t.toLowerCase(); if (s.includes('yoga') || s.includes('meditat')) return '🧘'; if (s.includes('pranay') || s.includes('kapalbhati') || s.includes('breath')) return '🫁'; if (s.includes('exercise') || s.includes('workout') || s.includes('vigorous') || s.includes('train')) return '💪'; if (s.includes('cogni') || s.includes('focus') || s.includes('strategic') || s.includes('plan') || s.includes('brain')) return '🧠'; if (s.includes('largest meal') || s.includes('lunch') || s.includes('main meal')) return '🍛'; if (s.includes('fast') || s.includes('intermit')) return '⏱️'; if (s.includes('dry brush')) return '🪥'; if (s.includes('walk')) return '🚶'; if (s.includes('sunlight') || s.includes('sun')) return '☀️'; if (s.includes('prayer') || s.includes('mantra')) return '🙏'; if (s.includes('journal')) return '📓'; if (s.includes('stretch')) return '🤸'; if (s.includes('abhyanga') || s.includes('oil massage') || s.includes('sesame')) return '💆'; if (s.includes('coconut') || s.includes('cooling')) return '🥥'; if (s.includes('ginger') || s.includes('spiced')) return '🌶️'; if (s.includes('cold shower')) return '🚿'; if (s.includes('barefoot') || s.includes('earthing')) return '🌿'; if (s.includes('sleep') || s.includes('rest')) return '🌙'; return '✨'; };
+  const getAvoidEmoji = (t: string) => { const s = t.toLowerCase(); if (s.includes('oversleep') || (s.includes('sleep') && s.includes('past'))) return '😴'; if (s.includes('screen') || s.includes('phone')) return '📵'; if (s.includes('caffeine') || s.includes('coffee')) return '☕'; if (s.includes('dairy') || s.includes('sweet') || s.includes('sugar')) return '🍬'; if (s.includes('spicy') || s.includes('acidic') || s.includes('acid')) return '🌶️'; if (s.includes('anger') || s.includes('stress') || s.includes('heated')) return '😤'; if (s.includes('cold') || s.includes('raw food')) return '❄️'; if (s.includes('sedent') || s.includes('sitting') || s.includes('long sedent')) return '🪑'; if (s.includes('skip') || s.includes('irregular')) return '🌀'; if (s.includes('excess sleep') || s.includes('> 8')) return '🛌'; return '⚠️'; };
 
   return (
     <View style={S.screen}>
@@ -377,34 +393,137 @@ export default function DoshaExplorePage() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scroll}>
 
-          {/* ══ CURRENT PERIOD HERO ══════════════════════════════════════════ */}
-          <LinearGradient colors={[C + '22', C + '07', 'transparent']} style={[S.hero, { borderColor: C + '30' }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-              <View style={{ width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: C + '18', borderWidth: 1.5, borderColor: C + '35' }}>
-                <Text style={{ fontSize: 32 }}>{ap.emoji}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={[S.nowBadge, { borderColor: C + '55', backgroundColor: C + '18' }]}>
-                  <View style={[S.nowDot, { backgroundColor: C }]} />
-                  <Text style={[S.nowTxt, { color: C }]}>ACTIVE NOW</Text>
+          {/* ══ LIVE NOW HERO ════════════════════════════════════════════════ */}
+          <View style={{ borderRadius: 26, overflow: 'hidden', borderWidth: 1, borderColor: C + '35', marginBottom: 6 }}>
+            <LinearGradient colors={[C + '2A', C + '0E', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ padding: 20 }}>
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+              {/* Badge + time range */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C + '1C', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5, borderWidth: 1, borderColor: C + '50' }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C }} />
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: C, letterSpacing: 1.8 }}>ACTIVE RIGHT NOW</Text>
                 </View>
-                <Text style={[S.heroName, { color: C, marginTop: 6 }]}>{ap.name} Period</Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFF65', marginTop: 4, lineHeight: 17 }}>{ap.elements}  ·  {ap.tagline}</Text>
-                <Text style={{ fontSize: 9, color: C + '85', fontWeight: '800', letterSpacing: 0.9, marginTop: 6, lineHeight: 15 }}>{ap.westernSystem}</Text>
-                {params.periodStart ? (
-                  <View style={{ marginTop: 10, gap: 4 }}>
-                    <Text style={{ fontSize: 14, color: C + 'EE', fontWeight: '800', letterSpacing: 0.2 }}>{params.periodStart} → {params.periodEnd}</Text>
-                    {params.periodEnd ? (
-                      <Text style={{ fontSize: 10, color: C + '80', fontWeight: '700', letterSpacing: 0.3 }}>☀️  {getSunriseRef(params.periodStart, params.periodEnd)}</Text>
-                    ) : null}
+                {params.periodStart ? <Text style={{ fontSize: 10, color: C + 'AA', fontWeight: '700' }}>{params.periodStart} – {params.periodEnd}</Text> : null}
+              </View>
+              {/* Ring + details */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 16 }}>
+                <View style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg width={92} height={92} viewBox="0 0 92 92">
+                    <SvgCircle cx={46} cy={46} r={RR} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={7} />
+                    <SvgCircle cx={46} cy={46} r={RR} fill="none" stroke={C} strokeWidth={7} strokeLinecap="round"
+                      strokeDasharray={String(RC)} strokeDashoffset={String(RC * (1 - pdProg))}
+                      transform="rotate(-90, 46, 46)" opacity={0.9} />
+                  </Svg>
+                  <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 34 }}>{ap.emoji}</Text>
                   </View>
-                ) : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: C + '80', letterSpacing: 1.4, marginBottom: 5 }}>{ap.elementEquation}</Text>
+                  <Text style={{ fontSize: 21, fontWeight: '900', color: '#FFFFFF', lineHeight: 27 }}>{ap.name} Period</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF60', marginTop: 3, lineHeight: 16 }}>{ap.tagline}</Text>
+                  {pd ? (<>
+                    <Text style={{ fontSize: 27, fontWeight: '900', color: C, letterSpacing: -0.5, marginTop: 8 }}>{remStr}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>remaining</Text>
+                  </>) : null}
+                </View>
+              </View>
+              {/* Progress bar */}
+              {pd ? (
+                <View style={{ marginBottom: 14 }}>
+                  <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 5 }}>
+                    <View style={{ height: 4, width: `${Math.round(pdProg * 100)}%` as any, backgroundColor: C, borderRadius: 2, opacity: 0.85 }} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '600' }}>{Math.round(pdProg * 100)}% through this phase</Text>
+                    {params.periodStart ? <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '600' }}>☀️ {getSunriseRef(params.periodStart, params.periodEnd ?? '')}</Text> : null}
+                  </View>
+                </View>
+              ) : null}
+              {/* Western system tag */}
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)' }}>
+                <Text style={{ fontSize: 9, color: C + '90', fontWeight: '800', letterSpacing: 0.8, lineHeight: 15 }}>⚕  {ap.westernSystem}</Text>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* ══ WHAT'S HAPPENING IN YOUR BODY ══════════════════════════════ */}
+          {pd ? (
+            <View style={{ marginTop: 18, marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+                <Text style={{ fontSize: 8, fontWeight: '900', color: C + '95', letterSpacing: 1.8 }}>⚡  WHAT'S HAPPENING IN YOUR BODY</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+              </View>
+              <View style={{ borderRadius: 22, borderWidth: 1, borderColor: C + '30', overflow: 'hidden' }}>
+                <LinearGradient colors={[C + '1E', C + '08', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ padding: 18 }}>
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                    <View style={{ width: 54, height: 54, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: C + '1C', borderWidth: 1, borderColor: C + '45' }}>
+                      <Text style={{ fontSize: 28 }}>{pd.sciEmoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 7, fontWeight: '900', color: '#38bdf880', letterSpacing: 1.6, marginBottom: 3 }}>🔬  MODERN BIOLOGY</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '900', color: C, lineHeight: 22 }}>{pd.sciTitle}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 13, color: '#FFFFFFB0', lineHeight: 22 }}>{pd.sciDesc}</Text>
+                  <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+                    <Text style={{ fontSize: 7, fontWeight: '900', color: '#a78bfa80', letterSpacing: 1.6, marginBottom: 8 }}>🕉  AYURVEDIC UNDERSTANDING</Text>
+                    <Text style={{ fontSize: 12, color: '#FFFFFF62', lineHeight: 19, fontStyle: 'italic' }}>
+                      {ap.biology.length > 260 ? ap.biology.slice(0, 260) + '…' : ap.biology}
+                    </Text>
+                  </View>
+                </LinearGradient>
               </View>
             </View>
-            <View style={[S.infoBox, { borderColor: C + '25', backgroundColor: C + '0B' }]}>
-              <Text style={[S.infoTxt, { fontSize: 12, lineHeight: 20, color: '#FFFFFF72' }]}>{ap.biology}</Text>
+          ) : null}
+
+          {/* ══ DO NOW ═══════════════════════════════════════════════════════ */}
+          {pd && pd.activities.length > 0 ? (
+            <View style={{ marginTop: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+                <Text style={{ fontSize: 8, fontWeight: '900', color: C + '95', letterSpacing: 1.8 }}>✦  DO NOW  ·  PHASE-ALIGNED</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+              </View>
+              {pd.activities.map((act, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, borderColor: C + '35', backgroundColor: C + '0C', marginBottom: 9, overflow: 'hidden' }}>
+                  <LinearGradient colors={[C + '1A', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+                  <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: C + '1E', borderWidth: 1, borderColor: C + '45' }}>
+                    <Text style={{ fontSize: 20 }}>{getActEmoji(act)}</Text>
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFFDD', lineHeight: 18, flex: 1 }}>{act}</Text>
+                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C + '20', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C + '55' }}>
+                    <Text style={{ fontSize: 11, color: C, fontWeight: '900' }}>✓</Text>
+                  </View>
+                </View>
+              ))}
             </View>
-          </LinearGradient>
+          ) : null}
+
+          {/* ══ AVOID NOW ════════════════════════════════════════════════════ */}
+          {pd && pd.avoidances.length > 0 ? (
+            <View style={{ marginTop: 8, marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#f43f5e95', letterSpacing: 1.8 }}>⚠  AVOID NOW  ·  PROTECT YOUR PHASE</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#FFFFFF10' }} />
+              </View>
+              {pd.avoidances.map((av, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, borderColor: '#f43f5e30', backgroundColor: '#f43f5e09', marginBottom: 9, overflow: 'hidden' }}>
+                  <LinearGradient colors={['#f43f5e16', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+                  <View style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f43f5e18', borderWidth: 1, borderColor: '#f43f5e40' }}>
+                    <Text style={{ fontSize: 20 }}>{getAvoidEmoji(av)}</Text>
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFFDD', lineHeight: 18, flex: 1 }}>{av}</Text>
+                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#f43f5e18', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f43f5e40' }}>
+                    <Text style={{ fontSize: 11, color: '#f43f5e', fontWeight: '900' }}>✕</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* ══ WHAT IS AYURVEDA ══════════════════════════════════════════════ */}
           <Divider label="WHAT IS AYURVEDA  ·  THE SCIENCE OF LIFE" color="#a78bfa" />

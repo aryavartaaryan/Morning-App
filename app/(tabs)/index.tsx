@@ -2991,8 +2991,13 @@ function PhaseDetailSheet({
 // ══════════════════════════════════════════════════════════════════════════════
 function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
   const pulseAnim   = useRef(new Animated.Value(1)).current;
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [storyIdx,  setStoryIdx]  = useState<number | null>(null);
+  const router      = useRouter();
+  const navigateToExplore = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+    router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel, sciEmoji: period.sciEmoji, sciTitle: period.sciTitle, sciDesc: period.sciDesc, minutesRemaining: String(period.minutesRemaining), durMinutes: String(durM), activities: JSON.stringify(period.activities), avoidances: JSON.stringify(period.avoidances) } } as never);
+  };
 
   // Auto-scroll refs
   const scrollRef   = useRef<ScrollView>(null);
@@ -3071,7 +3076,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
 
         {/* ── Ring Hero ── */}
         <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSheetOpen(true); }}
+          onPress={navigateToExplore}
           activeOpacity={0.92}
           style={{ alignItems: 'center', marginBottom: 18 }}>
           <Animated.View style={{ position: 'absolute', width: SIZE + 40, height: SIZE + 40, borderRadius: (SIZE + 40) / 2, backgroundColor: 'rgba(14,165,233,0.06)', transform: [{ scale: pulseAnim }] }} />
@@ -3096,19 +3101,30 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
           </View>
         </TouchableOpacity>
 
-        {/* ── Science explanation card ── */}
-        <View style={{ borderRadius: 18, borderWidth: 1, borderColor: period.color + '35', padding: 14, marginBottom: 14, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)' }}>
-          <LinearGradient colors={[period.color + '1A', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.20)' }} />
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <Text style={{ fontSize: 28 }}>{period.sciEmoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: period.color, letterSpacing: 1.8, marginBottom: 5 }}>WHAT'S HAPPENING IN YOUR BODY</Text>
-              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFDD', lineHeight: 19, marginBottom: 5 }}>{period.sciTitle}</Text>
-              <Text style={{ fontSize: 11, color: '#FFFFFF65', lineHeight: 17 }} numberOfLines={3}>{period.sciDesc}</Text>
+        {/* ── Body science card — tap to open full science page ── */}
+        <TouchableOpacity onPress={navigateToExplore} activeOpacity={0.88} style={{ borderRadius: 20, borderWidth: 1, borderColor: period.color + '40', marginBottom: 14, overflow: 'hidden' }}>
+          <LinearGradient colors={[period.color + '22', period.color + '08', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ padding: 16 }}>
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+            <Text style={{ fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.8, marginBottom: 10 }}>⚡  WHAT’S HAPPENING IN YOUR BODY RIGHT NOW</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10 }}>
+              <View style={{ width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: period.color + '1C', borderWidth: 1, borderColor: period.color + '45' }}>
+                <Text style={{ fontSize: 26 }}>{period.sciEmoji}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#38bdf880', letterSpacing: 1.4, marginBottom: 3 }}>🔬  MODERN BIOLOGY</Text>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', lineHeight: 20 }}>{period.sciTitle}</Text>
+              </View>
             </View>
-          </View>
-        </View>
+            <Text style={{ fontSize: 11, color: '#FFFFFF70', lineHeight: 17 }} numberOfLines={2}>{period.sciDesc}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ fontSize: 10, color: period.color + 'AA', fontWeight: '700' }}>🕉  Ayurveda + Science →</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: period.color + '1C', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: period.color + '40' }}>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: period.color }}>Full Body Science</Text>
+                <Text style={{ fontSize: 10, color: period.color }}>→</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* ── Strip label ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -3161,8 +3177,6 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
         <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }} />
       </View>
 
-      {/* Bottom sheet on ring tap */}
-      {sheetOpen && <PhaseDetailSheet period={period} onClose={() => setSheetOpen(false)} />}
 
       {/* Story modal on card tap */}
       {storyIdx !== null && (
