@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar,
-  Dimensions, Modal, ScrollView, Vibration, AppState, Platform,
+  Dimensions, Modal, ScrollView, AppState, Platform,
 } from 'react-native';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
 import Animated, {
@@ -15,7 +15,8 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
-import { stopNativeAlarmSound, setNativeAlarmVolume } from '@/lib/nativeAlarm';
+import { stopNativeAlarmSound, setNativeAlarmVolume, startAlarmVibration, stopAlarmVibration, dismissAlarmOverlay } from '@/lib/nativeAlarm';
+import { cancelVolumeRamp, playGentleAlarmAudio } from '@/lib/alarmAudio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 import { store, KEYS } from '@/lib/storage';
@@ -38,6 +39,15 @@ const MANTRA_TO_WAKE: Record<string, string> = {
 const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
   bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
   shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+};
+
+// Gentle / nature sounds that are bundled as .m4a — no download needed
+const BUNDLED_NATURE_ASSETS: Record<string, any> = {
+  forest_birds:  require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
+  sea_waves:     require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
+  light_rain:    require('../assets/sounds/mixkit-light-rain-loop-2393.m4a'),
+  breeze_trees:  require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
+  river_flow:    require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
 };
 
 const { width, height } = Dimensions.get('window');
@@ -64,13 +74,15 @@ export default function AlarmRingingScreen() {
   const [alarmStopped, setAlarmStopped] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const alarmStoppedRef = useRef(false);
-  const lastVibeRestartRef = useRef(0);
   const missionStartedRef = useRef(false);
+  const gentleWakeRef = useRef(false);
+  const rampMinutesRef = useRef(5);
   const appStateRef = useRef(AppState.currentState);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // ── Audio helpers ──────────────────────────────────────────────────────────
   const stopWakeAudio = async () => {
+    cancelVolumeRamp();
     try {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
@@ -163,6 +175,12 @@ export default function AlarmRingingScreen() {
   // ── Sync alarmStopped → ref so setTimeout callbacks read it without stale closure ──
   useEffect(() => { alarmStoppedRef.current = alarmStopped; }, [alarmStopped]);
 
+  // ── Phase 4: Dismiss native overlay the moment this screen mounts ──────────
+  // AlarmSoundService drew a TYPE_APPLICATION_OVERLAY window ~50 ms after the
+  // alarm fired so the screen was covered before React Native finished loading.
+  // Now that the proper UI is visible, remove the placeholder.
+  useEffect(() => { dismissAlarmOverlay().catch(() => {}); }, []);
+
   // ── Keep screen awake ───────────────────────────────────────────────────────
   useEffect(() => {
     activateKeepAwakeAsync('alarm-ringing');
@@ -187,17 +205,8 @@ export default function AlarmRingingScreen() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!alarmStopped) {
-        // Cancel the looping vibration FIRST so the haptic from triggerShake
-        // fires clean — without this, the impulse layers on top of the loop
-        // and each back press makes the vibration progressively worse.
-        Vibration.cancel();
+        // Native vibration runs in JVM — no restart needed. Just shake the UI.
         triggerShake();
-        // Restart the loop after the shake animation completes (5×60ms = 300ms)
-        setTimeout(() => {
-          if (!alarmStoppedRef.current) {
-            Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
-          }
-        }, 350);
         return true; // blocks back — MainActivity also swallows it natively
       }
       return false;
@@ -265,16 +274,8 @@ export default function AlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
-        // Debounce: rapid app-switcher presses fire multiple foreground events within
-        // milliseconds of each other. Only restart vibration+haptic if 400ms has passed
-        // since the last restart — prevents patterns stacking and unrhythmic vibration.
-        const now = Date.now();
-        if (now - lastVibeRestartRef.current > 400) {
-          lastVibeRestartRef.current = now;
-          Vibration.cancel();
-          Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
-          triggerShake();
-        }
+        // Native vibration continues uninterrupted in the JVM service — no restart needed.
+        triggerShake();
       } else {
         appStateRef.current = nextState;
       }
@@ -297,10 +298,9 @@ export default function AlarmRingingScreen() {
         clearInterval(interval);
         setSnoozedFor(null);
         setSnoozeCountdown(null);
-        // Re-trigger alarm sounds when snooze ends — restore native volume
+        // Re-trigger alarm sounds when snooze ends — restore native volume + vibration
         await setNativeAlarmVolume(1.0);
-        Vibration.cancel();
-        Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+        startAlarmVibration();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     }, 1000);
@@ -323,17 +323,27 @@ export default function AlarmRingingScreen() {
 
       const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
       const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
+      const useGentle = alarmCfg?.gentleWake ?? false;
+      const rampMins = alarmCfg?.rampMinutes ?? 5;
+      gentleWakeRef.current = useGentle;
+      rampMinutesRef.current = rampMins;
 
-      // ── Play correct mantra audio via JS layer ─────────────────────
+      // ── Play correct mantra / nature / gentle audio via JS layer ───
       if (!cancelled) {
-        const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
-        const bundledAsset = BUNDLED_MANTRA_ASSETS[mantraId];
-        const localPath = getLocalMantraPath(mantraId);
-        const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
-        const audioSrc: string | null = bundledAsset ? null
-          : (localInfo as any).exists ? (localInfo as any).uri
-          : (wakeSound.audioUrl ?? null);
-        await playWakeAudio(audioSrc, bundledAsset);
+        if (useGentle) {
+          // Gentle path: starts at 5 % volume and ramps up
+          await playGentleAlarmAudio(soundRef, mantraId, rampMins);
+        } else {
+          const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
+          // Prefer bundledAsset (nature .m4a) over bundledKey (mantra mp3) over CDN
+          const bundledAsset = wakeSound.bundledAsset ?? BUNDLED_MANTRA_ASSETS[mantraId] ?? BUNDLED_NATURE_ASSETS[mantraId];
+          const localPath = getLocalMantraPath(mantraId);
+          const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+          const audioSrc: string | null = bundledAsset ? null
+            : (localInfo as any).exists ? (localInfo as any).uri
+            : (wakeSound.audioUrl ?? null);
+          await playWakeAudio(audioSrc, bundledAsset);
+        }
       }
 
       // ── Native AlarmSoundService stays alive DURING alarm ─────────
@@ -377,13 +387,13 @@ export default function AlarmRingingScreen() {
       }
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
+      // Vibration is already running from AlarmSoundService.startAlarmVibration() — no JS call needed.
     })();
     return () => {
       cancelled = true;
+      cancelVolumeRamp();
       stopBodhi();
       stopWakeAudio();
-      Vibration.cancel();
     };
   }, []);
 
@@ -409,7 +419,7 @@ export default function AlarmRingingScreen() {
     // → onUserLeaveHint + lifecycle watchdog keep blocking HOME on mission screen.
     // The service (and both watchdogs) are stopped in mission.tsx handleComplete().
     await setNativeAlarmVolume(0).catch(() => {});
-    Vibration.cancel();
+    stopAlarmVibration();
   };
 
   // ── START MISSION ───────────────────────────────────────────────────────────
@@ -448,8 +458,9 @@ export default function AlarmRingingScreen() {
   const handleSnoozeChoice = async (minutes: number) => {
     setShowSnoozeModal(false);
     setSnoozedFor(minutes);
-    // Duck native alarm audio during snooze (service stays alive)
+    // Duck native alarm audio and vibration during snooze (service stays alive)
     await setNativeAlarmVolume(0.08);
+    stopAlarmVibration();
     stopBodhi();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   };

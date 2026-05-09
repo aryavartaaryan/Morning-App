@@ -25,8 +25,10 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
-        const val PREFS_NAME = "habit_alarm_prefs"
-        const val KEY_ACTIVE = "habit_alarm_active"
+        const val PREFS_NAME    = "habit_alarm_prefs"
+        const val KEY_ACTIVE    = "habit_alarm_active"
+        /** StringSet of all currently-scheduled alarm int IDs — read by BootReceiver on reboot. */
+        const val KEY_ACTIVE_IDS = "active_habit_alarm_ids"
     }
 
     override fun getName(): String = "HabitAlarmModule"
@@ -49,14 +51,23 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     ) {
         try {
             val id = alarmId.hashCode()
-            // Persist params so the broadcast receiver can read them when alarm fires
-            reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            // Persist params so the broadcast receiver can read them when alarm fires.
+            // Also persist the timestamp and add the id to the active set so BootReceiver
+            // can reschedule every habit alarm after a device reboot or package replace.
+            val ts    = timestamp.toLong()
+            val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val activeIds = prefs.getStringSet(KEY_ACTIVE_IDS, emptySet())?.toMutableSet()
+                ?: mutableSetOf()
+            activeIds.add(id.toString())
+            prefs.edit()
                 .putString("params_${id}_habitKey",   habitKey)
                 .putString("params_${id}_habitEmoji", habitEmoji)
                 .putString("params_${id}_label",      label)
                 .putString("params_${id}_alarmType",  alarmType)
                 .putString("params_${id}_mantraPath", mantraPath)
                 .putString("params_${id}_alarmId",    alarmId)
+                .putLong  ("params_${id}_timestamp",  ts)
+                .putStringSet(KEY_ACTIVE_IDS, activeIds)
                 .apply()
 
             val intent = Intent(reactContext, HabitAlarmBroadcastReceiver::class.java).apply {
@@ -68,7 +79,6 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val am = reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val ts = timestamp.toLong()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
                 am.setWindow(AlarmManager.RTC_WAKEUP, ts, 60_000L, pi)
                 promise.resolve("Habit alarm scheduled (inexact) at $ts")
@@ -88,6 +98,12 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     fun cancelHabitAlarm(alarmId: String, promise: Promise) {
         try {
             val id = alarmId.hashCode()
+            // Remove from active set so BootReceiver doesn't try to reschedule a cancelled alarm.
+            val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val activeIds = prefs.getStringSet(KEY_ACTIVE_IDS, emptySet())?.toMutableSet()
+                ?: mutableSetOf()
+            activeIds.remove(id.toString())
+            prefs.edit().putStringSet(KEY_ACTIVE_IDS, activeIds).apply()
             val intent = Intent(reactContext, HabitAlarmBroadcastReceiver::class.java)
             val pi = PendingIntent.getBroadcast(
                 reactContext, id, intent,
@@ -142,6 +158,25 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
             promise.resolve("Habit alarm volume set to $volume")
         } catch (e: Exception) {
             promise.reject("VOLUME_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Remove the TYPE_APPLICATION_OVERLAY window drawn by HabitAlarmSoundService.
+     * Called from habit-alarm-ringing.tsx as soon as the RN screen has fully mounted,
+     * so the native overlay placeholder is replaced by the proper React UI.
+     */
+    @ReactMethod
+    fun dismissHabitAlarmOverlay(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, HabitAlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_DISMISS_OVERLAY
+                }
+            )
+            promise.resolve("Habit overlay dismissed")
+        } catch (e: Exception) {
+            promise.reject("OVERLAY_ERROR", e.message, e)
         }
     }
 

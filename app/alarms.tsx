@@ -18,7 +18,7 @@ import {
   AlarmSettings, CustomReminder, DEFAULT_ALARM_SETTINGS, HABIT_ALERT_TIMES,
   rescheduleAllFromSettings, requestNotificationPermission,
 } from '@/lib/notifications';
-import { MISSIONS, WAKE_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
+import { MISSIONS, WAKE_SOUNDS, SLEEP_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
 import {
   scheduleNativeAlarm, cancelNativeAlarm,
   checkAlarmPermission, openAlarmPermissionSettings,
@@ -329,6 +329,11 @@ export default function AlarmsScreen() {
   const [modalSoundOpen, setModalSoundOpen] = useState(false);
   const [modalMissionOpen, setModalMissionOpen] = useState(false);
   const [alarmType, setAlarmType] = useState<'mantra' | 'gayatri'>('mantra');
+  const [gentleWake, setGentleWake] = useState(false);
+  const [rampMinutes, setRampMinutes] = useState(5);
+  const [soundCategory, setSoundCategory] = useState<'mantra' | 'gentle' | 'nature'>('mantra');
+  const [sleepSoundId, setSleepSoundId] = useState<string | null>(null);
+  const sleepSoundRef = useRef<any>(null);
 
   useEffect(() => {
     const t = setInterval(() => setLiveClock(new Date()), 1000);
@@ -358,6 +363,8 @@ export default function AlarmsScreen() {
       if (s) {
         setSettings(prev => ({ ...DEFAULT_ALARM_SETTINGS, ...s, wakeAlarm: s.wakeAlarm ?? prev.wakeAlarm }));
         if (s.selectedMantraId) setSelectedMantraId(s.selectedMantraId);
+        if (s.gentleWake !== undefined) setGentleWake(s.gentleWake);
+        if (s.rampMinutes !== undefined) setRampMinutes(s.rampMinutes);
         if (s.wakeAlarm?.enabled) {
           scheduleNativeAlarm(s.wakeAlarm.hour, s.wakeAlarm.minute).catch(() => {});
         }
@@ -777,10 +784,66 @@ export default function AlarmsScreen() {
     );
   };
 
+  const toggleGentleWake = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = !gentleWake;
+    setGentleWake(next);
+    const upd = { ...settings, gentleWake: next };
+    setSettings(upd);
+    store.setJSON(KEYS.alarmSettings, upd);
+  };
+
+  const applyRampMinutes = (mins: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRampMinutes(mins);
+    const upd = { ...settings, rampMinutes: mins };
+    setSettings(upd);
+    store.setJSON(KEYS.alarmSettings, upd);
+  };
+
   const updateMission = async (patch: Partial<MissionSettings>) => {
     const updated = { ...missionSettings, ...patch };
     setMissionSettings(updated);
     await store.setJSON(KEYS.missionSettings, updated);
+  };
+
+  const handleWakeSoundSelect = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const ws = WAKE_SOUNDS.find(s => s.id === id);
+    if (!ws) return;
+    if (ws.category === 'mantra' && MANTRAS.find(m => m.id === id)) {
+      handleMantraSelect(id);
+      return;
+    }
+    setSelectedMantraId(id);
+    const upd = { ...settings, selectedMantraId: id };
+    setSettings(upd);
+    store.setJSON(KEYS.alarmSettings, upd);
+    setNativeAlarmSound(id).catch(() => {});
+    updateMission({ wakeSound: id });
+  };
+
+  const stopSleepSound = async () => {
+    try {
+      if (sleepSoundRef.current) {
+        await sleepSoundRef.current.stopAsync();
+        await sleepSoundRef.current.unloadAsync();
+        sleepSoundRef.current = null;
+      }
+    } catch { /* ignore */ }
+    setSleepSoundId(null);
+  };
+
+  const playSleepSound = async (id: string) => {
+    await stopSleepSound();
+    const ss = SLEEP_SOUNDS.find(s => s.id === id);
+    if (!ss) return;
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
+      const { sound } = await Audio.Sound.createAsync(ss.bundledAsset, { shouldPlay: true, isLooping: true, volume: 0.85 });
+      sleepSoundRef.current = sound;
+      setSleepSoundId(id);
+    } catch (e) { console.warn('[Sleep] sound error', e); }
   };
 
   // ── Multi-alarm entry handlers ─────────────────────────────────────────────
@@ -1046,34 +1109,62 @@ export default function AlarmsScreen() {
         </TouchableOpacity>
       )}
 
-      {/* ── Tab content ── */}
+      {/* ── Sleep Tab ── */}
       {activeTab === 'sleep' && (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-          <View style={{ alignItems: 'center', paddingTop: 40, gap: 16 }}>
-            <Text style={{ fontSize: 52 }}>🌙</Text>
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff' }}>Sleep Tracker</Text>
-            <Text style={{ fontSize: 13, color: '#FFFFFF40', textAlign: 'center', lineHeight: 20 }}>
-              Set your sleep goal and track your sleep patterns.{'\n'}Coming soon — wake alarm data will feed insights here.
-            </Text>
-            <View style={{ width: '100%', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.09)', padding: 20, marginTop: 12, gap: 12 }}>
-              {[
-                { label: 'Recommended Sleep', value: '10:00 PM – 5:30 AM', emoji: '🌑' },
-                { label: 'Your Wake Alarm', value: fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute), emoji: '⏰' },
-                { label: 'Ideal Bedtime', value: fmt12((settings.wakeAlarm.hour + 24 - 7) % 24, settings.wakeAlarm.minute), emoji: '😴' },
-              ].map(r => (
-                <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 22 }}>{r.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#FFFFFF30', fontWeight: '800', letterSpacing: 1 }}>{r.label.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700', marginTop: 2 }}>{r.value}</Text>
-                  </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.06)', padding: 18, marginBottom: 20, gap: 12 }}>
+            {[
+              { label: 'Recommended Sleep', value: '10:00 PM – 5:30 AM', emoji: '🌑' },
+              { label: 'Your Wake Alarm', value: fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute), emoji: '⏰' },
+              { label: 'Ideal Bedtime', value: fmt12((settings.wakeAlarm.hour + 24 - 7) % 24, settings.wakeAlarm.minute), emoji: '😴' },
+            ].map(r => (
+              <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: 22 }}>{r.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 10, color: '#FFFFFF30', fontWeight: '800', letterSpacing: 1 }}>{r.label.toUpperCase()}</Text>
+                  <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700', marginTop: 2 }}>{r.value}</Text>
                 </View>
-              ))}
+              </View>
+            ))}
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5, marginBottom: 12 }}>SLEEP SOUNDS</Text>
+          {sleepSoundId && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#34d39912', borderWidth: 1, borderColor: '#34d39930', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, marginBottom: 14 }}>
+              <Text style={{ fontSize: 18 }}>{SLEEP_SOUNDS.find(s => s.id === sleepSoundId)?.icon}</Text>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '800', color: '#34d399' }}>
+                {SLEEP_SOUNDS.find(s => s.id === sleepSoundId)?.label} · Playing
+              </Text>
+              <TouchableOpacity onPress={stopSleepSound} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#34d39922', borderRadius: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '900', color: '#34d399' }}>■ Stop</Text>
+              </TouchableOpacity>
             </View>
+          )}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {SLEEP_SOUNDS.map(ss => {
+              const active = sleepSoundId === ss.id;
+              return (
+                <TouchableOpacity
+                  key={ss.id}
+                  onPress={() => active ? stopSleepSound() : playSleepSound(ss.id)}
+                  style={{ width: (width - 40 - 10) / 2, borderRadius: 18, borderWidth: 1,
+                    borderColor: active ? '#34d399' : '#FFFFFF14',
+                    backgroundColor: active ? '#34d39914' : '#FFFFFF06',
+                    padding: 16, gap: 6, alignItems: 'flex-start' }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 26 }}>{ss.icon}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: active ? '#34d399' : '#fff' }}>{ss.label}</Text>
+                  <Text style={{ fontSize: 9, color: active ? '#34d39980' : '#FFFFFF25', fontWeight: '700' }}>
+                    {active ? '▶ PLAYING' : 'TAP TO PLAY'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       )}
 
+      {/* ── Reports Tab ── */}
       {activeTab === 'reports' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5, marginBottom: 16 }}>ALARM REPORTS</Text>
@@ -1341,30 +1432,88 @@ export default function AlarmsScreen() {
                 <View>
                   <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>ALARM SOUND</Text>
                   <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 3 }}>
-                    {MANTRAS.find(mn => mn.id === selectedMantraId)?.emoji}  {MANTRAS.find(mn => mn.id === selectedMantraId)?.label}
+                    {WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.icon ?? '🎵'}{'  '}{WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.label ?? 'Gayatri Mantra'}
                   </Text>
                 </View>
                 <Text style={{ color: '#FFFFFF35', fontSize: 16 }}>{modalSoundOpen ? '▲' : '▼'}</Text>
               </TouchableOpacity>
               {modalSoundOpen && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-                    {MANTRAS.map(mn => {
-                      const active = selectedMantraId === mn.id;
-                      return (
-                        <TouchableOpacity key={mn.id} onPress={() => handleMantraSelect(mn.id)} style={[S.mantraChip, active && { borderColor: mn.color, backgroundColor: mn.color + '18' }]}>
-                          <Text style={{ fontSize: 24 }}>{mn.emoji}</Text>
-                          <Text style={{ color: active ? mn.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{mn.label}</Text>
-                          <Text style={{ color: mn.color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>
-                          <Text style={{ color: dlStatus[mn.id] === 'downloaded' || dlStatus[mn.id] === 'bundled' ? '#10b981' : dlStatus[mn.id] === 'downloading' ? mn.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
-                            {dlStatus[mn.id] === 'downloaded' ? '✓ Offline' : dlStatus[mn.id] === 'bundled' ? '✓ Bundled' : dlStatus[mn.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[mn.id] ?? 0) * 100)}%` : '☁ Online'}
+                <View style={{ marginBottom: 16 }}>
+                  {/* Category tabs */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                    {(['mantra', 'gentle', 'nature'] as const).map(cat => (
+                      <TouchableOpacity
+                        key={cat}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSoundCategory(cat); }}
+                        style={{ flex: 1, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
+                          borderColor: soundCategory === cat ? '#a78bfa' : '#FFFFFF14',
+                          backgroundColor: soundCategory === cat ? '#a78bfa18' : '#FFFFFF06',
+                          alignItems: 'center' }}
+                      >
+                        <Text style={{ fontSize: 9, fontWeight: '900', color: soundCategory === cat ? '#a78bfa' : '#FFFFFF40', letterSpacing: 1 }}>
+                          {cat === 'mantra' ? '🕉  MANTRA' : cat === 'gentle' ? '🫙  GENTLE' : '🌿  NATURE'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {/* Sound chips for selected category */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+                      {WAKE_SOUNDS.filter(ws => ws.category === soundCategory).map(ws => {
+                        const active = selectedMantraId === ws.id;
+                        const mn = MANTRAS.find(m => m.id === ws.id);
+                        const color = mn?.color ?? (ws.category === 'nature' ? '#34d399' : '#60a5fa');
+                        const dlSt = dlStatus[ws.id];
+                        return (
+                          <TouchableOpacity key={ws.id} onPress={() => handleWakeSoundSelect(ws.id)}
+                            style={[S.mantraChip, active && { borderColor: color, backgroundColor: color + '18' }]}>
+                            <Text style={{ fontSize: 24 }}>{ws.icon}</Text>
+                            <Text style={{ color: active ? color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{ws.label}</Text>
+                            {mn && <Text style={{ color: color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>}
+                            <Text style={{ color: (ws.bundledAsset || ws.bundledKey) ? '#10b981' : dlSt === 'downloaded' ? '#10b981' : dlSt === 'downloading' ? color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
+                              {ws.bundledAsset ? '✓ Offline' : ws.bundledKey ? '✓ Bundled' : dlSt === 'downloaded' ? '✓ Offline' : dlSt === 'downloading' ? `⬇ ${Math.round((dlProgress[ws.id] ?? 0) * 100)}%` : '☁ Online'}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* ── Gentle Wake section ── */}
+              <View style={{ borderTopWidth: 1, borderTopColor: '#FFFFFF0A', paddingTop: 14, marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>🌅  Gentle Wake</Text>
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>Starts quiet, rises to full over a few minutes</Text>
+                  </View>
+                  <Toggle value={gentleWake} onToggle={toggleGentleWake} color="#34d399" />
+                </View>
+                {gentleWake && (
+                  <View>
+                    <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginBottom: 8 }}>RAMP DURATION</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                      {[1, 3, 5, 10, 15].map(mins => (
+                        <TouchableOpacity
+                          key={mins}
+                          onPress={() => applyRampMinutes(mins)}
+                          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
+                            borderColor: rampMinutes === mins ? '#34d399' : '#FFFFFF14',
+                            backgroundColor: rampMinutes === mins ? '#34d39918' : '#FFFFFF06' }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: rampMinutes === mins ? '#34d399' : '#FFFFFF50' }}>
+                            {mins} min
                           </Text>
                         </TouchableOpacity>
-                      );
-                    })}
+                      ))}
+                    </View>
+                    <Text style={{ fontSize: 10, color: '#FFFFFF25', marginTop: 8, lineHeight: 15 }}>
+                      {`Volume rises from 5% → 100% over ${rampMinutes} minute${rampMinutes > 1 ? 's' : ''}.\nBest with Gentle or Nature sounds.`}
+                    </Text>
                   </View>
-                </ScrollView>
-              )}
+                )}
+              </View>
 
               {/* Mission — accordion */}
               <TouchableOpacity

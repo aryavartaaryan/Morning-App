@@ -8,19 +8,29 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import java.util.Calendar
+import java.util.Date
 
 /**
- * Reschedules the native AlarmManager alarm after device reboot.
+ * Reschedules ALL native AlarmManager alarms after device reboot or package replace.
  *
- * The Notifee BootReceiver handles rescheduling for Notifee-managed alarms.
- * This receiver covers the AlarmModule.scheduleAlarm() path which uses a
- * raw AlarmManager.setAlarmClock() — those are cancelled by the OS on reboot.
+ * Covers two alarm tracks:
  *
- * Reads alarm_hour / alarm_minute from SharedPreferences (written by
- * AlarmModule.scheduleAlarm and AlarmBroadcastReceiver) and re-schedules
- * for the next occurrence of that wall-clock time.
+ *  1. Wake alarm   — AlarmModule.scheduleAlarm() path.
+ *                    Reads alarm_hour / alarm_minute from AlarmModule.PREFS_NAME and
+ *                    re-schedules for the next occurrence of that wall-clock time (daily).
+ *
+ *  2. Habit alarms — HabitAlarmModule.scheduleHabitAlarm() path.
+ *                    Iterates the active_habit_alarm_ids StringSet stored by HabitAlarmModule,
+ *                    reads each alarm's persisted timestamp + params, and re-registers with
+ *                    AlarmManager. If the saved timestamp is already in the past, the alarm
+ *                    is rescheduled for the same hour:minute the NEXT day so recurring habit
+ *                    alarms always survive reboots.
+ *
+ * The Notifee BootReceiver (registered separately in the manifest) handles Notifee-managed
+ * trigger notifications — this receiver only covers the raw AlarmManager path.
  */
 class BootReceiver : BroadcastReceiver() {
+
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED &&
@@ -28,44 +38,106 @@ class BootReceiver : BroadcastReceiver() {
             action != Intent.ACTION_MY_PACKAGE_REPLACED
         ) return
 
-        Log.d("AriseAlarm", "BootReceiver fired (action=$action) — checking for saved alarm")
+        Log.d("AriseAlarm", "BootReceiver fired (action=$action)")
 
-        val prefs = context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-        val hour = prefs.getInt("alarm_hour", -1)
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        rescheduleWakeAlarm(context, am)
+        rescheduleHabitAlarms(context, am)
+    }
+
+    // ── Wake alarm ────────────────────────────────────────────────────────────
+
+    private fun rescheduleWakeAlarm(context: Context, am: AlarmManager) {
+        val prefs  = context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+        val hour   = prefs.getInt("alarm_hour",   -1)
         val minute = prefs.getInt("alarm_minute", -1)
+
         if (hour < 0 || minute < 0) {
-            Log.d("AriseAlarm", "BootReceiver: no saved alarm_hour/alarm_minute — skipping")
+            Log.d("AriseAlarm", "BootReceiver: no wake alarm saved — skipping wake reschedule")
             return
         }
 
-        val next = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pi = PendingIntent.getBroadcast(
-            context,
-            AlarmModule.REQUEST_CODE,
+        val next = nextOccurrence(hour, minute)
+        val pi   = PendingIntent.getBroadcast(
+            context, AlarmModule.REQUEST_CODE,
             Intent(context, AlarmBroadcastReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        scheduleExact(am, next, pi)
+        Log.d("AriseAlarm", "BootReceiver: wake alarm rescheduled for ${Date(next)}")
+    }
+
+    // ── Habit alarms ──────────────────────────────────────────────────────────
+
+    private fun rescheduleHabitAlarms(context: Context, am: AlarmManager) {
+        val prefs     = context.getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+        val activeIds = prefs.getStringSet(HabitAlarmModule.KEY_ACTIVE_IDS, emptySet()) ?: emptySet()
+
+        if (activeIds.isEmpty()) {
+            Log.d("AriseAlarm", "BootReceiver: no habit alarms saved — skipping habit reschedule")
+            return
+        }
+
+        val now = System.currentTimeMillis()
+
+        for (idStr in activeIds) {
+            val id        = idStr.toIntOrNull() ?: continue
+            val savedTs   = prefs.getLong("params_${id}_timestamp", -1L)
+            val alarmId   = prefs.getString("params_${id}_alarmId", "") ?: ""
+
+            if (savedTs <= 0L) {
+                Log.w("AriseAlarm", "BootReceiver: habit alarm id=$id has no timestamp — skipping")
+                continue
+            }
+
+            // If the saved time is in the future, use it as-is.
+            // If it already passed (e.g., phone was off for a day), keep the same
+            // hour:minute but advance to the next future day — mirrors AlarmBroadcastReceiver.
+            val alarmTime = if (savedTs > now) {
+                savedTs
+            } else {
+                val cal = Calendar.getInstance().apply { timeInMillis = savedTs }
+                nextOccurrence(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+            }
+
+            val pi = PendingIntent.getBroadcast(
+                context, id,
+                Intent(context, HabitAlarmBroadcastReceiver::class.java).apply {
+                    putExtra("alarm_id",     alarmId)
+                    putExtra("alarm_id_int", id)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            scheduleExact(am, alarmTime, pi)
+            Log.d("AriseAlarm", "BootReceiver: habit alarm id=$id rescheduled for ${Date(alarmTime)}")
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Returns the next epoch-ms for [hour]:[minute], advancing by 1 day if already past. */
+    private fun nextOccurrence(hour: Int, minute: Int): Long =
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE,      minute)
+            set(Calendar.SECOND,      0)
+            set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_MONTH, 1)
+        }.timeInMillis
+
+    /** Schedules [pi] at [atMs] using setAlarmClock (exact) or setWindow (inexact fallback). */
+    private fun scheduleExact(am: AlarmManager, atMs: Long, pi: PendingIntent) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-                am.setWindow(AlarmManager.RTC_WAKEUP, next.timeInMillis, 60_000L, pi)
-                Log.d("AriseAlarm", "BootReceiver: rescheduled (inexact) for ${next.time}")
+                am.setWindow(AlarmManager.RTC_WAKEUP, atMs, 60_000L, pi)
             } else {
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(next.timeInMillis, pi), pi)
-                Log.d("AriseAlarm", "BootReceiver: rescheduled (exact) for ${next.time}")
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(atMs, pi), pi)
             }
         } catch (e: Exception) {
-            Log.e("AriseAlarm", "BootReceiver: failed to reschedule alarm", e)
+            Log.e("AriseAlarm", "BootReceiver: scheduleExact failed", e)
         }
     }
 }

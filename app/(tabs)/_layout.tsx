@@ -3,7 +3,7 @@ import { Text, View, TouchableOpacity, StyleSheet, Platform, Animated } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/constants/theme';
+import { Colors, Font } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { useRef, useEffect } from 'react';
@@ -80,7 +80,7 @@ const GP = StyleSheet.create({
     paddingVertical: 11,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
-  name:    { fontSize: 12, fontWeight: '800', letterSpacing: 0.1 },
+  name:    { fontSize: 12, fontWeight: '800', letterSpacing: 0.1, fontFamily: 'Nunito_800ExtraBold' },
   sub:     { fontSize: 10, color: '#FFFFFF50', marginTop: 1 },
   btn:     { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF14', alignItems: 'center', justifyContent: 'center' },
 });
@@ -185,5 +185,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
     textAlign: 'center',
     lineHeight: 12,
+    fontFamily: 'Nunito_700Bold',
   },
 });

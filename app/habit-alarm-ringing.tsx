@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, Vibration, AppState, Platform, NativeModules } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, AppState, Platform, NativeModules } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,7 +32,6 @@ export default function HabitAlarmRingingScreen() {
   const [showStreakView, setShowStreakView] = useState(false);
   const [streakData, setStreakData] = useState<{ streak: number; weekDays: boolean[] } | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const lastVibeRestartRef = useRef(0);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
@@ -62,6 +61,11 @@ export default function HabitAlarmRingingScreen() {
     NativeModules.HabitAlarmModule?.setHabitAlarmVolume?.(0).catch?.(() => {});
   }, []);
 
+  // Phase 4: Dismiss native overlay the moment this screen mounts
+  useEffect(() => {
+    NativeModules.HabitAlarmModule?.dismissHabitAlarmOverlay?.().catch?.(() => {});
+  }, []);
+
   // Play mantra audio — uses shared alarm audio core (same logic as working morning alarm)
   useEffect(() => {
     let cancelled = false;
@@ -77,12 +81,6 @@ export default function HabitAlarmRingingScreen() {
       cancelled = true;
       stopAlarmAudio(soundRef);
     };
-  }, []);
-
-  useEffect(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
-    return () => { Vibration.cancel(); };
   }, []);
 
   // Countdown 3-2-1 then activate
@@ -215,15 +213,8 @@ export default function HabitAlarmRingingScreen() {
         soundRef.current?.getStatusAsync().then((st: any) => {
           if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
         }).catch(() => {});
-        // Debounce: rapid app-switcher presses fire multiple foreground events within
-        // milliseconds. Only restart vibration+haptic once per 400ms window.
-        const now = Date.now();
-        if (now - lastVibeRestartRef.current > 400) {
-          lastVibeRestartRef.current = now;
-          Vibration.cancel();
-          Vibration.vibrate([0, 900, 400, 900, 400, 900, 400], true);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
+        // Native vibration continues uninterrupted in JVM service — just fire haptic.
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } else {
         appStateRef.current = nextState;
       }
@@ -277,7 +268,7 @@ export default function HabitAlarmRingingScreen() {
   };
 
   const handleComplete = async () => {
-    setStopped(true); await stopAudio(); stopNative(); Vibration.cancel(); stopForegroundService();
+    setStopped(true); await stopAudio(); stopNative(); stopForegroundService();
     notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
@@ -296,7 +287,7 @@ export default function HabitAlarmRingingScreen() {
     }
   };
 
-  const handleQuit = async () => { setStopped(true); await stopAudio(); stopNative(); Vibration.cancel(); stopForegroundService(); notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {}); router.replace('/(tabs)' as never); };
+  const handleQuit = async () => { setStopped(true); await stopAudio(); stopNative(); stopForegroundService(); notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {}); router.replace('/(tabs)' as never); };
 
   return (
     <View style={S.screen}>

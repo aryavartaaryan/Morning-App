@@ -15,6 +15,17 @@ import { getLocalMantraPath } from './mantraDownload';
 import { WAKE_SOUNDS } from './missionAlarm';
 import { setNativeAlarmVolume } from './nativeAlarm';
 
+/** Holds the active volume-ramp interval so it can be cancelled on stop. */
+let _rampInterval: ReturnType<typeof setInterval> | null = null;
+
+/** Cancel any in-progress volume ramp without stopping the sound. */
+export function cancelVolumeRamp(): void {
+  if (_rampInterval !== null) {
+    clearInterval(_rampInterval);
+    _rampInterval = null;
+  }
+}
+
 const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
   bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
   shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
@@ -83,4 +94,87 @@ export async function playAlarmAudio(
       soundRef.current = sound;
     } catch (e2) { console.warn('[AlarmAudio] Wake audio fallback error:', e2); }
   }
+}
+
+/**
+ * Gentle-wake variant of playAlarmAudio.
+ *
+ * Starts the chosen sound at GENTLE_START_VOL (5 %) and increments the
+ * volume every STEP_INTERVAL_MS until it reaches 1.0 — exactly like
+ * Sleep Cycle / Gentle Alarm.  The ramp is cancelled automatically once
+ * full volume is reached, or when stopAlarmAudio() is called.
+ *
+ * @param soundRef       Ref that will hold the active Audio.Sound instance.
+ * @param mantraId       Sound ID from WAKE_SOUNDS.
+ * @param rampMinutes    How many minutes to take to go from ~5 % → 100 %.
+ *                       Clamped to 1–15. Default: 5.
+ */
+const GENTLE_START_VOL = 0.05;
+const STEP_INTERVAL_MS = 5_000; // update volume every 5 seconds
+
+export async function playGentleAlarmAudio(
+  soundRef: { current: Audio.Sound | null },
+  mantraId: string,
+  rampMinutes = 5,
+): Promise<void> {
+  cancelVolumeRamp();
+  await stopAlarmAudio(soundRef);
+  await setNativeAlarmVolume(0).catch(() => {});
+
+  const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
+  const bundledAsset = wakeSound.bundledAsset ?? (wakeSound.bundledKey ? BUNDLED_MANTRA_ASSETS[wakeSound.bundledKey] : null);
+  const localPath = getLocalMantraPath(mantraId);
+  const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+  const audioSrc: string | null = bundledAsset ? null
+    : (localInfo as any).exists ? (localInfo as any).uri
+    : (wakeSound.audioUrl || null);
+
+  let sound: Audio.Sound | null = null;
+  try {
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: false,
+      interruptionModeIOS: 1,
+      interruptionModeAndroid: 1,
+    });
+    const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.wav'));
+    const created = await Audio.Sound.createAsync(
+      source,
+      { shouldPlay: true, isLooping: true, volume: GENTLE_START_VOL },
+    );
+    sound = created.sound;
+  } catch {
+    try {
+      const created = await Audio.Sound.createAsync(
+        require('../assets/sounds/mantra_alarm.wav'),
+        { shouldPlay: true, isLooping: true, volume: GENTLE_START_VOL },
+      );
+      sound = created.sound;
+    } catch (e2) {
+      console.warn('[AlarmAudio] Gentle wake fallback error:', e2);
+      return;
+    }
+  }
+
+  soundRef.current = sound;
+
+  // ── Volume ramp ─────────────────────────────────────────────────────────
+  const clampedMinutes = Math.max(1, Math.min(15, rampMinutes));
+  const totalSteps = Math.ceil((clampedMinutes * 60 * 1000) / STEP_INTERVAL_MS);
+  const volStep = (1.0 - GENTLE_START_VOL) / totalSteps;
+  let currentVol = GENTLE_START_VOL;
+  let steps = 0;
+
+  _rampInterval = setInterval(async () => {
+    if (!soundRef.current) { cancelVolumeRamp(); return; }
+    steps += 1;
+    currentVol = Math.min(1.0, GENTLE_START_VOL + volStep * steps);
+    try {
+      await soundRef.current.setVolumeAsync(currentVol);
+    } catch { /* sound may have been unloaded */ }
+    if (currentVol >= 1.0) {
+      cancelVolumeRamp();
+    }
+  }, STEP_INTERVAL_MS);
 }

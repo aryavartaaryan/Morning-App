@@ -10,13 +10,13 @@ import { Ionicons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency } from '@notifee/react-native';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
-import { Colors } from '@/constants/theme';
+import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta } from '@/lib/soundPlayerContext';
 
 const { width: W } = Dimensions.get('window');
 const SLEEP_COLOR = '#60a5fa';
 const CARD_W = (W - 48) / 2;
-const THEME_CARD_W = 152;
+const THEME_CARD_W = 138;
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmt12 = (h: number, m: number) => { const ap = h < 12 ? 'AM' : 'PM'; const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h; return `${pad(h12)}:${pad(m)} ${ap}`; };
 const fmtTimer = (s: number) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
@@ -725,17 +725,17 @@ const S = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────
   headerTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10 },
-  appName:      { fontSize: 13, fontWeight: '900', color: '#FFFFFF70', letterSpacing: 1.2 },
+  appName:      { fontSize: 15, fontWeight: '900', color: '#FFFFFF70', letterSpacing: 1.2, fontFamily: 'Nunito_900Black' },
   wakeChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: SLEEP_COLOR + '14', borderWidth: 1, borderColor: SLEEP_COLOR + '30', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 },
-  wakeChipTxt:  { fontSize: 11, fontWeight: '800', color: SLEEP_COLOR + 'CC' },
-  greeting:     { fontSize: 30, fontWeight: '200', color: '#fff', letterSpacing: -0.8, marginBottom: 6 },
-  greetingSub:  { fontSize: 13, color: '#FFFFFF45', letterSpacing: 0.1 },
+  wakeChipTxt:  { fontSize: 11, fontWeight: '800', color: SLEEP_COLOR + 'CC', fontFamily: 'Nunito_800ExtraBold' },
+  greeting:     { fontSize: 24, fontWeight: '200', color: '#fff', letterSpacing: -0.6, marginBottom: 4 },
+  greetingSub:  { fontSize: 11, color: '#FFFFFF45', letterSpacing: 0.1 },
   bedtimePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: '#10b98110', borderWidth: 1, borderColor: '#10b98130', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-start' },
   dot:          { width: 6, height: 6, borderRadius: 3 },
 
   // ── Section headers ────────────────────────────────────────
   secHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 26, paddingBottom: 12 },
-  secTitle:  { fontSize: 19, fontWeight: '300', color: '#FFFFFFCC', letterSpacing: -0.3 },
+  secTitle:  { fontSize: 14, fontWeight: '700', color: '#FFFFFFCC', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold' },
   secCount:  { fontSize: 11, fontWeight: '700', color: '#FFFFFF30' },
 
   // ── Tonight's Window inline strip ────────────────────────
@@ -759,24 +759,24 @@ const S = StyleSheet.create({
   featTopRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   featLiveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 },
   featLiveDot:   { width: 6, height: 6, borderRadius: 3 },
-  featLiveLabel: { fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  featLiveLabel: { fontSize: 9, fontWeight: '900', letterSpacing: 1.2, fontFamily: 'Nunito_900Black' },
   featTimer:     { fontSize: 18, fontWeight: '200', letterSpacing: -0.5 },
-  featTitle:     { fontSize: 28, fontWeight: '200', color: '#fff', letterSpacing: -0.8, marginBottom: 6 },
+  featTitle:     { fontSize: 20, fontWeight: '200', color: '#fff', letterSpacing: -0.5, marginBottom: 5 },
   featDesc:      { fontSize: 12, color: '#FFFFFF45', marginBottom: 18, letterSpacing: 0.1 },
   featControls:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   featPauseBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12 },
   featPlayBtn:   { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'flex-start' },
-  featPauseTxt:  { fontSize: 13, fontWeight: '700' },
+  featPauseTxt:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   featStopBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 12 },
   featStopTxt:   { fontSize: 12, color: '#FFFFFF35', fontWeight: '600' },
 
   // ── Night Theme Cards ─────────────────────────────────────
-  themeCard:     { width: THEME_CARD_W, height: 200, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF0A', justifyContent: 'flex-end' },
+  themeCard:     { width: THEME_CARD_W, height: 170, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF0A', justifyContent: 'flex-end' },
   themeOrb1:     { position: 'absolute', top: -30, right: -20, width: 110, height: 110, borderRadius: 55, opacity: 0.7 },
   themeOrb2:     { position: 'absolute', bottom: 10, left: -15, width: 70, height: 70, borderRadius: 35, opacity: 0.5 },
   themeContent:  { padding: 14, gap: 4 },
-  themeSubtitle: { fontSize: 8, fontWeight: '900', letterSpacing: 1.5 },
-  themeTitle:    { fontSize: 17, fontWeight: '300', color: '#fff', letterSpacing: -0.4 },
+  themeSubtitle: { fontSize: 8, fontWeight: '900', letterSpacing: 1.5, fontFamily: 'Nunito_900Black' },
+  themeTitle:    { fontSize: 13, fontWeight: '300', color: '#fff', letterSpacing: -0.3 },
   themeTagRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start', marginTop: 2 },
   themeTagDot:   { width: 4, height: 4, borderRadius: 2 },
   themeTagTxt:   { fontSize: 9, fontWeight: '700' },
@@ -785,43 +785,43 @@ const S = StyleSheet.create({
   // ── Sound grid ────────────────────────────────────────────
   grid:          { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 4 },
   soundCard:     { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF08' },
-  soundGrad:     { padding: 14, minHeight: 148, justifyContent: 'space-between', position: 'relative', overflow: 'hidden' },
+  soundGrad:     { padding: 11, minHeight: 122, justifyContent: 'space-between', position: 'relative', overflow: 'hidden' },
   soundOrb:      { position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: 45 },
   soundTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   soundPlayBtn:  { width: 28, height: 28, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   soundEmojiAccent: { fontSize: 14, opacity: 0.7 },
-  cardName:      { fontSize: 13, fontWeight: '800', color: '#fff', marginTop: 10 },
-  cardDesc:      { fontSize: 10, color: '#FFFFFF35', marginBottom: 6, marginTop: 2 },
+  cardName:      { fontSize: 11, fontWeight: '800', color: '#fff', marginTop: 8, fontFamily: 'Nunito_800ExtraBold' },
+  cardDesc:      { fontSize: 9, color: '#FFFFFF35', marginBottom: 4, marginTop: 2 },
   badge:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 99, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF06', paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
-  badgeTxt:      { fontSize: 9, fontWeight: '800', color: '#FFFFFF40' },
+  badgeTxt:      { fontSize: 9, fontWeight: '800', color: '#FFFFFF40', fontFamily: 'Nunito_800ExtraBold' },
   liveDot:       { width: 5, height: 5, borderRadius: 3 },
 
   // ── Chips (category + timer) ──────────────────────────────
   chip:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05' },
-  chipTxt:     { fontSize: 12, fontWeight: '700' },
+  chipTxt:     { fontSize: 12, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   chipDivider: { width: 1, height: 22, backgroundColor: '#FFFFFF10', marginHorizontal: 4, alignSelf: 'center' },
 
   // ── Night Settings grouped card ────────────────────────────
   groupCard:     { marginHorizontal: 16, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#0D0D1E', overflow: 'hidden' },
   groupRow:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
   groupIcon:     { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  groupRowTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFFDD' },
+  groupRowTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFFDD', fontFamily: 'Nunito_700Bold' },
   groupRowSub:   { fontSize: 11, color: '#FFFFFF38', marginTop: 2 },
   groupDivider:  { height: 1, backgroundColor: '#FFFFFF07', marginLeft: 70 },
 
   // ── Sleep Cycle chips ─────────────────────────────────────
-  cycleChip:        { width: 130, borderRadius: 18, borderWidth: 1, padding: 16, gap: 3 },
+  cycleChip:        { width: 112, borderRadius: 16, borderWidth: 1, padding: 12, gap: 2 },
   cycleChipBadge:   { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 },
-  cycleChipTime:    { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
-  cycleChipHours:   { fontSize: 13, fontWeight: '800', color: '#FFFFFFCC' },
-  cycleChipQuality: { fontSize: 11, fontWeight: '700' },
-  cycleChipCycles:  { fontSize: 10, color: '#FFFFFF35', fontWeight: '600' },
+  cycleChipTime:    { fontSize: 17, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'Nunito_700Bold' },
+  cycleChipHours:   { fontSize: 11, fontWeight: '800', color: '#FFFFFFCC', fontFamily: 'Nunito_800ExtraBold' },
+  cycleChipQuality: { fontSize: 9, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  cycleChipCycles:  { fontSize: 10, color: '#FFFFFF35', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   // ── Sleep Science ─────────────────────────────────────────
   tipCard:    { marginHorizontal: 16, marginBottom: 8, borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF07', backgroundColor: '#FFFFFF03', flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16 },
   tipIconBox: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFFFFF07', alignItems: 'center', justifyContent: 'center' },
-  tipTitle:   { fontSize: 13, fontWeight: '700', color: '#FFFFFFDD' },
-  tipSub:     { fontSize: 11, color: '#FFFFFF40', marginTop: 3, lineHeight: 16 },
+  tipTitle:   { fontSize: 12, fontWeight: '700', color: '#FFFFFFDD', fontFamily: 'Nunito_700Bold' },
+  tipSub:     { fontSize: 10, color: '#FFFFFF40', marginTop: 2, lineHeight: 15 },
   scienceNote:    { marginHorizontal: 16, marginTop: 4, marginBottom: 8, backgroundColor: SLEEP_COLOR + '08', borderWidth: 1, borderColor: SLEEP_COLOR + '15', borderRadius: 16, padding: 16 },
   scienceNoteTxt: { fontSize: 11, color: SLEEP_COLOR + '99', lineHeight: 18 },
 
@@ -829,14 +829,14 @@ const S = StyleSheet.create({
   overlay:      { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.72)' },
   sheet:        { backgroundColor: '#0E0E1C', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingBottom: 40 },
   sheetHandle:  { width: 36, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginBottom: 16 },
-  sheetTitle:   { fontSize: 17, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 4 },
-  modalLabel:   { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginBottom: 8, marginTop: 8 },
+  sheetTitle:   { fontSize: 17, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 4, fontFamily: 'Nunito_900Black' },
+  modalLabel:   { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginBottom: 8, marginTop: 8, fontFamily: 'Nunito_900Black' },
   timeBig:      { alignItems: 'center', marginBottom: 20 },
   timeBigTxt:   { fontSize: 46, fontWeight: '100', color: SLEEP_COLOR, letterSpacing: -2 },
   timeChip:     { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF04', minWidth: 44, alignItems: 'center' },
-  timeChipTxt:  { fontSize: 13, fontWeight: '700' },
+  timeChipTxt:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   soundPickChip:{ width: 70, paddingVertical: 10, alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF04' },
   confirmBtn:   { marginHorizontal: 20, borderRadius: 16, paddingVertical: 15, alignItems: 'center', borderWidth: 1 },
-  confirmTxt:   { fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
+  confirmTxt:   { fontSize: 14, fontWeight: '900', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
 });
 

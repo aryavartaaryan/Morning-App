@@ -47,7 +47,7 @@ function fmtH(decH: number): string {
 }
 
 // ── Period static data ────────────────────────────────────────────────────────
-const PERIOD_TEMPLATES = [
+export const PERIOD_TEMPLATES = [
   {
     id: 'night_vata',
     dosha: 'vata' as DoshaType,

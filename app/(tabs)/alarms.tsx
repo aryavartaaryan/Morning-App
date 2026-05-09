@@ -23,7 +23,7 @@ import {
   setNativeAlarmSound, setNativeAlarmSoundPath, requestAllAlarmPermissions,
 } from '@/lib/nativeAlarm';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType, AndroidForegroundServiceType } from '@notifee/react-native';
-import { Colors } from '@/constants/theme';
+import { Colors, Font } from '@/constants/theme';
 import { getSolarTimes, type SolarTimes } from '@/lib/solar';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -38,17 +38,17 @@ const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
 };
 const BUNDLED_MANTRAS = new Set(['bhagya_suktam', 'shiv_sankalpa_suktam']);
 const PRESETS = [
-  { label: 'Brahma',  sub: '4:00 AM', hour: 4,  minute: 0,  color: '#a78bfa' },
-  { label: 'Dawn',    sub: '4:30 AM', hour: 4,  minute: 30, color: '#818cf8' },
+  { label: 'Brahma',  sub: '4:00 AM', hour: 4,  minute: 0,  color: '#60a5fa' },
+  { label: 'Dawn',    sub: '4:30 AM', hour: 4,  minute: 30, color: '#60a5fa' },
   { label: 'Early',   sub: '5:30 AM', hour: 5,  minute: 30, color: '#60a5fa' },
   { label: 'Sunrise', sub: '6:00 AM', hour: 6,  minute: 0,  color: '#34d399' },
 ];
 const MANTRAS = [
   { id: 'gayatri',    label: 'Gayatri Mantra',      emoji: '🌞', color: '#fbbf24', hint: 'ॐ भूर्भुवः स्वः', pitch: 0.85, rate: 0.70, text: 'Om Bhur Bhuva Swaha, Tat Savitur Varenyam, Bhargo Devasya Dhimahi, Dhiyo Yo Nah Prachodayat. Om Shanti Shanti Shanti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
   { id: 'lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65, text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
-  { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#a78bfa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
+  { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
   { id: 'bhagya_suktam',        label: 'Bhagya Suktam',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: '' },
-  { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#818cf8', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: '' },
+  { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: '' },
 ];
 const AYU_HABITS = [
   { key: 'wake_early',   label: 'Wake Early',       emoji: '🌙' },
@@ -73,10 +73,10 @@ const DAY_LABELS = ['S','M','T','W','T','F','S'];
 const DAY_FULL   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const HABIT_WISDOM: Record<string, { icon: string; title: string; color: string; body: string }> = {
-  wake_early:   { icon: '🌅', color: '#a78bfa', title: 'RISE BEFORE THE WORLD',      body: 'Waking early gives you quiet, uninterrupted time before the day\'s noise begins. Your mind is freshest in the early hours — use it for focus, intention, and calm before the world wakes up.' },
+  wake_early:   { icon: '🌅', color: '#60a5fa', title: 'RISE BEFORE THE WORLD',      body: 'Waking early gives you quiet, uninterrupted time before the day\'s noise begins. Your mind is freshest in the early hours — use it for focus, intention, and calm before the world wakes up.' },
   hydrate:      { icon: '💧', color: '#38bdf8', title: 'MORNING HYDRATION',           body: 'You lose water overnight through breathing. Starting the day with water rehydrates your body, clears brain fog, and kick-starts your digestion — one of the simplest habits with outsized returns.' },
   shower:       { icon: '🚿', color: '#38bdf8', title: 'REFRESH YOUR SYSTEM',         body: 'A morning shower wakes the body, sharpens the mind, and creates a clean psychological boundary between sleep and the active day. Cold water boosts alertness and circulation instantly.' },
-  meditation:   { icon: '🙏', color: '#a78bfa', title: 'TRAIN YOUR MIND',             body: 'Even 10 minutes of morning stillness reduces anxiety, improves focus, and builds emotional resilience. Meditation is the one habit that makes every other habit easier.' },
+  meditation:   { icon: '🙏', color: '#60a5fa', title: 'TRAIN YOUR MIND',             body: 'Even 10 minutes of morning stillness reduces anxiety, improves focus, and builds emotional resilience. Meditation is the one habit that makes every other habit easier.' },
   prayer:       { icon: '🙏', color: '#fbbf24', title: 'ANCHOR YOUR DAY',             body: 'Morning prayer or gratitude anchors your intention for the day. It shifts the mind from reactive to purposeful — building inner strength and a sense of meaning before anything else.' },
   stretch:      { icon: '🤸', color: '#34d399', title: 'WAKE YOUR BODY',              body: 'Gentle morning stretches loosen stiff joints, improve blood flow, and signal the body that it\'s time to be active. Just 5 minutes reverses the effects of 7–8 hours of stillness overnight.' },
   sunlight:     { icon: '☀️', color: '#fbbf24', title: 'MORNING LIGHT MATTERS',       body: 'Natural morning light resets your body clock, lifts your mood, and programs better sleep tonight. Step outside for 10 minutes — it\'s the most powerful free wellness tool available.' },
@@ -86,9 +86,9 @@ const HABIT_WISDOM: Record<string, { icon: string; title: string; color: string;
   herbal_tea:   { icon: '🍵', color: '#a3e635', title: 'A RITUAL OF CALM',            body: 'A daily herbal tea ritual creates a mindful pause in your day. Calming herbs like chamomile or ginger reduce stress, support digestion, and build a consistent moment of self-care.' },
   evening_walk: { icon: '🌆', color: '#fb923c', title: 'UNWIND AND MOVE',             body: 'An evening walk is one of the most effective natural stress relievers. It lowers cortisol, clears mental fatigue, and prepares your body and mind for deep, restorative sleep.' },
   light_dinner: { icon: '🥗', color: '#34d399', title: 'EAT LIGHT AT NIGHT',          body: 'Your digestion slows significantly after sunset. A light dinner reduces bloating, improves sleep quality, and helps your body focus on repair and recovery overnight instead of digestion.' },
-  screen_free:  { icon: '📵', color: '#a78bfa', title: 'PROTECT YOUR SLEEP',          body: 'Screens before bed suppress the sleep hormone melatonin by up to 50%. Even 30 minutes of screen-free wind-down dramatically improves sleep onset, depth, and morning energy levels.' },
-  journaling:   { icon: '📓', color: '#c084fc', title: 'CLEAR YOUR MIND',             body: 'Writing down your thoughts offloads mental clutter and helps you process the day. Just 5 minutes of journaling before bed reduces overthinking, improves mood, and sharpens next-day clarity.' },
-  sleep:        { icon: '�', color: '#6366f1', title: 'SLEEP IS THE FOUNDATION',     body: 'Everything — mood, focus, energy, health — depends on quality sleep. Going to bed by 10 PM gives your body and brain the full repair window they need to perform at their best tomorrow.' },
+  screen_free:  { icon: '📵', color: '#60a5fa', title: 'PROTECT YOUR SLEEP',          body: 'Screens before bed suppress the sleep hormone melatonin by up to 50%. Even 30 minutes of screen-free wind-down dramatically improves sleep onset, depth, and morning energy levels.' },
+  journaling:   { icon: '📓', color: '#60a5fa', title: 'CLEAR YOUR MIND',             body: 'Writing down your thoughts offloads mental clutter and helps you process the day. Just 5 minutes of journaling before bed reduces overthinking, improves mood, and sharpens next-day clarity.' },
+  sleep:        { icon: '�', color: '#60a5fa', title: 'SLEEP IS THE FOUNDATION',     body: 'Everything — mood, focus, energy, health — depends on quality sleep. Going to bed by 10 PM gives your body and brain the full repair window they need to perform at their best tomorrow.' },
 };
 
 function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
@@ -130,7 +130,7 @@ export interface AlarmEntry {
   label: string; enabled: boolean; habitKey?: string; habitEmoji?: string; days?: number[];
 }
 
-function Toggle({ value, onToggle, color = '#a78bfa' }: { value: boolean; onToggle: () => void; color?: string }) {
+function Toggle({ value, onToggle, color = '#60a5fa' }: { value: boolean; onToggle: () => void; color?: string }) {
   return <Switch value={value} onValueChange={onToggle} trackColor={{ false: Colors.border ?? '#222', true: color + '80' }} thumbColor={value ? color : '#666'} />;
 }
 
@@ -138,18 +138,18 @@ const DS = ['S','M','T','W','T','F','S'] as const;
 function DayDots({ days, color = '#10b981' }: { days?: number[]; color?: string }) {
   const isAll = !days || days.length === 0 || days.length === 7;
   return (
-    <View style={{ flexDirection: 'row', gap: 3, marginTop: 4 }}>
+    <View style={{ flexDirection: 'row', gap: 3, marginTop: 3 }}>
       {DS.map((d, i) => {
         const on = isAll || days!.includes(i);
         return (
           <View key={i} style={{
-            flex: 1, height: 24, borderRadius: 7,
-            backgroundColor: on ? color + '22' : '#FFFFFF09',
+            flex: 1, height: 16, borderRadius: 4,
+            backgroundColor: on ? color + '1E' : '#FFFFFF07',
             borderWidth: 1,
-            borderColor: on ? color + '55' : '#FFFFFF14',
+            borderColor: on ? color + '45' : '#FFFFFF10',
             alignItems: 'center', justifyContent: 'center',
           }}>
-            <Text style={{ fontSize: 11, fontWeight: on ? '900' : '500', color: on ? color : '#FFFFFF30' }}>{d}</Text>
+            <Text style={{ fontSize: 8, fontWeight: on ? '900' : '500', color: on ? color : '#FFFFFF28' }}>{d}</Text>
           </View>
         );
       })}
@@ -334,7 +334,7 @@ export default function AlarmsTab() {
       const pl = await store.getJSON<PledgeData>(KEYS.pledge);
       if (pl?.prakriti && PRAKRITI_PLANS[pl.prakriti]) {
         const plan = PRAKRITI_PLANS[pl.prakriti];
-        const color = pl.prakriti === 'Kapha' ? '#34d399' : pl.prakriti === 'Pitta' ? '#fb923c' : '#a78bfa';
+        const color = pl.prakriti === 'Kapha' ? '#34d399' : pl.prakriti === 'Pitta' ? '#fb923c' : '#60a5fa';
         setPrakritiWake({ label: `${pl.prakriti} Plan · ${plan.wakeTime}`, hour: plan.wakeHour, minute: plan.wakeMin, color });
         if (!s || (!s.wakeAlarm?.enabled && s.wakeAlarm?.hour === DEFAULT_ALARM_SETTINGS.wakeAlarm.hour && s.wakeAlarm?.minute === DEFAULT_ALARM_SETTINGS.wakeAlarm.minute)) {
           const auto: AlarmSettings = { ...(s ?? DEFAULT_ALARM_SETTINGS), wakeAlarm: { enabled: false, hour: plan.wakeHour, minute: plan.wakeMin } };
@@ -643,9 +643,9 @@ export default function AlarmsTab() {
           <View style={S.sectionHeaderLine} />
         </View>
         <View style={S.alarmCard}>
-          <LinearGradient colors={['rgba(255,255,255,0.07)', 'rgba(4,4,18,0.22)', 'rgba(2,2,14,0.38)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
-          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.22)' : '#FFFFFF0C' }]} />
+          <LinearGradient colors={['rgba(255,255,255,0.16)', 'rgba(4,4,18,0.36)', 'rgba(2,2,14,0.56)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.42)' }} />
+          <View style={[S.alarmAccentBar, { backgroundColor: settings.wakeAlarm.enabled ? '#f5a623' : '#FFFFFF0C' }]} />
           <TouchableOpacity onPress={() => setShowWakeEdit(true)} activeOpacity={0.85} style={{ flex: 1 }}>
             <View style={S.alarmCardInner}>
               <View style={S.alarmLeft}>
@@ -658,7 +658,7 @@ export default function AlarmsTab() {
                   {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
                 </Text>
                 <Text style={S.alarmSub}>{playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(ms => ms.id === missionSettings.selectedMission)?.name ?? 'Mission'}</Text>
-                <DayDots days={undefined} color='#FFFFFF' />
+                <DayDots days={undefined} color='#f5a623' />
               </View>
               <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color='#FFFFFF' />
             </View>
@@ -670,9 +670,9 @@ export default function AlarmsTab() {
           const isMenuOpen = menuOpenId === entry.id;
           return (
             <View key={entry.id} style={S.alarmCard}>
-              <LinearGradient colors={['rgba(255,255,255,0.07)', 'rgba(4,4,18,0.22)', 'rgba(2,2,14,0.38)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
-              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.22)' : '#FFFFFF0C' }]} />
+              <LinearGradient colors={['rgba(255,255,255,0.16)', 'rgba(4,4,18,0.36)', 'rgba(2,2,14,0.56)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.42)' }} />
+              <View style={[S.alarmAccentBar, { backgroundColor: entry.enabled ? (entry.type === 'habit' ? '#10b981' : '#f97316') : '#FFFFFF0C' }]} />
               <View style={{ flex: 1 }}>
                 <View style={S.alarmCardInner}>
                   <TouchableOpacity style={S.alarmLeft} onPress={() => { setMenuOpenId(null); openEditEntry(entry); }} activeOpacity={0.85}>
@@ -684,7 +684,7 @@ export default function AlarmsTab() {
                       {fmt12(entry.hour, entry.minute)}
                     </Text>
                     <Text style={S.alarmSub}>{entry.label}</Text>
-                    <DayDots days={entry.days} color='#FFFFFF' />
+                    <DayDots days={entry.days} color={entry.type === 'habit' ? '#10b981' : '#f97316'} />
                   </TouchableOpacity>
                   <View style={{ alignItems: 'flex-end', gap: 8 }}>
                     <TouchableOpacity onPress={() => setMenuOpenId(isMenuOpen ? null : entry.id)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={S.kebabBtn}>
@@ -790,8 +790,8 @@ export default function AlarmsTab() {
               <View style={S.settingsCard}>
                 {([
                   { emoji: '🔒', label: 'Lock In Mode',   sub: "Alarm won't stop until mission done",        val: missionSettings.lockInMode,        onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }),                    color: '#ef4444' },
-                  { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',  val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }),    color: '#a78bfa' },
-                  { emoji: '⏰', label: 'Dawn Alert',      sub: '15 min reminder before your wake alarm',    val: settings.brahmaReminder,           onToggle: toggleBrahma,       color: '#c084fc' },
+                  { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',  val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }),    color: '#60a5fa' },
+                  { emoji: '⏰', label: 'Dawn Alert',      sub: '15 min reminder before your wake alarm',    val: settings.brahmaReminder,           onToggle: toggleBrahma,       color: '#60a5fa' },
                 ] as const).map((row, i) => (
                   <View key={row.label} style={[S.settingsRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
                     <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
@@ -846,71 +846,66 @@ export default function AlarmsTab() {
             </View>
           </SafeAreaView>
 
-          {/* ── Habit section ── */}
+          {/* ── Habit section (no vertical scroll — navigation is horizontal-only) ── */}
           <View style={{ flex: 1 }}>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={[S.sheetSection, { marginHorizontal: 16, marginTop: 14, marginBottom: 10 }]}>CHOOSE HABIT</Text>
+            <Text style={[S.sheetSection, { marginHorizontal: 16, marginTop: 14, marginBottom: 10 }]}>CHOOSE HABIT</Text>
 
-              {/* ── Horizontal pager: each page = 4 cols × 2 rows ── */}
-              <View style={{ marginBottom: 2 }}>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  scrollEventThrottle={16}
-                  nestedScrollEnabled
-                  onMomentumScrollEnd={e => {
-                    const pg = Math.round(e.nativeEvent.contentOffset.x / width);
-                    setHabitPage(pg);
-                  }}
-                >
-                  {habitPages.map((page, pageIdx) => (
-                    <View key={pageIdx} style={{ width, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
-                      {page.map(h => {
-                        const active = formHabitKey === h.key;
-                        return (
-                          <TouchableOpacity
-                            key={h.key}
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }}
-                            style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.05 }] }]}
-                            activeOpacity={0.75}
-                          >
-                            <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
-                            {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 1 }} />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  ))}
-                </ScrollView>
-
-                {/* Page indicator dots */}
-                {habitPages.length > 1 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 8, paddingBottom: 4 }}>
-                    {habitPages.map((_, i) => (
-                      <View key={i} style={{ width: i === habitPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === habitPage ? '#10b981' : '#FFFFFF22' }} />
-                    ))}
+            {/* ── Horizontal pager: each page = 4 cols × 2 rows ── */}
+            <View style={{ marginBottom: 2 }}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={e => {
+                  const pg = Math.round(e.nativeEvent.contentOffset.x / width);
+                  setHabitPage(pg);
+                }}
+              >
+                {habitPages.map((page, pageIdx) => (
+                  <View key={pageIdx} style={{ width, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
+                    {page.map(h => {
+                      const active = formHabitKey === h.key;
+                      return (
+                        <TouchableOpacity
+                          key={h.key}
+                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }}
+                          style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.05 }] }]}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
+                          {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 1 }} />}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                )}
-              </View>
+                ))}
+              </ScrollView>
 
-              {/* ── Custom habit row ── */}
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderColor: formHabitKey === 'custom' ? '#a78bfa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#a78bfa14' : '#FFFFFF04' }} activeOpacity={0.8}>
-                <Text style={{ fontSize: 22 }}>✨</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#a78bfa' : '#fff' }}>Custom Habit</Text>
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
+              {/* Page indicator dots */}
+              {habitPages.length > 1 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 8, paddingBottom: 4 }}>
+                  {habitPages.map((_, i) => (
+                    <View key={i} style={{ width: i === habitPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === habitPage ? '#10b981' : '#FFFFFF22' }} />
+                  ))}
                 </View>
-                {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#a78bfa', fontWeight: '900' }}>✓</Text>}
-              </TouchableOpacity>
-              {showCustomHabitInput && (
-                <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
               )}
+            </View>
 
-
-            </ScrollView>
+            {/* ── Custom habit row ── */}
+            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderColor: formHabitKey === 'custom' ? '#60a5fa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#60a5fa14' : '#FFFFFF04' }} activeOpacity={0.8}>
+              <Text style={{ fontSize: 22 }}>✨</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#60a5fa' : '#fff' }}>Custom Habit</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
+              </View>
+              {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#60a5fa', fontWeight: '900' }}>✓</Text>}
+            </TouchableOpacity>
+            {showCustomHabitInput && (
+              <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
+            )}
           </View>
 
           {/* ── Fixed Bottom: Time + Days + Save ── */}
@@ -933,7 +928,7 @@ export default function AlarmsTab() {
               return (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Text style={{ fontSize: 18 }}>✨</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#a78bfa', flex: 1 }}>{formLabel || 'Custom Habit'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa', flex: 1 }}>{formLabel || 'Custom Habit'}</Text>
                   <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
                 </View>
               );
@@ -978,37 +973,37 @@ const S = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#060610', overflow: 'hidden' },
   headerGrad: { paddingBottom: 8 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 8 },
-  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
   headerCountdownRow: { paddingHorizontal: 16, paddingBottom: 6, gap: 6 },
   headerDateSmall: { fontSize: 11, color: '#FFFFFF35', fontWeight: '500', paddingHorizontal: 4 },
   countdownBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACCENT + '14', borderWidth: 1, borderColor: ACCENT + '35', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
   countdownBannerOff: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF08', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
   countdownDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: ACCENT },
-  countdownTxt: { fontSize: 13, fontWeight: '700', color: '#fdba74' },
+  countdownTxt: { fontSize: 13, fontWeight: '700', color: '#fdba74', fontFamily: 'Nunito_700Bold' },
   countdownChevron: { fontSize: 18, color: ACCENT, fontWeight: '300', lineHeight: 20 },
   countdownOffTxt: { fontSize: 12, color: '#FFFFFF25', fontWeight: '500' },
   permsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9731610', borderBottomWidth: 1, borderBottomColor: '#f9731625', paddingHorizontal: 16, paddingVertical: 10 },
   permsText: { flex: 1, color: '#f97316', fontSize: 11, fontWeight: '700' },
   permsChevron: { color: '#f97316', fontSize: 14, fontWeight: '900' },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 6, marginBottom: 0, gap: 10 },
-  sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFB8', letterSpacing: 2.0 },
+  sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFB8', letterSpacing: 2.0, fontFamily: 'Nunito_900Black' },
   sectionHeaderLine: { flex: 1, height: 1, backgroundColor: '#FFFFFF22' },
-  alarmCard: { marginHorizontal: 16, marginTop: 6, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', flexDirection: 'row', elevation: 6, shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  alarmCard: { marginHorizontal: 16, marginTop: 5, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.13)', overflow: 'hidden', flexDirection: 'row', elevation: 5, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
   alarmCardActive: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.09)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
   alarmCardHabit: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
   alarmCardQuick: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
-  alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 9, paddingLeft: 11, gap: 12 },
-  alarmAccentBar: { width: 4, alignSelf: 'stretch' },
+  alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 6, paddingLeft: 11, gap: 12 },
+  alarmAccentBar: { width: 3, alignSelf: 'stretch' },
   alarmLeft: { flex: 1, gap: 2 },
-  alarmTypePill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  alarmTypePill: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 1 },
   alarmTypeEmoji: { fontSize: 12 },
-  alarmTypeTxt: { fontSize: 9, fontWeight: '900', color: '#FFFFFFAA', letterSpacing: 1.5 },
-  alarmTime: { fontSize: 26, letterSpacing: -1, lineHeight: 30, fontWeight: '300' },
+  alarmTypeTxt: { fontSize: 8, fontWeight: '900', color: '#FFFFFF70', letterSpacing: 1.4, fontFamily: 'Nunito_900Black' },
+  alarmTime: { fontSize: 24, letterSpacing: -0.8, lineHeight: 27, fontWeight: '300' },
   alarmTimeOn: { color: '#FFFFFF' },
   alarmTimeOff: { color: '#FFFFFF50' },
   alarmTimeHabit: { color: '#FFFFFF' },
   alarmTimeQuick: { color: '#FFFFFF' },
-  alarmSub: { fontSize: 10, color: '#FFFFFF80', fontWeight: '600', marginTop: 1 },
+  alarmSub: { fontSize: 10, color: '#FFFFFF65', fontWeight: '600', marginTop: 1, fontFamily: 'Nunito_600SemiBold' },
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
@@ -1018,15 +1013,15 @@ const S = StyleSheet.create({
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
   fabMenu: { position: 'absolute', bottom: 162, right: 24, gap: 8, alignItems: 'flex-end', zIndex: 10 },
   fabMenuItem: { backgroundColor: '#0D0D20', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 6 },
-  fabMenuItemTxt: { fontSize: 14, fontWeight: '800' },
+  fabMenuItemTxt: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },
-  sheetTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginBottom: 6 },
-  sheetSection: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginTop: 16, marginBottom: 8 },
+  sheetTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginBottom: 6, fontFamily: 'Nunito_900Black' },
+  sheetSection: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginTop: 16, marginBottom: 8, fontFamily: 'Nunito_900Black' },
   presetChip: { flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05', padding: 10, alignItems: 'center', gap: 2 },
-  presetChipTime: { fontSize: 12, fontWeight: '900' },
-  presetChipLabel: { fontSize: 8, color: '#FFFFFF30', fontWeight: '600' },
+  presetChipTime: { fontSize: 12, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  presetChipLabel: { fontSize: 8, color: '#FFFFFF30', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   prakritiRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 6, backgroundColor: '#FFFFFF04' },
   mantraChip: { width: 104, borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05', padding: 10, alignItems: 'center', gap: 4 },
   missionChip: { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: 'center', gap: 4, width: (width - 40 - 8) / 2 },
@@ -1035,14 +1030,14 @@ const S = StyleSheet.create({
   streakBanner: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: 1, borderColor: ACCENT + '30', padding: 14, marginBottom: 14, marginTop: 4 },
   testBtn: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
   sheetDoneBtn: { backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '50', borderRadius: 99, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
-  sheetDoneTxt: { color: ACCENT, fontWeight: '900', fontSize: 15 },
+  sheetDoneTxt: { color: ACCENT, fontWeight: '900', fontSize: 15, fontFamily: 'Nunito_900Black' },
   habitChip: { borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF04', padding: 10, alignItems: 'center', gap: 4, width: (width - 40 - 24) / 4 },
   customInput: { backgroundColor: '#FFFFFF07', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14, marginBottom: 8 },
   saveBtn: { backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 99, paddingVertical: 14, alignItems: 'center' },
-  saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15 },
+  saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15, fontFamily: 'Nunito_900Black' },
   kebabBtn: { paddingVertical: 6, paddingHorizontal: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
   kebabDot: { width: 4.5, height: 4.5, borderRadius: 2.5, backgroundColor: '#FFFFFFDD', marginVertical: 2.5 },
   cardMenu: { marginHorizontal: 16, marginBottom: 14, backgroundColor: 'rgba(8,8,24,0.92)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', overflow: 'hidden' },
   cardMenuItem: { paddingHorizontal: 20, paddingVertical: 16 },
-  cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
 });

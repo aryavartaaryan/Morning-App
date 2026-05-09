@@ -378,15 +378,18 @@ const mnt = StyleSheet.create({
 function GratitudeMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const prompts = GRATITUDE_PROMPTS[new Date().getDay() % GRATITUDE_PROMPTS.length];
   const [entries, setEntries] = useState(['', '', '']);
+  const [submitting, setSubmitting] = useState(false);
 
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-  const allFilled = entries.every(e => wordCount(e) >= 4);
+  const allFilled = entries.every(e => wordCount(e) >= 2);
 
   const set = (i: number, v: string) => {
     const arr = [...entries]; arr[i] = v; setEntries(arr);
   };
 
   const done = () => {
+    if (submitting) return;
+    setSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const uid = auth.currentUser?.uid;
     if (uid) {
@@ -406,24 +409,24 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
           <Text style={[grt.fieldPrompt, { color }]}>{i + 1}. {prompts[i]}</Text>
           <TextInput
             style={grt.input}
-            placeholder="Write at least 4 words..."
+            placeholder="Write at least 2 words..."
             placeholderTextColor="#FFFFFF30"
             value={entries[i]}
             onChangeText={v => set(i, v)}
             multiline
             numberOfLines={3}
           />
-          <Text style={grt.wordCount}>{wordCount(entries[i])}/4 words min</Text>
+          <Text style={grt.wordCount}>{wordCount(entries[i])}/2 words min</Text>
         </View>
       ))}
       <TouchableOpacity
-        style={[grt.doneBtn, { backgroundColor: allFilled ? color : '#FFFFFF15' }]}
+        style={[grt.doneBtn, { backgroundColor: allFilled && !submitting ? color : '#FFFFFF15' }]}
         onPress={done}
-        disabled={!allFilled}
+        disabled={!allFilled || submitting}
         activeOpacity={0.85}
       >
-        <Text style={[grt.doneTxt, { color: allFilled ? '#000' : '#FFFFFF30' }]}>
-          {allFilled ? 'Done ✓  Lock it in' : 'Fill all 3 (4+ words each)'}
+        <Text style={[grt.doneTxt, { color: allFilled && !submitting ? '#000' : '#FFFFFF30' }]}>
+          {submitting ? 'Saving...' : allFilled ? 'Done ✓  Lock it in' : 'Fill all 3 (2+ words each)'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -437,7 +440,7 @@ const grt = StyleSheet.create({
   input: {
     backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF20',
     borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-    color: '#FFFFFF', fontSize: 14, lineHeight: 21,
+    color: '#FFFFFF', fontSize: 14, lineHeight: 21, textAlignVertical: 'top',
   },
   wordCount: { color: '#FFFFFF35', fontSize: 10, textAlign: 'right' },
   doneBtn: { borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 8 },

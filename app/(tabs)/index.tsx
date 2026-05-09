@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { store, KEYS } from '@/lib/storage';
+import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
 import { getSolarTimes, type SolarTimes } from '@/lib/solar';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import { getDoshaPeriods, type DoshaPeriod } from '@/lib/ayurvedicPeriods';
@@ -21,6 +22,7 @@ import {
   AlarmSettings, DEFAULT_ALARM_SETTINGS,
 } from '@/lib/notifications';
 import { getBgSource } from '@/lib/bgImages';
+import { Font } from '@/constants/theme';
 import Svg, { Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import { getTodayWakeLog, getStreak, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
@@ -78,7 +80,7 @@ function getWeatherSuggestion(code: number, temp: number, humidity: number): {
   if (isClear && pleasant) return { icon: '✨', color: '#34d399', title: 'Perfect Day to Go Out!',
     tips: ['🚶 Ideal for a morning walk', '🏃 Great day to exercise outdoors', '☀️ 15–20 min sun for Vitamin D', '🪟 Open windows — let fresh air in', '🌿 Perfect for outdoor activities'] };
 
-  if (isPartly && pleasant) return { icon: '⛅', color: '#a78bfa', title: 'Pleasant Weather',
+  if (isPartly && pleasant) return { icon: '⛅', color: '#60a5fa', title: 'Pleasant Weather',
     tips: ['🚶 Good day for a morning walk', '🏃 Comfortable for outdoor activities', '🌿 Nice for a picnic or open-air lunch', '🌬️ Enjoy the natural light & breeze', '😊 Ideal weather to be outside'] };
 
   if (cool) return { icon: '🧥', color: '#7dd3fc', title: 'Cool & Fresh',
@@ -98,7 +100,7 @@ function getTinyTip(code: number, temp: number): { icon: string; tip: string; co
   if (temp >= 38) return { icon: '🌡️', tip: 'Extreme heat — avoid direct sun',  color: '#ef4444' };
   if (temp >= 34) return { icon: '☀️',  tip: 'Very hot — stay hydrated',          color: '#f97316' };
   if ([0,1].includes(code) && temp >= 22 && temp < 34) return { icon: '✅', tip: 'Clear & pleasant — great outside', color: '#34d399' };
-  if ([2,3].includes(code) && temp >= 20) return { icon: '⛅', tip: 'Partly cloudy — comfortable',  color: '#a78bfa' };
+  if ([2,3].includes(code) && temp >= 20) return { icon: '⛅', tip: 'Partly cloudy — comfortable',  color: '#60a5fa' };
   return null;
 }
 
@@ -112,7 +114,7 @@ function getHourlyAdvice(code: number, temp: number): { icon: string; color: str
   if (temp >= 38)                       return { icon: '🌡️', color: '#ef4444', title: 'Extreme Heat Right Now',      tips: ['🌡️ Avoid direct sun — stay in shade', '💧 Drink water every 20 min', '⏰ Limit outdoor time this hour', '🌬️ Seek air-conditioned spaces', '🍉 Eat water-rich fruits'] };
   if (temp >= 34)                       return { icon: '☀️',  color: '#f97316', title: 'Very Hot Outside',           tips: ['💧 Carry water before heading out', '🧢 Wear hat or cap', '🧴 Apply sunscreen', '⏰ Best before 8 AM or after 5 PM', '🍋 Electrolyte drink recommended'] };
   if ([0,1].includes(code) && temp >= 22 && temp < 34) return { icon: '✅', color: '#34d399', title: 'Great Conditions Right Now', tips: ['🚶 Perfect for a walk or jog', '🌿 Enjoy fresh air & sunlight', '🪟 Open windows — let the breeze in', '☀️ 15–20 min sun for Vitamin D', '🏃 Great for outdoor exercise'] };
-  if ([2,3].includes(code) && temp >= 20) return { icon: '⛅', color: '#a78bfa', title: 'Comfortable Outside',      tips: ['🏃 Great for any outdoor activity', '👕 Light clothing is enough', '🌳 Step outside & move', '☺️ Enjoy the natural breeze', '🌤️ Good hour to be outside'] };
+  if ([2,3].includes(code) && temp >= 20) return { icon: '⛅', color: '#60a5fa', title: 'Comfortable Outside',      tips: ['🏃 Great for any outdoor activity', '👕 Light clothing is enough', '🌳 Step outside & move', '☺️ Enjoy the natural breeze', '🌤️ Good hour to be outside'] };
   return { icon: '🌤️', color: '#fbbf24', title: 'Clear Skies',                                                       tips: ['🌤️ Decent outdoor conditions', '💧 Stay hydrated if heading out', '🌅 Enjoy the daylight', '🚶 Light walk is ideal'] };
 }
 
@@ -532,7 +534,7 @@ const SCORE_META: Record<number, { label: string; color: string; emoji: string }
   7:  { label: 'Favorable',     color: '#34d399', emoji: '✨' },
   8:  { label: 'Excellent',     color: '#10b981', emoji: '🌟' },
   9:  { label: 'Excellent',     color: '#10b981', emoji: '🌟' },
-  10: { label: 'Cosmic Peak',   color: '#a78bfa', emoji: '⚡' },
+  10: { label: 'Cosmic Peak',   color: '#60a5fa', emoji: '⚡' },
 };
 
 // ── Panchang Card ─────────────────────────────────────────────────────────
@@ -579,10 +581,10 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
 
         {/* ── Full/New Moon Special Banner ── */}
         {isSpecialMoon && (
-          <View style={[PC.moonBanner, { borderColor: moon.emoji === '🌕' ? '#fbbf2440' : '#a78bfa40', backgroundColor: moon.emoji === '🌕' ? '#fbbf2408' : '#a78bfa08' }]}>
+          <View style={[PC.moonBanner, { borderColor: moon.emoji === '🌕' ? '#fbbf2440' : '#60a5fa40', backgroundColor: moon.emoji === '🌕' ? '#fbbf2408' : '#60a5fa08' }]}>
             <Text style={{ fontSize: 18 }}>{moon.emoji}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={[PC.moonBannerTitle, { color: moon.emoji === '🌕' ? '#fbbf24' : '#a78bfa' }]}>
+              <Text style={[PC.moonBannerTitle, { color: moon.emoji === '🌕' ? '#fbbf24' : '#60a5fa' }]}>
                 {moon.emoji === '🌕' ? 'FULL MOON TODAY' : 'NEW MOON TODAY'}
               </Text>
               <Text style={PC.moonBannerSub}>
@@ -618,9 +620,9 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
 
         {/* ── Tithi · Nakshatra bilingual strip ── */}
         <View style={PC.biRow}>
-          <View style={[PC.biCell, { borderColor: '#a78bfa20' }]}>
+          <View style={[PC.biCell, { borderColor: '#60a5fa20' }]}>
             <Text style={PC.biTag}>🌙 TITHI  ·  लुनर दिन</Text>
-            <Text style={[PC.biSanskrit, { color: '#a78bfa' }]}>{p.tithiName}</Text>
+            <Text style={[PC.biSanskrit, { color: '#60a5fa' }]}>{p.tithiName}</Text>
             <Text style={PC.biEnglish}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon · Day {p.tithiInPaksha}</Text>
           </View>
           <View style={[PC.biCell, { borderColor: '#fbbf2420' }]}>
@@ -645,9 +647,9 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
             <View style={PC.triRow}>
 
               {/* Lunar Day */}
-              <View style={[PC.triCell, { borderColor: '#a78bfa22' }]}>
+              <View style={[PC.triCell, { borderColor: '#60a5fa22' }]}>
                 <Text style={PC.triEmoji}>🌙</Text>
-                <Text style={[PC.triTitle, { color: '#a78bfa' }]}>{p.tithiName}</Text>
+                <Text style={[PC.triTitle, { color: '#60a5fa' }]}>{p.tithiName}</Text>
                 <Text style={PC.triSub}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon ({p.paksha})  ·  Day {p.tithiInPaksha}</Text>
                 <Text style={PC.triEn}>{tithiEnergy}</Text>
               </View>
@@ -709,7 +711,7 @@ function TodayGlanceStrip({ currentPeriod, nextPeriod, weather }: {
     ...(currentPeriod ? [{ emoji: currentPeriod.emoji, label: currentPeriod.label, sub: 'Active Now', color: currentPeriod.color }] : []),
     { emoji: vaar.emoji,       label: vaar.planet,      sub: vaar.vedicName,                  color: vaar.color  },
     { emoji: nakshatra.emoji,  label: nakshatra.name,   sub: nakshatra.en,                    color: '#fbbf24'   },
-    { emoji: '🌙',             label: p.tithiName,      sub: p.paksha + ' Paksha',             color: '#a78bfa'   },
+    { emoji: '🌙',             label: p.tithiName,      sub: p.paksha + ' Paksha',             color: '#60a5fa'   },
     { emoji: scoreMeta.emoji,  label: scoreMeta.label,  sub: 'Cosmic · ' + score + '/10',     color: scoreMeta.color },
     { emoji: yoga.auspicious ? '✨' : '⚠️', label: yoga.name, sub: yoga.en,                  color: yoga.auspicious ? '#34d399' : '#fb923c' },
     ...(weather ? [{ emoji: weather.emoji, label: weather.temp + '°C', sub: weather.condition, color: '#60a5fa' }] : []),
@@ -925,18 +927,18 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
         <View style={EX.sheet}>
           <LinearGradient
-            colors={['#a78bfa1E', 'transparent']}
+            colors={['#60a5fa1E', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
             pointerEvents="none"
           />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#a78bfa70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#60a5fa70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
           <View style={EX.handle} />
           {/* Header */}
           <View style={EX.sheetHeader}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#a78bfa' }} />
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#60a5fa' }} />
                 <Text style={EX.sheetCap}>VEDIC COSMIC SCIENCE</Text>
               </View>
               <Text style={EX.sheetTitle}>Today's Cosmic Blueprint</Text>
@@ -969,8 +971,8 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
                   The Moon exerts a measurable tidal force on Earth: 3.3 × 10⁻⁵ m/s² gravitational acceleration at the surface. While small, this force moves oceans — and your body is 60–70% water. The same tidal mechanics act on every fluid-filled cavity: cerebrospinal fluid, blood plasma, lymph, and intercellular fluid.
                 </Text>
               </View>
-              <View style={[EX.sciBlock, { borderColor: '#a78bfa25', marginTop: 8 }]}>
-                <Text style={[EX.sciBlockTitle, { color: '#a78bfa' }]}>Chronobiology Research</Text>
+              <View style={[EX.sciBlock, { borderColor: '#60a5fa25', marginTop: 8 }]}>
+                <Text style={[EX.sciBlockTitle, { color: '#60a5fa' }]}>Chronobiology Research</Text>
                 <Text style={EX.sciBlockBody}>
                   A landmark 2013 study (Cajochen et al., University of Basel) measured melatonin, sleep EEG, and cortisol across full lunar cycles in a light-controlled lab. Result: around full moon, melatonin was 30% lower, deep sleep reduced by 20 min, and subjects took 5 min longer to fall asleep — with no visual access to the moon. The mechanism is likely geomagnetic, not optical.
                 </Text>
@@ -1002,9 +1004,9 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
                   As the angle decreases, fluid tension reduces. The body prioritises elimination and detoxification. Ayurveda prescribes fasting, cleansing, and surgical procedures in Krishna Paksha for this reason — confirmed by reduced bleeding risk in surgery (studied in German hospitals in the 1990s).
                 </Text>
               </View>
-              <View style={[EX.highlightPill, { borderColor: '#a78bfa30', backgroundColor: '#a78bfa0C' }]}>
+              <View style={[EX.highlightPill, { borderColor: '#60a5fa30', backgroundColor: '#60a5fa0C' }]}>
                 <Text style={EX.highlightPillText}>
-                  Today: <Text style={{ color: '#a78bfaDD', fontWeight: '800' }}>{p.tithiName}</Text> — {p.paksha === 'Shukla' ? 'Waxing phase · Build, grow, take in' : 'Waning phase · Release, detox, reduce'}
+                  Today: <Text style={{ color: '#60a5faDD', fontWeight: '800' }}>{p.tithiName}</Text> — {p.paksha === 'Shukla' ? 'Waxing phase · Build, grow, take in' : 'Waning phase · Release, detox, reduce'}
                 </Text>
               </View>
             </View>
@@ -1257,7 +1259,7 @@ function BrahmaMuhurtaExtrasCard({
   const [showSci, setShowSci] = useState(false);
   return (
     <View style={BMX.card}>
-      <LinearGradient colors={['rgba(167,139,250,0.22)','rgba(167,139,250,0.08)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['rgba(96,165,250,0.22)','rgba(96,165,250,0.08)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
       <View style={BMX.headerRow}>
         <View>
@@ -1265,9 +1267,9 @@ function BrahmaMuhurtaExtrasCard({
           <Text style={BMX.sacredTimes}>{info.startLabel}  →  {info.endLabel}</Text>
           <Text style={BMX.sacredSub}>96–48 min before sunrise</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(167,139,250,0.20)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.50)', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#a78bfa' }} />
-          <Text style={{ fontSize: 9, fontWeight: '900', color: '#a78bfa', letterSpacing: 1.5 }}>LIVE</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(96,165,250,0.20)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.50)', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }} />
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#60a5fa', letterSpacing: 1.5 }}>LIVE</Text>
         </View>
       </View>
       <TouchableOpacity onPress={() => setShowSci(v => !v)} style={BMX.sciRow} activeOpacity={0.8}>
@@ -1334,13 +1336,13 @@ function getSeason(lat: number, month: number, temp: number, humidity: number): 
     advice: 'Cooling foods essential: cucumber, coconut, coriander, mint. Outdoor activity before 8 AM only. Evening moonlight walks lower cortisol. Avoid spicy foods, midday exertion and competitive stress which triple Pitta.',
   };
   if (m >= 8 && m <= 10) return {
-    name: 'Autumn', emoji: '🍂', color: '#a78bfa', doshaAffinity: 'Vata',
+    name: 'Autumn', emoji: '🍂', color: '#60a5fa', doshaAffinity: 'Vata',
     zone,
     sciDesc: 'Autumn\'s dry, cool, erratic winds up-regulate sympathetic nervous system tone. Shortened daylight reduces serotonin synthesis and disrupts the melatonin-cortisol circadian axis. The Pitta-to-Vata seasonal transition creates a systemic neural volatility surge.',
     advice: 'A fixed daily routine (Dinacharya) is the single most powerful Vata stabiliser. Warm sesame Abhyanga grounds the sympathetic nervous system. Root vegetables, warming spices and warm oils counter the drying season.',
   };
   return {
-    name: 'Winter', emoji: '❄️', color: '#818cf8', doshaAffinity: 'Vata-Kapha',
+    name: 'Winter', emoji: '❄️', color: '#60a5fa', doshaAffinity: 'Vata-Kapha',
     zone,
     sciDesc: 'Winter combines Vata aggravation (cold, dry, shortened daylight) with Kapha stagnation. Serotonin synthesis drops measurably with reduced UV — seasonal neurochemical disruption is well-documented. Paradoxically, digestive fire (Agni) is at its annual peak in cold weather.',
     advice: 'Leverage strong winter Agni with nourishing, heavier meals. Prioritise vitamin D. Move vigorously to counter Kapha inertia. Consistent sleep timing is critical as melatonin rhythms are most fragile in winter.',
@@ -1548,7 +1550,7 @@ function TodayHeroCard({
           <View style={{ flex: 1 }}>
             <Text style={TH.headerLabel}>TODAY AT A GLANCE  ·  VEDIC ALMANAC</Text>
             <Text style={TH.headerSub}>
-              <Text style={{ color: '#a78bfa70', fontWeight: '800' }}>{vMonth.name}  </Text>
+              <Text style={{ color: '#60a5fa70', fontWeight: '800' }}>{vMonth.name}  </Text>
               <Text style={{ color: '#FFFFFF28' }}>{dateLabel}  ·  {clockStr}</Text>
             </Text>
           </View>
@@ -1559,12 +1561,12 @@ function TodayHeroCard({
         {/* Special moon banner */}
         {isSpecialMoon && (
           <View style={[TH.moonBanner, {
-            borderColor: moon.emoji === '🌕' ? '#fbbf2440' : '#a78bfa40',
-            backgroundColor: moon.emoji === '🌕' ? '#fbbf2408' : '#a78bfa08',
+            borderColor: moon.emoji === '🌕' ? '#fbbf2440' : '#60a5fa40',
+            backgroundColor: moon.emoji === '🌕' ? '#fbbf2408' : '#60a5fa08',
           }]}>
             <Text style={{ fontSize: 18 }}>{moon.emoji}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={[TH.moonBannerTitle, { color: moon.emoji === '🌕' ? '#fbbf24' : '#a78bfa' }]}>
+              <Text style={[TH.moonBannerTitle, { color: moon.emoji === '🌕' ? '#fbbf24' : '#60a5fa' }]}>
                 {moon.emoji === '🌕' ? 'FULL MOON TODAY' : 'NEW MOON TODAY'}
               </Text>
               <Text style={TH.moonBannerSub}>
@@ -1596,9 +1598,9 @@ function TodayHeroCard({
         {/* ── Compact info pills row ── */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 10 }}>
           {/* Tithi */}
-          <View style={[TH.cosmicPill, { borderColor: '#a78bfa55', backgroundColor: '#a78bfa18' }]}>
+          <View style={[TH.cosmicPill, { borderColor: '#60a5fa55', backgroundColor: '#60a5fa18' }]}>
             <Text style={{ fontSize: 9 }}>🌙</Text>
-            <Text style={[TH.cosmicPillTxt, { color: '#a78bfaCC' }]}>{p.tithiName}</Text>
+            <Text style={[TH.cosmicPillTxt, { color: '#60a5faCC' }]}>{p.tithiName}</Text>
           </View>
           {/* Nakshatra */}
           <View style={[TH.cosmicPill, { borderColor: '#fbbf2455', backgroundColor: '#fbbf2418' }]}>
@@ -1739,7 +1741,7 @@ function CosmicPill({ onPress }: { onPress: () => void }) {
       activeOpacity={0.82}
       style={CPL.container}>
       <LinearGradient
-        colors={[vaar.color + '28', '#a78bfa18', 'transparent']}
+        colors={[vaar.color + '28', '#60a5fa18', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -1760,7 +1762,7 @@ function CosmicPill({ onPress }: { onPress: () => void }) {
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 5, alignItems: 'flex-start' }}>
           <View style={{ alignItems: 'flex-start', minWidth: 50 }}>
             <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>TITHI</Text>
-            <Text style={{ fontSize: 9, color: '#a78bfaCC', fontWeight: '800', lineHeight: 13 }}>{p.tithiName}</Text>
+            <Text style={{ fontSize: 9, color: '#60a5faCC', fontWeight: '800', lineHeight: 13 }}>{p.tithiName}</Text>
             <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>Day {p.tithiInPaksha}</Text>
           </View>
           <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
@@ -1772,7 +1774,7 @@ function CosmicPill({ onPress }: { onPress: () => void }) {
           <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
           <View style={{ alignItems: 'flex-start', minWidth: 46 }}>
             <Text style={{ fontSize: 6, color: '#FFFFFF35', fontWeight: '800', letterSpacing: 0.8 }}>PAKSHA</Text>
-            <Text style={{ fontSize: 9, color: '#a78bfaCC', fontWeight: '800', lineHeight: 13 }}>{p.paksha}</Text>
+            <Text style={{ fontSize: 9, color: '#60a5faCC', fontWeight: '800', lineHeight: 13 }}>{p.paksha}</Text>
             <Text style={{ fontSize: 7, color: '#FFFFFF35', lineHeight: 10 }}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'}</Text>
           </View>
           <View style={{ width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 }} />
@@ -2225,13 +2227,13 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     <View style={{ marginBottom: 10 }}>
       {/* Header — tappable → opens Ayurvedic Science explore */}
       <TouchableOpacity
-        onPress={() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
+        onPress={() => { const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60)); router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never); }}
         activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
           <View>
             <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 1.4, marginBottom: 3 }}>CURRENT BODY RHYTHM PERIOD</Text>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22 }}>{period.englishLabel}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2, lineHeight: 22, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>{period.englishLabel}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: '#D4A84B60', backgroundColor: '#D4A84B1A' }}>
               <Text style={{ fontSize: 9, color: '#D4A84B', fontWeight: '900', letterSpacing: 0.8 }}>EXPLORE AYURVEDIC SCIENCE</Text>
               <View style={{ width: 15, height: 15, borderRadius: 8, backgroundColor: '#D4A84B35', alignItems: 'center', justifyContent: 'center' }}>
@@ -2241,7 +2243,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
           </View>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 18 }}>{remStr}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 18, fontFamily: 'Nunito_900Black' }}>{remStr}</Text>
           <Text style={{ fontSize: 9, fontWeight: '700', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
           <Text style={{ fontSize: 9, fontWeight: '500', color: '#FFFFFF45', letterSpacing: 0.3, marginTop: 1 }}>{period.startLabel} – {period.endLabel}</Text>
         </View>
@@ -2495,7 +2497,7 @@ function WeatherSection({
   return (
     <View style={WSEC.container}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.01)']}
+        colors={['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -2515,21 +2517,23 @@ function WeatherSection({
         </View>
 
         <View style={WSEC.rightGroup}>
-          <Text style={WSEC.hum}>💧 {weather.humidity}%</Text>
-          {(maxT !== null || minT !== null) && (
-            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-              {maxT !== null && <Text style={WSEC.hi}>↑{maxT}°</Text>}
-              {minT !== null && <Text style={WSEC.lo}>↓{minT}°</Text>}
-            </View>
-          )}
-          {!expanded && (
-            <View style={WSEC.forecastPill}>
-              <Text style={WSEC.forecastPillTxt}>FORECAST</Text>
-            </View>
-          )}
-          <Animated.View style={[WSEC.chevronWrap, { transform: [{ rotate: chevronRot }] }]}>
-            <Text style={WSEC.chevron}>⌄</Text>
-          </Animated.View>
+          {/* Row 1: live data metrics */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Text style={WSEC.hum}>💧 {weather.humidity}%</Text>
+            {maxT !== null && <Text style={WSEC.hi}>↑{maxT}°</Text>}
+            {minT !== null && <Text style={WSEC.lo}>↓{minT}°</Text>}
+          </View>
+          {/* Row 2: action pill + chevron */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+            {!expanded && (
+              <View style={WSEC.forecastPill}>
+                <Text style={WSEC.forecastPillTxt}>FORECAST</Text>
+              </View>
+            )}
+            <Animated.View style={[WSEC.chevronWrap, { transform: [{ rotate: chevronRot }] }]}>
+              <Text style={WSEC.chevron}>⌄</Text>
+            </Animated.View>
+          </View>
         </View>
       </TouchableOpacity>
 
@@ -2565,13 +2569,13 @@ function WeatherSection({
 const WSEC = StyleSheet.create({
   container: {
     marginHorizontal: 16, marginTop: 6, marginBottom: 10,
-    borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden',
+    borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.36)',
+    backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 14, elevation: 7,
   },
   summaryRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
   leftGroup:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rightGroup:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rightGroup:  { flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
   emoji:       { fontSize: 22 },
   temp:        { fontSize: 17, fontWeight: '900', color: '#FFFFFFEE', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   cond:        { fontSize: 12, color: '#FFFFFFCC', fontWeight: '600', flexShrink: 1, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
@@ -2620,7 +2624,7 @@ function CosmicDetailSheet({
   const yoga       = yogas[p.yogaIdx] ?? '—';
   const nextEvent  = lunar.daysToFull <= lunar.daysToNew
     ? { icon: '🌕', label: `Full Moon  ·  ${lunar.daysToFull === 0 ? 'Today' : `in ${lunar.daysToFull}d`}`, date: lunar.fullDateLong, color: '#fbbf24' }
-    : { icon: '🌑', label: `New Moon  ·  ${lunar.daysToNew === 0 ? 'Today' : `in ${lunar.daysToNew}d`}`,   date: lunar.newDateLong,  color: '#a78bfa' };
+    : { icon: '🌑', label: `New Moon  ·  ${lunar.daysToNew === 0 ? 'Today' : `in ${lunar.daysToNew}d`}`,   date: lunar.newDateLong,  color: '#60a5fa' };
 
   const now  = new Date();
   const curH = now.getHours() + now.getMinutes() / 60;
@@ -2640,7 +2644,7 @@ function CosmicDetailSheet({
 
         <Animated.View style={{ transform: [{ translateY }], backgroundColor: '#05050E', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%', overflow: 'hidden' }}>
           {/* Cosmic accent line */}
-          <LinearGradient colors={[vaar.color + 'CC', '#a78bfa88', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 2 }} />
+          <LinearGradient colors={[vaar.color + 'CC', '#60a5fa88', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 2 }} />
           {/* Handle */}
           <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
@@ -2651,7 +2655,7 @@ function CosmicDetailSheet({
             {/* ── Header ── */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08', marginBottom: 18 }}>
               <View>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa', letterSpacing: 2.2, marginBottom: 4 }}>TODAY'S COSMIC ALMANAC</Text>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5fa', letterSpacing: 2.2, marginBottom: 4 }}>TODAY'S COSMIC ALMANAC</Text>
                 <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF' }}>🌌  {ENGLISH_DAYS[p.vaarIdx]},  {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</Text>
                 <Text style={{ fontSize: 10, color: vaar.color + 'CC', fontWeight: '700', marginTop: 3 }}>{vaar.vedicName}  ·  {vaar.planet} Day  ·  {vm?.name}</Text>
               </View>
@@ -2691,13 +2695,13 @@ function CosmicDetailSheet({
             )}
 
             {/* ── Moon + Tithi ── */}
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(167,139,250,0.28)', padding: 14, marginBottom: 14 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.28)', padding: 14, marginBottom: 14 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <MoonSVG tithiNum={moon.tithiNum} size={52} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{moon.name}  ·  {moon.illumination}% lit</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#a78bfaDD', marginBottom: 4 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#60a5faDD', marginBottom: 4 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
                   <Text style={{ fontSize: 10, color: '#FFFFFF55', lineHeight: 15, fontStyle: 'italic' }}>{tithiEnergy}</Text>
                 </View>
               </View>
@@ -2742,9 +2746,9 @@ function CosmicDetailSheet({
             <TouchableOpacity
               onPress={() => { close(); setTimeout(onCosmicPress, 300); }}
               activeOpacity={0.85}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 15, borderColor: '#a78bfa50', backgroundColor: '#a78bfa16' }}>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#a78bfaDD' }}>🌌  Explore Full Cosmic Date</Text>
-              <Text style={{ fontSize: 16, color: '#a78bfaDD', fontWeight: '900' }}>→</Text>
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 15, borderColor: '#60a5fa50', backgroundColor: '#60a5fa16' }}>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#60a5faDD' }}>🌌  Explore Full Cosmic Date</Text>
+              <Text style={{ fontSize: 16, color: '#60a5faDD', fontWeight: '900' }}>→</Text>
             </TouchableOpacity>
 
           </ScrollView>
@@ -2771,7 +2775,7 @@ function CosmicOrbitStrip({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const nextEvent = lunar.daysToFull <= lunar.daysToNew
-    ? { icon: '🌕', label: `New Moon in ${lunar.daysToNew}d`, color: '#a78bfa' }
+    ? { icon: '🌕', label: `New Moon in ${lunar.daysToNew}d`, color: '#60a5fa' }
     : { icon: '🌑', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' };
 
   return (
@@ -2789,7 +2793,7 @@ function CosmicOrbitStrip({
 
         {/* Tithi */}
         <Text style={COS.stripTithi} numberOfLines={1}>
-          <Text style={{ color: '#a78bfaEE', fontWeight: '900' }}>{p.tithiName}</Text>
+          <Text style={{ color: '#60a5faEE', fontWeight: '900' }}>{p.tithiName}</Text>
           <Text style={{ color: '#FFFFFF40' }}>  ·  {p.paksha} Paksha</Text>
         </Text>
 
@@ -2826,8 +2830,8 @@ const COS = StyleSheet.create({
   strip: {
     marginHorizontal: 16, marginTop: 6, marginBottom: 6,
     borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.32)',
+    backgroundColor: 'rgba(255,255,255,0.13)',
     overflow: 'hidden',
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 9,
@@ -2971,7 +2975,8 @@ function PhaseDetailSheet({
             <TouchableOpacity
               onPress={() => {
                 close();
-                setTimeout(() => router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never), 320);
+                const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+                setTimeout(() => router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never), 320);
               }}
               activeOpacity={0.85}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 16, borderColor: period.color + '50', backgroundColor: period.color + '16' }}>
@@ -2986,29 +2991,718 @@ function PhaseDetailSheet({
   );
 }
 
+// ── Zen Mode sound library (ambient + mantras) ───────────────────────────────
+const ZEN_SOUNDS: PlayableSoundMeta[] = [
+  { id: 'light_rain',       label: 'Light Rain',      emoji: '🌦️', color: '#60a5fa', top: '#0D2440', bot: '#050F1E', cat: 'Nature',  desc: 'Soft rain on leaves',               src: require('../../assets/sounds/mixkit-light-rain-loop-2393.m4a') },
+  { id: 'sea_waves',        label: 'Sea Waves',        emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature',  desc: 'Gentle coastal waves',              src: require('../../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a') },
+  { id: 'night_forest',     label: 'Night Forest',     emoji: '🦗', color: '#4ade80', top: '#0A1E0E', bot: '#050F07', cat: 'Nature',  desc: 'Crickets at midnight',              src: require('../../assets/sounds/mixkit-night-forest-with-insects-2414.m4a') },
+  { id: 'forest_breeze',    label: 'Forest Breeze',    emoji: '🌳', color: '#86efac', top: '#0A1E10', bot: '#050F08', cat: 'Nature',  desc: 'Wind through the canopy',          src: require('../../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a') },
+  { id: 'flowing_water',    label: 'Flowing Water',    emoji: '💧', color: '#67e8f9', top: '#0A1E28', bot: '#050F14', cat: 'Nature',  desc: 'Stream over stones',                src: require('../../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a') },
+  { id: 'gentle_wind',      label: 'Gentle Wind',      emoji: '🌬️', color: '#a3e635', top: '#141808', bot: '#0A0F05', cat: 'Nature',  desc: 'Open meadow breeze',               src: require('../../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
+  { id: 'jungle_rain',      label: 'Jungle Rain',      emoji: '🦜', color: '#34d399', top: '#0A2418', bot: '#05100A', cat: 'Nature',  desc: 'Rain with tropical birds',          src: require('../../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a') },
+  { id: 'stotra_bhagya',    label: 'Bhagya Suktam',   emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Stotra', desc: 'Vedic hymn for prosperity',         src: require('../../assets/sounds/bhagya-suktam.mp3') },
+  { id: 'stotra_shiv',      label: 'Shiv Sankalpa',   emoji: '🕉️', color: '#93c5fd', top: '#140A1A', bot: '#0A050F', cat: 'Stotra', desc: 'Vedic prayer for pure mind',        src: require('../../assets/sounds/shiv-sankalpa-suktam.mp3') },
+  { id: 'mantra_gayatri',   label: 'Gayatri Mantra',  emoji: '🌞', color: '#fbbf24', top: '#1A1000', bot: '#0A0800', cat: 'Mantra', desc: 'Universal prayer of light',         src: { uri: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' } },
+  { id: 'mantra_lalitha',   label: 'Lalitha Sahasra', emoji: '🌺', color: '#f472b6', top: '#1A0010', bot: '#0A0008', cat: 'Stotra', desc: 'Thousand names of the divine',      src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' } },
+  { id: 'mantra_shivtandav',label: 'Shiv Tandav',     emoji: '🔱', color: '#60a5fa', top: '#100A1A', bot: '#08050A', cat: 'Mantra', desc: 'Cosmic dance of Shiva',             src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' } },
+];
+
+// ── Vedic Panchanga helpers ───────────────────────────────────────────────────
+const VAAR_NAMES  = ['Ravivāra','Somavāra','Maṅgalavāra','Budhavāra','Guruvāra','Śukravāra','Śanivāra'];
+const TITHI_NAMES_PANCHANGA = ['Pratipada','Dvitīyā','Tṛtīyā','Caturthī','Pañcamī','Ṣaṣṭhī','Saptamī','Aṣṭamī','Navamī','Daśamī','Ekādaśī','Dvādaśī','Trayodaśī','Caturdaśī','Pūrṇimā','Pratipada','Dvitīyā','Tṛtīyā','Caturthī','Pañcamī','Ṣaṣṭhī','Saptamī','Aṣṭamī','Navamī','Daśamī','Ekādaśī','Dvādaśī','Trayodaśī','Caturdaśī','Amāvasyā'];
+const MAAS_NAMES  = ['Chaitra','Vaiśākha','Jyeṣṭha','Āṣāḍha','Śrāvaṇa','Bhādrapada','Āśvina','Kārtika','Mārgaśīrṣa','Pauṣa','Māgha','Phālguna'];
+
+function getVedicDate(d: Date) {
+  const vaar = VAAR_NAMES[d.getDay()];
+  const REF_NM   = 946933200000;           // Jan 6 2000 UTC — approx new moon (Pausha Amavasya)
+  const SYNODIC  = 29.53059 * 86400000;
+  const elapsed  = d.getTime() - REF_NM;
+  const frac     = ((elapsed % SYNODIC) + SYNODIC) % SYNODIC;
+  const tithiIdx = Math.floor((frac / SYNODIC) * 30);
+  const paksha   = tithiIdx < 15 ? 'Śukla' : 'Kṛṣṇa';
+  const tithi    = TITHI_NAMES_PANCHANGA[tithiIdx] ?? 'Pratipada';
+  const months   = Math.floor(elapsed / SYNODIC);
+  const maas     = MAAS_NAMES[((months + 9) % 12 + 12) % 12];  // ref month = Pausha (idx 9)
+  return { vaar, tithi, paksha, maas };
+}
+
+// ── Zen Mode constants ────────────────────────────────────────────────────────
+const ZEN_CIRCLE_COLORS = ['#60a5fa','#60a5fa','#38bdf8','#34d399','#fbbf24','#f97316','#ec4899'];
+const ZEN_BREATH = [
+  { label: '✦  BREATHE IN', secs: 4, toScale: 1.28 },
+  { label: '◈  HOLD',        secs: 7, toScale: 1.28 },
+  { label: '◯  RELEASE',     secs: 8, toScale: 0.88 },
+];
+
+// ── Vedic sleep mantras ───────────────────────────────────────────────────────
+const SLEEP_MANTRAS = [
+  { skt: 'सोऽहम्',                    rom: "So'ham",              en: 'I am that — the breath of the universe is my own' },
+  { skt: 'ॐ नमः शिवाय',              rom: 'Om Namah Shivaya',    en: 'I bow to the auspicious one who resides within all' },
+  { skt: 'शान्तिः शान्तिः शान्तिः',  rom: 'Shanti Shanti Shanti',en: 'Peace in body · peace in mind · peace in spirit' },
+  { skt: 'अहं ब्रह्मास्मि',          rom: 'Aham Brahmasmi',      en: 'I am Brahman — pure infinite consciousness' },
+  { skt: 'तत् त्वम् असि',            rom: 'Tat Tvam Asi',        en: 'Thou art that — you are the entire cosmos' },
+  { skt: 'ॐ तत् सत्',                rom: 'Om Tat Sat',          en: 'That is the absolute truth — pure existence' },
+  { skt: 'प्रशान्तम्',               rom: 'Prashāntam',          en: 'Utterly calm — beyond thought, beyond time' },
+  { skt: 'ॐ मणि पद्मे हूँ',          rom: 'Om Mani Padme Hum',   en: 'The jewel in the lotus — compassion and wisdom united' },
+];
+
+const NIGHT_SCIENCE: Record<string, string[]> = {
+  evening_kapha: [
+    'Melatonin synthesis begins as ambient light fades — sleep hormone rising',
+    'Parasympathetic nervous system activates — rest-and-digest mode on',
+    'Core body temperature drops 0.5°C/hr — the biological sleep signal',
+  ],
+  night_pitta: [
+    'Growth Hormone peaks in slow-wave sleep — body rebuilds',
+    'Liver Phase I & II detox enzymes are maximally active',
+    'Autophagy fires — cellular debris cleared, DNA repaired',
+  ],
+  night_vata: [
+    'Alpha-theta brainwaves dominate — subconscious veil is thinnest',
+    'Cortisol Awakening Response begins its sacred surge',
+    'Neuroplasticity at 24-hr zenith — Brahma Muhurta opens',
+  ],
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
-// Phase Ring Hero  — ring + science card + one auto-sliding Do/Avoid strip
+// Zen Mode Overlay  — Endel/Calm-style: full nature bg, glowing orb, mantra
+// ══════════════════════════════════════════════════════════════════════════════
+function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const SW      = Dimensions.get('window').width;
+  const CIRCLE_R = Math.min(SW * 0.64, 248);
+
+  // Nature background image (time-matched)
+  const [bgUri, setBgUri] = useState<string | null>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    const key =
+      h < 4.5 ? 'brahma'   : h < 6   ? 'predawn'  :
+      h < 8   ? 'sunrise'  : h < 11  ? 'morning'  :
+      h < 14  ? 'midday'   : h < 17  ? 'afternoon':
+      h < 19  ? 'sandhya'  : h < 21  ? 'twilight' :
+      h < 23  ? 'evening'  : 'night';
+    getBgSource(key).then(uri => setBgUri(uri)).catch(() => {});
+  }, [visible]);
+
+  // Sound player
+  const { playingId, isPaused, playSound, stopSound, togglePause } = useSoundPlayer();
+  const [zenCat, setZenCat] = useState<'Nature' | 'Mantra' | 'Stotra'>('Nature');
+  const zenFiltered = ZEN_SOUNDS.filter(s => s.cat === zenCat);
+  const playingZen  = ZEN_SOUNDS.find(s => s.id === playingId);
+
+  const handleSoundTap = (sound: PlayableSoundMeta) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (playingId === sound.id) togglePause();
+    else playSound(sound, 3600);
+  };
+
+  // Live clock
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Slow color cycle (every 5 s)
+  const [colorIdx, setColorIdx] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    const t = setInterval(() => setColorIdx(p => (p + 1) % ZEN_CIRCLE_COLORS.length), 5000);
+    return () => clearInterval(t);
+  }, [visible]);
+
+  // 4-7-8 breathing
+  const breathScale = useRef(new Animated.Value(1)).current;
+  const [bpIdx,     setBpIdx]     = useState(0);
+  const [countdown, setCountdown] = useState(4);
+  const bpRun = useRef(true);
+  useEffect(() => {
+    if (!visible) return;
+    bpRun.current = true;
+    let cdTimer: ReturnType<typeof setInterval>;
+    let phase = 0;
+    const run = () => {
+      if (!bpRun.current) return;
+      const ph = ZEN_BREATH[phase];
+      setBpIdx(phase);
+      let cd = ph.secs; setCountdown(cd);
+      cdTimer = setInterval(() => { cd--; if (cd >= 0) setCountdown(cd); else clearInterval(cdTimer); }, 1000);
+      Animated.timing(breathScale, { toValue: ph.toScale, duration: ph.secs * 1000, useNativeDriver: true })
+        .start(({ finished }) => {
+          clearInterval(cdTimer);
+          if (finished && bpRun.current) { phase = (phase + 1) % ZEN_BREATH.length; run(); }
+        });
+    };
+    run();
+    return () => { bpRun.current = false; clearInterval(cdTimer); breathScale.stopAnimation(); };
+  }, [visible]);
+
+  // Mantra fade-rotation
+  const [mantraIdx, setMantraIdx] = useState(0);
+  const mantraOp = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!visible) return;
+    const t = setInterval(() => {
+      Animated.timing(mantraOp, { toValue: 0, duration: 900, useNativeDriver: true })
+        .start(() => {
+          setMantraIdx(p => (p + 1) % SLEEP_MANTRAS.length);
+          Animated.timing(mantraOp, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+        });
+    }, 8000);
+    return () => clearInterval(t);
+  }, [visible]);
+
+  const cc     = ZEN_CIRCLE_COLORS[colorIdx];
+  const bp     = ZEN_BREATH[bpIdx];
+  const mantra = SLEEP_MANTRAS[mantraIdx];
+
+  const hh      = now.getHours().toString().padStart(2, '0');
+  const mm      = now.getMinutes().toString().padStart(2, '0');
+  const timeStr = `${hh}:${mm}`;
+  const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  return (
+    <Modal visible={visible} transparent={false} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <ImageBackground
+        source={bgUri ? { uri: bgUri } : undefined}
+        style={{ flex: 1, backgroundColor: '#04040E' }}
+        imageStyle={{ opacity: 0.72 }}>
+
+        {/* Subtle gradient veil — preserves nature image, hides no UI clutter */}
+        <LinearGradient
+          colors={['rgba(3,3,18,0.45)', 'rgba(3,3,18,0.08)', 'rgba(3,3,18,0.55)']}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+        />
+
+        {/* Exit — top-right ghost pill */}
+        <TouchableOpacity
+          onPress={onClose}
+          style={{
+            position: 'absolute', top: 52, right: 18, zIndex: 99,
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+            borderRadius: 22, paddingHorizontal: 14, paddingVertical: 8,
+          }}>
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '700', letterSpacing: 0.8 }}>
+            Back to App
+          </Text>
+        </TouchableOpacity>
+
+        {/* ── Center: glowing orb + breath label + mantra ── */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingTop: 36 }}>
+
+          {/* Glowing breathing orb */}
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 30 }}>
+            {/* Outermost diffuse halo */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: CIRCLE_R * 1.62, height: CIRCLE_R * 1.62,
+              borderRadius: CIRCLE_R * 0.81,
+              backgroundColor: cc + '27',
+              transform: [{ scale: breathScale }],
+            }} />
+            {/* Outer glow fill */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: CIRCLE_R * 1.32, height: CIRCLE_R * 1.32,
+              borderRadius: CIRCLE_R * 0.66,
+              backgroundColor: cc + '32',
+              transform: [{ scale: breathScale }],
+            }} />
+            {/* Mid border ring */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: CIRCLE_R * 1.10, height: CIRCLE_R * 1.10,
+              borderRadius: CIRCLE_R * 0.55,
+              borderWidth: 1, borderColor: cc + '50',
+              transform: [{ scale: breathScale }],
+            }} />
+            {/* Core glowing circle */}
+            <Animated.View style={{
+              width: CIRCLE_R, height: CIRCLE_R,
+              borderRadius: CIRCLE_R / 2,
+              backgroundColor: cc + '3A',
+              borderWidth: 1.5, borderColor: cc + 'C0',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: cc,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.92,
+              shadowRadius: 42,
+              elevation: 20,
+              transform: [{ scale: breathScale }],
+            }}>
+              <Text style={{
+                fontSize: Math.round(CIRCLE_R * 0.235),
+                fontWeight: '100', color: '#FFFFFF', letterSpacing: -2,
+              }}>
+                {timeStr}
+              </Text>
+              <Text style={{
+                fontSize: 11, color: 'rgba(255,255,255,0.58)',
+                fontWeight: '500', marginTop: 4, letterSpacing: 0.4,
+              }}>
+                {dateStr}
+              </Text>
+            </Animated.View>
+          </View>
+
+          {/* Breath phase label */}
+          <Text style={{ fontSize: 10, fontWeight: '700', color: cc + 'CC', letterSpacing: 2.5, marginBottom: 3 }}>
+            {bp.label}
+          </Text>
+          <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.26)', fontWeight: '600', letterSpacing: 1, marginBottom: 36 }}>
+            {countdown}s  ·  4 · 7 · 8  PRANAYAMA
+          </Text>
+
+          {/* Mantra — fades in/out, no overlapping labels */}
+          <Animated.View style={{ opacity: mantraOp, alignItems: 'center', paddingHorizontal: 16 }}>
+            <Text style={{
+              fontSize: 22, color: cc, fontWeight: '800',
+              textAlign: 'center', letterSpacing: 0.5, marginBottom: 8, lineHeight: 30,
+            }}>
+              {mantra.rom}
+            </Text>
+            <Text style={{
+              fontSize: 26, color: 'rgba(255,255,255,0.72)',
+              textAlign: 'center', lineHeight: 38, marginBottom: 6, letterSpacing: 0.3,
+            }}>
+              {mantra.skt}
+            </Text>
+            <Text style={{
+              fontSize: 11, color: 'rgba(255,255,255,0.40)',
+              textAlign: 'center', lineHeight: 17, fontStyle: 'italic',
+            }}>
+              {mantra.en}
+            </Text>
+          </Animated.View>
+        </View>
+
+        {/* ── Sound Picker — minimal horizontal pill strip ── */}
+        <View style={{ paddingBottom: 48 }}>
+
+          {/* Category tabs + now-playing indicator */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center',
+            justifyContent: 'center', gap: 8, marginBottom: 12, paddingHorizontal: 20,
+          }}>
+            {(['Nature', 'Mantra', 'Stotra'] as const).map(cat => {
+              const catIcon = cat === 'Nature' ? '≈' : cat === 'Mantra' ? 'ॐ' : '✦';
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setZenCat(cat)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99,
+                    borderWidth: 1,
+                    borderColor: zenCat === cat ? cc + '70' : 'rgba(255,255,255,0.12)',
+                    backgroundColor: zenCat === cat ? cc + '22' : 'rgba(255,255,255,0.05)',
+                  }}>
+                  <Text style={{
+                    fontSize: 9, fontWeight: '800', letterSpacing: 0.8,
+                    color: zenCat === cat ? cc : 'rgba(255,255,255,0.38)',
+                  }}>
+                    {catIcon}  {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {playingZen && (
+              <TouchableOpacity
+                onPress={() => stopSound()}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  paddingHorizontal: 11, paddingVertical: 6, borderRadius: 99,
+                  backgroundColor: playingZen.color + '22',
+                  borderWidth: 1, borderColor: playingZen.color + '50',
+                }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isPaused ? 'rgba(255,255,255,0.35)' : playingZen.color }} />
+                <Text style={{ fontSize: 8, color: playingZen.color, fontWeight: '800' }} numberOfLines={1}>
+                  {isPaused ? 'Paused' : playingZen.label}
+                </Text>
+                <Text style={{ fontSize: 8, color: playingZen.color + '90', fontWeight: '900' }}>■</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Horizontal pill list — text-forward, no emoji grid */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+            {zenFiltered.map(sound => {
+              const active = playingId === sound.id;
+              return (
+                <TouchableOpacity
+                  key={sound.id}
+                  onPress={() => handleSoundTap(sound)}
+                  activeOpacity={0.75}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 7,
+                    paddingHorizontal: 15, paddingVertical: 10, borderRadius: 24,
+                    borderWidth: active ? 1.5 : 1,
+                    borderColor: active ? sound.color + 'BB' : 'rgba(255,255,255,0.13)',
+                    backgroundColor: active ? sound.color + '22' : 'rgba(255,255,255,0.06)',
+                  }}>
+                  <View style={{
+                    width: 7, height: 7, borderRadius: 4,
+                    backgroundColor: active ? sound.color : 'rgba(255,255,255,0.18)',
+                  }} />
+                  <Text style={{
+                    fontSize: 11,
+                    color: active ? sound.color : 'rgba(255,255,255,0.52)',
+                    fontWeight: active ? '800' : '500',
+                  }}>
+                    {sound.label}
+                  </Text>
+                  {active && (
+                    <View style={{
+                      width: 4, height: 4, borderRadius: 2,
+                      backgroundColor: sound.color, opacity: isPaused ? 0.3 : 0.9,
+                    }} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </ImageBackground>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NightSleepMode  — period header + single Open Calm Space / Night Sleep CTA
+// ══════════════════════════════════════════════════════════════════════════════
+function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
+  period: DoshaPeriod;
+  autoZen?: boolean;
+  mode: 'normal' | 'relax';
+  onModeChange: (m: 'normal' | 'relax') => void;
+}) {
+  const NC = period.id === 'night_vata'    ? '#60a5fa'
+           : period.id === 'night_pitta'   ? '#fbbf24'
+           : period.id === 'evening_kapha' ? '#34d399'
+           : period.color;
+
+  const isNight = ['evening_kapha', 'night_pitta', 'night_vata'].includes(period.id);
+
+  const [zenActive, setZenActive] = useState(false);
+  // Auto-zen disabled for now
+  // useEffect(() => {
+  //   if (!autoZen) return;
+  //   const t = setTimeout(() => setZenActive(true), 600);
+  //   return () => clearTimeout(t);
+  // }, [autoZen]);
+
+  const rem    = period.minutesRemaining;
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+
+  const sectionLabel =
+    period.id === 'night_vata'      ? 'BRAHMA MUHURTA  ·  PRE-DAWN'
+    : period.id === 'night_pitta'   ? 'SLEEP  ·  DEEP REPAIR PHASE'
+    : period.id === 'evening_kapha' ? 'EVENING  ·  PARASYMPATHETIC WIND-DOWN'
+    : `RELAXATION  ·  ${period.label.toUpperCase()}`;
+
+  const borderColor =
+    period.id === 'night_vata'      ? 'rgba(129,140,248,0.35)'
+    : period.id === 'night_pitta'   ? 'rgba(251,191,36,0.28)'
+    : period.id === 'evening_kapha' ? 'rgba(52,211,153,0.32)'
+    : NC + '55';
+
+  const gradientColors: [string, string, string] =
+    period.id === 'night_vata'
+      ? ['rgba(30,20,70,0.84)',  'rgba(10,8,28,0.92)',  'rgba(49,46,129,0.72)']
+      : period.id === 'night_pitta'
+      ? ['rgba(45,25,10,0.84)',  'rgba(12,8,4,0.92)',   'rgba(120,53,15,0.50)']
+      : period.id === 'evening_kapha'
+      ? ['rgba(5,30,20,0.84)',   'rgba(4,16,12,0.92)',  'rgba(16,80,60,0.55)']
+      : ['rgba(8,6,24,0.84)',    'rgba(5,4,16,0.92)',   'rgba(20,15,50,0.65)'];
+
+  const tagline =
+    period.id === 'night_vata'      ? 'Brahma Muhurta — the sacred pre-dawn window'
+    : period.id === 'night_pitta'   ? 'Deep repair · Growth hormone · Autophagy'
+    : period.id === 'evening_kapha' ? 'Parasympathetic wind-down · Melatonin rising'
+    : 'Rest, breathe, and let the body restore';
+
+  return (
+    <>
+    <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 6 }}>
+
+      {/* ── Mode Toggle — hidden for now, kept for future use ── */}
+      {false && <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 4, marginBottom: 16 }}>
+        {(['normal', 'relax'] as const).map(m => {
+          const label = m === 'normal' ? 'Work Mode' : (isNight ? 'Night Sleep' : 'Calm Space');
+          const icon  = m === 'normal' ? '⚡' : '◯';
+          return (
+            <TouchableOpacity
+              key={m}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onModeChange(m); }}
+              activeOpacity={0.8}
+              style={{
+                flex: 1, paddingVertical: 11, borderRadius: 13,
+                alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7,
+                backgroundColor: mode === m ? (m === 'relax' ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.15)') : 'transparent',
+                borderWidth: mode === m ? 1 : 0,
+                borderColor: mode === m ? (m === 'relax' ? '#60a5fa60' : 'rgba(255,255,255,0.25)') : 'transparent',
+              }}>
+              <Text style={{ fontSize: 15 }}>{icon}</Text>
+              <Text style={{
+                fontSize: 11, fontWeight: '900', letterSpacing: 0.3,
+                color: mode === m ? (m === 'relax' ? '#93c5fd' : '#FFFFFF') : 'rgba(255,255,255,0.35)',
+              }}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>}
+
+      {/* Section label */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: NC }} />
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFFBB', letterSpacing: 1.8, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>
+            {sectionLabel}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 9, fontWeight: '700', color: NC }}>{period.startLabel} – {period.endLabel}</Text>
+      </View>
+
+      {/* ── Calm Space card ── */}
+      <View style={{ borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: borderColor }}>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={{ padding: 22 }}>
+
+          {/* Glass shimmer */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '55' }} />
+
+          {/* Period identity row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 28, lineHeight: 34 }}>{period.emoji}</Text>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 18 }}>{period.englishLabel}</Text>
+                <Text style={{ fontSize: 7, color: NC + 'CC', fontWeight: '700', letterSpacing: 0.8, marginTop: 2 }}>{period.sciEmoji}  {period.sciTitle}</Text>
+              </View>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: NC }}>{remStr}</Text>
+              <Text style={{ fontSize: 6, color: 'rgba(255,255,255,0.35)', fontWeight: '700', letterSpacing: 0.6 }}>remaining</Text>
+            </View>
+          </View>
+
+          {/* Tagline */}
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', textAlign: 'center', lineHeight: 17, marginBottom: 22 }}>
+            {tagline}
+          </Text>
+
+          {/* ── Open Calm Space / Night Sleep button ── */}
+          <TouchableOpacity
+            onPress={() => setZenActive(true)}
+            activeOpacity={0.82}
+            style={{
+              alignItems: 'center', paddingVertical: 18, borderRadius: 20,
+              backgroundColor: NC + '20', borderWidth: 1.5, borderColor: NC + '65',
+            }}>
+            <Text style={{ fontSize: 22, marginBottom: 6 }}>◯</Text>
+            <Text style={{ fontSize: 14, fontWeight: '900', color: NC, letterSpacing: 0.5 }}>
+              {isNight ? 'Open Night Sleep' : 'Open Calm Space'}
+            </Text>
+            <Text style={{ fontSize: 9.5, color: NC + '70', fontWeight: '600', marginTop: 4, letterSpacing: 0.3 }}>
+              {isNight ? '4·7·8 breathing  ·  Vedic mantras  ·  Sleep science' : '4·7·8 breathing  ·  Vedic mantras  ·  Nature sounds'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Bottom shimmer */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '30' }} />
+        </LinearGradient>
+      </View>
+    </View>
+
+    {/* Full-screen calm overlay */}
+    <ZenModeOverlay visible={zenActive} onClose={() => setZenActive(false)} />
+    </>
+  );
+}
+
+// ── Friendly Reel Weather Blurb ──────────────────────────────────────────────
+function getReelWeatherBlurb(
+  weather: WeatherData,
+  period: DoshaPeriod,
+  hour: number,
+): { emoji: string; title: string; tip: string; storyTips: string[] } {
+  const code  = weather.weatherCode ?? 0;
+  const temp  = weather.temp        ?? 25;
+  const humid = weather.humidity    ?? 50;
+  const t     = `${Math.round(temp)}°`;
+
+  const isStorm    = code >= 95;
+  const isRain     = !isStorm && code >= 51;
+  const isCloudy   = !isRain  && [1,2,3,45,48].includes(code);
+  const isClear    = code === 0;
+  const isHot      = temp >= 32;
+  const isWarm     = temp >= 24 && temp < 32;
+  const isCool     = temp >= 16 && temp < 24;
+  const isCold     = temp < 16;
+  const isHumid    = humid >= 70;
+
+  const isMorning   = hour >= 5  && hour < 10;
+  const isMidday    = hour >= 10 && hour < 14;
+  const isAfternoon = hour >= 14 && hour < 18;
+  const isEvening   = hour >= 18;
+
+  if (isStorm) return {
+    emoji: '⛈️', title: 'Storm outside · Stay in',
+    tip: 'Thunder & lightning — avoid open areas and stay safe indoors',
+    storyTips: ['⛈️ Active storm outside — do not step out', 'Avoid open areas and tall trees', 'Unplug electronics · Keep calm and stay safe'],
+  };
+
+  // ── Morning ──────────────────────────────────────────────────────────────
+  if (isMorning) {
+    if (isRain) return {
+      emoji: '🌧️', title: 'Rainy morning · Carry umbrella',
+      tip: 'Take an umbrella before heading out · Wet roads ahead',
+      storyTips: ['🌧️ Raining — grab an umbrella before leaving', 'Roads are wet · Drive slowly', 'Perfect morning for indoor breathwork or yoga'],
+    };
+    if (isCold) return {
+      emoji: '🥶', title: `Cold ${t} · Layer up before going out`,
+      tip: `${t} outside · Warm up indoors first · Sesame oil on feet`,
+      storyTips: [`${t} this morning — layer up before stepping out`, 'Warm ginger-pepper tea is your best friend today', 'Sesame oil massage helps the body stay warm'],
+    };
+    if (isHot) return {
+      emoji: '🌡️', title: `Already ${t} · Head out early`,
+      tip: 'Step out now before it heats up · Light clothing only',
+      storyTips: [`Already ${t} this morning — exercise early`, 'Light breathable clothing is a must', 'Hydrate before and after any outdoor activity'],
+    };
+    if (isHumid) return {
+      emoji: '💧', title: `Humid ${t} · Move before 9 AM`,
+      tip: 'High humidity slows you down · Finish exercise early',
+      storyTips: [`Humid at ${t} — complete outdoor exercise before 9 AM`, 'High humidity reduces aerobic efficiency', 'Coconut water or ORS keeps you going'],
+    };
+    if (isClear && (isWarm || isHot)) return {
+      emoji: '☀️', title: 'Beautiful morning · Go outside!',
+      tip: 'Perfect for a walk or workout · Soak 10 min of sun',
+      storyTips: ['☀️ Gorgeous clear morning — ideal for outdoor exercise', '10 min of morning sun locks in your circadian rhythm', 'Bare feet on grass amplifies the cortisol awakening response'],
+    };
+    if (isClear && isCool) return {
+      emoji: '🌤️', title: `Fresh ${t} · Great for a walk`,
+      tip: 'Crisp fresh air · Ideal for a brisk walk or run',
+      storyTips: [`${t} and clear — perfect for a brisk morning walk`, 'Cool air sharpens focus and boosts morning alertness', 'Best outdoor exercise window of the day'],
+    };
+    return {
+      emoji: '⛅', title: 'Decent morning · Get moving',
+      tip: 'Cloudy but dry · Good window for outdoor activity',
+      storyTips: ['Overcast sky — no rain expected', 'Diffused morning light is gentle on the eyes', 'Still a good window for a walk or light exercise'],
+    };
+  }
+
+  // ── Midday ───────────────────────────────────────────────────────────────
+  if (isMidday) {
+    if (isRain) return {
+      emoji: '🌧️', title: 'Raining · Eat in, focus well',
+      tip: 'Stay indoors · Light lunch · Great deep work window',
+      storyTips: ['Raining outside — stay in and make the most of it', 'Great window for deep focused work or learning', 'Light lunch today — rain cools digestive fire slightly'],
+    };
+    if (isHot) return {
+      emoji: '🔥', title: `Hot ${t} · Stay shaded & hydrated`,
+      tip: 'Avoid direct noon sun · Cool fluids · Eat light',
+      storyTips: [`${t} outside — avoid direct midday sun`, 'Cool lime water or coconut water helps manage Pitta', 'Eat light — excess heat suppresses digestive enzymes'],
+    };
+    if (isCool || isCold) return {
+      emoji: '🌤️', title: 'Cool midday · Peak digestive window',
+      tip: 'Best time for your main meal · Eat well now',
+      storyTips: ['Cool midday — digestive enzymes are firing at full power', 'Eat your largest, most complex meal between 12–1 PM', 'Walk 5 minutes post-lunch to stabilise blood sugar'],
+    };
+    return {
+      emoji: '☀️', title: 'Good midday · Eat & focus',
+      tip: 'Digestive fire at peak · Main meal of the day now',
+      storyTips: ['Midday digestive fire is at its biological peak', 'Eat your largest meal between 12–1 PM', '5-minute post-lunch walk improves metabolism by 15%'],
+    };
+  }
+
+  // ── Afternoon ─────────────────────────────────────────────────────────────
+  if (isAfternoon) {
+    if (isRain) return {
+      emoji: '🌦️', title: 'Afternoon rain · Stay creative',
+      tip: 'Rainy afternoon · Great for creative work indoors',
+      storyTips: ['Afternoon rain — perfect for creative deep work', 'If you must go out, take an umbrella', 'Herbal tea over coffee this afternoon'],
+    };
+    if (isHot) return {
+      emoji: '🌡️', title: `Hot ${t} · Skip outdoor cardio`,
+      tip: 'Avoid intense sun · Shaded walk or indoor workout ok',
+      storyTips: [`${t} — skip intense outdoor cardio today`, 'Indoor exercise or shaded walk only', 'Coconut water cools Pitta heat effectively'],
+    };
+    return {
+      emoji: '🚶', title: 'Good afternoon · Perfect for walk',
+      tip: 'Lung capacity peaks 3–5 PM · Best exercise window',
+      storyTips: ['Lung capacity peaks at 3–5 PM — the best cardio window', 'A 20-minute walk now is worth 40 minutes in the morning', 'Great window for sports, creative work and collaboration'],
+    };
+  }
+
+  // ── Evening ───────────────────────────────────────────────────────────────
+  if (isEvening) {
+    if (isRain) return {
+      emoji: '🌧️', title: 'Rainy evening · Stay cozy',
+      tip: 'Stay indoors · Light dinner · Wind down early',
+      storyTips: ['Rainy evening — wind down comfortably indoors', 'Light early dinner before 7 PM recommended', 'Cozy journaling or light reading is perfect now'],
+    };
+    if (isCold) return {
+      emoji: '🌙', title: `Cool ${t} · Grab a light jacket`,
+      tip: 'Take a jacket · Brief walk still fine before 8 PM',
+      storyTips: [`${t} this evening — take a light jacket or shawl`, 'A short 15-min walk before 8 PM still beneficial', 'Cool evenings naturally ease the body into sleep mode'],
+    };
+    if (isClear) return {
+      emoji: '🌇', title: 'Clear evening · Nice for a walk',
+      tip: 'Pleasant for a post-dinner walk · Dim screens by 9 PM',
+      storyTips: ['Clear evening — gentle post-dinner walk is ideal', 'Fresh air after dinner lowers cortisol and aids digestion', 'Dim screens from 9 PM to protect melatonin production'],
+    };
+    if (isHumid || (isWarm && isHumid)) return {
+      emoji: '💧', title: `Humid ${t} · Keep room cool`,
+      tip: 'Humid night ahead · Light bedsheet · Ventilate room',
+      storyTips: [`Humid at ${t} — keep your room ventilated tonight`, 'Use a light bedsheet rather than heavy blankets', 'A small fan or open window helps you sleep deeper'],
+    };
+    return {
+      emoji: '🌆', title: 'Calm evening · Begin winding down',
+      tip: 'Light dinner · Screen-free by 9 PM · Sleep by 10 PM',
+      storyTips: ['A calm evening — prioritise winding down now', 'Light dinner before 7:30 PM recommended', 'Begin dimming lights and screens from 9 PM'],
+    };
+  }
+
+  return {
+    emoji: '🌡️', title: `${t} outside today`,
+    tip: 'Dress appropriately for the current weather',
+    storyTips: [`Current temperature: ${t}`, 'Dress for the weather and stay comfortable throughout the day'],
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Phase Ring Hero  — enlarged ring (left) + touch-sensitive Oracle Reel (right)
 // ══════════════════════════════════════════════════════════════════════════════
 function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: WeatherData | null }) {
-  const pulseAnim   = useRef(new Animated.Value(1)).current;
-  const [storyIdx,  setStoryIdx]  = useState<number | null>(null);
-  const router      = useRouter();
+  const pulseAnim               = useRef(new Animated.Value(1)).current;
+  const reelScrollRef           = useRef<ScrollView>(null);
+  const reelPosRef              = useRef(0);
+  const reelPausedRef           = useRef(false);
+  const reelRafRef              = useRef<number>(0);
+  const reelDirRef              = useRef<1 | -1>(1);
+  const reelMaxPosRef           = useRef(0);
+  const [storyIdx,    setStoryIdx]    = useState<number | null>(null);
+  const [sciExpanded, setSciExpanded] = useState(false);
+  const router = useRouter();
+
+  const isNightPeriod = ['evening_kapha', 'night_pitta', 'night_vata'].includes(period.id);
+
   const navigateToExplore = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
-    router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel, sciEmoji: period.sciEmoji, sciTitle: period.sciTitle, sciDesc: period.sciDesc, minutesRemaining: String(period.minutesRemaining), durMinutes: String(durM), activities: JSON.stringify(period.activities), avoidances: JSON.stringify(period.avoidances) } } as never);
+    router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never);
   };
 
-  // Auto-scroll refs
-  const scrollRef   = useRef<ScrollView>(null);
-  const pausedRef   = useRef(false);
-  const posRef      = useRef(0);
-  const dirRef      = useRef(1);
-  const maxPosRef   = useRef(0);
-  const rafRef      = useRef<number>(0);
-  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Pulse animation
+  // Pulse animation for ring halos
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -3018,170 +3712,370 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
     ).start();
   }, []);
 
-  // Auto-scroll animation (same gentle glide as before)
-  const GLIDE = 0.18;
-  useEffect(() => {
-    const tick = () => {
-      if (!pausedRef.current && maxPosRef.current > 0) {
-        posRef.current += GLIDE * dirRef.current;
-        if (posRef.current >= maxPosRef.current) { posRef.current = maxPosRef.current; dirRef.current = -1; }
-        else if (posRef.current <= 0)            { posRef.current = 0;                 dirRef.current =  1; }
-        scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  const pauseScroll   = () => { pausedRef.current = true; if (resumeTimer.current) clearTimeout(resumeTimer.current); };
-  const scheduleResume = () => {
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => { pausedRef.current = false; }, 2500);
-  };
-
-  // Build card arrays
-  const hour = new Date().getHours();
-  const s    = getHourlyEnvSuggestion(period, weather, hour);
-  const sciCard: HESCard  = { emoji: period.sciEmoji, title: period.sciTitle, tips: [period.sciDesc.length > 90 ? period.sciDesc.slice(0, 90) + '…' : period.sciDesc], color: period.color, label: '◉  PHASE SCIENCE' };
-  const envCard: HESCard  = { emoji: s.emoji, title: s.title, tips: s.desc.split(' · '), color: period.color, label: '↟  ENV SIGNAL' };
-  const wCards            = getWeatherCards(weather);
-  const doCards: HESCard[]   = period.activities.map(a => ({ emoji: getActivityEmoji(a),  title: a, tips: ['During ' + period.label],           color: period.color, label: '✓  DO NOW'  }));
-  const dontCards: HESCard[] = period.avoidances.map(a => ({ emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label],      color: '#f43f5e',    label: '⚠️  AVOID' }));
-  const allCards: HESCard[]  = [sciCard, envCard, ...wCards, ...doCards, ...dontCards];
-  const stripCards            = [...doCards, ...dontCards];
-  const stripOffset           = 2 + wCards.length;   // index in allCards where doCards begin
+  // Ring dimensions (+15%)
+  const RING_SIZE   = 210;
+  const RING_STROKE = 11;
+  const R = (RING_SIZE - RING_STROKE * 2) / 2;
+  const C = 2 * Math.PI * R;
 
   const rem    = period.minutesRemaining;
   const durM   = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
   const prog   = Math.min(1, Math.max(0, (durM - rem) / durM));
   const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
 
-  const SIZE = 210; const STROKE = 11;
-  const R = (SIZE - STROKE * 2) / 2;
-  const C = 2 * Math.PI * R;
+  // Build Oracle Reel items
+  const hour      = new Date().getHours();
+  const envSugg   = getHourlyEnvSuggestion(period, weather, hour);
+  const isDayPeriod = !isNightPeriod;  // suppress weather card at night
+
+  const REEL_CARD_H = 90;
+  const REEL_CARD_W = 140;
+
+  const reelItems = [
+    {
+      label: '◉  PHASE SCIENCE',
+      emoji: period.sciEmoji,
+      title: period.sciTitle,
+      tip: period.sciDesc.length > 85 ? period.sciDesc.slice(0, 85) + '…' : period.sciDesc,
+      color: period.color,
+      storyCard: { emoji: period.emoji, title: period.englishLabel, tips: [period.sciEmoji + '  ' + period.sciTitle, period.sciDesc], color: period.color, label: '◉  ACTIVE PHASE' } as HESCard,
+    },
+    ...(weather && isDayPeriod ? (() => {
+      const wb = getReelWeatherBlurb(weather, period, hour);
+      return [{
+        label: '🌤  WEATHER TODAY',
+        emoji: wb.emoji,
+        title: wb.title.length > 38 ? wb.title.slice(0, 38) + '…' : wb.title,
+        tip:   wb.tip.length   > 78 ? wb.tip.slice(0, 78)   + '…' : wb.tip,
+        color: '#60a5fa',
+        storyCard: { emoji: wb.emoji, title: wb.title, tips: wb.storyTips, color: '#60a5fa', label: '🌤  WEATHER SIGNAL' } as HESCard,
+      }];
+    })() : []),
+    {
+      label: '⏱  ENV SIGNAL',
+      emoji: envSugg.emoji,
+      title: envSugg.title,
+      tip: envSugg.desc.length > 78 ? envSugg.desc.slice(0, 78) + '…' : envSugg.desc,
+      color: period.color,
+      storyCard: { emoji: envSugg.emoji, title: envSugg.title, tips: envSugg.desc.split(' · '), color: period.color, label: '⏱  ENV SIGNAL' } as HESCard,
+    },
+    ...period.activities.map(a => ({
+      label: '✓  DO NOW',
+      emoji: getActivityEmoji(a),
+      title: a,
+      tip: period.sciTitle + '  ·  ' + period.label,
+      color: period.color,
+      storyCard: { emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  DO THIS HOUR' } as HESCard,
+    })),
+    ...period.avoidances.map(a => ({
+      label: '⚠️  AVOID',
+      emoji: getAvoidanceEmoji(a),
+      title: a,
+      tip: 'Avoid during ' + period.label,
+      color: '#f43f5e',
+      storyCard: { emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⚠️  AVOID THIS HOUR' } as HESCard,
+    })),
+  ];
+
+  const allStoryCards = reelItems.map(r => r.storyCard) as HESCard[];
+
+  // Auto-scroll RAF loop — ping-pong left/right horizontal, stops on touch
+  const REEL_SPEED = 0.18;
+  useEffect(() => {
+    if (reelItems.length === 0) return;
+    reelDirRef.current = 1;
+    reelPosRef.current = 0;
+    const tick = () => {
+      if (!reelPausedRef.current && reelMaxPosRef.current > 0) {
+        reelPosRef.current += REEL_SPEED * reelDirRef.current;
+        if (reelPosRef.current >= reelMaxPosRef.current) {
+          reelPosRef.current = reelMaxPosRef.current;
+          reelDirRef.current = -1;
+        } else if (reelPosRef.current <= 0) {
+          reelPosRef.current = 0;
+          reelDirRef.current = 1;
+        }
+        reelScrollRef.current?.scrollTo({ x: reelPosRef.current, animated: false });
+      }
+      reelRafRef.current = requestAnimationFrame(tick);
+    };
+    reelRafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(reelRafRef.current);
+  }, []);
 
   return (
     <>
-      <View style={{ marginHorizontal: 16, marginTop: 20, marginBottom: 6 }}>
+      <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 6 }}>
 
-        {/* ── Section label ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: period.color }} />
-            <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF55', letterSpacing: 1.8 }}>ACTIVE NOW  ·  BODY RHYTHM</Text>
+        {/* ── Section label — Body Rhythm · Phase Name ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }} />
+            <View>
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#FFFFFF50', letterSpacing: 1.6, fontFamily: 'Nunito_900Black' }}>BODY RHYTHM  ·  ACTIVE NOW</Text>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2, lineHeight: 18, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{period.englishLabel}</Text>
+            </View>
           </View>
-          <Text style={{ fontSize: 9, fontWeight: '700', color: period.color + 'AA' }}>{period.startLabel} – {period.endLabel}</Text>
+          <Text style={{ fontSize: 9, fontWeight: '700', color: '#60a5fa', fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>{period.startLabel} – {period.endLabel}</Text>
         </View>
 
-        {/* ── Ring Hero ── */}
+        {/* ── Decode CTA — just below Body Rhythm header ── */}
         <TouchableOpacity
           onPress={navigateToExplore}
-          activeOpacity={0.92}
-          style={{ alignItems: 'center', marginBottom: 18 }}>
-          <Animated.View style={{ position: 'absolute', width: SIZE + 40, height: SIZE + 40, borderRadius: (SIZE + 40) / 2, backgroundColor: 'rgba(14,165,233,0.06)', transform: [{ scale: pulseAnim }] }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 18, height: SIZE + 18, borderRadius: (SIZE + 18) / 2, backgroundColor: 'rgba(14,165,233,0.11)', transform: [{ scale: pulseAnim }] }} />
-          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-            <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="rgba(186,230,253,0.09)" strokeWidth={STROKE} />
-            <SvgCircle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE} strokeLinecap="round"
-              strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
-              transform={`rotate(-90, ${SIZE / 2}, ${SIZE / 2})`} opacity={0.88} />
-          </Svg>
-          {/* Center content */}
-          <View style={{ position: 'absolute', top: 0, left: 0, width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-            <Text style={{ fontSize: 50, lineHeight: 60 }}>{period.emoji}</Text>
-            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF90', textAlign: 'center', paddingHorizontal: 22, lineHeight: 17 }} numberOfLines={2}>{period.englishLabel}</Text>
-            <Text style={{ fontSize: 26, fontWeight: '900', color: '#7dd3fc', letterSpacing: -0.5, marginTop: 6 }}>{remStr}</Text>
-            <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>remaining</Text>
-            {/* Updated pill — glassy sky blue */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 9, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.40)', backgroundColor: 'rgba(14,165,233,0.13)' }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#38bdf8', letterSpacing: 0.8 }}>✦  Decode Your {period.englishLabel}</Text>
-              <Text style={{ fontSize: 9, color: '#38bdf8' }}>→</Text>
-            </View>
-          </View>
+          activeOpacity={0.85}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 99, borderWidth: 1.5, borderColor: '#60a5fa80', backgroundColor: 'rgba(8,10,28,0.75)', alignSelf: 'center' }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#60a5fa', letterSpacing: 0.9, fontFamily: 'Nunito_900Black' }}>✦  Decode your {period.englishLabel}</Text>
+          <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900' }}>↗</Text>
         </TouchableOpacity>
 
-        {/* ── Body science card — tap to open full science page ── */}
-        <TouchableOpacity onPress={navigateToExplore} activeOpacity={0.88} style={{ borderRadius: 20, borderWidth: 1, borderColor: period.color + '40', marginBottom: 14, overflow: 'hidden' }}>
-          <LinearGradient colors={[period.color + '22', period.color + '08', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ padding: 16 }}>
+        {/* ── Centered Progress Ring — Glassy Blue + Aura ── */}
+        <View style={{ alignItems: 'center', marginBottom: 14 }}>
+          <TouchableOpacity onPress={navigateToExplore} activeOpacity={0.92}>
+            {/* Fixed-size ring container — all layers anchored here */}
+            <View style={{ width: RING_SIZE, height: RING_SIZE }}>
+
+              {/* === 5-layer pulsing aura (centered via symmetric negative top/left) === */}
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 72, height: RING_SIZE + 72, borderRadius: (RING_SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 52, height: RING_SIZE + 52, borderRadius: (RING_SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 34, height: RING_SIZE + 34, borderRadius: (RING_SIZE + 34) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulseAnim }], top: -17, left: -17 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 18, height: RING_SIZE + 18, borderRadius: (RING_SIZE + 18) / 2, backgroundColor: 'rgba(96,165,250,0.15)', transform: [{ scale: pulseAnim }], top: -9, left: -9 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 6, height: RING_SIZE + 6, borderRadius: (RING_SIZE + 6) / 2, backgroundColor: 'rgba(96,165,250,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
+
+              {/* === SVG arc — 3-layer glassy blue glow stroke === */}
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                {/* Track */}
+                <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={RING_STROKE} />
+                {/* Wide outer glow stroke */}
+                <SvgCircle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
+                  fill="none" stroke="#93c5fd" strokeWidth={RING_STROKE + 16} strokeLinecap="round"
+                  strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.14}
+                />
+                {/* Mid glow stroke */}
+                <SvgCircle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
+                  fill="none" stroke="#7dd3fc" strokeWidth={RING_STROKE + 8} strokeLinecap="round"
+                  strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.26}
+                />
+                {/* Main crisp stroke */}
+                <SvgCircle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
+                  fill="none" stroke="#60a5fa" strokeWidth={RING_STROKE} strokeLinecap="round"
+                  strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
+                />
+                {/* Inner highlight sliver */}
+                <SvgCircle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
+                  fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="round"
+                  strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.40}
+                />
+              </Svg>
+
+              {/* === Center content — two-line safe, clearly legible === */}
+              <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, gap: 2, zIndex: 10, elevation: 10 }}>
+                <Text style={{ fontSize: 34, lineHeight: 42 }}>{period.emoji}</Text>
+                <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', lineHeight: 13.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{period.englishLabel}</Text>
+                <Text style={{ fontSize: 28, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, marginTop: 3, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{remStr}</Text>
+                <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF65', letterSpacing: 0.8 }}>remaining</Text>
+                <View style={{ height: 1, width: 54, backgroundColor: 'rgba(96,165,250,0.40)', marginVertical: 3 }} />
+                <Text style={{ fontSize: 7.5, fontWeight: '800', color: '#93c5fdEE', textAlign: 'center', lineHeight: 11.5 }} numberOfLines={2}>{period.sciEmoji}  {period.sciTitle}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Oracle Reel — horizontal auto-sliding strip ── */}
+        <View style={{ marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontSize: 7, fontWeight: '900', color: '#FFFFFF55', letterSpacing: 1.4 }}>✦  ORACLE REEL</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={{ fontSize: 6, color: '#FFFFFF40', fontWeight: '700', letterSpacing: 0.8 }}>👆 tap</Text>
+              <Text style={{ fontSize: 6, color: '#FFFFFF25', fontWeight: '700' }}>·</Text>
+              <Text style={{ fontSize: 6, color: '#FFFFFF40', fontWeight: '700', letterSpacing: 0.8 }}>↔ swipe</Text>
+            </View>
+          </View>
+          <View style={{ overflow: 'hidden' }}>
+            {/* Left edge fade */}
+            <LinearGradient
+              colors={['rgba(6,6,16,0.55)', 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 18, zIndex: 2 }}
+              pointerEvents="none"
+            />
+            {/* Right edge fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(6,6,16,0.55)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 18, zIndex: 2 }}
+              pointerEvents="none"
+            />
+            <ScrollView
+              ref={reelScrollRef}
+              horizontal
+              scrollEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              decelerationRate="fast"
+              snapToInterval={REEL_CARD_W + 10}
+              snapToAlignment="start"
+              contentContainerStyle={{ gap: 10, paddingRight: 8 }}
+              onContentSizeChange={(w) => { reelMaxPosRef.current = Math.max(0, w - (SCREEN_W - 32)); }}
+              onScrollBeginDrag={() => { reelPausedRef.current = true; }}
+              onScrollEndDrag={(e) => {
+                reelPosRef.current = e.nativeEvent.contentOffset.x;
+                setTimeout(() => { reelPausedRef.current = false; }, 2200);
+              }}
+              onMomentumScrollEnd={(e) => { reelPosRef.current = e.nativeEvent.contentOffset.x; }}>
+              {reelItems.map((item, i) => (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.78}
+                  onPress={() => { setStoryIdx(i); }}
+                  style={{ width: REEL_CARD_W, height: REEL_CARD_H, overflow: 'hidden', borderRadius: 14, borderWidth: 1, borderColor: item.color + '55', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                  <LinearGradient
+                    colors={[item.color + '34', item.color + '12', 'rgba(3,3,14,0.82)']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+                  <View style={{ flex: 1, paddingHorizontal: 10, paddingVertical: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, borderWidth: 1, borderColor: item.color + '65', backgroundColor: item.color + '2A', flexShrink: 1, marginRight: 4 }}>
+                        <Text style={{ fontSize: 6, fontWeight: '900', color: item.color, letterSpacing: 0.8 }} numberOfLines={1}>{item.label}</Text>
+                      </View>
+                      <Text style={{ fontSize: 9, color: item.color + 'BB', fontWeight: '900' }}>↗</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 22, lineHeight: 26 }}>{item.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 13 }} numberOfLines={1}>{item.title}</Text>
+                        <View style={{ height: 1.5, width: 26, backgroundColor: item.color + '60', marginVertical: 4 }} />
+                        <Text style={{ fontSize: 7, color: '#FFFFFFCC', lineHeight: 10.5 }} numberOfLines={2}>{item.tip}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* ── Body Science Card — expandable ── */}
+        <TouchableOpacity
+          onPress={() => setSciExpanded(v => !v)}
+          activeOpacity={0.88}
+          style={{ borderRadius: 18, borderWidth: 1, borderColor: '#60a5fa50', marginTop: 14, marginBottom: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+          <LinearGradient colors={['#60a5fa26', '#60a5fa0A', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ padding: 14 }}>
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
-            <Text style={{ fontSize: 7, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.8, marginBottom: 10 }}>⚡  WHAT’S HAPPENING IN YOUR BODY RIGHT NOW</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10 }}>
-              <View style={{ width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: period.color + '1C', borderWidth: 1, borderColor: period.color + '45' }}>
-                <Text style={{ fontSize: 26 }}>{period.sciEmoji}</Text>
+
+            {/* ── Header: label + toggle ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#60a5fa' }} />
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#60a5faBB', letterSpacing: 1.5 }}>BODY SCIENCE  ·  RIGHT NOW</Text>
               </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {sciExpanded && (
+                  <TouchableOpacity onPress={navigateToExplore} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#60a5fa28', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#60a5fa60' }}>
+                    <Text style={{ fontSize: 7, fontWeight: '900', color: '#60a5fa' }}>FULL SCIENCE</Text>
+                    <Text style={{ fontSize: 9, color: '#60a5fa' }}>↗</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: '#60a5fa55', backgroundColor: '#60a5fa20', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 10, color: '#60a5fa', fontWeight: '900', lineHeight: 14 }}>{sciExpanded ? '↑' : '↓'}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Emoji + title — always visible ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: sciExpanded ? 10 : 0 }}>
+              <Text style={{ fontSize: 28 }}>{period.sciEmoji}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 7, fontWeight: '900', color: '#38bdf880', letterSpacing: 1.4, marginBottom: 3 }}>🔬  MODERN BIOLOGY</Text>
-                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', lineHeight: 20 }}>{period.sciTitle}</Text>
+                <Text style={{ fontSize: 6, fontWeight: '900', color: '#38bdf875', letterSpacing: 1.3, marginBottom: 2 }}>🔬  BIOLOGY + AYURVEDA</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 18 }} numberOfLines={1}>{period.sciTitle}</Text>
+                {!sciExpanded && (
+                  <Text style={{ fontSize: 10, color: '#FFFFFF65', lineHeight: 15, marginTop: 4 }} numberOfLines={2}>{period.sciDesc}</Text>
+                )}
               </View>
             </View>
-            <Text style={{ fontSize: 11, color: '#FFFFFF70', lineHeight: 17 }} numberOfLines={2}>{period.sciDesc}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
-              <Text style={{ fontSize: 10, color: period.color + 'AA', fontWeight: '700' }}>🕉  Ayurveda + Science →</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: period.color + '1C', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: period.color + '40' }}>
-                <Text style={{ fontSize: 9, fontWeight: '900', color: period.color }}>Full Body Science</Text>
-                <Text style={{ fontSize: 10, color: period.color }}>→</Text>
-              </View>
-            </View>
+
+            {/* ── Expanded content ── */}
+            {sciExpanded && (
+              <>
+                {(() => {
+                  const ayurMap: Record<string, { agni: string; bio: string }> = {
+                    morning_kapha:  { agni: 'AGNI BALANCED · ANABOLIC WINDOW',       bio: 'Testosterone & GH surge · Lymphatic clearance peak · Anabolic cellular repair' },
+                    midday_pitta:   { agni: 'AGNI BLAZING · DIGESTIVE FIRE PEAK',    bio: 'HCl & enzymes elevated · Insulin sensitivity optimal · Metabolism at daily high' },
+                    afternoon_vata: { agni: 'PRANA VATA · NEURAL FIRE PEAK',         bio: 'Dopamine & Norepinephrine surge · Acetylcholine peaks · Neural plasticity open' },
+                    evening_kapha:  { agni: 'OJAS REPLENISHES · MELATONIN RISES',    bio: 'Melatonin synthesis begins · Core temp drops 0.5°C/hr · Parasympathetic activates' },
+                    night_pitta:    { agni: 'NOCTURNAL PITTA · LIVER REPAIR ACTIVE', bio: 'GH peaks in slow-wave sleep · Autophagy fires · DNA & cellular repair active' },
+                    night_vata:     { agni: 'PRANA VATA · BRAHMA MUHURTA OPEN',      bio: 'Alpha-theta brainwaves peak · CAR begins · Neuroplasticity at 24-hr zenith' },
+                  };
+                  const ins = ayurMap[period.id];
+                  if (!ins) return null;
+                  return (
+                    <View style={{ backgroundColor: 'rgba(0,0,0,0.32)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 9, borderLeftWidth: 2, borderLeftColor: '#60a5fa' }}>
+                      <Text style={{ fontSize: 7, fontWeight: '900', color: '#60a5faBB', letterSpacing: 1.2, marginBottom: 4 }}>🕉  AS PER AYURVEDA  ·  {ins.agni}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: '800', color: '#38bdf872', letterSpacing: 1.1, marginBottom: 3 }}>⟷  ANALOGOUS IN MODERN BIOLOGY</Text>
+                      <Text style={{ fontSize: 11, color: '#FFFFFF95', lineHeight: 16 }}>{ins.bio}</Text>
+                    </View>
+                  );
+                })()}
+                {(() => {
+                  const pillsMap: Record<string, string[]> = {
+                    morning_kapha:  ['💪 Testosterone', '📈 GH', '🛡️ Lymph Peak', '⚡ Cortisol Rise'],
+                    midday_pitta:   ['🧪 HCl Peak', '🔑 Insulin', '⚡ Cortisol', '🔥 Bile Acids'],
+                    afternoon_vata: ['🎯 Dopamine', '⚡ Norepinephrine', '🧠 Acetylcholine', '💨 Lung Peak'],
+                    evening_kapha:  ['🌙 Melatonin', '😌 Serotonin', '💎 Ojas', '❄️ Core Temp ↓'],
+                    night_pitta:    ['🔬 GH Peak', '♻️ Autophagy', '🛡️ DNA Repair', '🫀 Liver Detox'],
+                    night_vata:     ['🌊 Theta Waves', '🌅 CAR Rising', '✨ Neuroplasticity', '🧘 Deep Rest'],
+                  };
+                  const list = pillsMap[period.id] ?? [];
+                  if (!list.length) return null;
+                  return (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ marginBottom: 9 }} contentContainerStyle={{ gap: 6, paddingRight: 4 }}>
+                      {list.map((pill, pi) => (
+                        <View key={pi} style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, borderWidth: 1, borderColor: '#60a5fa45', backgroundColor: '#60a5fa15' }}>
+                          <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5faDD', letterSpacing: 0.3 }}>{pill}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  );
+                })()}
+                <Text style={{ fontSize: 11, color: '#FFFFFF80', lineHeight: 17, marginBottom: 10 }} numberOfLines={4}>{period.sciDesc}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }} />
+                  <Text style={{ fontSize: 7, color: '#60a5fa90', fontWeight: '800', letterSpacing: 1 }}>TAP TO COLLAPSE  ↑</Text>
+                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }} />
+                </View>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* ── Strip label ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.6 }}>📖  DAILY INSIGHTS  ·  TAP ANY CARD</Text>
-          <Text style={{ fontSize: 8, color: '#FFFFFF22', fontWeight: '600' }}>auto-slides</Text>
+
+        {/* ── Reel hint ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 2, gap: 8 }}>
+          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }} />
+          <Text style={{ fontSize: 7.5, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2 }}>←  AUTO-SCROLLING  ·  SWIPE TO EXPLORE  ·  TAP TO OPEN</Text>
+          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }} />
         </View>
       </View>
 
-      {/* ── One auto-sliding strip — Do's (green) + Avoid (red) ── */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingRight: 24 }}
-        decelerationRate="fast"
-        snapToInterval={108}
-        snapToAlignment="start"
-        scrollEventThrottle={16}
-        onContentSizeChange={(w) => { maxPosRef.current = Math.max(0, w - SCREEN_W); }}
-        onScrollBeginDrag={() => { pausedRef.current = true; if (resumeTimer.current) clearTimeout(resumeTimer.current); }}
-        onScrollEndDrag={(e) => { posRef.current = e.nativeEvent.contentOffset.x; scheduleResume(); }}
-        onMomentumScrollEnd={(e) => { posRef.current = e.nativeEvent.contentOffset.x; scheduleResume(); }}>
-        {stripCards.map((card, i) => (
-          <TouchableOpacity
-            key={i}
-            activeOpacity={0.85}
-            onPress={() => { pauseScroll(); setStoryIdx(stripOffset + i); }}
-            style={[PRH.card, { borderColor: card.color + '55', width: 108 }]}>
-            <LinearGradient colors={[card.color + '28', 'rgba(4,4,18,0.50)', 'rgba(2,2,14,0.72)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.55)' }} />
-            {/* Label badge */}
-            <View style={{ alignSelf: 'flex-start', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 6 }}>
-              <Text style={{ fontSize: 6.5, fontWeight: '900', color: card.color, letterSpacing: 0.8 }}>{card.label}</Text>
-            </View>
-            <Text style={{ fontSize: 18, marginBottom: 5 }}>{card.emoji}</Text>
-            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFFFFF', lineHeight: 13, marginBottom: 4 }}>{card.title}</Text>
-            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 4 }} />
-            <Text style={{ fontSize: 7.5, color: '#FFFFFFCC', lineHeight: 11 }} numberOfLines={2}>{card.tips[0]}</Text>
-            <View style={{ position: 'absolute', bottom: 6, right: 7 }}>
-              <Text style={{ fontSize: 6.5, color: card.color + '80', fontWeight: '800', letterSpacing: 0.4 }}>expand ↗</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Swipe hint */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 8, paddingBottom: 4, gap: 8 }}>
-        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginLeft: 16 }} />
-        <Text style={{ fontSize: 7.5, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2 }}>←  SWIPE TO EXPLORE  →</Text>
-        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }} />
-      </View>
-
-
-      {/* Story modal on card tap */}
+      {/* Story modal on reel card tap */}
       {storyIdx !== null && (
-        <HESStoryModal cards={allCards} initialIndex={storyIdx} onClose={() => { setStoryIdx(null); scheduleResume(); }} />
+        <HESStoryModal
+          cards={allStoryCards}
+          initialIndex={storyIdx}
+          onClose={() => { setStoryIdx(null); }}
+        />
       )}
+
     </>
   );
 }
@@ -3205,6 +4099,8 @@ export default function DailyTab() {
   const [wakeLog, setWakeLog]               = useState<WakeLogEntry | null>(null);
   const [sunStreak, setSunStreak]           = useState<SunriseStreak | null>(null);
   const [showShareCard, setShowShareCard]   = useState(false);
+  const [mode, setMode]                     = useState<'normal' | 'relax'>('normal');
+  const [zenActive, setZenActive]           = useState(false);
 
   // Live clock tick
   useEffect(() => {
@@ -3271,6 +4167,21 @@ export default function DailyTab() {
     getBgSource(key).then(uri => setBgUri(uri)).catch(() => {});
   }, [liveClock, solarTimes]);
 
+  // Sync mode when period changes — disabled for now, mode stays 'normal' always
+  // useEffect(() => {
+  //   const isNight = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
+  //   setMode(isNight ? 'relax' : 'normal');
+  // }, [currentPeriod?.id]);
+
+  // Auto-open ZenModeOverlay for night periods — disabled for now
+  // useEffect(() => {
+  //   const isNight = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
+  //   if (isNight && mode === 'relax') {
+  //     const t = setTimeout(() => setZenActive(true), 600);
+  //     return () => clearTimeout(t);
+  //   }
+  // }, [mode, currentPeriod?.id]);
+
   const toggleBrahma = async () => {
     const newVal = !brahmaEnabled;
     setBrahmaEnabled(newVal);
@@ -3285,6 +4196,7 @@ export default function DailyTab() {
   };
 
   // ── Derived display values ───────────────────────────────────────────────
+  const isNightPeriodNow = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
   const nextPeriod = periods.filter(x => x.status === 'upcoming').sort((a, b) => a.minutesUntil - b.minutesUntil)[0] ?? null;
   const hh = liveClock.getHours();
   const mm = liveClock.getMinutes();
@@ -3295,16 +4207,16 @@ export default function DailyTab() {
   const isGolden = timeBgKey === 'sunrise' || timeBgKey === 'sandhya' || timeBgKey === 'predawn' || timeBgKey === 'twilight';
 
   const scrim: [string, string, string] = isLight
-    ? ['rgba(0,4,18,0.58)', 'rgba(0,4,18,0.24)', 'rgba(0,4,18,0.62)']
+    ? ['rgba(0,4,18,0.82)', 'rgba(0,4,18,0.52)', 'rgba(0,4,18,0.86)']
     : isGolden
-    ? ['rgba(0,0,0,0.46)',  'rgba(0,0,0,0.16)',  'rgba(0,0,0,0.50)']
-    : ['rgba(2,2,16,0.36)',  'rgba(2,2,16,0.12)',  'rgba(2,2,16,0.40)'];
+    ? ['rgba(0,0,0,0.66)',  'rgba(0,0,0,0.36)',  'rgba(0,0,0,0.70)']
+    : ['rgba(2,2,16,0.56)',  'rgba(2,2,16,0.28)',  'rgba(2,2,16,0.60)'];
 
   const headerGrad: [string, string] = isLight
-    ? ['rgba(0,5,22,0.88)',  'rgba(0,5,22,0.12)']
+    ? ['rgba(0,5,22,0.96)',  'rgba(0,5,22,0.28)']
     : isGolden
-    ? ['rgba(0,0,0,0.76)',   'rgba(0,0,0,0.06)']
-    : ['rgba(2,2,24,0.72)',  'rgba(2,2,24,0.05)'];
+    ? ['rgba(0,0,0,0.88)',   'rgba(0,0,0,0.16)']
+    : ['rgba(2,2,24,0.88)',  'rgba(2,2,24,0.12)'];
 
   // ── Render ───────────────────────────────────────────────────────────────
   const isNightNow = hh < Math.floor(solarTimes?.sunrise ?? 6) || hh >= Math.floor(solarTimes?.sunset ?? 19);
@@ -3334,6 +4246,43 @@ export default function DailyTab() {
         </SafeAreaView>
       </LinearGradient>
 
+      {/* ── Sticky Mode Toggle — hidden for now, kept for future use ── */}
+      {false && currentPeriod && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 4 }}>
+            {(['normal', 'relax'] as const).map(m => {
+              const label = m === 'normal' ? 'Work Mode' : (isNightPeriodNow ? 'Night Sleep' : 'Calm Space');
+              const icon  = m === 'normal' ? '⚡' : '◯';
+              return (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setMode(m);
+                    if (m === 'relax') setZenActive(true);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1, paddingVertical: 11, borderRadius: 13,
+                    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7,
+                    backgroundColor: mode === m ? (m === 'relax' ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.15)') : 'transparent',
+                    borderWidth: mode === m ? 1 : 0,
+                    borderColor: mode === m ? (m === 'relax' ? '#60a5fa60' : 'rgba(255,255,255,0.25)') : 'transparent',
+                  }}>
+                  <Text style={{ fontSize: 15 }}>{icon}</Text>
+                  <Text style={{
+                    fontSize: 11, fontWeight: '900', letterSpacing: 0.3,
+                    color: mode === m ? (m === 'relax' ? '#93c5fd' : '#FFFFFF') : 'rgba(255,255,255,0.35)',
+                  }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       {/* ── Scrollable content ── */}
       <ScrollView
         style={{ flex: 1 }}
@@ -3347,7 +4296,7 @@ export default function DailyTab() {
             activeOpacity={0.85}
             style={MSB.bar}>
             <LinearGradient
-              colors={['#F5820A22', '#a78bfa14', 'transparent']}
+              colors={['#F5820A22', '#60a5fa14', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFillObject} />
             <LinearGradient colors={['rgba(255,255,255,0.14)','rgba(255,255,255,0.03)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
@@ -3357,7 +4306,7 @@ export default function DailyTab() {
               <Text style={MSB.title}>
                 You woke at <Text style={{ color: ACCENT }}>{wakeLog.wakeTimeStr}</Text>
                 {sunStreak && sunStreak.count > 0
-                  ? <Text style={{ color: '#a78bfa' }}>  ·  🔥 {sunStreak.count} day streak</Text>
+                  ? <Text style={{ color: '#60a5fa' }}>  ·  🔥 {sunStreak.count} day streak</Text>
                   : null}
               </Text>
               <Text style={MSB.sub}>Tap to share your sunrise with friends →</Text>
@@ -3383,7 +4332,7 @@ export default function DailyTab() {
         {/* BIO CIRCADIAN — PHASE RING HERO */}
         {currentPeriod ? (
           <View>
-            <PhaseRingHero period={currentPeriod} weather={weather} />
+            <PhaseRingHero key={currentPeriod.id} period={currentPeriod} weather={weather} />
             {brahmaInfo?.status === 'active' && (
               <View style={{ paddingHorizontal: 16 }}>
                 <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
@@ -3420,6 +4369,11 @@ export default function DailyTab() {
           onClose={() => setShowShareCard(false)}
         />
       )}
+      {/* Calm / Night Sleep full-screen overlay */}
+      <ZenModeOverlay
+        visible={zenActive}
+        onClose={() => { setZenActive(false); setMode('normal'); }}
+      />
     </ImageBackground>
   );
 }
@@ -3432,11 +4386,11 @@ const D = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 6, paddingBottom: 6,
   },
-  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
   refreshBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  clockTime: { fontSize: 44, fontWeight: '200', color: '#fff', letterSpacing: -2 },
-  clockAmpm: { fontSize: 15, fontWeight: '300', color: ACCENT, paddingBottom: 3 },
-  clockDate: { fontSize: 11, color: '#FFFFFF50', fontWeight: '600', letterSpacing: 0.5 },
+  clockTime: { fontSize: 44, fontWeight: '300', color: '#fff', letterSpacing: -2, fontFamily: 'Nunito_400Regular', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
+  clockAmpm: { fontSize: 15, fontWeight: '600', color: ACCENT, paddingBottom: 3, fontFamily: 'Nunito_600SemiBold' },
+  clockDate: { fontSize: 11, color: '#FFFFFF50', fontWeight: '600', letterSpacing: 0.5, fontFamily: 'Nunito_600SemiBold' },
   weatherSummary: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap',
     gap: 6, paddingHorizontal: 18, paddingBottom: 4,
@@ -3462,7 +4416,7 @@ const D = StyleSheet.create({
     flexDirection: 'row', alignItems: 'baseline', gap: 8,
     marginHorizontal: 16, marginTop: 18, marginBottom: 8,
   },
-  sectionTitle: { fontSize: 9, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.8 },
+  sectionTitle: { fontSize: 9, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.8, fontFamily: 'Nunito_900Black' },
   sectionSub:   { fontSize: 9, color: '#FFFFFF18' },
   noGpsHint: {
     marginHorizontal: 16, marginTop: 16, alignItems: 'center', gap: 12,
@@ -3484,8 +4438,8 @@ const D = StyleSheet.create({
   solarLabel: { fontSize: 8, color: '#FFFFFF35', fontWeight: '600' },
   tithiRow:   { alignItems: 'center', paddingBottom: 8 },
   tithiText:  { fontSize: 10, color: '#FFFFFF40', fontWeight: '600', letterSpacing: 0.4 },
-  bioCircadianTitle: { fontSize: 17, fontWeight: '900', color: '#FFFFFFCC', letterSpacing: 0.8, lineHeight: 22 },
-  bioCircadianSub:   { fontSize: 13, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 1.4, lineHeight: 18 },
+  bioCircadianTitle: { fontSize: 17, fontWeight: '900', color: '#FFFFFFCC', letterSpacing: 0.8, lineHeight: 22, fontFamily: 'Nunito_900Black' },
+  bioCircadianSub:   { fontSize: 13, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 1.4, lineHeight: 18, fontFamily: 'Nunito_700Bold' },
   bioCircadianTag:   { fontSize: 9,  fontWeight: '900', color: ACCENT + 'AA', letterSpacing: 2.2, marginTop: 3 },
 });
 
@@ -3493,7 +4447,7 @@ const W = StyleSheet.create({
   stripContainer: { marginTop: 8, marginBottom: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 2 },
   hourCell: {
     alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 10,
-    borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.13)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
+    borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.20)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.42)',
     minWidth: 58,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.30, shadowRadius: 14, elevation: 6,
   },
@@ -3679,7 +4633,7 @@ const PC = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.60)',
     backgroundColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', overflow: 'hidden',
     paddingVertical: 16, paddingRight: 16,
-    shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.36, shadowRadius: 30, elevation: 14,
+    shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.36, shadowRadius: 30, elevation: 14,
   },
   sideBar:         { width: 4, borderRadius: 2, marginLeft: 4 },
   headerRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
@@ -3710,8 +4664,8 @@ const PC = StyleSheet.create({
   triTitle:        { fontSize: 12, fontWeight: '900' },
   triSub:          { fontSize: 9, color: '#FFFFFF50', lineHeight: 14 },
   triEn:           { fontSize: 8, color: '#FFFFFF25', fontWeight: '500', marginTop: 3 },
-  infoNote:        { backgroundColor: '#a78bfa08', borderWidth: 1, borderColor: '#a78bfa18', borderRadius: 14, padding: 12 },
-  infoNoteText:    { fontSize: 10, color: '#a78bfa65', lineHeight: 15 },
+  infoNote:        { backgroundColor: '#60a5fa08', borderWidth: 1, borderColor: '#60a5fa18', borderRadius: 14, padding: 12 },
+  infoNoteText:    { fontSize: 10, color: '#60a5fa65', lineHeight: 15 },
   biRow:           { flexDirection: 'row', gap: 8, marginBottom: 10, marginTop: 2 },
   biCell:          { flex: 1, borderWidth: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.18)', padding: 10, gap: 3 },
   biTag:           { fontSize: 7, fontWeight: '900', color: '#FFFFFF25', letterSpacing: 1.2, marginBottom: 2 },
@@ -3773,11 +4727,11 @@ const EX = StyleSheet.create({
   listRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 5 },
   dot:           { width: 5, height: 5, borderRadius: 3, marginTop: 6 },
   listTxt:       { fontSize: 12, color: '#FFFFFFA8', lineHeight: 18, flex: 1 },
-  footerNote:    { backgroundColor: 'rgba(167,139,250,0.06)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(167,139,250,0.22)', padding: 16, marginTop: 8 },
+  footerNote:    { backgroundColor: 'rgba(96,165,250,0.06)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.22)', padding: 16, marginTop: 8 },
   footerTxt:     { fontSize: 12, color: '#FFFFFF80', lineHeight: 19 },
   cosmoHero:     { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', padding: 18, marginBottom: 18 },
   cosmoTitle:    { fontSize: 18, fontWeight: '900', color: '#fff', marginBottom: 3 },
-  cosmoSub:      { fontSize: 12, color: '#a78bfaDD', fontWeight: '700', marginBottom: 2 },
+  cosmoSub:      { fontSize: 12, color: '#60a5faDD', fontWeight: '700', marginBottom: 2 },
   cosmoSub2:     { fontSize: 12, color: '#fbbf24BB', fontWeight: '700' },
   exploreSection:      { marginBottom: 18 },
   exploreSectionTitle: { fontSize: 17, fontWeight: '900', color: '#fff', marginBottom: 3 },
@@ -3789,18 +4743,18 @@ const EX = StyleSheet.create({
 const BMX = StyleSheet.create({
   card: {
     marginHorizontal: 16, marginTop: 6, borderRadius: 20, borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.40)', backgroundColor: 'rgba(167,139,250,0.16)', padding: 16, overflow: 'hidden',
-    shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.34, shadowRadius: 24, elevation: 12,
+    borderColor: 'rgba(96,165,250,0.40)', backgroundColor: 'rgba(96,165,250,0.16)', padding: 16, overflow: 'hidden',
+    shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.34, shadowRadius: 24, elevation: 12,
   },
   headerRow:   { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
-  sacredLabel: { fontSize: 8, fontWeight: '900', color: '#a78bfa60', letterSpacing: 1.5, marginBottom: 4 },
-  sacredTimes: { fontSize: 15, fontWeight: '800', color: '#a78bfaDD' },
-  sacredSub:   { fontSize: 9, color: '#a78bfa50', marginTop: 3 },
+  sacredLabel: { fontSize: 8, fontWeight: '900', color: '#60a5fa60', letterSpacing: 1.5, marginBottom: 4 },
+  sacredTimes: { fontSize: 15, fontWeight: '800', color: '#60a5faDD' },
+  sacredSub:   { fontSize: 9, color: '#60a5fa50', marginTop: 3 },
   notifTxt:    { fontSize: 8, color: '#FFFFFF35', fontWeight: '700' },
   sciRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#FFFFFF08' },
-  sciToggleTxt: { fontSize: 11, color: '#a78bfa80', fontWeight: '700' },
+  sciToggleTxt: { fontSize: 11, color: '#60a5fa80', fontWeight: '700' },
   aliasRow:    { flexDirection: 'row', gap: 10, paddingVertical: 9, alignItems: 'flex-start' },
-  aliasTitle:  { fontSize: 11, fontWeight: '800', color: '#a78bfa', marginBottom: 3 },
+  aliasTitle:  { fontSize: 11, fontWeight: '800', color: '#60a5fa', marginBottom: 3 },
   aliasDesc:   { fontSize: 10, color: '#FFFFFF45', lineHeight: 15 },
 });
 
@@ -3866,7 +4820,7 @@ const TH = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.62)',
     backgroundColor: 'rgba(255,255,255,0.09)',
     overflow: 'hidden',
-    shadowColor: '#a78bfa',
+    shadowColor: '#60a5fa',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.46,
     shadowRadius: 44,

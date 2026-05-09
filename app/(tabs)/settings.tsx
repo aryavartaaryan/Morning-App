@@ -8,7 +8,7 @@ import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS, requestNotificationPermission } from '@/lib/notifications';
 import { DEFAULT_MISSION_SETTINGS, MissionSettings, MISSIONS } from '@/lib/missionAlarm';
 import { checkAlarmPermission, setNativeAlarmSound, requestAllAlarmPermissions } from '@/lib/nativeAlarm';
-import { Colors } from '@/constants/theme';
+import { Colors, Font } from '@/constants/theme';
 
 const PURPLE = '#a78bfa';
 
@@ -264,9 +264,9 @@ const S = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#060610' },
   headerGrad: { paddingBottom: 0 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 4 },
-  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
-  headline: { fontSize: 24, fontWeight: '200', color: '#fff', letterSpacing: -0.5 },
-  sectionLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginTop: 20, marginBottom: 8 },
+  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
+  headline: { fontSize: 20, fontWeight: '200', color: '#fff', letterSpacing: -0.4 },
+  sectionLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginTop: 20, marginBottom: 8, fontFamily: 'Nunito_900Black' },
   permCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', overflow: 'hidden' },
   permRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   permDot: { width: 8, height: 8, borderRadius: 4 },
@@ -274,11 +274,11 @@ const S = StyleSheet.create({
   soundCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', overflow: 'hidden' },
   soundRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   soundIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  soundLabel: { fontSize: 13, fontWeight: '800' },
+  soundLabel: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   checkBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   togglesCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', overflow: 'hidden' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
-  toggleTitle: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  toggleTitle: { fontSize: 13, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold' },
   toggleSub: { fontSize: 10, color: '#FFFFFF40', marginTop: 2 },
   aboutCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF08', backgroundColor: '#FFFFFF03', padding: 16 },
   dangerCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: '#ef444420', backgroundColor: '#ef444405', overflow: 'hidden' },

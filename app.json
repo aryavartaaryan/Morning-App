@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "owner": "aryavarta",
+    "owner": "solarrythm",
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -128,7 +128,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3cb6f0ce-b825-4978-9dfb-88f86711ae09"
+        "projectId": "185803dc-007a-463a-ab57-0562380a38ad"
       }
     }
   }

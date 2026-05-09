@@ -91,55 +91,188 @@ export const MISSIONS: Mission[] = [
   },
 ];
 
-export const WAKE_SOUNDS = [
+export type WakeSoundCategory = 'mantra' | 'gentle' | 'nature';
+
+export interface WakeSound {
+  id: string;
+  label: string;
+  icon: string;
+  audioUrl: string;
+  category: WakeSoundCategory;
+  /** If true, this sound is ideal for the gentle-wake ramp (starts very soft) */
+  isGentle?: boolean;
+  /** Local bundled asset key — must also exist in BUNDLED_MANTRA_ASSETS */
+  bundledKey?: string;
+  /** Local bundled require() — for ambient .m4a sounds already in the bundle */
+  bundledAsset?: any;
+}
+
+export const WAKE_SOUNDS: WakeSound[] = [
+  // ── Mantra sounds ──────────────────────────────────────────────────────────
   {
     id: 'gayatri',
-    label: 'Gayatri',
-    icon: '�',
+    label: 'Gayatri Mantra',
+    icon: '🌞',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3',
+    category: 'mantra',
   },
   {
     id: 'shiv_tandav',
     label: 'Shiv Tandav',
     icon: '🔱',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3',
+    category: 'mantra',
   },
   {
     id: 'lalitha',
-    label: 'Lalitha',
-    icon: '�',
+    label: 'Lalitha Sahasranama',
+    icon: '🌺',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3',
+    category: 'mantra',
   },
   {
     id: 'om_chant',
     label: 'Om Chant',
-    icon: '�️',
-    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3',
+    icon: '🕉️',
+    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/om-chant-108.mp3',
+    category: 'mantra',
+    isGentle: true,
   },
   {
     id: 'rudrashtakam',
     label: 'Rudrashtakam',
     icon: '🔔',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3',
+    category: 'mantra',
   },
   {
     id: 'devi_stuti',
     label: 'Devi Stuti',
     icon: '✨',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3',
+    category: 'mantra',
   },
   {
     id: 'bhagya_suktam',
     label: 'Bhagya Suktam',
     icon: '🌟',
     audioUrl: '',
+    category: 'mantra',
+    bundledKey: 'bhagya_suktam',
   },
   {
     id: 'shiv_sankalpa_suktam',
     label: 'Shiv Sankalpa Suktam',
     icon: '🔱',
     audioUrl: '',
+    category: 'mantra',
+    bundledKey: 'shiv_sankalpa_suktam',
   },
+
+  // ── Gentle wake sounds ─────────────────────────────────────────────────────
+  {
+    id: 'singing_bowl',
+    label: 'Tibetan Singing Bowl',
+    icon: '🫙',
+    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/tibetan-singing-bowl.mp3',
+    category: 'gentle',
+    isGentle: true,
+  },
+  {
+    id: 'temple_bell',
+    label: 'Temple Bell',
+    icon: '🔔',
+    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/temple-bell-soft.mp3',
+    category: 'gentle',
+    isGentle: true,
+  },
+  {
+    id: 'soft_veena',
+    label: 'Soft Veena',
+    icon: '🎵',
+    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/veena-morning.mp3',
+    category: 'gentle',
+    isGentle: true,
+  },
+  {
+    id: 'flute_morning',
+    label: 'Morning Flute',
+    icon: '🎶',
+    audioUrl: 'https://ik.imagekit.io/rcsesr4xf/bansuri-morning.mp3',
+    category: 'gentle',
+    isGentle: true,
+  },
+
+  // ── Nature sounds ──────────────────────────────────────────────────────────
+  {
+    id: 'forest_birds',
+    label: 'Forest & Birds',
+    icon: '🌿',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
+  },
+  {
+    id: 'sea_waves',
+    label: 'Sea Waves',
+    icon: '🌊',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
+  },
+  {
+    id: 'light_rain',
+    label: 'Light Rain',
+    icon: '🌧️',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/mixkit-light-rain-loop-2393.m4a'),
+  },
+  {
+    id: 'breeze_trees',
+    label: 'Breeze & Trees',
+    icon: '🍃',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
+  },
+  {
+    id: 'river_flow',
+    label: 'River Flow',
+    icon: '💧',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
+  },
+];
+
+// ── Sleep sounds (ambient .m4a files already bundled) ──────────────────────
+export interface SleepSound {
+  id: string;
+  label: string;
+  icon: string;
+  bundledAsset: any;
+}
+
+export const SLEEP_SOUNDS: SleepSound[] = [
+  { id: 'sl_light_rain',      label: 'Light Rain',        icon: '🌧️',  bundledAsset: require('../assets/sounds/mixkit-light-rain-loop-2393.m4a') },
+  { id: 'sl_jungle_rain',     label: 'Jungle Rain',       icon: '🌿',  bundledAsset: require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a') },
+  { id: 'sl_sea_waves',       label: 'Sea Waves',         icon: '🌊',  bundledAsset: require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a') },
+  { id: 'sl_harbor_waves',    label: 'Harbor Waves',      icon: '⚓',  bundledAsset: require('../assets/sounds/mixkit-small-waves-harbor-rocks-1208.m4a') },
+  { id: 'sl_river',           label: 'River Flow',        icon: '💧',  bundledAsset: require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a') },
+  { id: 'sl_heavy_rain',      label: 'Heavy Rain',        icon: '⛈️',  bundledAsset: require('../assets/sounds/mixkit-heavy-rain-drops-2399.m4a') },
+  { id: 'sl_thunder_jungle',  label: 'Thunderstorm',      icon: '🌩️',  bundledAsset: require('../assets/sounds/mixkit-calm-thunderstorm-in-the-jungle-2415.m4a') },
+  { id: 'sl_night_insects',   label: 'Night Insects',     icon: '🦗',  bundledAsset: require('../assets/sounds/mixkit-night-forest-with-insects-2414.m4a') },
+  { id: 'sl_breeze',          label: 'Gentle Breeze',     icon: '🍃',  bundledAsset: require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a') },
+  { id: 'sl_wind',            label: 'Wind Ambience',     icon: '🌬️',  bundledAsset: require('../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
+  { id: 'sl_close_waves',     label: 'Close Sea Waves',   icon: '🏖️',  bundledAsset: require('../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a') },
+  { id: 'sl_rain_thunder',    label: 'Rain & Thunder',    icon: '🌧️',  bundledAsset: require('../assets/sounds/mixkit-rain-and-thunder-storm-2390.m4a') },
+  { id: 'sl_urban_day',       label: 'Urban Ambience',    icon: '🏙️',  bundledAsset: require('../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a') },
 ];
 
 export function getKalaMessage(hour: number): string {

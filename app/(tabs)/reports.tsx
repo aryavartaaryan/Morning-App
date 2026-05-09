@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
-import { Colors } from '@/constants/theme';
+import { Colors, Font } from '@/constants/theme';
 import type { AlarmEntry } from './index';
 
 const GREEN = '#10b981';
@@ -254,16 +254,16 @@ const S = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#060610' },
   headerGrad: { paddingBottom: 0 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 4 },
-  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
-  headline: { fontSize: 24, fontWeight: '200', color: '#fff', letterSpacing: -0.5 },
-  sub: { fontSize: 11, color: '#FFFFFF35', marginTop: 3 },
-  sectionLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginTop: 20, marginBottom: 8 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 12, gap: 8, marginTop: 16 },
-  statCard: { width: '47%', backgroundColor: '#FFFFFF04', borderWidth: 1, borderRadius: 20, padding: 16, gap: 2 },
-  statEmoji: { fontSize: 22 },
-  statValue: { fontSize: 32, fontWeight: '200', letterSpacing: -1, marginTop: 4 },
-  statLabel: { fontSize: 11, fontWeight: '800', color: '#fff', marginTop: 2 },
-  statSub: { fontSize: 9, color: '#FFFFFF35' },
+  appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
+  headline: { fontSize: 20, fontWeight: '200', color: '#fff', letterSpacing: -0.4 },
+  sub: { fontSize: 11, color: '#FFFFFF35', marginTop: 2 },
+  sectionLabel: { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginHorizontal: 16, marginTop: 20, marginBottom: 8, fontFamily: 'Nunito_900Black' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 16, gap: 8, marginTop: 14 },
+  statCard: { width: '47%', backgroundColor: '#FFFFFF04', borderWidth: 1, borderRadius: 18, padding: 14, gap: 2 },
+  statEmoji: { fontSize: 18 },
+  statValue: { fontSize: 26, fontWeight: '200', letterSpacing: -0.8, marginTop: 3 },
+  statLabel: { fontSize: 10, fontWeight: '800', color: '#fff', marginTop: 2, fontFamily: 'Nunito_800ExtraBold' },
+  statSub: { fontSize: 9, color: '#FFFFFF35', fontFamily: 'Nunito_600SemiBold' },
   weekCard: { marginHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', padding: 18 },
   weekDot: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   streakProgress: { marginTop: 16 },
@@ -272,8 +272,8 @@ const S = StyleSheet.create({
   inventoryCard: { marginHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: '#FFFFFF0A', backgroundColor: '#FFFFFF04', overflow: 'hidden' },
   alarmRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   alarmRowIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  alarmRowTime: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  alarmRowType: { fontSize: 10, color: '#FFFFFF40', marginTop: 1 },
+  alarmRowTime: { fontSize: 15, fontWeight: '700', color: '#fff', fontFamily: 'Nunito_700Bold' },
+  alarmRowType: { fontSize: 10, color: '#FFFFFF40', marginTop: 1, fontFamily: 'Nunito_600SemiBold' },
   statusBadge: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   motivCard: { marginHorizontal: 16, marginTop: 16, borderRadius: 20, borderWidth: 1, borderColor: '#F5820A25', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
   emptyState: { marginHorizontal: 16, marginTop: 24, alignItems: 'center', paddingVertical: 32, borderRadius: 20, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },

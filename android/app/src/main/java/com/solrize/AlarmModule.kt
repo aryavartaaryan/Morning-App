@@ -96,6 +96,63 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
         }
     }
 
+    /**
+     * Remove the TYPE_APPLICATION_OVERLAY window drawn by AlarmSoundService.
+     * Called from alarm-ringing.tsx as soon as the RN screen has fully mounted,
+     * so the native overlay placeholder is replaced by the proper React UI.
+     */
+    @ReactMethod
+    fun dismissAlarmOverlay(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, AlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_DISMISS_OVERLAY
+                }
+            )
+            promise.resolve("Overlay dismissed")
+        } catch (e: Exception) {
+            promise.reject("OVERLAY_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Start the native alarm vibration pattern from JS.
+     * Used when snooze ends and the alarm must resume vibrating.
+     * Sends ACTION_START_VIBRATION to the running AlarmSoundService.
+     */
+    @ReactMethod
+    fun startAlarmVibration(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, AlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_START_VIBRATION
+                }
+            )
+            promise.resolve("Vibration started")
+        } catch (e: Exception) {
+            promise.reject("VIBRATION_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Stop the native alarm vibration pattern from JS.
+     * Used when snooze starts — audio is ducked and vibration must pause too.
+     * Sends ACTION_STOP_VIBRATION to the running AlarmSoundService.
+     */
+    @ReactMethod
+    fun stopAlarmVibration(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, AlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_STOP_VIBRATION
+                }
+            )
+            promise.resolve("Vibration stopped")
+        } catch (e: Exception) {
+            promise.reject("VIBRATION_ERROR", e.message, e)
+        }
+    }
+
     @ReactMethod
     fun setAlarmSound(mantraId: String, promise: Promise) {
         try {

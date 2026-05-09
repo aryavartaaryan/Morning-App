@@ -35,6 +35,9 @@ const AlarmNative: {
   canDrawOverlays(): Promise<boolean>;
   requestOverlayPermission(): Promise<string>;
   setPickerActive(active: boolean): Promise<string>;
+  startAlarmVibration(): Promise<string>;
+  stopAlarmVibration(): Promise<string>;
+  dismissAlarmOverlay(): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -351,6 +354,42 @@ export async function scheduleBrahmaMuhurtaAlarm(lat: number, lon: number): Prom
   const today = new Date().toISOString().split('T')[0];
   await store.set(KEYS.lastAlarmDate, today);
   console.log(`[BrahmaMuhurta] ☀️ Scheduled ${bm.wakeHour}:${String(bm.wakeMin).padStart(2, '0')} (${bm.brahmaMuhurtaDesc})`);
+}
+
+// ── Overlay control (Phase 4) ───────────────────────────────────────────────
+
+/**
+ * Remove the native TYPE_APPLICATION_OVERLAY window drawn by AlarmSoundService.
+ * Call this as soon as alarm-ringing.tsx mounts so the placeholder is replaced
+ * by the React Native alarm UI without any visible flash.
+ */
+export async function dismissAlarmOverlay(): Promise<void> {
+  try {
+    if (Platform.OS === 'android') await AlarmNative.dismissAlarmOverlay?.();
+  } catch (e) { console.warn('[nativeAlarm] dismissAlarmOverlay:', e); }
+}
+
+// ── Vibration control (Phase 3) ───────────────────────────────────────────────
+
+/**
+ * Start the native alarm vibration in the running AlarmSoundService.
+ * Call when snooze ends and the alarm resumes, so the hardware pattern
+ * restarts in sync with audio.
+ */
+export async function startAlarmVibration(): Promise<void> {
+  try {
+    if (Platform.OS === 'android') await AlarmNative.startAlarmVibration?.();
+  } catch (e) { console.warn('[nativeAlarm] startAlarmVibration:', e); }
+}
+
+/**
+ * Stop the native alarm vibration in the running AlarmSoundService.
+ * Call when snooze starts and when the alarm is fully dismissed.
+ */
+export async function stopAlarmVibration(): Promise<void> {
+  try {
+    if (Platform.OS === 'android') await AlarmNative.stopAlarmVibration?.();
+  } catch (e) { console.warn('[nativeAlarm] stopAlarmVibration:', e); }
 }
 
 /**

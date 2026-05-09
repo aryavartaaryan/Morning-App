@@ -171,6 +171,10 @@ export interface AlarmSettings {
   habitAlerts: Record<string, boolean>;
   customReminders: CustomReminder[];
   selectedMantraId?: string;
+  /** When true the alarm starts at low volume and ramps up gradually */
+  gentleWake?: boolean;
+  /** Duration in minutes over which volume ramps from 5 % → 100 % (1–15) */
+  rampMinutes?: number;
 }
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   wakeAlarm: { enabled: false, hour: 4, minute: 0 },
@@ -180,6 +184,8 @@ export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   habitAlerts: {},
   customReminders: [],
   selectedMantraId: 'bhagya_suktam',
+  gentleWake: false,
+  rampMinutes: 5,
 };
 
 // ── Per-habit expiry window (minutes from midnight, alert 15 min before end) ─
