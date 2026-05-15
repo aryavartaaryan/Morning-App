@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal } from 'react
 import * as Haptics from 'expo-haptics';
 
 const SLEEP_COLOR = '#60a5fa';
-const AUTO_SKIP_SECS = 5;
+const AUTO_SKIP_SECS = 3;
 
 export const MOODS = [
   { key: 'stressed',  emoji: '😰', label: 'Stressed', color: '#ef4444' },
@@ -61,26 +61,27 @@ export function MoodSheet({
     }, 1000);
   }, [clearCountdown]);
 
+  // Reset selection and animate when visibility changes
   useEffect(() => {
     if (visible) {
       setSelected(null);
+      setCountdown(AUTO_SKIP_SECS);
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 6 }).start();
-      if (mode !== 'result') startCountdown();
     } else {
-      clearCountdown();
       Animated.timing(slideAnim, { toValue: 400, duration: 250, useNativeDriver: true }).start();
     }
     return () => clearCountdown();
   }, [visible]);
 
+  // Countdown control: only auto-skip in 'pre' mode; post and result never auto-skip
   useEffect(() => {
-    if (!visible) return;
-    if (mode !== 'result') {
+    if (!visible) { clearCountdown(); return; }
+    if (mode === 'pre') {
       startCountdown();
     } else {
       clearCountdown();
     }
-  }, [mode]);
+  }, [visible, mode]);
 
   const handleMoodTap = (key: MoodKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -88,29 +89,32 @@ export function MoodSheet({
     clearCountdown();
   };
 
-  const preMeta = MOODS.find(m => m.key === preMood);
-
   if (!visible) return null;
 
-  if (mode === 'result' && preMeta && selected) {
+  if (mode === 'result' && selected) {
     const postMeta = MOODS.find(m => m.key === selected)!;
-    const improved = MOODS.indexOf(postMeta) > MOODS.indexOf(preMeta);
+    const preMeta  = preMood ? (MOODS.find(m => m.key === preMood) ?? null) : null;
+    const improved = preMeta ? MOODS.indexOf(postMeta) > MOODS.indexOf(preMeta) : false;
     return (
       <Modal transparent animationType="none" visible={visible} onRequestClose={onSkip}>
         <View style={MS.backdrop}>
           <Animated.View style={[MS.sheet, { transform: [{ translateY: slideAnim }] }]}>
             <View style={MS.handle} />
             <Text style={MS.title}>Your Mood Journey 🌙</Text>
-            <Text style={MS.sub}>Here's how the session shifted your state</Text>
+            <Text style={MS.sub}>{preMeta ? "Here's how the session shifted your state" : 'Your mood after this session'}</Text>
             <View style={MS.journeyRow}>
-              <View style={MS.journeyBox}>
-                <Text style={MS.journeyEmoji}>{preMeta.emoji}</Text>
-                <Text style={[MS.journeyLabel, { color: preMeta.color }]}>{preMeta.label}</Text>
-                <Text style={MS.journeyTime}>Before</Text>
-              </View>
-              <View style={MS.journeyArrow}>
-                <Text style={{ fontSize: 22, color: '#FFFFFF30' }}>→</Text>
-              </View>
+              {preMeta && (
+                <>
+                  <View style={MS.journeyBox}>
+                    <Text style={MS.journeyEmoji}>{preMeta.emoji}</Text>
+                    <Text style={[MS.journeyLabel, { color: preMeta.color }]}>{preMeta.label}</Text>
+                    <Text style={MS.journeyTime}>Before</Text>
+                  </View>
+                  <View style={MS.journeyArrow}>
+                    <Text style={{ fontSize: 22, color: '#FFFFFF30' }}>→</Text>
+                  </View>
+                </>
+              )}
               <View style={MS.journeyBox}>
                 <Text style={MS.journeyEmoji}>{postMeta.emoji}</Text>
                 <Text style={[MS.journeyLabel, { color: postMeta.color }]}>{postMeta.label}</Text>
@@ -120,9 +124,11 @@ export function MoodSheet({
             <View style={[MS.insightCard, { borderColor: (improved ? postMeta.color : '#FFFFFF18') + '50', backgroundColor: (improved ? postMeta.color : '#FFFFFF') + '08' }]}>
               <Text style={{ fontSize: 15 }}>{improved ? '✨' : '💙'}</Text>
               <Text style={{ fontSize: 13, color: '#FFFFFF90', flex: 1, lineHeight: 18 }}>
-                {improved
-                  ? `Sound moved you from ${preMeta.label} to ${postMeta.label}. Sound science at work.`
-                  : `Every session plants a seed. Rest, and let it bloom. 🌙`}
+                {preMeta
+                  ? (improved
+                      ? `Sound moved you from ${preMeta.label} to ${postMeta.label}. Sound science at work.`
+                      : `Every session plants a seed. Rest, and let it bloom. 🌙`)
+                  : `Feeling ${postMeta.label} after your session. Sound shapes the mind. 🌙`}
               </Text>
             </View>
             <TouchableOpacity onPress={onSkip} style={[MS.doneBtn, { backgroundColor: SLEEP_COLOR + '20', borderColor: SLEEP_COLOR + '50' }]}>

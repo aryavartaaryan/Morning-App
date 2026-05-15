@@ -1,10 +1,10 @@
 export type MissionId =
   | 'move_it'
-  | 'sky_check'
-  | 'make_bed'
+  // | 'sky_check'
+  // | 'make_bed'
   | 'morning_mantra'
   | 'gratitude_drop'
-  | 'hydrate'
+  // | 'hydrate'
   | 'affirmations';
 
 export interface Mission {
@@ -29,26 +29,26 @@ export const MISSIONS: Mission[] = [
     color: '#F5820A',
     hype: 'Get that body moving — your energy depends on it.',
   },
-  {
-    id: 'sky_check',
-    name: 'Sky Check',
-    icon: '🌅',
-    tagline: 'Step outside. Look up. Capture the vibe.',
-    difficulty: 'Easy',
-    ayuChip: 'Prana Boost ✨',
-    color: '#38bdf8',
-    hype: 'Step outside. Breathe real air. Capture it.',
-  },
-  {
-    id: 'make_bed',
-    name: 'Make Your Bed',
-    icon: '🛏️',
-    tagline: 'Win the first battle of the day.',
-    difficulty: 'Easy',
-    ayuChip: 'Kapha Buster 🌀',
-    color: '#a78bfa',
-    hype: 'One minute. Make that bed. Win the day.',
-  },
+  // {
+  //   id: 'sky_check',
+  //   name: 'Sky Check',
+  //   icon: '🌅',
+  //   tagline: 'Step outside. Look up. Capture the vibe.',
+  //   difficulty: 'Easy',
+  //   ayuChip: 'Prana Boost ✨',
+  //   color: '#38bdf8',
+  //   hype: 'Step outside. Breathe real air. Capture it.',
+  // },
+  // {
+  //   id: 'make_bed',
+  //   name: 'Make Your Bed',
+  //   icon: '🛏️',
+  //   tagline: 'Win the first battle of the day.',
+  //   difficulty: 'Easy',
+  //   ayuChip: 'Kapha Buster 🌀',
+  //   color: '#a78bfa',
+  //   hype: 'One minute. Make that bed. Win the day.',
+  // },
   {
     id: 'morning_mantra',
     name: 'Morning Mantra',
@@ -69,16 +69,16 @@ export const MISSIONS: Mission[] = [
     color: '#34d399',
     hype: 'Name three things. Shift your whole mindset.',
   },
-  {
-    id: 'hydrate',
-    name: 'Hydrate',
-    icon: '💧',
-    tagline: 'Your body is 60% water. Reload it.',
-    difficulty: 'Easy',
-    ayuChip: 'Ama Flush 🌊',
-    color: '#60a5fa',
-    hype: 'One glass. Your cells are waiting.',
-  },
+  // {
+  //   id: 'hydrate',
+  //   name: 'Hydrate',
+  //   icon: '💧',
+  //   tagline: 'Your body is 60% water. Reload it.',
+  //   difficulty: 'Easy',
+  //   ayuChip: 'Ama Flush 🌊',
+  //   color: '#60a5fa',
+  //   hype: 'One glass. Your cells are waiting.',
+  // },
   {
     id: 'affirmations',
     name: 'Affirmations',
@@ -196,9 +196,62 @@ export const WAKE_SOUNDS: WakeSound[] = [
   },
   {
     id: 'flute_morning',
-    label: 'Morning Flute',
+    label: 'Light Meditation Tone',
     icon: '🎶',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/bansuri-morning.mp3',
+    category: 'gentle',
+    isGentle: true,
+  },
+  {
+    id: 'singing_bowl_deep',
+    label: 'Deep Singing Bowl',
+    icon: '🔮',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/singing-bowl-deep.m4a'),
+  },
+  {
+    id: 'tibetan_bowl',
+    label: 'Tibetan Bowl',
+    icon: '🫙',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/tibetan-bowl.m4a'),
+  },
+  {
+    id: 'morning_flute',
+    label: 'Light Meditation Tone',
+    icon: '🎶',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/morning-flute.m4a'),
+  },
+  {
+    id: 'sitar_morning',
+    label: 'Calm Raga',
+    icon: '🎸',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/sitar-morning.m4a'),
+  },
+  {
+    id: 'healing_bells_432',
+    label: '432 Hz Bells',
+    icon: '🔔',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/432hz-healing-bells.m4a'),
+  },
+  {
+    id: 'fusion',
+    label: 'Fusion Wake',
+    icon: '🌅',
+    audioUrl: '',
     category: 'gentle',
     isGentle: true,
   },
@@ -249,6 +302,60 @@ export const WAKE_SOUNDS: WakeSound[] = [
     isGentle: true,
     bundledAsset: require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
   },
+  {
+    id: 'morning_birds',
+    label: 'Morning Birds',
+    icon: '🐦',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/morning-birds-loop.m4a'),
+  },
+  {
+    id: 'spring_birds',
+    label: 'Spring Birds',
+    icon: '🌸',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/spring-birds-morning.m4a'),
+  },
+  {
+    id: 'forest_birds_spring',
+    label: 'Forest Birds',
+    icon: '🌳',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/forest-birds-spring.m4a'),
+  },
+  {
+    id: 'wanderlust_breeze',
+    label: 'Wanderlust Breeze',
+    icon: '🌬️',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/wanderlust-breeze.m4a'),
+  },
+  {
+    id: 'forest_campfire',
+    label: 'Forest Campfire',
+    icon: '🔥',
+    audioUrl: '',
+    category: 'nature',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/forest-campfire.m4a'),
+  },
+  {
+    id: 'indian_beats',
+    label: 'Indian Beats',
+    icon: '🥁',
+    audioUrl: '',
+    category: 'gentle',
+    isGentle: true,
+    bundledAsset: require('../assets/sounds/indian-beats.m4a'),
+  },
 ];
 
 // ── Sleep sounds (ambient .m4a files already bundled) ──────────────────────
@@ -273,6 +380,17 @@ export const SLEEP_SOUNDS: SleepSound[] = [
   { id: 'sl_close_waves',     label: 'Close Sea Waves',   icon: '🏖️',  bundledAsset: require('../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a') },
   { id: 'sl_rain_thunder',    label: 'Rain & Thunder',    icon: '🌧️',  bundledAsset: require('../assets/sounds/mixkit-rain-and-thunder-storm-2390.m4a') },
   { id: 'sl_urban_day',       label: 'Urban Ambience',    icon: '🏙️',  bundledAsset: require('../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a') },
+  { id: 'sl_singing_bowl',    label: 'Deep Singing Bowl', icon: '🔮',  bundledAsset: require('../assets/sounds/singing-bowl-deep.m4a') },
+  { id: 'sl_tibetan_bowl',    label: 'Tibetan Bowl',      icon: '🫙',  bundledAsset: require('../assets/sounds/tibetan-bowl.m4a') },
+  { id: 'sl_morning_birds',   label: 'Morning Birds',     icon: '🐦',  bundledAsset: require('../assets/sounds/morning-birds-loop.m4a') },
+  { id: 'sl_spring_birds',    label: 'Spring Birds',      icon: '🌸',  bundledAsset: require('../assets/sounds/spring-birds-morning.m4a') },
+  { id: 'sl_forest_birds',    label: 'Forest Birds',      icon: '🌳',  bundledAsset: require('../assets/sounds/forest-birds-spring.m4a') },
+  { id: 'sl_morning_flute',   label: 'Light Meditation Tone', icon: '🎶',  bundledAsset: require('../assets/sounds/morning-flute.m4a') },
+  { id: 'sl_sitar',           label: 'Calm Raga',         icon: '🎸',  bundledAsset: require('../assets/sounds/sitar-morning.m4a') },
+  { id: 'sl_432hz',           label: '432 Hz Bells',      icon: '🔔',  bundledAsset: require('../assets/sounds/432hz-healing-bells.m4a') },
+  { id: 'sl_wanderlust',      label: 'Wanderlust Breeze', icon: '🌬️',  bundledAsset: require('../assets/sounds/wanderlust-breeze.m4a') },
+  { id: 'sl_campfire',        label: 'Forest Campfire',   icon: '🔥',  bundledAsset: require('../assets/sounds/forest-campfire.m4a') },
+  { id: 'sl_indian_beats',    label: 'Indian Beats',      icon: '🥁',  bundledAsset: require('../assets/sounds/indian-beats.m4a') },
 ];
 
 export function getKalaMessage(hour: number): string {

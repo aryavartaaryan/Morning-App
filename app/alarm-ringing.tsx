@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar,
-  Dimensions, Modal, ScrollView, AppState, Platform,
+  Dimensions, Modal, ScrollView, AppState, Platform, ImageBackground,
 } from 'react-native';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming,
   Easing, withSpring, interpolate, Extrapolation,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
@@ -16,7 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { stopNativeAlarmSound, setNativeAlarmVolume, startAlarmVibration, stopAlarmVibration, dismissAlarmOverlay } from '@/lib/nativeAlarm';
-import { cancelVolumeRamp, playGentleAlarmAudio } from '@/lib/alarmAudio';
+import { cancelVolumeRamp, cancelFusion, playGentleAlarmAudio, playFusionAlarm, preemptActiveAlarm, setActiveAlarmSoundRef, stopActivePreview } from '@/lib/alarmAudio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 import { store, KEYS } from '@/lib/storage';
@@ -29,6 +30,7 @@ import {
   MISSIONS, WAKE_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings,
   getKalaMessage, WAKE_QUOTES,
 } from '@/lib/missionAlarm';
+import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 
 const MANTRA_TO_WAKE: Record<string, string> = {
   gayatri: 'gayatri',
@@ -43,11 +45,52 @@ const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
 
 // Gentle / nature sounds that are bundled as .m4a — no download needed
 const BUNDLED_NATURE_ASSETS: Record<string, any> = {
-  forest_birds:  require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
-  sea_waves:     require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
-  light_rain:    require('../assets/sounds/mixkit-light-rain-loop-2393.m4a'),
-  breeze_trees:  require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
-  river_flow:    require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
+  forest_birds:       require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
+  sea_waves:          require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
+  light_rain:         require('../assets/sounds/mixkit-light-rain-loop-2393.m4a'),
+  breeze_trees:       require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
+  river_flow:         require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
+  singing_bowl_deep:  require('../assets/sounds/singing-bowl-deep.m4a'),
+  tibetan_bowl:       require('../assets/sounds/tibetan-bowl.m4a'),
+  morning_birds:      require('../assets/sounds/morning-birds-loop.m4a'),
+  spring_birds:       require('../assets/sounds/spring-birds-morning.m4a'),
+  forest_birds_spring:require('../assets/sounds/forest-birds-spring.m4a'),
+  morning_flute:      require('../assets/sounds/morning-flute.m4a'),
+  sitar_morning:      require('../assets/sounds/sitar-morning.m4a'),
+  healing_bells_432:  require('../assets/sounds/432hz-healing-bells.m4a'),
+  wanderlust_breeze:  require('../assets/sounds/wanderlust-breeze.m4a'),
+  forest_campfire:    require('../assets/sounds/forest-campfire.m4a'),
+  indian_beats:       require('../assets/sounds/indian-beats.m4a'),
+};
+
+
+const ALARM_SOUND_BUNDLED_IMAGES: Record<string, any> = {
+  lalitha: require('../assets/images/mata-lalitha.jpg'),
+};
+
+const ALARM_SOUND_META: Record<string, { label: string; icon: string; color: string }> = {
+  forest_birds:        { label: 'Forest Birds',         icon: '🐦', color: '#34d399' },
+  sea_waves:           { label: 'Sea Waves',             icon: '🌊', color: '#38bdf8' },
+  light_rain:          { label: 'Light Rain',            icon: '🌦️', color: '#60a5fa' },
+  breeze_trees:        { label: 'Forest Breeze',         icon: '🌿', color: '#4ade80' },
+  river_flow:          { label: 'Flowing Water',          icon: '🏞️', color: '#38bdf8' },
+  morning_birds:       { label: 'Morning Birds',         icon: '🌅', color: '#fbbf24' },
+  spring_birds:        { label: 'Spring Birds',          icon: '🌸', color: '#f472b6' },
+  forest_birds_spring: { label: 'Forest Birds',           icon: '🌲', color: '#4ade80' },
+  forest_campfire:     { label: 'Forest Campfire',       icon: '🔥', color: '#f97316' },
+  wanderlust_breeze:   { label: 'Wanderlust Breeze',      icon: '�️', color: '#67e8f9' },
+  singing_bowl_deep:   { label: 'Deep Singing Bowl',      icon: '🔮', color: '#a78bfa' },
+  tibetan_bowl:        { label: 'Tibetan Bowl',          icon: '🕌', color: '#c4b5fd' },
+  morning_flute:       { label: 'Light Meditation Tone', icon: '🎶', color: '#6ee7b7' },
+  sitar_morning:       { label: 'Calm Raga',             icon: '🎵', color: '#f59e0b' },
+  healing_bells_432:   { label: '432 Hz Bells',          icon: '🔔', color: '#fde68a' },
+  indian_beats:        { label: 'Indian Beats',           icon: '🥁', color: '#fb923c' },
+  gayatri:             { label: 'Gayatri Mantra',        icon: '🌞', color: '#fbbf24' },
+  lalitha:             { label: 'Lalitha Sahasranama',   icon: '🌺', color: '#f472b6' },
+  shivtandav:          { label: 'Shiv Tandav',           icon: '🔱', color: '#60a5fa' },
+  bhagya_suktam:       { label: 'Bhagya Suktam',         icon: '🌟', color: '#fbbf24' },
+  shiv_sankalpa_suktam:{ label: 'Shiv Sankalpa Suktam',  icon: '🕉️', color: '#c4b5fd' },
+  fusion:              { label: 'Fusion Wake',           icon: '✨', color: '#fbbf24' },
 };
 
 const { width, height } = Dimensions.get('window');
@@ -68,6 +111,8 @@ export default function AlarmRingingScreen() {
   const [ms, setMs] = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [userName, setUserName] = useState('Champion');
   const [timeStr, setTimeStr] = useState(fmtTime());
+  const [bgImageSource, setBgImageSource] = useState<any>(null);
+  const [soundMeta,     setSoundMeta]     = useState<{ label: string; icon: string; color: string }>({ label: '', icon: '🕉️', color: '#fbbf24' });
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
   const [snoozeCountdown, setSnoozeCountdown] = useState<number | null>(null);
   const [snoozedFor, setSnoozedFor] = useState<number | null>(null);
@@ -83,6 +128,7 @@ export default function AlarmRingingScreen() {
   // ── Audio helpers ──────────────────────────────────────────────────────────
   const stopWakeAudio = async () => {
     cancelVolumeRamp();
+    cancelFusion();
     try {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
@@ -93,6 +139,9 @@ export default function AlarmRingingScreen() {
   };
 
   const playWakeAudio = async (uri: string | null, bundledAsset?: any) => {
+    await preemptActiveAlarm();
+    await stopActivePreview();
+    setActiveAlarmSoundRef(soundRef);
     await stopWakeAudio();
     // Silence the native AlarmSoundService MediaPlayer — JS audio takes over from here.
     // Native service keeps running for wake lock / fullScreen notification, but its
@@ -323,14 +372,21 @@ export default function AlarmRingingScreen() {
 
       const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
       const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
+      const meta = ALARM_SOUND_META[mantraId] ?? { label: 'Sacred Sound', icon: '🕉️', color: '#fbbf24' };
+      const bgSrc = ALARM_SOUND_BUNDLED_IMAGES[mantraId]
+        ?? (SOUND_IMAGES[mantraId] ? { uri: SOUND_IMAGES[mantraId] } : null);
+      if (!cancelled) { setSoundMeta(meta); setBgImageSource(bgSrc); }
       const useGentle = alarmCfg?.gentleWake ?? false;
       const rampMins = alarmCfg?.rampMinutes ?? 5;
       gentleWakeRef.current = useGentle;
       rampMinutesRef.current = rampMins;
 
-      // ── Play correct mantra / nature / gentle audio via JS layer ───
+      // ── Play correct mantra / nature / gentle / fusion audio via JS layer ───
       if (!cancelled) {
-        if (useGentle) {
+        if (mantraId === 'fusion') {
+          // Fusion path: 5-phase cross-fade sequence (nature → birds → sitar → mantra → flute)
+          await playFusionAlarm(soundRef, 'gayatri', useGentle, rampMins);
+        } else if (useGentle) {
           // Gentle path: starts at 5 % volume and ramps up
           await playGentleAlarmAudio(soundRef, mantraId, rampMins);
         } else {
@@ -392,6 +448,7 @@ export default function AlarmRingingScreen() {
     return () => {
       cancelled = true;
       cancelVolumeRamp();
+      cancelFusion();
       stopBodhi();
       stopWakeAudio();
     };
@@ -474,27 +531,43 @@ export default function AlarmRingingScreen() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <View style={S.screen}>
+    <ImageBackground
+      source={bgImageSource ?? undefined}
+      style={S.screen}
+      imageStyle={{ opacity: 0.65 }}
+    >
+      {/* Dark gradient overlay */}
+      <LinearGradient
+        colors={['rgba(4,4,16,0.75)', 'rgba(4,4,16,0.22)', 'rgba(4,4,16,0.88)']}
+        style={StyleSheet.absoluteFillObject}
+      />
       <StatusBar hidden />
 
       {/* ── Full-screen ambient glow ── */}
       <View style={[S.ambientGlow, { backgroundColor: mission.color + '12' }]} pointerEvents="none" />
       <View style={[S.ambientGlowBottom, { backgroundColor: mission.color + '08' }]} pointerEvents="none" />
 
-      {/* ── TOP SECTION: Rings + Time ── */}
+      {/* ── TOP SECTION: Sound chip + Orb + Time ── */}
       <View style={S.topSection}>
-        {/* Pulsing ring cluster */}
+        {/* Now playing chip */}
+        <View style={[S.soundChip, { borderColor: soundMeta.color + '55', backgroundColor: soundMeta.color + '18' }]}>
+          <View style={[S.liveDot, { backgroundColor: soundMeta.color }]} />
+          <Text style={{ fontSize: 13 }}>{soundMeta.icon}</Text>
+          <Text style={[S.soundChipLabel, { color: soundMeta.color }]}>{soundMeta.label || 'Now Playing'}</Text>
+        </View>
+
+        {/* Pulsing orb — shows sound icon */}
         <View style={S.ringWrap} pointerEvents="none">
-          <Animated.View style={[S.outerRing, outerStyle, { borderColor: mission.color + '50' }]} />
-          <Animated.View style={[S.midRing, { borderColor: mission.color + '28' }]} />
-          <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: mission.color + '18', borderColor: mission.color + '40' }]}>
-            <Text style={S.ringIcon}>{mission.icon}</Text>
+          <Animated.View style={[S.outerRing, outerStyle, { borderColor: soundMeta.color + '45' }]} />
+          <Animated.View style={[S.midRing, { borderColor: soundMeta.color + '25' }]} />
+          <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: soundMeta.color + '1A', borderColor: soundMeta.color + '45' }]}>
+            <Text style={S.ringIcon}>{soundMeta.icon || '🕉️'}</Text>
           </Animated.View>
         </View>
 
         {/* Time */}
         <Text style={S.time}>{timeStr}</Text>
-        <Text style={[S.kala, { color: mission.color }]}>{kala.toUpperCase()}</Text>
+        <Text style={[S.kala, { color: soundMeta.color }]}>{kala.toUpperCase()}</Text>
 
         {/* Streak pill */}
         {snoozedFor === null && (
@@ -519,45 +592,41 @@ export default function AlarmRingingScreen() {
       {/* ── BOTTOM SECTION: Mission + CTA ── */}
       {snoozedFor === null && (
         <View style={S.bottomSection}>
-          {/* Quote */}
-          <Text style={S.quote}>"{quote}"</Text>
-
-          {/* Mission card */}
+          {/* Mission row — compact */}
           <Animated.View style={shakeStyle}>
-            <View style={[S.missionCard, { borderColor: mission.color + '45', backgroundColor: mission.color + '0A' }]}>
-              <Text style={[S.missionBadge, { color: mission.color + 'CC' }]}>TODAY'S MISSION</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                <Text style={{ fontSize: 28 }}>{mission.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={S.missionName}>{mission.name}</Text>
-                  <Text style={S.missionTagline}>{mission.tagline}</Text>
-                </View>
-              </View>
-              <View style={[S.missionChip, { backgroundColor: mission.color + '1A', borderColor: mission.color + '50' }]}>
-                <Text style={[S.missionChipText, { color: mission.color }]}>{mission.ayuChip}</Text>
+            <View style={[S.missionRow, { borderColor: mission.color + '40', backgroundColor: mission.color + '0A' }]}>
+              <Text style={{ fontSize: 30 }}>{mission.icon}</Text>
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={[S.missionBadge, { color: mission.color + 'AA' }]}>TODAY'S MISSION</Text>
+                <Text style={S.missionName}>{mission.name}</Text>
+                <Text style={S.missionTagline}>{mission.tagline}</Text>
               </View>
             </View>
           </Animated.View>
 
-          {/* CTA — Stop Alarm button */}
-          <Animated.View style={[btnStyle, { width: '100%' }]}>
+          {/* CTA — premium begin-your-day button */}
+          <Animated.View style={[btnStyle, { width: '100%', marginTop: 16 }]}>
             <TouchableOpacity
-              style={[S.stopBtn, { backgroundColor: mission.color }]}
+              style={[S.ctaBtn, { backgroundColor: mission.color, shadowColor: mission.color }]}
               onPress={handleStart}
               activeOpacity={0.88}
             >
-              <Text style={S.stopBtnText}>✓  Complete Mission · Stop Alarm</Text>
+              <Text style={S.ctaIcon}>☀️</Text>
+              <View style={{ marginLeft: 10 }}>
+                <Text style={S.ctaTitle}>Begin Your Day</Text>
+                <Text style={S.ctaSub}>tap to stop alarm · start mission</Text>
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Snooze button */}
+          {/* Snooze */}
           <TouchableOpacity style={S.snoozeBtn} onPress={() => setShowSnoozeModal(true)} activeOpacity={0.75}>
             <Text style={S.snoozeBtnText}>💤  Snooze</Text>
           </TouchableOpacity>
 
           {/* Lock badge */}
           <View style={S.lockBadge}>
-            <Text style={S.lockText}>🔒  Can't close — complete mission or snooze</Text>
+            <Text style={S.lockText}>🔒  Can't close · complete mission or snooze</Text>
           </View>
         </View>
       )}
@@ -594,7 +663,7 @@ export default function AlarmRingingScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -643,4 +712,15 @@ const S = StyleSheet.create({
   snoozeOptionLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 },
   snoozeCancelBtn: { alignItems: 'center', paddingVertical: 16, marginTop: 6 },
   snoozeCancelText: { fontSize: 13, color: '#FFFFFF35', fontWeight: '700' },
+  // Sound chip (now playing indicator)
+  soundChip:      { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 99, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 18 },
+  liveDot:        { width: 7, height: 7, borderRadius: 3.5 },
+  soundChipLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  // Mission row
+  missionRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 0 },
+  // Premium CTA
+  ctaBtn:         { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 99, paddingVertical: 20, shadowOpacity: 0.50, shadowRadius: 22, shadowOffset: { width: 0, height: 6 }, elevation: 14 },
+  ctaIcon:        { fontSize: 26 },
+  ctaTitle:       { fontSize: 18, fontWeight: '900', color: '#000000EE', letterSpacing: 0.1 },
+  ctaSub:         { fontSize: 10, fontWeight: '700', color: '#00000055', letterSpacing: 0.5, marginTop: 2 },
 });

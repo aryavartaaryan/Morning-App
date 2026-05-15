@@ -62,22 +62,61 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
     return;
   }
 
-  // ── Habit alarm fired while app was killed ───────────────────────────────
+  // ── Habit alarm fired while app was killed ───────────────────────────────────
   // Store the alarm payload so _layout.tsx can route to /habit-alarm-ringing
   // when MainActivity is launched by the fullScreenAction intent.
   // getInitialNotification() alone is unreliable for fullScreenAction launches
   // (user never "tapped" the notification), so AsyncStorage is the safety net.
   if (data.type === 'habit-alarm') {
     if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
-      await AsyncStorage.setItem(PENDING_HABIT_KEY, JSON.stringify({
-        habitKey:   data.habitKey   ?? data.alarmId ?? id ?? '',
-        habitEmoji: data.habitEmoji ?? '🌿',
-        label:      data.label      ?? 'Habit Alarm',
-        alarmType:  data.alarmType  ?? 'habit',
+      if (data.alarmType === 'soundbath') {
+        // Sound Bath alarm arrived via native HabitAlarmModule — route to soundbath screen
+        await AsyncStorage.setItem('onesutra_pending_soundbath_v1', JSON.stringify({
+          soundId: data.soundId ?? 'morning_birds',
+          label:   data.label   ?? 'Sound Bath',
+        })).catch(() => {});
+        await AsyncStorage.setItem('onesutra_active_soundbath_notif_v1', id ?? '').catch(() => {});
+      } else {
+        await AsyncStorage.setItem(PENDING_HABIT_KEY, JSON.stringify({
+          habitKey:   data.habitKey   ?? data.alarmId ?? id ?? '',
+          habitEmoji: data.habitEmoji ?? '🌿',
+          label:      data.label      ?? 'Habit Alarm',
+          alarmType:  data.alarmType  ?? 'habit',
+          soundId:    data.soundId    ?? 'morning_birds',
+        })).catch(() => {});
+        await AsyncStorage.setItem(ACTIVE_HABIT_NOTIF_KEY, id ?? '').catch(() => {});
+      }
+    }
+    return;
+  }
+
+  // ── Sleep auto-start fired while app was killed ─────────────────────────────
+  if (data.type === 'sleep-autostart') {
+    if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+      await AsyncStorage.setItem('onesutra_pending_sleep_v1', JSON.stringify({
+        soundId: data.soundId ?? 'light_rain',
+        label:   data.label   ?? 'Sleep Sound',
       })).catch(() => {});
-      // Store the notification ID so habit-alarm-ringing.tsx can cancel
-      // the trigger's foreground service once the screen mounts.
-      await AsyncStorage.setItem(ACTIVE_HABIT_NOTIF_KEY, id ?? '').catch(() => {});
+    }
+    return;
+  }
+
+  // ── Sound Bath alarm fired while app was killed ──────────────────────────────
+  if (data.type === 'soundbath-alarm') {
+    if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+      await AsyncStorage.setItem('onesutra_pending_soundbath_v1', JSON.stringify({
+        soundId: data.soundId ?? 'morning_birds',
+        label:   data.label   ?? 'Sound Bath',
+      })).catch(() => {});
+      await AsyncStorage.setItem('onesutra_active_soundbath_notif_v1', id ?? '').catch(() => {});
+    }
+    return;
+  }
+
+  // Extra wake alarms (notifee trigger with data.type === 'wake-alarm')
+  if (data.type === 'wake-alarm' && id !== ALARM_NOTIF_ID) {
+    if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+      await AsyncStorage.setItem(ALARM_ACTIVE_KEY, '1').catch(() => {});
     }
     return;
   }

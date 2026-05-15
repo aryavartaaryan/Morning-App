@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
-  TextInput, Alert, Animated, Dimensions, NativeModules, Platform, ToastAndroid, ImageBackground,
+  TextInput, Alert, Animated, Dimensions, NativeModules, Platform, ToastAndroid, ImageBackground, ActionSheetIOS,
 } from 'react-native';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -51,6 +52,17 @@ const fmt12 = (h: number, m: number) => {
   return `${pad(h12)}:${pad(m)} ${p}`;
 };
 
+const computeTimeUntil = (hour: number, minute: number, now: Date): string => {
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const tgt = hour * 60 + minute;
+  const diff = tgt > nowMins ? tgt - nowMins : tgt + 1440 - nowMins;
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+  if (hrs === 0) return `in ${mins} minute${mins !== 1 ? 's' : ''}`;
+  if (mins === 0) return `in ${hrs} hour${hrs !== 1 ? 's' : ''}`;
+  return `in ${hrs} hours, ${mins} minutes`;
+};
+
 const AYU_HABITS = [
   { key: 'wake_early',      label: 'Wake Early',       emoji: '🌙' },
   { key: 'morning_prayer',  label: 'Prayer',           emoji: '🙏' },
@@ -72,15 +84,39 @@ const AYU_HABITS = [
   { key: 'custom',       label: 'Custom Habit',     emoji: '✨' },
 ];
 
+const HABIT_SOUND_DEFAULTS: Record<string, string> = {
+  meditation:      'singing_bowl_deep',
+  prayer:          'om_chant',
+  morning_prayer:  'gayatri',
+  wake_early:      'morning_birds',
+  hydrate:         'river_flow',
+  shower:          'light_rain',
+  sunlight:        'spring_birds',
+  breakfast:       'forest_birds',
+  main_meal:       'forest_birds',
+  walk:            'morning_birds',
+  herbal_tea:      'forest_birds_spring',
+  evening_walk:    'wanderlust_breeze',
+  light_dinner:    'breeze_trees',
+  screen_free:     'singing_bowl_deep',
+  journaling:      'tibetan_bowl',
+  sleep:           'singing_bowl_deep',
+  stretch:         'morning_flute',
+  morning_stretch: 'morning_flute',
+  workout:         'gayatri',
+  custom:          'morning_birds',
+};
+
 export interface AlarmEntry {
   id: string;
-  type: 'habit' | 'quick';
+  type: 'habit' | 'quick' | 'soundbath';
   hour: number;
   minute: number;
   label: string;
   enabled: boolean;
   habitKey?: string;
   habitEmoji?: string;
+  soundId?: string;
 }
 
 const MANTRAS = [
@@ -297,7 +333,7 @@ export default function AlarmsScreen() {
 
   // ── Modal state ────────────────────────────────────────────────────────────
   const [showWakeEdit, setShowWakeEdit] = useState(false);
-  const [addType, setAddType] = useState<'habit' | 'quick' | null>(null);
+  const [addType, setAddType] = useState<'habit' | 'quick' | 'soundbath' | null>(null);
   const [editEntry, setEditEntry] = useState<AlarmEntry | null>(null);
 
   // ── Form state for modals ──────────────────────────────────────────────────
@@ -307,6 +343,9 @@ export default function AlarmsScreen() {
   const [formHabitKey, setFormHabitKey] = useState('meditation');
   const [formHabitEmoji, setFormHabitEmoji] = useState('🧘');
   const [showCustomHabitInput, setShowCustomHabitInput] = useState(false);
+  const [formSoundId, setFormSoundId] = useState('morning_birds');
+  const [formSoundPickerOpen, setFormSoundPickerOpen] = useState(false);
+  const [formSoundCat, setFormSoundCat] = useState<'nature' | 'sacred'>('nature');
 
   // ── Tab nav state ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'alarm' | 'sleep' | 'reports' | 'settings'>('alarm');
@@ -514,6 +553,50 @@ export default function AlarmsScreen() {
   const toggleWake = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: !settings.wakeAlarm.enabled } });
+  };
+
+  const deleteWakeAlarm = () => {
+    Alert.alert('Remove wake alarm?', 'This will disable and remove the primary wake alarm.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: async () => {
+        await cancelNativeAlarm();
+        persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: false } });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }},
+    ]);
+  };
+
+  const showWakeAlarmMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title: 'Wake Alarm' },
+        i => { if (i === 1) setShowWakeEdit(true); if (i === 2) deleteWakeAlarm(); }
+      );
+    } else {
+      Alert.alert('Wake Alarm', '', [
+        { text: 'Edit', onPress: () => setShowWakeEdit(true) },
+        { text: 'Delete', style: 'destructive', onPress: deleteWakeAlarm },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
+  const showAlarmMenu = (entry: AlarmEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const title = entry.label || (entry.type === 'habit' ? 'Habit Alarm' : entry.type === 'soundbath' ? 'Sound Bath' : 'Quick Alarm');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title },
+        i => { if (i === 1) openEditEntry(entry); if (i === 2) deleteEntry(entry.id); }
+      );
+    } else {
+      Alert.alert(title, '', [
+        { text: 'Edit', onPress: () => openEditEntry(entry) },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteEntry(entry.id) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
   };
 
   const setWakeTime = (h: number, m: number) => {
@@ -849,8 +932,11 @@ export default function AlarmsScreen() {
   // ── Multi-alarm entry handlers ─────────────────────────────────────────────
   const scheduleEntryNotif = async (entry: AlarmEntry) => {
     if (!entry.enabled) return;
+    const soundMeta = WAKE_SOUNDS.find(ws => ws.id === entry.soundId);
     const title = entry.type === 'habit'
       ? `${entry.habitEmoji ?? '🌿'} ${entry.label}`
+      : entry.type === 'soundbath'
+      ? `${soundMeta?.icon ?? '🎵'} ${entry.label || 'Sound Bath'}`
       : `⚡ ${entry.label || 'Quick Alarm'}`;
 
     // Cancel any stale notifications for this entry before rescheduling
@@ -879,7 +965,7 @@ export default function AlarmsScreen() {
           {
             id: `habit-${entry.id}`,
             title,
-            body: entry.type === 'habit' ? 'Time for your habit! Tap to begin. 🙏' : 'Your alarm is ringing! ⏰',
+            body: entry.type === 'habit' ? 'Time for your habit! Tap to begin. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵 Tap to listen.' : 'Your alarm is ringing! ⏰',
             android: {
               channelId: 'arise-habit-alarms',
               importance: AndroidImportance.HIGH,
@@ -889,12 +975,13 @@ export default function AlarmsScreen() {
               pressAction: { id: 'default', launchActivity: 'default' },
             } as any,
             data: {
-              type: 'habit-alarm',
+              type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm',
               alarmId: entry.id,
               habitKey: entry.habitKey ?? entry.id,
-              habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : '🌿'),
+              habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : entry.type === 'soundbath' ? (soundMeta?.icon ?? '🎵') : '🌿'),
               label: entry.label,
               alarmType: entry.type,
+              soundId: entry.soundId ?? 'morning_birds',
             },
           },
           {
@@ -917,9 +1004,9 @@ export default function AlarmsScreen() {
         identifier: `alarm-${entry.id}`,
         content: {
           title,
-          body: entry.type === 'habit' ? 'Time for your habit! 🙏' : 'Your alarm is ringing! ⏰',
+          body: entry.type === 'habit' ? 'Time for your habit! 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵' : 'Your alarm is ringing! ⏰',
           sound: 'mantra_alarm.wav',
-          data: { type: 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, alarmType: entry.type },
+          data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, alarmType: entry.type, soundId: entry.soundId ?? 'morning_birds' },
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: entry.hour, minute: entry.minute },
       });
@@ -973,6 +1060,7 @@ export default function AlarmsScreen() {
       id, type, hour: formHour, minute: formMinute, label, enabled: true,
       habitKey: type === 'habit' ? formHabitKey : undefined,
       habitEmoji: type === 'habit' ? (formHabitEmoji || habitInfo?.emoji) : undefined,
+      soundId: (type === 'habit' || type === 'soundbath') ? formSoundId : undefined,
     };
     const updated = editEntry
       ? alarmEntries.map(e => e.id === id ? entry : e)
@@ -984,16 +1072,20 @@ export default function AlarmsScreen() {
     setFormLabel('');
     setFormHabitKey('');
     setShowCustomHabitInput(false);
+    setFormSoundPickerOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const openAddModal = (type: 'habit' | 'quick') => {
-    setFormHour(type === 'habit' ? 7 : new Date().getHours());
-    setFormMinute(type === 'habit' ? 0 : 0);
-    setFormLabel('');
+  const openAddModal = (type: 'habit' | 'quick' | 'soundbath') => {
+    setFormHour(type === 'soundbath' ? 6 : type === 'habit' ? 7 : new Date().getHours());
+    setFormMinute(0);
+    setFormLabel(type === 'soundbath' ? 'Sound Bath' : '');
     setFormHabitKey(type === 'habit' ? '' : 'meditation');
     setFormHabitEmoji(type === 'habit' ? '' : '🧘');
     setShowCustomHabitInput(false);
+    setFormSoundId(type === 'soundbath' ? 'singing_bowl_deep' : 'morning_birds');
+    setFormSoundPickerOpen(false);
+    setFormSoundCat(type === 'soundbath' ? 'sacred' : 'nature');
     setEditEntry(null);
     setAddType(type);
   };
@@ -1005,6 +1097,9 @@ export default function AlarmsScreen() {
     setFormHabitKey(entry.habitKey ?? 'custom');
     setFormHabitEmoji(entry.habitEmoji ?? '✨');
     setShowCustomHabitInput(entry.habitKey === 'custom');
+    setFormSoundId(entry.soundId ?? HABIT_SOUND_DEFAULTS[entry.habitKey ?? ''] ?? 'morning_birds');
+    setFormSoundPickerOpen(false);
+    setFormSoundCat('nature');
     setEditEntry(entry);
     setAddType(null);
   };
@@ -1055,39 +1150,37 @@ export default function AlarmsScreen() {
 
   return (
     <View style={S.screen}>
-      {/* ── Hero Header ── */}
-      <ImageBackground source={require('../assets/images/hanumanji.png')} style={S.heroBg} resizeMode="cover">
-        <LinearGradient colors={['rgba(4,2,10,0.10)', 'rgba(6,6,16,0.55)', '#060610']} locations={[0, 0.65, 1]} style={S.heroGrad}>
-          <SafeAreaView edges={['top']}>
-            <View style={S.heroTop}>
-              <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
-                <Text style={S.backTxt}>← Back</Text>
-              </TouchableOpacity>
-              <Animated.View style={{ opacity: saveAnim }}>
-                <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>✓ SAVED</Text>
-              </Animated.View>
+      {/* ── Full-screen background ── */}
+      <ImageBackground
+        source={require('../assets/images/hanumanji.png')}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={['rgba(0,0,0,0.06)', 'rgba(15,10,5,0.22)', 'rgba(12,9,4,0.58)']}
+        locations={[0, 0.44, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* ── Compact Header ── */}
+      <SafeAreaView edges={['top']}>
+        <View style={S.compactHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+            <Text style={S.backTxt}>← Back</Text>
+          </TouchableOpacity>
+          {nextAlarmEntry && nextLabel ? (
+            <View style={S.nextBadge}>
+              <Text style={S.nextBadgeIcon}>⏰</Text>
+              <Text style={S.nextBadgeTxt}>Next in {nextLabel}</Text>
             </View>
-            <View style={S.heroCenter}>
-              {nextAlarmEntry ? (
-                <>
-                  <Text style={S.heroLabel}>NEXT ALARM</Text>
-                  <Text style={S.heroTime}>{fmt12(nextAlarmEntry.hour, nextAlarmEntry.minute)}</Text>
-                  <View style={S.heroBadge}>
-                    <View style={S.heroDot} />
-                    <Text style={S.heroBadgeTxt}>Rings in {nextLabel}</Text>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={S.heroLabel}>ALARMS</Text>
-                  <Text style={S.heroNoAlarm}>No alarms set</Text>
-                  <Text style={S.heroNoAlarmSub}>Tap + to add one  🔕</Text>
-                </>
-              )}
-            </View>
-          </SafeAreaView>
-        </LinearGradient>
-      </ImageBackground>
+          ) : (
+            <Text style={S.heroPageTitle}>ALARMS</Text>
+          )}
+          <Animated.View style={{ opacity: saveAnim }}>
+            <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>✓ SAVED</Text>
+          </Animated.View>
+        </View>
+      </SafeAreaView>
 
       {/* Permissions bar (Android, only when needed) */}
       {Platform.OS === 'android' && !allPermsOk && (
@@ -1267,66 +1360,107 @@ export default function AlarmsScreen() {
       {activeTab === 'alarm' && <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }} showsVerticalScrollIndicator={false}>
 
         {/* ── Wake Alarm Card ── */}
-        <TouchableOpacity style={[S.slimCard, S.slimCardWake]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.82}>
+        <TouchableOpacity style={[S.glassCard, { overflow: 'hidden' }]} onPress={() => setShowWakeEdit(true)} activeOpacity={0.82}>
           <LinearGradient
-            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)', 'transparent']}
-            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+            colors={['rgba(167,139,250,0.12)', 'rgba(139,92,246,0.04)']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
-          <View style={[S.slimBar, { backgroundColor: settings.wakeAlarm.enabled ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.08)' }]} />
-          <View style={S.slimBody}>
-            <View style={S.slimLeft}>
-              <View style={S.slimPill}>
-                <Text style={{ fontSize: 10 }}>⏰</Text>
-                <Text style={S.slimPillTxt}>WAKE ALARM</Text>
-                {missionSettings.lockInMode && <Text style={{ fontSize: 8, color: '#ef4444' }}>🔒</Text>}
+          {/* Top gloss */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.45)' }} />
+          {/* Left accent strip */}
+          <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#a78bfa', borderTopLeftRadius: 20, borderBottomLeftRadius: 20 }} />
+          <View style={{ paddingLeft: 18, paddingRight: 14, paddingTop: 11, paddingBottom: 11 }}>
+            {/* Badge + controls row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#a78bfa18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#a78bfa40' }}>
+                  <Ionicons name="alarm" size={11} color="#a78bfa" />
+                  <Text style={{ fontSize: 7, fontWeight: '900', color: '#a78bfa', letterSpacing: 1.5 }}>WAKE ALARM{missionSettings.lockInMode ? '  🔒' : ''}</Text>
+                </View>
+                <Text style={{ fontSize: 7, color: 'rgba(80,68,48,0.35)', fontWeight: '700', letterSpacing: 0.8 }}>DAILY</Text>
               </View>
-              <Text style={[S.slimTime, { color: settings.wakeAlarm.enabled ? '#fff' : '#FFFFFF28' }]}>
-                {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color="#a78bfa" />
+                <TouchableOpacity onPress={showWakeAlarmMenu} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Feather name="more-vertical" size={18} color="rgba(80,68,48,0.45)" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* Time */}
+            <Text style={[S.glassCardTime, { color: settings.wakeAlarm.enabled ? '#7a9e68' : 'rgba(120,158,100,0.32)' }]}>
+              {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
+            </Text>
+            {/* Sound + countdown */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 }}>
+              <Text style={{ fontSize: 11, color: '#a78bfa70', fontWeight: '700' }}>
+                {playingMantra.emoji}  {playingMantra.label}
               </Text>
-              <Text style={S.slimSub} numberOfLines={1}>
-                {playingMantra.emoji} {playingMantra.label}  ·  {MISSIONS.find(m => m.id === missionSettings.selectedMission)?.name ?? 'Mission'}
+              <Text style={{ fontSize: 11, color: 'rgba(55,48,35,0.50)', fontWeight: '500' }}>
+                {computeTimeUntil(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock)}
               </Text>
             </View>
-            <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color="#a78bfa" />
           </View>
         </TouchableOpacity>
 
-        {/* ── Habit / Quick Alarm Cards ── */}
+        {/* ── Habit / Quick / Sound Bath Alarm Cards ── */}
         {alarmEntries.map(entry => {
-          const isHabit  = entry.type === 'habit';
-          const accentC  = '#a78bfa';
-          const timeC    = entry.enabled ? '#FFFFFF' : '#FFFFFF28';
+          const isHabit = entry.type === 'habit';
+          const isBath  = entry.type === 'soundbath';
+          const accentC = isHabit ? '#10b981' : isBath ? '#a78bfa' : '#f97316';
+          const gradStart = isHabit ? 'rgba(16,185,129,0.10)' : isBath ? 'rgba(167,139,250,0.10)' : 'rgba(249,115,22,0.10)';
+          const pillLabel = isHabit ? 'HABIT ALARM' : isBath ? 'SOUND BATH' : 'QUICK ALARM';
+          const subLine   = isHabit
+            ? `${entry.habitEmoji ?? '🌿'}  ${entry.label}`
+            : isBath
+            ? `${WAKE_SOUNDS.find(ws => ws.id === entry.soundId)?.icon ?? '🎵'}  ${WAKE_SOUNDS.find(ws => ws.id === entry.soundId)?.label ?? entry.label}`
+            : `⚡  One-time · No mission`;
           return (
             <TouchableOpacity
               key={entry.id}
-              style={[S.slimCard, isHabit ? S.slimCardHabit : S.slimCardQuick]}
+              style={[S.glassCard, { overflow: 'hidden' }]}
               onPress={() => openEditEntry(entry)}
-              activeOpacity={0.82}>
+              activeOpacity={0.82}
+            >
               <LinearGradient
-                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)', 'transparent']}
-                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                colors={[gradStart, 'rgba(255,255,255,0.04)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
-              <View style={[S.slimBar, { backgroundColor: entry.enabled ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.08)' }]} />
-              <View style={S.slimBody}>
-                <View style={S.slimLeft}>
-                  <View style={S.slimPill}>
-                    <Text style={{ fontSize: 10 }}>{isHabit ? (entry.habitEmoji ?? '🌿') : '⚡'}</Text>
-                    <Text style={S.slimPillTxt}>{isHabit ? 'HABIT' : 'QUICK'}</Text>
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.40)' }} />
+              {/* Left accent strip */}
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accentC, borderTopLeftRadius: 20, borderBottomLeftRadius: 20 }} />
+              <View style={{ paddingLeft: 18, paddingRight: 14, paddingTop: 11, paddingBottom: 11 }}>
+                {/* Badge + controls */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: accentC + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: accentC + '40' }}>
+                      {isHabit
+                        ? <Ionicons name="checkmark-done" size={11} color="#10b981" />
+                        : isBath
+                        ? <Ionicons name="musical-notes" size={11} color="#a78bfa" />
+                        : <Feather name="zap" size={10} color="#f97316" />}
+                      <Text style={{ fontSize: 7, fontWeight: '900', color: accentC, letterSpacing: 1.5 }}>{pillLabel}</Text>
+                    </View>
+                    <Text style={{ fontSize: 7, color: 'rgba(80,68,48,0.35)', fontWeight: '700', letterSpacing: 0.8 }}>DAILY</Text>
                   </View>
-                  <Text style={[S.slimTime, { color: timeC }]}>
-                    {fmt12(entry.hour, entry.minute)}
-                  </Text>
-                  <Text style={S.slimSub} numberOfLines={1}>{entry.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={accentC} />
+                    <TouchableOpacity onPress={() => showAlarmMenu(entry)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Feather name="more-vertical" size={18} color="rgba(80,68,48,0.45)" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={S.slimRight}>
-                  <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={accentC} />
-                  <TouchableOpacity onPress={() => deleteEntry(entry.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={S.slimDelete}>✕</Text>
-                  </TouchableOpacity>
+                {/* Time */}
+                <Text style={[S.glassCardTime, { color: entry.enabled ? '#7a9e68' : 'rgba(120,158,100,0.32)' }]}>
+                  {fmt12(entry.hour, entry.minute)}
+                </Text>
+                {/* Context + countdown */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 }}>
+                  <Text style={{ fontSize: 11, color: accentC + '80', fontWeight: '700' }} numberOfLines={1}>{subLine}</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(55,48,35,0.50)', fontWeight: '500' }}>
+                    {entry.enabled ? computeTimeUntil(entry.hour, entry.minute, liveClock) : 'Disabled'}
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1348,9 +1482,10 @@ export default function AlarmsScreen() {
       {activeTab === 'alarm' && fabOpen && (
         <View style={S.fabMenu}>
           {([
-            { label: '⏰  Wake Alarm', color: '#a78bfa', onPress: () => { setFabOpen(false); setShowWakeEdit(true); } },
-            { label: '🌿  Habit Alarm', color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
-            { label: '⚡  Quick Alarm', color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
+            { label: '⏰  Wake Alarm',   color: '#a78bfa', onPress: () => { setFabOpen(false); setShowWakeEdit(true); } },
+            { label: '🌿  Habit Alarm',  color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
+            { label: '⚡  Quick Alarm',  color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
+            { label: '🎵  Sound Bath',   color: '#a78bfa', onPress: () => { setFabOpen(false); openAddModal('soundbath'); } },
           ] as const).map((item, i) => (
             <TouchableOpacity key={i} style={[S.fabMenuItem, { borderColor: item.color + '50' }]} onPress={item.onPress} activeOpacity={0.85}>
               <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
@@ -1375,10 +1510,10 @@ export default function AlarmsScreen() {
           const active = activeTab === t.key;
           return (
             <TouchableOpacity key={t.key} style={S.tabItem} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab(t.key); }} activeOpacity={0.7}>
-              <View style={[S.tabIconWrap, active && { backgroundColor: '#a78bfa22' }]}>
+              <View style={[S.tabIconWrap, active && { backgroundColor: 'rgba(60,95,48,0.20)' }]}>
                 <Text style={{ fontSize: 20 }}>{t.emoji}</Text>
               </View>
-              <Text style={[S.tabLabel, { color: active ? '#a78bfa' : '#FFFFFF30' }]}>{t.label}</Text>
+              <Text style={[S.tabLabel, { color: active ? '#3d5e2e' : 'rgba(65,55,40,0.55)' }]}>{t.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -1628,6 +1763,7 @@ export default function AlarmsScreen() {
                     setFormHabitKey(h.key);
                     setFormHabitEmoji(h.emoji);
                     setFormLabel(h.label);
+                    setFormSoundId(HABIT_SOUND_DEFAULTS[h.key] ?? 'morning_birds');
                     setShowCustomHabitInput(false);
                   }}
                     style={[S.habitChip, { width: (width - 40 - 30) / 4 }]}
@@ -1645,6 +1781,7 @@ export default function AlarmsScreen() {
                   setFormHabitEmoji('✨');
                   setShowCustomHabitInput(true);
                   setFormLabel('');
+                  setFormSoundId('morning_birds');
                 }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: 18, padding: 16, borderColor: '#FFFFFF14', backgroundColor: '#FFFFFF04' }}
                 activeOpacity={0.8}
@@ -1747,6 +1884,24 @@ export default function AlarmsScreen() {
               </View>
             </View>
 
+            {/* ── Alarm Sound row ── */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundPickerOpen(true); }}
+              style={{ marginHorizontal: 20, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderColor: '#FFFFFF14', backgroundColor: '#FFFFFF06' }}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: 22 }}>{WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.icon ?? '🎵'}</Text>
+                <View>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>ALARM SOUND</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', marginTop: 2 }}>
+                    {WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.label ?? 'Morning Birds'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ color: '#FFFFFF35', fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+
             {/* ── Shower tip (context card) ── */}
             {formHabitKey === 'shower' && (
               <View style={{ marginHorizontal: 20, marginBottom: 14, borderRadius: 16, borderWidth: 1, borderColor: '#38bdf835', backgroundColor: '#0ea5e90C', padding: 14, flexDirection: 'row', gap: 10 }}>
@@ -1769,6 +1924,167 @@ export default function AlarmsScreen() {
                 {editEntry
                   ? `Update Alarm  ·  ${fmt12(formHour, formMinute)}`
                   : `Set Alarm  ·  ${fmt12(formHour, formMinute)}`}
+              </Text>
+            </TouchableOpacity>
+
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* ── Habit Alarm Sound Picker ── */}
+      <Modal visible={formSoundPickerOpen} animationType="slide" transparent onRequestClose={() => setFormSoundPickerOpen(false)}>
+        <View style={S.sheetOverlay}>
+          <View style={[S.sheet, { maxHeight: '74%' }]}>
+            <View style={S.sheetHandle} />
+            <Text style={S.sheetTitle}>🎵  Alarm Sound</Text>
+
+            {/* ── 2 Category tabs ── */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+              {(['nature', 'sacred'] as const).map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundCat(cat); }}
+                  style={{ flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1,
+                    borderColor: formSoundCat === cat ? '#10b981' : '#FFFFFF14',
+                    backgroundColor: formSoundCat === cat ? '#10b98118' : '#FFFFFF06',
+                    alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 1,
+                    color: formSoundCat === cat ? '#10b981' : '#FFFFFF40' }}>
+                    {cat === 'nature' ? '🌿  NATURE' : '🕉  MANTRAS & STOTRAS'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Sound grid ── */}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {(formSoundCat === 'nature'
+                  ? WAKE_SOUNDS.filter(ws => ws.category === 'nature')
+                  : WAKE_SOUNDS.filter(ws => ws.category === 'mantra' || ws.category === 'gentle')
+                ).map(ws => {
+                  const active = formSoundId === ws.id;
+                  const color = ws.category === 'nature' ? '#10b981' : ws.category === 'mantra' ? '#a78bfa' : '#fbbf24';
+                  return (
+                    <TouchableOpacity
+                      key={ws.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setFormSoundId(ws.id);
+                        setTimeout(() => setFormSoundPickerOpen(false), 150);
+                      }}
+                      style={{ width: (width - 56) / 3, borderRadius: 14, borderWidth: 1,
+                        borderColor: active ? color : '#FFFFFF18',
+                        backgroundColor: active ? color + '18' : '#FFFFFF06',
+                        padding: 12, alignItems: 'center', gap: 5 }}
+                    >
+                      <Text style={{ fontSize: 26 }}>{ws.icon}</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', textAlign: 'center', lineHeight: 13,
+                        color: active ? color : '#fff' }}>{ws.label}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: '800',
+                        color: (ws.bundledAsset || ws.bundledKey) ? '#10b981' : '#60a5fa' }}>
+                        {(ws.bundledAsset || ws.bundledKey) ? '✓ Offline' : '☁ Online'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            <TouchableOpacity onPress={() => setFormSoundPickerOpen(false)} style={[S.sheetDoneBtn, { marginTop: 8 }]}>
+              <Text style={S.sheetDoneTxt}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Add / Edit Sound Bath Alarm Modal ── */}
+      <Modal
+        visible={addType === 'soundbath' || editEntry?.type === 'soundbath'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => { setAddType(null); setEditEntry(null); }}
+      >
+        <View style={{ flex: 1, backgroundColor: '#060610' }}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+
+            {/* Top bar */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity onPress={() => { setAddType(null); setEditEntry(null); }} style={{ padding: 4 }}>
+                <Text style={{ color: '#FFFFFF50', fontSize: 22, fontWeight: '300' }}>✕</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2.5 }}>SOUND BATH ALARM</Text>
+              <View style={{ width: 32 }} />
+            </View>
+
+            {/* Sound badge */}
+            <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 10, gap: 8 }}>
+              <View style={{ width: 88, height: 88, borderRadius: 28, backgroundColor: '#a78bfa15', borderWidth: 1.5, borderColor: '#a78bfa30', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 44 }}>{WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.icon ?? '🎵'}</Text>
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', marginTop: 4 }}>
+                {WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.label ?? 'Sound Bath'}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#FFFFFF35', fontWeight: '600', letterSpacing: 0.4 }}>No mission · No lock · Just sounds</Text>
+            </View>
+
+            {/* Time picker */}
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+              <TimeAdjuster
+                hour={formHour}
+                minute={formMinute}
+                onChange={(h, m) => { setFormHour(h); setFormMinute(m); }}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#a78bfa' }} />
+                <Text style={{ fontSize: 13, color: '#FFFFFF25', fontWeight: '700', letterSpacing: 0.4 }}>
+                  {fmt12(formHour, formMinute)}  ·  Daily
+                </Text>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#a78bfa' }} />
+              </View>
+            </View>
+
+            {/* Sound picker row */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundPickerOpen(true); }}
+              style={{ marginHorizontal: 20, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderColor: '#a78bfa30', backgroundColor: '#a78bfa08' }}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: 22 }}>{WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.icon ?? '🎵'}</Text>
+                <View>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#a78bfa60', letterSpacing: 1.6 }}>CHOOSE SOUND</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', marginTop: 2 }}>
+                    {WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.label ?? 'Singing Bowl'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ color: '#a78bfa50', fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+
+            {/* Optional label */}
+            <View style={{ marginHorizontal: 20, marginBottom: 14 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF22', letterSpacing: 2, marginBottom: 8 }}>LABEL (optional)</Text>
+              <TextInput
+                style={[S.customInput]}
+                placeholder="e.g. Morning Meditation, Afternoon Rest..."
+                placeholderTextColor={Colors.textDim}
+                value={formLabel}
+                onChangeText={setFormLabel}
+              />
+            </View>
+
+            {/* Set button */}
+            <TouchableOpacity
+              onPress={saveNewEntry}
+              style={{ marginHorizontal: 20, marginBottom: 10, backgroundColor: '#a78bfa', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10, shadowColor: '#a78bfa', shadowOpacity: 0.5, shadowRadius: 18, elevation: 8 }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 20 }}>🎵</Text>
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 }}>
+                {editEntry ? `Update  ·  ${fmt12(formHour, formMinute)}` : `Set Sound Bath  ·  ${fmt12(formHour, formMinute)}`}
               </Text>
             </TouchableOpacity>
 
@@ -1822,7 +2138,7 @@ export default function AlarmsScreen() {
 
 const S = StyleSheet.create({
   screen:          { flex: 1, backgroundColor: '#060610' },
-  heroBg:          { width: '100%', height: 185 },
+  heroBg:          { width: '100%', height: 90 },
   heroGrad:        { flex: 1 },
   heroTop:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 6, paddingBottom: 6 },
   backBtn:         { paddingVertical: 6, paddingRight: 12 },
@@ -1835,6 +2151,11 @@ const S = StyleSheet.create({
   heroBadgeTxt:    { fontSize: 12, fontWeight: '700', color: '#c4b5fd' },
   heroNoAlarm:     { fontSize: 28, fontWeight: '200', color: '#FFFFFF30', letterSpacing: -0.5, marginTop: 4 },
   heroNoAlarmSub:  { fontSize: 12, color: '#FFFFFF25', marginTop: 6 },
+  heroInlineNext:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroInlineIcon:  { fontSize: 18 },
+  heroInlineTime:  { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
+  heroInlineSub:   { fontSize: 10, color: '#FFFFFF55', fontWeight: '600' },
+  heroPageTitle:   { fontSize: 13, fontWeight: '900', color: '#FFFFFF50', letterSpacing: 2 },
   permsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9731610', borderBottomWidth: 1, borderBottomColor: '#f9731625', paddingHorizontal: 16, paddingVertical: 10 },
   permsText: { flex: 1, color: '#f97316', fontSize: 11, fontWeight: '700' },
   permsChevron: { color: '#f97316', fontSize: 14, fontWeight: '900' },
@@ -1855,7 +2176,7 @@ const S = StyleSheet.create({
   alarmSub: { fontSize: 11, color: '#FFFFFF40', fontWeight: '500' },
   // ── Slim premium card styles ──────────────────────────────────────────────
   slimCard: {
-    marginHorizontal: 16, marginTop: 6, borderRadius: 18, borderWidth: 1,
+    marginHorizontal: 16, marginTop: 4, borderRadius: 18, borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(8,8,22,0.68)',
     flexDirection: 'row', overflow: 'hidden',
     elevation: 7, shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 6 },
@@ -1863,12 +2184,12 @@ const S = StyleSheet.create({
   slimCardWake:  { borderColor: 'rgba(255,255,255,0.22)' },
   slimCardHabit: { borderColor: 'rgba(255,255,255,0.22)' },
   slimCardQuick: { borderColor: 'rgba(255,255,255,0.22)' },
-  slimBar:  { width: 2, borderRadius: 1, marginVertical: 10, marginHorizontal: 4 },
-  slimBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingRight: 14, paddingLeft: 10 },
+  slimBar:  { width: 2, borderRadius: 1, marginVertical: 7, marginHorizontal: 4 },
+  slimBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7, paddingRight: 14, paddingLeft: 10 },
   slimLeft: { flex: 1, gap: 2 },
   slimPill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 1 },
   slimPillTxt: { fontSize: 8, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 },
-  slimTime: { fontSize: 28, fontWeight: '200', letterSpacing: -1, lineHeight: 33 },
+  slimTime: { fontSize: 25, fontWeight: '200', letterSpacing: -1, lineHeight: 30 },
   slimSub:  { fontSize: 10, color: '#FFFFFF38', fontWeight: '500', marginTop: 1 },
   slimRight:{ alignItems: 'center', gap: 8 },
   slimDelete: { fontSize: 11, color: '#f43f5e50', fontWeight: '900', paddingTop: 2 },
@@ -1903,8 +2224,21 @@ const S = StyleSheet.create({
   customInput: { backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14, marginBottom: 8 },
   saveBtn: { backgroundColor: '#10b98118', borderWidth: 1, borderColor: '#10b98140', borderRadius: 99, paddingVertical: 14, alignItems: 'center' },
   saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15 },
-  tabBar: { flexDirection: 'row', backgroundColor: 'rgba(12,12,28,0.96)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.14)', paddingTop: 8, paddingHorizontal: 4 },
+  tabBar: { flexDirection: 'row', backgroundColor: 'rgba(228,215,188,0.97)', borderTopWidth: 1, borderTopColor: 'rgba(185,165,130,0.45)', paddingTop: 8, paddingHorizontal: 4 },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 2 },
   tabIconWrap: { width: 44, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.1 },
+  compactHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 10 },
+  nextBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(245,130,10,0.18)', borderWidth: 1, borderColor: 'rgba(245,130,10,0.42)', borderRadius: 99, paddingHorizontal: 11, paddingVertical: 5 },
+  nextBadgeIcon: { fontSize: 13 },
+  nextBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#F5820A', letterSpacing: 0.2 },
+  glassCard: { marginHorizontal: 8, marginTop: 7, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.38)', backgroundColor: 'rgba(200,188,155,0.26)', overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 5 } },
+  glassCardBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 16 },
+  glassCardLeft: { flex: 1, gap: 1 },
+  glassCardRight: { alignItems: 'center', gap: 8, paddingLeft: 12 },
+  glassCardPill: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 0 },
+  glassCardPillTxt: { fontSize: 7, fontWeight: '900', color: 'rgba(80,68,48,0.62)', letterSpacing: 1.5 },
+  glassCardTime: { fontSize: 36, fontWeight: '200', letterSpacing: -1.5, lineHeight: 40, color: '#7a9e68' },
+  glassCardSub: { fontSize: 12, color: 'rgba(55,48,35,0.72)', fontWeight: '500', marginTop: 1 },
+  glassCardChevron: { fontSize: 11, color: 'rgba(80,68,48,0.52)', fontWeight: '900', paddingTop: 2 },
 });

@@ -42,4 +42,5 @@ export const KEYS = {
   wakeLog:            'onesutra_wake_log_v1',     // WakeLogEntry — today's alarm wake record
   sunriseStreak:      'onesutra_sunrise_streak_v1', // SunriseStreak — before-sunrise wake streak
   habitAlarmStreaks:  'onesutra_habit_alarm_streaks_v1', // Record<habitKey, { streak, lastDate, history }>
+  bgCacheVersion:     'solrize_bg_cache_version_v1',     // hash of BG_URLS — wipe cache on mismatch
 };

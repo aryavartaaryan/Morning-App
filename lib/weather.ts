@@ -30,6 +30,11 @@ export interface WeatherData {
   daily: DailyPoint[];
   lat?: number;
   lon?: number;
+  precipitation?: number;
+  rain?: number;
+  cloudCover?: number;
+  windSpeed?: number;
+  windGusts?: number;
 }
 
 const WMO: Record<number, { condition: string; emoji: string }> = {
@@ -60,6 +65,26 @@ function getWeatherInfo(code: number): { condition: string; emoji: string } {
   return WMO[code] ?? WMO[Math.floor(code / 10) * 10] ?? { condition: 'Unknown', emoji: '🌡️' };
 }
 
+// Override the model weathercode using actual real-time measured values.
+// Open-Meteo's weathercode can lag reality; precipitation/rain/showers are
+// measured values that reflect what is actually falling RIGHT NOW.
+function realWeatherCode(
+  modelCode: number,
+  rain: number,
+  showers: number,
+  snowfall: number,
+  precipitation: number,
+): number {
+  const totalRain = rain + showers;
+  if (snowfall > 0.5)     return 75; // Heavy Snow
+  if (snowfall > 0)       return 71; // Light Snow
+  if (totalRain > 4.0)    return 65; // Heavy Rain
+  if (totalRain > 1.5)    return 63; // Rain
+  if (totalRain > 0.3)    return 61; // Light Rain
+  if (precipitation > 0)  return 51; // Light Drizzle
+  return modelCode;
+}
+
 export async function fetchWeather(): Promise<WeatherData | null> {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -72,16 +97,25 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weathercode` +
-      `&hourly=temperature_2m,weathercode` +
+      `,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_gusts_10m` +
+      `&hourly=temperature_2m,weathercode,precipitation_probability` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum` +
       `&forecast_days=7&timezone=auto`;
 
-    const res = await fetch(url);
+    const controller  = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 12_000);
+    const res = await fetch(url, { signal: controller.signal }).finally(() => clearTimeout(fetchTimeout));
     if (!res.ok) return null;
 
     const json = await res.json();
     const c = json.current;
-    const info = getWeatherInfo(c.weathercode);
+
+    const rain      = c.rain       ?? 0;
+    const showers   = c.showers    ?? 0;
+    const snowfall  = c.snowfall   ?? 0;
+    const precip    = c.precipitation ?? 0;
+    const effectiveCode = realWeatherCode(c.weathercode, rain, showers, snowfall, precip);
+    const info = getWeatherInfo(effectiveCode);
 
     let city: string | undefined;
     try {
@@ -131,7 +165,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       temp: Math.round(c.temperature_2m),
       feelsLike: Math.round(c.apparent_temperature),
       humidity: Math.round(c.relative_humidity_2m),
-      weatherCode: c.weathercode,
+      weatherCode: effectiveCode,
       condition: info.condition,
       emoji: info.emoji,
       city,
@@ -139,6 +173,11 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       daily,
       lat: latitude,
       lon: longitude,
+      precipitation: Math.round(precip * 10) / 10,
+      rain: Math.round((rain + showers) * 10) / 10,
+      cloudCover: c.cloud_cover ?? 0,
+      windSpeed: Math.round(c.wind_speed_10m ?? 0),
+      windGusts: Math.round(c.wind_gusts_10m ?? 0),
     };
   } catch {
     return null;

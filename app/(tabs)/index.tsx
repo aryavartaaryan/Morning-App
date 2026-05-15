@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated,
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, AppState,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,14 +21,17 @@ import {
 import {
   AlarmSettings, DEFAULT_ALARM_SETTINGS,
 } from '@/lib/notifications';
+import { useBgContext } from '@/lib/bgContext';
 import { getBgSource } from '@/lib/bgImages';
 import { Font } from '@/constants/theme';
-import Svg, { Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Path as SvgPath, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import { getTodayWakeLog, getStreak, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
+import { ToastLogger } from '@/lib/toastLogger';
 
 const ACCENT = '#F5820A';
 const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
 
 // ── Glassy Overlay (permanent peak frost) ────────────────────────────────────
 function GlassPulseOverlay() {
@@ -1518,6 +1521,15 @@ function TodayHeroCard({
   const maxT = weather?.daily?.[0]?.maxTemp ?? null;
   const minT = weather?.daily?.[0]?.minTemp ?? null;
 
+  const hour    = liveClock.getHours();
+  const season  = (weather && weather.lat != null)
+    ? getSeason(weather.lat, new Date().getMonth() + 1, weather.temp, weather.humidity)
+    : null;
+  const insight = (per && weather)
+    ? getWeatherDoshaInsight(weather.weatherCode, weather.temp, weather.humidity, per.dosha, season ?? undefined)
+    : null;
+  const topActs: string[] = insight?.extraActivities ?? [];
+
   const STARS = [
     { top: 18, right: 28, size: 1.5, opacity: 0.35 },
     { top: 38, right: 56, size: 1,   opacity: 0.22 },
@@ -1631,6 +1643,7 @@ function TodayHeroCard({
               )}
             </View>
 
+            {per && insight && <>
             {/* ── Impact one-liner ── */}
             <View style={[TH.impactRow, { marginBottom: 12 }]}>
               <View style={[TH.impactDot, { backgroundColor: per.color }]} />
@@ -1683,9 +1696,8 @@ function TodayHeroCard({
               </Text>
               <Text style={[TH.exploreArrow, { color: per.color }]}>→</Text>
             </View>
+            </>}
           </TouchableOpacity>
-        );
-      })()}
     </View>
   );
 }
@@ -1705,7 +1717,10 @@ function getActivityEmoji(text: string): string {
   if (/cold shower|shower/i.test(text)) return '🚿';
   if (/brush/i.test(text)) return '✨';
   if (/fasting|fast/i.test(text)) return '⏱️';
-  if (/stillness|quiet/i.test(text)) return '🌙';
+  if (/stillness|quiet|mindful|observation/i.test(text)) return '🌙';
+  if (/rest|relax/i.test(text)) return '🛌';
+  if (/hydrat|water|warm water/i.test(text)) return '💧';
+  if (/intention/i.test(text)) return '🌱';
   return '⚡';
 }
 
@@ -1975,11 +1990,13 @@ function getHourlyEnvSuggestion(
   }
   if (hour >= 14 && hour < 16) {
     if (d === 'vata') return { emoji: '✍️', title: 'Creative Surge', desc: 'Vata afternoon peak · Ideal for writing, brainstorming & creative thinking' };
-    return { emoji: '☕', title: 'Afternoon Reset', desc: 'Light snack if needed · Herbal tea over caffeine · Short outdoor walk' };
+    if (hour === 15) return { emoji: '⏰', title: 'Cardio Peak Opening Now', desc: 'Lung capacity at its daily high from 3–5 PM · Step out for a 20 min walk or run now' };
+    return { emoji: '☕', title: 'Afternoon Reset', desc: 'Light snack if needed · Herbal tea over caffeine · Cardio peak opens at 3 PM — plan your walk' };
   }
   if (hour >= 16 && hour < 18) {
     if (isRain) return { emoji: '🎵', title: 'Indoor Wind-Down', desc: 'Rain hour — music, reading or light stretching · Avoid heavy meals' };
-    return { emoji: '🚶', title: 'Evening Walk', desc: 'Best exercise window · 20 min brisk walk · Lung capacity is at peak' };
+    if (hour === 16) return { emoji: '🚶', title: 'Last Hour of Cardio Peak', desc: 'Lung capacity still at peak until 5 PM · 20 min walk now is your body\'s best of the day' };
+    return { emoji: '🌇', title: 'Post-Peak Walk · Still Ideal', desc: 'Lung peak just closed at 5 PM — but evening walk still lowers cortisol · Improves sleep quality' };
   }
   if (hour >= 18 && hour < 20) {
     return { emoji: '🌇', title: 'Transition Hour', desc: 'Light early dinner · Reduce screen brightness · Begin winding nervous system' };
@@ -2227,7 +2244,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     <View style={{ marginBottom: 10 }}>
       {/* Header — tappable → opens Ayurvedic Science explore */}
       <TouchableOpacity
-        onPress={() => { const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60)); router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never); }}
+        onPress={() => { const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60)); router.push({ pathname: '/ayurvedic-wellness' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never); }}
         activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
@@ -2568,12 +2585,12 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 16, marginTop: 6, marginBottom: 10,
+    marginHorizontal: 16, marginTop: 4, marginBottom: 6,
     borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.36)',
     backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 14, elevation: 7,
   },
-  summaryRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
+  summaryRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 9 },
   leftGroup:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   rightGroup:  { flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
   emoji:       { fontSize: 22 },
@@ -2592,7 +2609,44 @@ const WSEC = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Cosmic Detail Sheet  — full cosmic almanac, slides up on strip tap
+// Weather Mini Card — compact half-width weather card with ENV note
+// ══════════════════════════════════════════════════════════════════════════════
+function WeatherMiniCard({ weather, currentPeriod }: { weather: WeatherData; currentPeriod: DoshaPeriod | null }) {
+  const hour = new Date().getHours();
+  const isNightPeriod = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
+  const blurb = currentPeriod && !isNightPeriod ? getReelWeatherBlurb(weather, currentPeriod, hour) : null;
+  const maxT = weather.daily?.[0]?.maxTemp ?? null;
+  const minT = weather.daily?.[0]?.minTemp ?? null;
+  return (
+    <View style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.22)', backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden', padding: 12 }}>
+      <LinearGradient colors={['rgba(96,165,250,0.16)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+      <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#60a5faAA', letterSpacing: 1.6, marginBottom: 7 }}>🌤  WEATHER</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+        <Text style={{ fontSize: 24 }}>{weather.emoji}</Text>
+        <View>
+          <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 24 }}>{weather.temp}°</Text>
+          <Text style={{ fontSize: 9.5, color: '#FFFFFF75', fontWeight: '600', lineHeight: 13 }}>{weather.condition}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        <Text style={{ fontSize: 9.5, color: '#7dd3fcCC', fontWeight: '700' }}>💧 {weather.humidity}%</Text>
+        {maxT !== null && <Text style={{ fontSize: 9.5, color: '#f87171CC', fontWeight: '700' }}>↑{maxT}°</Text>}
+        {minT !== null && <Text style={{ fontSize: 9.5, color: '#60a5faCC', fontWeight: '700' }}>↓{minT}°</Text>}
+      </View>
+      <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 7 }} />
+      <Text style={{ fontSize: 6, fontWeight: '900', color: '#f59e0bBB', letterSpacing: 1.4, marginBottom: 3 }}>⚡  NOTE</Text>
+      {blurb ? (
+        <Text style={{ fontSize: 9.5, color: '#FFFFFFCC', fontWeight: '700', lineHeight: 13.5 }} numberOfLines={2}>{blurb.tip}</Text>
+      ) : (
+        <Text style={{ fontSize: 9.5, color: '#FFFFFF55', fontWeight: '600', lineHeight: 13.5 }}>Check conditions before going out</Text>
+      )}
+    </View>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Cosmic Detail Sheet  — elegant cosmic almanac bottom sheet
 // ══════════════════════════════════════════════════════════════════════════════
 function CosmicDetailSheet({
   solarTimes, onCosmicPress, onClose,
@@ -2601,6 +2655,7 @@ function CosmicDetailSheet({
   onCosmicPress: () => void;
   onClose: () => void;
 }) {
+  const router    = useRouter();
   const slideAnim = useRef(new Animated.Value(0)).current;
   const moon  = React.useMemo(() => getMoonPhase(new Date()), []);
   const p     = React.useMemo(() => getPanchangData(), []);
@@ -2609,104 +2664,119 @@ function CosmicDetailSheet({
   const vm    = getVedicMonth();
 
   useEffect(() => {
-    Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 10, tension: 68 }).start();
+    Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 10, tension: 65 }).start();
   }, []);
 
   const close = () => {
-    Animated.timing(slideAnim, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => onClose());
+    Animated.timing(slideAnim, { toValue: 0, duration: 240, useNativeDriver: true }).start(() => onClose());
   };
 
-  const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
+  const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [700, 0] });
 
   const nakshatras = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
   const yogas      = ['Vishkambha','Priti','Ayushman','Saubhagya','Shobhana','Atiganda','Sukarman','Dhriti','Shula','Ganda','Vriddhi','Dhruva','Vyaghata','Harshana','Vajra','Siddhi','Vyatipata','Variyana','Parigha','Shiva','Siddha','Sadhya','Shubha','Shukla','Brahma','Indra','Vaidhriti'];
-  const nakshatra  = nakshatras[p.nakshatraIdx] ?? '—';
-  const yoga       = yogas[p.yogaIdx] ?? '—';
-  const nextEvent  = lunar.daysToFull <= lunar.daysToNew
+  const nakshatra   = nakshatras[p.nakshatraIdx] ?? '—';
+  const yoga        = yogas[p.yogaIdx] ?? '—';
+  const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Cosmic alignment in progress';
+  const nextEvent   = lunar.daysToFull <= lunar.daysToNew
     ? { icon: '🌕', label: `Full Moon  ·  ${lunar.daysToFull === 0 ? 'Today' : `in ${lunar.daysToFull}d`}`, date: lunar.fullDateLong, color: '#fbbf24' }
     : { icon: '🌑', label: `New Moon  ·  ${lunar.daysToNew === 0 ? 'Today' : `in ${lunar.daysToNew}d`}`,   date: lunar.newDateLong,  color: '#60a5fa' };
 
   const now  = new Date();
   const curH = now.getHours() + now.getMinutes() / 60;
-  let SunIcon: React.ComponentType<{ size?: number }> = NoonSunSVG;
-  if (solarTimes) {
-    if (curH <= solarTimes.sunrise + 0.75)     SunIcon = RisingSunSVG;
-    else if (curH >= solarTimes.sunset - 0.75) SunIcon = SettingSunSVG;
-  }
 
-  const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Cosmic alignment in progress';
+  // Sun arc geometry — sunrise-to-sunset (not midnight-to-midnight)
+  const sr   = solarTimes?.sunrise  ?? 6;
+  const ss   = solarTimes?.sunset   ?? 18;
+  const sn   = solarTimes?.solarNoon ?? 12;
+  const arcW = SCREEN_W - 72;
+  const arcH = 70;
+  const cx   = arcW / 2;
+  const cy   = arcH + 8;        // horizon y inside SVG
+  const rx   = arcW / 2 - 6;
+  const ry   = arcH - 6;
+  const isDaytime = curH >= sr && curH <= ss;
+  const t    = Math.max(0, Math.min(1, (curH - sr) / (ss - sr)));
+  const theta = Math.PI * (1 - t); // π=sunrise(left) → π/2=noon(top) → 0=sunset(right)
+  const sunX = cx + rx * Math.cos(theta);
+  const sunY = cy - ry * Math.sin(theta);
+  const labelX = Math.max(18, Math.min(arcW - 18, sunX));
+  // Daylight duration
+  const dlHours = Math.floor(ss - sr);
+  const dlMins  = Math.round(((ss - sr) - dlHours) * 60);
+  const daylightStr = `${dlHours}h ${dlMins}m`;
+  // Sky context pill
+  const skyPill =
+    curH < sr - 0.5             ? { icon: '🌙', label: 'Pre-Dawn',   color: '#a5b4fc', bg: 'rgba(165,180,252,0.12)' }
+    : curH < sr + 0.25           ? { icon: '🌅', label: 'Sunrise',    color: '#fb923c', bg: 'rgba(251,146,60,0.15)'  }
+    : curH < sn - 0.5            ? { icon: '🌄', label: 'Morning',    color: '#fde68a', bg: 'rgba(253,230,138,0.12)' }
+    : Math.abs(curH - sn) < 0.5  ? { icon: '☀️', label: 'Solar Noon', color: '#fbbf24', bg: 'rgba(251,191,36,0.16)'  }
+    : curH < ss - 0.5            ? { icon: '🌞', label: 'Afternoon',  color: '#f97316', bg: 'rgba(249,115,22,0.12)'  }
+    : curH < ss + 0.25           ? { icon: '🌇', label: 'Sunset',     color: '#f43f5e', bg: 'rgba(244,63,94,0.15)'   }
+    : curH < ss + 2              ? { icon: '🌆', label: 'Dusk',       color: '#c084fc', bg: 'rgba(192,132,252,0.12)' }
+    :                              { icon: '🌙', label: 'Night',       color: '#60a5fa', bg: 'rgba(96,165,250,0.10)'  };
 
   return (
     <Modal visible animationType="none" transparent statusBarTranslucent onRequestClose={close}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,5,0.60)' }}>
-        {/* Tap-outside to close */}
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,8,0.78)' }}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1} />
 
-        <Animated.View style={{ transform: [{ translateY }], backgroundColor: '#05050E', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%', overflow: 'hidden' }}>
-          {/* Cosmic accent line */}
-          <LinearGradient colors={[vaar.color + 'CC', '#60a5fa88', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 2 }} />
-          {/* Handle */}
-          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
+        <Animated.View style={{
+          transform: [{ translateY }],
+          backgroundColor: '#06060F',
+          borderTopLeftRadius: 28, borderTopRightRadius: 28,
+          maxHeight: '92%', overflow: 'hidden',
+          borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
+          borderColor: 'rgba(255,255,255,0.11)',
+        }}>
+          {/* Vaar-colored top accent bar */}
+          <LinearGradient
+            colors={[vaar.color + 'EE', '#60a5fa80', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={{ height: 2 }}
+          />
+          {/* Handle bar */}
+          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
+            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 48 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 52 }}>
 
-            {/* ── Header ── */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08', marginBottom: 18 }}>
-              <View>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5fa', letterSpacing: 2.2, marginBottom: 4 }}>TODAY'S COSMIC ALMANAC</Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF' }}>🌌  {ENGLISH_DAYS[p.vaarIdx]},  {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</Text>
-                <Text style={{ fontSize: 10, color: vaar.color + 'CC', fontWeight: '700', marginTop: 3 }}>{vaar.vedicName}  ·  {vaar.planet} Day  ·  {vm?.name}</Text>
+            {/* ── Header: date + vaar ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08', marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#60a5fa', letterSpacing: 2.4, marginBottom: 5 }}>TODAY'S COSMIC ALMANAC</Text>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', lineHeight: 26 }}>
+                  {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <Text style={{ fontSize: 14 }}>{vaar.emoji}</Text>
+                  <Text style={{ fontSize: 11, color: vaar.color, fontWeight: '800' }}>{vaar.vedicName}  ·  {vaar.planet} Day</Text>
+                  {vm ? <><View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF30' }} /><Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600' }}>{vm.name}</Text></> : null}
+                </View>
               </View>
-              <TouchableOpacity onPress={close} style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: '#FFFFFF55', fontSize: 14, fontWeight: '700' }}>✕</Text>
+              <TouchableOpacity onPress={close} style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center', marginLeft: 12 }}>
+                <Text style={{ color: '#FFFFFF55', fontSize: 13, fontWeight: '700' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {/* ── Solar Arc ── */}
-            {solarTimes ? (
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,168,50,0.25)', padding: 14, marginBottom: 14 }}>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: '#fbbf24', letterSpacing: 2, marginBottom: 12 }}>☀️  SOLAR EPHEMERIS</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ alignItems: 'center', gap: 5 }}>
-                    <RisingSunSVG size={30} />
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunrise)}</Text>
-                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Sunrise</Text>
-                  </View>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2430', marginHorizontal: 10 }} />
-                  <View style={{ alignItems: 'center', gap: 5 }}>
-                    <NoonSunSVG size={30} />
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#fbbf24DD' }}>{fmtSolar(solarTimes.solarNoon)}</Text>
-                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Solar Zenith</Text>
-                  </View>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2430', marginHorizontal: 10 }} />
-                  <View style={{ alignItems: 'center', gap: 5 }}>
-                    <SettingSunSVG size={30} />
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunset)}</Text>
-                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8, textTransform: 'uppercase' }}>Sunset</Text>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF0C', padding: 14, marginBottom: 14, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: '#FFFFFF30', fontWeight: '600' }}>🛰  Enable GPS for solar ephemeris</Text>
-              </View>
-            )}
-
-            {/* ── Moon + Tithi ── */}
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.28)', padding: 14, marginBottom: 14 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {/* ── Moon + Tithi card ── */}
+            <View style={{ backgroundColor: 'rgba(96,165,250,0.07)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.24)', padding: 14, marginBottom: 12 }}>
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }}>
                 <MoonSVG tithiNum={moon.tithiNum} size={52} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{moon.name}  ·  {moon.illumination}% lit</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#60a5faDD', marginBottom: 4 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
-                  <Text style={{ fontSize: 10, color: '#FFFFFF55', lineHeight: 15, fontStyle: 'italic' }}>{tithiEnergy}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{moon.name}  ·  {moon.illumination}% lit</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5faCC', marginBottom: 5 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
+                  <Text style={{ fontSize: 10.5, color: '#FFFFFF55', lineHeight: 15, fontStyle: 'italic' }}>{tithiEnergy}</Text>
                 </View>
               </View>
+              {/* Illumination progress bar */}
+              <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
+                <View style={{ width: `${moon.illumination}%` as any, height: 3, backgroundColor: '#fbbf24', borderRadius: 2 }} />
+              </View>
               {/* Next lunar event */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#FFFFFF08' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }}>
                 <Text style={{ fontSize: 20 }}>{nextEvent.icon}</Text>
                 <View>
                   <Text style={{ fontSize: 11, fontWeight: '900', color: nextEvent.color }}>{nextEvent.label}</Text>
@@ -2715,40 +2785,169 @@ function CosmicDetailSheet({
               </View>
             </View>
 
-            {/* ── Nakshatra + Yoga + Vaar ── */}
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(251,191,36,0.22)', padding: 12 }}>
-                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fbbf24', letterSpacing: 1.6, marginBottom: 8 }}>⭐  NAKSHATRA</Text>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{nakshatra}</Text>
-                <Text style={{ fontSize: 9, color: '#FFFFFF45', fontWeight: '500' }}>Moon's mansion today</Text>
+            {/* ── Solar arc card ── */}
+            <View style={{ backgroundColor: 'rgba(251,191,36,0.06)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(251,191,36,0.18)', padding: 14, marginBottom: 12 }}>
+              {/* Header row: title + sky context pill */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#fbbf24', letterSpacing: 2 }}>☀️  SOLAR EPHEMERIS</Text>
+                {solarTimes && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: skyPill.bg, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: skyPill.color + '28' }}>
+                    <Text style={{ fontSize: 10 }}>{skyPill.icon}</Text>
+                    <Text style={{ fontSize: 8.5, fontWeight: '800', color: skyPill.color }}>{skyPill.label}</Text>
+                  </View>
+                )}
               </View>
-              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(110,231,183,0.22)', padding: 12 }}>
+              {solarTimes ? (
+                <>
+                  {/* "Now" pointer — only shown during daytime */}
+                  <View style={{ height: 22, position: 'relative' }}>
+                    {isDaytime && (
+                      <View style={{ position: 'absolute', left: labelX - 14, alignItems: 'center', width: 28 }}>
+                        <Text style={{ fontSize: 8, color: '#fde68a', fontWeight: '900' }}>Now</Text>
+                        <View style={{ width: 1.5, height: 6, backgroundColor: '#fde68a', opacity: 0.85, marginTop: 2 }} />
+                      </View>
+                    )}
+                  </View>
+
+                  {/* ── Sun arc SVG ── */}
+                  <Svg width={arcW} height={arcH + 12}>
+                    <Defs>
+                      <SvgLinearGradient id="litArcGrad" x1="0" y1="0" x2="1" y2="0">
+                        <Stop offset="0" stopColor="#f97316" stopOpacity={0.9} />
+                        <Stop offset="0.5" stopColor="#fde68a" stopOpacity={1} />
+                        <Stop offset="1" stopColor="#f97316" stopOpacity={0.9} />
+                      </SvgLinearGradient>
+                    </Defs>
+
+                    {/* Horizon glow */}
+                    <SvgPath d={`M 0 ${cy} L ${arcW} ${cy}`} stroke="rgba(251,191,36,0.13)" strokeWidth={1.5} />
+
+                    {/* Full unlit arc trail */}
+                    <SvgPath
+                      d={`M 6 ${cy} A ${rx} ${ry} 0 0 1 ${arcW - 6} ${cy}`}
+                      stroke="rgba(255,255,255,0.08)" strokeWidth={2} fill="none"
+                    />
+
+                    {/* Lit arc: sunrise → current sun position */}
+                    {isDaytime && t > 0.01 && (
+                      <SvgPath
+                        d={`M 6 ${cy} A ${rx} ${ry} 0 ${t > 0.5 ? 1 : 0} 1 ${sunX} ${sunY}`}
+                        stroke="url(#litArcGrad)" strokeWidth={2.5} fill="none" strokeLinecap="round"
+                      />
+                    )}
+
+                    {/* Sunrise anchor dot */}
+                    <SvgCircle cx={6} cy={cy} r={4} fill="#f97316" opacity={0.75} />
+
+                    {/* Sunset anchor dot */}
+                    <SvgCircle cx={arcW - 6} cy={cy} r={4} fill="#fb923c" opacity={0.6} />
+
+                    {/* Solar noon tick */}
+                    <SvgPath d={`M ${cx} ${cy - 10} L ${cx} ${cy}`} stroke="rgba(253,230,138,0.22)" strokeWidth={1.5} />
+
+                    {/* Sun glow aura — outer */}
+                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={24} fill="#fbbf24" opacity={0.07} />}
+                    {/* Sun glow aura — inner */}
+                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={17} fill="#fde68a" opacity={0.15} />}
+
+                    {/* Sun core (daytime) OR faint moon hint (night) */}
+                    {isDaytime
+                      ? <SvgCircle cx={sunX} cy={sunY} r={10} fill="#fde68a" opacity={0.97} />
+                      : <SvgCircle cx={cx} cy={cy + 8} r={7} fill="#94a3b8" opacity={0.28} />
+                    }
+                  </Svg>
+
+                  {/* Arc axis labels: Sunrise · Solar Noon · Sunset */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingHorizontal: 2, marginBottom: 10 }}>
+                    <Text style={{ fontSize: 7.5, color: '#f9731675', fontWeight: '800' }}>SUNRISE</Text>
+                    <Text style={{ fontSize: 7.5, color: '#fde68a38', fontWeight: '800' }}>SOLAR NOON</Text>
+                    <Text style={{ fontSize: 7.5, color: '#fb923c58', fontWeight: '800' }}>SUNSET</Text>
+                  </View>
+
+                  {/* Daylight progress bar */}
+                  <View style={{ marginBottom: 14 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <Text style={{ fontSize: 7.5, color: '#FFFFFF30', fontWeight: '600' }}>Daylight progress</Text>
+                      <Text style={{ fontSize: 7.5, color: '#FFFFFF45', fontWeight: '700' }}>☀ {daylightStr} of daylight</Text>
+                    </View>
+                    <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                      <LinearGradient
+                        colors={['#f97316', '#fde68a', '#f97316']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                        style={{ width: `${Math.min(100, Math.round(t * 100))}%` as any, height: 4, borderRadius: 2 }}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Sunrise / Zenith / Sunset row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }}>
+                    <View style={{ alignItems: 'center', gap: 4 }}>
+                      <RisingSunSVG size={26} />
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunrise)}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>SUNRISE</Text>
+                    </View>
+                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }} />
+                    <View style={{ alignItems: 'center', gap: 4 }}>
+                      <NoonSunSVG size={26} />
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: '#fbbf24CC' }}>{fmtSolar(solarTimes.solarNoon)}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>ZENITH</Text>
+                    </View>
+                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }} />
+                    <View style={{ alignItems: 'center', gap: 4 }}>
+                      <SettingSunSVG size={26} />
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunset)}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>SUNSET</Text>
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <Text style={{ fontSize: 11, color: '#FFFFFF30', fontWeight: '600', textAlign: 'center', paddingVertical: 10 }}>🛰  Enable GPS for solar ephemeris</Text>
+              )}
+            </View>
+
+            {/* ── Nakshatra + Yoga ── */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(251,191,36,0.06)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(251,191,36,0.20)', padding: 12 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fbbf24', letterSpacing: 1.6, marginBottom: 8 }}>⭐  NAKSHATRA</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{nakshatra}</Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF45' }}>Moon's lunar mansion</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'rgba(110,231,183,0.06)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(110,231,183,0.20)', padding: 12 }}>
                 <Text style={{ fontSize: 7, fontWeight: '900', color: '#6ee7b7', letterSpacing: 1.6, marginBottom: 8 }}>✦  YOGA</Text>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{yoga}</Text>
-                <Text style={{ fontSize: 9, color: '#FFFFFF45', fontWeight: '500' }}>Sun + Moon union</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{yoga}</Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF45' }}>Sun + Moon union</Text>
               </View>
             </View>
 
-            {/* ── Vaar / Planet Day ── */}
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: vaar.color + '30', padding: 14, marginBottom: 18 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: vaar.color, letterSpacing: 2, marginBottom: 10 }}>{vaar.emoji}  PLANETARY DAY  ·  VAAR</Text>
+            {/* ── Vaar / Planetary Day ── */}
+            <View style={{ backgroundColor: vaar.color + '0E', borderRadius: 18, borderWidth: 1, borderColor: vaar.color + '30', padding: 14, marginBottom: 16 }}>
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: vaar.color, letterSpacing: 2, marginBottom: 10 }}>{vaar.emoji}  PLANETARY DAY  ·  VAAR</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Text style={{ fontSize: 36 }}>{vaar.emoji}</Text>
+                <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: vaar.color + '22', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 28 }}>{vaar.emoji}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{vaar.vedicName}</Text>
-                  <Text style={{ fontSize: 11, color: vaar.color + 'CC', fontWeight: '700', marginBottom: 5 }}>{vaar.planet} Day  ·  {vm?.name ?? ''}</Text>
-                  <Text style={{ fontSize: 11, color: '#FFFFFF65', lineHeight: 16, fontStyle: 'italic' }}>{vaar.energy}</Text>
+                  <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{vaar.vedicName}</Text>
+                  <Text style={{ fontSize: 11, color: vaar.color, fontWeight: '700', marginBottom: 5 }}>{vaar.planet} Day  ·  {vm?.name ?? ''}</Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF60', lineHeight: 16, fontStyle: 'italic' }}>{vaar.energy}</Text>
                 </View>
               </View>
             </View>
 
-            {/* ── CTA ── */}
+            {/* ── CTA → Cosmic Science page ── */}
             <TouchableOpacity
-              onPress={() => { close(); setTimeout(onCosmicPress, 300); }}
-              activeOpacity={0.85}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 15, borderColor: '#60a5fa50', backgroundColor: '#60a5fa16' }}>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#60a5faDD' }}>🌌  Explore Full Cosmic Date</Text>
-              <Text style={{ fontSize: 16, color: '#60a5faDD', fontWeight: '900' }}>→</Text>
+              onPress={() => { close(); setTimeout(() => router.push('/cosmic-science' as never), 280); }}
+              activeOpacity={0.82}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: 18, padding: 16, borderColor: '#60a5fa45', backgroundColor: '#60a5fa0D' }}
+            >
+              <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: '#60a5fa18', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 22 }}>🌌</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', lineHeight: 20 }}>Explore full cosmic science</Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFF50', marginTop: 3 }}>Nakshatras · Vaars · Tithis · Moon cycles</Text>
+              </View>
+              <Text style={{ fontSize: 16, color: '#60a5faCC', fontWeight: '900' }}>↗</Text>
             </TouchableOpacity>
 
           </ScrollView>
@@ -2976,7 +3175,7 @@ function PhaseDetailSheet({
               onPress={() => {
                 close();
                 const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
-                setTimeout(() => router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never), 320);
+                setTimeout(() => router.push({ pathname: '/ayurvedic-wellness' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never), 320);
               }}
               activeOpacity={0.85}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderRadius: 18, paddingVertical: 16, borderColor: period.color + '50', backgroundColor: period.color + '16' }}>
@@ -3578,11 +3777,18 @@ function getReelWeatherBlurb(
       tip: 'Step out now before it heats up · Light clothing only',
       storyTips: [`Already ${t} this morning — exercise early`, 'Light breathable clothing is a must', 'Hydrate before and after any outdoor activity'],
     };
-    if (isHumid) return {
-      emoji: '💧', title: `Humid ${t} · Move before 9 AM`,
-      tip: 'High humidity slows you down · Finish exercise early',
-      storyTips: [`Humid at ${t} — complete outdoor exercise before 9 AM`, 'High humidity reduces aerobic efficiency', 'Coconut water or ORS keeps you going'],
-    };
+    if (isHumid) {
+      if (hour < 9) return {
+        emoji: '💧', title: `Humid ${t} · Move before 9 AM`,
+        tip: 'High humidity slows you down · Finish exercise early',
+        storyTips: [`Humid at ${t} — complete outdoor exercise before 9 AM`, 'High humidity reduces aerobic efficiency', 'Coconut water or ORS keeps you going'],
+      };
+      return {
+        emoji: '💧', title: `Humid ${t} · Exercise indoors now`,
+        tip: 'Peak outdoor window has passed · Indoor workout or breathwork ideal',
+        storyTips: [`Humid at ${t} — outdoor exercise window has closed`, 'High humidity reduces aerobic efficiency', 'Coconut water or ORS keeps you going'],
+      };
+    }
     if (isClear && (isWarm || isHot)) return {
       emoji: '☀️', title: 'Beautiful morning · Go outside!',
       tip: 'Perfect for a walk or workout · Soak 10 min of sun',
@@ -3636,10 +3842,20 @@ function getReelWeatherBlurb(
       tip: 'Avoid intense sun · Shaded walk or indoor workout ok',
       storyTips: [`${t} — skip intense outdoor cardio today`, 'Indoor exercise or shaded walk only', 'Coconut water cools Pitta heat effectively'],
     };
+    if (hour === 14) return {
+      emoji: '⏳', title: 'Cardio peak opens at 3 PM',
+      tip: 'Your body\'s peak aerobic window is one hour away — plan your walk',
+      storyTips: ['Lung capacity peaks from 3–5 PM — your best cardio window is next', 'Plan a 20-min walk or brisk workout starting at 3 PM', 'This is the body\'s biological prime for aerobic performance'],
+    };
+    if (hour >= 15 && hour < 17) return {
+      emoji: '🚶', title: 'You\'re in the peak — move now!',
+      tip: 'Lung capacity at biological peak — best 20 min cardio of the day',
+      storyTips: ['Right now is your body\'s peak aerobic window (3–5 PM)', 'A 20-min walk now outperforms 40 min in the morning', 'Step outside — your lungs are at their strongest today'],
+    };
     return {
-      emoji: '🚶', title: 'Good afternoon · Perfect for walk',
-      tip: 'Lung capacity peaks 3–5 PM · Best exercise window',
-      storyTips: ['Lung capacity peaks at 3–5 PM — the best cardio window', 'A 20-minute walk now is worth 40 minutes in the morning', 'Great window for sports, creative work and collaboration'],
+      emoji: '🌇', title: 'Peak just closed · Still go out',
+      tip: 'The 3–5 PM peak just ended — evening walk still highly beneficial',
+      storyTips: ['The aerobic peak closed at 5 PM — but your body is still warm and primed', 'A 20-min evening walk lowers cortisol and significantly improves sleep quality', 'Movement within 2 hrs of the peak still carries 80% of the benefit — go now'],
     };
   }
 
@@ -3699,7 +3915,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
   const navigateToExplore = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
-    router.push({ pathname: '/period-detail' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never);
+    router.push({ pathname: '/ayurvedic-wellness' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never);
   };
 
   // Pulse animation for ring halos
@@ -4081,6 +4297,656 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Home Signal Cycler — auto-fades between Weather Signal & Env Signal
+// ══════════════════════════════════════════════════════════════════════════════
+function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: DoshaPeriod; weather: WeatherData | null; brahmaInfo?: BrahmaMuhurtaInfo | null; onPress?: () => void }) {
+  const [idx, setIdx] = useState(0);
+  const fadeAnim  = useRef(new Animated.Value(1)).current;
+  const cardHeight = useRef(new Animated.Value(170)).current;
+  const hour = new Date().getHours();
+  const envSugg = React.useMemo(() => getHourlyEnvSuggestion(period, weather, hour), [period.id]);
+
+  const cards: HESCard[] = React.useMemo(() => [
+    ...(period.id === 'night_vata' && brahmaInfo?.status === 'active' ? [{
+      emoji: '🌟',
+      title: 'Brahma Muhurta · Sacred Pre-Dawn Window',
+      tips: ['Peak window for meditation & mantra jap', 'Alpha brainwaves dominate — neuroplasticity at its highest', 'Subconscious–conscious veil is thinnest now', 'Use this sacred window for your highest practice'],
+      color: '#60a5fa',
+      label: '🌟  BRAHMA MUHURTA · ACTIVE',
+    } as HESCard] : []),
+    ...(weather ? (() => {
+      const wb = getReelWeatherBlurb(weather, period, hour);
+      return [{ emoji: wb.emoji, title: wb.title, tips: wb.storyTips, color: '#60a5fa', label: '🌤  WEATHER SIGNAL' } as HESCard];
+    })() : []),
+    { emoji: envSugg.emoji, title: envSugg.title, tips: envSugg.desc.split(' · '), color: period.color, label: '⏱  ENV SIGNAL' },
+  ], [period.id, weather?.condition, brahmaInfo?.status]);
+
+  useEffect(() => {
+    if (cards.length <= 1) return;
+    let alive = true;
+    const timer = setInterval(() => {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 380, useNativeDriver: true }).start(({ finished }) => {
+        if (!alive || !finished) return;
+        setIdx(prev => {
+          const next = (prev + 1) % cards.length;
+          ToastLogger.push(`🔄 Signal: ${prev}→${next} of ${cards.length}`, 'warn');
+          return next;
+        });
+        requestAnimationFrame(() => {
+          if (!alive) return;
+          Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: true }).start();
+        });
+      });
+    }, 5000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      fadeAnim.stopAnimation();
+    };
+  }, [cards.length]);
+
+  if (cards.length === 0) return null;
+  const card = cards[idx % cards.length];
+  const CARD_W = SCREEN_W - 48;
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, marginTop: 14, width: CARD_W }}>
+      <Animated.View style={{ height: cardHeight, overflow: 'visible' }}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.82}
+        onLayout={({ nativeEvent }) => {
+          Animated.spring(cardHeight, {
+            toValue: nativeEvent.layout.height,
+            useNativeDriver: false,
+            friction: 14,
+            tension: 90,
+          }).start();
+        }}
+        style={{ width: CARD_W, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)', backgroundColor: 'rgba(10,12,30,0.58)' }}>
+        <LinearGradient
+          colors={[card.color + '42', card.color + '1A', 'rgba(3,3,14,0.78)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject} />
+        <LinearGradient
+          colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.04)', 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }}
+          style={StyleSheet.absoluteFillObject} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.55)' }} />
+        <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 13, gap: 9 }}>
+          {/* Top row — emoji + label + title + dot indicator */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <Text style={{ fontSize: 26, lineHeight: 31 }}>{card.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: card.color + 'CC', letterSpacing: 1.6, marginBottom: 2 }}>{card.label}</Text>
+              <Text style={{ fontSize: 13.5, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 18 }}>{card.title}</Text>
+            </View>
+            {cards.length > 1 && (
+              <View style={{ flexDirection: 'row', gap: 4, paddingTop: 3 }}>
+                {cards.map((_, i) => (
+                  <View key={i} style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: i === idx % cards.length ? card.color : 'rgba(255,255,255,0.20)' }} />
+                ))}
+              </View>
+            )}
+          </View>
+          {/* Thin divider */}
+          <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)' }} />
+          {/* All tips as compact bullets */}
+          <View style={{ gap: 5 }}>
+            {card.tips.slice(0, 4).map((tip, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}>
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: card.color + 'BB', marginTop: 4.5 }} />
+                <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.74)', lineHeight: 16 }}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Hero Ring Display — clean minimal ring for the Gently-style home screen
+// ══════════════════════════════════════════════════════════════════════════════
+const HERO_RS   = 246;
+const HERO_STR  = 11;
+const HERO_R    = (HERO_RS - HERO_STR * 2) / 2;
+const HERO_C    = 2 * Math.PI * HERO_R;
+
+function HeroRingDisplay({ period, brahmaInfo, onPress }: { period: DoshaPeriod; brahmaInfo?: BrahmaMuhurtaInfo | null; onPress?: () => void }) {
+  const pulse  = useRef(new Animated.Value(1)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
+  const tapPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.06, duration: 2400, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1,    duration: 2400, useNativeDriver: true }),
+    ])).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(bounce, { toValue: -7, duration: 650, useNativeDriver: true }),
+      Animated.timing(bounce, { toValue: 0,  duration: 650, useNativeDriver: true }),
+      Animated.delay(1400),
+    ])).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(tapPulse, { toValue: 1.14, duration: 900, useNativeDriver: true }),
+      Animated.timing(tapPulse, { toValue: 1,    duration: 900, useNativeDriver: true }),
+    ])).start();
+  }, []);
+  const rem    = period.minutesRemaining;
+  const durM   = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+  const prog   = Math.min(1, Math.max(0, (durM - rem) / durM));
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.90} style={{ alignItems: 'center', marginTop: 18 }}>
+      <View style={{ width: HERO_RS, height: HERO_RS }}>
+        {/* Frosted glass circular backdrop — Apple dark glass */}
+        <View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2, backgroundColor: 'rgba(10,12,30,0.52)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' }}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.05)', 'transparent']}
+            start={{ x: 0.1, y: 0 }} end={{ x: 0.7, y: 1 }}
+            style={StyleSheet.absoluteFillObject} />
+        </View>
+        {/* Pulsing aura layers */}
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 54, height: HERO_RS + 54, borderRadius: (HERO_RS + 54) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulse }], top: -27, left: -27 }} />
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 28, height: HERO_RS + 28, borderRadius: (HERO_RS + 28) / 2, backgroundColor: 'rgba(96,165,250,0.17)', transform: [{ scale: pulse }], top: -14, left: -14 }} />
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 10, height: HERO_RS + 10, borderRadius: (HERO_RS + 10) / 2, backgroundColor: 'rgba(96,165,250,0.28)', transform: [{ scale: pulse }], top: -5, left: -5 }} />
+        {/* SVG arc */}
+        <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="rgba(96,165,250,0.28)" strokeWidth={HERO_STR} />
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#93c5fd" strokeWidth={HERO_STR+16} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.13} />
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#60a5fa" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.97} />
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.36} />
+        </Svg>
+        {/* Center content */}
+        <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          {period.id === 'night_vata' && brahmaInfo?.status === 'active' ? (
+            <>
+              <Text style={{ fontSize: 28, lineHeight: 36 }}>🌟</Text>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: '#60a5faCC', letterSpacing: 1.8, textAlign: 'center' }}>BRAHMA MUHURTA</Text>
+              <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', letterSpacing: 0.2, fontFamily: 'Nunito_900Black' }}>{'Sacred Pre-Dawn\nWindow'}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{brahmaInfo.minutesRemaining >= 60 ? `${Math.floor(brahmaInfo.minutesRemaining / 60)}h ${brahmaInfo.minutesRemaining % 60}m` : `${brahmaInfo.minutesRemaining}m`}</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF55', letterSpacing: 0.8 }}>remaining</Text>
+              <View style={{ height: 1, width: 52, backgroundColor: 'rgba(96,165,250,0.38)', marginVertical: 2 }} />
+              <Text style={{ fontSize: 7.5, fontWeight: '800', color: '#93c5fdEE', textAlign: 'center' }} numberOfLines={1}>🧠  Pre-Dawn Neuroplasticity Peak</Text>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 36, lineHeight: 44 }}>{period.emoji}</Text>
+              <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', letterSpacing: 0.2, fontFamily: 'Nunito_900Black' }} numberOfLines={2}>{period.englishLabel}</Text>
+              <Text style={{ fontSize: 30, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{remStr}</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF55', letterSpacing: 0.8 }}>remaining</Text>
+              <View style={{ height: 1, width: 52, backgroundColor: 'rgba(96,165,250,0.38)', marginVertical: 2 }} />
+              <Text style={{ fontSize: 7.5, fontWeight: '800', color: '#93c5fdEE', textAlign: 'center' }} numberOfLines={1}>{period.sciEmoji}  {period.sciTitle}</Text>
+            </>
+          )}
+        </View>
+        {/* Pulsing 'Tap' badge anchored to bottom edge of ring */}
+        <Animated.View style={{
+          position: 'absolute', bottom: 8, left: 0, right: 0, alignItems: 'center',
+          transform: [{ scale: tapPulse }],
+        }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 5,
+            paddingHorizontal: 13, paddingVertical: 5,
+            borderRadius: 99, backgroundColor: 'rgba(10,12,30,0.84)',
+            borderWidth: 1, borderColor: 'rgba(96,165,250,0.60)',
+            shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.60, shadowRadius: 10, elevation: 6,
+          }}>
+            <Text style={{ fontSize: 10, color: 'rgba(96,165,250,1)', fontWeight: '900', letterSpacing: 1.4 }}>TAP</Text>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.50)', fontWeight: '600' }}>to explore</Text>
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Bouncing chevron + frosted pill affordance */}
+      <View style={{ marginTop: 32, alignItems: 'center', gap: 8 }}>
+        <Animated.Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.55)', transform: [{ translateY: bounce }] }}>⌃</Animated.Text>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          paddingHorizontal: 18, paddingVertical: 10,
+          borderRadius: 99, overflow: 'hidden',
+          backgroundColor: 'rgba(8,10,28,0.72)',
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.32)',
+        }}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.04)']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject} />
+          <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.88)', fontWeight: '700' }}>🌤 Weather</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14 }}>·</Text>
+          <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.88)', fontWeight: '700' }}>🌌 Cosmos</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14 }}>·</Text>
+          <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.88)', fontWeight: '700' }}>⏱ Body Rhythms</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Phase Body Section — Apple-style: ring card + signal cards + 2-col DO/AVOID
+// ══════════════════════════════════════════════════════════════════════════════
+function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod; weather: WeatherData | null; brahmaInfo?: BrahmaMuhurtaInfo | null }) {
+  const router = useRouter();
+  const hour = new Date().getHours();
+  const isNightPeriod = ['evening_kapha', 'night_pitta', 'night_vata'].includes(period.id);
+  const envSugg = getHourlyEnvSuggestion(period, weather, hour);
+  const rem    = period.minutesRemaining;
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  const isBrahma = period.id === 'night_vata' && brahmaInfo?.status === 'active';
+  const accentColor = isBrahma ? '#60a5fa' : period.color;
+  const weatherBlurb = weather && !isNightPeriod ? getReelWeatherBlurb(weather, period, hour) : null;
+
+  const navigateToExplore = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+    router.push({ pathname: '/ayurvedic-wellness' as never, params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining), minutesTotal: String(durM) } } as never);
+  };
+
+  const activities = period.id === 'night_vata' && brahmaInfo?.status === 'upcoming'
+    ? ['Deep conscious rest & relaxation', 'Gentle breathwork & pranayama', 'Hydrate with warm water', 'Mindful stillness & observation', 'Set intentions for the coming day']
+    : period.activities;
+
+  const RING_S   = 116;
+  const RING_STR = 9;
+  const R_  = (RING_S - RING_STR * 2) / 2;
+  const C_  = 2 * Math.PI * R_;
+  const durM = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+  const prog = Math.min(1, Math.max(0, (durM - rem) / durM));
+
+  return (
+    <View style={{ marginHorizontal: 14, marginTop: 2, marginBottom: 4 }}>
+
+      {/* ── RHYTHM CARD: left content + right ring ── */}
+      <TouchableOpacity
+        onPress={navigateToExplore}
+        activeOpacity={0.88}
+        style={{ borderRadius: 20, borderWidth: 1, borderColor: accentColor + '45', backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden', marginBottom: 10 }}>
+        <LinearGradient
+          colors={[accentColor + '28', accentColor + '0C', 'rgba(3,3,14,0.88)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1.2 }}
+          style={StyleSheet.absoluteFillObject} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: accentColor + '70' }} />
+        <View style={{ padding: 14 }}>
+
+          {/* Badge row */}
+          <Text style={{ fontSize: 6.5, fontWeight: '900', color: accentColor + 'BB', letterSpacing: 2.2, marginBottom: 12 }}>
+            {isBrahma ? 'BRAHMA MUHURTA  ·  ACTIVE NOW' : 'ACTIVE PHASE  ·  ' + period.startLabel + ' – ' + period.endLabel}
+          </Text>
+
+          {/* Main content row: left info + right ring */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+            {/* Left: emoji + name + divider + science */}
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 26, lineHeight: 32 }}>{isBrahma ? '🌟' : period.emoji}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFFFFFF2', fontFamily: 'Nunito_900Black', lineHeight: 20, flex: 1 }} numberOfLines={2}>
+                  {isBrahma ? 'Sacred Pre-Dawn\nWindow' : period.englishLabel}
+                </Text>
+              </View>
+              <View style={{ height: 0.5, backgroundColor: accentColor + '40', marginBottom: 8 }} />
+              <Text style={{ fontSize: 6.5, fontWeight: '900', color: accentColor + 'AA', letterSpacing: 1.6, marginBottom: 3 }}>◉  PHASE SCIENCE</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFFDD', lineHeight: 15, marginBottom: 3 }}>{period.sciEmoji}  {period.sciTitle}</Text>
+              <Text style={{ fontSize: 9.5, color: '#FFFFFF55', lineHeight: 13.5 }} numberOfLines={3}>{period.sciDesc}</Text>
+              {!isBrahma && period.id === 'night_vata' && brahmaInfo?.status === 'upcoming' && (
+                <Text style={{ fontSize: 8.5, color: '#60a5fa88', fontWeight: '600', marginTop: 5 }}>🌅 Brahma Muhurta at {brahmaInfo.startLabel}  ·  {brahmaInfo.minutesUntil >= 60 ? `${Math.floor(brahmaInfo.minutesUntil / 60)}h ${brahmaInfo.minutesUntil % 60}m` : `${brahmaInfo.minutesUntil}m`} away</Text>
+              )}
+            </View>
+
+            {/* Right: Circular SVG Ring */}
+            <View style={{ width: RING_S, height: RING_S }}>
+              <Svg width={RING_S} height={RING_S} viewBox={`0 0 ${RING_S} ${RING_S}`}>
+                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor + '20'} strokeWidth={RING_STR} />
+                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR + 10}
+                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.14} />
+                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR}
+                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.96} />
+                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={2}
+                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.28} />
+              </Svg>
+              <View style={{ position: 'absolute', top: 0, left: 0, width: RING_S, height: RING_S, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '900', color: accentColor, fontFamily: 'Nunito_900Black', letterSpacing: -0.5, textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{remStr}</Text>
+                <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.6, marginTop: 2 }}>remaining</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Explore CTA */}
+          <TouchableOpacity
+            onPress={navigateToExplore}
+            activeOpacity={0.82}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 13, borderWidth: 1, paddingVertical: 10, marginTop: 12, borderColor: accentColor + '45', backgroundColor: accentColor + '13' }}>
+            <Text style={{ fontSize: 12.5, fontWeight: '900', color: accentColor }}>🔬  Explore Full Ayurvedic Science</Text>
+            <Text style={{ fontSize: 14, color: accentColor, fontWeight: '900' }}>→</Text>
+          </TouchableOpacity>
+
+        </View>
+      </TouchableOpacity>
+
+      {/* ── SIGNAL CARDS: ENV SIGNAL + WEATHER SIGNAL side by side ── */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+
+        {/* ENV SIGNAL */}
+        <View style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: accentColor + '38', backgroundColor: accentColor + '09', padding: 11, overflow: 'hidden' }}>
+          <LinearGradient colors={[accentColor + '1E', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+          <Text style={{ fontSize: 6, fontWeight: '900', color: accentColor + 'AA', letterSpacing: 1.4, marginBottom: 5 }}>⏱  ENV SIGNAL</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+            <Text style={{ fontSize: 18 }}>{envSugg.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 14 }} numberOfLines={1}>{envSugg.title}</Text>
+              <Text style={{ fontSize: 8.5, color: '#FFFFFF65', lineHeight: 12.5, marginTop: 2 }} numberOfLines={2}>{envSugg.desc}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* WEATHER SIGNAL */}
+        {weatherBlurb ? (
+          <View style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: '#60a5fa38', backgroundColor: '#60a5fa09', padding: 11, overflow: 'hidden' }}>
+            <LinearGradient colors={['#60a5fa1E', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 0.5, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+            <Text style={{ fontSize: 6, fontWeight: '900', color: '#60a5faAA', letterSpacing: 1.4, marginBottom: 5 }}>🌤  WEATHER SIGNAL</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <Text style={{ fontSize: 18 }}>{weatherBlurb.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 14 }} numberOfLines={1}>{weatherBlurb.title.length > 28 ? weatherBlurb.title.slice(0, 28) + '…' : weatherBlurb.title}</Text>
+                <Text style={{ fontSize: 8.5, color: '#FFFFFF65', lineHeight: 12.5, marginTop: 2 }} numberOfLines={2}>{weatherBlurb.tip}</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 11, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 18 }}>🌤</Text>
+            <Text style={{ fontSize: 8.5, color: '#FFFFFF30', marginTop: 4, textAlign: 'center' }}>Weather signal{'\n'}unavailable</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ── DO NOW + AVOID NOW — two-column Apple-style list ── */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+
+        {/* DO NOW column */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor }} />
+            <Text style={{ fontSize: 7.5, fontWeight: '900', color: accentColor + 'CC', letterSpacing: 1.6 }}>✓  DO NOW</Text>
+          </View>
+          <View style={{ gap: 6 }}>
+            {activities.map((a, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderColor: accentColor + '2E', backgroundColor: accentColor + '09' }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: accentColor + '1E', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14 }}>{getActivityEmoji(a)}</Text>
+                </View>
+                <Text style={{ fontSize: 10.5, color: '#FFFFFFDD', fontWeight: '700', flex: 1, lineHeight: 15 }}>{a}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* AVOID NOW column */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f43f5e' }} />
+            <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#f43f5eCC', letterSpacing: 1.6 }}>⛔  AVOID</Text>
+          </View>
+          <View style={{ gap: 6 }}>
+            {period.avoidances.map((a, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderColor: '#f43f5e2E', backgroundColor: '#f43f5e08' }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#f43f5e1A', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14 }}>{getAvoidanceEmoji(a)}</Text>
+                </View>
+                <Text style={{ fontSize: 10.5, color: '#FFFFFFCC', fontWeight: '700', flex: 1, lineHeight: 15 }}>{a}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+      </View>
+
+    </View>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Cosmic Compact Card — proper readable cosmos card for DayDetailSheet
+// ══════════════════════════════════════════════════════════════════════════════
+function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTimes | null; onCosmicPress: () => void }) {
+  const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
+  const p         = React.useMemo(() => getPanchangData(), []);
+  const lunar     = React.useMemo(() => getNextLunarEvents(), []);
+  const vaar      = VAARS[p.vaarIdx];
+  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+  const yoga      = YOGAS[p.yogaIdx];
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const nextEvent = lunar.daysToFull <= lunar.daysToNew
+    ? { icon: '🌕', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' }
+    : { icon: '🌑', label: `New Moon in ${lunar.daysToNew}d`, color: '#60a5fa' };
+
+  return (
+    <>
+      <TouchableOpacity
+        style={{ marginHorizontal: 16, marginBottom: 4, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+        activeOpacity={0.82}>
+        <LinearGradient colors={[vaar.color + '20', 'rgba(255,255,255,0.04)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.26)' }} />
+
+        <View style={{ padding: 12, gap: 10 }}>
+          {/* Top row: moon visual + tithi + next event */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <MoonSVG tithiNum={moon.tithiNum} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, fontWeight: '800', color: '#60a5faCC', letterSpacing: 1.5, marginBottom: 3 }}>LUNAR PHASE</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFFEE', fontFamily: 'Nunito_900Black' }}>{p.tithiName}</Text>
+                <Text style={{ fontSize: 10, color: '#60a5faCC', fontWeight: '700' }}>·  {p.tithiInPaksha === 15 ? (p.paksha === 'Shukla' ? 'Full Moon' : 'New Moon') : `${TITHI_ORDINALS[p.tithiInPaksha] ?? p.tithiInPaksha} Lunar Day`}</Text>
+              </View>
+              <Text style={{ fontSize: 9.5, color: '#c084fc90', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>{TITHI_ENERGY[p.tithiName] ?? 'Sacred lunar energy'}</Text>
+              <Text style={{ fontSize: 10, color: '#FFFFFF50', fontWeight: '500', marginTop: 2 }}>{p.paksha} Paksha  ·  {moon.emoji}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <Text style={{ fontSize: 20 }}>{nextEvent.icon}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: nextEvent.color, textAlign: 'right' }}>{nextEvent.label}</Text>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+
+          {/* Three data cells: nakshatra, yoga, day */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {[
+              { label: 'NAKSHATRA', value: nakshatra.name, emoji: '⭐', color: '#c084fc' },
+              { label: 'YOGA', value: yoga.name, emoji: '🌀', color: '#34d399' },
+              { label: 'DAY', value: ENGLISH_DAYS[p.vaarIdx], emoji: vaar.emoji, color: vaar.color },
+            ].map((item, i) => (
+              <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 1, borderLeftWidth: i > 0 ? 1 : 0, borderLeftColor: 'rgba(255,255,255,0.07)' }}>
+                <Text style={{ fontSize: 15, marginBottom: 3 }}>{item.emoji}</Text>
+                <Text style={{ fontSize: 7, fontWeight: '800', color: item.color + 'BB', letterSpacing: 1, marginBottom: 2 }}>{item.label}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFFDD', textAlign: 'center' }}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Tap hint */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <Text style={{ fontSize: 8, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1.2 }}>TAP TO EXPLORE COSMOS  →</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {sheetOpen && (
+        <CosmicDetailSheet
+          solarTimes={solarTimes}
+          onCosmicPress={onCosmicPress}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Cosmos Mini Card — compact half-width cosmos card for DayDetailSheet
+// ══════════════════════════════════════════════════════════════════════════════
+function CosmicMiniCard({ solarTimes, onPress }: { solarTimes: SolarTimes | null; onPress: () => void }) {
+  const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
+  const p         = React.useMemo(() => getPanchangData(), []);
+  const lunar     = React.useMemo(() => getNextLunarEvents(), []);
+  const vaar      = VAARS[p.vaarIdx];
+  const nakshatra = NAKSHATRAS[p.nakshatraIdx];
+  const yoga      = YOGAS[p.yogaIdx];
+  const nextEvent = lunar.daysToFull <= lunar.daysToNew
+    ? { icon: '🌕', label: `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24' }
+    : { icon: '🌑', label: `New Moon in ${lunar.daysToNew}d`,   color: '#60a5fa' };
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.82}
+      style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: vaar.color + '30', backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden', padding: 12 }}>
+      <LinearGradient colors={[vaar.color + '18', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+      <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#c084fcAA', letterSpacing: 1.6, marginBottom: 7 }}>🌌  COSMOS</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+        <MoonSVG tithiNum={moon.tithiNum} size={30} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 18 }} numberOfLines={1}>{p.tithiName}</Text>
+          <Text style={{ fontSize: 8.5, color: '#c084fc80', fontWeight: '600', lineHeight: 12 }} numberOfLines={1}>{TITHI_ENERGY[p.tithiName] ?? 'Sacred energy'}</Text>
+        </View>
+      </View>
+      <Text style={{ fontSize: 8.5, color: '#FFFFFF50', fontWeight: '600', marginBottom: 8 }} numberOfLines={1}>{p.paksha} Paksha  ·  {nextEvent.icon} {nextEvent.label}</Text>
+      <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 7 }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        {[
+          { label: 'NAKSH.', value: nakshatra.name, color: '#c084fc' },
+          { label: 'YOGA',   value: yoga.name,      color: '#34d399' },
+          { label: 'DAY',    value: vaar.emoji + ' ' + ENGLISH_DAYS[p.vaarIdx].slice(0,3), color: vaar.color },
+        ].map((item, i) => (
+          <View key={i} style={{ alignItems: 'center', flex: 1, borderLeftWidth: i > 0 ? 0.5 : 0, borderLeftColor: 'rgba(255,255,255,0.08)' }}>
+            <Text style={{ fontSize: 6, fontWeight: '900', color: item.color + 'BB', letterSpacing: 0.8, marginBottom: 2 }}>{item.label}</Text>
+            <Text style={{ fontSize: 8.5, color: '#FFFFFFDD', fontWeight: '800', textAlign: 'center', lineHeight: 12 }}>{item.value}</Text>
+          </View>
+        ))}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Day Detail Bottom Sheet — Apple-style: no header, floating ✕, tinted bg
+// ══════════════════════════════════════════════════════════════════════════════
+function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLog, sunStreak, onMore, onClose, onShowShareCard }: {
+  weather: WeatherData | null;
+  solarTimes: SolarTimes | null;
+  currentPeriod: DoshaPeriod | null;
+  brahmaInfo: BrahmaMuhurtaInfo | null;
+  wakeLog: WakeLogEntry | null;
+  sunStreak: SunriseStreak | null;
+  onMore: () => void;
+  onClose: () => void;
+  onShowShareCard: () => void;
+}) {
+  const router      = useRouter();
+  const slideAnim   = useRef(new Animated.Value(0)).current;
+  const accentTint  = currentPeriod?.color ?? '#60a5fa';
+
+  useEffect(() => {
+    Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 11, tension: 60 }).start();
+  }, []);
+
+  const close = () => {
+    Animated.timing(slideAnim, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => onClose());
+  };
+
+  const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [SCREEN_H, 0] });
+
+  return (
+    <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={close}>
+      <Animated.View style={{ flex: 1, backgroundColor: '#0D1117', transform: [{ translateY }] }}>
+
+        {/* Subtle period-color tint at top */}
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 240, backgroundColor: accentTint, opacity: 0.055 }} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={[accentTint + '12', 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
+        />
+
+        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+
+          {/* Drag handle */}
+          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
+            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.20)' }} />
+          </View>
+
+          {/* Floating close button */}
+          <TouchableOpacity
+            onPress={close}
+            style={{ position: 'absolute', top: 12, right: 16, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: '700' }}>✕</Text>
+          </TouchableOpacity>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, paddingTop: 6 }}>
+
+            {/* Morning share banner */}
+            {wakeLog?.wasBeforeSunrise && (
+              <TouchableOpacity onPress={onShowShareCard} activeOpacity={0.85} style={MSB.bar}>
+                <LinearGradient colors={['#F5820A22', '#60a5fa14', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+                <Text style={{ fontSize: 22 }}>🌅</Text>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={MSB.title}>You woke at <Text style={{ color: ACCENT }}>{wakeLog.wakeTimeStr}</Text>
+                    {sunStreak && sunStreak.count > 0 ? <Text style={{ color: '#60a5fa' }}>  ·  🔥 {sunStreak.count} day streak</Text> : null}
+                  </Text>
+                  <Text style={MSB.sub}>Tap to share your sunrise →</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* ── WEATHER + COSMOS side-by-side ── */}
+            <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 14, marginTop: 6, marginBottom: 8 }}>
+              {weather ? (
+                <WeatherMiniCard weather={weather} currentPeriod={currentPeriod} />
+              ) : (
+                <View style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 14, alignItems: 'center', justifyContent: 'center', minHeight: 120 }}>
+                  <Text style={{ fontSize: 20 }}>🌤</Text>
+                  <Text style={{ fontSize: 9, color: '#FFFFFF35', marginTop: 4 }}>Weather unavailable</Text>
+                </View>
+              )}
+              <CosmicMiniCard
+                solarTimes={solarTimes}
+                onPress={() => router.push('/cosmic-explore' as never)}
+              />
+            </View>
+
+            {/* ── YOUR RHYTHM ── */}
+            {currentPeriod && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 4 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: accentTint }} />
+                  <Text style={{ fontSize: 7.5, fontWeight: '900', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.8 }}>YOUR RHYTHM</Text>
+                  <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.07)', marginLeft: 4 }} />
+                </View>
+                <PhaseBodySection period={currentPeriod} weather={weather} brahmaInfo={brahmaInfo} />
+              </>
+            )}
+
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Main Daily Screen
 // ══════════════════════════════════════════════════════════════════════════════
 export default function DailyTab() {
@@ -4088,7 +4954,7 @@ export default function DailyTab() {
   const [solarTimes, setSolarTimes]         = useState<SolarTimes | null>(null);
   const [weather, setWeather]               = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [bgUri, setBgUri]                   = useState<string | null>(null);
+  const { bgUri, bgKey: timeBgKeyCtx }       = useBgContext();
   const [periods, setPeriods]               = useState<DoshaPeriod[]>([]);
   const [currentPeriod, setCurrentPeriod]   = useState<DoshaPeriod | null>(null);
   const [brahmaInfo, setBrahmaInfo]         = useState<BrahmaMuhurtaInfo | null>(null);
@@ -4101,6 +4967,10 @@ export default function DailyTab() {
   const [showShareCard, setShowShareCard]   = useState(false);
   const [mode, setMode]                     = useState<'normal' | 'relax'>('normal');
   const [zenActive, setZenActive]           = useState(false);
+  const [sheetOpen, setSheetOpen]           = useState(false);
+  const weatherLastFetched  = useRef<number>(0);
+  const retryTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const weatherFetchingRef   = useRef(false);
 
   // Live clock tick
   useEffect(() => {
@@ -4137,20 +5007,46 @@ export default function DailyTab() {
   }, []);
 
   const loadWeather = async () => {
+    if (weatherFetchingRef.current) return;
+    weatherFetchingRef.current = true;
     setWeatherLoading(true);
     try {
       const w = await fetchWeather();
       setWeather(w);
+      weatherLastFetched.current = Date.now();
       if (w?.lat && w?.lon) {
         const s = getSolarTimes(w.lat, w.lon);
         setSolarTimes(s);
         setBrahmaInfo(getBrahmaMuhurtaInfo(s));
         store.setJSON(KEYS.location, { lat: w.lat, lon: w.lon }).catch(() => {});
       }
-    } catch {} finally { setWeatherLoading(false); }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      ToastLogger.push(`⚡ Weather load error: ${msg}`, 'error');
+    } finally { setWeatherLoading(false); weatherFetchingRef.current = false; }
   };
 
-  // Recalculate dosha periods every minute
+  // Auto-refresh weather when network comes back (AppState foreground restore)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        const stale = Date.now() - weatherLastFetched.current > 30 * 60 * 1000;
+        if (!weather || stale) loadWeather();
+      }
+    });
+    return () => sub.remove();
+  }, [weather]);
+
+  // Retry every 30s when weather is null (network was off during mount)
+  useEffect(() => {
+    if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+    if (!weather) {
+      retryTimerRef.current = setInterval(() => { loadWeather(); }, 30_000);
+    }
+    return () => { if (retryTimerRef.current) clearInterval(retryTimerRef.current); };
+  }, [weather]);
+
+  // Recalculate dosha periods every minute (dep on minute primitive, not Date object)
   useEffect(() => {
     if (!solarTimes) return;
     const nowH = liveClock.getHours() + liveClock.getMinutes() / 60;
@@ -4158,14 +5054,7 @@ export default function DailyTab() {
     setPeriods(p);
     setCurrentPeriod(p.find(x => x.status === 'active') ?? null);
     setBrahmaInfo(getBrahmaMuhurtaInfo(solarTimes));
-  }, [liveClock, solarTimes]);
-
-  // Background image — local cache first, network fallback
-  useEffect(() => {
-    const h = liveClock.getHours() + liveClock.getMinutes() / 60;
-    const key = getTimedBgKey(h, solarTimes) ?? 'night';
-    getBgSource(key).then(uri => setBgUri(uri)).catch(() => {});
-  }, [liveClock, solarTimes]);
+  }, [liveClock.getMinutes(), solarTimes]);
 
   // Sync mode when period changes — disabled for now, mode stays 'normal' always
   // useEffect(() => {
@@ -4202,15 +5091,15 @@ export default function DailyTab() {
   const mm = liveClock.getMinutes();
 
   const bgH = hh + mm / 60;
-  const timeBgKey = getTimedBgKey(bgH, solarTimes);
+  const timeBgKey = timeBgKeyCtx || getTimedBgKey(bgH, solarTimes);
   const isLight  = timeBgKey === 'morning' || timeBgKey === 'midday' || timeBgKey === 'afternoon';
   const isGolden = timeBgKey === 'sunrise' || timeBgKey === 'sandhya' || timeBgKey === 'predawn' || timeBgKey === 'twilight';
 
   const scrim: [string, string, string] = isLight
-    ? ['rgba(0,4,18,0.82)', 'rgba(0,4,18,0.52)', 'rgba(0,4,18,0.86)']
+    ? ['rgba(0,4,18,0.10)', 'rgba(0,4,18,0.03)', 'rgba(0,4,18,0.12)']
     : isGolden
-    ? ['rgba(0,0,0,0.66)',  'rgba(0,0,0,0.36)',  'rgba(0,0,0,0.70)']
-    : ['rgba(2,2,16,0.56)',  'rgba(2,2,16,0.28)',  'rgba(2,2,16,0.60)'];
+    ? ['rgba(0,0,0,0.06)',  'rgba(0,0,0,0.02)',  'rgba(0,0,0,0.08)']
+    : ['rgba(2,2,16,0.18)',  'rgba(2,2,16,0.06)',  'rgba(2,2,16,0.20)'];
 
   const headerGrad: [string, string] = isLight
     ? ['rgba(0,5,22,0.96)',  'rgba(0,5,22,0.28)']
@@ -4219,147 +5108,88 @@ export default function DailyTab() {
     : ['rgba(2,2,24,0.88)',  'rgba(2,2,24,0.12)'];
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const isNightNow = hh < Math.floor(solarTimes?.sunrise ?? 6) || hh >= Math.floor(solarTimes?.sunset ?? 19);
+  const hh12    = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+  const ampm    = hh < 12 ? 'AM' : 'PM';
+  const mmStr   = mm.toString().padStart(2, '0');
+  const heroDate = liveClock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
       style={D.screen}
-      imageStyle={{ opacity: 0.88 }}>
+      imageStyle={{ opacity: 1 }}>
 
       <LinearGradient colors={scrim} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
 
-      {/* ── Sticky header ── */}
-      <LinearGradient colors={headerGrad} style={D.headerGrad}>
-        <SafeAreaView edges={['top']}>
-          <View style={D.headerTop}>
-            <Text style={D.appName}>🌅  Daily</Text>
-            <TouchableOpacity
-              onPress={loadWeather} style={D.refreshBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      {/* ── Hero SafeArea ── */}
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+
+        {/* Minimal top bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 2 }}>
+          <Text style={D.appName}>🌅  Daily</Text>
+          {weather ? (
+            <TouchableOpacity onPress={loadWeather} activeOpacity={0.80} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 7, borderRadius: 99, backgroundColor: 'rgba(8,10,28,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.32)' }}>
+              <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{weather.temp}°</Text>
+              <View style={{ width: 1, height: 11, backgroundColor: 'rgba(255,255,255,0.20)' }} />
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', fontWeight: '600' }} numberOfLines={1}>{weather.condition}</Text>
+              {weather.city ? <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)' }}>· {weather.city}</Text> : null}
+              {weatherLoading && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 2 }} />}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={loadWeather} style={D.refreshBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               {weatherLoading
                 ? <ActivityIndicator size="small" color={ACCENT} />
                 : <Text style={{ color: ACCENT, fontSize: 18 }}>↻</Text>}
             </TouchableOpacity>
-          </View>
-
-        </SafeAreaView>
-      </LinearGradient>
-
-      {/* ── Sticky Mode Toggle — hidden for now, kept for future use ── */}
-      {false && currentPeriod && (
-        <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
-          <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 4 }}>
-            {(['normal', 'relax'] as const).map(m => {
-              const label = m === 'normal' ? 'Work Mode' : (isNightPeriodNow ? 'Night Sleep' : 'Calm Space');
-              const icon  = m === 'normal' ? '⚡' : '◯';
-              return (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setMode(m);
-                    if (m === 'relax') setZenActive(true);
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    flex: 1, paddingVertical: 11, borderRadius: 13,
-                    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7,
-                    backgroundColor: mode === m ? (m === 'relax' ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.15)') : 'transparent',
-                    borderWidth: mode === m ? 1 : 0,
-                    borderColor: mode === m ? (m === 'relax' ? '#60a5fa60' : 'rgba(255,255,255,0.25)') : 'transparent',
-                  }}>
-                  <Text style={{ fontSize: 15 }}>{icon}</Text>
-                  <Text style={{
-                    fontSize: 11, fontWeight: '900', letterSpacing: 0.3,
-                    color: mode === m ? (m === 'relax' ? '#93c5fd' : '#FFFFFF') : 'rgba(255,255,255,0.35)',
-                  }}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          )}
         </View>
+
+        {/* ── Centered hero content ── */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 }}>
+
+          {/* Hero ring / GPS fallback */}
+          {currentPeriod
+            ? (
+              <View style={{ alignItems: 'center', marginTop: 38 }}>
+                <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} onPress={() => setSheetOpen(true)} />
+                <HomeSignalCycler period={currentPeriod} weather={weather} brahmaInfo={brahmaInfo} onPress={() => setSheetOpen(true)} />
+              </View>
+            )
+            : !solarTimes ? (
+              <View style={{ alignItems: 'center', gap: 10, marginTop: 32 }}>
+                <Text style={{ fontSize: 34 }}>🛰</Text>
+                <Text style={{ color: '#FFFFFF40', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                  Enable location for{'\n'}body rhythm tracking
+                </Text>
+                <TouchableOpacity onPress={loadWeather} style={D.gpsBtn}>
+                  <Text style={{ color: ACCENT, fontWeight: '800', fontSize: 12 }}>Enable Location →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+        </View>
+      </SafeAreaView>
+
+
+      {/* ── Bottom sheet with all daily cards ── */}
+      {sheetOpen && (
+        <DayDetailSheet
+          weather={weather}
+          solarTimes={solarTimes}
+          currentPeriod={currentPeriod}
+          brahmaInfo={brahmaInfo}
+          wakeLog={wakeLog}
+          sunStreak={sunStreak}
+          onMore={() => setShow7Day(true)}
+          onClose={() => setSheetOpen(false)}
+          onShowShareCard={() => setShowShareCard(true)}
+        />
       )}
 
-      {/* ── Scrollable content ── */}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 110, paddingTop: 4 }}
-        showsVerticalScrollIndicator={false}>
-
-        {/* MORNING SHARE BANNER — shown if woke before sunrise today */}
-        {wakeLog?.wasBeforeSunrise && (
-          <TouchableOpacity
-            onPress={() => setShowShareCard(true)}
-            activeOpacity={0.85}
-            style={MSB.bar}>
-            <LinearGradient
-              colors={['#F5820A22', '#60a5fa14', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFillObject} />
-            <LinearGradient colors={['rgba(255,255,255,0.14)','rgba(255,255,255,0.03)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.35)' }} />
-            <Text style={{ fontSize: 22 }}>🌅</Text>
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={MSB.title}>
-                You woke at <Text style={{ color: ACCENT }}>{wakeLog.wakeTimeStr}</Text>
-                {sunStreak && sunStreak.count > 0
-                  ? <Text style={{ color: '#60a5fa' }}>  ·  🔥 {sunStreak.count} day streak</Text>
-                  : null}
-              </Text>
-              <Text style={MSB.sub}>Tap to share your sunrise with friends →</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* COSMIC ORBIT STRIP — unified solar ephemeris · lunar phase · cosmic almanac */}
-        <CosmicOrbitStrip
-          solarTimes={solarTimes}
-          onCosmicPress={() => router.push('/cosmic-explore' as never)}
-        />
-
-        {/* WEATHER SECTION — collapsible (tap to expand hourly forecast) */}
-        {weather && (
-          <WeatherSection
-            weather={weather}
-            solarTimes={solarTimes}
-            onMore={() => setShow7Day(true)}
-          />
-        )}
-
-        {/* BIO CIRCADIAN — PHASE RING HERO */}
-        {currentPeriod ? (
-          <View>
-            <PhaseRingHero key={currentPeriod.id} period={currentPeriod} weather={weather} />
-            {brahmaInfo?.status === 'active' && (
-              <View style={{ paddingHorizontal: 16 }}>
-                <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
-              </View>
-            )}
-          </View>
-        ) : (
-          !solarTimes && periods.length === 0 ? (
-            <View style={D.noGpsHint}>
-              <Text style={{ fontSize: 34 }}>🛰</Text>
-              <Text style={{ color: '#FFFFFF40', fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 20 }}>
-                GPS location needed{'\n'}for solar-accurate periods
-              </Text>
-              <TouchableOpacity onPress={loadWeather} style={D.gpsBtn}>
-                <Text style={{ color: ACCENT, fontWeight: '800', fontSize: 12 }}>Enable Location  →</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        )}
-
-        {/* 7-Day forecast modal */}
-        {show7Day && weather?.daily && weather.daily.length > 0 && (
-          <SevenDayModal daily={weather.daily} onClose={() => setShow7Day(false)} />
-        )}
-
-
-      </ScrollView>
+      {/* 7-Day forecast modal */}
+      {show7Day && weather?.daily && weather.daily.length > 0 && (
+        <SevenDayModal daily={weather.daily} onClose={() => setShow7Day(false)} />
+      )}
 
       {/* WAKE-UP SHARE CARD MODAL */}
       {showShareCard && wakeLog && sunStreak && (
@@ -4369,7 +5199,6 @@ export default function DailyTab() {
           onClose={() => setShowShareCard(false)}
         />
       )}
-      {/* Calm / Night Sleep full-screen overlay */}
       <ZenModeOverlay
         visible={zenActive}
         onClose={() => { setZenActive(false); setMode('normal'); }}

@@ -122,6 +122,62 @@ export async function scheduleNativeAlarm(hour: number, minute: number): Promise
   );
 }
 
+// ── Extra wake alarms (notifee trigger, routes to alarm-ringing) ───────────────────
+export async function scheduleExtraWakeAlarm(
+  id: string, hour: number, minute: number, label?: string,
+): Promise<void> {
+  await cancelExtraWakeAlarm(id);
+  if (Platform.OS !== 'android') return;
+
+  await setupAlarmChannel();
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  const ampm = hour < 12 ? 'AM' : 'PM';
+  const notif = require('@notifee/react-native').default;
+  const { TriggerType, RepeatFrequency, AlarmType } = require('@notifee/react-native');
+  try {
+    await notif.createTriggerNotification(
+      {
+        id: `wake-extra-${id}`,
+        title: `⏰ ${label || `Wake Alarm ${pad2(h12)}:${pad2(minute)} ${ampm}`}`,
+        body: 'Your wake alarm is ringing. Rise and shine! 🌅',
+        android: {
+          channelId: ALARM_CHANNEL_ID,
+          importance: 5,
+          category: 'alarm',
+          visibility: 1,
+          fullScreenAction: { id: 'default', launchActivity: 'default' },
+          pressAction: { id: 'default', launchActivity: 'default' },
+          ongoing: false,
+        },
+        data: { type: 'wake-alarm', alarmId: id, label: label ?? '' },
+      },
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: next.getTime(),
+        repeatFrequency: RepeatFrequency.DAILY,
+        alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+      },
+    );
+    console.log(`[NativeAlarm] Extra wake alarm scheduled: ${pad2(h12)}:${pad2(minute)} ${ampm}`);
+  } catch (e) {
+    console.warn('[NativeAlarm] scheduleExtraWakeAlarm failed:', e);
+  }
+}
+
+export async function cancelExtraWakeAlarm(id: string): Promise<void> {
+  try {
+    const notif = require('@notifee/react-native').default;
+    await notif.cancelTriggerNotification(`wake-extra-${id}`);
+    await notif.cancelNotification(`wake-extra-${id}`);
+  } catch { /* ignore */ }
+}
+
 // ── Gate the native bringToFront watchdog during camera/gallery pickers ────────────
 // Call setNativePickerActive(true) BEFORE launching ImagePicker, and
 // setNativePickerActive(false) in the finally block after it resolves.

@@ -57,7 +57,7 @@ export const PERIOD_TEMPLATES = [
     color: '#818cf8',
     bgColor: 'rgba(129,140,248,0.09)',
     sciEmoji: '🧠',
-    sciTitle: 'Pre-Dawn Neuroplasticity & Vata Peak',
+    sciTitle: 'Pre-Dawn Neuroplasticity Peak',
     sciDesc: 'Alpha & theta brainwaves dominate the pre-dawn hours (EEG confirmed). Cortisol Awakening Response begins its surge. The subconscious–conscious veil is thinnest — neuroplasticity peaks. This window contains the sacred Brahma Muhurta (96–48 min before sunrise) — the pinnacle of this period for meditation and spiritual practice.',
     activities: ['Silent meditation & dhyana', 'Mantra japa / chanting', 'Sacred study & scripture reading', 'Breathwork & deep nervous system reset', 'Sankalpa (intention-setting)', 'Prayer & deep gratitude practice'],
     avoidances: ['Heavy food or drinks', 'Intense physical exertion', 'Digital media & bright screens', 'Loud conversation or noise', 'Checking phone or social media'],

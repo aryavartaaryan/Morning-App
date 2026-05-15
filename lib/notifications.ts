@@ -160,6 +160,14 @@ export async function cancelAllReminders() {
 }
 
 // ── Alarm Settings Type ───────────────────────────────────────────────────────
+export interface ExtraWakeAlarm {
+  id: string;
+  enabled: boolean;
+  hour: number;
+  minute: number;
+  label?: string;
+}
+
 export interface CustomReminder {
   id: string; title: string; body: string; hour: number; minute: number; enabled: boolean;
 }
@@ -175,6 +183,8 @@ export interface AlarmSettings {
   gentleWake?: boolean;
   /** Duration in minutes over which volume ramps from 5 % → 100 % (1–15) */
   rampMinutes?: number;
+  /** Additional wake alarms (beyond the primary one) */
+  extraWakeAlarms?: ExtraWakeAlarm[];
 }
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   wakeAlarm: { enabled: false, hour: 4, minute: 0 },
@@ -186,6 +196,7 @@ export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   selectedMantraId: 'bhagya_suktam',
   gentleWake: false,
   rampMinutes: 5,
+  extraWakeAlarms: [],
 };
 
 // ── Per-habit expiry window (minutes from midnight, alert 15 min before end) ─

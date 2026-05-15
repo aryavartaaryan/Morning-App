@@ -1,0 +1,33 @@
+# Backup and temp files
+*.bak
+*.NEW
+
+# Backend (not needed for mobile build)
+backend/
+
+# iOS Swift source (not needed for Android build)
+ios_src/
+
+# Git
+.git/
+
+# Node modules — EAS runs npm install on its own Linux servers.
+# If node_modules is included, EAS skips npm install and uses
+# the uploaded macOS-compiled binaries → build fails on Linux.
+node_modules/
+
+# Android local build caches — not needed for EAS remote build
+android/app/build/
+android/build/
+android/.gradle/
+android/.kotlin/
+
+# Expo local cache
+.expo/
+
+# Misc
+.DS_Store
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*

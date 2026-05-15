@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text } from 'react-native';
@@ -24,11 +24,56 @@ import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DA
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
 import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
+import { BgProvider } from '@/lib/bgContext';
 import { MoodSheet } from '@/components/MoodSheet';
+import { CrashToast } from '@/components/CrashToast';
+import { installCrashToast, ToastLogger } from '@/lib/toastLogger';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { MoodKey } from '@/components/MoodSheet';
 
 SplashScreen.preventAutoHideAsync();
+
+// Install global crash logger as early as possible (before any component mounts)
+installCrashToast();
+
+// ─── React render-tree error boundary ────────────────────────────────────────
+class AppErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMsg: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error?.message ?? String(error) };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack?: string }) {
+    const stack = info?.componentStack?.slice(0, 300) ?? '';
+    ToastLogger.push(
+      `🔴 RENDER ERROR\n${error?.message ?? String(error)}\n${stack}`,
+      'crash'
+    );
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#0A0005', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
+          <Text style={{ fontSize: 36, marginBottom: 14 }}>💥</Text>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#ef4444', textAlign: 'center', marginBottom: 10 }}>Render Crash</Text>
+          <Text style={{ fontSize: 11, color: '#FFFFFF45', textAlign: 'center', fontFamily: 'monospace', lineHeight: 18 }} selectable>
+            {this.state.errorMsg}
+          </Text>
+          <Text style={{ fontSize: 10, color: '#FFFFFF20', marginTop: 20 }}>See toast overlay for full details</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const { height: SH } = Dimensions.get('window');
 
@@ -193,7 +238,41 @@ function BodhiNotificationListener() {
         const he = encodeURIComponent(alarm.habitEmoji ?? '🌿');
         const hl = encodeURIComponent(alarm.label ?? 'Habit Alarm');
         const at = alarm.alarmType ?? 'habit';
-        setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}` as never), 400);
+        const sid = encodeURIComponent(alarm.soundId ?? 'morning_birds');
+        if (at === 'soundbath') {
+          const lbl = encodeURIComponent(alarm.label ?? 'Sound Bath');
+          setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 400);
+        } else {
+          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}&mantraId=${sid}` as never), 400);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── When app is LAUNCHED by a soundbath alarm fullScreenAction (app was killed) ──
+  useEffect(() => {
+    AsyncStorage.getItem('onesutra_pending_soundbath_v1')
+      .then((raw: string | null) => {
+        if (!raw) return;
+        AsyncStorage.removeItem('onesutra_pending_soundbath_v1').catch(() => {});
+        const alarm = JSON.parse(raw);
+        const sid = encodeURIComponent(alarm.soundId ?? 'morning_birds');
+        const lbl = encodeURIComponent(alarm.label ?? 'Sound Bath');
+        setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 400);
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── When app is LAUNCHED by a sleep auto-start fullScreenAction (app was killed) ──
+  useEffect(() => {
+    AsyncStorage.getItem('onesutra_pending_sleep_v1')
+      .then((raw: string | null) => {
+        if (!raw) return;
+        AsyncStorage.removeItem('onesutra_pending_sleep_v1').catch(() => {});
+        const alarm = JSON.parse(raw);
+        const sid = encodeURIComponent(alarm.soundId ?? 'light_rain');
+        const lbl = encodeURIComponent(alarm.label ?? 'Sleep Sound');
+        setTimeout(() => router.replace(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never), 400);
       })
       .catch(() => {});
   }, []);
@@ -207,12 +286,26 @@ function BodhiNotificationListener() {
         const data = initial.notification?.data as Record<string, string> | undefined;
         if (data?.type === 'evening-mantra') {
           setTimeout(() => router.replace('/habit-alarm-ringing?habitKey=evening_mantra&habitEmoji=%F0%9F%94%B1&label=Shiv%20Sankalpa%20Suktam&mantraId=shiv_sankalpa_suktam' as never), 300);
+        } else if (data?.type === 'soundbath-alarm') {
+          const sid = encodeURIComponent(data?.soundId ?? 'morning_birds');
+          const lbl = encodeURIComponent(data?.label ?? 'Sound Bath');
+          setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 300);
+        } else if (data?.type === 'sleep-autostart') {
+          const sid = encodeURIComponent(data?.soundId ?? 'light_rain');
+          const lbl = encodeURIComponent(data?.label ?? 'Sleep Sound');
+          setTimeout(() => router.replace(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never), 300);
         } else if (data?.type === 'habit-alarm') {
           const hk = encodeURIComponent(data?.habitKey ?? data?.alarmId ?? '');
           const he = encodeURIComponent(data?.habitEmoji ?? '🌿');
           const hl = encodeURIComponent(data?.label ?? 'Habit Alarm');
           const at = data?.alarmType ?? 'habit';
-          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}` as never), 300);
+          const sid = encodeURIComponent(data?.soundId ?? 'morning_birds');
+          if (at === 'soundbath') {
+            const lbl = encodeURIComponent(data?.label ?? 'Sound Bath');
+            setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 300);
+          } else {
+            setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}&mantraId=${sid}` as never), 300);
+          }
         }
       }).catch(() => {});
     } catch { /* ignore */ }
@@ -272,13 +365,35 @@ function BodhiNotificationListener() {
           return;
         }
 
+        // Sound Bath tap → open soundbath ringing screen
+        if (type === 'soundbath-alarm') {
+          const sid = encodeURIComponent((data?.soundId ?? 'morning_birds') as string);
+          const lbl = encodeURIComponent((data?.label ?? 'Sound Bath') as string);
+          setTimeout(() => router.push(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 800);
+          return;
+        }
+
+        // Sleep auto-start tap → open sleep ringing screen
+        if (type === 'sleep-autostart') {
+          const sid = encodeURIComponent((data?.soundId ?? 'light_rain') as string);
+          const lbl = encodeURIComponent((data?.label ?? 'Sleep Sound') as string);
+          setTimeout(() => router.push(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never), 800);
+          return;
+        }
+
         // Habit alarm tap → open habit alarm ringing screen
         if (type === 'habit-alarm') {
           const habitKey = encodeURIComponent((data?.alarmId ?? '') as string);
           const habitEmoji = encodeURIComponent((data?.habitEmoji ?? '🌿') as string);
           const habitLabel = encodeURIComponent((data?.label ?? 'Habit Alarm') as string);
           const alarmType = data?.alarmType ?? 'habit';
-          setTimeout(() => router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}` as never), 800);
+          const mantraId = encodeURIComponent((data?.soundId ?? 'morning_birds') as string);
+          if (alarmType === 'soundbath') {
+            const lbl = encodeURIComponent((data?.label ?? 'Sound Bath') as string);
+            setTimeout(() => router.push(`/soundbath-ringing?soundId=${mantraId}&label=${lbl}` as never), 800);
+          } else {
+            setTimeout(() => router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}&mantraId=${mantraId}` as never), 800);
+          }
           return;
         }
 
@@ -308,7 +423,7 @@ function BodhiNotificationListener() {
           const data = detail?.notification?.data as Record<string, string> | undefined;
 
           // Wake alarm delivered while app is in foreground (fullScreenIntent path)
-          if (type === EventType.DELIVERED && notifId === ALARM_NOTIF_ID) {
+          if (type === EventType.DELIVERED && (notifId === ALARM_NOTIF_ID || (notifId?.startsWith('wake-extra-') && data?.type === 'wake-alarm'))) {
             console.log('[Layout] Alarm delivered in foreground → routing to /alarm-ringing');
             router.push('/alarm-ringing' as never);
             return;
@@ -320,13 +435,35 @@ function BodhiNotificationListener() {
             return;
           }
 
+          // Sound Bath delivered or pressed while app is in foreground
+          if ((type === EventType.DELIVERED || type === EventType.PRESS) && data?.type === 'soundbath-alarm') {
+            const sid = encodeURIComponent((data?.soundId ?? 'morning_birds') as string);
+            const lbl = encodeURIComponent((data?.label ?? 'Sound Bath') as string);
+            router.push(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never);
+            return;
+          }
+
+          // Sleep auto-start delivered or pressed while app is in foreground
+          if ((type === EventType.DELIVERED || type === EventType.PRESS) && data?.type === 'sleep-autostart') {
+            const sid = encodeURIComponent((data?.soundId ?? 'light_rain') as string);
+            const lbl = encodeURIComponent((data?.label ?? 'Sleep Sound') as string);
+            router.push(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never);
+            return;
+          }
+
           // Habit alarm delivered or pressed while app is in foreground
           if ((type === EventType.DELIVERED || type === EventType.PRESS) && data?.type === 'habit-alarm') {
             const habitKey = encodeURIComponent((data?.alarmId ?? '') as string);
             const habitEmoji = encodeURIComponent((data?.habitEmoji ?? '🌿') as string);
             const habitLabel = encodeURIComponent((data?.label ?? 'Habit Alarm') as string);
             const alarmType = data?.alarmType ?? 'habit';
-            router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}` as never);
+            const mantraId = encodeURIComponent((data?.soundId ?? 'morning_birds') as string);
+            if (alarmType === 'soundbath') {
+              const lbl = encodeURIComponent((data?.label ?? 'Sound Bath') as string);
+              router.push(`/soundbath-ringing?soundId=${mantraId}&label=${lbl}` as never);
+            } else {
+              router.push(`/habit-alarm-ringing?habitKey=${habitKey}&habitEmoji=${habitEmoji}&label=${habitLabel}&alarmType=${alarmType}&mantraId=${mantraId}` as never);
+            }
             return;
           }
 
@@ -362,8 +499,9 @@ function GlobalMoodLayer() {
 
 export default function RootLayout() {
   useEffect(() => {
-    ensureAllMantrasDownloaded().catch(() => {});
-    ensureAllBgsCached().catch(() => {});
+    const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 6_000);
+    const t2 = setTimeout(() => ensureAllMantrasDownloaded().catch(() => {}), 10_000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const [fontsLoaded] = useFonts({
@@ -383,7 +521,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg }}>
       <SafeAreaProvider>
+      {/* CrashToast lives OUTSIDE AppErrorBoundary so it stays alive on crashes */}
+      <CrashToast />
+      <AppErrorBoundary>
       <SoundPlayerProvider>
+        <BgProvider>
         <GlobalMoodLayer />
         <StatusBar style="light" />
         <AuthGuard onAuthReady={() => setAuthReady(true)} />
@@ -393,13 +535,16 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="habit-alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
+          <Stack.Screen name="soundbath-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="notification-landing" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         </Stack>
+        </BgProvider>
       </SoundPlayerProvider>
+      </AppErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

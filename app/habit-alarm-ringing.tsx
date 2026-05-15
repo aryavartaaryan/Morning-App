@@ -26,6 +26,15 @@ export default function HabitAlarmRingingScreen() {
   const emoji = habitEmoji ?? (alarmType === 'quick' ? '⚡' : '🌿');
   const isQuick = alarmType === 'quick';
 
+  // ── Safeguard: soundbath alarms should never land here ──────────────────────
+  useEffect(() => {
+    if (alarmType === 'soundbath') {
+      const sid = encodeURIComponent(mantraIdParam ?? 'morning_birds');
+      const lbl = encodeURIComponent(label ?? 'Sound Bath');
+      router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never);
+    }
+  }, []);
+
   const [phase, setPhase] = useState<'countdown' | 'active'>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [stopped, setStopped] = useState(false);
