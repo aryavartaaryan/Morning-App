@@ -153,24 +153,54 @@ function getMoonPhase(date: Date = new Date()): {
 }
 
 function getPanchangData(date: Date = new Date()) {
-  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
-  const MOON_LONG_EPOCH = 285;
   const CYCLE = 29.53058867;
-  const ageRaw = (date.getTime() - KNOWN_NEW_MOON_MS) / (1000 * 60 * 60 * 24);
-  const moonAge = ((ageRaw % CYCLE) + CYCLE) % CYCLE;
-  const moonLong = ((MOON_LONG_EPOCH + (moonAge / CYCLE) * 360) % 360 + 360) % 360;
+  const r = (x: number) => x * Math.PI / 180;
   const dJ2000 = (date.getTime() - 946728000000) / 86400000;
+
+  // Sun tropical longitude (Jean Meeus low-precision, ~1°)
   const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
   const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
-  const gRad = gdeg * Math.PI / 180;
-  const sunLong = ((Ldeg + 1.915 * Math.sin(gRad) + 0.020 * Math.sin(2 * gRad)) % 360 + 360) % 360;
-  const tithiNum = Math.min(30, Math.floor((moonAge / CYCLE) * 30) + 1);
-  const paksha = tithiNum <= 15 ? 'Shukla' : 'Krishna';
+  const sunTropical = ((Ldeg + 1.915 * Math.sin(r(gdeg)) + 0.020 * Math.sin(r(2 * gdeg))) % 360 + 360) % 360;
+
+  // Moon tropical longitude (Jean Meeus Ch.47 simplified, ~1°)
+  const L0 = 218.3165 + 13.1763966 * dJ2000;
+  const M  = 357.5291 + 0.9856003  * dJ2000;
+  const Mp = 134.9634 + 13.0649930 * dJ2000;
+  const D  = 297.8502 + 12.1907180 * dJ2000;
+  const F  = 93.2721  + 13.2293705 * dJ2000;
+  const moonTropical = ((
+    L0
+    + 6.2886 * Math.sin(r(Mp))
+    + 1.2740 * Math.sin(r(2 * D - Mp))
+    + 0.6583 * Math.sin(r(2 * D))
+    + 0.2136 * Math.sin(r(2 * Mp))
+    - 0.1851 * Math.sin(r(M))
+    - 0.1143 * Math.sin(r(2 * F))
+    + 0.0588 * Math.sin(r(2 * D - 2 * Mp))
+    + 0.0572 * Math.sin(r(2 * D - M - Mp))
+    + 0.0533 * Math.sin(r(2 * D + Mp))
+  ) % 360 + 360) % 360;
+
+  // Lahiri ayanamsha — converts tropical → sidereal (nirayana)
+  const ayanamsha = 23.8526 + 0.013972 * (dJ2000 / 365.25);
+  const moonLong = ((moonTropical - ayanamsha) % 360 + 360) % 360;
+  const sunLong  = ((sunTropical  - ayanamsha) % 360 + 360) % 360;
+
+  // Tithi — from elongation (ayanamsha cancels, no conversion needed)
+  const elongation = ((moonTropical - sunTropical) % 360 + 360) % 360;
+  const moonAge    = (elongation / 360) * CYCLE;
+  const tithiNum   = Math.min(30, Math.floor(elongation / 12) + 1);
+  const paksha     = tithiNum <= 15 ? 'Shukla' : 'Krishna';
   const tithiInPaksha = tithiNum <= 15 ? tithiNum : tithiNum - 15;
-  const tithiName = tithiInPaksha === 15 ? (paksha === 'Shukla' ? 'Purnima' : 'Amavasya') : (TITHI_NAMES[tithiInPaksha] ?? String(tithiInPaksha));
+  const tithiName  = tithiInPaksha === 15 ? (paksha === 'Shukla' ? 'Purnima' : 'Amavasya') : (TITHI_NAMES[tithiInPaksha] ?? String(tithiInPaksha));
+
+  // Nakshatra — sidereal Moon longitude / 13.333°
   const nakshatraIdx = Math.min(26, Math.floor(moonLong / (360 / 27)));
+
+  // Yoga — sum of sidereal Sun + Moon longitudes / 13.333°
   const yogaLong = ((sunLong + moonLong) % 360 + 360) % 360;
-  const yogaIdx = Math.min(26, Math.floor(yogaLong / (360 / 27)));
+  const yogaIdx  = Math.min(26, Math.floor(yogaLong / (360 / 27)));
+
   const vaarIdx = date.getDay();
   return { tithiName, tithiInPaksha, paksha, nakshatraIdx, yogaIdx, vaarIdx, moonAge };
 }

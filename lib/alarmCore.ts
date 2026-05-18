@@ -170,7 +170,7 @@ async function scheduleAlarmIOS(p: AlarmPayload): Promise<void> {
     content: {
       title: p.title ?? '⏰ Brahma Muhurta',
       body: p.body ?? 'Rise — your mission is waiting.',
-      sound: 'mantra_alarm.wav', // configured in expo-notifications plugin
+      sound: 'mantra_alarm.m4a', // configured in expo-notifications plugin
       interruptionLevel: 'timeSensitive',
       categoryIdentifier: 'alarm',
       data: p.data ?? {},

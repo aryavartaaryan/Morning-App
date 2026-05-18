@@ -1,23 +1,31 @@
 export const Colors = {
-  bg: '#0A0A0F',
-  surface: '#12121A',
-  card: '#1A1A26',
-  cardAlt: '#1E1E2E',
-  border: '#2A2A3A',
-  borderSubtle: '#1E1E2C',
+  bg: '#06091A',
+  surface: '#0A1228',
+  card: '#0E1A38',
+  cardAlt: '#111E3A',
+  border: '#1A2E58',
+  borderSubtle: '#122040',
 
   gold: '#F59E0B',
   goldMuted: '#F59E0B33',
   goldDim: 'rgba(245,158,11,0.12)',
   purple: '#8B5CF6',
   purpleMuted: '#8B5CF633',
-  teal: '#14B8A6',
+  teal: '#00D4B8',
   rose: '#F43F5E',
 
-  text: '#F5F5F5',
-  textSub: '#A0A0B0',
-  textMuted: '#5A5A70',
-  textDim: '#333348',
+  // Aurora Borealis accent palette
+  aurora1: '#00D4B8',   // Aurora teal-green
+  aurora2: '#7C3AED',   // Electric violet
+  aurora3: '#06B6D4',   // Aurora cyan
+  aurora4: '#4F46E5',   // Deep indigo
+  auroraGlow: 'rgba(0,212,184,0.18)',
+  auroraViolet: 'rgba(124,58,237,0.18)',
+
+  text: '#E8F4F8',
+  textSub: '#8FB8D0',
+  textMuted: '#456080',
+  textDim: '#1E3050',
 
   success: '#10B981',
   warning: '#F59E0B',

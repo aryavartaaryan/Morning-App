@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal } from 'react
 import * as Haptics from 'expo-haptics';
 
 const SLEEP_COLOR = '#60a5fa';
-const AUTO_SKIP_SECS = 3;
+const AUTO_SKIP_MS = 2500;
 
 export const MOODS = [
   { key: 'stressed',  emoji: '😰', label: 'Stressed', color: '#ef4444' },
@@ -31,41 +31,25 @@ export function MoodSheet({
   onSelect: (key: MoodKey) => void;
   onSkip: () => void;
 }) {
-  const [selected, setSelected]       = useState<MoodKey | null>(null);
-  const [countdown, setCountdown]     = useState(AUTO_SKIP_SECS);
-  const [countingDown, setCountingDown] = useState(false);
-  const slideAnim     = useRef(new Animated.Value(400)).current;
-  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const onSkipRef     = useRef(onSkip);
+  const [selected, setSelected] = useState<MoodKey | null>(null);
+  const slideAnim  = useRef(new Animated.Value(400)).current;
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onSkipRef  = useRef(onSkip);
 
   useEffect(() => { onSkipRef.current = onSkip; }, [onSkip]);
 
   const clearCountdown = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    setCountingDown(false);
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }, []);
 
   const startCountdown = useCallback(() => {
     clearCountdown();
-    setCountdown(AUTO_SKIP_SECS);
-    setCountingDown(true);
-    timerRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearCountdown();
-          setTimeout(() => onSkipRef.current(), 0);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    timerRef.current = setTimeout(() => { onSkipRef.current(); }, AUTO_SKIP_MS);
   }, [clearCountdown]);
 
-  // Reset selection and animate when visibility changes
   useEffect(() => {
     if (visible) {
       setSelected(null);
-      setCountdown(AUTO_SKIP_SECS);
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 6 }).start();
     } else {
       Animated.timing(slideAnim, { toValue: 400, duration: 250, useNativeDriver: true }).start();
@@ -73,10 +57,9 @@ export function MoodSheet({
     return () => clearCountdown();
   }, [visible]);
 
-  // Countdown control: only auto-skip in 'pre' mode; post and result never auto-skip
   useEffect(() => {
     if (!visible) { clearCountdown(); return; }
-    if (mode === 'pre') {
+    if (mode === 'pre' || mode === 'post') {
       startCountdown();
     } else {
       clearCountdown();
@@ -87,6 +70,7 @@ export function MoodSheet({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelected(key);
     clearCountdown();
+    onSelect(key);
   };
 
   if (!visible) return null;
@@ -131,8 +115,11 @@ export function MoodSheet({
                   : `Feeling ${postMeta.label} after your session. Sound shapes the mind. 🌙`}
               </Text>
             </View>
-            <TouchableOpacity onPress={onSkip} style={[MS.doneBtn, { backgroundColor: SLEEP_COLOR + '20', borderColor: SLEEP_COLOR + '50' }]}>
+            <TouchableOpacity onPress={onSkip} style={[MS.doneBtn, { backgroundColor: SLEEP_COLOR + '20', borderColor: SLEEP_COLOR + '50', marginHorizontal: 20 }]}>
               <Text style={[MS.doneTxt, { color: SLEEP_COLOR }]}>Done</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onSkip} style={{ alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 20, marginTop: 4 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFFFFF20', letterSpacing: 0.5 }}>SKIP</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -159,15 +146,9 @@ export function MoodSheet({
               );
             })}
           </View>
-          <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 4 }}>
+          <View style={{ alignItems: 'center', marginTop: 6 }}>
             <TouchableOpacity onPress={onSkip} style={MS.skipBtn}>
-              <Text style={MS.skipTxt}>{countingDown ? `Skip (${countdown}s)` : 'Skip'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => { if (selected) onSelect(selected); }}
-              style={[MS.doneBtn, { flex: 2, opacity: selected ? 1 : 0.35, backgroundColor: SLEEP_COLOR + '20', borderColor: SLEEP_COLOR + '50' }]}
-              disabled={!selected}>
-              <Text style={[MS.doneTxt, { color: SLEEP_COLOR }]}>{mode === 'pre' ? 'Start Session →' : 'See Result'}</Text>
+              <Text style={MS.skipTxt}>Skip</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -177,8 +158,8 @@ export function MoodSheet({
 }
 
 const MS = StyleSheet.create({
-  backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  sheet:        { backgroundColor: '#0E0E1C', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingBottom: 44 },
+  backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', paddingHorizontal: 16 },
+  sheet:        { backgroundColor: '#0E0E1C', borderRadius: 28, paddingTop: 20, paddingBottom: 28 },
   handle:       { width: 36, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginBottom: 20 },
   title:        { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 },
   sub:          { fontSize: 12, color: '#FFFFFF40', textAlign: 'center', marginBottom: 24 },
@@ -186,7 +167,7 @@ const MS = StyleSheet.create({
   moodBtn:      { width: '22%', paddingVertical: 12, alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF05', gap: 4 },
   moodEmoji:    { fontSize: 28 },
   moodLabel:    { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
-  skipBtn:      { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF06' },
+  skipBtn:      { borderRadius: 99, paddingVertical: 7, paddingHorizontal: 24, alignItems: 'center', borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF06' },
   skipTxt:      { fontSize: 13, fontWeight: '700', color: '#FFFFFF40' },
   doneBtn:      { borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1 },
   doneTxt:      { fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },

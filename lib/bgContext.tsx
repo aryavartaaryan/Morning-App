@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getBgSource } from '@/lib/bgImages';
+import { getBgSource, BG_URLS } from '@/lib/bgImages';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
 
@@ -13,7 +13,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   predawn:   '#091228',   // dark navy
   sunrise:   '#2A1200',   // rich amber-brown
   morning:   '#0E1A04',   // deep forest green
-  midday:    '#001828',   // ocean deep blue
+  midday:    '#1C1400',   // deep golden sunflower
   afternoon: '#1E1000',   // warm umber
   sandhya:   '#281000',   // burnt orange
   twilight:  '#150A20',   // dusk purple
@@ -27,7 +27,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   predawn:   '#101E40',
   sunrise:   '#4A2200',
   morning:   '#1C3008',
-  midday:    '#002A44',
+  midday:    '#3A2600',
   afternoon: '#361C00',
   sandhya:   '#441800',
   twilight:  '#260D38',
@@ -74,7 +74,7 @@ interface BgContextValue {
 const DEFAULT_KEY = getTimedBgKey(new Date().getHours() + new Date().getMinutes() / 60);
 
 const BgContext = createContext<BgContextValue>({
-  bgUri:         null,
+  bgUri:         BG_URLS[DEFAULT_KEY] ?? BG_URLS.night,
   bgKey:         DEFAULT_KEY,
   accentColor:   BG_ACCENT_COLORS[DEFAULT_KEY] ?? BG_ACCENT_COLORS.night,
   gradientStart: BG_GRADIENT_START[DEFAULT_KEY] ?? BG_GRADIENT_START.night,
@@ -84,12 +84,13 @@ export function BgProvider({ children }: { children: ReactNode }) {
   const h0    = new Date().getHours() + new Date().getMinutes() / 60;
   const key0  = getTimedBgKey(h0);
 
-  const [bgUri,         setBgUri]       = useState<string | null>(null);
+  const [bgUri,         setBgUri]       = useState<string | null>(BG_URLS[key0] ?? BG_URLS.night);
   const [bgKey,         setBgKey]       = useState<string>(key0);
   const [accentColor,   setAccent]      = useState<string>(BG_ACCENT_COLORS[key0]  ?? BG_ACCENT_COLORS.night);
   const [gradientStart, setGradStart]   = useState<string>(BG_GRADIENT_START[key0] ?? BG_GRADIENT_START.night);
-  const solarRef = React.useRef<{ sunrise: number; solarNoon: number; sunset: number } | null>(null);
-  const bgKeyRef = React.useRef<string>(key0);
+  const solarRef      = React.useRef<{ sunrise: number; solarNoon: number; sunset: number } | null>(null);
+  const bgKeyRef      = React.useRef<string>(key0);
+  const resolvedOnce  = React.useRef<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +104,10 @@ export function BgProvider({ children }: { children: ReactNode }) {
         const nowH = new Date().getHours() + new Date().getMinutes() / 60;
         const key  = getTimedBgKey(nowH, solarRef.current);
         if (cancelled) return;
-        if (key !== bgKeyRef.current) {
-          bgKeyRef.current = key;
+        // Always resolve on first call (resolvedOnce gate) or when time period changes
+        if (key !== bgKeyRef.current || !resolvedOnce.current) {
+          bgKeyRef.current   = key;
+          resolvedOnce.current = true;
           const uri = await getBgSource(key);
           if (!cancelled) {
             setBgKey(key);
@@ -112,9 +115,6 @@ export function BgProvider({ children }: { children: ReactNode }) {
             setGradStart(BG_GRADIENT_START[key] ?? BG_GRADIENT_START.night);
             setBgUri(uri);
           }
-        } else if (!bgUri) {
-          const uri = await getBgSource(key);
-          if (!cancelled) setBgUri(uri);
         }
       } catch { /* silent */ }
     }

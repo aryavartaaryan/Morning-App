@@ -61,8 +61,12 @@ const WMO: Record<number, { condition: string; emoji: string }> = {
   99: { condition: 'Heavy Hail',     emoji: '⛈️' },
 };
 
-function getWeatherInfo(code: number): { condition: string; emoji: string } {
-  return WMO[code] ?? WMO[Math.floor(code / 10) * 10] ?? { condition: 'Unknown', emoji: '🌡️' };
+function getWeatherInfo(code: number, isDay = 1): { condition: string; emoji: string } {
+  const base = WMO[code] ?? WMO[Math.floor(code / 10) * 10] ?? { condition: 'Unknown', emoji: '🌡️' };
+  if (isDay === 0 && (code === 0 || code === 1)) {
+    return { condition: base.condition, emoji: '🌙' };
+  }
+  return base;
 }
 
 // Override the model weathercode using actual real-time measured values.
@@ -74,6 +78,7 @@ function realWeatherCode(
   showers: number,
   snowfall: number,
   precipitation: number,
+  cloudCover: number,
 ): number {
   const totalRain = rain + showers;
   if (snowfall > 0.5)     return 75; // Heavy Snow
@@ -82,6 +87,15 @@ function realWeatherCode(
   if (totalRain > 1.5)    return 63; // Rain
   if (totalRain > 0.3)    return 61; // Light Rain
   if (precipitation > 0)  return 51; // Light Drizzle
+  // Model codes 95/96/99 (thunderstorm/hail) are forecast predictions.
+  // If zero precipitation is actually measured right now, downgrade to
+  // a cloud-cover-based code so we don't falsely alert the user.
+  if ([95, 96, 99].includes(modelCode) && precipitation === 0 && totalRain === 0) {
+    if (cloudCover >= 80) return 3;  // Overcast
+    if (cloudCover >= 50) return 2;  // Partly Cloudy
+    if (cloudCover >= 25) return 1;  // Mostly Clear
+    return 0;                        // Clear Sky
+  }
   return modelCode;
 }
 
@@ -90,17 +104,17 @@ export async function fetchWeather(): Promise<WeatherData | null> {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return null;
 
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const { latitude, longitude } = loc.coords;
 
     const url =
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weathercode` +
-      `,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_gusts_10m` +
-      `&hourly=temperature_2m,weathercode,precipitation_probability` +
+      `,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day` +
+      `&hourly=temperature_2m,weathercode,precipitation_probability,is_day` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum` +
-      `&forecast_days=7&timezone=auto`;
+      `&forecast_days=7&timezone=auto&models=best_match`;
 
     const controller  = new AbortController();
     const fetchTimeout = setTimeout(() => controller.abort(), 12_000);
@@ -114,8 +128,9 @@ export async function fetchWeather(): Promise<WeatherData | null> {
     const showers   = c.showers    ?? 0;
     const snowfall  = c.snowfall   ?? 0;
     const precip    = c.precipitation ?? 0;
-    const effectiveCode = realWeatherCode(c.weathercode, rain, showers, snowfall, precip);
-    const info = getWeatherInfo(effectiveCode);
+    const cloudCov  = c.cloud_cover ?? 0;
+    const effectiveCode = realWeatherCode(c.weathercode, rain, showers, snowfall, precip, cloudCov);
+    const info = getWeatherInfo(effectiveCode, c.is_day ?? 1);
 
     let city: string | undefined;
     try {
@@ -127,14 +142,16 @@ export async function fetchWeather(): Promise<WeatherData | null> {
     const nowHour = new Date().getHours();
     const hourlyTemps: number[] = json.hourly?.temperature_2m ?? [];
     const hourlyCodes: number[] = json.hourly?.weathercode ?? [];
+    const hourlyIsDay: number[]  = json.hourly?.is_day ?? [];
     const hourly: HourlyPoint[] = [];
     for (let i = 0; i < 48 && hourly.length < 24; i++) {
       const h = (json.hourly?.time?.[i] as string | undefined);
       if (!h) continue;
       const parsedHour = new Date(h).getHours();
       if (hourly.length === 0 && parsedHour !== nowHour && i < nowHour) continue;
-      const code = hourlyCodes[i] ?? 0;
-      hourly.push({ hour: parsedHour, temp: Math.round(hourlyTemps[i] ?? 0), weatherCode: code, emoji: getWeatherInfo(code).emoji });
+      const code  = hourlyCodes[i] ?? 0;
+      const isDayH = hourlyIsDay[i] ?? 1;
+      hourly.push({ hour: parsedHour, temp: Math.round(hourlyTemps[i] ?? 0), weatherCode: code, emoji: getWeatherInfo(code, isDayH).emoji });
     }
 
     // Build 7-day daily forecast

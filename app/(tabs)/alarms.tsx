@@ -103,8 +103,8 @@ const ALARM_BUNDLED: Record<string, any> = {
   wanderlust_breeze:   require('../../assets/sounds/wanderlust-breeze.m4a'),
   forest_campfire:     require('../../assets/sounds/forest-campfire.m4a'),
   indian_beats:        require('../../assets/sounds/indian-beats.m4a'),
-  bhagya_suktam:       require('../../assets/sounds/bhagya-suktam.mp3'),
-  shiv_sankalpa_suktam:require('../../assets/sounds/shiv-sankalpa-suktam.mp3'),
+  bhagya_suktam:       require('../../assets/sounds/bhagya-suktam.m4a'),
+  shiv_sankalpa_suktam:require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
 const ALARM_SOUND_CATS = ['Nature', 'Sacred', 'Mantra', 'Stotra'] as const;
@@ -372,8 +372,8 @@ export default function AlarmsTab() {
   const [fabOpen, setFabOpen]               = useState(false);
   const [menuOpenId, setMenuOpenId]         = useState<string|null>(null);
   const [showWakeEdit, setShowWakeEdit]         = useState(false);
-  const [showAddExtraWake, setShowAddExtraWake]  = useState(false);
   const [editingExtraWake, setEditingExtraWake]  = useState<ExtraWakeAlarm | null>(null);
+  const [isAddingExtraWake, setIsAddingExtraWake] = useState(false);
   const [extraWakeAlarms, setExtraWakeAlarms]    = useState<ExtraWakeAlarm[]>([]);
   const [extraFormHour, setExtraFormHour]        = useState(8);
   const [extraFormMinute, setExtraFormMinute]    = useState(0);
@@ -483,6 +483,7 @@ export default function AlarmsTab() {
 
   const persistExtraWakeAlarms = async (updated: ExtraWakeAlarm[]) => {
     setExtraWakeAlarms(updated);
+    setSettings(prev => ({ ...prev, extraWakeAlarms: updated }));
     const s = await store.getJSON<AlarmSettings>(KEYS.alarmSettings) ?? DEFAULT_ALARM_SETTINGS;
     await store.setJSON(KEYS.alarmSettings, { ...s, extraWakeAlarms: updated });
   };
@@ -492,7 +493,8 @@ export default function AlarmsTab() {
     const updated = [...extraWakeAlarms, a];
     await persistExtraWakeAlarms(updated);
     await scheduleExtraWakeAlarm(a.id, a.hour, a.minute, a.label);
-    setShowAddExtraWake(false);
+    setShowWakeEdit(false);
+    setIsAddingExtraWake(false);
     setExtraFormLabel('');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const h12 = a.hour === 0 ? 12 : a.hour > 12 ? a.hour - 12 : a.hour;
@@ -534,11 +536,11 @@ export default function AlarmsTab() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title: 'Wake Alarm' },
-        i => { if (i === 1) setShowWakeEdit(true); if (i === 2) deleteWakeAlarm(); }
+        i => { if (i === 1) { setIsAddingExtraWake(false); setShowWakeEdit(true); } if (i === 2) deleteWakeAlarm(); }
       );
     } else {
       Alert.alert('Wake Alarm', '', [
-        { text: 'Edit', onPress: () => setShowWakeEdit(true) },
+        { text: 'Edit', onPress: () => { setIsAddingExtraWake(false); setShowWakeEdit(true); } },
         { text: 'Delete', style: 'destructive', onPress: deleteWakeAlarm },
         { text: 'Cancel', style: 'cancel' },
       ]);
@@ -550,7 +552,8 @@ export default function AlarmsTab() {
     setExtraFormHour(alarm.hour);
     setExtraFormMinute(alarm.minute);
     setExtraFormLabel(alarm.label ?? '');
-    setShowAddExtraWake(true);
+    setIsAddingExtraWake(true);
+    setShowWakeEdit(true);
   };
 
   const updateExtraWakeAlarm = async () => {
@@ -563,7 +566,8 @@ export default function AlarmsTab() {
     await persistExtraWakeAlarms(updated);
     const changed = updated.find(a => a.id === editingExtraWake.id)!;
     if (changed.enabled) await scheduleExtraWakeAlarm(changed.id, changed.hour, changed.minute, changed.label);
-    setShowAddExtraWake(false);
+    setShowWakeEdit(false);
+    setIsAddingExtraWake(false);
     setEditingExtraWake(null);
     setExtraFormLabel('');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -699,7 +703,7 @@ export default function AlarmsTab() {
     }
     try {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false, staysActiveInBackground: true });
-      const { sound } = await Audio.Sound.createAsync(require('../../assets/sounds/mantra_alarm.wav'), { shouldPlay: true, volume: 1.0, isLooping: true });
+      const { sound } = await Audio.Sound.createAsync(require('../../assets/sounds/mantra_alarm.m4a'), { shouldPlay: true, volume: 1.0, isLooping: true });
       (global as any).__alarmSound = sound;
     } catch { chantMantra(mantra, true); }
   };
@@ -781,7 +785,7 @@ export default function AlarmsTab() {
     }
     await Notifications.scheduleNotificationAsync({
       identifier: `alarm-${entry.id}`,
-      content: { title, body: entry.type === 'habit' ? 'Time for your habit. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵' : 'Your alarm is ringing!', sound: 'mantra_alarm.wav', data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : entry.type === 'habit' ? 'habit-alarm' : 'quick-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, soundId: entry.soundId ?? 'morning_birds' } },
+      content: { title, body: entry.type === 'habit' ? 'Time for your habit. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵' : 'Your alarm is ringing!', sound: 'mantra_alarm.m4a', data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : entry.type === 'habit' ? 'habit-alarm' : 'quick-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, soundId: entry.soundId ?? 'morning_birds' } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: entry.hour, minute: entry.minute },
     });
   };
@@ -858,7 +862,11 @@ export default function AlarmsTab() {
       {/* ── Next Alarm Banner ── */}
       {nextAlarm && (
         <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: 'rgba(0,0,0,0.52)', borderWidth: 1, borderColor: nextAlarm.color + '45' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)', overflow: 'hidden' }}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+              start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }}
+              style={StyleSheet.absoluteFillObject} />
             <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: nextAlarm.color }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 8, fontWeight: '900', color: nextAlarm.color, letterSpacing: 1.4 }}>NEXT ALARM</Text>
@@ -874,9 +882,13 @@ export default function AlarmsTab() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
         {/* ── Alarm List (iOS-native slim rows) ── */}
         <View style={S.listContainer}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+            start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }}
+            style={StyleSheet.absoluteFillObject} />
 
           {/* Primary Wake Alarm Row */}
-          <TouchableOpacity style={S.alarmRow} onPress={() => setShowWakeEdit(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={S.alarmRow} onPress={() => { setIsAddingExtraWake(false); setShowWakeEdit(true); }} activeOpacity={0.8}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
                 <Ionicons name="alarm" size={9} color="#a78bfa" />
@@ -890,7 +902,7 @@ export default function AlarmsTab() {
                 <Text style={[S.alarmRowSub, { color: '#a78bfaCC' }]} numberOfLines={1}>
                   {playingMantra.emoji} {playingMantra.label}
                 </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', fontWeight: '700' }}>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
                   · {settings.wakeAlarm.enabled ? computeTimeUntilShort(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
                 </Text>
               </View>
@@ -902,6 +914,38 @@ export default function AlarmsTab() {
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+
+          {/* Extra Wake Alarm Rows */}
+          {extraWakeAlarms.map(alarm => (
+            <React.Fragment key={alarm.id}>
+              <View style={S.rowDivider} />
+              <TouchableOpacity style={S.alarmRow} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                    <Ionicons name="alarm" size={9} color="#c4b5fd" />
+                    <Text style={[S.alarmRowBadge, { color: '#c4b5fd' }]}>WAKE ALARM · DAILY</Text>
+                  </View>
+                  <Text style={[S.alarmRowTime, !alarm.enabled && S.alarmRowTimeOff]}>
+                    {pad(alarm.hour)}:{pad(alarm.minute)}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                    <Text style={[S.alarmRowSub, { color: '#c4b5fdCC' }]} numberOfLines={1}>
+                      {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
+                      · {alarm.enabled ? computeTimeUntilShort(alarm.hour, alarm.minute, liveClock) : 'off'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Toggle value={alarm.enabled} onToggle={() => toggleExtraWake(alarm.id)} color="#c4b5fd" />
+                  <TouchableOpacity onPress={() => showExtraWakeMenu(alarm)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
 
           {/* Habit + Quick + SoundBath Rows */}
           {alarmEntries.map(entry => {
@@ -932,7 +976,7 @@ export default function AlarmsTab() {
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
                       <Text style={[S.alarmRowSub, { color: accent + 'CC' }]} numberOfLines={1}>{subLine}</Text>
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', fontWeight: '700' }}>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
                         · {entry.enabled ? computeTimeUntilShort(entry.hour, entry.minute, liveClock) : 'off'}
                       </Text>
                     </View>
@@ -964,7 +1008,7 @@ export default function AlarmsTab() {
       {fabOpen && (
         <View style={S.fabMenu}>
           {([
-            { label: '⏰  Wake Alarm',       color: ACCENT,    onPress: () => { setFabOpen(false); setShowWakeEdit(true); } },
+            { label: '⏰  Wake Alarm',       color: ACCENT,    onPress: () => { setFabOpen(false); setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
             { label: '🎯  Habit Alarm',       color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
             { label: '⚡  Quick Alarm',        color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
             { label: '🎵  Sound Bath',         color: '#a78bfa', onPress: () => { setFabOpen(false); openAddModal('soundbath'); } },
@@ -980,15 +1024,19 @@ export default function AlarmsTab() {
       </TouchableOpacity>
 
       {/* Wake Alarm Edit Modal */}
-      <Modal visible={showWakeEdit} animationType="slide" transparent onRequestClose={() => { stopPreview(); setShowWakeEdit(false); }}>
+      <Modal visible={showWakeEdit} animationType="slide" transparent onRequestClose={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }}>
         <View style={S.sheetOverlay}>
           <View style={S.sheet}>
             <View style={S.sheetHandle} />
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={S.sheetTitle}>🌅  Morning Wake-Up Alarm</Text>
-              <Text style={{ fontSize: 10, color: '#FFFFFF35', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>DEFAULT: 4:00 AM  ·  BRAHMA MUHURTA</Text>
-              <TimeAdjuster hour={settings.wakeAlarm.hour} minute={settings.wakeAlarm.minute} onChange={setWakeTime} />
-              {prakritiWake && (
+              <Text style={S.sheetTitle}>{isAddingExtraWake ? (editingExtraWake ? '⏰  Edit Wake Alarm' : '⏰  New Wake Alarm') : '🌅  Morning Wake-Up Alarm'}</Text>
+              {!isAddingExtraWake && <Text style={{ fontSize: 10, color: '#FFFFFF35', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>DEFAULT: 4:00 AM  ·  BRAHMA MUHURTA</Text>}
+              <TimeAdjuster
+                hour={isAddingExtraWake ? extraFormHour : settings.wakeAlarm.hour}
+                minute={isAddingExtraWake ? extraFormMinute : settings.wakeAlarm.minute}
+                onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : setWakeTime}
+              />
+              {!isAddingExtraWake && prakritiWake && (
                 <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: prakritiWake.hour, minute: prakritiWake.minute } }); }}>
                   <Text style={{ fontSize: 16 }}>🌿</Text>
                   <View style={{ flex: 1 }}>
@@ -1000,13 +1048,33 @@ export default function AlarmsTab() {
               )}
               <Text style={S.sheetSection}>QUICK PRESETS</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                {PRESETS.map(p => { const active = settings.wakeAlarm.hour === p.hour && settings.wakeAlarm.minute === p.minute; return (
-                  <TouchableOpacity key={p.label} onPress={() => applyPreset(p)} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
-                    <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
-                    <Text style={S.presetChipLabel}>{p.label}</Text>
-                  </TouchableOpacity>
-                ); })}
+                {PRESETS.map(p => {
+                  const active = isAddingExtraWake
+                    ? (extraFormHour === p.hour && extraFormMinute === p.minute)
+                    : (settings.wakeAlarm.hour === p.hour && settings.wakeAlarm.minute === p.minute);
+                  return (
+                    <TouchableOpacity key={p.label} onPress={() => {
+                      if (isAddingExtraWake) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setExtraFormHour(p.hour); setExtraFormMinute(p.minute); }
+                      else { applyPreset(p); }
+                    }} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
+                      <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
+                      <Text style={S.presetChipLabel}>{p.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+              {isAddingExtraWake && (
+                <>
+                  <Text style={S.sheetSection}>LABEL (optional)</Text>
+                  <TextInput
+                    style={S.customInput}
+                    placeholder="e.g. Backup alarm, Gym alarm..."
+                    placeholderTextColor={Colors.textDim}
+                    value={extraFormLabel}
+                    onChangeText={setExtraFormLabel}
+                  />
+                </>
+              )}
               <Text style={S.sheetSection}>ALARM SOUND</Text>
               {ALARM_SOUND_CATS.map(cat => {
                 const sounds = ALARM_SOUNDS.filter(s => s.cat === cat);
@@ -1100,8 +1168,24 @@ export default function AlarmsTab() {
                   </View>
                 </LinearGradient>
               )}
-              <TouchableOpacity onPress={() => { stopPreview(); setShowWakeEdit(false); }} style={S.sheetDoneBtn}>
-                <Text style={S.sheetDoneTxt}>Done</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  stopPreview();
+                  if (isAddingExtraWake) {
+                    editingExtraWake ? updateExtraWakeAlarm() : addExtraWakeAlarm();
+                  } else {
+                    setShowWakeEdit(false);
+                  }
+                }}
+                style={S.sheetDoneBtn}
+              >
+                <Text style={S.sheetDoneTxt}>
+                  {isAddingExtraWake
+                    ? (editingExtraWake
+                        ? `✓ Update  ·  ${fmt12(extraFormHour, extraFormMinute)}`
+                        : `✓ Set Alarm  ·  ${fmt12(extraFormHour, extraFormMinute)}`)
+                    : 'Done'}
+                </Text>
               </TouchableOpacity>
               <View style={{ height: 48 }} />
             </ScrollView>
@@ -1386,6 +1470,7 @@ export default function AlarmsTab() {
         </View>
       </Modal>
 
+
     </ImageBackground>
   );
 }
@@ -1428,11 +1513,11 @@ const S = StyleSheet.create({
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
-  fab: { position: 'absolute', bottom: 90, left: (width / 2) - 30, width: 60, height: 60, borderRadius: 30, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: ACCENT, shadowOpacity: 0.6, shadowRadius: 16 },
+  fab: { position: 'absolute', bottom: 92, right: 20, width: 54, height: 54, borderRadius: 27, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: ACCENT, shadowOpacity: 0.6, shadowRadius: 16 },
   fabOpen: { backgroundColor: '#c05e00' },
-  fabTxt: { fontSize: 30, color: '#fff', fontWeight: '200', lineHeight: 36, marginTop: 2 },
+  fabTxt: { fontSize: 26, color: '#fff', fontWeight: '200', lineHeight: 32, marginTop: 2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', bottom: 162, left: 0, right: 0, gap: 8, alignItems: 'center', zIndex: 10 },
+  fabMenu: { position: 'absolute', bottom: 158, left: 0, right: 0, gap: 8, alignItems: 'flex-end', paddingRight: 20, zIndex: 10 },
   fabMenuItem: { backgroundColor: '#0D0D20', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 6 },
   fabMenuItemTxt: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
@@ -1463,11 +1548,11 @@ const S = StyleSheet.create({
   cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#a78bfaBB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
-  listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14 },
-  alarmRowBadge: { fontSize: 9, fontWeight: '900', letterSpacing: 1.3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  alarmRowTime: { fontSize: 46, fontWeight: '300', color: '#FFFFFF', letterSpacing: -2.5, lineHeight: 52, textShadowColor: 'rgba(0,0,0,0.92)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 14 },
-  alarmRowTimeOff: { color: 'rgba(255,255,255,0.32)', textShadowColor: 'rgba(0,0,0,0.7)' },
-  alarmRowSub: { fontSize: 13, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.88)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 7 },
+  listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)' },
+  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 11 },
+  alarmRowBadge: { fontSize: 9, fontWeight: '900', letterSpacing: 1.3, textShadowColor: 'rgba(0,0,0,0.98)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  alarmRowTime: { fontSize: 34, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.5, lineHeight: 40, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 14 },
+  alarmRowTimeOff: { color: 'rgba(255,255,255,0.28)', textShadowColor: 'rgba(0,0,0,0.95)' },
+  alarmRowSub: { fontSize: 12, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 18 },
 });

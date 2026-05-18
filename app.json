@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "owner": "suryaalarm",
+    "owner": "rezoalarm",
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -82,7 +82,7 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/sounds/mantra_alarm.wav"
+            "./assets/sounds/mantra_alarm.m4a"
           ],
           "androidMode": "default",
           "androidCollapsedTitle": "SolRize",
@@ -128,7 +128,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cd203427-9e30-4448-8ce7-b9f02b942d04"
+        "projectId": "fdb509bf-2641-4a50-9dec-69752b6f22aa"
       }
     }
   }

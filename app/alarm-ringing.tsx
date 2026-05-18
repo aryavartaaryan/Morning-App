@@ -39,8 +39,8 @@ const MANTRA_TO_WAKE: Record<string, string> = {
 };
 
 const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
-  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
-  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.m4a'),
+  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
 // Gentle / nature sounds that are bundled as .m4a — no download needed
@@ -61,6 +61,66 @@ const BUNDLED_NATURE_ASSETS: Record<string, any> = {
   wanderlust_breeze:  require('../assets/sounds/wanderlust-breeze.m4a'),
   forest_campfire:    require('../assets/sounds/forest-campfire.m4a'),
   indian_beats:       require('../assets/sounds/indian-beats.m4a'),
+  // ── Sitar ──────────────────────────────────────────────────────────────────
+  space_sitar:        require('../assets/sounds/space-sitar.m4a'),
+  sitar_long:         require('../assets/sounds/sitar-long.m4a'),
+  sitar_tabla_bells:  require('../assets/sounds/sitar-tabla-bells.m4a'),
+  indian_sitar_raga:  require('../assets/sounds/indian-sitar-raga.m4a'),
+  sitar_summer_raga:  require('../assets/sounds/sitar-summer-raga.m4a'),
+  sitar_radiance:     require('../assets/sounds/sitar-radiance.m4a'),
+  sitar_tanpura_sarangi: require('../assets/sounds/sitar-tanpura-sarangi.m4a'),
+  sitar_tanpura_bgm:  require('../assets/sounds/sitar-tanpura.m4a'),
+  veena_classical:    require('../assets/sounds/veena-classical.m4a'),
+  sitar_calm:         require('../assets/sounds/sitar-calm.m4a'),
+  veena_raga:         require('../assets/sounds/veena-raga.m4a'),
+  // ── Flute ──────────────────────────────────────────────────────────────────
+  andean_flute:       require('../assets/sounds/andean-flute.m4a'),
+  quena_flute:        require('../assets/sounds/quena-flute.m4a'),
+  native_flute:       require('../assets/sounds/native-flute.m4a'),
+  native_flute_echo:  require('../assets/sounds/native-flute-echo.m4a'),
+  bamboo_flute:       require('../assets/sounds/bamboo-flute.m4a'),
+  pan_flute:          require('../assets/sounds/pan-flute.m4a'),
+  arabian_flute:      require('../assets/sounds/arabian-flute.m4a'),
+  arabic_flute:       require('../assets/sounds/arabic-flute.m4a'),
+  flute_scale:        require('../assets/sounds/flute-scale.m4a'),
+  forest_flute:       require('../assets/sounds/forest-flute.m4a'),
+  bansuri_forest:     require('../assets/sounds/bansuri-forest.m4a'),
+  bansuri_melody:     require('../assets/sounds/bansuri-melody.m4a'),
+  bansuri_tarana:     require('../assets/sounds/bansuri-tarana.m4a'),
+  // ── Tabla ──────────────────────────────────────────────────────────────────
+  tabla_beat:         require('../assets/sounds/tabla-beat.m4a'),
+  tabla_shuffle:      require('../assets/sounds/tabla-shuffle.m4a'),
+  tabla_loop:         require('../assets/sounds/tabla-loop.m4a'),
+  tabla_jam:          require('../assets/sounds/tabla-jam.m4a'),
+  tabla_claves:       require('../assets/sounds/tabla-claves.m4a'),
+  // ── Birds ──────────────────────────────────────────────────────────────────
+  eagle_feather:      require('../assets/sounds/eagle-feather.m4a'),
+  cuckoo_forest:      require('../assets/sounds/cuckoo-forest.m4a'),
+  cuckoo_clock:       require('../assets/sounds/cuckoo-clock.m4a'),
+  cuckoo_soft:        require('../assets/sounds/cuckoo-soft.m4a'),
+  peacock_wild:       require('../assets/sounds/peacock-wild.m4a'),
+  cuckoo_chime:       require('../assets/sounds/cuckoo-chime.m4a'),
+  india_countryside_birds: require('../assets/sounds/india-countryside-birds.m4a'),
+  cuckoo_birds_forest:require('../assets/sounds/cuckoo-birds-forest.m4a'),
+  peacock_call:       require('../assets/sounds/peacock.m4a'),
+  koel_bird:          require('../assets/sounds/koel-bird.m4a'),
+  // ── Tanpura ────────────────────────────────────────────────────────────────
+  tanpura_sacred_432hz: require('../assets/sounds/tanpura-sacred-432hz.m4a'),
+  tanpura_breath:     require('../assets/sounds/tanpura-breath.m4a'),
+  tanpura_loop:       require('../assets/sounds/tanpura-loop.m4a'),
+  raga_tanpura_drone: require('../assets/sounds/raga-tanpura-drone.m4a'),
+  tanpura_mystic:     require('../assets/sounds/tanpura-mystic.m4a'),
+  tanpura_serene:     require('../assets/sounds/tanpura-serene.m4a'),
+  // ── World / Sacred ─────────────────────────────────────────────────────────
+  sargija_eastern:    require('../assets/sounds/sargija-eastern.m4a'),
+  tagore_festival:    require('../assets/sounds/tagore-festival.m4a'),
+  world_ambient:      require('../assets/sounds/world-ambient.m4a'),
+  tibetan_dreams:     require('../assets/sounds/tibetan-dreams.m4a'),
+  spiritual_journey:  require('../assets/sounds/spiritual-journey.m4a'),
+  reincarnation_tones:require('../assets/sounds/reincarnation-tones.m4a'),
+  night_jungle_chiangmai: require('../assets/sounds/night-jungle-chiangmai.m4a'),
+  heaven_tune:        require('../assets/sounds/heaven-tune.m4a'),
+  om_shanti:          require('../assets/sounds/om-shanti.m4a'),
 };
 
 
@@ -91,6 +151,66 @@ const ALARM_SOUND_META: Record<string, { label: string; icon: string; color: str
   bhagya_suktam:       { label: 'Bhagya Suktam',         icon: '🌟', color: '#fbbf24' },
   shiv_sankalpa_suktam:{ label: 'Shiv Sankalpa Suktam',  icon: '🕉️', color: '#c4b5fd' },
   fusion:              { label: 'Fusion Wake',           icon: '✨', color: '#fbbf24' },
+  // ── Sitar ────────────────────────────────────────────────────────────────
+  space_sitar:         { label: 'Space Sitar',           icon: '🪐', color: '#fcd34d' },
+  sitar_long:          { label: 'Sitar Meditation',      icon: '🎸', color: '#f59e0b' },
+  sitar_tabla_bells:   { label: 'Sitar, Tabla & Bells',  icon: '🎵', color: '#fbbf24' },
+  indian_sitar_raga:   { label: 'Indian Sitar Raga',     icon: '🎶', color: '#fb923c' },
+  sitar_summer_raga:   { label: 'Summer Healing Raga',   icon: '☀️', color: '#fde68a' },
+  sitar_radiance:      { label: 'Sitar Radiance',        icon: '✨', color: '#f97316' },
+  sitar_tanpura_sarangi:{ label: 'Sitar, Tanpura & Sarangi', icon: '🪕', color: '#f59e0b' },
+  sitar_tanpura_bgm:   { label: 'Sitar & Tanpura',       icon: '🎼', color: '#fbbf24' },
+  veena_classical:     { label: 'Classical Veena',       icon: '🪗', color: '#fcd34d' },
+  sitar_calm:          { label: 'Calm Sitar',             icon: '🎸', color: '#fcd34d' },
+  veena_raga:          { label: 'Veena Raga Kanada',      icon: '🪗', color: '#f59e0b' },
+  // ── Flute ────────────────────────────────────────────────────────────────
+  andean_flute:        { label: 'Andean Flute',          icon: '🏔️', color: '#6ee7b7' },
+  quena_flute:         { label: 'Canyon Quena',          icon: '🏜️', color: '#86efac' },
+  native_flute:        { label: 'Native American Flute', icon: '🪶', color: '#a3e635' },
+  native_flute_echo:   { label: 'Native Flute Echo',     icon: '🌀', color: '#86efac' },
+  bamboo_flute:        { label: 'Bamboo Flute',          icon: '🎋', color: '#34d399' },
+  pan_flute:           { label: 'Pan Flute Drift',       icon: '🌬️', color: '#67e8f9' },
+  arabian_flute:       { label: 'Arabian Flute & Drums', icon: '🌙', color: '#fbbf24' },
+  arabic_flute:        { label: 'Arabic Flute',          icon: '🕌', color: '#fde68a' },
+  flute_scale:         { label: 'Flute Meditation',      icon: '🎶', color: '#6ee7b7' },
+  forest_flute:        { label: 'Forest Flute',          icon: '🌿', color: '#86efac' },
+  bansuri_forest:      { label: 'Bansuri Forest',         icon: '🌿', color: '#34d399' },
+  bansuri_melody:      { label: 'Bansuri Melody',         icon: '🎵', color: '#6ee7b7' },
+  bansuri_tarana:      { label: 'Bansuri Tarana',         icon: '🎶', color: '#86efac' },
+  // ── Tabla ────────────────────────────────────────────────────────────────
+  tabla_beat:          { label: 'Tabla Beat',            icon: '🥁', color: '#f97316' },
+  tabla_shuffle:       { label: 'Tabla Shuffle',         icon: '🪘', color: '#fb923c' },
+  tabla_loop:          { label: 'Tabla Loop 90',         icon: '🎵', color: '#f59e0b' },
+  tabla_jam:           { label: 'Tabla Jam',             icon: '🎶', color: '#fbbf24' },
+  tabla_claves:        { label: 'Tabla & Claves',        icon: '🪗', color: '#fb923c' },
+  // ── Birds ────────────────────────────────────────────────────────────────
+  eagle_feather:       { label: 'Eagle Call',            icon: '🦅', color: '#78716c' },
+  cuckoo_forest:       { label: 'Cuckoo Forest',         icon: '🌳', color: '#4ade80' },
+  cuckoo_clock:        { label: 'Cuckoo Clock',          icon: '🕰️', color: '#86efac' },
+  cuckoo_soft:         { label: 'Soft Cuckoo',           icon: '🐦', color: '#6ee7b7' },
+  peacock_wild:        { label: 'Wild Peacock',          icon: '🦚', color: '#34d399' },
+  cuckoo_chime:        { label: 'Cuckoo Chime',          icon: '🔔', color: '#a3e635' },
+  india_countryside_birds: { label: 'India Countryside', icon: '🌾', color: '#fde68a' },
+  cuckoo_birds_forest: { label: 'Cuckoo & Forest Birds', icon: '🌲', color: '#86efac' },
+  peacock_call:        { label: 'Peacock Call',          icon: '🦚', color: '#4ade80' },
+  koel_bird:           { label: 'Koel Bird Song',        icon: '🎵', color: '#34d399' },
+  // ── Tanpura ──────────────────────────────────────────────────────────────
+  tanpura_sacred_432hz:{ label: 'Sacred Tanpura 432Hz',  icon: '🕉️', color: '#c084fc' },
+  tanpura_breath:      { label: 'Tanpura Breath',        icon: '🌬️', color: '#a78bfa' },
+  tanpura_loop:        { label: 'Tanpura Loop',          icon: '🔁', color: '#818cf8' },
+  raga_tanpura_drone:  { label: 'Raga Tanpura Drone',    icon: '🌌', color: '#6366f1' },
+  tanpura_mystic:      { label: 'Mystic Tanpura',         icon: '🌌', color: '#818cf8' },
+  tanpura_serene:      { label: 'Serene Tanpura',         icon: '🧘', color: '#a78bfa' },
+  // ── World / Sacred additions ─────────────────────────────────────────────
+  sargija_eastern:     { label: 'Eastern Sargija',       icon: '🌏', color: '#f97316' },
+  tagore_festival:     { label: 'Tagore Festival',       icon: '🎊', color: '#fbbf24' },
+  world_ambient:       { label: 'World Ambient',         icon: '🌍', color: '#a78bfa' },
+  tibetan_dreams:      { label: 'Tibetan Dreams',        icon: '🧘', color: '#818cf8' },
+  spiritual_journey:   { label: 'Spiritual Journey',     icon: '🌌', color: '#c084fc' },
+  reincarnation_tones: { label: 'Reincarnation Tones',   icon: '♾️', color: '#a78bfa' },
+  night_jungle_chiangmai: { label: 'Night Jungle',       icon: '🦟', color: '#4ade80' },
+  heaven_tune:         { label: 'Heaven Tune',            icon: '✨',  color: '#fde68a' },
+  om_shanti:           { label: 'Om Shanti',              icon: '🕉️', color: '#c084fc' },
 };
 
 const { width, height } = Dimensions.get('window');
@@ -155,7 +275,7 @@ export default function AlarmRingingScreen() {
         interruptionModeIOS: 1,
         interruptionModeAndroid: 1,
       });
-      const source = bundledAsset ?? (uri ? { uri } : require('../assets/sounds/mantra_alarm.wav'));
+      const source = bundledAsset ?? (uri ? { uri } : require('../assets/sounds/mantra_alarm.m4a'));
       const { sound } = await Audio.Sound.createAsync(
         source,
         { shouldPlay: true, isLooping: true, volume: 1.0 },
@@ -164,7 +284,7 @@ export default function AlarmRingingScreen() {
     } catch {
       try {
         const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/mantra_alarm.wav'),
+          require('../assets/sounds/mantra_alarm.m4a'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },
         );
         soundRef.current = sound;
@@ -534,83 +654,81 @@ export default function AlarmRingingScreen() {
     <ImageBackground
       source={bgImageSource ?? undefined}
       style={S.screen}
-      imageStyle={{ opacity: 0.65 }}
+      imageStyle={{ opacity: 0.68 }}
     >
-      {/* Dark gradient overlay */}
-      <LinearGradient
-        colors={['rgba(4,4,16,0.75)', 'rgba(4,4,16,0.22)', 'rgba(4,4,16,0.88)']}
-        style={StyleSheet.absoluteFillObject}
-      />
       <StatusBar hidden />
 
-      {/* ── Full-screen ambient glow ── */}
-      <View style={[S.ambientGlow, { backgroundColor: mission.color + '12' }]} pointerEvents="none" />
-      <View style={[S.ambientGlowBottom, { backgroundColor: mission.color + '08' }]} pointerEvents="none" />
+      {/* Dark gradient — heavy at poles, transparent in middle so image shows */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.88)']}
+        locations={[0, 0.18, 0.55, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
 
-      {/* ── TOP SECTION: Sound chip + Orb + Time ── */}
-      <View style={S.topSection}>
-        {/* Now playing chip */}
-        <View style={[S.soundChip, { borderColor: soundMeta.color + '55', backgroundColor: soundMeta.color + '18' }]}>
+      {/* Subtle ambient colour wash */}
+      <View style={[S.ambientGlow, { backgroundColor: soundMeta.color + '0E' }]} pointerEvents="none" />
+
+      {/* ── TOP: time + sound chip ── */}
+      <View style={S.topArea}>
+        <Text style={S.clockText}>{timeStr}</Text>
+        <View style={[S.chip, { borderColor: soundMeta.color + '55', backgroundColor: 'rgba(0,0,0,0.40)' }]}>
           <View style={[S.liveDot, { backgroundColor: soundMeta.color }]} />
           <Text style={{ fontSize: 13 }}>{soundMeta.icon}</Text>
-          <Text style={[S.soundChipLabel, { color: soundMeta.color }]}>{soundMeta.label || 'Now Playing'}</Text>
+          <Text style={[S.chipLabel, { color: soundMeta.color }]}>{soundMeta.label || 'Now Playing'}</Text>
         </View>
-
-        {/* Pulsing orb — shows sound icon */}
-        <View style={S.ringWrap} pointerEvents="none">
-          <Animated.View style={[S.outerRing, outerStyle, { borderColor: soundMeta.color + '45' }]} />
-          <Animated.View style={[S.midRing, { borderColor: soundMeta.color + '25' }]} />
-          <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: soundMeta.color + '1A', borderColor: soundMeta.color + '45' }]}>
-            <Text style={S.ringIcon}>{soundMeta.icon || '🕉️'}</Text>
-          </Animated.View>
-        </View>
-
-        {/* Time */}
-        <Text style={S.time}>{timeStr}</Text>
-        <Text style={[S.kala, { color: soundMeta.color }]}>{kala.toUpperCase()}</Text>
-
-        {/* Streak pill */}
-        {snoozedFor === null && (
-          <View style={[S.streakPill, { borderColor: mission.color + '40', backgroundColor: mission.color + '12' }]}>
-            <Text style={{ fontSize: 13 }}>🔥</Text>
-            <Text style={{ fontSize: 12, fontWeight: '800', color: mission.color }}>
-              {userName} · Day {ms.streak || 1}
-            </Text>
-          </View>
-        )}
       </View>
 
-      {/* ── SNOOZE ACTIVE VIEW ── */}
-      {snoozedFor !== null && snoozeCountdown !== null && (
-        <View style={S.snoozeActiveView}>
+      {/* ── CENTER: pulsing orb OR snooze countdown ── */}
+      {snoozedFor === null ? (
+        <View style={S.orbWrap} pointerEvents="none">
+          <Animated.View style={[S.outerRing, outerStyle, { borderColor: soundMeta.color + '40' }]} />
+          <View style={[S.midRing, { borderColor: soundMeta.color + '20' }]} />
+          <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: soundMeta.color + '18', borderColor: soundMeta.color + '50' }]}>
+            <Text style={S.orbIcon}>{soundMeta.icon || '🕉️'}</Text>
+          </Animated.View>
+        </View>
+      ) : (
+        <View style={S.orbWrap}>
           <Text style={S.snoozeActiveLabel}>SNOOZED — RESUMES IN</Text>
-          <Text style={[S.snoozeActiveTimer, { color: mission.color }]}>{fmtCountdown(snoozeCountdown)}</Text>
+          {snoozeCountdown !== null && (
+            <Text style={[S.snoozeActiveTimer, { color: soundMeta.color }]}>{fmtCountdown(snoozeCountdown)}</Text>
+          )}
           <Text style={S.snoozeActiveNote}>Mission challenge starts when alarm resumes.</Text>
         </View>
       )}
 
-      {/* ── BOTTOM SECTION: Mission + CTA ── */}
-      {snoozedFor === null && (
-        <View style={S.bottomSection}>
-          {/* Mission row — compact */}
-          <Animated.View style={shakeStyle}>
-            <View style={[S.missionRow, { borderColor: mission.color + '40', backgroundColor: mission.color + '0A' }]}>
-              <Text style={{ fontSize: 30 }}>{mission.icon}</Text>
-              <View style={{ flex: 1, marginLeft: 14 }}>
+      {/* ── BOTTOM ── */}
+      {snoozedFor === null ? (
+        <View style={S.bottomArea}>
+          {/* Kala + streak hint */}
+          <Text style={[S.kalaHint, { color: soundMeta.color + 'BB' }]}>
+            {kala.toUpperCase()}{'  ·  '}{userName} · DAY {ms.streak || 1} 🔥
+          </Text>
+
+          {/* Mission pill */}
+          <Animated.View style={[shakeStyle, { width: '100%' }]}>
+            <View style={[S.missionPill, { borderColor: mission.color + '40', backgroundColor: 'rgba(0,0,0,0.35)' }]}>
+              <Text style={{ fontSize: 22 }}>{mission.icon}</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[S.missionBadge, { color: mission.color + 'AA' }]}>TODAY'S MISSION</Text>
                 <Text style={S.missionName}>{mission.name}</Text>
-                <Text style={S.missionTagline}>{mission.tagline}</Text>
               </View>
             </View>
           </Animated.View>
 
-          {/* CTA — premium begin-your-day button */}
-          <Animated.View style={[btnStyle, { width: '100%', marginTop: 16 }]}>
+          {/* CTA — glassmorphism, sleek */}
+          <Animated.View style={[{ width: '100%' }, btnStyle]}>
             <TouchableOpacity
-              style={[S.ctaBtn, { backgroundColor: mission.color, shadowColor: mission.color }]}
+              style={[S.ctaBtn, { shadowColor: soundMeta.color }]}
               onPress={handleStart}
-              activeOpacity={0.88}
+              activeOpacity={0.84}
             >
+              <LinearGradient
+                colors={[soundMeta.color + '55', soundMeta.color + '30']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+              />
               <Text style={S.ctaIcon}>☀️</Text>
               <View style={{ marginLeft: 10 }}>
                 <Text style={S.ctaTitle}>Begin Your Day</Text>
@@ -619,7 +737,7 @@ export default function AlarmRingingScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Snooze */}
+          {/* Snooze — very subtle ghost pill */}
           <TouchableOpacity style={S.snoozeBtn} onPress={() => setShowSnoozeModal(true)} activeOpacity={0.75}>
             <Text style={S.snoozeBtnText}>💤  Snooze</Text>
           </TouchableOpacity>
@@ -627,6 +745,12 @@ export default function AlarmRingingScreen() {
           {/* Lock badge */}
           <View style={S.lockBadge}>
             <Text style={S.lockText}>🔒  Can't close · complete mission or snooze</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={S.bottomArea}>
+          <View style={S.lockBadge}>
+            <Text style={S.lockText}>⏰  Alarm will resume automatically</Text>
           </View>
         </View>
       )}
@@ -668,59 +792,64 @@ export default function AlarmRingingScreen() {
 }
 
 const S = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#040410' },
-  ambientGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.55, borderBottomLeftRadius: width, borderBottomRightRadius: width },
-  ambientGlowBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.45 },
-  // Top section
-  topSection: { flex: 0, alignItems: 'center', paddingTop: height * 0.08, paddingBottom: 16 },
-  ringWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220, marginBottom: 16 },
-  outerRing: { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1.5 },
-  midRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1 },
-  innerCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  ringIcon: { fontSize: 40 },
-  time: { fontSize: 72, fontWeight: '100', color: '#FFFFFF', letterSpacing: -3 },
-  kala: { fontSize: 9, fontWeight: '900', letterSpacing: 2, marginTop: 6, textAlign: 'center' },
-  streakPill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 99, paddingHorizontal: 14, paddingVertical: 6, marginTop: 12 },
-  // Snooze active
-  snoozeActiveView: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  screen:      { flex: 1, backgroundColor: '#02040C' },
+  ambientGlow: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+
+  // Top
+  topArea:   { paddingTop: 54, alignItems: 'center', gap: 10 },
+  chip:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8 },
+  liveDot:   { width: 7, height: 7, borderRadius: 3.5 },
+  chipLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.4 },
+  clockText: { fontSize: 64, fontWeight: '100', color: '#FFFFFF', letterSpacing: -2.5 },
+
+  // Center orb
+  orbWrap:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  outerRing:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1.5 },
+  midRing:     { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1 },
+  innerCircle: { width: 110, height: 110, borderRadius: 55, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  orbIcon:     { fontSize: 44 },
+
+  // Snooze active (inside orbWrap)
   snoozeActiveLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2, marginBottom: 8 },
   snoozeActiveTimer: { fontSize: 80, fontWeight: '100', letterSpacing: -4 },
-  snoozeActiveNote: { fontSize: 12, color: '#FFFFFF35', marginTop: 12, textAlign: 'center', fontStyle: 'italic', lineHeight: 18 },
-  // Bottom section
-  bottomSection: { flex: 1, paddingHorizontal: 22, paddingBottom: 36, justifyContent: 'flex-end', gap: 0 },
-  quote: { fontSize: 11, color: '#FFFFFF30', textAlign: 'center', lineHeight: 17, fontStyle: 'italic', paddingHorizontal: 12, marginBottom: 12 },
-  missionCard: { borderWidth: 1, borderRadius: 22, padding: 18, gap: 10, marginBottom: 16 },
+  snoozeActiveNote:  { fontSize: 12, color: '#FFFFFF35', marginTop: 12, textAlign: 'center', fontStyle: 'italic', lineHeight: 18 },
+
+  // Bottom
+  bottomArea:  { paddingHorizontal: 26, paddingBottom: 52, alignItems: 'center', gap: 12 },
+  kalaHint:    { fontSize: 9, fontWeight: '800', letterSpacing: 1.8 },
+
+  // Mission pill — compact glassmorphism row
+  missionPill:  { width: '100%', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14 },
   missionBadge: { fontSize: 8, fontWeight: '900', letterSpacing: 2 },
-  missionName: { fontSize: 18, fontWeight: '900', color: '#FFFFFF' },
-  missionTagline: { fontSize: 11, color: '#FFFFFF60', lineHeight: 16, marginTop: 2 },
-  missionChip: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start' },
-  missionChipText: { fontSize: 10, fontWeight: '800' },
-  stopBtn: { width: '100%', borderRadius: 99, paddingVertical: 20, alignItems: 'center' },
-  stopBtnText: { fontSize: 16, fontWeight: '900', color: '#000000EA', letterSpacing: 0.2 },
-  snoozeBtn: { width: '100%', borderRadius: 99, paddingVertical: 13, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF07' },
-  snoozeBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF45' },
-  lockBadge: { alignSelf: 'center', marginTop: 12, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#FFFFFF05', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF0E' },
-  lockText: { fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 0.3 },
+  missionName:  { fontSize: 16, fontWeight: '900', color: '#FFFFFF', marginTop: 2 },
+
+  // CTA — glassmorphism, not solid
+  ctaBtn: {
+    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 24, paddingVertical: 22, overflow: 'hidden',
+    shadowOpacity: 0.45, shadowRadius: 24, elevation: 12, shadowOffset: { width: 0, height: 6 },
+  },
+  ctaIcon:  { fontSize: 22, color: '#FFFFFFEE' },
+  ctaTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 },
+  ctaSub:   { fontSize: 10, fontWeight: '600', color: '#FFFFFF70', letterSpacing: 0.5, marginTop: 2 },
+
+  // Snooze — ghost pill, minimal
+  snoozeBtn:     { paddingHorizontal: 28, paddingVertical: 11, borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF07' },
+  snoozeBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF45' },
+
+  // Lock badge
+  lockBadge: { paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#FFFFFF05', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF0E' },
+  lockText:  { fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 0.3 },
+
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.80)', justifyContent: 'flex-end' },
-  snoozeSheet: { backgroundColor: '#0C0C1C', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, padding: 24, paddingBottom: 44 },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginBottom: 18 },
-  snoozeSheetTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
-  snoozeSheetSub: { fontSize: 13, color: '#FFFFFF45', lineHeight: 20, marginBottom: 4 },
-  snoozeOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF06' },
-  snoozeOptionMin: { fontSize: 20, fontWeight: '900', color: '#fff' },
+  modalOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.80)', justifyContent: 'flex-end' },
+  snoozeSheet:       { backgroundColor: '#0C0C1C', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, padding: 24, paddingBottom: 44 },
+  sheetHandle:       { width: 36, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginBottom: 18 },
+  snoozeSheetTitle:  { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
+  snoozeSheetSub:    { fontSize: 13, color: '#FFFFFF45', lineHeight: 20, marginBottom: 4 },
+  snoozeOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF06' },
+  snoozeOptionMin:   { fontSize: 20, fontWeight: '900', color: '#fff' },
   snoozeOptionLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 },
-  snoozeCancelBtn: { alignItems: 'center', paddingVertical: 16, marginTop: 6 },
-  snoozeCancelText: { fontSize: 13, color: '#FFFFFF35', fontWeight: '700' },
-  // Sound chip (now playing indicator)
-  soundChip:      { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 99, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 18 },
-  liveDot:        { width: 7, height: 7, borderRadius: 3.5 },
-  soundChipLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
-  // Mission row
-  missionRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 0 },
-  // Premium CTA
-  ctaBtn:         { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 99, paddingVertical: 20, shadowOpacity: 0.50, shadowRadius: 22, shadowOffset: { width: 0, height: 6 }, elevation: 14 },
-  ctaIcon:        { fontSize: 26 },
-  ctaTitle:       { fontSize: 18, fontWeight: '900', color: '#000000EE', letterSpacing: 0.1 },
-  ctaSub:         { fontSize: 10, fontWeight: '700', color: '#00000055', letterSpacing: 0.5, marginTop: 2 },
+  snoozeCancelBtn:   { alignItems: 'center', paddingVertical: 16, marginTop: 6 },
+  snoozeCancelText:  { fontSize: 13, color: '#FFFFFF35', fontWeight: '700' },
 });

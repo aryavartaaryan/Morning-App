@@ -2,6 +2,7 @@ import React, {
   createContext, useContext, useState, useRef,
   useCallback, useEffect, ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import { Audio } from 'expo-av';
 import type { MoodKey } from '@/components/MoodSheet';
 
@@ -42,6 +43,9 @@ type SoundPlayerCtx = {
   showFullPlayer: boolean;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
+  openReelsOrPlayer: () => void;
+  registerReelsOpener: (fn: () => void) => void;
+  unregisterReelsOpener: () => void;
 };
 
 const Ctx = createContext<SoundPlayerCtx | null>(null);
@@ -56,13 +60,21 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
   const [preMood, setPreMood]           = useState<MoodKey | null>(null);
   const [showFullPlayer, setShowFullPlayer] = useState(false);
+  const reelsOpenerRef = useRef<(() => void) | null>(null);
 
-  const openFullPlayer  = useCallback(() => setShowFullPlayer(true),  []);
-  const closeFullPlayer = useCallback(() => setShowFullPlayer(false), []);
+  const openFullPlayer       = useCallback(() => setShowFullPlayer(true),  []);
+  const closeFullPlayer      = useCallback(() => setShowFullPlayer(false), []);
+  const openReelsOrPlayer    = useCallback(() => {
+    if (reelsOpenerRef.current) reelsOpenerRef.current();
+    else setShowFullPlayer(true);
+  }, []);
+  const registerReelsOpener  = useCallback((fn: () => void) => { reelsOpenerRef.current = fn; }, []);
+  const unregisterReelsOpener = useCallback(() => { reelsOpenerRef.current = null; }, []);
 
   // Map of soundId -> Audio.Sound for all simultaneously playing sounds
   const mixRefs         = useRef<Map<string, Audio.Sound>>(new Map());
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopCbRef       = useRef<(() => void) | null>(null);
   const stopFnRef       = useRef<(triggerCb?: boolean) => Promise<void>>(async () => {});
   const pendingMetaRef  = useRef<PlayableSoundMeta | null>(null);
@@ -72,6 +84,34 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, []);
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+  }, []);
+
+  const startHeartbeat = useCallback(() => {
+    clearHeartbeat();
+    heartbeatRef.current = setInterval(async () => {
+      if (isPausedRef.current || mixRefs.current.size === 0) return;
+      // Restart any sound that stopped due to a phone-call / notification / iOS interruption.
+      for (const snd of mixRefs.current.values()) {
+        try {
+          const status = await snd.getStatusAsync();
+          if (status.isLoaded && !status.isPlaying) {
+            // Re-activate audio session before resuming (handles iOS interruption deactivation)
+            await Audio.setAudioModeAsync({
+              staysActiveInBackground: true,
+              playsInSilentModeIOS: true,
+              shouldDuckAndroid: false,
+              interruptionModeIOS: 1,
+              interruptionModeAndroid: 1,
+            }).catch(() => {});
+            await snd.playAsync().catch(() => {});
+          }
+        } catch { /* sound may have been unloaded */ }
+      }
+    }, 8_000);
+  }, [clearHeartbeat]);
 
   // Stop + unload ALL sounds in mix
   const stopAllRefs = useCallback(async () => {
@@ -84,6 +124,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
 
   const stopSound = useCallback(async (triggerCb = true) => {
     clearTimer();
+    clearHeartbeat();
     await stopAllRefs();
     setPlayingId(null);
     setPlayingMeta(null);
@@ -93,9 +134,13 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     setSessionSecs(21 * 60);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
     else { stopCbRef.current = null; }
-  }, [clearTimer, stopAllRefs]);
+  }, [clearTimer, clearHeartbeat, stopAllRefs]);
 
   useEffect(() => { stopFnRef.current = stopSound; }, [stopSound]);
+
+  // Keep clearHeartbeat stable in stopFnRef's closure
+  const clearHeartbeatRef = useRef(clearHeartbeat);
+  useEffect(() => { clearHeartbeatRef.current = clearHeartbeat; }, [clearHeartbeat]);
 
   const startTimer = useCallback((secs: number) => {
     clearTimer();
@@ -108,13 +153,32 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   }, [clearTimer]);
 
   // Create and start a single Audio.Sound, storing it in mixRefs
-  const loadAndPlay = useCallback(async (meta: PlayableSoundMeta) => {
-    const { sound } = await Audio.Sound.createAsync(
-      meta.src,
-      { isLooping: true, volume: 1.0, shouldPlay: !isPausedRef.current },
-    );
-    mixRefs.current.set(meta.id, sound);
-    return sound;
+  const loadAndPlay = useCallback(async (meta: PlayableSoundMeta): Promise<Audio.Sound | null> => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        meta.src,
+        { isLooping: true, volume: 1.0, shouldPlay: !isPausedRef.current },
+      );
+      // Watchdog: expo-av isLooping can silently fail on M4A/certain codecs.
+      // If the sound finishes instead of looping, restart it automatically.
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        // Only restart when the file explicitly finished (isLooping silently failed).
+        // Do NOT restart on every !isPlaying poll — that creates a cascading playAsync
+        // storm at loop boundaries that kills the audio engine within 1-2 minutes.
+        if (!isPausedRef.current && status.didJustFinish) {
+          sound.replayAsync().catch(() => {
+            // Fallback: manually seek to start and play
+            sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
+          });
+        }
+      });
+      mixRefs.current.set(meta.id, sound);
+      return sound;
+    } catch (e) {
+      console.warn('[SoundPlayer] Failed to load sound:', meta.id, e);
+      return null;
+    }
   }, []);
 
   // Primary play — clears mix, starts single sound, sets timer
@@ -123,27 +187,48 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     durationSecs: number,
     onStop?: () => void,
   ) => {
-    clearTimer();
-    await stopAllRefs();
-    stopCbRef.current = onStop ?? null;
-    isPausedRef.current = false;
-    setIsPaused(false);
-    setPlayingId(meta.id);
-    setPlayingMeta(meta);
-    setMixedSounds([meta]);
-    setSessionSecs(durationSecs);
-    await loadAndPlay(meta);
-    startTimer(durationSecs);
-  }, [clearTimer, stopAllRefs, loadAndPlay, startTimer]);
+    try {
+      clearTimer();
+      await stopAllRefs();
+      stopCbRef.current = onStop ?? null;
+      isPausedRef.current = false;
+      setIsPaused(false);
+      setPlayingId(meta.id);
+      setPlayingMeta(meta);
+      setMixedSounds([meta]);
+      setSessionSecs(durationSecs);
+      const sound = await loadAndPlay(meta);
+      if (!sound) {
+        // Audio failed to load — reset state cleanly instead of crashing
+        setPlayingId(null);
+        setPlayingMeta(null);
+        setMixedSounds([]);
+        stopCbRef.current = null;
+        return;
+      }
+      startTimer(durationSecs);
+      startHeartbeat();
+    } catch (e) {
+      console.warn('[SoundPlayer] playSound error:', e);
+      setPlayingId(null);
+      setPlayingMeta(null);
+      setMixedSounds([]);
+      stopCbRef.current = null;
+    }
+  }, [clearTimer, stopAllRefs, loadAndPlay, startTimer, startHeartbeat]);
 
   // Add a second/third/fourth sound to the active mix (no timer reset)
   const addToMix = useCallback(async (meta: PlayableSoundMeta) => {
-    setMixedSounds(prev => {
-      if (prev.length >= MAX_MIX) return prev;
-      if (prev.find(s => s.id === meta.id)) return prev;
-      return [...prev, meta];
-    });
-    await loadAndPlay(meta);
+    try {
+      setMixedSounds(prev => {
+        if (prev.length >= MAX_MIX) return prev;
+        if (prev.find(s => s.id === meta.id)) return prev;
+        return [...prev, meta];
+      });
+      await loadAndPlay(meta);
+    } catch (e) {
+      console.warn('[SoundPlayer] addToMix error:', e);
+    }
   }, [loadAndPlay]);
 
   // Remove one sound from mix; if last sound, stop session
@@ -171,17 +256,23 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const togglePause = useCallback(async () => {
     const all = Array.from(mixRefs.current.values());
     if (isPausedRef.current) {
-      await Promise.all(all.map(s => s.playAsync().catch(() => {})));
+      // Mark as playing BEFORE calling playAsync so no race window exists
       isPausedRef.current = false;
       setIsPaused(false);
+      await Promise.all(all.map(s => s.playAsync().catch(() => {})));
       startTimer(sessionSecs);
+      startHeartbeat();
     } else {
-      await Promise.all(all.map(s => s.pauseAsync().catch(() => {})));
+      // Mark as paused BEFORE calling pauseAsync so the heartbeat and status
+      // callback cannot see isPausedRef=false while the sound is mid-pause
+      // and accidentally call playAsync to fight the pause.
       isPausedRef.current = true;
       setIsPaused(true);
       clearTimer();
+      clearHeartbeat();
+      await Promise.all(all.map(s => s.pauseAsync().catch(() => {})));
     }
-  }, [sessionSecs, startTimer, clearTimer]);
+  }, [sessionSecs, startTimer, clearTimer, startHeartbeat, clearHeartbeat]);
 
   const changeTimer = useCallback((secs: number) => {
     setSessionSecs(secs);
@@ -227,15 +318,39 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    Audio.setAudioModeAsync({
-      staysActiveInBackground: true,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: false,
-      playThroughEarpieceAndroid: false,
-    }).catch(() => {});
+    const applyAudioMode = () =>
+      Audio.setAudioModeAsync({
+        staysActiveInBackground: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+        interruptionModeIOS: 1,
+        interruptionModeAndroid: 1,
+      }).catch(() => {});
+
+    applyAudioMode();
+
+    // Re-activate audio session and restart interrupted sounds when app comes to foreground
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        applyAudioMode();
+        if (!isPausedRef.current && mixRefs.current.size > 0) {
+          Array.from(mixRefs.current.values()).forEach(snd => {
+            snd.getStatusAsync()
+              .then(status => {
+                if (status.isLoaded && !status.isPlaying) snd.playAsync().catch(() => {});
+              })
+              .catch(() => {});
+          });
+        }
+      }
+    });
+
     return () => {
+      appStateSub.remove();
       stopAllRefs().catch(() => {});
       clearTimer();
+      clearHeartbeat();
     };
   }, []);
 
@@ -246,6 +361,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
       showFullPlayer, openFullPlayer, closeFullPlayer,
+      openReelsOrPlayer, registerReelsOpener, unregisterReelsOpener,
     }}>
       {children}
     </Ctx.Provider>

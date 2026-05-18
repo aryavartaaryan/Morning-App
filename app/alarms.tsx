@@ -29,6 +29,7 @@ import {
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
+import { SOUND_IMAGES as ALARM_SOUND_IMAGES } from '@/lib/sleepSoundsData';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
@@ -146,14 +147,14 @@ const MANTRAS = [
     hint: 'ॐ श्री सूक्तम्', pitch: 0.80, rate: 0.65,
     text: 'Om Hiranyavarnaam Harineem Suvarna Rajata Srajaam. Chandraam Hiranmayeem Lakshmeem Jaatavedo Ma Aavaha.',
     audioUrl: '',
-    bundledSrc: require('../assets/sounds/bhagya-suktam.mp3'),
+    bundledSrc: require('../assets/sounds/bhagya-suktam.m4a'),
   },
   {
     id: 'shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd',
     hint: 'ॐ यज्जाग्रतो', pitch: 0.78, rate: 0.62,
     text: 'Yaj Jaagrato Dooaram Udaiti Daivam. Tad U Suptasya Tathaivati. Tan Me Manah Shiva Sankalpam Astu.',
     audioUrl: '',
-    bundledSrc: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+    bundledSrc: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
   },
 ];
 
@@ -306,6 +307,169 @@ function TimeAdjuster({ hour, minute, onChange }: { hour: number; minute: number
   );
 }
 
+const ALARM_PICKER_CATS = [
+  { id: 'All',     label: '⚡ ALL',     color: '#FFFFFF' },
+  { id: 'mantra',  label: '🕉 MANTRA',  color: '#a78bfa' },
+  { id: 'gentle',  label: '🫙 GENTLE',  color: '#60a5fa' },
+  { id: 'nature',  label: '🌿 NATURE',  color: '#34d399' },
+  { id: 'sitar',   label: '🎸 SITAR',   color: '#fcd34d' },
+  { id: 'flute',   label: '🪈 FLUTE',   color: '#6ee7b7' },
+  { id: 'tabla',   label: '🥁 TABLA',   color: '#fb923c' },
+  { id: 'birds',   label: '🦚 BIRDS',   color: '#4ade80' },
+  { id: 'tanpura', label: '🎵 TANPURA', color: '#c084fc' },
+  { id: 'world',   label: '🌍 WORLD',   color: '#f97316' },
+];
+
+function AlarmSoundPickerModal({
+  visible, selectedId, title = 'ALARM SOUND', onSelect, onClose,
+}: {
+  visible: boolean;
+  selectedId: string;
+  title?: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [cat, setCat] = useState('All');
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const soundRef = useRef<any>(null);
+  const CARD_SIZE = (width - 52) / 3;
+
+  const stopPreview = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    } catch {}
+    setPreviewId(null);
+  };
+
+  useEffect(() => {
+    if (!visible) { stopPreview(); }
+  }, [visible]);
+
+  const handleCardTap = async (ws: (typeof WAKE_SOUNDS)[number]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSelect(ws.id);
+    if (previewId === ws.id) { await stopPreview(); return; }
+    await stopPreview();
+    const source = ws.bundledAsset ?? (ws.audioUrl ? { uri: ws.audioUrl } : null);
+    if (!source) return;
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false });
+      const { sound } = await Audio.Sound.createAsync(source, { shouldPlay: true, volume: 1.0, isLooping: false });
+      soundRef.current = sound;
+      setPreviewId(ws.id);
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.isLoaded && status.didJustFinish) { soundRef.current = null; setPreviewId(null); }
+      });
+    } catch {}
+  };
+
+  const handleClose = async () => { await stopPreview(); onClose(); };
+
+  const filtered = cat === 'All' ? WAKE_SOUNDS : WAKE_SOUNDS.filter(ws => ws.category === cat);
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent onRequestClose={handleClose}>
+      <View style={{ flex: 1, backgroundColor: '#060610' }}>
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+            <TouchableOpacity onPress={handleClose} style={{ padding: 4 }}>
+              <Text style={{ color: '#FFFFFF50', fontSize: 22, fontWeight: '300' }}>✕</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2.5 }}>{title}</Text>
+            <TouchableOpacity onPress={handleClose} style={{ backgroundColor: '#a78bfa', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 }}>
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Selected sound badge */}
+          {(() => {
+            const ws = WAKE_SOUNDS.find(s => s.id === selectedId);
+            if (!ws) return null;
+            const col = ALARM_PICKER_CATS.find(c => c.id === ws.category)?.color ?? '#a78bfa';
+            return (
+              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: col + '12', borderWidth: 1, borderColor: col + '30', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 15 }}>{ws.icon}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: col }}>{ws.label}</Text>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: col }} />
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: col + '90', letterSpacing: 0.5 }}>SELECTED</Text>
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* Category tabs */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 6 }} contentContainerStyle={{ paddingHorizontal: 14, gap: 7, paddingVertical: 4 }}>
+            {ALARM_PICKER_CATS.map(c => {
+              const active = cat === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCat(c.id); }}
+                  style={{ paddingVertical: 7, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1, borderColor: active ? c.color : '#FFFFFF14', backgroundColor: active ? c.color + '22' : '#FFFFFF06' }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 0.8, color: active ? c.color : '#FFFFFF40' }}>{c.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Sound grid */}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {filtered.map(ws => {
+                const active = selectedId === ws.id;
+                const isPrev = previewId === ws.id;
+                const imgUrl = ALARM_SOUND_IMAGES[ws.id];
+                const catCol = ALARM_PICKER_CATS.find(c => c.id === ws.category)?.color ?? '#a78bfa';
+                return (
+                  <TouchableOpacity
+                    key={ws.id}
+                    onPress={() => handleCardTap(ws)}
+                    activeOpacity={0.82}
+                    style={{ width: CARD_SIZE, height: CARD_SIZE + 30, borderRadius: 16, overflow: 'hidden', borderWidth: active ? 2 : 1, borderColor: active ? catCol : '#FFFFFF12' }}
+                  >
+                    <ImageBackground
+                      source={imgUrl ? { uri: imgUrl } : undefined}
+                      style={{ flex: 1 }}
+                      imageStyle={{ resizeMode: 'cover' }}
+                    >
+                      {!imgUrl && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#12101A' }]} />}
+                      <LinearGradient colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.78)']} style={StyleSheet.absoluteFillObject} />
+                      {active && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: catCol + '22' }]} />}
+                      <View style={{ flex: 1, justifyContent: 'flex-end', padding: 8 }}>
+                        <Text style={{ fontSize: 18, marginBottom: 2 }}>{ws.icon}</Text>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: active ? catCol : '#FFFFFFDD', lineHeight: 13 }} numberOfLines={2}>{ws.label}</Text>
+                        {isPrev ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
+                            <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.5 }}>PLAYING</Text>
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: 7, color: ws.bundledAsset ? '#10b98170' : '#60a5fa70', marginTop: 2, fontWeight: '700' }}>
+                            {ws.bundledAsset ? '✓ Offline' : ws.audioUrl ? '☁ Online' : '—'}
+                          </Text>
+                        )}
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+}
+
 export default function AlarmsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -370,7 +534,7 @@ export default function AlarmsScreen() {
   const [alarmType, setAlarmType] = useState<'mantra' | 'gayatri'>('mantra');
   const [gentleWake, setGentleWake] = useState(false);
   const [rampMinutes, setRampMinutes] = useState(5);
-  const [soundCategory, setSoundCategory] = useState<'mantra' | 'gentle' | 'nature'>('mantra');
+  const [soundCategory, setSoundCategory] = useState<'mantra' | 'gentle' | 'nature' | 'sitar' | 'flute' | 'tabla' | 'birds' | 'tanpura' | 'world'>('mantra');
   const [sleepSoundId, setSleepSoundId] = useState<string | null>(null);
   const sleepSoundRef = useRef<any>(null);
 
@@ -760,7 +924,7 @@ export default function AlarmsScreen() {
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false, staysActiveInBackground: true });
         const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/mantra_alarm.wav'),
+          require('../assets/sounds/mantra_alarm.m4a'),
           { shouldPlay: true, volume: 1.0, isLooping: true },
         );
         (global as any).__alarmSound = sound;
@@ -804,7 +968,7 @@ export default function AlarmsScreen() {
       content: {
         title: '⏰ Snooze Over — Rise & Shine! 🌅',
         body: 'Brahma Muhurta will not wait. Rise, meditate and begin your practice. 🙏',
-        sound: 'mantra_alarm.wav',
+        sound: 'mantra_alarm.m4a',
         data: { type: 'wake-alarm', speechId: 'wake-alarm' },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 600, repeats: false },
@@ -1005,7 +1169,7 @@ export default function AlarmsScreen() {
         content: {
           title,
           body: entry.type === 'habit' ? 'Time for your habit! 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵' : 'Your alarm is ringing! ⏰',
-          sound: 'mantra_alarm.wav',
+          sound: 'mantra_alarm.m4a',
           data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? '', label: entry.label, alarmType: entry.type, soundId: entry.soundId ?? 'morning_birds' },
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: entry.hour, minute: entry.minute },
@@ -1317,36 +1481,17 @@ export default function AlarmsScreen() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSettingsSoundOpen(v => !v); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSettingsSoundOpen(true); }}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}
           >
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 }}>ALARM SOUND</Text>
               <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
-                {MANTRAS.find(mn => mn.id === selectedMantraId)?.emoji}  {MANTRAS.find(mn => mn.id === selectedMantraId)?.label}
+                {WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.icon ?? '🎵'}{'  '}{WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.label ?? 'Gayatri Mantra'}
               </Text>
             </View>
-            <Text style={{ color: '#FFFFFF25', fontSize: 14 }}>{settingsSoundOpen ? '▲' : '▼'}</Text>
+            <Text style={{ color: '#FFFFFF25', fontSize: 20 }}>›</Text>
           </TouchableOpacity>
-          {settingsSoundOpen && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-              <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-                {MANTRAS.map(mn => {
-                  const active = selectedMantraId === mn.id;
-                  return (
-                    <TouchableOpacity key={mn.id} onPress={() => handleMantraSelect(mn.id)} style={[S.mantraChip, active && { borderColor: mn.color, backgroundColor: mn.color + '18' }]}>
-                      <Text style={{ fontSize: 24 }}>{mn.emoji}</Text>
-                      <Text style={{ color: active ? mn.color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{mn.label}</Text>
-                      <Text style={{ color: mn.color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>
-                      <Text style={{ color: dlStatus[mn.id] === 'downloaded' || dlStatus[mn.id] === 'bundled' ? '#10b981' : dlStatus[mn.id] === 'downloading' ? mn.color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
-                        {dlStatus[mn.id] === 'downloaded' ? '✓ Offline' : dlStatus[mn.id] === 'bundled' ? '✓ Bundled' : dlStatus[mn.id] === 'downloading' ? `⬇ ${Math.round((dlProgress[mn.id] ?? 0) * 100)}%` : '☁ Online'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          )}
           {!batteryOptOk && (
             <TouchableOpacity onPress={() => NativeModules.AlarmModule?.requestBatteryOptimizationExemption?.()} style={{ backgroundColor: '#f9731610', borderWidth: 1, borderColor: '#f9731630', borderRadius: 16, padding: 16, marginBottom: 12 }}>
               <Text style={{ color: '#f97316', fontWeight: '800', fontSize: 13 }}>⚡ Enable Battery Optimization Exemption</Text>
@@ -1559,62 +1704,19 @@ export default function AlarmsScreen() {
                 })}
               </View>
 
-              {/* Alarm Sound — accordion */}
+              {/* Alarm Sound — tap to open full picker */}
               <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setModalSoundOpen(v => !v); }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setModalSoundOpen(true); }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, marginTop: 8, borderTopWidth: 1, borderTopColor: '#FFFFFF0A' }}
               >
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>ALARM SOUND</Text>
                   <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 3 }}>
                     {WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.icon ?? '🎵'}{'  '}{WAKE_SOUNDS.find(ws => ws.id === selectedMantraId)?.label ?? 'Gayatri Mantra'}
                   </Text>
                 </View>
-                <Text style={{ color: '#FFFFFF35', fontSize: 16 }}>{modalSoundOpen ? '▲' : '▼'}</Text>
+                <Text style={{ color: '#FFFFFF35', fontSize: 20 }}>›</Text>
               </TouchableOpacity>
-              {modalSoundOpen && (
-                <View style={{ marginBottom: 16 }}>
-                  {/* Category tabs */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                    {(['mantra', 'gentle', 'nature'] as const).map(cat => (
-                      <TouchableOpacity
-                        key={cat}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSoundCategory(cat); }}
-                        style={{ flex: 1, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
-                          borderColor: soundCategory === cat ? '#a78bfa' : '#FFFFFF14',
-                          backgroundColor: soundCategory === cat ? '#a78bfa18' : '#FFFFFF06',
-                          alignItems: 'center' }}
-                      >
-                        <Text style={{ fontSize: 9, fontWeight: '900', color: soundCategory === cat ? '#a78bfa' : '#FFFFFF40', letterSpacing: 1 }}>
-                          {cat === 'mantra' ? '🕉  MANTRA' : cat === 'gentle' ? '🫙  GENTLE' : '🌿  NATURE'}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {/* Sound chips for selected category */}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-                      {WAKE_SOUNDS.filter(ws => ws.category === soundCategory).map(ws => {
-                        const active = selectedMantraId === ws.id;
-                        const mn = MANTRAS.find(m => m.id === ws.id);
-                        const color = mn?.color ?? (ws.category === 'nature' ? '#34d399' : '#60a5fa');
-                        const dlSt = dlStatus[ws.id];
-                        return (
-                          <TouchableOpacity key={ws.id} onPress={() => handleWakeSoundSelect(ws.id)}
-                            style={[S.mantraChip, active && { borderColor: color, backgroundColor: color + '18' }]}>
-                            <Text style={{ fontSize: 24 }}>{ws.icon}</Text>
-                            <Text style={{ color: active ? color : Colors.text, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{ws.label}</Text>
-                            {mn && <Text style={{ color: color + '80', fontSize: 7, textAlign: 'center' }}>{mn.hint}</Text>}
-                            <Text style={{ color: (ws.bundledAsset || ws.bundledKey) ? '#10b981' : dlSt === 'downloaded' ? '#10b981' : dlSt === 'downloading' ? color : Colors.textDim, fontSize: 7, fontWeight: '800', textAlign: 'center' }}>
-                              {ws.bundledAsset ? '✓ Offline' : ws.bundledKey ? '✓ Bundled' : dlSt === 'downloaded' ? '✓ Offline' : dlSt === 'downloading' ? `⬇ ${Math.round((dlProgress[ws.id] ?? 0) * 100)}%` : '☁ Online'}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
 
               {/* ── Gentle Wake section ── */}
               <View style={{ borderTopWidth: 1, borderTopColor: '#FFFFFF0A', paddingTop: 14, marginBottom: 4 }}>
@@ -1931,74 +2033,32 @@ export default function AlarmsScreen() {
         </View>
       </Modal>
 
-      {/* ── Habit Alarm Sound Picker ── */}
-      <Modal visible={formSoundPickerOpen} animationType="slide" transparent onRequestClose={() => setFormSoundPickerOpen(false)}>
-        <View style={S.sheetOverlay}>
-          <View style={[S.sheet, { maxHeight: '74%' }]}>
-            <View style={S.sheetHandle} />
-            <Text style={S.sheetTitle}>🎵  Alarm Sound</Text>
+      {/* ── Habit / Sound Bath Alarm Sound Picker ── */}
+      <AlarmSoundPickerModal
+        visible={formSoundPickerOpen}
+        selectedId={formSoundId}
+        title="ALARM SOUND"
+        onSelect={id => setFormSoundId(id)}
+        onClose={() => setFormSoundPickerOpen(false)}
+      />
 
-            {/* ── 2 Category tabs ── */}
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-              {(['nature', 'sacred'] as const).map(cat => (
-                <TouchableOpacity
-                  key={cat}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundCat(cat); }}
-                  style={{ flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1,
-                    borderColor: formSoundCat === cat ? '#10b981' : '#FFFFFF14',
-                    backgroundColor: formSoundCat === cat ? '#10b98118' : '#FFFFFF06',
-                    alignItems: 'center' }}
-                >
-                  <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 1,
-                    color: formSoundCat === cat ? '#10b981' : '#FFFFFF40' }}>
-                    {cat === 'nature' ? '🌿  NATURE' : '🕉  MANTRAS & STOTRAS'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+      {/* ── Wake Alarm Sound Picker ── */}
+      <AlarmSoundPickerModal
+        visible={modalSoundOpen}
+        selectedId={selectedMantraId}
+        title="WAKE ALARM SOUND"
+        onSelect={handleWakeSoundSelect}
+        onClose={() => setModalSoundOpen(false)}
+      />
 
-            {/* ── Sound grid ── */}
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {(formSoundCat === 'nature'
-                  ? WAKE_SOUNDS.filter(ws => ws.category === 'nature')
-                  : WAKE_SOUNDS.filter(ws => ws.category === 'mantra' || ws.category === 'gentle')
-                ).map(ws => {
-                  const active = formSoundId === ws.id;
-                  const color = ws.category === 'nature' ? '#10b981' : ws.category === 'mantra' ? '#a78bfa' : '#fbbf24';
-                  return (
-                    <TouchableOpacity
-                      key={ws.id}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setFormSoundId(ws.id);
-                        setTimeout(() => setFormSoundPickerOpen(false), 150);
-                      }}
-                      style={{ width: (width - 56) / 3, borderRadius: 14, borderWidth: 1,
-                        borderColor: active ? color : '#FFFFFF18',
-                        backgroundColor: active ? color + '18' : '#FFFFFF06',
-                        padding: 12, alignItems: 'center', gap: 5 }}
-                    >
-                      <Text style={{ fontSize: 26 }}>{ws.icon}</Text>
-                      <Text style={{ fontSize: 9, fontWeight: '800', textAlign: 'center', lineHeight: 13,
-                        color: active ? color : '#fff' }}>{ws.label}</Text>
-                      <Text style={{ fontSize: 7, fontWeight: '800',
-                        color: (ws.bundledAsset || ws.bundledKey) ? '#10b981' : '#60a5fa' }}>
-                        {(ws.bundledAsset || ws.bundledKey) ? '✓ Offline' : '☁ Online'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <View style={{ height: 20 }} />
-            </ScrollView>
-
-            <TouchableOpacity onPress={() => setFormSoundPickerOpen(false)} style={[S.sheetDoneBtn, { marginTop: 8 }]}>
-              <Text style={S.sheetDoneTxt}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* ── Settings Alarm Sound Picker ── */}
+      <AlarmSoundPickerModal
+        visible={settingsSoundOpen}
+        selectedId={selectedMantraId}
+        title="ALARM SOUND"
+        onSelect={handleWakeSoundSelect}
+        onClose={() => setSettingsSoundOpen(false)}
+      />
 
       {/* ── Add / Edit Sound Bath Alarm Modal ── */}
       <Modal

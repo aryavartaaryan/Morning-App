@@ -114,7 +114,7 @@ export async function setupNotificationChannel() {
     await Notifications.setNotificationChannelAsync('onesutra-alarms', {
       name: 'OneSutra Alarms',
       importance: Notifications.AndroidImportance.MAX,
-      sound: 'mantra_alarm.wav',
+      sound: 'mantra_alarm.m4a',
       vibrationPattern: [0, 500, 500, 500],
       enableVibrate: true,
       showBadge: true,
@@ -141,7 +141,7 @@ export async function scheduleHabitReminders() {
       content: {
         title: r.title,
         body: r.body,
-        sound: 'mantra_alarm.wav',
+        sound: 'mantra_alarm.m4a',
         data: { speechId: r.id },
       },
       trigger: {
@@ -238,7 +238,7 @@ export async function scheduleWakeAlarm(hour: number, minute: number) {
     content: {
       title: `🌙 OneSutra Wake Alarm — ${pad(h12)}:${pad(minute)} ${period}`,
       body: 'Tap to begin your morning practice. 🙏',
-      sound: 'mantra_alarm.wav',
+      sound: 'mantra_alarm.m4a',
       interruptionLevel: 'timeSensitive',
       data: { type: 'wake-alarm', speechId: 'wake-alarm' },
     },
@@ -263,7 +263,7 @@ export async function scheduleBrahmaReminder() {
     content: {
       title: '🌑 Brahma Muhurta Begins in 15 min',
       body: 'The sacred pre-dawn window opens at 5 AM. The cosmos is silent. Prepare to meditate, chant your mantra, set your Sankalpa.',
-      sound: 'mantra_alarm.wav',
+      sound: 'mantra_alarm.m4a',
       data: { type: 'brahma-muhurta', speechId: 'brahma-muhurta' },
     },
     trigger: {
@@ -291,7 +291,7 @@ export async function scheduleHabitAlert(habitId: string) {
     content: {
       title: `${t.emoji} ${t.label} — Closing Soon`,
       body: `Your ${t.label} window closes in 15 minutes. Log it now to keep your streak! 🔥`,
-      sound: 'mantra_alarm.wav',
+      sound: 'mantra_alarm.m4a',
       data: { type: 'habit-expiry', habitId },
     },
     trigger: {
@@ -314,7 +314,7 @@ export async function scheduleCustomReminder(r: CustomReminder) {
   if (!r.enabled) return;
   await Notifications.scheduleNotificationAsync({
     identifier: `custom-${r.id}`,
-    content: { title: r.title, body: r.body, sound: 'mantra_alarm.wav', data: { type: 'custom' } },
+    content: { title: r.title, body: r.body, sound: 'mantra_alarm.m4a', data: { type: 'custom' } },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: r.hour,
@@ -358,7 +358,7 @@ export async function rescheduleAllFromSettings(s: AlarmSettings) {
     }
     await Notifications.scheduleNotificationAsync({
       identifier: r.id,
-      content: { title: r.title, body: r.body, sound: 'mantra_alarm.wav', data: { speechId: r.id } },
+      content: { title: r.title, body: r.body, sound: 'mantra_alarm.m4a', data: { speechId: r.id } },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: r.hour,

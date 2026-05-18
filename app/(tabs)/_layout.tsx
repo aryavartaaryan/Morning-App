@@ -1,5 +1,5 @@
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { Text, View, TouchableOpacity, StyleSheet, Platform, Animated, Modal, ImageBackground, StatusBar, ScrollView } from 'react-native';
+import { Text, View, TouchableOpacity, StyleSheet, Platform, Animated, Modal, ImageBackground, StatusBar, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,14 @@ function FullScreenPlayer() {
   const [showMixPicker, setShowMixPicker] = useState(false);
   const [showTimerPicker, setShowTimerPicker] = useState(false);
   const [mixCat, setMixCat] = useState<string>('All');
+
+  // Pre-warm the image cache the moment a new sound starts playing so the
+  // full-screen background appears instantly when the player is opened.
+  useEffect(() => {
+    if (playingMeta?.imageUri) {
+      Image.prefetch(playingMeta.imageUri).catch(() => {});
+    }
+  }, [playingMeta?.imageUri]);
 
   if (!playingMeta || !showFullPlayer) return null;
 
@@ -222,55 +230,128 @@ const FP = StyleSheet.create({
   sheetDoneTxt:   { fontSize: 14, fontWeight: '900', color: '#fff' },
 });
 
+function WaveformBars({ color, active }: { color: string; active: boolean }) {
+  const bar1 = useRef(new Animated.Value(0.3)).current;
+  const bar2 = useRef(new Animated.Value(0.7)).current;
+  const bar3 = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    if (!active) {
+      Animated.parallel([
+        Animated.timing(bar1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(bar2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(bar3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+    const animate = (bar: Animated.Value, min: number, max: number, dur: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bar, { toValue: max, duration: dur, useNativeDriver: true }),
+          Animated.timing(bar, { toValue: min, duration: dur, useNativeDriver: true }),
+        ])
+      ).start();
+    animate(bar1, 0.25, 1.0, 340);
+    animate(bar2, 0.15, 0.90, 260);
+    animate(bar3, 0.30, 0.80, 410);
+    return () => { bar1.stopAnimation(); bar2.stopAnimation(); bar3.stopAnimation(); };
+  }, [active]);
+
+  const barStyle = (anim: Animated.Value) => ({
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+    backgroundColor: color,
+    opacity: 0.9,
+    transform: [{ scaleY: anim }],
+  });
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, height: 16 }}>
+      <Animated.View style={barStyle(bar1)} />
+      <Animated.View style={barStyle(bar2)} />
+      <Animated.View style={barStyle(bar3)} />
+    </View>
+  );
+}
+
 function GlobalPlayerBar() {
-  const { playingId, isPaused, sessionSecs, playingMeta, togglePause, stopSound, openFullPlayer } = useSoundPlayer();
-  const slideAnim = useRef(new Animated.Value(80)).current;
+  const { playingId, isPaused, sessionSecs, playingMeta, mixedSounds, togglePause, stopSound, openReelsOrPlayer } = useSoundPlayer();
+  const slideAnim  = useRef(new Animated.Value(100)).current;
+  const glowAnim   = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: playingId ? 0 : 80,
+      toValue: playingId ? 0 : 100,
       useNativeDriver: true,
-      speed: 22,
-      bounciness: 3,
+      speed: 18,
+      bounciness: 4,
     }).start();
   }, [!!playingId]);
 
+  useEffect(() => {
+    if (!playingId || isPaused) { glowAnim.setValue(0.4); return; }
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1.0, duration: 1800, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.4, duration: 1800, useNativeDriver: true }),
+      ])
+    ).start();
+    return () => glowAnim.stopAnimation();
+  }, [playingId, isPaused]);
+
   if (!playingMeta) return null;
+
+  const isMix   = mixedSounds.length > 1;
+  const label   = isMix ? mixedSounds.map(s => s.emoji).join(' ') : playingMeta.label;
+  const subLine = isPaused ? 'Paused  ·  tap to expand' : `${fmtTimer(sessionSecs)} left  ·  tap to expand`;
+  const accentColor = playingMeta.color;
 
   return (
     <Animated.View style={[GP.wrap, { transform: [{ translateY: slideAnim }] }]}>
+      {/* Accent glow border top */}
+      <Animated.View style={[GP.accentLine, { backgroundColor: accentColor, opacity: glowAnim }]} />
+
       <LinearGradient
-        colors={[playingMeta.top + 'F0', playingMeta.bot + 'F8']}
+        colors={['rgba(10,10,22,0.98)', 'rgba(6,6,16,1.0)']}
         style={GP.grad}
       >
-        {/* Tap body → full-screen player */}
+        {/* Left — emoji art square */}
         <TouchableOpacity
           style={GP.bodyTap}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); openFullPlayer(); }}
-          activeOpacity={0.75}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openReelsOrPlayer(); }}
+          activeOpacity={0.80}
         >
-          <View style={[GP.liveDot, { backgroundColor: isPaused ? '#555' : playingMeta.color }]} />
-          <Text style={{ fontSize: 16 }}>{playingMeta.emoji}</Text>
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[GP.name, { color: playingMeta.color }]} numberOfLines={1}>
-              {playingMeta.label}
-            </Text>
-            <Text style={GP.sub}>
-              {isPaused ? 'Paused' : fmtTimer(sessionSecs) + ' left'}{'  ·  tap to expand'}
-            </Text>
+          <View style={[GP.emojiBox, { backgroundColor: accentColor + '22', borderColor: accentColor + '40' }]}>
+            <Text style={GP.emojiTxt}>{playingMeta.emoji}</Text>
+          </View>
+
+          {/* Info */}
+          <View style={GP.infoCol}>
+            <Text style={[GP.name, { color: '#FFFFFF' }]} numberOfLines={1}>{label}</Text>
+            <Text style={GP.sub} numberOfLines={1}>{subLine}</Text>
+          </View>
+
+          {/* Waveform */}
+          <View style={GP.waveWrap}>
+            <WaveformBars color={accentColor} active={!isPaused && !!playingId} />
           </View>
         </TouchableOpacity>
+
+        {/* Pause / Play */}
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); togglePause(); }}
-          style={GP.btn}
+          style={[GP.circleBtn, { borderColor: accentColor + '55', backgroundColor: accentColor + '15' }]}
         >
-          <Ionicons name={isPaused ? 'play' : 'pause'} size={17} color={playingMeta.color} />
+          <Ionicons name={isPaused ? 'play' : 'pause'} size={16} color={accentColor} />
         </TouchableOpacity>
+
+        {/* Stop */}
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(true); }}
-          style={[GP.btn, { marginLeft: 6, backgroundColor: '#FFFFFF0A' }]}
+          style={GP.stopBtn}
         >
-          <Ionicons name="stop" size={15} color="#FFFFFF40" />
+          <Ionicons name="stop" size={14} color="rgba(255,255,255,0.30)" />
         </TouchableOpacity>
       </LinearGradient>
     </Animated.View>
@@ -279,29 +360,64 @@ function GlobalPlayerBar() {
 
 const GP = StyleSheet.create({
   wrap: {
-    marginHorizontal: 14,
-    marginBottom: 6,
-    borderRadius: 18,
+    marginHorizontal: 12,
+    marginBottom: 7,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    elevation: 24,
+    borderColor: 'rgba(255,255,255,0.08)',
+    elevation: 28,
     shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.70,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  accentLine: {
+    height: 1.5,
+    width: '100%',
   },
   grad: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
-  name:    { fontSize: 12, fontWeight: '800', letterSpacing: 0.1, fontFamily: 'Nunito_800ExtraBold' },
-  sub:     { fontSize: 10, color: '#FFFFFF50', marginTop: 1 },
-  btn:     { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF14', alignItems: 'center', justifyContent: 'center' },
-  bodyTap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  bodyTap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  emojiBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiTxt: { fontSize: 20 },
+  infoCol: { flex: 1, gap: 3 },
+  name:    { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: -0.1, fontFamily: 'Nunito_800ExtraBold' },
+  sub:     { fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.1 },
+  waveWrap: { marginRight: 4 },
+  circleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stopBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 const TABS = [

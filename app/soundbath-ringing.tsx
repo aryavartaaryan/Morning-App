@@ -142,14 +142,17 @@ export default function SoundBathRingingScreen() {
     return () => { if (started) notifee.cancelNotification(SOUNDBATH_FS_ID).catch(() => {}); };
   }, []);
 
-  // ── Back button: free dismiss ────────────────────────────────────────────────
+  // ── Back button: blocked — must finish listening ─────────────────────────────
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      handleDismiss();
-      return true;
+      if (!dismissed) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        return true;
+      }
+      return false;
     });
     return () => sub.remove();
-  }, []);
+  }, [dismissed]);
 
   // ── Re-open when HOME pressed ────────────────────────────────────────────────
   useEffect(() => {

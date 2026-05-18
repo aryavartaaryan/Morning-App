@@ -143,14 +143,18 @@ export function getDoshaPeriods(solar: SolarTimes, nowH: number): DoshaPeriod[] 
   const nightSeg = nightLen / 3;
 
   // Absolute hour ranges (night periods may exceed 24 — spans midnight)
+  // Brahma Muhurta starts exactly 96 min (1.6 h) before sunrise — traditional definition.
+  // night_vata (pre-dawn clarity) covers that window; it shifts daily with solar sunrise.
+  // night_pitta (deep sleep) fills from end of evening_kapha to Brahma Muhurta onset.
+  const brahmaMuhurta = sunrise + 24 - (96 / 60); // 96 min before next sunrise
   // Order: predawn, morning-kapha, midday-pitta, afternoon-vata, evening-kapha, night-pitta
   const RANGES: [string, number, number][] = [
-    ['night_vata',     sunset + 2 * nightSeg,  sunset + nightLen],   // e.g. 26–30 = 2–6 AM
+    ['night_vata',     brahmaMuhurta,           sunrise + 24],        // Brahma Muhurta → sunrise
     ['morning_kapha',   sunrise,                sunrise + daySeg],    // e.g. 6–10 AM
     ['midday_pitta',    sunrise + daySeg,        sunrise + 2 * daySeg],
     ['afternoon_vata',  sunrise + 2 * daySeg,    sunset],
     ['evening_kapha',   sunset,                  sunset + nightSeg],  // e.g. 18–22
-    ['night_pitta',     sunset + nightSeg,        sunset + 2 * nightSeg],
+    ['night_pitta',     sunset + nightSeg,        brahmaMuhurta],     // deep sleep until Brahma Muhurta
   ];
 
   // Normalise nowH so early-morning hours map to the night cycle

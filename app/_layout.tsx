@@ -13,10 +13,11 @@ import {
 } from '@expo-google-fonts/nunito';
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import * as SplashScreen from 'expo-splash-screen';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
 import { ensureAllBgsCached } from '@/lib/bgImages';
+import { prefetchAllSoundImages } from '@/lib/soundImagePreload';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
@@ -133,9 +134,14 @@ const SS = StyleSheet.create({
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
   const router = useRouter();
   const segments = useSegments();
+  const navigationState = useRootNavigationState();
   const signalled = useRef(false);
 
   useEffect(() => {
+    // Wait until Expo Router's navigation container is fully mounted.
+    // Without this guard, router.replace() throws the
+    // "Attempted to navigate before mounting the Root Layout" crash.
+    if (!navigationState?.key) return;
     if (signalled.current) return;
     signalled.current = true;
     // Init alarm permissions + notification channel silently
@@ -156,7 +162,7 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
       router.replace('/(tabs)' as never);
     }
     setTimeout(() => onAuthReady(), 80);
-  }, []);
+  }, [navigationState?.key]);
 
   return null;
 }
@@ -164,9 +170,11 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
 function BodhiNotificationListener() {
   const router = useRouter();
   const segments = useSegments();
+  const navigationState = useRootNavigationState();
   // Guard: ensure we navigate to /alarm-ringing at most once per alarm cycle.
   // Multiple navigation calls re-mount the component, restarting audio playback.
   const alarmRoutedRef = useRef(false);
+  const navReady = !!navigationState?.key;
 
   // Reset the guard whenever we leave the alarm-ringing screen so the next
   // alarm cycle can trigger routing again.
@@ -178,6 +186,7 @@ function BodhiNotificationListener() {
 
   // ── When app is LAUNCHED by wake alarm (phone was sleeping/app was killed) ──
   useEffect(() => {
+    if (!navReady) return;
     getInitialAlarmNotification().then(async (initial) => {
       if (initial && !alarmRoutedRef.current) {
         const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
@@ -191,7 +200,7 @@ function BodhiNotificationListener() {
         }
       }
     }).catch(() => { });
-  }, []);
+  }, [navReady]);
 
   // ── When app resumes from BACKGROUND (not killed) and alarm fired ──────────
   // The native AlarmSoundService.launchApp() already brings the app to the
@@ -227,30 +236,66 @@ function BodhiNotificationListener() {
   // EventType.DELIVERED. We read + clear it here so the alarm screen opens
   // automatically even when getInitialNotification() returns null (fullScreen
   // action launches the activity without a user "tap").
+  //
+  // RACE-CONDITION FIX: The fullScreenAction intent launches MainActivity
+  // *concurrently* with onBackgroundEvent writing to AsyncStorage. A single
+  // immediate read races and loses — poll every 350 ms for up to 2.1 s so
+  // we catch the key regardless of OEM scheduling jitter.
   useEffect(() => {
     const PENDING_HABIT_KEY = 'onesutra_pending_habit_v1';
-    AsyncStorage.getItem(PENDING_HABIT_KEY)
-      .then((raw: string | null) => {
-        if (!raw) return;
-        AsyncStorage.removeItem(PENDING_HABIT_KEY).catch(() => {});
+    let cancelled = false;
+
+    const navigateToHabitAlarm = (raw: string) => {
+      if (cancelled) return;
+      AsyncStorage.removeItem(PENDING_HABIT_KEY).catch(() => {});
+      try {
         const alarm = JSON.parse(raw);
-        const hk = encodeURIComponent(alarm.habitKey ?? '');
-        const he = encodeURIComponent(alarm.habitEmoji ?? '🌿');
-        const hl = encodeURIComponent(alarm.label ?? 'Habit Alarm');
-        const at = alarm.alarmType ?? 'habit';
-        const sid = encodeURIComponent(alarm.soundId ?? 'morning_birds');
+        const hk  = encodeURIComponent(alarm.habitKey  ?? '');
+        const he  = encodeURIComponent(alarm.habitEmoji ?? '🌿');
+        const hl  = encodeURIComponent(alarm.label      ?? 'Habit Alarm');
+        const at  = alarm.alarmType ?? 'habit';
+        const sid = encodeURIComponent(alarm.soundId    ?? 'morning_birds');
         if (at === 'soundbath') {
           const lbl = encodeURIComponent(alarm.label ?? 'Sound Bath');
-          setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 400);
+          setTimeout(() => { if (!cancelled) router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never); }, 400);
         } else {
-          setTimeout(() => router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}&mantraId=${sid}` as never), 400);
+          setTimeout(() => { if (!cancelled) router.replace(`/habit-alarm-ringing?habitKey=${hk}&habitEmoji=${he}&label=${hl}&alarmType=${at}&mantraId=${sid}` as never); }, 400);
         }
-      })
-      .catch(() => {});
+      } catch { /* ignore parse error */ }
+    };
+
+    // Poll up to 6 × 350 ms = 2.1 s — covers the race where onBackgroundEvent
+    // hasn't finished writing to AsyncStorage when MainActivity is already up.
+    const pollPendingHabit = async () => {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) return;
+        try {
+          const raw = await AsyncStorage.getItem(PENDING_HABIT_KEY);
+          if (raw) { navigateToHabitAlarm(raw); return; }
+        } catch { /* ignore */ }
+        await new Promise<void>(resolve => setTimeout(resolve, 350));
+      }
+    };
+    pollPendingHabit().catch(() => {});
+
+    // Belt-and-suspenders: also check when app resumes from background
+    // (covers the edge case where the app was backgrounded, not killed).
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      AsyncStorage.getItem(PENDING_HABIT_KEY).then((raw) => {
+        if (raw) navigateToHabitAlarm(raw);
+      }).catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+    };
   }, []);
 
   // ── When app is LAUNCHED by a soundbath alarm fullScreenAction (app was killed) ──
   useEffect(() => {
+    if (!navReady) return;
     AsyncStorage.getItem('onesutra_pending_soundbath_v1')
       .then((raw: string | null) => {
         if (!raw) return;
@@ -261,10 +306,11 @@ function BodhiNotificationListener() {
         setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 400);
       })
       .catch(() => {});
-  }, []);
+  }, [navReady]);
 
   // ── When app is LAUNCHED by a sleep auto-start fullScreenAction (app was killed) ──
   useEffect(() => {
+    if (!navReady) return;
     AsyncStorage.getItem('onesutra_pending_sleep_v1')
       .then((raw: string | null) => {
         if (!raw) return;
@@ -275,10 +321,11 @@ function BodhiNotificationListener() {
         setTimeout(() => router.replace(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never), 400);
       })
       .catch(() => {});
-  }, []);
+  }, [navReady]);
 
   // ── When app is LAUNCHED by a notifee notification (habit alarm / evening mantra) ──
   useEffect(() => {
+    if (!navReady) return;
     try {
       const notifee = require('@notifee/react-native').default;
       notifee.getInitialNotification().then((initial: any) => {
@@ -309,17 +356,18 @@ function BodhiNotificationListener() {
         }
       }).catch(() => {});
     } catch { /* ignore */ }
-  }, []);
+  }, [navReady]);
 
   // ── When app is LAUNCHED by a slot reminder (full-screen intent tap) ─────
   useEffect(() => {
+    if (!navReady) return;
     getInitialReminderNotification().then(slotId => {
       if (slotId) {
         console.log(`[Layout] App launched from reminder → /notification-landing?slotId=${slotId}`);
         setTimeout(() => router.push(`/notification-landing?slotId=${slotId}` as never), 1400);
       }
     }).catch(() => { });
-  }, []);
+  }, [navReady]);
 
   useEffect(() => {
     let foregroundSub: { remove: () => void } | null = null;
@@ -333,7 +381,7 @@ function BodhiNotificationListener() {
         Notifications.setNotificationChannelAsync('arise-alarms', {
           name: 'SolRize Alarms',
           importance: Notifications.AndroidImportance.MAX,
-          sound: 'mantra_alarm.wav',
+          sound: 'mantra_alarm.m4a',
           vibrationPattern: [0, 250, 250, 250],
           enableVibrate: true,
           showBadge: true,
@@ -499,9 +547,10 @@ function GlobalMoodLayer() {
 
 export default function RootLayout() {
   useEffect(() => {
-    const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 6_000);
+    const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 500);
     const t2 = setTimeout(() => ensureAllMantrasDownloaded().catch(() => {}), 10_000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t3 = setTimeout(() => prefetchAllSoundImages().catch(() => {}), 4_000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   const [fontsLoaded] = useFonts({
@@ -540,6 +589,7 @@ export default function RootLayout() {
           <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="cosmic-science" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         </Stack>
         </BgProvider>

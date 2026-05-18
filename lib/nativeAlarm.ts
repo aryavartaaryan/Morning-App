@@ -153,7 +153,10 @@ export async function scheduleExtraWakeAlarm(
           visibility: 1,
           fullScreenAction: { id: 'default', launchActivity: 'default' },
           pressAction: { id: 'default', launchActivity: 'default' },
-          ongoing: false,
+          ongoing: true,
+          autoCancel: false,
+          loopSound: true,
+          bypassDnd: true,
         },
         data: { type: 'wake-alarm', alarmId: id, label: label ?? '' },
       },
@@ -161,7 +164,7 @@ export async function scheduleExtraWakeAlarm(
         type: TriggerType.TIMESTAMP,
         timestamp: next.getTime(),
         repeatFrequency: RepeatFrequency.DAILY,
-        alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        alarmManager: { type: AlarmType.SET_ALARM_CLOCK },
       },
     );
     console.log(`[NativeAlarm] Extra wake alarm scheduled: ${pad2(h12)}:${pad2(minute)} ${ampm}`);

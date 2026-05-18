@@ -14,8 +14,6 @@ import { DEFAULT_MISSION_SETTINGS, MissionSettings, MISSIONS } from '@/lib/missi
 import { checkAlarmPermission, setNativeAlarmSound, requestAllAlarmPermissions } from '@/lib/nativeAlarm';
 import { registerPreviewStopper } from '@/lib/alarmAudio';
 import { Colors, Font } from '@/constants/theme';
-import { getSolarTimes, type SolarTimes } from '@/lib/solar';
-import { getBgSource } from '@/lib/bgImages';
 import { useBgContext } from '@/lib/bgContext';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 
@@ -67,8 +65,8 @@ const ALARM_BUNDLED: Record<string, any> = {
   wanderlust_breeze:    require('../../assets/sounds/wanderlust-breeze.m4a'),
   forest_campfire:      require('../../assets/sounds/forest-campfire.m4a'),
   indian_beats:         require('../../assets/sounds/indian-beats.m4a'),
-  bhagya_suktam:        require('../../assets/sounds/bhagya-suktam.mp3'),
-  shiv_sankalpa_suktam: require('../../assets/sounds/shiv-sankalpa-suktam.mp3'),
+  bhagya_suktam:        require('../../assets/sounds/bhagya-suktam.m4a'),
+  shiv_sankalpa_suktam: require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
 const ALARM_SOUND_CATS = ['Nature', 'Sacred', 'Mantra', 'Stotra'] as const;
@@ -82,10 +80,8 @@ export default function SettingsTab() {
   const [mission, setMission]           = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [permStatus, setPermStatus]     = useState<PermState>({ notifications: true, exactAlarm: true, batteryOpt: true, fullScreen: true });
   const [checkingPerms, setCheckingPerms] = useState(false);
-  const [bgUri, setBgUri]               = useState<string | null>(null);
-  const { accentColor }  = useBgContext();
+  const { bgUri, accentColor }  = useBgContext();
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-  const [solarTimes, setSolarTimes]     = useState<SolarTimes | null>(null);
   const previewSoundRef                 = useRef<Audio.Sound | null>(null);
   const [showSoundSheet, setShowSoundSheet] = useState(false);
 
@@ -96,36 +92,8 @@ export default function SettingsTab() {
       if (s)  setSettings(s);
       if (ms) setMission({ ...DEFAULT_MISSION_SETTINGS, ...ms });
       if (Platform.OS === 'android') checkPerms();
-      const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location).catch(() => null);
-      if (loc?.lat && loc?.lon) setSolarTimes(getSolarTimes(loc.lat, loc.lon));
     })();
   }, []);
-
-  useEffect(() => {
-    const now = new Date();
-    const h   = now.getHours() + now.getMinutes() / 60;
-    let key   = 'night';
-    if (solarTimes) {
-      const { sunrise, solarNoon, sunset } = solarTimes;
-      if      (h < sunrise - 1.5)  key = 'night';
-      else if (h < sunrise - 0.3)  key = 'brahma';
-      else if (h < sunrise + 0.5)  key = 'predawn';
-      else if (h < sunrise + 2)    key = 'sunrise';
-      else if (h < solarNoon - 1)  key = 'morning';
-      else if (h < solarNoon + 2)  key = 'midday';
-      else if (h < sunset - 1.5)   key = 'afternoon';
-      else if (h < sunset)         key = 'sandhya';
-      else if (h < sunset + 0.5)   key = 'twilight';
-      else if (h < sunset + 2)     key = 'evening';
-    } else {
-      if      (h >= 5   && h < 8)  key = 'sunrise';
-      else if (h >= 8   && h < 10) key = 'morning';
-      else if (h >= 10  && h < 14) key = 'midday';
-      else if (h >= 14  && h < 17) key = 'afternoon';
-      else if (h >= 17  && h < 19) key = 'sandhya';
-    }
-    getBgSource(key).then(uri => setBgUri(uri)).catch(() => {});
-  }, [solarTimes]);
 
   const checkPerms = async () => {
     try {

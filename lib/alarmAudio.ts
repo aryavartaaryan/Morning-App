@@ -86,8 +86,8 @@ export function cancelFusion(): void {
 }
 
 const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
-  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.mp3'),
-  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.mp3'),
+  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.m4a'),
+  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
 /**
@@ -143,7 +143,7 @@ export async function playAlarmAudio(
       interruptionModeIOS: 1,
       interruptionModeAndroid: 1,
     });
-    const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.wav'));
+    const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.m4a'));
     const { sound } = await Audio.Sound.createAsync(
       source,
       { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
@@ -152,7 +152,7 @@ export async function playAlarmAudio(
   } catch {
     try {
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/mantra_alarm.wav'),
+        require('../assets/sounds/mantra_alarm.m4a'),
         { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
       );
       soundRef.current = sound;
@@ -232,7 +232,7 @@ export async function playFusionAlarm(
     ?? BUNDLED_MANTRA_ASSETS[mantraId]
     ?? BUNDLED_MANTRA_ASSETS[mantraWake.bundledKey ?? '']
     ?? (mantraWake.audioUrl ? { uri: mantraWake.audioUrl } : null)
-    ?? require('../assets/sounds/mantra_alarm.wav');
+    ?? require('../assets/sounds/mantra_alarm.m4a');
 
   const phases: Array<{ src: any; label: string }> = [
     { src: require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'), label: 'nature'  },
@@ -340,7 +340,7 @@ export async function playGentleAlarmAudio(
       interruptionModeIOS: 1,
       interruptionModeAndroid: 1,
     });
-    const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.wav'));
+    const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.m4a'));
     const created = await Audio.Sound.createAsync(
       source,
       { shouldPlay: true, isLooping: true, volume: GENTLE_START_VOL },
@@ -349,7 +349,7 @@ export async function playGentleAlarmAudio(
   } catch {
     try {
       const created = await Audio.Sound.createAsync(
-        require('../assets/sounds/mantra_alarm.wav'),
+        require('../assets/sounds/mantra_alarm.m4a'),
         { shouldPlay: true, isLooping: true, volume: GENTLE_START_VOL },
       );
       sound = created.sound;
