@@ -38,6 +38,8 @@ const MANTRA_CATALOG: { id: string; url: string }[] = [
   { id: 'gayatri',    url: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
   { id: 'lalitha',    url: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
   { id: 'shivtandav', url: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
+  { id: 'nada_govinda_mantra',      url: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
+  { id: 'nada_aar_sitar_classical', url: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
 ];
 
 export async function ensureAllMantrasDownloaded(): Promise<void> {

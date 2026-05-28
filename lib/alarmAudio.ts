@@ -13,6 +13,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getLocalMantraPath } from './mantraDownload';
 import { WAKE_SOUNDS } from './missionAlarm';
+import { ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 import { setNativeAlarmVolume } from './nativeAlarm';
 
 /** Holds the active volume-ramp interval so it can be cancelled on stop. */
@@ -127,8 +128,9 @@ export async function playAlarmAudio(
   // For habit/quick alarms the native service is not active, so this is a no-op.
   await setNativeAlarmVolume(0).catch(() => {});
 
+  const sleepSound = ALL_SLEEP_SOUNDS.find(s => s.id === mantraId);
   const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
-  const bundledAsset = wakeSound.bundledAsset ?? BUNDLED_MANTRA_ASSETS[mantraId];
+  const bundledAsset = sleepSound?.src ?? wakeSound.bundledAsset ?? BUNDLED_MANTRA_ASSETS[mantraId];
   const localPath = getLocalMantraPath(mantraId);
   const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
   const audioSrc: string | null = bundledAsset ? null
@@ -323,8 +325,9 @@ export async function playGentleAlarmAudio(
   await stopAlarmAudio(soundRef);
   await setNativeAlarmVolume(0).catch(() => {});
 
+  const sleepSound = ALL_SLEEP_SOUNDS.find(s => s.id === mantraId);
   const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
-  const bundledAsset = wakeSound.bundledAsset ?? (wakeSound.bundledKey ? BUNDLED_MANTRA_ASSETS[wakeSound.bundledKey] : null);
+  const bundledAsset = sleepSound?.src ?? wakeSound.bundledAsset ?? (wakeSound.bundledKey ? BUNDLED_MANTRA_ASSETS[wakeSound.bundledKey] : null);
   const localPath = getLocalMantraPath(mantraId);
   const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
   const audioSrc: string | null = bundledAsset ? null

@@ -13,7 +13,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, setNativePickerActive } from '@/lib/nativeAlarm';
+import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -139,7 +139,7 @@ function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Blocked',
-            'Camera access is blocked. Please go to Settings → Apps → SolRize → Permissions and enable Camera.',
+            'Camera access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Camera.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -173,7 +173,7 @@ function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Gallery Permission Blocked',
-            'Photo library access is blocked. Please go to Settings → Apps → SolRize → Permissions and enable Storage / Photos.',
+            'Photo library access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Storage / Photos.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -885,6 +885,7 @@ export default function MissionScreen() {
 
     // ── 1. Clear mission guard + stop native alarm service + background mantra ─
     await AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
+    await stopAlarmVibration();
     await stopNativeAlarmSound();
     const bg = (global as any).__missionBgSound;
     if (bg) {
@@ -913,6 +914,7 @@ export default function MissionScreen() {
       scheduleNativeAlarm(
         alarmCfg.wakeAlarm.hour,
         alarmCfg.wakeAlarm.minute,
+        alarmCfg.wakeAlarm.days,
       ).catch(() => {});
     }
 

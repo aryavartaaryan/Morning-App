@@ -2,10 +2,14 @@
 *.bak
 *.NEW
 
+# Local Expo export output — not needed for EAS remote build
+dist/
+
 # Backend (not needed for mobile build)
 backend/
 
-# iOS Swift source (not needed for Android build)
+# iOS native project & Swift source — not needed for Android build
+ios/
 ios_src/
 
 # Git
@@ -31,3 +35,10 @@ android/.kotlin/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
+# Docs and scripts not needed for build
+*.md
+*.sh
+*.bak
+*.NEW
+

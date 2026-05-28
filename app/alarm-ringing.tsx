@@ -21,6 +21,7 @@ import { cancelVolumeRamp, cancelFusion, playGentleAlarmAudio, playFusionAlarm, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
 import { store, KEYS } from '@/lib/storage';
+import { useBgContext } from '@/lib/bgContext';
 import { getSolarTimes } from '@/lib/solar';
 import { recordWake } from '@/lib/sunriseStreak';
 import { type AlarmSettings } from '@/lib/notifications';
@@ -31,6 +32,7 @@ import {
   getKalaMessage, WAKE_QUOTES,
 } from '@/lib/missionAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
 const MANTRA_TO_WAKE: Record<string, string> = {
   gayatri: 'gayatri',
@@ -61,6 +63,23 @@ const BUNDLED_NATURE_ASSETS: Record<string, any> = {
   wanderlust_breeze:  require('../assets/sounds/wanderlust-breeze.m4a'),
   forest_campfire:    require('../assets/sounds/forest-campfire.m4a'),
   indian_beats:       require('../assets/sounds/indian-beats.m4a'),
+  // ── ALL_SLEEP_SOUNDS ID aliases (different key names used on sleep page) ──────
+  sitar:              require('../assets/sounds/sitar-morning.m4a'),
+  wanderlust:         require('../assets/sounds/wanderlust-breeze.m4a'),
+  campfire:           require('../assets/sounds/forest-campfire.m4a'),
+  flowing_water:      require('../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
+  hz_432:             require('../assets/sounds/432hz-healing-bells.m4a'),
+  singing_bowl:       require('../assets/sounds/singing-bowl-deep.m4a'),
+  jungle_rain:        require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
+  jungle_storm:       require('../assets/sounds/mixkit-calm-thunderstorm-in-the-jungle-2415.m4a'),
+  rocky_shore:        require('../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
+  harbor_waves:       require('../assets/sounds/mixkit-small-waves-harbor-rocks-1208.m4a'),
+  night_forest:       require('../assets/sounds/mixkit-night-forest-with-insects-2414.m4a'),
+  gentle_wind:        require('../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a'),
+  city_night:         require('../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a'),
+  heavy_rain:         require('../assets/sounds/mixkit-heavy-rain-drops-2399.m4a'),
+  rain_thunder:       require('../assets/sounds/mixkit-rain-and-thunder-storm-2390.m4a'),
+  forest_breeze:      require('../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
   // ── Sitar ──────────────────────────────────────────────────────────────────
   space_sitar:        require('../assets/sounds/space-sitar.m4a'),
   sitar_long:         require('../assets/sounds/sitar-long.m4a'),
@@ -138,13 +157,30 @@ const ALARM_SOUND_META: Record<string, { label: string; icon: string; color: str
   spring_birds:        { label: 'Spring Birds',          icon: '🌸', color: '#f472b6' },
   forest_birds_spring: { label: 'Forest Birds',           icon: '🌲', color: '#4ade80' },
   forest_campfire:     { label: 'Forest Campfire',       icon: '🔥', color: '#f97316' },
-  wanderlust_breeze:   { label: 'Wanderlust Breeze',      icon: '�️', color: '#67e8f9' },
+  wanderlust_breeze:   { label: 'Wanderlust Breeze',      icon: '🌬️', color: '#67e8f9' },
   singing_bowl_deep:   { label: 'Deep Singing Bowl',      icon: '🔮', color: '#a78bfa' },
   tibetan_bowl:        { label: 'Tibetan Bowl',          icon: '🕌', color: '#c4b5fd' },
   morning_flute:       { label: 'Light Meditation Tone', icon: '🎶', color: '#6ee7b7' },
-  sitar_morning:       { label: 'Calm Raga',             icon: '🎵', color: '#f59e0b' },
+  sitar_morning:       { label: 'Calm Raga',             icon: '🪕', color: '#f59e0b' },
   healing_bells_432:   { label: '432 Hz Bells',          icon: '🔔', color: '#fde68a' },
   indian_beats:        { label: 'Indian Beats',           icon: '🥁', color: '#fb923c' },
+  // ── ALL_SLEEP_SOUNDS ID aliases ──────────────────────────────────────────────
+  sitar:               { label: 'Calm Raga',             icon: '🪕', color: '#fcd34d' },
+  wanderlust:          { label: 'Wanderlust Breeze',     icon: '🌬️', color: '#bae6fd' },
+  campfire:            { label: 'Forest Campfire',       icon: '🔥', color: '#f97316' },
+  flowing_water:       { label: 'Flowing Water',         icon: '💧', color: '#38bdf8' },
+  hz_432:              { label: '432 Hz Bells',          icon: '🔔', color: '#c084fc' },
+  singing_bowl:        { label: 'Deep Singing Bowl',     icon: '🔮', color: '#a78bfa' },
+  jungle_rain:         { label: 'Jungle Rain',           icon: '🌿', color: '#34d399' },
+  jungle_storm:        { label: 'Jungle Storm',          icon: '⛈️', color: '#6ee7b7' },
+  rocky_shore:         { label: 'Rocky Shore',           icon: '🌊', color: '#7dd3fc' },
+  harbor_waves:        { label: 'Harbor Waves',          icon: '⚓', color: '#93c5fd' },
+  night_forest:        { label: 'Night Forest',          icon: '🦗', color: '#4ade80' },
+  gentle_wind:         { label: 'Gentle Wind',           icon: '🌬️', color: '#a3e635' },
+  city_night:          { label: 'City Night',            icon: '🏙️', color: '#fbbf24' },
+  heavy_rain:          { label: 'Heavy Rain',            icon: '🌧️', color: '#3b82f6' },
+  rain_thunder:        { label: 'Rain & Thunder',        icon: '⛈️', color: '#818cf8' },
+  forest_breeze:       { label: 'Forest Breeze',         icon: '🌳', color: '#86efac' },
   gayatri:             { label: 'Gayatri Mantra',        icon: '🌞', color: '#fbbf24' },
   lalitha:             { label: 'Lalitha Sahasranama',   icon: '🌺', color: '#f472b6' },
   shivtandav:          { label: 'Shiv Tandav',           icon: '🔱', color: '#60a5fa' },
@@ -153,7 +189,7 @@ const ALARM_SOUND_META: Record<string, { label: string; icon: string; color: str
   fusion:              { label: 'Fusion Wake',           icon: '✨', color: '#fbbf24' },
   // ── Sitar ────────────────────────────────────────────────────────────────
   space_sitar:         { label: 'Space Sitar',           icon: '🪐', color: '#fcd34d' },
-  sitar_long:          { label: 'Sitar Meditation',      icon: '🎸', color: '#f59e0b' },
+  sitar_long:          { label: 'Sitar Meditation',      icon: '🪕', color: '#f59e0b' },
   sitar_tabla_bells:   { label: 'Sitar, Tabla & Bells',  icon: '🎵', color: '#fbbf24' },
   indian_sitar_raga:   { label: 'Indian Sitar Raga',     icon: '🎶', color: '#fb923c' },
   sitar_summer_raga:   { label: 'Summer Healing Raga',   icon: '☀️', color: '#fde68a' },
@@ -161,7 +197,7 @@ const ALARM_SOUND_META: Record<string, { label: string; icon: string; color: str
   sitar_tanpura_sarangi:{ label: 'Sitar, Tanpura & Sarangi', icon: '🪕', color: '#f59e0b' },
   sitar_tanpura_bgm:   { label: 'Sitar & Tanpura',       icon: '🎼', color: '#fbbf24' },
   veena_classical:     { label: 'Classical Veena',       icon: '🪗', color: '#fcd34d' },
-  sitar_calm:          { label: 'Calm Sitar',             icon: '🎸', color: '#fcd34d' },
+  sitar_calm:          { label: 'Calm Sitar',             icon: '🪕', color: '#fcd34d' },
   veena_raga:          { label: 'Veena Raga Kanada',      icon: '🪗', color: '#f59e0b' },
   // ── Flute ────────────────────────────────────────────────────────────────
   andean_flute:        { label: 'Andean Flute',          icon: '🏔️', color: '#6ee7b7' },
@@ -231,6 +267,7 @@ export default function AlarmRingingScreen() {
   const [ms, setMs] = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [userName, setUserName] = useState('Champion');
   const [timeStr, setTimeStr] = useState(fmtTime());
+  const { bgUri } = useBgContext();
   const [bgImageSource, setBgImageSource] = useState<any>(null);
   const [soundMeta,     setSoundMeta]     = useState<{ label: string; icon: string; color: string }>({ label: '', icon: '🕉️', color: '#fbbf24' });
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
@@ -494,7 +531,7 @@ export default function AlarmRingingScreen() {
       const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
       const meta = ALARM_SOUND_META[mantraId] ?? { label: 'Sacred Sound', icon: '🕉️', color: '#fbbf24' };
       const bgSrc = ALARM_SOUND_BUNDLED_IMAGES[mantraId]
-        ?? (SOUND_IMAGES[mantraId] ? { uri: SOUND_IMAGES[mantraId] } : null);
+        ?? (SOUND_IMAGES[mantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[mantraId]) } : null);
       if (!cancelled) { setSoundMeta(meta); setBgImageSource(bgSrc); }
       const useGentle = alarmCfg?.gentleWake ?? false;
       const rampMins = alarmCfg?.rampMinutes ?? 5;
@@ -510,16 +547,29 @@ export default function AlarmRingingScreen() {
           // Gentle path: starts at 5 % volume and ramps up
           await playGentleAlarmAudio(soundRef, mantraId, rampMins);
         } else {
-          const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
-          // Prefer bundledAsset (nature .m4a) over bundledKey (mantra mp3) over CDN
-          const bundledAsset = wakeSound.bundledAsset ?? BUNDLED_MANTRA_ASSETS[mantraId] ?? BUNDLED_NATURE_ASSETS[mantraId];
+          // Normalise ID: 'shivtandav' in alarms.tsx maps to 'shiv_tandav' in WAKE_SOUNDS
+          const wakeId = MANTRA_TO_WAKE[mantraId] ?? mantraId;
+          const wakeSound = WAKE_SOUNDS.find(s => s.id === wakeId) ?? WAKE_SOUNDS.find(s => s.id === mantraId) ?? null;
+          // BUNDLED_NATURE_ASSETS covers all ALL_SLEEP_SOUNDS IDs — check it first so
+          // no sound ever falls through to gayatri's audioUrl as a wrong default.
+          const bundledAsset = BUNDLED_NATURE_ASSETS[mantraId] ?? BUNDLED_MANTRA_ASSETS[mantraId] ?? wakeSound?.bundledAsset;
           const localPath = getLocalMantraPath(mantraId);
           const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
           const audioSrc: string | null = bundledAsset ? null
             : (localInfo as any).exists ? (localInfo as any).uri
-            : (wakeSound.audioUrl ?? null);
+            : (wakeSound?.audioUrl ?? null);
           await playWakeAudio(audioSrc, bundledAsset);
         }
+      }
+
+      // Race-condition guard: if handleStart/cleanup set cancelled=true while
+      // createAsync was still in-flight, the sound was created after the stop
+      // no-op. Catch the leak immediately before any further async work.
+      if (cancelled) {
+        stopWakeAudio().catch?.(() => {});
+        cancelVolumeRamp();
+        cancelFusion();
+        return;
       }
 
       // ── Native AlarmSoundService stays alive DURING alarm ─────────
@@ -596,7 +646,7 @@ export default function AlarmRingingScreen() {
     // → onUserLeaveHint + lifecycle watchdog keep blocking HOME on mission screen.
     // The service (and both watchdogs) are stopped in mission.tsx handleComplete().
     await setNativeAlarmVolume(0).catch(() => {});
-    stopAlarmVibration();
+    await stopAlarmVibration();
   };
 
   // ── START MISSION ───────────────────────────────────────────────────────────
@@ -652,9 +702,9 @@ export default function AlarmRingingScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <ImageBackground
-      source={bgImageSource ?? undefined}
+      source={bgUri ? { uri: bgUri } : (bgImageSource ?? undefined)}
       style={S.screen}
-      imageStyle={{ opacity: 0.68 }}
+      imageStyle={{ opacity: 1 }}
     >
       <StatusBar hidden />
 
@@ -792,12 +842,12 @@ export default function AlarmRingingScreen() {
 }
 
 const S = StyleSheet.create({
-  screen:      { flex: 1, backgroundColor: '#02040C' },
+  screen:      { flex: 1, backgroundColor: '#04040E' },
   ambientGlow: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
   // Top
   topArea:   { paddingTop: 54, alignItems: 'center', gap: 10 },
-  chip:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8 },
+  chip:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(6,15,40,0.72)' },
   liveDot:   { width: 7, height: 7, borderRadius: 3.5 },
   chipLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.4 },
   clockText: { fontSize: 64, fontWeight: '100', color: '#FFFFFF', letterSpacing: -2.5 },
@@ -818,8 +868,8 @@ const S = StyleSheet.create({
   bottomArea:  { paddingHorizontal: 26, paddingBottom: 52, alignItems: 'center', gap: 12 },
   kalaHint:    { fontSize: 9, fontWeight: '800', letterSpacing: 1.8 },
 
-  // Mission pill — compact glassmorphism row
-  missionPill:  { width: '100%', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14 },
+  // Mission pill — Deep Navy Tinted Glass
+  missionPill:  { width: '100%', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14, backgroundColor: 'rgba(6,15,40,0.72)', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20, elevation: 12 },
   missionBadge: { fontSize: 8, fontWeight: '900', letterSpacing: 2 },
   missionName:  { fontSize: 16, fontWeight: '900', color: '#FFFFFF', marginTop: 2 },
 
@@ -834,7 +884,7 @@ const S = StyleSheet.create({
   ctaSub:   { fontSize: 10, fontWeight: '600', color: '#FFFFFF70', letterSpacing: 0.5, marginTop: 2 },
 
   // Snooze — ghost pill, minimal
-  snoozeBtn:     { paddingHorizontal: 28, paddingVertical: 11, borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF07' },
+  snoozeBtn:     { paddingHorizontal: 28, paddingVertical: 11, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(6,15,40,0.55)' },
   snoozeBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF45' },
 
   // Lock badge
@@ -843,11 +893,11 @@ const S = StyleSheet.create({
 
   // Modal
   modalOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.80)', justifyContent: 'flex-end' },
-  snoozeSheet:       { backgroundColor: '#0C0C1C', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, padding: 24, paddingBottom: 44 },
+  snoozeSheet:       { backgroundColor: 'rgba(6,15,40,0.92)', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.22)', padding: 24, paddingBottom: 44 },
   sheetHandle:       { width: 36, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF20', alignSelf: 'center', marginBottom: 18 },
   snoozeSheetTitle:  { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
   snoozeSheetSub:    { fontSize: 13, color: '#FFFFFF45', lineHeight: 20, marginBottom: 4 },
-  snoozeOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF06' },
+  snoozeOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: 'rgba(6,15,40,0.72)' },
   snoozeOptionMin:   { fontSize: 20, fontWeight: '900', color: '#fff' },
   snoozeOptionLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 },
   snoozeCancelBtn:   { alignItems: 'center', paddingVertical: 16, marginTop: 6 },

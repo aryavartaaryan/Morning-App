@@ -116,13 +116,13 @@ export default function SleepRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'SolRize Sound Bath',
+          id: 'arise-soundbath', name: 'Nada Sound Bath',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);
         await notifee.displayNotification({
           id: SLEEP_FS_ID,
-          title: `${meta?.emoji ?? '🌙'}  Sleep Sounds`,
+          title: `${meta?.emoji ?? '🌙'}  Nāda`,
           body: `${label} is playing · tap to return.`,
           android: {
             channelId: 'arise-soundbath',
@@ -264,7 +264,7 @@ export default function SleepRingingScreen() {
           </Animated.View>
         </View>
 
-        <Text style={S.sleepLabel}>SLEEP SOUNDS</Text>
+        <Text style={S.sleepLabel}>NĀDA</Text>
         <Text style={[S.soundName, { color: accent }]}>{label}</Text>
 
         <View style={[S.catBadge, { borderColor: accent + '40', backgroundColor: accent + '10' }]}>

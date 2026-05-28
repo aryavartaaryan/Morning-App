@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -193,6 +194,38 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
             )
         } catch (e: Exception) {
             promise.resolve(false)
+        }
+    }
+
+    /**
+     * Returns the active habit alarm params (alarmType, habitKey, habitEmoji, habitLabel,
+     * mantraPath) written by HabitAlarmSoundService.onLoadParams() when the alarm fires.
+     *
+     * Returns null when no habit alarm is active (KEY_ACTIVE = false).
+     *
+     * JS uses this as a belt-and-suspenders fallback: if the deep-link from
+     * HabitAlarmSoundService.launchApp() was not processed by Expo Router before
+     * AuthGuard ran (race condition), _layout.tsx reads these prefs directly and
+     * re-routes to the correct alarm screen — critical for soundbath alarms which
+     * have no onesutra_pending_soundbath_v1 AsyncStorage key on the native path.
+     */
+    @ReactMethod
+    fun getActiveHabitAlarmParams(promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_ACTIVE, false)) {
+                promise.resolve(null)
+                return
+            }
+            val map = Arguments.createMap()
+            map.putString("alarmType",  prefs.getString("active_alarm_type",  "habit") ?: "habit")
+            map.putString("habitKey",   prefs.getString("active_habit_key",   "") ?: "")
+            map.putString("habitEmoji", prefs.getString("active_habit_emoji", "\uD83C\uDF3F") ?: "\uD83C\uDF3F")
+            map.putString("habitLabel", prefs.getString("active_habit_label", "Alarm") ?: "Alarm")
+            map.putString("mantraPath", prefs.getString("active_mantra_path", "") ?: "")
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.resolve(null)
         }
     }
 }

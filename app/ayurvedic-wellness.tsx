@@ -17,9 +17,9 @@ const DOSHA_COLOR: Record<string, string> = {
   pitta: '#E05C3A',
   vata:  '#9B7FD4',
 };
-const BG = '#0D0D18';
-const CARD_BG = 'rgba(255,255,255,0.055)';
-const CARD_BORDER = 'rgba(255,255,255,0.10)';
+const BG = '#080C1C';
+const GLASS    = 'rgba(255,255,255,0.05)';
+const GLASS_BD = 'rgba(255,255,255,0.09)';
 
 // ── Wellness data per period ─────────────────────────────────────────────────
 const WELLNESS: Record<string, {
@@ -415,12 +415,11 @@ function FadeIn({ delay = 0, children }: { delay?: number; children: React.React
 // ── Section Label ─────────────────────────────────────────────────────────────
 function SectionLabel({ text }: { text: string }) {
   return (
-    <Text style={{
-      fontSize: 9, fontWeight: '900', color: '#FFFFFF45',
-      letterSpacing: 1.8, marginBottom: 10, marginTop: 22,
-    }}>
-      {text}
-    </Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 26, marginBottom: 12 }}>
+      <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+      <Text style={{ fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.30)', letterSpacing: 2 }}>{text}</Text>
+      <View style={{ flex: 1, height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+    </View>
   );
 }
 
@@ -455,13 +454,20 @@ export default function AyurvedicWellnessScreen() {
   };
 
   return (
-    <View style={S.root}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       <LinearGradient
-        colors={[color + '28', BG, BG]}
+        colors={[color + '32', color + '12', 'transparent']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.38 }}
         style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 0.45 }}
+        pointerEvents="none"
       />
+      <LinearGradient
+        colors={['transparent', 'rgba(56,189,248,0.06)', 'rgba(56,189,248,0.14)']}
+        start={{ x: 0.5, y: 0.60 }} end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: color + 'A0', zIndex: 10 }} />
 
       <SafeAreaView style={{ flex: 1 }}>
         {/* ── Header ── */}
@@ -485,14 +491,33 @@ export default function AyurvedicWellnessScreen() {
         >
           {/* ══ HERO: Current period ══════════════════════════════════════════ */}
           <FadeIn delay={0}>
-            <View style={[S.heroCard, { borderColor: color + '35' }]}>
-              <View style={[S.heroIconBox, { backgroundColor: color + '22' }]}>
-                <Text style={{ fontSize: 32 }}>{tmpl.emoji}</Text>
+            <View style={[S.heroCard, { borderColor: color + '30' }]}>
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: color + '80', borderRadius: 24 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <View style={[S.heroIconBox, { backgroundColor: color + '20', borderWidth: 1.5, borderColor: color + '35' }]}>
+                  <Text style={{ fontSize: 32 }}>{tmpl.emoji}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 9, color, fontWeight: '900', letterSpacing: 1.5, marginBottom: 4 }}>{doshaLabel.toUpperCase()} KALA</Text>
+                  <Text style={[S.heroTitle, { color }]}>{data.displayName}</Text>
+                  <Text style={S.heroSub}>{data.romanElements}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[S.heroTitle, { color }]}>{data.displayName}</Text>
-                <Text style={S.heroSub}>{doshaLabel} Kala  ·  {data.romanElements}</Text>
-                <Text style={S.heroTime}>☀  {params.periodStart ?? '—'}  –  {params.periodEnd ?? '—'}  ·  ~{remStr} left</Text>
+              <View style={{ flexDirection: 'row', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' }}>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>~{remStr}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.30)', letterSpacing: 0.5, marginTop: 2 }}>REMAINING</Text>
+                </View>
+                <View style={{ width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.07)', alignSelf: 'center' }} />
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>{params.periodStart ?? '—'}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.30)', letterSpacing: 0.5, marginTop: 2 }}>STARTS</Text>
+                </View>
+                <View style={{ width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.07)', alignSelf: 'center' }} />
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>{params.periodEnd ?? '—'}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.30)', letterSpacing: 0.5, marginTop: 2 }}>ENDS</Text>
+                </View>
               </View>
             </View>
             <Text style={[S.sunDesc, { borderLeftColor: color + '60' }]}>{data.sunDesc}</Text>
@@ -500,7 +525,7 @@ export default function AyurvedicWellnessScreen() {
 
           {/* ══ BOUNDARY NOTE ════════════════════════════════════════════════ */}
           <FadeIn delay={60}>
-            <View style={[S.boundaryCard, { borderLeftColor: color + '80' }]}>
+            <View style={[S.boundaryCard, { borderLeftColor: color + '70' }]}>
               <Text style={S.boundaryLabel}>Boundary note</Text>
               <Text style={S.boundaryText}>{data.boundaryNote}</Text>
             </View>
@@ -664,22 +689,20 @@ export default function AyurvedicWellnessScreen() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
   header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20,
     paddingTop: 8, paddingBottom: 14, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center',
   },
-  headerSub: { fontSize: 8, fontWeight: '700', color: '#FFFFFF40', letterSpacing: 1.4 },
-  headerTitle: { fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 },
+  headerSub: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.28)', letterSpacing: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 },
   livePill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1,
@@ -688,137 +711,134 @@ const S = StyleSheet.create({
   liveTxt: { fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
 
   heroCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: CARD_BG, borderRadius: 20,
-    borderWidth: 1, padding: 16, marginTop: 18,
+    backgroundColor: GLASS, borderRadius: 24, borderWidth: 1,
+    padding: 20, marginTop: 4, overflow: 'hidden',
   },
-  heroIconBox: { width: 60, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  heroTitle: { fontSize: 22, fontWeight: '900', letterSpacing: 0.2, lineHeight: 26 },
-  heroSub: { fontSize: 11, color: '#FFFFFF70', fontWeight: '600', marginTop: 3, lineHeight: 16 },
-  heroTime: { fontSize: 10, color: '#FFFFFF50', marginTop: 5, fontWeight: '600' },
+  heroIconBox: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  heroTitle: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5, lineHeight: 30 },
+  heroSub: { fontSize: 11, color: 'rgba(255,255,255,0.40)', fontWeight: '600', marginTop: 4, lineHeight: 16 },
+  heroTime: { fontSize: 10, color: 'rgba(255,255,255,0.30)', marginTop: 4, fontWeight: '600' },
   sunDesc: {
-    fontSize: 12, color: '#FFFFFF80', lineHeight: 18,
-    borderLeftWidth: 2, paddingLeft: 12, marginTop: 12, marginBottom: 4,
+    fontSize: 12.5, color: 'rgba(255,255,255,0.62)', lineHeight: 19,
+    borderLeftWidth: 2, paddingLeft: 14, marginTop: 14, marginBottom: 2,
   },
 
   boundaryCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
-    borderLeftWidth: 3, borderLeftColor: 'rgba(155,127,212,0.55)',
-    padding: 14, marginTop: 14,
+    backgroundColor: GLASS, borderRadius: 18,
+    borderWidth: 1, borderColor: GLASS_BD,
+    borderLeftWidth: 3, padding: 16, marginTop: 12,
   },
-  boundaryLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 1.4, marginBottom: 5 },
-  boundaryText: { fontSize: 13, color: '#FFFFFFCC', lineHeight: 20 },
+  boundaryLabel: { fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.28)', letterSpacing: 1.8, marginBottom: 6 },
+  boundaryText: { fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 21 },
 
   elementCard: {
-    backgroundColor: CARD_BG, borderRadius: 16,
-    borderWidth: 1, borderColor: CARD_BORDER, padding: 14,
+    backgroundColor: GLASS, borderRadius: 18,
+    borderWidth: 1, borderColor: GLASS_BD, padding: 16,
   },
-  elementName: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', marginBottom: 6, lineHeight: 18 },
-  elementDesc: { fontSize: 12, color: '#FFFFFF80', lineHeight: 18 },
-  elementItalic: { fontStyle: 'italic', color: '#FFFFFFAA' },
+  elementName: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', marginBottom: 8, lineHeight: 18 },
+  elementDesc: { fontSize: 12, color: 'rgba(255,255,255,0.52)', lineHeight: 18 },
+  elementItalic: { fontStyle: 'italic', color: 'rgba(255,255,255,0.72)' },
 
   panchaNote: {
-    backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-    padding: 12, marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 14,
+    borderWidth: 1, borderColor: GLASS_BD,
+    padding: 13, marginTop: 10,
   },
-  panchaText: { fontSize: 11.5, color: '#FFFFFF70', lineHeight: 18 },
-  panchaItalic: { fontStyle: 'italic', color: '#FFFFFF90' },
+  panchaText: { fontSize: 11.5, color: 'rgba(255,255,255,0.45)', lineHeight: 18 },
+  panchaItalic: { fontStyle: 'italic', color: 'rgba(255,255,255,0.65)' },
 
   sciCard: {
-    backgroundColor: CARD_BG, borderRadius: 16,
-    borderWidth: 1, borderColor: CARD_BORDER, padding: 14, gap: 12,
+    backgroundColor: GLASS, borderRadius: 20,
+    borderWidth: 1, borderColor: GLASS_BD, padding: 16, gap: 14,
   },
-  sciRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  sciRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   sciBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99,
-    borderWidth: 1, borderColor: '#10b98160', backgroundColor: '#10b98115',
-    alignSelf: 'flex-start', marginTop: 1,
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99,
+    borderWidth: 1, borderColor: '#10b98155', backgroundColor: '#10b98112',
+    alignSelf: 'flex-start', marginTop: 2,
   },
   sciBadgeTxt: { fontSize: 9, fontWeight: '800', color: '#10b981', letterSpacing: 0.5 },
-  sciBody: { flex: 1, fontSize: 12.5, color: '#FFFFFFCC', lineHeight: 19 },
-  sciDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
+  sciBody: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 20 },
+  sciDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)' },
 
   bodyCard: {
-    backgroundColor: CARD_BG, borderRadius: 16,
-    borderWidth: 1, borderColor: CARD_BORDER,
+    backgroundColor: GLASS, borderRadius: 20,
+    borderWidth: 1, borderColor: GLASS_BD,
   },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11, padding: 13 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
   bulletBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  bulletDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5, flexShrink: 0 },
-  bulletText: { flex: 1, fontSize: 13, color: '#FFFFFFCC', lineHeight: 20 },
+  bulletDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0 },
+  bulletText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 20 },
 
-  actCard: {
-    flex: 1, borderRadius: 16, borderWidth: 1, padding: 12, gap: 10,
-  },
-  actDoCard: { backgroundColor: 'rgba(16,185,129,0.07)', borderColor: 'rgba(16,185,129,0.22)' },
-  actAvoidCard: { backgroundColor: 'rgba(248,113,113,0.06)', borderColor: 'rgba(248,113,113,0.20)' },
-  actHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  actCard: { flex: 1, borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
+  actDoCard:    { backgroundColor: 'rgba(16,185,129,0.07)', borderColor: 'rgba(16,185,129,0.22)' },
+  actAvoidCard: { backgroundColor: 'rgba(248,113,113,0.07)', borderColor: 'rgba(248,113,113,0.22)' },
+  actHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   actHeaderTxt: { fontSize: 12, fontWeight: '800', color: '#10b981' },
-  actItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
-  actItemTxt: { flex: 1, fontSize: 11.5, color: '#FFFFFFCC', lineHeight: 17 },
+  actItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  actItemTxt: { flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 17 },
 
   nextCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, padding: 16,
   },
-  nextIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  nextTitle: { fontSize: 15, fontWeight: '800', lineHeight: 20 },
-  nextSub: { fontSize: 11, color: '#FFFFFF60', marginTop: 3, lineHeight: 16 },
-  nextBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1 },
+  nextIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  nextTitle: { fontSize: 16, fontWeight: '800', lineHeight: 21 },
+  nextSub: { fontSize: 11, color: 'rgba(255,255,255,0.36)', marginTop: 4, lineHeight: 16 },
+  nextBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
   nextBadgeTxt: { fontSize: 10, fontWeight: '800' },
 
   arcContainer: {
-    backgroundColor: CARD_BG, borderRadius: 16,
-    borderWidth: 1, borderColor: CARD_BORDER,
-    padding: 16, marginBottom: 8,
+    backgroundColor: GLASS, borderRadius: 20,
+    borderWidth: 1, borderColor: GLASS_BD,
+    padding: 18, marginBottom: 10,
   },
   periodListNote: {
-    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10,
-    borderWidth: 1, borderColor: CARD_BORDER,
-    padding: 10, marginBottom: 6,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12,
+    borderWidth: 1, borderColor: GLASS_BD,
+    padding: 10, marginBottom: 8,
   },
-  periodListNoteTxt: { fontSize: 11, color: '#FFFFFF60', textAlign: 'center', fontWeight: '600' },
+  periodListNoteTxt: { fontSize: 11, color: 'rgba(255,255,255,0.36)', textAlign: 'center', fontWeight: '600' },
 
   agniCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: CARD_BG, borderRadius: 16,
-    borderWidth: 1, borderColor: CARD_BORDER, padding: 14,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    backgroundColor: GLASS, borderRadius: 20,
+    borderWidth: 1, borderColor: GLASS_BD, padding: 16,
   },
   agniBadge: {
     paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99,
-    borderWidth: 1, borderColor: '#F5A62360', backgroundColor: '#F5A62318',
+    borderWidth: 1, borderColor: '#F5A62355', backgroundColor: '#F5A62314',
     alignSelf: 'flex-start',
   },
   agniBadgeTxt: { fontSize: 10, fontWeight: '800', color: '#F5A623' },
-  agniText: { flex: 1, fontSize: 12.5, color: '#FFFFFFCC', lineHeight: 20 },
+  agniText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.78)', lineHeight: 21 },
   agniHighlight: { fontWeight: '800', color: '#F5A623' },
   agniItalic: { fontStyle: 'italic' },
 
   deepCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18,
+    backgroundColor: GLASS, borderRadius: 22,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    padding: 16, marginTop: 18,
+    padding: 18, marginTop: 16,
   },
   deepIcon: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  deepTitle: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20 },
-  deepSub: { fontSize: 11, color: '#FFFFFF55', marginTop: 3 },
+  deepTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF', lineHeight: 20 },
+  deepSub: { fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 4 },
 });
 
 const TL = StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 12, paddingVertical: 12,
+    paddingHorizontal: 14, paddingVertical: 13,
+    borderRadius: 14,
   },
-  bar: { width: 4, height: 38, borderRadius: 99 },
-  label: { fontSize: 13, fontWeight: '700', color: '#FFFFFF90', lineHeight: 18 },
-  sub: { fontSize: 10.5, color: '#FFFFFF45', marginTop: 2, fontWeight: '600' },
+  bar: { width: 3, height: 36, borderRadius: 99 },
+  label: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.62)', lineHeight: 18 },
+  sub: { fontSize: 10.5, color: 'rgba(255,255,255,0.28)', marginTop: 2, fontWeight: '600' },
   badge: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1,
   },

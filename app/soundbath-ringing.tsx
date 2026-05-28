@@ -18,6 +18,7 @@ import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
 import { WAKE_SOUNDS } from '@/lib/missionAlarm';
 import { stopAlarmVibration } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
 const SOUNDBATH_FS_ID = 'soundbath-alarm-service';
 const ACTIVE_SOUNDBATH_NOTIF_KEY = 'onesutra_active_soundbath_notif_v1';
@@ -39,7 +40,7 @@ export default function SoundBathRingingScreen() {
   const wakeSound = WAKE_SOUNDS.find(s => s.id === soundId) ?? WAKE_SOUNDS[0];
   const label = labelParam ?? wakeSound.label ?? 'Sound Bath';
   const accent = SOUND_ACCENT[soundId] ?? '#10b981';
-  const bgImage = SOUND_IMAGES[soundId];
+  const bgImage = SOUND_IMAGES[soundId] ? getLocalSoundImageUri(SOUND_IMAGES[soundId]) : undefined;
 
   const [dismissed, setDismissed] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -111,7 +112,7 @@ export default function SoundBathRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'SolRize Sound Bath',
+          id: 'arise-soundbath', name: 'Nada Sound Bath',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);

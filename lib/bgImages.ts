@@ -7,15 +7,15 @@ import { store, KEYS } from '@/lib/storage';
 
 export const BG_URLS: Record<string, string> = {
   brahma:     'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=900&q=85&auto=format&fit=crop',
-  predawn:    'https://images.pexels.com/photos/1642220/pexels-photo-1642220.jpeg?auto=compress&cs=tinysrgb&w=900',
-  sunrise:    'https://images.pexels.com/photos/27740083/pexels-photo-27740083.jpeg?auto=compress&cs=tinysrgb&w=900',
+  predawn:    'https://plus.unsplash.com/premium_photo-1676320526001-07b75bd19ae3?w=900&q=85&auto=format&fit=crop',
+  sunrise:    'https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=900&q=85&auto=format&fit=crop',
   morning:    'https://images.pexels.com/photos/30328856/pexels-photo-30328856.jpeg?auto=compress&cs=tinysrgb&w=900',
-  midday:     'https://images.pexels.com/photos/32890856/pexels-photo-32890856.jpeg?auto=compress&cs=tinysrgb&w=900',
-  afternoon:  'https://images.pexels.com/photos/5887849/pexels-photo-5887849.jpeg?auto=compress&cs=tinysrgb&w=750&h=1500&fit=crop',
-  sandhya:    'https://images.pexels.com/photos/34628283/pexels-photo-34628283.jpeg?auto=compress&cs=tinysrgb&w=900',
-  twilight:   'https://images.pexels.com/photos/2865404/pexels-photo-2865404.jpeg?auto=compress&cs=tinysrgb&w=900',
-  evening:    'https://images.pexels.com/photos/11996274/pexels-photo-11996274.jpeg?auto=compress&cs=tinysrgb&w=900',
-  night:      'https://images.pexels.com/photos/1487009/pexels-photo-1487009.jpeg?auto=compress&cs=tinysrgb&w=900',
+  midday:     'https://images.pexels.com/photos/26860151/pexels-photo-26860151.jpeg?auto=compress&cs=tinysrgb&w=900',
+  afternoon:  'https://images.unsplash.com/photo-1559334642-f57070eadebe?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  sandhya:    'https://images.unsplash.com/photo-1601562219653-0f16522227b3?w=900&q=85&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8c3Vuc2V0JTIwc2VhfGVufDB8fDB8fHww',
+  twilight:   'https://images.pexels.com/photos/14527158/pexels-photo-14527158.jpeg?auto=compress&cs=tinysrgb&w=900',
+  evening:    'https://images.unsplash.com/photo-1664977250570-5c399ec4244b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTExfHxvY2VhbiUyMG5pZ2h0fGVufDB8fDB8fHww',
+  night:      'https://images.pexels.com/photos/13651742/pexels-photo-13651742.jpeg?auto=compress&cs=tinysrgb&w=900',
   auth:       'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=900&q=85&auto=format&fit=crop',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
 };
@@ -33,6 +33,37 @@ function djb2(s: string): string {
   return h.toString(16);
 }
 
+// ── In-memory map: key → local file URI (populated during warmup / getBgSource) ──
+// Lets bgContext set bgUri synchronously to the local file path on every app
+// open after first launch — eliminates the network-flash when navigating tabs.
+const BG_LOCAL_MAP: Record<string, string> = {};
+
+/**
+ * Synchronous lookup — returns local file URI if already cached in memory,
+ * falls back to the remote URL otherwise. Safe to call at render time.
+ */
+export function getBgSourceSync(key: string): string {
+  return BG_LOCAL_MAP[key] ?? BG_URLS[key] ?? BG_URLS.night;
+}
+
+/**
+ * Fast startup routine: checks which BG files already exist on disk and
+ * populates BG_LOCAL_MAP so getBgSourceSync returns local paths immediately.
+ * No downloads — purely file-existence checks (~10 ms total).
+ * Call this as early as possible in _layout.tsx before BgProvider mounts.
+ */
+export async function warmBgLocalMap(): Promise<void> {
+  await Promise.allSettled(
+    Object.keys(BG_URLS).map(async (key) => {
+      try {
+        const path = cachePath(key);
+        const info = await FileSystem.getInfoAsync(path);
+        if ((info as any).exists) BG_LOCAL_MAP[key] = path;
+      } catch { /* ignore */ }
+    }),
+  );
+}
+
 /**
  * Returns the best available URI for a background image:
  *  - Local cached file (instant, offline) if already downloaded
@@ -43,10 +74,14 @@ export async function getBgSource(key: string): Promise<string> {
   try {
     const path = cachePath(key);
     const info = await FileSystem.getInfoAsync(path);
-    if ((info as any).exists) return path;
+    if ((info as any).exists) {
+      BG_LOCAL_MAP[key] = path; // keep in-memory map current
+      return path;
+    }
     // Not cached yet — use network now, cache in background
     FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true })
       .then(() => FileSystem.downloadAsync(url, path))
+      .then(() => { BG_LOCAL_MAP[key] = path; })
       .catch(() => {});
     return url;
   } catch {
@@ -60,7 +95,7 @@ export async function getBgSource(key: string): Promise<string> {
  * - If a URL changed (app update): deletes only that image's cache file, then re-downloads it.
  * - If re-download fails (no internet): keeps the old file so the user sees something.
  * - Hash is only saved after a successful download — retries automatically on next launch.
- * - Unchanged images are never touched.
+ * - All images are downloaded in parallel for fast first-install.
  */
 export async function ensureAllBgsCached(): Promise<void> {
   try {
@@ -69,30 +104,38 @@ export async function ensureAllBgsCached(): Promise<void> {
       JSON.parse((await store.get(KEYS.bgCacheVersion)) ?? '{}');
     const updatedHashes: Record<string, string> = { ...storedHashes };
 
-    for (const [key, url] of Object.entries(BG_URLS)) {
-      const path      = cachePath(key);
-      const urlHash   = djb2(url);
-      const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
-      const urlChanged = storedHashes[key] !== urlHash;
+    await Promise.allSettled(
+      Object.entries(BG_URLS).map(async ([key, url]) => {
+        const path      = cachePath(key);
+        const urlHash   = djb2(url);
+        const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
+        const urlChanged = storedHashes[key] !== urlHash;
 
-      if (urlChanged && (cached as any).exists) {
-        // URL changed in new release — remove stale file
-        await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
-      }
-
-      const needsDownload = urlChanged || !(cached as any).exists;
-      if (needsDownload) {
-        try {
-          await FileSystem.downloadAsync(url, path);
-          updatedHashes[key] = urlHash; // only mark success after confirmed download
-        } catch {
-          // No internet — old file (if any) stays; hash not updated → retries next launch
+        if (urlChanged && (cached as any).exists) {
+          await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
+          delete BG_LOCAL_MAP[key];
         }
-      } else {
-        updatedHashes[key] = urlHash;
-      }
-    }
+
+        const needsDownload = urlChanged || !(cached as any).exists;
+        if (needsDownload) {
+          try {
+            await FileSystem.downloadAsync(url, path);
+            updatedHashes[key] = urlHash;
+            BG_LOCAL_MAP[key]  = path;
+          } catch {
+            // No internet — old file (if any) stays; hash not updated → retries next launch
+          }
+        } else {
+          updatedHashes[key] = urlHash;
+          BG_LOCAL_MAP[key]  = path;
+        }
+      })
+    );
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
   } catch { /* silent */ }
 }
+
+// Kick off disk-scan the moment this module loads so BG_LOCAL_MAP is populated
+// before BgProvider's first render — eliminates the remote-URL flash on launch.
+export const bgWarmup: Promise<void> = warmBgLocalMap();

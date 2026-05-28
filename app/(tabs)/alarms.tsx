@@ -23,19 +23,24 @@ import { MISSIONS, WAKE_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings } from
 import {
   scheduleNativeAlarm, cancelNativeAlarm, checkAlarmPermission,
   setNativeAlarmSound, setNativeAlarmSoundPath, requestAllAlarmPermissions,
-  scheduleExtraWakeAlarm, cancelExtraWakeAlarm,
+  scheduleExtraWakeAlarm, cancelExtraWakeAlarm, getNextAlarmTimestamp,
 } from '@/lib/nativeAlarm';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType, AndroidForegroundServiceType } from '@notifee/react-native';
 import { Colors, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import { useBgContext } from '@/lib/bgContext';
+import { getCardBg } from '@/lib/cardTheme';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getLocalMantraPath, isMantraDownloaded, downloadMantra } from '@/lib/mantraDownload';
 import { registerPreviewStopper } from '@/lib/alarmAudio';
-import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
+import SoundPicker from '@/components/alarms/SoundPicker';
+import { getSolarTimes } from '@/lib/solar';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
+const ALARM_CARD_BG = 'rgba(0,0,0,0.18)';
 const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
   bhagya_suktam: 'bhagya_suktam', shiv_sankalpa_suktam: 'shiv_sankalpa_suktam',
@@ -53,61 +58,48 @@ const MANTRAS = [
   { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
   { id: 'bhagya_suktam',        label: 'Bhagya Suktam',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: '' },
   { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: '' },
+  { id: 'nada_govinda_mantra',      label: 'Govinda Mantra',         emoji: '💙', color: '#818cf8', hint: 'Govinda Hari', pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
+  { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', color: '#f59e0b', hint: 'Indian Raga',   pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
 ];
-// ── Comprehensive alarm sound catalogue (nature + sacred + mantra + stotra) ──
+// ── Curated alarm sounds ───────────────────────────────────────────────────
+const NADA_BASE_ALARM = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
 const ALARM_SOUNDS = [
-  // Nature
-  { id: 'forest_birds',        label: 'Forest Birds',        emoji: '🐦', cat: 'Nature',  color: '#34d399', audioUrl: null as string | null },
-  { id: 'sea_waves',           label: 'Sea Waves',           emoji: '🌊', cat: 'Nature',  color: '#38bdf8', audioUrl: null as string | null },
-  { id: 'light_rain',          label: 'Light Rain',          emoji: '🌦️', cat: 'Nature',  color: '#60a5fa', audioUrl: null as string | null },
-  { id: 'breeze_trees',        label: 'Forest Breeze',       emoji: '🌿', cat: 'Nature',  color: '#4ade80', audioUrl: null as string | null },
-  { id: 'river_flow',          label: 'Flowing Water',       emoji: '🏞️', cat: 'Nature',  color: '#38bdf8', audioUrl: null as string | null },
-  { id: 'morning_birds',       label: 'Morning Birds',       emoji: '🌅', cat: 'Nature',  color: '#fbbf24', audioUrl: null as string | null },
-  { id: 'spring_birds',        label: 'Spring Birds',        emoji: '🌸', cat: 'Nature',  color: '#f472b6', audioUrl: null as string | null },
-  { id: 'forest_birds_spring', label: 'Forest Birds',        emoji: '🌲', cat: 'Nature',  color: '#4ade80', audioUrl: null as string | null },
-  { id: 'forest_campfire',     label: 'Forest Campfire',     emoji: '🔥', cat: 'Nature',  color: '#f97316', audioUrl: null as string | null },
-  { id: 'wanderlust_breeze',   label: 'Wanderlust Breeze',   emoji: '🌬️', cat: 'Nature',  color: '#67e8f9', audioUrl: null as string | null },
-  // Sacred
-  { id: 'singing_bowl_deep',   label: 'Deep Singing Bowl',   emoji: '🔮', cat: 'Sacred',  color: '#a78bfa', audioUrl: null as string | null },
-  { id: 'tibetan_bowl',        label: 'Tibetan Bowl',        emoji: '🕌', cat: 'Sacred',  color: '#c4b5fd', audioUrl: null as string | null },
-  { id: 'morning_flute',       label: 'Light Meditation Tone',emoji: '🎶', cat: 'Sacred',  color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'sitar_morning',       label: 'Calm Raga',           emoji: '🎵', cat: 'Sacred',  color: '#f59e0b', audioUrl: null as string | null },
-  { id: 'healing_bells_432',   label: '432 Hz Bells',        emoji: '🔔', cat: 'Sacred',  color: '#fde68a', audioUrl: null as string | null },
-  { id: 'indian_beats',        label: 'Indian Beats',        emoji: '🥁', cat: 'Sacred',  color: '#fb923c', audioUrl: null as string | null },
-  // Mantras
-  { id: 'gayatri',             label: 'Gayatri Mantra',      emoji: '🌞', cat: 'Mantra',  color: '#fbbf24', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' as string | null },
-  { id: 'lalitha',             label: 'Lalitha Sahasranama', emoji: '🌺', cat: 'Mantra',  color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
-  { id: 'shivtandav',          label: 'Shiv Tandav',         emoji: '🔱', cat: 'Mantra',  color: '#60a5fa', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' as string | null },
-  // Stotras (bundled)
-  { id: 'bhagya_suktam',       label: 'Bhagya Suktam',       emoji: '🌟', cat: 'Stotra',  color: '#fbbf24', audioUrl: null as string | null },
-  { id: 'shiv_sankalpa_suktam',label: 'Shiv Sankalpa Suktam',emoji: '🕉️', cat: 'Stotra',  color: '#c4b5fd', audioUrl: null as string | null },
+  { id: 'morning_birds',           label: 'Morning Birds',          emoji: '🐦', cat: 'Birds',  color: '#fde68a', audioUrl: null as string | null },
+  { id: 'spring_birds',            label: 'Spring Birds',           emoji: '🌸', cat: 'Birds',  color: '#f9a8d4', audioUrl: null as string | null },
+  { id: 'forest_birds',            label: 'Forest Birds',           emoji: '🌳', cat: 'Birds',  color: '#86efac', audioUrl: null as string | null },
+  { id: 'eagle_feather',           label: 'Eagle Call',             emoji: '🦅', cat: 'Birds',  color: '#78716c', audioUrl: null as string | null },
+  { id: 'cuckoo_forest',           label: 'Cuckoo Forest',          emoji: '🌳', cat: 'Birds',  color: '#4ade80', audioUrl: null as string | null },
+  { id: 'cuckoo_soft',             label: 'Soft Cuckoo',            emoji: '🐦', cat: 'Birds',  color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'peacock_wild',            label: 'Wild Peacock',           emoji: '🦚', cat: 'Birds',  color: '#34d399', audioUrl: null as string | null },
+  { id: 'india_countryside_birds', label: 'Sparrows Group',         emoji: '🌾', cat: 'Birds',  color: '#fde68a', audioUrl: null as string | null },
+  { id: 'cuckoo_birds_forest',     label: 'Cuckoo & Forest Birds',  emoji: '🌲', cat: 'Birds',  color: '#86efac', audioUrl: null as string | null },
+  { id: 'peacock_call',            label: 'Peacock Call',           emoji: '🦚', cat: 'Birds',  color: '#4ade80', audioUrl: null as string | null },
+  { id: 'koel_bird',               label: 'Koel Bird Song',         emoji: '🎵', cat: 'Birds',  color: '#34d399', audioUrl: null as string | null },
+  { id: 'sea_waves',               label: 'Sea Waves',              emoji: '🌊', cat: 'Ocean',  color: '#38bdf8', audioUrl: null as string | null },
+  { id: 'rocky_shore',             label: 'Rocky Shore',            emoji: '🪨', cat: 'Ocean',  color: '#7dd3fc', audioUrl: null as string | null },
+  { id: 'harbor_waves',            label: 'Harbor Waves',           emoji: '⚓', cat: 'Ocean',  color: '#93c5fd', audioUrl: null as string | null },
+  { id: 'flowing_water',           label: 'Flowing Water',          emoji: '💧', cat: 'Nature', color: '#67e8f9', audioUrl: null as string | null },
+  { id: 'jungle_storm',            label: 'Jungle Storm',           emoji: '🌿', cat: 'Nature', color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Flute',  color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'spiritual_journey',       label: 'Spiritual Journey',      emoji: '🌌', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
+  { id: 'om_shanti',               label: 'Om Shanti',              emoji: '🕉️', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
+  { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NADA_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
+  { id: 'gayatri',                 label: 'Gayatri Mantra',         emoji: '🌞', cat: 'Mantra', color: '#fbbf24', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' as string | null },
+  { id: 'lalitha',                 label: 'Lalitha Sahasranama',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
+  { id: 'nada_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NADA_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
+  { id: 'bhagya_suktam',           label: 'Bhagya Suktam',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: null as string | null },
 ];
 
 
 const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
 
 const ALARM_BUNDLED: Record<string, any> = {
-  forest_birds:        require('../../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),
-  sea_waves:           require('../../assets/sounds/mixkit-sea-waves-on-a-rocky-shore-1190.m4a'),
-  light_rain:          require('../../assets/sounds/mixkit-light-rain-loop-2393.m4a'),
-  breeze_trees:        require('../../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a'),
-  river_flow:          require('../../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a'),
-  singing_bowl_deep:   require('../../assets/sounds/singing-bowl-deep.m4a'),
-  tibetan_bowl:        require('../../assets/sounds/tibetan-bowl.m4a'),
-  morning_birds:       require('../../assets/sounds/morning-birds-loop.m4a'),
-  spring_birds:        require('../../assets/sounds/spring-birds-morning.m4a'),
-  forest_birds_spring: require('../../assets/sounds/forest-birds-spring.m4a'),
-  morning_flute:       require('../../assets/sounds/morning-flute.m4a'),
-  sitar_morning:       require('../../assets/sounds/sitar-morning.m4a'),
-  healing_bells_432:   require('../../assets/sounds/432hz-healing-bells.m4a'),
-  wanderlust_breeze:   require('../../assets/sounds/wanderlust-breeze.m4a'),
-  forest_campfire:     require('../../assets/sounds/forest-campfire.m4a'),
-  indian_beats:        require('../../assets/sounds/indian-beats.m4a'),
-  bhagya_suktam:       require('../../assets/sounds/bhagya-suktam.m4a'),
-  shiv_sankalpa_suktam:require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
+  ...Object.fromEntries(ALL_SLEEP_SOUNDS.map(s => [s.id, s.src])),
+  bhagya_suktam:        require('../../assets/sounds/bhagya-suktam.m4a'),
+  shiv_sankalpa_suktam: require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
-const ALARM_SOUND_CATS = ['Nature', 'Sacred', 'Mantra', 'Stotra'] as const;
+const ALARM_SOUND_CATS = ['Birds', 'Ocean', 'Nature', 'Flute', 'Sacred', 'Mantra', 'Stotra'] as const;
 
 const AYU_HABITS = [
   { key: 'wake_early',   label: 'Wake Early',       emoji: '🌙' },
@@ -366,11 +358,12 @@ export default function AlarmsTab() {
   const [selectedMantraId, setSelectedMantraId] = useState('bhagya_suktam');
   const saveAnim                            = useRef(new Animated.Value(0)).current;
   const alarmActiveRef                      = useRef(false);
-  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle' });
+  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', nada_govinda_mantra:'idle', nada_aar_sitar_classical:'idle' });
   const [dlProgress, setDlProgress]         = useState<Record<string, number>>({});
   const [alarmEntries, setAlarmEntries]     = useState<AlarmEntry[]>([]);
   const [fabOpen, setFabOpen]               = useState(false);
   const [menuOpenId, setMenuOpenId]         = useState<string|null>(null);
+  const [menuTarget, setMenuTarget]         = useState<{ type: 'wake' | 'extraWake' | 'entry'; entry?: AlarmEntry; extraWake?: ExtraWakeAlarm } | null>(null);
   const [showWakeEdit, setShowWakeEdit]         = useState(false);
   const [editingExtraWake, setEditingExtraWake]  = useState<ExtraWakeAlarm | null>(null);
   const [isAddingExtraWake, setIsAddingExtraWake] = useState(false);
@@ -380,6 +373,14 @@ export default function AlarmsTab() {
   const [extraFormLabel, setExtraFormLabel]      = useState('');
   const [addType, setAddType]                    = useState<'habit'|'quick'|'soundbath'|null>(null);
   const [formSoundId, setFormSoundId]            = useState('morning_birds');
+  const [wakeFormSoundCat, setWakeFormSoundCat]  = useState<typeof ALARM_SOUND_CATS[number]>('Nature');
+  const [wakeRepeatDays, setWakeRepeatDays]       = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [extraFormRepeatDays, setExtraFormRepeatDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [bmHour, setBmHour]                       = useState<number | null>(null);
+  const [bmMinute, setBmMinute]                   = useState(0);
+  const [showBMModal, setShowBMModal]             = useState(false);
+  const [bmAlarmDays, setBmAlarmDays]             = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [bathFormSoundCat, setBathFormSoundCat]  = useState<typeof ALARM_SOUND_CATS[number]>('Nature');
   const [editEntry, setEditEntry]           = useState<AlarmEntry|null>(null);
   const [formHour, setFormHour]             = useState(7);
   const [formMinute, setFormMinute]         = useState(0);
@@ -394,7 +395,8 @@ export default function AlarmsTab() {
   const [liveClock, setLiveClock]           = useState(new Date());
   const [prakritiWake, setPrakritiWake]     = useState<{ label: string; hour: number; minute: number; color: string }|null>(null);
   const [alarmModal, setAlarmModal]         = useState(false);
-  const { bgUri }                           = useBgContext();
+  const { bgUri, bgKey, accentColor }        = useBgContext();
+  const cardBg                              = getCardBg(bgKey);
   const [previewingId, setPreviewingId]     = useState<string | null>(null);
   const previewSoundRef                     = useRef<Audio.Sound | null>(null);
 
@@ -439,6 +441,31 @@ export default function AlarmsTab() {
           setPermStatus({ notifications: status === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
         }, 800);
       }
+      // Calculate Brahma Muhurta (96 min before sunrise) from stored location
+      try {
+        const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location);
+        if (loc?.lat && loc?.lon) {
+          const solar = getSolarTimes(loc.lat, loc.lon);
+          const bmDecimal = solar.sunrise - 96 / 60;
+          const bmH = bmDecimal < 0 ? bmDecimal + 24 : bmDecimal;
+          const calcH = Math.floor(bmH);
+          const calcM = Math.round((bmH - Math.floor(bmH)) * 60);
+          setBmHour(calcH);
+          setBmMinute(calcM);
+          // Auto-reschedule BM alarm with today's recalculated time if enabled
+          if (s?.brahmaMuhurtaAlarm?.enabled) {
+            setBmAlarmDays(s.brahmaMuhurtaAlarm.days);
+            const next = new Date();
+            next.setHours(calcH, calcM, 0, 0);
+            if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+            if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
+              NativeModules.AlarmModule.scheduleAlarm(next.getTime()).catch(() => {});
+            } else {
+              scheduleNativeAlarm(calcH, calcM).catch(() => {});
+            }
+          }
+        }
+      } catch {}
     })();
   }, []);
 
@@ -450,19 +477,17 @@ export default function AlarmsTab() {
       if (hasPerm) await rescheduleAllFromSettings(updated);
       if (updated.wakeAlarm.enabled) {
         setNativeAlarmSound(selectedMantraId).catch(() => {});
-        const next = new Date();
-        next.setHours(updated.wakeAlarm.hour, updated.wakeAlarm.minute, 0, 0);
-        if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
-        let scheduled = false;
+        const next = new Date(getNextAlarmTimestamp(updated.wakeAlarm.hour, updated.wakeAlarm.minute, updated.wakeAlarm.days));
         if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
-          try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); scheduled = true; } catch (e: any) { Alert.alert('Scheduling failed', e?.message ?? String(e)); }
-        } else { await scheduleNativeAlarm(updated.wakeAlarm.hour, updated.wakeAlarm.minute); scheduled = true; }
-        if (scheduled) {
-          const h12 = next.getHours() === 0 ? 12 : next.getHours() > 12 ? next.getHours() - 12 : next.getHours();
-          const ampm = next.getHours() >= 12 ? 'PM' : 'AM';
-          const mm = String(next.getMinutes()).padStart(2, '0');
-          (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
+          try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] schedule failed:', e); }
+        } else {
+          scheduleNativeAlarm(updated.wakeAlarm.hour, updated.wakeAlarm.minute, updated.wakeAlarm.days).catch(() => {});
         }
+        // Always show confirmation toast — native Android handles actual alarm firing
+        const h12 = next.getHours() === 0 ? 12 : next.getHours() > 12 ? next.getHours() - 12 : next.getHours();
+        const ampm = next.getHours() >= 12 ? 'PM' : 'AM';
+        const mm = String(next.getMinutes()).padStart(2, '0');
+        (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
         if (Platform.OS === 'android') {
           (async () => {
             try {
@@ -488,19 +513,35 @@ export default function AlarmsTab() {
     await store.setJSON(KEYS.alarmSettings, { ...s, extraWakeAlarms: updated });
   };
   const addExtraWakeAlarm = async () => {
+    // Block duplicate times across main alarm and all extra wake alarms
+    const existingTimes = [
+      ...(settings.wakeAlarm.enabled ? [{ hour: settings.wakeAlarm.hour, minute: settings.wakeAlarm.minute }] : []),
+      ...extraWakeAlarms.map(a => ({ hour: a.hour, minute: a.minute })),
+    ];
+    if (existingTimes.some(t => t.hour === extraFormHour && t.minute === extraFormMinute)) {
+      Alert.alert('⚠️ Duplicate Alarm', `A wake alarm at ${fmt12(extraFormHour, extraFormMinute)} already exists. Choose a different time.`);
+      return;
+    }
     const id = Date.now().toString();
-    const a: ExtraWakeAlarm = { id, enabled: true, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined };
+    const a: ExtraWakeAlarm = { id, enabled: true, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined, days: extraFormRepeatDays };
     const updated = [...extraWakeAlarms, a];
-    await persistExtraWakeAlarms(updated);
-    await scheduleExtraWakeAlarm(a.id, a.hour, a.minute, a.label);
-    setShowWakeEdit(false);
-    setIsAddingExtraWake(false);
-    setExtraFormLabel('');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await persistExtraWakeAlarms(updated).catch(() => {});
+    const next = new Date();
+    next.setHours(a.hour, a.minute, 0, 0);
+    if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+    if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
+      try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] extra alarm schedule failed:', e); }
+    } else {
+      scheduleNativeAlarm(a.hour, a.minute).catch(() => {});
+    }
     const h12 = a.hour === 0 ? 12 : a.hour > 12 ? a.hour - 12 : a.hour;
     const ampm = a.hour < 12 ? 'AM' : 'PM';
     const mm = String(a.minute).padStart(2, '0');
-    (ToastAndroid as any)?.show?.(`🔔 Extra wake alarm set for ${h12}:${mm} ${ampm}`, (ToastAndroid as any).SHORT);
+    (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowWakeEdit(false);
+    setIsAddingExtraWake(false);
+    setExtraFormLabel('');
   };
   const toggleExtraWake = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -520,31 +561,9 @@ export default function AlarmsTab() {
   ]);
 
   const toggleWake  = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: !settings.wakeAlarm.enabled } }); };
-  const deleteWakeAlarm = () => {
-    Alert.alert('Remove wake alarm?', '', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
-        await cancelNativeAlarm();
-        persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: false } });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }},
-    ]);
-  };
-
   const showWakeAlarmMenu = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title: 'Wake Alarm' },
-        i => { if (i === 1) { setIsAddingExtraWake(false); setShowWakeEdit(true); } if (i === 2) deleteWakeAlarm(); }
-      );
-    } else {
-      Alert.alert('Wake Alarm', '', [
-        { text: 'Edit', onPress: () => { setIsAddingExtraWake(false); setShowWakeEdit(true); } },
-        { text: 'Delete', style: 'destructive', onPress: deleteWakeAlarm },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
+    setMenuTarget({ type: 'wake' });
   };
 
   const openEditExtraWake = (alarm: ExtraWakeAlarm) => {
@@ -552,62 +571,117 @@ export default function AlarmsTab() {
     setExtraFormHour(alarm.hour);
     setExtraFormMinute(alarm.minute);
     setExtraFormLabel(alarm.label ?? '');
+    setExtraFormRepeatDays(alarm.days ?? [0, 1, 2, 3, 4, 5, 6]);
     setIsAddingExtraWake(true);
     setShowWakeEdit(true);
   };
 
   const updateExtraWakeAlarm = async () => {
     if (!editingExtraWake) return;
+    // Block duplicate times (exclude the alarm being edited)
+    const existingTimes = [
+      ...(settings.wakeAlarm.enabled ? [{ hour: settings.wakeAlarm.hour, minute: settings.wakeAlarm.minute }] : []),
+      ...extraWakeAlarms.filter(a => a.id !== editingExtraWake.id).map(a => ({ hour: a.hour, minute: a.minute })),
+    ];
+    if (existingTimes.some(t => t.hour === extraFormHour && t.minute === extraFormMinute)) {
+      Alert.alert('⚠️ Duplicate Alarm', `A wake alarm at ${fmt12(extraFormHour, extraFormMinute)} already exists. Choose a different time.`);
+      return;
+    }
     const updated = extraWakeAlarms.map(a =>
       a.id === editingExtraWake.id
-        ? { ...a, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined }
+        ? { ...a, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined, days: extraFormRepeatDays }
         : a
     );
-    await persistExtraWakeAlarms(updated);
+    await persistExtraWakeAlarms(updated).catch(() => {});
     const changed = updated.find(a => a.id === editingExtraWake.id)!;
-    if (changed.enabled) await scheduleExtraWakeAlarm(changed.id, changed.hour, changed.minute, changed.label);
+    if (changed.enabled) {
+      const next = new Date();
+      next.setHours(changed.hour, changed.minute, 0, 0);
+      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+      if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
+        try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] update extra alarm failed:', e); }
+      } else {
+        scheduleNativeAlarm(changed.hour, changed.minute).catch(() => {});
+      }
+      const h12 = changed.hour === 0 ? 12 : changed.hour > 12 ? changed.hour - 12 : changed.hour;
+      const ampm = changed.hour < 12 ? 'AM' : 'PM';
+      const mm = String(changed.minute).padStart(2, '0');
+      (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowWakeEdit(false);
     setIsAddingExtraWake(false);
     setEditingExtraWake(null);
     setExtraFormLabel('');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const showExtraWakeMenu = (alarm: ExtraWakeAlarm) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const title = alarm.label || 'Extra Wake Alarm';
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title },
-        i => { if (i === 1) openEditExtraWake(alarm); if (i === 2) deleteExtraWake(alarm.id); }
-      );
-    } else {
-      Alert.alert(title, '', [
-        { text: 'Edit', onPress: () => openEditExtraWake(alarm) },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteExtraWake(alarm.id) },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
+    setMenuTarget({ type: 'extraWake', extraWake: alarm });
   };
 
   const showAlarmMenu = (entry: AlarmEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const title = entry.label || (entry.type === 'habit' ? 'Habit Alarm' : entry.type === 'soundbath' ? 'Sound Bath' : 'Quick Alarm');
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Edit', 'Delete'], cancelButtonIndex: 0, destructiveButtonIndex: 2, title },
-        i => { if (i === 1) openEditEntry(entry); if (i === 2) deleteEntry(entry.id); }
-      );
+    setMenuTarget({ type: 'entry', entry });
+  };
+  const setWakeTime = (h: number, m: number) => persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: h, minute: m, days: wakeRepeatDays } });
+  const applyPreset = (p: typeof PRESETS[0]) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: p.hour, minute: p.minute, days: wakeRepeatDays } }); };
+
+  const openBMModal = () => {
+    const saved = settings.brahmaMuhurtaAlarm;
+    if (saved?.days) setBmAlarmDays(saved.days);
+    setShowBMModal(true);
+  };
+
+  const saveBMAlarm = async () => {
+    if (bmHour === null) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const updated: AlarmSettings = { ...settings, brahmaMuhurtaAlarm: { enabled: true, days: bmAlarmDays } };
+    setSettings(updated);
+    await store.setJSON(KEYS.alarmSettings, updated);
+    // Use the same native alarm logic as extra wake alarms (tried & tested)
+    const next = new Date();
+    next.setHours(bmHour, bmMinute, 0, 0);
+    if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+    if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
+      try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] BM alarm schedule failed:', e); }
     } else {
-      Alert.alert(title, '', [
-        { text: 'Edit', onPress: () => openEditEntry(entry) },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteEntry(entry.id) },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      scheduleNativeAlarm(bmHour, bmMinute).catch(() => {});
+    }
+    setShowBMModal(false);
+    const nextDay = new Date(); nextDay.setDate(nextDay.getDate() + 1);
+    const tomorrow = nextDay.toLocaleDateString('en-IN', { weekday: 'long' });
+    (ToastAndroid as any)?.show?.(`🌄 Sacred alarm set · ${tomorrow}, Brahma Muhurta at ${fmt12(bmHour, bmMinute)}`, (ToastAndroid as any).LONG);
+  };
+
+  const toggleBMAlarm = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const wasEnabled = settings.brahmaMuhurtaAlarm?.enabled ?? false;
+    const updated: AlarmSettings = { ...settings, brahmaMuhurtaAlarm: { enabled: !wasEnabled, days: bmAlarmDays } };
+    setSettings(updated);
+    await store.setJSON(KEYS.alarmSettings, updated);
+    if (!wasEnabled && bmHour !== null) {
+      const next = new Date();
+      next.setHours(bmHour, bmMinute, 0, 0);
+      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+      if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
+        NativeModules.AlarmModule.scheduleAlarm(next.getTime()).catch(() => {});
+      } else {
+        scheduleNativeAlarm(bmHour, bmMinute).catch(() => {});
+      }
+    } else {
+      cancelNativeAlarm().catch(() => {});
     }
   };
-  const setWakeTime = (h: number, m: number) => persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: h, minute: m } });
-  const applyPreset = (p: typeof PRESETS[0]) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: p.hour, minute: p.minute } }); };
+
+  const cancelBMAlarm = async () => {
+    const updated: AlarmSettings = { ...settings, brahmaMuhurtaAlarm: { enabled: false, days: bmAlarmDays } };
+    setSettings(updated);
+    await store.setJSON(KEYS.alarmSettings, updated);
+    cancelNativeAlarm().catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowBMModal(false);
+  };
   const toggleBrahma = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); persistAndApply({ ...settings, brahmaReminder: !settings.brahmaReminder }); };
 
   const updateMission = async (patch: Partial<MissionSettings>) => { const u = { ...missionSettings, ...patch }; setMissionSettings(u); await store.setJSON(KEYS.missionSettings, u); };
@@ -622,7 +696,7 @@ export default function AlarmsTab() {
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Required',
-            'This mission uses the camera. Please enable Camera permission for SolRize in your device Settings.',
+            'This mission uses the camera. Please enable Camera permission for Nada in your device Settings.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -720,6 +794,7 @@ export default function AlarmsTab() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedMantraId(id);
     const upd = { ...settings, selectedMantraId: id }; setSettings(upd);
     store.setJSON(KEYS.alarmSettings, upd); setNativeAlarmSound(id).catch(() => {});
+    if (SOUND_IMAGES[id]) ensureSoundImageCached(SOUND_IMAGES[id]).catch(() => {});
     updateMission({ wakeSound: id });
     // Bundled nature/sacred/stotra sounds need no download
     if (ALARM_BUNDLED[id] != null) { setDlStatus(s => ({ ...s, [id]: 'downloaded' })); return; }
@@ -765,7 +840,7 @@ export default function AlarmsTab() {
           const mantraPath = (info as any).exists ? lp.replace('file://', '') : '';
           await HabitAlarmNative.scheduleHabitAlarm(
             next.getTime(),
-            entry.habitKey ?? entry.id,
+            entry.type === 'soundbath' ? (entry.soundId ?? 'morning_birds') : (entry.habitKey ?? entry.id),
             entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : entry.type === 'soundbath' ? '🎵' : '🎯'),
             entry.label,
             entry.type,
@@ -776,7 +851,7 @@ export default function AlarmsTab() {
         } catch (e) { console.warn('[HabitAlarm] Native schedule failed, trying notifee:', e); }
       }
       try {
-        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'SolRize Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
         await notifee.createTriggerNotification(
           { id: `habit-${entry.id}`, title, body: entry.type === 'habit' ? 'Time for your habit! Tap to confirm. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵 Tap to listen.' : 'Your alarm is ringing! Tap to dismiss. ⏰', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' }, asForegroundService: true, ongoing: true, autoCancel: false, loopSound: true, foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK] } as any, data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : entry.type === 'soundbath' ? '🎵' : '🎯'), label: entry.label, alarmType: entry.type, soundId: entry.soundId ?? 'morning_birds' } },
           { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { type: AlarmType.SET_ALARM_CLOCK, allowWhileIdle: true } } as any,
@@ -824,6 +899,7 @@ export default function AlarmsTab() {
   const nextAlarm = useMemo(() => {
     const alarms: { h: number; m: number; label: string; color: string }[] = [];
     if (settings.wakeAlarm.enabled) alarms.push({ h: settings.wakeAlarm.hour, m: settings.wakeAlarm.minute, label: 'Wake Alarm', color: '#a78bfa' });
+    if (settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null) alarms.push({ h: bmHour, m: bmMinute, label: 'Brahma Muhurta', color: '#f59e0b' });
     extraWakeAlarms.filter(a => a.enabled).forEach(a => alarms.push({ h: a.hour, m: a.minute, label: a.label || 'Wake', color: '#c4b5fd' }));
     alarmEntries.filter(e => e.enabled).forEach(e => alarms.push({ h: e.hour, m: e.minute, label: e.label, color: e.type === 'habit' ? '#10b981' : e.type === 'soundbath' ? '#a78bfa' : '#f97316' }));
     if (alarms.length === 0) return null;
@@ -839,13 +915,87 @@ export default function AlarmsTab() {
 
   const habitsForPicker = AYU_HABITS.filter(h => h.key !== 'custom');
   const habitPages = Array.from({ length: Math.ceil(habitsForPicker.length / 8) }, (_, i) => habitsForPicker.slice(i * 8, (i + 1) * 8));
-  const playingMantra = MANTRAS.find(m => m.id === selectedMantraId) ?? MANTRAS[0];
+  const playingMantra = ALARM_SOUNDS.find(s => s.id === selectedMantraId) ?? MANTRAS.find(m => m.id === selectedMantraId) ?? MANTRAS[0];
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
 
   return (
-    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={S.screen} imageStyle={{ opacity: 1 }}>
+    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={[S.screen, { backgroundColor: accentColor }]} imageStyle={{ opacity: 0.50, resizeMode: 'cover' }}>
+      <LinearGradient
+        colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
+        locations={[0, 0.28, 1]}
+        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
       <SafeAreaView edges={['top']} />
+
+      {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
+      <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 10 }}>
+        <View style={{
+          backgroundColor: 'rgba(0,0,0,0.26)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.14)',
+          borderRadius: 22,
+          overflow: 'hidden',
+          paddingHorizontal: 20,
+          paddingTop: 18,
+          paddingBottom: 16,
+          alignItems: 'center',
+        }}>
+          {/* Subtle top shimmer — identical to sleep hero */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.06)', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          {/* Live clock — top right */}
+          <Text style={[S.pageHeaderClock, { position: 'absolute', top: 14, right: 16 }]}>
+            {pad(liveClock.getHours())}:{pad(liveClock.getMinutes())}
+          </Text>
+          {/* Main title — DancingScript matching sleep hero font exactly */}
+          <Text style={{
+            fontSize: 20,
+            fontWeight: '600',
+            color: '#FFF8F0',
+            letterSpacing: 0.5,
+            fontFamily: 'DancingScript_600SemiBold',
+            textShadowColor: 'rgba(60,20,0,0.75)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 8,
+            textAlign: 'center',
+            marginBottom: 6,
+          }}>
+            Healing Rhythmic Alarm
+          </Text>
+          {/* Subtitle — matching sleep page subtitle style */}
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 2, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
+            Rise with your body's natural rhythm
+          </Text>
+          {/* Divider — identical to sleep hero */}
+          <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 12 }} />
+          {/* Tagline — visible, matching sleep hint text opacity */}
+          <Text style={{ fontSize: 10, fontWeight: '300', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic' }}>
+            ancient ragas · nature sounds · sacred mantras
+          </Text>
+        </View>
+        {/* Tag chips below card */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: 10, paddingBottom: 2, gap: 6 }}>
+          {[
+            { label: 'Nature Sounds', color: '#34d399' },
+            { label: 'Raga Sounds',   color: '#a78bfa' },
+            { label: 'Bird Songs',    color: '#60a5fa' },
+            { label: 'Mantras',       color: '#fbbf24' },
+            { label: 'Stotras',       color: '#f472b6' },
+            { label: 'Sound Baths',   color: '#fb923c' },
+          ].map(tag => (
+            <View key={tag.label} style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, backgroundColor: tag.color + '0D', borderWidth: 1, borderColor: tag.color + '28' }}>
+              <Text style={{ fontSize: 9, fontWeight: '500', color: tag.color + 'AA', letterSpacing: 0.2 }}>{tag.label}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
       {Platform.OS === 'android' && !allPermsOk && (
         <TouchableOpacity style={S.permsBanner} onPress={async () => {
@@ -862,15 +1012,12 @@ export default function AlarmsTab() {
       {/* ── Next Alarm Banner ── */}
       {nextAlarm && (
         <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)', overflow: 'hidden' }}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
-              start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }}
-              style={StyleSheet.absoluteFillObject} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: ALARM_CARD_BG, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' }}>
+            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: nextAlarm.color }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: nextAlarm.color, letterSpacing: 1.4 }}>NEXT ALARM</Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: -0.3, marginTop: 1 }} numberOfLines={1}>{nextAlarm.label}  ·  {fmt12(nextAlarm.h, nextAlarm.m)}</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: '500', color: nextAlarm.color, letterSpacing: 1.0 }}>NEXT ALARM</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: '#fff', letterSpacing: -0.2, marginTop: 1 }} numberOfLines={1}>{nextAlarm.label}  ·  {fmt12(nextAlarm.h, nextAlarm.m)}</Text>
             </View>
             <View style={{ backgroundColor: nextAlarm.color + '20', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: nextAlarm.color + '50' }}>
               <Text style={{ fontSize: 13, fontWeight: '800', color: nextAlarm.color }}>{computeTimeUntil(nextAlarm.h, nextAlarm.m, liveClock)}</Text>
@@ -879,79 +1026,158 @@ export default function AlarmsTab() {
         </View>
       )}
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
-        {/* ── Alarm List (iOS-native slim rows) ── */}
-        <View style={S.listContainer}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
-            start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }}
-            style={StyleSheet.absoluteFillObject} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
+        {/* ── Alarm List (individual slim cards) ── */}
+        <View style={{ gap: 8 }}>
 
-          {/* Primary Wake Alarm Row */}
-          <TouchableOpacity style={S.alarmRow} onPress={() => { setIsAddingExtraWake(false); setShowWakeEdit(true); }} activeOpacity={0.8}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                <Ionicons name="alarm" size={9} color="#a78bfa" />
-                <Text style={[S.alarmRowBadge, { color: '#a78bfa' }]}>WAKE ALARM{missionSettings.lockInMode ? '  🔒' : ''}</Text>
-                <Text style={{ fontSize: 8, color: '#FFFFFF55', fontWeight: '700', letterSpacing: 0.8 }}>· DAILY</Text>
-              </View>
-              <Text style={[S.alarmRowTime, !settings.wakeAlarm.enabled && S.alarmRowTimeOff]}>
-                {pad(settings.wakeAlarm.hour)}:{pad(settings.wakeAlarm.minute)}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                <Text style={[S.alarmRowSub, { color: '#a78bfaCC' }]} numberOfLines={1}>
-                  {playingMantra.emoji} {playingMantra.label}
-                </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
-                  · {settings.wakeAlarm.enabled ? computeTimeUntilShort(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
-                </Text>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color='#a78bfa' />
-              <TouchableOpacity onPress={showWakeAlarmMenu} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-
-          {/* Extra Wake Alarm Rows */}
-          {extraWakeAlarms.map(alarm => (
-            <React.Fragment key={alarm.id}>
-              <View style={S.rowDivider} />
-              <TouchableOpacity style={S.alarmRow} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                    <Ionicons name="alarm" size={9} color="#c4b5fd" />
-                    <Text style={[S.alarmRowBadge, { color: '#c4b5fd' }]}>WAKE ALARM · DAILY</Text>
-                  </View>
-                  <Text style={[S.alarmRowTime, !alarm.enabled && S.alarmRowTimeOff]}>
-                    {pad(alarm.hour)}:{pad(alarm.minute)}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                    <Text style={[S.alarmRowSub, { color: '#c4b5fdCC' }]} numberOfLines={1}>
-                      {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
-                      · {alarm.enabled ? computeTimeUntilShort(alarm.hour, alarm.minute, liveClock) : 'off'}
+          {/* Primary Wake Alarm Card — Smart A */}
+          <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc', opacity: 0.90 }} />
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                  <Ionicons name="alarm" size={9} color="rgba(255,255,255,0.50)" />
+                  <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>WAKE ALARM{missionSettings.lockInMode ? '  🔒' : ''}</Text>
+                  <View style={{ flex: 1 }} />
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
+                      {(() => {
+                        const d = settings.wakeAlarm.days;
+                        if (!d || d.length === 7) return 'DAILY';
+                        if (d.length === 5 && [1,2,3,4,5].every(x => d.includes(x))) return 'WEEKDAYS';
+                        if (d.length === 2 && d.includes(0) && d.includes(6)) return 'WEEKENDS';
+                        return d.sort().map(i => DAY_LABELS[i]).join(' ');
+                      })()}
                     </Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Toggle value={alarm.enabled} onToggle={() => toggleExtraWake(alarm.id)} color="#c4b5fd" />
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                    {pad(settings.wakeAlarm.hour)}:{pad(settings.wakeAlarm.minute)}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
+                    {playingMantra.emoji} {playingMantra.label}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
+                      {settings.wakeAlarm.enabled ? computeTimeUntilShort(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color='#7dd3fc' />
+                <TouchableOpacity onPress={showWakeAlarmMenu} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                  <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Brahma Muhurta Alarm Card */}
+          {settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null && (
+            <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a', opacity: 0.90 }} />
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openBMModal()} activeOpacity={0.8}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                    <Text style={{ fontSize: 9, lineHeight: 11 }}>🌄</Text>
+                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>BRAHMA MUHURTA</Text>
+                    <View style={{ flex: 1 }} />
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                      <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
+                        {(() => {
+                          const d = settings.brahmaMuhurtaAlarm?.days;
+                          if (!d || d.length === 7) return 'DAILY';
+                          if (d.length === 5 && [1,2,3,4,5].every(x => d.includes(x))) return 'WEEKDAYS';
+                          if (d.length === 2 && d.includes(0) && d.includes(6)) return 'WEEKENDS';
+                          return d.sort().map(i => DAY_LABELS[i]).join(' ');
+                        })()} 
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                    <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: '#FFFFFF', lineHeight: 34 }}>
+                      {pad(bmHour)}:{pad(bmMinute)}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
+                        {computeTimeUntilShort(bmHour, bmMinute, liveClock)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                  <Toggle value={settings.brahmaMuhurtaAlarm?.enabled ?? false} onToggle={toggleBMAlarm} color="#fde68a" />
+                  <TouchableOpacity onPress={() => openBMModal()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Extra Wake Alarm Cards — Smart A */}
+          {extraWakeAlarms.map(alarm => (
+            <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd', opacity: 0.90 }} />
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                    <Ionicons name="alarm" size={9} color="rgba(255,255,255,0.50)" />
+                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>WAKE ALARM</Text>
+                    <View style={{ flex: 1 }} />
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                      <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
+                        {(() => {
+                          const d = alarm.days;
+                          if (!d || d.length === 7) return 'DAILY';
+                          if (d.length === 5 && [1,2,3,4,5].every(x => d.includes(x))) return 'WEEKDAYS';
+                          if (d.length === 2 && d.includes(0) && d.includes(6)) return 'WEEKENDS';
+                          return d.sort().map(i => DAY_LABELS[i]).join(' ');
+                        })()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                    <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                      {pad(alarm.hour)}:{pad(alarm.minute)}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
+                      {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
+                        {alarm.enabled ? computeTimeUntilShort(alarm.hour, alarm.minute, liveClock) : 'off'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                  <Toggle value={alarm.enabled} onToggle={() => toggleExtraWake(alarm.id)} color="#93c5fd" />
                   <TouchableOpacity onPress={() => showExtraWakeMenu(alarm)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                     <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
-            </React.Fragment>
+            </View>
           ))}
 
-          {/* Habit + Quick + SoundBath Rows */}
+          {/* Habit + Quick + SoundBath Cards — Smart A */}
           {alarmEntries.map(entry => {
             const isHabit = entry.type === 'habit';
             const isBath  = entry.type === 'soundbath';
-            const accent  = isHabit ? '#10b981' : isBath ? '#a78bfa' : '#f97316';
+            const accent  = isHabit ? '#86efac' : isBath ? '#99f6e4' : '#fed7aa';
             const badgeLabel = isHabit ? 'HABIT ALARM' : isBath ? 'SOUND BATH' : 'QUICK ALARM';
             const subLine = isHabit
               ? `${entry.habitEmoji ?? '🎯'}  ${entry.label}`
@@ -959,36 +1185,53 @@ export default function AlarmsTab() {
               ? `🎵  ${entry.label || 'Ambient Sound'}`
               : `⚡  ${entry.label || 'Quick Alarm'}`;
             return (
-              <React.Fragment key={entry.id}>
-                <View style={S.rowDivider} />
-                <TouchableOpacity style={S.alarmRow} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
+              <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+                <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent, opacity: 0.90 }} />
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
                       {isHabit
-                        ? <Ionicons name="checkmark-done" size={9} color={accent} />
+                        ? <Ionicons name="checkmark-done" size={9} color="rgba(255,255,255,0.50)" />
                         : isBath
-                        ? <Ionicons name="musical-notes" size={9} color={accent} />
-                        : <Feather name="zap" size={8} color={accent} />}
-                      <Text style={[S.alarmRowBadge, { color: accent }]}>{badgeLabel}</Text>
+                        ? <Ionicons name="musical-notes" size={9} color="rgba(255,255,255,0.50)" />
+                        : <Feather name="zap" size={8} color="rgba(255,255,255,0.50)" />}
+                      <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>{badgeLabel}</Text>
+                      <View style={{ flex: 1 }} />
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                        <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
+                          {(() => {
+                            const d = entry.days;
+                            if (!d || d.length === 0 || d.length === 7) return 'DAILY';
+                            if (d.length === 5 && [1,2,3,4,5].every(x => d.includes(x))) return 'WEEKDAYS';
+                            if (d.length === 2 && d.includes(0) && d.includes(6)) return 'WEEKENDS';
+                            return d.sort().map(i => DAY_LABELS[i]).join(' ');
+                          })()}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={[S.alarmRowTime, !entry.enabled && S.alarmRowTimeOff]}>
-                      {pad(entry.hour)}:{pad(entry.minute)}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                      <Text style={[S.alarmRowSub, { color: accent + 'CC' }]} numberOfLines={1}>{subLine}</Text>
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: '700' }}>
-                        · {entry.enabled ? computeTimeUntilShort(entry.hour, entry.minute, liveClock) : 'off'}
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                      <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                        {pad(entry.hour)}:{pad(entry.minute)}
                       </Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
+                          {entry.enabled ? computeTimeUntilShort(entry.hour, entry.minute, liveClock) : 'off'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
                     <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={accent} />
                     <TouchableOpacity onPress={() => showAlarmMenu(entry)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                       <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-              </React.Fragment>
+              </View>
             );
           })}
 
@@ -1008,12 +1251,13 @@ export default function AlarmsTab() {
       {fabOpen && (
         <View style={S.fabMenu}>
           {([
-            { label: '⏰  Wake Alarm',       color: ACCENT,    onPress: () => { setFabOpen(false); setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
-            { label: '🎯  Habit Alarm',       color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
-            { label: '⚡  Quick Alarm',        color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
-            { label: '🎵  Sound Bath',         color: '#a78bfa', onPress: () => { setFabOpen(false); openAddModal('soundbath'); } },
+            { label: '🌄  Rise at Brahma Muhurta',  color: '#f59e0b', onPress: () => { setFabOpen(false); openBMModal(); } },
+            { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setFabOpen(false); setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
+            { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
+            { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
+            { label: '🎵  Sound Bath',                 color: '#a78bfa', onPress: () => { setFabOpen(false); openAddModal('soundbath'); } },
           ] as const).map((item, i) => (
-            <TouchableOpacity key={i} style={[S.fabMenuItem, { borderColor: item.color + '50' }]} onPress={item.onPress} activeOpacity={0.85}>
+            <TouchableOpacity key={i} style={[S.fabMenuItem, { borderColor: item.color + '70' }]} onPress={item.onPress} activeOpacity={0.85}>
               <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -1023,49 +1267,129 @@ export default function AlarmsTab() {
         <Text style={S.fabTxt}>{fabOpen ? '✕' : '+'}</Text>
       </TouchableOpacity>
 
-      {/* Wake Alarm Edit Modal */}
-      <Modal visible={showWakeEdit} animationType="slide" transparent onRequestClose={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }}>
-        <View style={S.sheetOverlay}>
-          <View style={S.sheet}>
-            <View style={S.sheetHandle} />
+      {/* Wake Alarm Edit Modal — full-screen, Sound Bath style */}
+      <Modal
+        visible={showWakeEdit}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }}
+      >
+        <View style={{ flex: 1, backgroundColor: '#060610' }}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity onPress={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }} style={{ padding: 4 }}>
+                <Feather name="x" size={22} color="rgba(255,255,255,0.35)" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2.5 }}>
+                {isAddingExtraWake ? (editingExtraWake ? 'EDIT WAKE ALARM' : 'NEW WAKE ALARM') : 'MORNING WAKE-UP'}
+              </Text>
+              <View style={{ width: 32 }} />
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={S.sheetTitle}>{isAddingExtraWake ? (editingExtraWake ? '⏰  Edit Wake Alarm' : '⏰  New Wake Alarm') : '🌅  Morning Wake-Up Alarm'}</Text>
-              {!isAddingExtraWake && <Text style={{ fontSize: 10, color: '#FFFFFF35', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>DEFAULT: 4:00 AM  ·  BRAHMA MUHURTA</Text>}
-              <TimeAdjuster
-                hour={isAddingExtraWake ? extraFormHour : settings.wakeAlarm.hour}
-                minute={isAddingExtraWake ? extraFormMinute : settings.wakeAlarm.minute}
-                onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : setWakeTime}
-              />
-              {!isAddingExtraWake && prakritiWake && (
-                <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { enabled: true, hour: prakritiWake.hour, minute: prakritiWake.minute } }); }}>
-                  <Text style={{ fontSize: 16 }}>🌿</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '900', color: prakritiWake.color, letterSpacing: 1 }}>YOUR RHYTHM PLAN</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{prakritiWake.label}</Text>
+              {/* ── Selected Sound Hero Card ── */}
+              {(() => {
+                const selSnd = ALARM_SOUNDS.find(s => s.id === selectedMantraId);
+                const selColor = selSnd?.color ?? '#a78bfa';
+                const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[selectedMantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[selectedMantraId]) } : undefined);
+                return (
+                  <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 4, height: 136, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: selColor + '60' }}>
+                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 20, opacity: 0.75 }}>
+                      <LinearGradient colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.82)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]} />
+                      <View style={{ flex: 1, padding: 16, justifyContent: 'flex-end' }}>
+                        <Text style={{ fontSize: 9, fontWeight: '900', color: selColor, letterSpacing: 1.6, marginBottom: 4 }}>SELECTED SOUND</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <Text style={{ fontSize: 30 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                          <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: -0.3 }}>{selSnd?.label ?? 'Wake Alarm'}</Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#FFFFFF45', marginTop: 3, fontWeight: '600' }}>
+                          {isAddingExtraWake ? 'Wake Alarm · Rings at set time' : 'Morning Wake · Mission Alarm'}
+                        </Text>
+                      </View>
+                    </ImageBackground>
                   </View>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: prakritiWake.color }}>{settings.wakeAlarm.hour === prakritiWake.hour && settings.wakeAlarm.minute === prakritiWake.minute ? '✓ SET' : 'Apply →'}</Text>
-                </TouchableOpacity>
-              )}
-              <Text style={S.sheetSection}>QUICK PRESETS</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                {PRESETS.map(p => {
-                  const active = isAddingExtraWake
-                    ? (extraFormHour === p.hour && extraFormMinute === p.minute)
-                    : (settings.wakeAlarm.hour === p.hour && settings.wakeAlarm.minute === p.minute);
-                  return (
-                    <TouchableOpacity key={p.label} onPress={() => {
-                      if (isAddingExtraWake) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setExtraFormHour(p.hour); setExtraFormMinute(p.minute); }
-                      else { applyPreset(p); }
-                    }} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
-                      <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
-                      <Text style={S.presetChipLabel}>{p.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                );
+              })()}
+
+              {/* ── Time Picker ── */}
+              <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 4 }}>
+                <TimeAdjuster
+                  hour={isAddingExtraWake ? extraFormHour : settings.wakeAlarm.hour}
+                  minute={isAddingExtraWake ? extraFormMinute : settings.wakeAlarm.minute}
+                  onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : setWakeTime}
+                />
               </View>
+
+              {/* ── Quick Presets ── */}
+              <View style={{ paddingHorizontal: 20 }}>
+                <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 0, marginBottom: 10 }]}>QUICK PRESETS</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  {PRESETS.map(p => {
+                    const active = isAddingExtraWake
+                      ? (extraFormHour === p.hour && extraFormMinute === p.minute)
+                      : (settings.wakeAlarm.hour === p.hour && settings.wakeAlarm.minute === p.minute);
+                    return (
+                      <TouchableOpacity key={p.label} onPress={() => {
+                        if (isAddingExtraWake) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setExtraFormHour(p.hour); setExtraFormMinute(p.minute); }
+                        else { applyPreset(p); }
+                      }} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
+                        <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
+                        <Text style={S.presetChipLabel}>{p.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* ── Prakriti Row (default alarm only) ── */}
+              {!isAddingExtraWake && prakritiWake && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
+                  <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: prakritiWake.hour, minute: prakritiWake.minute } }); }}>
+                    <Text style={{ fontSize: 16 }}>🌿</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '900', color: prakritiWake.color, letterSpacing: 1 }}>YOUR RHYTHM PLAN</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{prakritiWake.label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: prakritiWake.color }}>{settings.wakeAlarm.hour === prakritiWake.hour && settings.wakeAlarm.minute === prakritiWake.minute ? '✓ SET' : 'Apply →'}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* ── Repeat Days ── */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
+                <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 4, marginBottom: 8 }]}>REPEAT DAYS</Text>
+                {!isAddingExtraWake ? (
+                  <>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                      {([
+                        { label: 'Every Day', days: [0, 1, 2, 3, 4, 5, 6] },
+                        { label: 'Weekdays',  days: [1, 2, 3, 4, 5] },
+                        { label: 'Weekends',  days: [0, 6] },
+                      ] as const).map(p => {
+                        const isMatch = p.days.length === wakeRepeatDays.length && p.days.every(d => wakeRepeatDays.includes(d));
+                        return (
+                          <TouchableOpacity
+                            key={p.label}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setWakeRepeatDays([...p.days]); }}
+                            style={{ flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: isMatch ? ACCENT + '80' : '#FFFFFF15', backgroundColor: isMatch ? ACCENT + '15' : 'transparent', alignItems: 'center' }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: isMatch ? ACCENT : '#FFFFFF55' }}>{p.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <DaySelector days={wakeRepeatDays} onChange={setWakeRepeatDays} />
+                  </>
+                ) : (
+                  <DaySelector days={extraFormRepeatDays} onChange={setExtraFormRepeatDays} />
+                )}
+              </View>
+
+              {/* ── Label (extra wake alarms only) ── */}
               {isAddingExtraWake && (
-                <>
-                  <Text style={S.sheetSection}>LABEL (optional)</Text>
+                <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
+                  <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 4 }]}>LABEL (optional)</Text>
                   <TextInput
                     style={S.customInput}
                     placeholder="e.g. Backup alarm, Gym alarm..."
@@ -1073,123 +1397,238 @@ export default function AlarmsTab() {
                     value={extraFormLabel}
                     onChangeText={setExtraFormLabel}
                   />
+                </View>
+              )}
+
+              {/* ── Sound Picker ── */}
+              <SoundPicker
+                sounds={ALARM_SOUNDS}
+                cats={ALARM_SOUND_CATS}
+                activeCat={wakeFormSoundCat}
+                onCatChange={cat => setWakeFormSoundCat(cat as typeof ALARM_SOUND_CATS[number])}
+                selectedId={selectedMantraId}
+                onSelect={handleMantraSelect}
+                previewingId={previewingId}
+                onTogglePreview={togglePreview}
+                cardWidth={(width - 40 - 8) / 2}
+                catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
+                gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
+              />
+
+              {/* ── Morning Mission + System (default alarm only) ── */}
+              {!isAddingExtraWake && (
+                <>
+                  <View style={{ paddingHorizontal: 20 }}>
+                    <Text style={[S.sheetSection, { marginHorizontal: 0 }]}>MORNING MISSION  (alarm won't stop until done)</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                      {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
+                        <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
+                          <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
+                          {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
+                        </TouchableOpacity>
+                      ); })}
+                    </View>
+                  </View>
+                  <View style={{ paddingHorizontal: 20 }}>
+                    <Text style={[S.sheetSection, { marginHorizontal: 0 }]}>SYSTEM</Text>
+                    <View style={[S.settingsCard, { backgroundColor: ALARM_CARD_BG }]}>
+                      {([
+                        { emoji: '🔒', label: 'Lock In Mode',  sub: "Alarm won't stop until mission done",       val: missionSettings.lockInMode,        onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }),                 color: '#ef4444' },
+                        { emoji: '🤖', label: 'Morning Brief', sub: 'AI speaks your personalized morning brief', val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }), color: '#60a5fa' },
+                        { emoji: '⏰', label: 'Dawn Alert',     sub: '15 min reminder before your wake alarm',   val: settings.brahmaReminder,           onToggle: toggleBrahma,                                                                    color: '#60a5fa' },
+                      ] as const).map((row, i) => (
+                        <View key={row.label} style={[S.settingsRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
+                          <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>{row.label}</Text>
+                            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>{row.sub}</Text>
+                          </View>
+                          <Toggle value={row.val} onToggle={row.onToggle} color={row.color} />
+                        </View>
+                      ))}
+                    </View>
+                    {missionSettings.streak > 0 && (
+                      <LinearGradient colors={[ACCENT + '18', ACCENT + '08']} style={S.streakBanner}>
+                        <Text style={{ fontSize: 26 }}>🔥</Text>
+                        <View>
+                          <Text style={{ color: ACCENT, fontWeight: '900', fontSize: 15 }}>Day {missionSettings.streak} Streak</Text>
+                          <Text style={{ color: Colors.textMuted, fontSize: 11 }}>Every. Single. Day.</Text>
+                        </View>
+                      </LinearGradient>
+                    )}
+                  </View>
                 </>
               )}
-              <Text style={S.sheetSection}>ALARM SOUND</Text>
-              {ALARM_SOUND_CATS.map(cat => {
-                const sounds = ALARM_SOUNDS.filter(s => s.cat === cat);
-                const catColors: Record<string,string> = { Nature: '#34d399', Sacred: '#a78bfa', Mantra: '#fbbf24', Stotra: '#c4b5fd' };
-                const catEmoji: Record<string,string> = { Nature: '🌿', Sacred: '🕉️', Mantra: '📿', Stotra: '🌟' };
-                return (
-                  <View key={cat} style={{ marginBottom: 14 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <Text style={{ fontSize: 11 }}>{catEmoji[cat]}</Text>
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: catColors[cat] + 'AA', letterSpacing: 1.6, fontFamily: 'Nunito_900Black' }}>{cat.toUpperCase()}</Text>
-                      <View style={{ flex: 1, height: 1, backgroundColor: catColors[cat] + '25' }} />
-                    </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {sounds.map(snd => {
-                        const active = selectedMantraId === snd.id;
-                        const previewing = previewingId === snd.id;
-                        const imgSrc = snd.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[snd.id] ? { uri: SOUND_IMAGES[snd.id] } : undefined);
-                        const cardW = (width - 40 - 24 - 8) / 2;
-                        return (
-                          <TouchableOpacity
-                            key={snd.id}
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleMantraSelect(snd.id); }}
-                            activeOpacity={0.82}
-                            style={{ width: cardW, height: 96, borderRadius: 16, overflow: 'hidden', borderWidth: active ? 2 : 1, borderColor: active ? snd.color : '#FFFFFF14' }}
-                          >
-                            <ImageBackground source={imgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 15 }}>
-                              <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 15 }]} />
-                              {active && <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '18' }]} />}
-                              <View style={{ flex: 1, padding: 8, justifyContent: 'space-between' }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                  <TouchableOpacity
-                                    onPress={e => { e.stopPropagation?.(); togglePreview(snd); }}
-                                    style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: previewing ? snd.color + '40' : 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: previewing ? snd.color + '80' : 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
-                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                                  >
-                                    <Text style={{ fontSize: 9, color: previewing ? snd.color : '#FFFFFFCC' }}>{previewing ? '■' : '▶'}</Text>
-                                  </TouchableOpacity>
-                                  <Text style={{ fontSize: 16 }}>{snd.emoji}</Text>
-                                </View>
-                                <View>
-                                  <Text style={{ fontSize: 10, fontWeight: '800', color: active ? snd.color : '#FFFFFFEE', lineHeight: 13 }} numberOfLines={2}>{snd.label}</Text>
-                                  {active && (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                                      <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
-                                      <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900' }}>SELECTED</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              </View>
-                            </ImageBackground>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                );
-              })}
-              <Text style={S.sheetSection}>MORNING MISSION  (alarm won't stop until done)</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
-                  <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
-                    <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
-                    {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
-                  </TouchableOpacity>
-                ); })}
-              </View>
-              <Text style={S.sheetSection}>SYSTEM</Text>
-              <View style={S.settingsCard}>
-                {([
-                  { emoji: '🔒', label: 'Lock In Mode',   sub: "Alarm won't stop until mission done",        val: missionSettings.lockInMode,        onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }),                    color: '#ef4444' },
-                  { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',  val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }),    color: '#60a5fa' },
-                  { emoji: '⏰', label: 'Dawn Alert',      sub: '15 min reminder before your wake alarm',    val: settings.brahmaReminder,           onToggle: toggleBrahma,       color: '#60a5fa' },
-                ] as const).map((row, i) => (
-                  <View key={row.label} style={[S.settingsRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
-                    <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>{row.label}</Text>
-                      <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>{row.sub}</Text>
-                    </View>
-                    <Toggle value={row.val} onToggle={row.onToggle} color={row.color} />
-                  </View>
-                ))}
-              </View>
-              {missionSettings.streak > 0 && (
-                <LinearGradient colors={[ACCENT + '18', ACCENT + '08']} style={S.streakBanner}>
-                  <Text style={{ fontSize: 26 }}>🔥</Text>
-                  <View>
-                    <Text style={{ color: ACCENT, fontWeight: '900', fontSize: 15 }}>Day {missionSettings.streak} Streak</Text>
-                    <Text style={{ color: Colors.textMuted, fontSize: 11 }}>Every. Single. Day.</Text>
-                  </View>
-                </LinearGradient>
-              )}
+
+              {/* ── Save Button ── */}
               <TouchableOpacity
-                onPress={() => {
+                onPress={async () => {
                   stopPreview();
                   if (isAddingExtraWake) {
-                    editingExtraWake ? updateExtraWakeAlarm() : addExtraWakeAlarm();
+                    if (editingExtraWake) {
+                      await updateExtraWakeAlarm();
+                    } else {
+                      await addExtraWakeAlarm();
+                    }
                   } else {
+                    const duplicate = extraWakeAlarms.some(
+                      a => a.hour === settings.wakeAlarm.hour && a.minute === settings.wakeAlarm.minute
+                    );
+                    if (duplicate) {
+                      Alert.alert(
+                        '⚠️ Duplicate Time',
+                        `Another wake alarm is already set for ${fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}. Remove it first or choose a different time.`,
+                      );
+                      return;
+                    }
+                    await persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, days: wakeRepeatDays } });
                     setShowWakeEdit(false);
                   }
                 }}
-                style={S.sheetDoneBtn}
+                style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10, backgroundColor: '#a78bfa22', borderWidth: 1.5, borderColor: '#a78bfa55', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
+                activeOpacity={0.85}
               >
-                <Text style={S.sheetDoneTxt}>
+                <Ionicons name="alarm-outline" size={20} color="#a78bfa" />
+                <Text style={{ color: '#a78bfa', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 }}>
                   {isAddingExtraWake
                     ? (editingExtraWake
-                        ? `✓ Update  ·  ${fmt12(extraFormHour, extraFormMinute)}`
-                        : `✓ Set Alarm  ·  ${fmt12(extraFormHour, extraFormMinute)}`)
-                    : 'Done'}
+                        ? `Update  ·  ${fmt12(extraFormHour, extraFormMinute)}`
+                        : `Set Alarm  ·  ${fmt12(extraFormHour, extraFormMinute)}`)
+                    : `Set Wake Alarm  ·  ${fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}`}
                 </Text>
               </TouchableOpacity>
-              <View style={{ height: 48 }} />
+              <View style={{ height: 24 }} />
             </ScrollView>
-          </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* ── Rise at Brahma Muhurta Modal ── */}
+      <Modal
+        visible={showBMModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowBMModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#060610' }}>
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity onPress={() => setShowBMModal(false)} style={{ padding: 4 }}>
+                <Feather name="x" size={22} color="rgba(255,255,255,0.35)" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#f59e0b60', letterSpacing: 2.5 }}>BRAHMA MUHURTA ALARM</Text>
+              <View style={{ width: 32 }} />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+
+              {/* ── Hero Section ── */}
+              <LinearGradient
+                colors={['#1a0e00', '#0f0700', '#060610']}
+                style={{ marginHorizontal: 20, marginTop: 16, borderRadius: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: '#f59e0b30', padding: 28, alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 64, marginBottom: 8 }}>🌄</Text>
+                <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' }}>Brahma Muhurta</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#f59e0b', letterSpacing: 1.5, marginBottom: 20, textAlign: 'center' }}>THE GREATER MEDITATIVE HOUR</Text>
+
+                {bmHour !== null ? (
+                  <>
+                    <Text style={{ fontSize: 11, color: '#FFFFFF40', fontWeight: '700', letterSpacing: 1.2, marginBottom: 6 }}>TOMORROW · SACRED WINDOW OPENS</Text>
+                    <Text style={{ fontSize: 52, fontWeight: '200', color: '#fff', letterSpacing: -2, lineHeight: 58 }}>{fmt12(bmHour, bmMinute)}</Text>
+                    <Text style={{ fontSize: 12, color: '#f59e0b80', fontWeight: '600', marginTop: 8, textAlign: 'center' }}>96 minutes before sunrise</Text>
+                    <Text style={{ fontSize: 11, color: '#FFFFFF35', fontWeight: '500', marginTop: 4, textAlign: 'center' }}>Recalculates daily as the sun shifts with the season</Text>
+                  </>
+                ) : (
+                  <View style={{ alignItems: 'center', padding: 16 }}>
+                    <Text style={{ fontSize: 28, marginBottom: 8 }}>📍</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF60', textAlign: 'center' }}>Enable location to calculate{'\n'}your local Brahma Muhurta time</Text>
+                  </View>
+                )}
+              </LinearGradient>
+
+              {/* ── Science Note ── */}
+              <View style={{ marginHorizontal: 20, marginTop: 14, padding: 16, borderRadius: 16, backgroundColor: '#FFFFFF05', borderWidth: 1, borderColor: '#FFFFFF0A' }}>
+                <Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600', lineHeight: 18, textAlign: 'center' }}>
+                  Alpha & theta brainwaves dominate pre-dawn hours. Cortisol begins its natural surge.{'\n'}
+                  The subconscious–conscious veil is at its thinnest. <Text style={{ color: '#f59e0b80' }}>The ideal window for meditation & intention-setting.</Text>
+                </Text>
+              </View>
+
+              {/* ── Locked Sound ── */}
+              <View style={{ marginHorizontal: 20, marginTop: 16 }}>
+                <Text style={[S.sheetSection, { marginHorizontal: 0, marginBottom: 10 }]}>SACRED SOUND · LOCKED TO THIS ALARM</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 1.5, borderColor: '#c084fc50', backgroundColor: '#c084fc0A', padding: 16 }}>
+                  <Text style={{ fontSize: 28 }}>🌌</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff' }}>Spiritual Journey</Text>
+                    <Text style={{ fontSize: 11, color: '#FFFFFF45', marginTop: 2 }}>A journey through sacred realms · Meditations</Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#c084fc20', borderWidth: 1, borderColor: '#c084fc40' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#c084fc' }}>ACTIVE</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* ── Rise on These Days ── */}
+              <View style={{ marginHorizontal: 20, marginTop: 16 }}>
+                <Text style={[S.sheetSection, { marginHorizontal: 0, marginBottom: 10 }]}>RISE ON THESE DAYS</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  {([
+                    { label: 'Every Day', days: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Weekdays',  days: [1, 2, 3, 4, 5] },
+                    { label: 'Weekends',  days: [0, 6] },
+                  ] as const).map(p => {
+                    const isMatch = p.days.length === bmAlarmDays.length && p.days.every(d => bmAlarmDays.includes(d));
+                    return (
+                      <TouchableOpacity
+                        key={p.label}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBmAlarmDays([...p.days]); }}
+                        style={{ flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: isMatch ? '#f59e0b80' : '#FFFFFF15', backgroundColor: isMatch ? '#f59e0b15' : 'transparent', alignItems: 'center' }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: isMatch ? '#f59e0b' : '#FFFFFF55' }}>{p.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <DaySelector days={bmAlarmDays} onChange={setBmAlarmDays} />
+              </View>
+
+              {/* ── Active BM alarm cancel option ── */}
+              {settings.brahmaMuhurtaAlarm?.enabled && (
+                <TouchableOpacity
+                  onPress={cancelBMAlarm}
+                  style={{ marginHorizontal: 20, marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#ef444430', backgroundColor: '#ef44440A' }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="bell-off" size={15} color="#ef4444" />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#ef4444' }}>Cancel Sacred Alarm</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* ── Set Button ── */}
+              <TouchableOpacity
+                onPress={saveBMAlarm}
+                disabled={bmHour === null}
+                style={{ marginHorizontal: 20, marginTop: 20, marginBottom: 10, borderRadius: 20, overflow: 'hidden', opacity: bmHour === null ? 0.4 : 1 }}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#d97706', '#b45309', '#92400e']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={{ paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
+                >
+                  <Text style={{ fontSize: 20 }}>🌄</Text>
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.5 }}>
+                    {bmHour !== null ? `Set Sacred Dawn Alarm  ·  ${fmt12(bmHour, bmMinute)}` : 'Set Sacred Dawn Alarm'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <View style={{ height: 24 }} />
+            </ScrollView>
+          </SafeAreaView>
         </View>
       </Modal>
 
@@ -1216,7 +1655,7 @@ export default function AlarmsTab() {
               {(() => {
                 const selSnd = ALARM_SOUNDS.find(s => s.id === formSoundId);
                 const selColor = selSnd?.color ?? '#a78bfa';
-                const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[formSoundId] ? { uri: SOUND_IMAGES[formSoundId] } : undefined);
+                const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[formSoundId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[formSoundId]) } : undefined);
                 return (
                   <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 4, height: 136, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: selColor + '60' }}>
                     <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 20, opacity: 0.75 }}>
@@ -1239,63 +1678,26 @@ export default function AlarmsTab() {
                 <TimeAdjuster hour={formHour} minute={formMinute} onChange={(h, m) => { setFormHour(h); setFormMinute(m); }} />
               </View>
 
-              {/* Sound picker — categorized image grid */}
-              {(['Nature', 'Sacred'] as const).map(cat => {
-                const catSounds = ALARM_SOUNDS.filter(s => s.cat === cat);
-                const catColors: Record<string, string> = { Nature: '#34d399', Sacred: '#a78bfa' };
-                const catEmoji: Record<string, string> = { Nature: '🌿', Sacred: '🕉️' };
-                const cardW = (width - 40 - 8) / 2;
-                return (
-                  <View key={cat} style={{ marginBottom: 14, paddingHorizontal: 20 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <Text style={{ fontSize: 11 }}>{catEmoji[cat]}</Text>
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: catColors[cat] + 'AA', letterSpacing: 1.6 }}>{cat.toUpperCase()}</Text>
-                      <View style={{ flex: 1, height: 1, backgroundColor: catColors[cat] + '25' }} />
-                    </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {catSounds.map(snd => {
-                        const active = formSoundId === snd.id;
-                        const previewing = previewingId === snd.id;
-                        const imgSrc = snd.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[snd.id] ? { uri: SOUND_IMAGES[snd.id] } : undefined);
-                        return (
-                          <TouchableOpacity
-                            key={snd.id}
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundId(snd.id); }}
-                            activeOpacity={0.82}
-                            style={{ width: cardW, height: 96, borderRadius: 16, overflow: 'hidden', borderWidth: active ? 2 : 1, borderColor: active ? snd.color : '#FFFFFF14' }}
-                          >
-                            <ImageBackground source={imgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 15 }}>
-                              <LinearGradient colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 15 }]} />
-                              {active && <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '18' }]} />}
-                              <View style={{ flex: 1, padding: 8, justifyContent: 'space-between' }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                  <TouchableOpacity
-                                    onPress={e => { e.stopPropagation?.(); togglePreview(snd); }}
-                                    style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: previewing ? snd.color + '40' : 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: previewing ? snd.color + '80' : 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
-                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                                  >
-                                    <Text style={{ fontSize: 9, color: previewing ? snd.color : '#FFFFFFCC' }}>{previewing ? '■' : '▶'}</Text>
-                                  </TouchableOpacity>
-                                  <Text style={{ fontSize: 16 }}>{snd.emoji}</Text>
-                                </View>
-                                <View>
-                                  <Text style={{ fontSize: 10, fontWeight: '800', color: active ? snd.color : '#FFFFFFEE', lineHeight: 13 }} numberOfLines={2}>{snd.label}</Text>
-                                  {active && (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                                      <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
-                                      <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900' }}>SELECTED</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              </View>
-                            </ImageBackground>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                );
-              })}
+              {/* Repeat days */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
+                <Text style={[S.sheetSection, { marginTop: 4, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
+                <DaySelector days={formDays} onChange={setFormDays} />
+              </View>
+
+              {/* Sound picker — category filter tabs + filtered grid */}
+              <SoundPicker
+                sounds={ALARM_SOUNDS}
+                cats={ALARM_SOUND_CATS}
+                activeCat={bathFormSoundCat}
+                onCatChange={cat => setBathFormSoundCat(cat as typeof ALARM_SOUND_CATS[number])}
+                selectedId={formSoundId}
+                onSelect={setFormSoundId}
+                previewingId={previewingId}
+                onTogglePreview={togglePreview}
+                cardWidth={(width - 40 - 8) / 2}
+                catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
+                gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
+              />
 
               {/* Optional label */}
               <View style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10 }}>
@@ -1471,12 +1873,93 @@ export default function AlarmsTab() {
       </Modal>
 
 
+      {/* ── Custom Alarm Context Menu ── */}
+      {menuTarget && (
+        <Modal transparent animationType="fade" visible={!!menuTarget} onRequestClose={() => setMenuTarget(null)}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setMenuTarget(null)}
+          >
+            <TouchableOpacity activeOpacity={1} style={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 100 }}>
+              <View style={{ borderRadius: 22, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(200,180,255,0.35)', backgroundColor: 'rgba(22,12,58,0.93)' }}>
+                <LinearGradient
+                  colors={['rgba(167,139,250,0.32)', 'rgba(120,100,200,0.18)', 'rgba(255,255,255,0.04)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
+                  style={StyleSheet.absoluteFillObject} />
+                <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF38', letterSpacing: 1.8 }}>
+                    {menuTarget.type === 'wake' ? 'WAKE ALARM' : menuTarget.type === 'extraWake' ? 'WAKE ALARM' : menuTarget.entry?.type === 'habit' ? 'HABIT ALARM' : menuTarget.entry?.type === 'soundbath' ? 'SOUND BATH' : 'QUICK ALARM'}
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff', marginTop: 3 }} numberOfLines={1}>
+                    {menuTarget.type === 'wake'
+                      ? fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)
+                      : menuTarget.type === 'extraWake'
+                      ? `${menuTarget.extraWake?.label ?? 'Wake Alarm'}  ·  ${fmt12(menuTarget.extraWake?.hour ?? 0, menuTarget.extraWake?.minute ?? 0)}`
+                      : `${menuTarget.entry?.label ?? ''}  ·  ${fmt12(menuTarget.entry?.hour ?? 0, menuTarget.entry?.minute ?? 0)}`}
+                  </Text>
+                </View>
+                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.13)', marginHorizontal: 16 }} />
+                <TouchableOpacity
+                  onPress={() => {
+                    const t = menuTarget;
+                    setMenuTarget(null);
+                    if (t.type === 'wake') { setIsAddingExtraWake(false); setShowWakeEdit(true); }
+                    else if (t.type === 'extraWake' && t.extraWake) openEditExtraWake(t.extraWake);
+                    else if (t.entry) openEditEntry(t.entry);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 17 }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#60a5fa14', borderWidth: 1, borderColor: '#60a5fa28', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="edit-2" size={15} color="#60a5fa" />
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 }}>Edit Alarm</Text>
+                  <Feather name="chevron-right" size={15} color="#FFFFFF28" />
+                </TouchableOpacity>
+                {menuTarget.type !== 'wake' && (
+                  <>
+                    <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.10)', marginHorizontal: 16 }} />
+                    <TouchableOpacity
+                      onPress={() => {
+                        const t = menuTarget;
+                        setMenuTarget(null);
+                        if (t.type === 'extraWake' && t.extraWake) deleteExtraWake(t.extraWake.id);
+                        else if (t.entry) deleteEntry(t.entry.id);
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 17 }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#ef444414', borderWidth: 1, borderColor: '#ef444428', alignItems: 'center', justifyContent: 'center' }}>
+                        <Feather name="trash-2" size={15} color="#ef4444" />
+                      </View>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#ef4444', flex: 1 }}>Delete Alarm</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => setMenuTarget(null)}
+                style={{ marginTop: 8, borderRadius: 16, backgroundColor: 'rgba(22,12,58,0.90)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.28)', paddingVertical: 15, alignItems: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(200,180,255,0.60)' }}>Cancel</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
     </ImageBackground>
   );
 }
 
 const S = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#060610', overflow: 'hidden' },
+  screen: { flex: 1, overflow: 'hidden' },
+  pageHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14 },
+  pageHeaderTitle: { fontSize: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
+  pageHeaderEyebrow: { fontSize: 8, fontWeight: '800', color: 'rgba(167,139,250,0.85)', letterSpacing: 2.5 },
+  pageHeaderClock: { fontSize: 13, fontWeight: '200', color: 'rgba(255,255,255,0.40)', letterSpacing: -0.3 },
   headerGrad: { paddingBottom: 2 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 4 },
   appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
@@ -1494,10 +1977,10 @@ const S = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 6, marginBottom: 0, gap: 10 },
   sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#74B87480', letterSpacing: 2.0, fontFamily: 'Nunito_900Black' },
   sectionHeaderLine: { flex: 1, height: 1, backgroundColor: '#74B87430' },
-  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(14, 14, 32, 0.92)', overflow: 'hidden', elevation: 10, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 22, shadowOffset: { width: 0, height: 6 } },
-  alarmCardActive: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.09)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
-  alarmCardHabit: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
-  alarmCardQuick: { borderColor: 'rgba(255,255,255,0.60)', backgroundColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, elevation: 14 },
+  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', elevation: 12, shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
+  alarmCardActive: { borderColor: 'rgba(255,255,255,0.40)', backgroundColor: 'rgba(255,255,255,0.16)', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 24, elevation: 16 },
+  alarmCardHabit: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)', shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 22, elevation: 14 },
+  alarmCardQuick: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)', shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 22, elevation: 14 },
   alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 6, paddingLeft: 11, gap: 12 },
   alarmAccentBar: { width: 3, alignSelf: 'stretch' },
   alarmLeft: { flex: 1, gap: 2 },
@@ -1513,12 +1996,12 @@ const S = StyleSheet.create({
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
-  fab: { position: 'absolute', bottom: 92, right: 20, width: 54, height: 54, borderRadius: 27, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: ACCENT, shadowOpacity: 0.6, shadowRadius: 16 },
+  fab: { position: 'absolute', bottom: 92, left: width / 2 - 27, width: 54, height: 54, borderRadius: 27, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: ACCENT, shadowOpacity: 0.6, shadowRadius: 16, zIndex: 11 },
   fabOpen: { backgroundColor: '#c05e00' },
   fabTxt: { fontSize: 26, color: '#fff', fontWeight: '200', lineHeight: 32, marginTop: 2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', bottom: 158, left: 0, right: 0, gap: 8, alignItems: 'flex-end', paddingRight: 20, zIndex: 10 },
-  fabMenuItem: { backgroundColor: '#0D0D20', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 6 },
+  fabMenu: { position: 'absolute', bottom: 158, left: 0, right: 0, gap: 8, alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  fabMenuItem: { backgroundColor: 'rgba(12,8,38,0.94)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 14, elevation: 14, width: width - 80, alignItems: 'center' },
   fabMenuItemTxt: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
@@ -1531,7 +2014,7 @@ const S = StyleSheet.create({
   prakritiRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 6, backgroundColor: '#FFFFFF04' },
   mantraChip: { width: 104, borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05', padding: 10, alignItems: 'center', gap: 4 },
   missionChip: { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: 'center', gap: 4, width: (width - 40 - 8) / 2 },
-  settingsCard: { backgroundColor: '#FFFFFF04', borderWidth: 1, borderColor: '#FFFFFF0A', borderRadius: 18, marginBottom: 10, overflow: 'hidden' },
+  settingsCard: { backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', borderRadius: 18, marginBottom: 10, overflow: 'hidden' },
   settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   streakBanner: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: 1, borderColor: ACCENT + '30', padding: 14, marginBottom: 14, marginTop: 4 },
   testBtn: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
@@ -1543,16 +2026,17 @@ const S = StyleSheet.create({
   saveBtnTxt: { color: '#10b981', fontWeight: '900', fontSize: 15, fontFamily: 'Nunito_900Black' },
   kebabBtn: { paddingVertical: 6, paddingHorizontal: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
   kebabDot: { width: 4.5, height: 4.5, borderRadius: 2.5, backgroundColor: '#FFFFFFDD', marginVertical: 2.5 },
-  cardMenu: { marginHorizontal: 16, marginBottom: 14, backgroundColor: 'rgba(8,8,24,0.92)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', overflow: 'hidden' },
+  cardMenu: { marginHorizontal: 16, marginBottom: 14, backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' },
   cardMenuItem: { paddingHorizontal: 20, paddingVertical: 16 },
   cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#a78bfaBB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
-  listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.32)' },
-  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 11 },
-  alarmRowBadge: { fontSize: 9, fontWeight: '900', letterSpacing: 1.3, textShadowColor: 'rgba(0,0,0,0.98)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
-  alarmRowTime: { fontSize: 34, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.5, lineHeight: 40, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 14 },
-  alarmRowTimeOff: { color: 'rgba(255,255,255,0.28)', textShadowColor: 'rgba(0,0,0,0.95)' },
-  alarmRowSub: { fontSize: 12, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)' },
+  alarmCard2: { marginHorizontal: 16, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', elevation: 3, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9 },
+  alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
+  alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },
+  alarmRowTimeOff: { color: 'rgba(255,255,255,0.28)' },
+  alarmRowSub: { fontSize: 10, fontWeight: '400' },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.18)', marginHorizontal: 18 },
 });

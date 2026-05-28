@@ -11,6 +11,67 @@
 import notifee, { EventType } from '@notifee/react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as TaskManager from 'expo-task-manager';
+
+// ─── Walk Background Task ────────────────────────────────────────────────────
+// Defined here (before React renders) so the OS can wake the headless JS
+// context and process GPS updates even after the app is killed.
+const WALK_BG_TASK   = 'nada-background-walk-tracker';
+const WALK_STATE_KEY = 'nada_active_walk_v1';
+
+function _walkHaversineKm(lat1, lng1, lat2, lng2) {
+  const R    = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lng2 - lng1) * Math.PI / 180;
+  const a    = Math.sin(dLat / 2) ** 2 +
+               Math.cos(lat1 * Math.PI / 180) *
+               Math.cos(lat2 * Math.PI / 180) *
+               Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+TaskManager.defineTask(WALK_BG_TASK, async ({ data, error }) => {
+  if (error) return;
+  const locations = data && data.locations;
+  if (!locations || !locations.length) return;
+  const loc = locations[locations.length - 1];
+  const { latitude: lat, longitude: lng } = loc.coords;
+
+  try {
+    const raw = await AsyncStorage.getItem(WALK_STATE_KEY);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (!state.active || state.paused) return;
+
+    if (state.lastLat !== null && state.lastLng !== null) {
+      const dist = _walkHaversineKm(state.lastLat, state.lastLng, lat, lng);
+      // Accept 3 m–300 m increments (filters GPS noise and teleports)
+      if (dist >= 0.003 && dist <= 0.3) {
+        state.distanceKm = parseFloat((state.distanceKm + dist).toFixed(4));
+      }
+    }
+    state.lastLat = lat;
+    state.lastLng = lng;
+
+    // Fire a local notification when target is reached
+    if (!state.notifiedTarget && state.targetKm && state.distanceKm >= state.targetKm) {
+      state.notifiedTarget = true;
+      const kmLabel = state.targetKm >= 1
+        ? state.targetKm + ' km'
+        : (state.targetKm * 1000) + ' m';
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: state.type === 'morning' ? '🌅 Morning Walk Complete!' : '🌆 Evening Walk Complete!',
+          body:  `${kmLabel} achieved. Your prana flows freely. 🙏`,
+          sound: true,
+        },
+        trigger: null,
+      });
+    }
+
+    await AsyncStorage.setItem(WALK_STATE_KEY, JSON.stringify(state));
+  } catch { /* */ }
+});
 
 const ALARM_NOTIF_ID        = 'onesutra-wake-alarm';
 const HABIT_ALARM_NOTIF_ID  = 'habit-alarm-service';

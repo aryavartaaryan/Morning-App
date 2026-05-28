@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions, ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
+import { useBgContext } from '@/lib/bgContext';
+import { getSolarTimes, type SolarTimes } from '@/lib/solar';
+import { store, KEYS } from '@/lib/storage';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -133,6 +136,20 @@ const SCORE_META: Record<number, { label: string; color: string; emoji: string; 
 // ── Math Functions ──────────────────────────────────────────────────────────
 
 const pad = (n: number) => String(n).padStart(2, '0');
+const fmt12H = (h: number, m: number) => {
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12  = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+};
+function fmtSolar(dec: number): string {
+  const flr = Math.floor(dec);
+  const mn  = Math.round((dec - flr) * 60);
+  return fmt12H(flr, mn);
+}
+function getNakshatraConstellation(idx: number): string {
+  const c = ['Aries','Aries','Taurus','Taurus','Orion','Orion','Gemini','Cancer','Hydra','Leo','Leo','Virgo','Corvus','Virgo','Boötes','Libra','Scorpius','Scorpius','Sagittarius','Sagittarius','Sagittarius','Aquila','Delphinus','Aquarius','Pegasus','Andromeda','Pisces'];
+  return c[idx] ?? '';
+}
 
 function getMoonPhase(date: Date = new Date()): {
   emoji: string; name: string; illumination: number; paksha: string; tithiNum: number;
@@ -317,6 +334,93 @@ function getNextLunarEvents() {
   };
 }
 
+// ── Circular Solar Ephemeris Dial ────────────────────────────────────────────
+function CircularSolarDial({ solarTimes }: { solarTimes: SolarTimes | null }) {
+  const dialSize = 220;
+  const cx = dialSize / 2;
+  const cy = dialSize / 2;
+  const trackR = 86;
+  const now = new Date();
+  const curH = now.getHours() + now.getMinutes() / 60;
+  const hourToAngle = (h: number) => (h / 24) * 2 * Math.PI - Math.PI / 2;
+  const hrToXY = (h: number, r: number) => {
+    const a = hourToAngle(h);
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  };
+  if (!solarTimes) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+        <Text style={{ fontSize: 11, color: '#FFFFFF25', fontWeight: '600' }}>🛰  Enable GPS for solar dial</Text>
+      </View>
+    );
+  }
+  const { sunrise: sr, sunset: ss, solarNoon: sn } = solarTimes;
+  const srPos  = hrToXY(sr, trackR);
+  const ssPos  = hrToXY(ss, trackR);
+  const snPos  = hrToXY(sn, trackR);
+  const nowPos = hrToXY(curH, trackR);
+  const isDaytime = curH >= sr && curH <= ss;
+  const dayAngleDiff = ((hourToAngle(ss) - hourToAngle(sr)) + 2 * Math.PI) % (2 * Math.PI);
+  const dayLargeArc   = dayAngleDiff  > Math.PI ? 1 : 0;
+  const nightLargeArc = dayAngleDiff  < Math.PI ? 1 : 0;
+  const litAngleDiff  = isDaytime ? ((hourToAngle(curH) - hourToAngle(sr)) + 2 * Math.PI) % (2 * Math.PI) : 0;
+  const litLargeArc   = litAngleDiff > Math.PI ? 1 : 0;
+  const fx = (n: number) => n.toFixed(1);
+  const daylightArcD = `M ${fx(srPos.x)} ${fx(srPos.y)} A ${trackR} ${trackR} 0 ${dayLargeArc} 1 ${fx(ssPos.x)} ${fx(ssPos.y)}`;
+  const nightArcD    = `M ${fx(ssPos.x)} ${fx(ssPos.y)} A ${trackR} ${trackR} 0 ${nightLargeArc} 1 ${fx(srPos.x)} ${fx(srPos.y)}`;
+  const litArcD      = isDaytime && litAngleDiff > 0.05 ? `M ${fx(srPos.x)} ${fx(srPos.y)} A ${trackR} ${trackR} 0 ${litLargeArc} 1 ${fx(nowPos.x)} ${fx(nowPos.y)}` : null;
+  const dlH = Math.floor(ss - sr);
+  const dlM = Math.round(((ss - sr) - dlH) * 60);
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <View style={{ width: dialSize, height: dialSize }}>
+        <Svg width={dialSize} height={dialSize}>
+          {/* Background ring */}
+          <SvgCircle cx={cx} cy={cy} r={trackR} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={10} />
+          {/* Night arc */}
+          <SvgPath d={nightArcD} fill="none" stroke="rgba(96,165,250,0.22)" strokeWidth={10} strokeLinecap="round" />
+          {/* Day arc (dim) */}
+          <SvgPath d={daylightArcD} fill="none" stroke="rgba(251,191,36,0.22)" strokeWidth={10} strokeLinecap="round" />
+          {/* Lit progress arc */}
+          {litArcD ? <SvgPath d={litArcD} fill="none" stroke="#fde68a" strokeWidth={10} strokeLinecap="round" opacity={0.90} /> : null}
+          {/* Sunrise dot */}
+          <SvgCircle cx={srPos.x} cy={srPos.y} r={6} fill="#f97316" />
+          {/* Sunset dot */}
+          <SvgCircle cx={ssPos.x} cy={ssPos.y} r={6} fill="#c084fc" />
+          {/* Noon marker */}
+          <SvgCircle cx={snPos.x} cy={snPos.y} r={4} fill="rgba(253,230,138,0.55)" />
+          {/* Current position glow */}
+          <SvgCircle cx={nowPos.x} cy={nowPos.y} r={22} fill={isDaytime ? '#fbbf24' : '#a5b4fc'} opacity={0.10} />
+          <SvgCircle cx={nowPos.x} cy={nowPos.y} r={14} fill={isDaytime ? '#fde68a' : '#c7d2fe'} opacity={0.20} />
+          <SvgCircle cx={nowPos.x} cy={nowPos.y} r={8}  fill={isDaytime ? '#fde68a' : '#a5b4fc'} opacity={0.95} />
+        </Svg>
+        {/* Center info overlay */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+          <Text style={{ fontSize: 21, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 }}>{fmtSolar(curH)}</Text>
+          <Text style={{ fontSize: 8, color: '#FFFFFF45', marginTop: 2, letterSpacing: 0.5 }}>{isDaytime ? 'Daytime' : 'Night'}</Text>
+          <Text style={{ fontSize: 13, color: '#fbbf24AA', marginTop: 5, fontWeight: '800' }}>{dlH}h {dlM}m</Text>
+          <Text style={{ fontSize: 7, color: '#FFFFFF28', letterSpacing: 0.5 }}>daylight</Text>
+        </View>
+      </View>
+      {/* Solar times row — clean text, no icons */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: dialSize, paddingHorizontal: 6, marginTop: 4 }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#fb923c' }}>{fmtSolar(sr)}</Text>
+          <Text style={{ fontSize: 7, color: '#FFFFFF35', letterSpacing: 0.8, marginTop: 2 }}>SUNRISE</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#fbbf24' }}>{fmtSolar(sn)}</Text>
+          <Text style={{ fontSize: 7, color: '#FFFFFF35', letterSpacing: 0.8, marginTop: 2 }}>SOLAR NOON</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#c084fc' }}>{fmtSolar(ss)}</Text>
+          <Text style={{ fontSize: 7, color: '#FFFFFF35', letterSpacing: 0.8, marginTop: 2 }}>SUNSET</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function SciBlock({ title, body, borderColor, titleColor }: { title: string; body: string; borderColor: string; titleColor: string }) {
@@ -344,7 +448,15 @@ function SectionHeader({ title, sub, emoji }: { title: string; sub?: string; emo
 
 export default function CosmicExploreScreen() {
   const router = useRouter();
+  const { bgUri } = useBgContext();
   const [expandedCalendar, setExpandedCalendar] = useState(false);
+  const [solarTimes, setSolarTimes] = useState<SolarTimes | null>(null);
+
+  useEffect(() => {
+    store.getJSON<{ lat: number; lon: number }>(KEYS.location)
+      .then(loc => { if (loc?.lat && loc?.lon) setSolarTimes(getSolarTimes(loc.lat, loc.lon)); })
+      .catch(() => {});
+  }, []);
 
   const moon        = getMoonPhase();
   const p           = getPanchangData();
@@ -363,11 +475,11 @@ export default function CosmicExploreScreen() {
   const dateLabel = today.toLocaleDateString('en-US', dayOpts);
 
   return (
-    <View style={S.screen}>
-      <LinearGradient
-        colors={['#060618', '#0a0a1f', '#080820']}
-        style={StyleSheet.absoluteFillObject}
-      />
+    <ImageBackground
+      source={bgUri ? { uri: bgUri } : undefined}
+      style={S.screen}
+      imageStyle={{ opacity: 1 }}
+    >
 
       {/* ── Custom Header ── */}
       <SafeAreaView edges={['top']} style={S.headerSafe}>
@@ -415,6 +527,18 @@ export default function CosmicExploreScreen() {
         </LinearGradient>
 
         {/* ══ PANCHANG QUICK VIEW — Today’s Cosmic Snapshot ══ */}
+        {/* Solar Ephemeris — Circular Sun Dial */}
+        <View style={[S.snapCard, { marginTop: 10 }]}>
+          <LinearGradient
+            colors={['rgba(251,191,36,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+          <Text style={[S.snapTag, { marginBottom: 14 }]}>SOLAR EPHEMERIS  ·  SUN POSITION TODAY</Text>
+          <CircularSolarDial solarTimes={solarTimes} />
+        </View>
+
         <View style={S.snapCard}>
           <LinearGradient
             colors={[vaar.color + '10', '#FFFFFF04', 'transparent']}
@@ -440,7 +564,7 @@ export default function CosmicExploreScreen() {
             <View style={[S.snapCell, { borderColor: '#fbbf2435' }]}>
               <Text style={S.snapEmoji}>{nakshatra.emoji}</Text>
               <Text style={[S.snapCellTitle, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
-              <Text style={S.snapCellSub}>{nakshatra.en}</Text>
+              <Text style={S.snapCellSub}>{getNakshatraConstellation(p.nakshatraIdx)}</Text>
             </View>
             <View style={[S.snapCell, { borderColor: yoga.auspicious ? '#10b98135' : '#f8717135' }]}>
               <Text style={S.snapEmoji}>{yoga.auspicious ? '✨' : '🌀'}</Text>
@@ -542,9 +666,9 @@ export default function CosmicExploreScreen() {
             </View>
           </View>
           <View style={[S.miniCard, { borderColor: '#fbbf2430' }]}>
-            <Text style={S.miniCardTag}>{nakshatra.emoji}  NAKSHATRA  ·  LUNAR CONSTELLATION</Text>
+            <Text style={S.miniCardTag}>NAKSHATRA  ·  LUNAR CONSTELLATION</Text>
             <Text style={[S.miniCardTitle, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
-            <Text style={[S.miniCardSub, { color: '#FFFFFF80', fontWeight: '700' }]}>Nakshatra = Constellation (Sanskrit)</Text>
+            <Text style={[S.miniCardSub, { color: '#fbbf24BB', fontWeight: '800' }]}>{getNakshatraConstellation(p.nakshatraIdx)}  ·  Constellation</Text>
             <Text style={S.miniCardSub}>{nakshatra.en}  ·  {p.nakshatraIdx + 1} of 27</Text>
             <View style={[S.miniPill, { backgroundColor: '#fbbf2412', borderColor: '#fbbf2430' }]}>
               <Text style={[S.miniPillText, { color: '#fbbf24CC' }]}>{nakshatra.energy.split('.')[0]}</Text>
@@ -847,7 +971,7 @@ export default function CosmicExploreScreen() {
 
         <View style={{ height: 48 }} />
       </ScrollView>
-    </View>
+    </ImageBackground>
   );
 }
 

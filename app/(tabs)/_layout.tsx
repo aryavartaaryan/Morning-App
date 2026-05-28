@@ -2,11 +2,52 @@ import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Text, View, TouchableOpacity, StyleSheet, Platform, Animated, Modal, ImageBackground, StatusBar, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSoundPlayer, MAX_MIX } from '@/lib/soundPlayerContext';
 import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+
+function VeenaIcon({ size = 23, color = '#7A9A7A', filled = false }: {
+  size?: number;
+  color?: string;
+  filled?: boolean;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* Main resonating gourd body */}
+      <Circle
+        cx="16" cy="16" r="6"
+        fill={filled ? color : 'none'}
+        stroke={color}
+        strokeWidth={filled ? 0 : 1.6}
+      />
+      {/* Neck — diagonal from body toward top-left */}
+      <Path
+        d="M11.8 11.8 L5.2 5.2"
+        stroke={color}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Secondary resonating gourd (kudukku) at top-left */}
+      <Circle
+        cx="3.5" cy="3.5" r="2.8"
+        fill={filled ? color : 'none'}
+        stroke={color}
+        strokeWidth={filled ? 0 : 1.5}
+      />
+      {/* Strings — visible only in outline (inactive) state */}
+      {!filled && (
+        <>
+          <Path d="M12.8 13.5 L6.5 7.2" stroke={color} strokeWidth="0.55" opacity="0.55" fill="none" />
+          <Path d="M14 14.5 L7.7 8.2" stroke={color} strokeWidth="0.55" opacity="0.55" fill="none" />
+        </>
+      )}
+    </Svg>
+  );
+}
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const fmtTimer = (s: number) => `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
@@ -45,7 +86,7 @@ function FullScreenPlayer() {
   const bgImage   = playingMeta.imageUri;
   const bgSource  = playingMeta.imageBundled ?? (bgImage ? { uri: bgImage } : undefined);
 
-  const cats = ['All', 'Rain', 'Ocean', 'Nature', 'Sacred', 'Ambient'];
+  const cats = ['All', 'Nature', 'Meditations', 'Birds', 'Ragas', 'World'];
   const palette = mixCat === 'All' ? ALL_SLEEP_SOUNDS : ALL_SLEEP_SOUNDS.filter(s => s.cat === mixCat);
   const mixIds  = new Set(mixedSounds.map(s => s.id));
 
@@ -279,14 +320,34 @@ function GlobalPlayerBar() {
   const { playingId, isPaused, sessionSecs, playingMeta, mixedSounds, togglePause, stopSound, openReelsOrPlayer } = useSoundPlayer();
   const slideAnim  = useRef(new Animated.Value(100)).current;
   const glowAnim   = useRef(new Animated.Value(0.4)).current;
+  // Persist last-known meta so the bar never flickers during sound transitions
+  const lastMetaRef = useRef<typeof playingMeta>(null);
+  if (playingMeta) lastMetaRef.current = playingMeta;
+  const displayMeta = playingMeta ?? lastMetaRef.current;
+  // `rendered` controls whether the bar occupies layout space.
+  // Set true immediately when sound starts; set false only AFTER the slide-out
+  // animation completes — this eliminates the empty gap left by translateY.
+  const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: playingId ? 0 : 100,
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 4,
-    }).start();
+    if (playingId) {
+      setRendered(true);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 4,
+      }).start();
+    } else {
+      Animated.spring(slideAnim, {
+        toValue: 100,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 4,
+      }).start(({ finished }) => {
+        if (finished) setRendered(false);
+      });
+    }
   }, [!!playingId]);
 
   useEffect(() => {
@@ -300,12 +361,12 @@ function GlobalPlayerBar() {
     return () => glowAnim.stopAnimation();
   }, [playingId, isPaused]);
 
-  if (!playingMeta) return null;
+  if (!rendered || !displayMeta) return null;
 
   const isMix   = mixedSounds.length > 1;
-  const label   = isMix ? mixedSounds.map(s => s.emoji).join(' ') : playingMeta.label;
+  const label   = isMix ? mixedSounds.map(s => s.emoji).join(' ') : displayMeta.label;
   const subLine = isPaused ? 'Paused  ·  tap to expand' : `${fmtTimer(sessionSecs)} left  ·  tap to expand`;
-  const accentColor = playingMeta.color;
+  const accentColor = displayMeta.color;
 
   return (
     <Animated.View style={[GP.wrap, { transform: [{ translateY: slideAnim }] }]}>
@@ -323,7 +384,7 @@ function GlobalPlayerBar() {
           activeOpacity={0.80}
         >
           <View style={[GP.emojiBox, { backgroundColor: accentColor + '22', borderColor: accentColor + '40' }]}>
-            <Text style={GP.emojiTxt}>{playingMeta.emoji}</Text>
+            <Text style={GP.emojiTxt}>{displayMeta.emoji}</Text>
           </View>
 
           {/* Info */}
@@ -343,7 +404,7 @@ function GlobalPlayerBar() {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); togglePause(); }}
           style={[GP.circleBtn, { borderColor: accentColor + '55', backgroundColor: accentColor + '15' }]}
         >
-          <Ionicons name={isPaused ? 'play' : 'pause'} size={16} color={accentColor} />
+          <Ionicons name={isPaused ? 'play' : 'pause'} size={14} color={accentColor} />
         </TouchableOpacity>
 
         {/* Stop */}
@@ -351,7 +412,7 @@ function GlobalPlayerBar() {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(true); }}
           style={GP.stopBtn}
         >
-          <Ionicons name="stop" size={14} color="rgba(255,255,255,0.30)" />
+          <Ionicons name="stop" size={12} color="rgba(255,255,255,0.30)" />
         </TouchableOpacity>
       </LinearGradient>
     </Animated.View>
@@ -361,7 +422,7 @@ function GlobalPlayerBar() {
 const GP = StyleSheet.create({
   wrap: {
     marginHorizontal: 12,
-    marginBottom: 7,
+    marginBottom: 4,
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
@@ -380,7 +441,7 @@ const GP = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 7,
     gap: 10,
   },
   bodyTap: {
@@ -390,30 +451,30 @@ const GP = StyleSheet.create({
     gap: 11,
   },
   emojiBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiTxt: { fontSize: 20 },
+  emojiTxt: { fontSize: 18 },
   infoCol: { flex: 1, gap: 3 },
   name:    { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: -0.1, fontFamily: 'Nunito_800ExtraBold' },
   sub:     { fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.1 },
   waveWrap: { marginRight: 4 },
   circleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stopBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -421,11 +482,10 @@ const GP = StyleSheet.create({
 });
 
 const TABS = [
-  { name: 'index',    route: '/(tabs)',           iconOn: 'sunny'       as const, icon: 'sunny-outline'       as const, label: 'Daily',    color: '#F5820A' },
-  { name: 'alarms',  route: '/(tabs)/alarms',   iconOn: 'alarm'       as const, icon: 'alarm-outline'      as const, label: 'Alarms',   color: '#f97316' },
-  { name: 'sleep',   route: '/(tabs)/sleep',    iconOn: 'moon'        as const, icon: 'moon-outline'       as const, label: 'Sleep',    color: '#60a5fa' },
-  { name: 'reports', route: '/(tabs)/reports',  iconOn: 'bar-chart'   as const, icon: 'bar-chart-outline'  as const, label: 'Reports',  color: '#10b981' },
-  { name: 'settings',route: '/(tabs)/settings', iconOn: 'settings'    as const, icon: 'settings-outline'   as const, label: 'Settings', color: '#a78bfa' },
+  { name: 'index',   route: '/(tabs)',          iconOn: 'sunny' as const, icon: 'sunny-outline' as const, label: 'Daily',   color: '#F5820A' },
+  { name: 'alarms',  route: '/(tabs)/alarms',  iconOn: 'alarm' as const, icon: 'alarm-outline' as const, label: 'Heal Alarm', color: '#f97316' },
+  { name: 'sleep',   route: '/(tabs)/sleep',   iconOn: 'moon'  as const, icon: 'moon-outline'  as const, label: 'Nāda',    color: '#60a5fa' },
+  { name: 'walk',    route: '/(tabs)/walk',    iconOn: 'footsteps' as const,    icon: 'footsteps-outline' as const,    label: 'Walk Track', color: '#34d399' },
 ];
 
 function getSleepTabLabel(h: number): string {
@@ -488,21 +548,15 @@ function getTimeTabIcon(tabName: string, h: number, focused: boolean): string {
     return 'moon-outline';
   }
 
-  if (tabName === 'reports') {
+  if (tabName === 'walk') {
     if (focused) {
-      if (isMorning)   return 'stats-chart';
-      if (isMidday)    return 'analytics';
-      if (isAfternoon) return 'trending-up';
-      if (isEvening)   return 'bar-chart';
-      if (isDawn)      return 'pulse';
-      return 'bar-chart';
+      if (isDawn || isMorning) return 'footsteps';
+      if (isMidday)            return 'footsteps';
+      if (isAfternoon)         return 'footsteps';
+      if (isEvening)           return 'footsteps';
+      return 'footsteps';
     }
-    if (isMorning)   return 'stats-chart-outline';
-    if (isMidday)    return 'analytics-outline';
-    if (isAfternoon) return 'trending-up-outline';
-    if (isEvening)   return 'bar-chart-outline';
-    if (isDawn)      return 'pulse-outline';
-    return 'bar-chart-outline';
+    return 'footsteps-outline';
   }
 
   if (tabName === 'settings') {
@@ -517,9 +571,9 @@ function getTimeTabIcon(tabName: string, h: number, focused: boolean): string {
   }
 
   const map: Record<string, [string, string]> = {
-    alarms:   ['alarm',     'alarm-outline'],
-    reports:  ['bar-chart', 'bar-chart-outline'],
-    settings: ['settings',  'settings-outline'],
+    alarms:   ['alarm',      'alarm-outline'],
+    walk:     ['footsteps',  'footsteps-outline'],
+    settings: ['settings',   'settings-outline'],
   };
   const [on, off] = map[tabName] ?? ['ellipse', 'ellipse-outline'];
   return focused ? on : off;
@@ -552,15 +606,48 @@ function CustomTabBar() {
               style={styles.tabItem}
             >
               <View style={[styles.iconWrap, focused && { backgroundColor: '#2D4D2D22' }]}>
-                <Ionicons
-                  name={getTimeTabIcon(tab.name, hour, focused) as any}
-                  size={23}
-                  color={focused ? '#2D4D2D' : '#7A9A7A'}
-                />
+                {tab.name === 'sleep' ? (
+                  <VeenaIcon size={23} color={focused ? '#2D4D2D' : '#7A9A7A'} filled={focused} />
+                ) : (
+                  <Ionicons
+                    name={getTimeTabIcon(tab.name, hour, focused) as any}
+                    size={23}
+                    color={focused ? '#2D4D2D' : '#7A9A7A'}
+                  />
+                )}
               </View>
-              <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A' }]}>
-                {tab.name === 'sleep' ? getSleepTabLabel(hour) : tab.label}
-              </Text>
+              {tab.name === 'sleep' ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontSize: 11, fontWeight: '900', letterSpacing: 0.2 }]}>
+                    Nāda
+                  </Text>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
+                    Sounds
+                  </Text>
+                </View>
+              ) : tab.name === 'alarms' ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontWeight: '900', letterSpacing: 0.2 }]}>
+                    Heal
+                  </Text>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
+                    Alarm
+                  </Text>
+                </View>
+              ) : tab.name === 'walk' ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontWeight: '900', letterSpacing: 0.2 }]}>
+                    Walk
+                  </Text>
+                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
+                    Track
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A' }]}>
+                  {tab.label}
+                </Text>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -578,7 +665,8 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="alarms" />
       <Tabs.Screen name="sleep" />
-      <Tabs.Screen name="reports" />
+      <Tabs.Screen name="walk" />
+      <Tabs.Screen name="reports" options={{ href: null }} />
       <Tabs.Screen name="settings" />
     </Tabs>
   );

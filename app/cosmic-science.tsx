@@ -1,263 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Dimensions,
+  StyleSheet, Dimensions, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Path, Ellipse } from 'react-native-svg';
+import Svg, { Circle, Path, Ellipse, Line, G, Rect, Text as SvgText } from 'react-native-svg';
 
 const { width: W } = Dimensions.get('window');
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const BG    = '#06060F';
-const CARD  = 'rgba(255,255,255,0.055)';
-const BORD  = 'rgba(255,255,255,0.10)';
+const BG    = '#0d0400';
+const CARD  = 'rgba(255,140,30,0.06)';
+const BORD  = 'rgba(255,140,30,0.13)';
 const MOON  = '#60a5fa';
 const SUN   = '#fbbf24';
 const STAR  = '#a78bfa';
-const GREEN = '#6ee7b7';
+const TEAL  = '#00D4B8';
+const ROSE  = '#f472b6';
 
-// ── Tiny helpers ─────────────────────────────────────────────────────────────
-function SecLabel({ text }: { text: string }) {
-  return <Text style={S.secLabel}>{text}</Text>;
-}
-function ItalicCard({ text }: { text: string }) {
+function Tag({ label, color }: { label: string; color: string }) {
   return (
-    <View style={S.italicCard}>
-      <Text style={S.italicTxt}>{text}</Text>
+    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: color + '50', backgroundColor: color + '18', alignSelf: 'flex-start' }}>
+      <Text style={{ fontSize: 10, fontWeight: '800', color, letterSpacing: 0.3 }}>{label}</Text>
     </View>
   );
 }
-function Chip({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={[S.chip, { borderColor: color + '55', backgroundColor: color + '18' }]}>
-      <Text style={[S.chipTxt, { color }]}>{label}</Text>
-    </View>
-  );
-}
+
 function Divider() {
-  return <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 22 }} />;
+  return <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 28 }} />;
 }
 
-// ── Moon phase visual ────────────────────────────────────────────────────────
-function MoonPhaseVisual({ illumination, size = 56 }: { illumination: number; size?: number }) {
-  const r = size / 2;
-  const lit = illumination / 100;
-  const termX = r - (lit * 2 - 1) * r;
+function SectionHeader({ emoji, title, subtitle, color }: { emoji: string; title: string; subtitle: string; color: string }) {
   return (
-    <Svg width={size} height={size}>
-      <Circle cx={r} cy={r} r={r - 1} fill="#1e1e3a" />
-      <Path
-        d={`M ${r} ${1} A ${r - 1} ${r - 1} 0 0 1 ${r} ${size - 1} A ${Math.abs(termX - r)} ${r - 1} 0 0 ${lit > 0.5 ? 0 : 1} ${r} ${1}`}
-        fill="#e2d9c0"
-        opacity={0.92}
-      />
-      <Circle cx={r} cy={r} r={r - 1} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-    </Svg>
-  );
-}
-
-// ── Orbital rings decoration ─────────────────────────────────────────────────
-function OrbitalRings() {
-  const cx = (W - 40) / 2;
-  return (
-    <Svg width={W - 40} height={120} style={{ alignSelf: 'center', marginVertical: 8 }}>
-      {/* Orbits */}
-      <Ellipse cx={cx} cy={60} rx={cx * 0.95} ry={18} stroke="rgba(96,165,250,0.12)" strokeWidth={1} fill="none" />
-      <Ellipse cx={cx} cy={60} rx={cx * 0.65} ry={12} stroke="rgba(251,191,36,0.14)" strokeWidth={1} fill="none" />
-      <Ellipse cx={cx} cy={60} rx={cx * 0.35} ry={7}  stroke="rgba(167,139,250,0.12)" strokeWidth={1} fill="none" />
-      {/* Sun center */}
-      <Circle cx={cx} cy={60} r={10} fill="#fbbf24" opacity={0.85} />
-      <Circle cx={cx} cy={60} r={16} fill="#fbbf24" opacity={0.08} />
-      {/* Earth */}
-      <Circle cx={cx + cx * 0.35} cy={60} r={5} fill="#60a5fa" opacity={0.85} />
-      {/* Moon around Earth */}
-      <Circle cx={cx + cx * 0.35 + 12} cy={56} r={3} fill="#e2d9c0" opacity={0.80} />
-      {/* Outer planet */}
-      <Circle cx={cx - cx * 0.65} cy={60} r={6} fill="#a78bfa" opacity={0.75} />
-      {/* Stars */}
-      {[0.12, 0.28, 0.72, 0.88].map((xf, i) => (
-        <Circle key={i} cx={cx * 2 * xf} cy={i % 2 === 0 ? 18 : 102} r={1.2} fill="#FFFFFF" opacity={0.5} />
-      ))}
-    </Svg>
-  );
-}
-
-// ── Section 1: Hero ──────────────────────────────────────────────────────────
-function HeroSection() {
-  return (
-    <View style={{ paddingBottom: 4 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-        <Chip label="🌌  Cosmic almanac" color={MOON} />
-        <Chip label="⭐  Vedic Jyotish" color={SUN} />
-        <Chip label="☯  5 limbs of time" color={STAR} />
-      </View>
-      <Text style={S.heroTitle}>The complete map of{'\n'}cosmic time</Text>
-      <Text style={S.heroBody}>
-        Panchang (Pancha = five, Anga = limb) is the Vedic almanac — five simultaneous measures of time running in parallel: Tithi (lunar day), Vara (weekday), Nakshatra (moon's mansion), Yoga (Sun+Moon union), and Karana (half-tithi). Every moment is defined by all five simultaneously.
-      </Text>
-      <OrbitalRings />
-    </View>
-  );
-}
-
-// ── Section 2: The 7 Vaars (Planetary Days) ──────────────────────────────────
-const VAARS_DATA = [
-  { day: 'Sunday',    vedic: 'Surya Vaar',  planet: 'Sun ☀️',     color: '#fbbf24', emoji: '☀️', energy: 'Leadership · clarity · self-expression', body: 'Cortisol peaks · vitamin D synthesis · circadian master clock set' },
-  { day: 'Monday',    vedic: 'Soma Vaar',   planet: 'Moon 🌙',    color: '#93c5fd', emoji: '🌙', energy: 'Intuition · emotion · inner wisdom',       body: 'Fluid balance · serotonin rhythm · gut-brain axis sensitivity' },
-  { day: 'Tuesday',   vedic: 'Mangal Vaar', planet: 'Mars 🔴',    color: '#f87171', emoji: '🔴', energy: 'Courage · strength · decisive action',      body: 'Testosterone peak day · adrenaline axis · muscle recovery' },
-  { day: 'Wednesday', vedic: 'Budh Vaar',   planet: 'Mercury ⚡', color: '#6ee7b7', emoji: '⚡', energy: 'Intelligence · communication · trade',       body: 'Dopamine circuits · neural signal velocity · cognitive sharpness' },
-  { day: 'Thursday',  vedic: 'Guru Vaar',   planet: 'Jupiter 🟡', color: '#fde68a', emoji: '🟡', energy: 'Wisdom · expansion · spiritual growth',     body: 'Insulin regulation · liver detox · optimism neurotransmitters' },
-  { day: 'Friday',    vedic: 'Shukra Vaar', planet: 'Venus 💜',   color: '#f9a8d4', emoji: '💜', energy: 'Beauty · pleasure · creativity · love',      body: 'Oxytocin release · immune modulation · sensory pleasure peak' },
-  { day: 'Saturday',  vedic: 'Shani Vaar',  planet: 'Saturn 🪐',  color: '#a5b4fc', emoji: '🪐', energy: 'Discipline · karma · enduring effort',       body: 'Slow-wave sleep repair · autophagy · long-term cellular maintenance' },
-];
-
-function VaarsSection() {
-  return (
-    <View>
-      <SecLabel text="THE 7 PLANETARY DAYS  ·  SAPTA VARA" />
-      <ItalicCard text="Each day of the week is ruled by a planet — not metaphorically, but astronomically. The planet's gravitational and electromagnetic influence on Earth subtly shifts biological rhythms. Modern chronopharmacology confirms day-of-week variations in drug efficacy, hormone levels, and immune response." />
-      <View style={{ gap: 8, marginTop: 14 }}>
-        {VAARS_DATA.map((v, i) => (
-          <View key={i} style={[S.vaarRow, { borderLeftColor: v.color }]}>
-            <View style={[S.vaarIcon, { backgroundColor: v.color + '20' }]}>
-              <Text style={{ fontSize: 20 }}>{v.emoji}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                <Text style={[S.vaarName, { color: v.color }]}>{v.vedic}</Text>
-                <Text style={S.vaarDay}>{v.day}</Text>
-              </View>
-              <Text style={S.vaarEnergy}>{v.energy}</Text>
-              <Text style={S.vaarBody}>⚗  {v.body}</Text>
-            </View>
-          </View>
-        ))}
+    <View style={{ marginBottom: 20 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <Text style={{ fontSize: 22 }}>{emoji}</Text>
+        <View>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: color + 'AA', letterSpacing: 2.5 }}>{subtitle}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.4 }}>{title}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
-// ── Section 3: Moon Cycle + Tithis ───────────────────────────────────────────
-const MOON_PHASES = [
-  { phase: 'Amavasya',        emoji: '🌑', illumination: 0,   energy: 'New Moon · deep rest · intention-setting',      modern: 'Lowest melatonin variance · fresh HPA axis reset' },
-  { phase: 'Shukla Pratipada', emoji: '🌒', illumination: 5,   energy: 'New beginnings · first sprout of lunar energy',  modern: 'Serotonin beginning to rise · cellular regeneration signals' },
-  { phase: 'Panchami',        emoji: '🌒', illumination: 30,  energy: 'Knowledge · learning · creativity unlocking',    modern: 'Dopamine peaks — best learning window of lunar month' },
-  { phase: 'Ashtami',         emoji: '🌓', illumination: 50,  energy: 'Action · half-moon balance of building/clearing', modern: 'Cortisol balanced · immune cells balanced Th1/Th2' },
-  { phase: 'Ekadashi',        emoji: '🌔', illumination: 75,  energy: 'Fasting day · purification · deepest spiritual',  modern: 'Autophagy peaks with fasting — cellular self-cleaning' },
-  { phase: 'Chaturdashi',     emoji: '🌔', illumination: 90,  energy: 'Pre-full moon intensity · heightened perception',  modern: 'Max melatonin · sleep deepest · prefrontal cortex quietest' },
-  { phase: 'Purnima',         emoji: '🌕', illumination: 100, energy: 'Full Moon · maximum energy · gratitude · celebration', modern: 'Intracranial fluid peaks · sleep slightly disrupted · emotional intensity' },
-  { phase: 'Krishna Ashtami', emoji: '🌗', illumination: 50,  energy: 'Release · letting go · internal reflection',     modern: 'Cortisol declining · parasympathetic NS more active' },
-  { phase: 'Krishna Ekadashi',emoji: '🌘', illumination: 25,  energy: 'Fasting again · purification · gratitude',       modern: 'Second autophagy window — completing monthly cell repair' },
-];
-
-function MoonCycleSection() {
-  return (
-    <View>
-      <SecLabel text="THE MOON CYCLE  ·  TITHI  ·  LUNAR DAYS" />
-      <ItalicCard text="The Moon's 29.5-day cycle governs fluid rhythms, sleep architecture, emotional intensity, and immune function. Ayurveda mapped the body's monthly repair cycle to these phases 5000 years ago. Chronobiology now confirms measurable variation in cortisol, melatonin, and intracranial fluid pressure through the lunar month." />
-
-      {/* Phase arc visual */}
-      <View style={[S.card, { padding: 16, marginTop: 14, marginBottom: 4 }]}>
-        <Text style={{ fontSize: 7.5, fontWeight: '900', color: MOON, letterSpacing: 2, marginBottom: 14 }}>🌙  29.5-DAY LUNAR RHYTHM</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-end', paddingBottom: 4, paddingRight: 10 }}>
-            {MOON_PHASES.map((mp, i) => (
-              <View key={i} style={{ alignItems: 'center', gap: 6 }}>
-                <MoonPhaseVisual illumination={mp.illumination} size={38} />
-                <Text style={{ fontSize: 7.5, color: '#FFFFFF60', fontWeight: '700', maxWidth: 50, textAlign: 'center' }}>{mp.phase}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* Tithi rows */}
-      <View style={{ gap: 8, marginTop: 8 }}>
-        {MOON_PHASES.map((mp, i) => (
-          <View key={i} style={[S.tithiRow, { borderLeftColor: MOON + '80' }]}>
-            <Text style={{ fontSize: 22, width: 30 }}>{mp.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[S.tithiName, { color: MOON }]}>{mp.phase}</Text>
-              <Text style={S.tithiEnergy}>{mp.energy}</Text>
-              <Text style={S.tithiModern}>⚗  {mp.modern}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ── Section 4: 27 Nakshatras ─────────────────────────────────────────────────
-const NAKSHATRA_GROUPS = [
-  {
-    group: 'Fire group', color: '#fb923c',
-    list: ['Ashwini · Ketu · initiation, healing, speed', 'Krittika · Sun · purification, focus, sharp action', 'Mrigashira · Mars · seeking, creative, restless', 'Purva Phalguni · Venus · pleasure, rest, creativity', 'Uttara Ashadha · Sun · victory, final push', 'Uttara Bhadrapada · Saturn · depth, wisdom, stillness'],
-  },
-  {
-    group: 'Earth group', color: '#F5A623',
-    list: ['Bharani · Venus · transformation, intensity', 'Rohini · Moon · fertility, beauty, sensuality', 'Hasta · Moon · skill, craftwork, precision', 'Chitra · Mars · beauty, architecture, creative fire', 'Shravana · Moon · listening, learning, devotion', 'Dhanishtha · Mars · abundance, music, ambition'],
-  },
-  {
-    group: 'Air group', color: '#a78bfa',
-    list: ['Ardra · Rahu · storms, transformation, genius', 'Swati · Rahu · independence, movement, wind', 'Vishakha · Jupiter · focus, ambition, purpose', 'Shatabhisha · Rahu · healing, mystery, research', 'Purva Bhadrapada · Jupiter · intensity, passion, fire'], 
-  },
-  {
-    group: 'Water/Space group', color: MOON,
-    list: ['Punarvasu · Jupiter · renewal, restoration, return', 'Pushya · Saturn · nourishment, protection, abundance', 'Ashlesha · Mercury · sharp mind, kundalini, secrets', 'Magha · Ketu · ancestors, royalty, authority', 'Anuradha · Saturn · friendship, devotion, success', 'Jyeshtha · Mercury · seniority, protection, power', 'Mula · Ketu · roots, destruction for renewal', 'Purva Ashadha · Venus · invincible, courage, water', 'Uttara Phalguni · Sun · union, partnership, protection', 'Revati · Mercury · completion, journeys, compassion'],
-  },
-];
-
-function NakshatraSection() {
-  return (
-    <View>
-      <SecLabel text="THE 27 NAKSHATRAS  ·  LUNAR MANSIONS" />
-      <ItalicCard text="The Moon moves through one Nakshatra every ~27 hours. Each Nakshatra is a 13.3° section of the sky — a star cluster the Moon 'visits' as it orbits Earth. Modern astronomy confirms these as real star groupings (e.g., Rohini = Aldebaran, Chitra = Spica). Vedic astrology maps each one to a planetary ruler, colour, deity, and quality." />
-      <View style={{ gap: 10, marginTop: 14 }}>
-        {NAKSHATRA_GROUPS.map((g, i) => (
-          <View key={i} style={[S.card, { padding: 14, borderColor: g.color + '30' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <View style={[S.groupDot, { backgroundColor: g.color }]} />
-              <Text style={[S.groupLabel, { color: g.color }]}>{g.group}</Text>
-            </View>
-            {g.list.map((n, j) => (
-              <View key={j} style={[S.nakRow, j < g.list.length - 1 && { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', marginBottom: 6, paddingBottom: 6 }]}>
-                <View style={[S.nakDot, { backgroundColor: g.color + '80' }]} />
-                <Text style={S.nakTxt}>{n}</Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ── Section 5: Sun — the master clock ────────────────────────────────────────
-function SunSection() {
-  const rows = [
-    { icon: '🌅', label: 'Sunrise', color: SUN, text: 'Cortisol Awakening Response (CAR) triggers within minutes of first light. Sets testosterone, immunity, and energy baseline for the entire day.' },
-    { icon: '🔆', label: 'Solar Zenith', color: '#fb923c', text: 'Core body temperature peaks. Digestive enzymes maximal. Cognitive performance at daily high. Best time for main meal and focused work.' },
-    { icon: '🌇', label: 'Sunset', color: '#f97316', text: 'Melatonin synthesis begins as photoreceptors detect falling light. Core temperature starts 1°C nightly descent. Blue light now is most disruptive.' },
-    { icon: '🌙', label: 'Pre-Dawn', color: STAR, text: 'Brahma Muhurta — 96 to 48 minutes before sunrise. Alpha-theta brain waves peak. BDNF elevated. The brain is most receptive and neuroplastic.' },
+// ── Solar System Diagram ────────────────────────────────────────────────────
+function SolarSystemDiagram() {
+  const cx = (W - 48) / 2;
+  const planets = [
+    { r: 22, color: '#fbbf24', label: 'Sun ☀', size: 14 },
+    { r: 44, color: '#93c5fd', label: 'Moon', size: 5 },
+    { r: 66, color: '#f87171', label: 'Mars', size: 5 },
+    { r: 88, color: '#6ee7b7', label: 'Mercury', size: 4 },
+    { r: 110, color: '#fde68a', label: 'Jupiter', size: 7 },
   ];
   return (
-    <View>
-      <SecLabel text="THE SUN  ·  SURYA  ·  MASTER CLOCK" />
-      <ItalicCard text="Every cell in your body carries the CLOCK and BMAL1 genes — circadian clock genes that synchronise to sunlight. The sun is not a metaphor. It is the literal biological clock that sets every hormone, enzyme, and neural rhythm in your body. Ayurveda's Dinacharya (daily rhythm practice) is simply circadian medicine, 5000 years early." />
-      <View style={{ gap: 8, marginTop: 14 }}>
-        {rows.map((r, i) => (
-          <View key={i} style={[S.card, { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderColor: r.color + '28' }]}>
-            <View style={[S.sunIconBox, { backgroundColor: r.color + '20' }]}>
-              <Text style={{ fontSize: 20 }}>{r.icon}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Chip label={r.label} color={r.color} />
-              <Text style={{ fontSize: 13, color: '#FFFFFFCC', lineHeight: 20, marginTop: 6 }}>{r.text}</Text>
-            </View>
+    <View style={{ alignItems: 'center', marginVertical: 16 }}>
+      <Svg width={W - 48} height={240}>
+        {planets.map((p, i) => (
+          <G key={i}>
+            <Circle cx={cx} cy={120} r={p.r} stroke={p.color + '20'} strokeWidth={1} fill="none" />
+            <Circle cx={cx + p.r} cy={120} r={p.size} fill={p.color} opacity={0.9} />
+            {i === 0 && <Circle cx={cx} cy={120} r={16} fill={p.color + '30'} />}
+          </G>
+        ))}
+        {[0.12, 0.88].map((xf, i) => (
+          <Circle key={i} cx={(W - 48) * xf} cy={i === 0 ? 20 : 220} r={1.2} fill="#FFFFFF" opacity={0.4} />
+        ))}
+      </Svg>
+      <View style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+        {planets.map((p, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: p.color }} />
+            <Text style={{ fontSize: 9, color: p.color + 'CC', fontWeight: '700' }}>{p.label}</Text>
           </View>
         ))}
       </View>
@@ -265,152 +81,345 @@ function SunSection() {
   );
 }
 
-// ── Section 6: Yoga (27 Sun+Moon unions) ────────────────────────────────────
-const YOGAS_BRIEF = [
-  { name: 'Vishkambha', quality: 'Obstruction', auspicious: false },
-  { name: 'Priti',      quality: 'Affection, love',      auspicious: true  },
-  { name: 'Ayushman',   quality: 'Long life, vitality',  auspicious: true  },
-  { name: 'Saubhagya',  quality: 'Good fortune',         auspicious: true  },
-  { name: 'Shobhana',   quality: 'Splendour, beauty',    auspicious: true  },
-  { name: 'Atiganda',   quality: 'Danger, obstacles',    auspicious: false },
-  { name: 'Sukarman',   quality: 'Good deeds',           auspicious: true  },
-  { name: 'Dhriti',     quality: 'Determination',        auspicious: true  },
-  { name: 'Shula',      quality: 'Grief, pain',          auspicious: false },
-  { name: 'Ganda',      quality: 'Destruction',          auspicious: false },
-  { name: 'Vriddhi',    quality: 'Growth, increase',     auspicious: true  },
-  { name: 'Dhruva',     quality: 'Fixed, stable',        auspicious: true  },
-  { name: 'Vyaghata',   quality: 'Striking blow',        auspicious: false },
-  { name: 'Harshana',   quality: 'Joy, happiness',       auspicious: true  },
-  { name: 'Vajra',      quality: 'Thunderbolt power',    auspicious: true  },
-  { name: 'Siddhi',     quality: 'Success, accomplishment', auspicious: true },
-  { name: 'Vyatipata',  quality: 'Calamity, fall',       auspicious: false },
-  { name: 'Variyana',   quality: 'Luxury, comfort',      auspicious: true  },
-  { name: 'Parigha',    quality: 'Obstruction, bar',     auspicious: false },
-  { name: 'Shiva',      quality: 'Auspicious, blessed',  auspicious: true  },
-  { name: 'Siddha',     quality: 'Perfection',           auspicious: true  },
-  { name: 'Sadhya',     quality: 'Accomplishable',       auspicious: true  },
-  { name: 'Shubha',     quality: 'Auspicious',           auspicious: true  },
-  { name: 'Shukla',     quality: 'Bright, pure',         auspicious: true  },
-  { name: 'Brahma',     quality: 'Creator energy',       auspicious: true  },
-  { name: 'Indra',      quality: 'Power, strength',      auspicious: true  },
-  { name: 'Vaidhriti',  quality: 'Ill-carried, rest',    auspicious: false },
+// ── Moon Cycle Arc ────────────────────────────────────────────────────────
+function MoonCycleArc() {
+  const size = W - 48;
+  const cx = size / 2;
+  const cy = 80;
+  const R = 60;
+  const phases = [
+    { angle: 180, emoji: '🌑', label: 'New Moon\n(Amavasya)', color: '#a5b4fc' },
+    { angle: 225, emoji: '🌒', label: 'Waxing\nCrescent', color: '#93c5fd' },
+    { angle: 270, emoji: '🌓', label: '1st Quarter\n(Ashtami)', color: '#60a5fa' },
+    { angle: 315, emoji: '🌔', label: 'Gibbous', color: '#fbbf24' },
+    { angle: 0,   emoji: '🌕', label: 'Full Moon\n(Purnima)', color: '#fbbf24' },
+    { angle: 45,  emoji: '🌖', label: 'Waning\nGibbous', color: '#fb923c' },
+    { angle: 90,  emoji: '🌗', label: 'Last\nQtr', color: '#f87171' },
+    { angle: 135, emoji: '🌘', label: 'Balsamic', color: '#c084fc' },
+  ];
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  return (
+    <View style={{ alignItems: 'center', marginVertical: 8 }}>
+      <Svg width={size} height={170}>
+        <Circle cx={cx} cy={cy} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={1.5} fill="none" />
+        {phases.map((p, i) => {
+          const rad = toRad(p.angle);
+          const x = cx + R * Math.cos(rad);
+          const y = cy + R * Math.sin(rad);
+          return (
+            <G key={i}>
+              <Circle cx={x} cy={y} r={12} fill={p.color + '20'} stroke={p.color + '50'} strokeWidth={1} />
+            </G>
+          );
+        })}
+        <Circle cx={cx} cy={cy} r={10} fill="#fbbf2430" stroke="#fbbf2460" strokeWidth={1} />
+      </Svg>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+        {phases.map((p, i) => (
+          <View key={i} style={{ alignItems: 'center', gap: 2 }}>
+            <Text style={{ fontSize: 18 }}>{p.emoji}</Text>
+            <Text style={{ fontSize: 7, color: p.color, fontWeight: '700', textAlign: 'center', maxWidth: 54 }}>{p.label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ── 7 Planets Wheel ────────────────────────────────────────────────────────
+function PlanetWheel({ todayIdx }: { todayIdx: number }) {
+  const PLANETS = [
+    { label: 'SUN', vedic: 'Surya', emoji: '☀️', color: '#fbbf24' },
+    { label: 'MON', vedic: 'Soma', emoji: '🌙', color: '#93c5fd' },
+    { label: 'TUE', vedic: 'Mangal', emoji: '🔴', color: '#f87171' },
+    { label: 'WED', vedic: 'Budha', emoji: '💚', color: '#6ee7b7' },
+    { label: 'THU', vedic: 'Guru', emoji: '🌟', color: '#fde68a' },
+    { label: 'FRI', vedic: 'Shukra', emoji: '💗', color: '#f9a8d4' },
+    { label: 'SAT', vedic: 'Shani', emoji: '🪐', color: '#a5b4fc' },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+      {PLANETS.map((p, i) => (
+        <View key={i} style={{
+          flex: 1, minWidth: 40, borderRadius: 14, borderWidth: i === todayIdx ? 1.5 : 1,
+          borderColor: i === todayIdx ? p.color + 'AA' : 'rgba(255,255,255,0.08)',
+          backgroundColor: i === todayIdx ? p.color + '20' : 'rgba(255,255,255,0.03)',
+          padding: 10, alignItems: 'center', gap: 4,
+        }}>
+          <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: i === todayIdx ? p.color : 'rgba(255,255,255,0.40)' }}>{p.label}</Text>
+          <Text style={{ fontSize: 7.5, color: i === todayIdx ? p.color + 'CC' : 'rgba(255,255,255,0.25)', fontWeight: '700' }}>{p.vedic}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── Nakshatra Grid ─────────────────────────────────────────────────────────
+const NAK_BRIEF = [
+  { name: 'Ashwini', planet: 'Ketu', symbol: '🐴', color: '#f87171' },
+  { name: 'Bharani', planet: 'Venus', symbol: '⚖️', color: '#f9a8d4' },
+  { name: 'Krittika', planet: 'Sun', symbol: '🔥', color: '#fbbf24' },
+  { name: 'Rohini', planet: 'Moon', symbol: '🌹', color: '#93c5fd' },
+  { name: 'Mrigashira', planet: 'Mars', symbol: '🦌', color: '#f87171' },
+  { name: 'Ardra', planet: 'Rahu', symbol: '⛈️', color: '#a5b4fc' },
+  { name: 'Punarvasu', planet: 'Jupiter', symbol: '🏠', color: '#fde68a' },
+  { name: 'Pushya', planet: 'Saturn', symbol: '🌸', color: '#a5b4fc' },
+  { name: 'Ashlesha', planet: 'Mercury', symbol: '🐍', color: '#6ee7b7' },
+  { name: 'Magha', planet: 'Ketu', symbol: '👑', color: '#f87171' },
+  { name: 'Purva Phal.', planet: 'Venus', symbol: '🌺', color: '#f9a8d4' },
+  { name: 'Uttara Phal.', planet: 'Sun', symbol: '🤝', color: '#fbbf24' },
+  { name: 'Hasta', planet: 'Moon', symbol: '✋', color: '#93c5fd' },
+  { name: 'Chitra', planet: 'Mars', symbol: '💎', color: '#f87171' },
+  { name: 'Swati', planet: 'Rahu', symbol: '🌬️', color: '#a5b4fc' },
+  { name: 'Vishakha', planet: 'Jupiter', symbol: '⚡', color: '#fde68a' },
+  { name: 'Anuradha', planet: 'Saturn', symbol: '💫', color: '#a5b4fc' },
+  { name: 'Jyeshtha', planet: 'Mercury', symbol: '🛡️', color: '#6ee7b7' },
+  { name: 'Mula', planet: 'Ketu', symbol: '🌱', color: '#f87171' },
+  { name: 'Purva Ash.', planet: 'Venus', symbol: '🌊', color: '#f9a8d4' },
+  { name: 'Uttara Ash.', planet: 'Sun', symbol: '🌟', color: '#fbbf24' },
+  { name: 'Shravana', planet: 'Moon', symbol: '👂', color: '#93c5fd' },
+  { name: 'Dhanishtha', planet: 'Mars', symbol: '🥁', color: '#f87171' },
+  { name: 'Shatabhisha', planet: 'Rahu', symbol: '💊', color: '#a5b4fc' },
+  { name: 'Purva Bha.', planet: 'Jupiter', symbol: '🔱', color: '#fde68a' },
+  { name: 'Uttara Bha.', planet: 'Saturn', symbol: '🐉', color: '#a5b4fc' },
+  { name: 'Revati', planet: 'Mercury', symbol: '🐟', color: '#6ee7b7' },
 ];
 
-function YogasSection() {
+function NakshatraGrid() {
   return (
-    <View>
-      <SecLabel text="THE 27 YOGAS  ·  SUN + MOON ANGULAR UNIONS" />
-      <ItalicCard text="Yoga is calculated by adding the Sun's and Moon's longitudes and dividing into 27 equal segments of 13.3° each. Each segment has a quality — auspicious or inauspicious — that affects the general tone of activity initiated in that period. Modern parallel: the combined gravitational pull of Sun and Moon creates measurable tidal forces that affect biological systems." />
-      <View style={[S.card, { padding: 14, marginTop: 14 }]}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {YOGAS_BRIEF.map((y, i) => (
-            <View key={i} style={[S.yogaPill, {
-              borderColor: y.auspicious ? '#6ee7b720' : '#f8717120',
-              backgroundColor: y.auspicious ? '#6ee7b708' : '#f8717108',
-            }]}>
-              <Text style={[S.yogaTxt, { color: y.auspicious ? '#6ee7b7' : '#f87171' }]}>{y.name}</Text>
-              <Text style={S.yogaSub}>{y.quality}</Text>
-            </View>
-          ))}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+      {NAK_BRIEF.map((n, i) => (
+        <View key={i} style={{
+          width: (W - 48 - 12) / 3 - 4,
+          borderRadius: 12, borderWidth: 1,
+          borderColor: n.color + '30', backgroundColor: n.color + '0A',
+          padding: 8, alignItems: 'center', gap: 3,
+        }}>
+          <Text style={{ fontSize: 16 }}>{n.symbol}</Text>
+          <Text style={{ fontSize: 8.5, fontWeight: '800', color: '#FFFFFFDD', textAlign: 'center' }}>{n.name}</Text>
+          <Text style={{ fontSize: 7, color: n.color + 'BB', fontWeight: '700' }}>{n.planet}</Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' }}>
-          <Chip label="✓ Auspicious" color={GREEN} />
-          <Chip label="✗ Inauspicious — rest, reflect" color="#f87171" />
-        </View>
-      </View>
+      ))}
     </View>
   );
 }
 
-// ── Section 7: Body-cosmos connection ────────────────────────────────────────
-function CosmosBodySection() {
+// ── Tithi Special Days ─────────────────────────────────────────────────────
+const TITHI_SPECIAL_DAYS = [
+  { tithi: 'Ekadashi', num: '11', emoji: '🌿', color: '#6ee7b7', title: 'Sacred Fast · Ekadashi (11th)', desc: 'Most sacred fasting tithi. Avoid grains & beans. Autophagy (cellular self-cleaning) peaks during a 24h fast. Deep spiritual clarity, meditation & Vishnu worship.', science: 'Autophagy peaks at 16–24h fast. Gut microbiome resets. Ketones provide clean brain fuel.' },
+  { tithi: 'Purnima', num: '15', emoji: '🌕', color: '#fbbf24', title: 'Full Moon · Purnima (15th)', desc: 'Maximum lunar energy. Intracranial fluid peaks. Emotional intensity is high. Express gratitude, release what no longer serves. Powerful for any spiritual practice.', science: 'Intracranial fluid pressure measurably peaks. Sleep latency increases. Serotonin–melatonin axis disrupted.' },
+  { tithi: 'Amavasya', num: '30', emoji: '🌑', color: '#a5b4fc', title: 'New Moon · Amavasya (30th)', desc: 'The cosmic void. Deep rest, silent meditation, ancestor remembrance (Pitru Tarpan). Set one clear intention. Conserve energy — do not scatter it. Fasting recommended.', science: 'Geomagnetic field at monthly minimum. Melatonin peaks. Optimal for deep sleep & HPA axis reset.' },
+  { tithi: 'Ashtami', num: '8', emoji: '🔱', color: '#c084fc', title: 'Durga Day · Ashtami (8th)', desc: 'Powerful Shakti energy. Durga governs transformation & fierce grace. Ideal for overcoming obstacles. Health intentions & invoking protective energy.', science: 'Mid-lunar phase — cortisol & testosterone both balanced. Immune Th1/Th2 equilibrium. Best for physical challenges.' },
+  { tithi: 'Chaturdashi', num: '14', emoji: '⚡', color: '#f87171', title: 'Shiva Day · Chaturdashi (14th)', desc: 'Shiva energy — dissolution before renewal. Complete existing work. Fast lightly. Excellent for intense spiritual practice & releasing old patterns.', science: 'Pre-full-moon phase — melatonin approaching peak. Neural alpha-waves elevated. Deep contemplative states accessible.' },
+  { tithi: 'Dwadashi', num: '12', emoji: '🙏', color: '#67e8f9', title: 'Break Fast Day · Dwadashi (12th)', desc: 'Day after Ekadashi — break fast gently with light sattvic food. Vishnu protection & service energy flows. Ideal for seva (selfless service).', science: 'Refeeding window: prioritise soluble fiber, probiotics. Avoid heavy proteins first 6 hours post-fast.' },
+];
+
+function TithiSpecialSection() {
   return (
-    <View>
-      <SecLabel text="BODY ↔ COSMOS  ·  LOKA PURUSHA SAMYA" />
-      <ItalicCard text="Loka-Purusha Samya: the universe and the body are the same structure at different scales. Ayurveda says the macrocosm (universe) and microcosm (body) are built from the same 5 elements and governed by the same rhythmic laws. Modern physics says the same — the atoms in your body were forged in stars." />
-      <View style={{ gap: 10, marginTop: 14 }}>
-        {[
-          { icon: '☀️', title: 'Sun ↔ Pitta / Agni',   color: SUN,   text: 'Solar radiation drives vitamin D synthesis, cortisol, circadian gene expression. Ayurveda: Sun = Agni (fire) — the transformer.' },
-          { icon: '🌙', title: 'Moon ↔ Kapha / Ojas',  color: MOON,  text: 'Lunar gravity affects intracranial fluid, menstrual cycles, sleep. Ayurveda: Moon = Soma (nectar) — the builder and sustainer.' },
-          { icon: '⭐', title: 'Stars ↔ Vata / Prana', color: STAR,  text: 'Cosmic radiation modulates DNA repair and mutagenesis. Ayurveda: stars = Akasha (space) — the field in which everything moves.' },
-          { icon: '🌍', title: 'Earth ↔ Kapha / body', color: '#F5A623', text: 'Earth\'s electromagnetic field aligns geomagnetic sensors in cells. Grounding (bare feet on earth) resets autonomic balance in ~20 min.' },
-        ].map((row, i) => (
-          <View key={i} style={[S.cosmosCard, { borderLeftColor: row.color }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <Text style={{ fontSize: 20 }}>{row.icon}</Text>
-              <Chip label={row.title} color={row.color} />
+    <View style={{ gap: 12 }}>
+      {TITHI_SPECIAL_DAYS.map((t, i) => (
+        <View key={i} style={{ borderRadius: 18, borderWidth: 1, borderColor: t.color + '40', backgroundColor: t.color + '0E', overflow: 'hidden' }}>
+          <LinearGradient colors={[t.color + '18', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View style={{ padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: t.color + '25', borderWidth: 1, borderColor: t.color + '50', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 20 }}>{t.emoji}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: t.color, letterSpacing: 2, marginBottom: 2 }}>TITHI {t.num}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF' }}>{t.title}</Text>
+              </View>
             </View>
-            <Text style={{ fontSize: 13, color: '#FFFFFFCC', lineHeight: 20 }}>{row.text}</Text>
+            <Text style={{ fontSize: 12.5, color: '#FFFFFFCC', lineHeight: 19, fontWeight: '600', marginBottom: 10 }}>{t.desc}</Text>
+            <View style={{ borderRadius: 10, borderWidth: 1, borderColor: t.color + '30', backgroundColor: 'rgba(0,0,0,0.25)', padding: 10 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: t.color + 'AA', letterSpacing: 1.5, marginBottom: 4 }}>⚗ MODERN SCIENCE</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 16 }}>{t.science}</Text>
+            </View>
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
     </View>
   );
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
+// ── Vaar Science rows ──────────────────────────────────────────────────────
+const VAAR_SCIENCE = [
+  { day: 'Sunday',    vedic: 'Surya Vaar',  emoji: '☀️', color: '#fbbf24', focus: 'Leadership · Clarity', science: 'Cortisol Awakening Response (CAR) peaks. Vitamin D synthesis. Circadian master-clock reset via UV-A.' },
+  { day: 'Monday',    vedic: 'Soma Vaar',   emoji: '🌙', color: '#93c5fd', focus: 'Intuition · Emotion',  science: 'Lunar gravity subtly modulates CSF pressure. Hypothalamus shows heightened emotional sensitivity.' },
+  { day: 'Tuesday',   vedic: 'Mangal Vaar', emoji: '🔴', color: '#f87171', focus: 'Courage · Strength',  science: 'Red-light wavelengths stimulate mitochondrial ATP. Peak testosterone & adrenaline cycles documented.' },
+  { day: 'Wednesday', vedic: 'Budha Vaar',  emoji: '💚', color: '#6ee7b7', focus: 'Learning · Agility',   science: 'Peak synaptic plasticity window. Dopamine receptor sensitivity highest — ideal for new neural connections.' },
+  { day: 'Thursday',  vedic: 'Guru Vaar',   emoji: '🌟', color: '#fde68a', focus: 'Wisdom · Expansion',   science: 'Liver detox enzymes peak. Memory consolidation during Thursday sleep strongest in weekly cycle.' },
+  { day: 'Friday',    vedic: 'Shukra Vaar', emoji: '💗', color: '#f9a8d4', focus: 'Beauty · Creativity',  science: 'Oxytocin & estrogen highest. Immune NK cell activity peaks. Sensory pleasure & creative output enhanced.' },
+  { day: 'Saturday',  vedic: 'Shani Vaar',  emoji: '🪐', color: '#a5b4fc', focus: 'Discipline · Karma',   science: 'Slow-wave deep sleep (SWS) longest Friday–Saturday night. Autophagy & cellular repair maximize overnight.' },
+];
+
+// ── Body–Cosmos Section ────────────────────────────────────────────────────
+const BODY_COSMOS = [
+  { icon: '☀️', title: 'Sun — Fire & Transformation  ·  Agni / Pitta', color: '#fbbf24', text: 'Solar UV-B drives Vitamin D synthesis and cortisol — the body\'s daily energy budget. Ayurveda: Sun = Agni (transformative fire). CLOCK gene expression tracks the sun.' },
+  { icon: '🌙', title: 'Moon — Essence & Vitality  ·  Soma / Ojas', color: '#93c5fd', text: 'Lunar gravity modulates intracranial fluid, menstrual cycles (avg 29.5 days = lunar month), and sleep. Ayurveda: Moon = Soma (vital essence, builder of tissue).' },
+  { icon: '🌍', title: 'Earth — Stability & Ground  ·  Prithvi / Kapha', color: '#6ee7b7', text: 'Earth\'s Schumann resonance (7.83 Hz) entrains alpha brain waves. Grounding (bare feet on earth) reduces cortisol and inflammation markers within 20 minutes.' },
+  { icon: '⭐', title: 'Stars — Space & Movement  ·  Akasha / Vata', color: '#a78bfa', text: 'Galactic cosmic rays modulate DNA repair, mutagenesis, and cloud formation on Earth. Ayurveda: stars = Akasha (space) — the field in which all motion occurs.' },
+];
+
+// ── Main Page ──────────────────────────────────────────────────────────────
 export default function CosmicSciencePage() {
   const router = useRouter();
+  const todayIdx = new Date().getDay();
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <LinearGradient
-        colors={['rgba(96,165,250,0.18)', BG, BG]}
+        colors={['rgba(251,146,60,0.55)', 'rgba(234,88,12,0.22)', BG]}
         style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.35 }}
+        start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 0.45 }}
       />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={S.header}>
           <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
-            <Text style={{ color: '#FFFFFF70', fontSize: 20, lineHeight: 24 }}>←</Text>
+            <Text style={{ color: '#FFFFFF70', fontSize: 20 }}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={S.headerSub}>COMPLETE REFERENCE  ·  COSMIC ALMANAC</Text>
-            <Text style={S.headerTitle}>Cosmic Science</Text>
+            <Text style={S.headerSup}>ASTRAL SCIENCE  ·  JYOTISH SHASTRA</Text>
+            <Text style={S.headerTitle}>Astral Science</Text>
           </View>
-          <View style={[S.livePill, { borderColor: MOON + '55', backgroundColor: MOON + '15' }]}>
-            <View style={[S.liveDot, { backgroundColor: MOON }]} />
-            <Text style={[S.liveTxt, { color: MOON }]}>PANCHANG</Text>
+          <View style={[S.badge, { borderColor: TEAL + '55', backgroundColor: TEAL + '15' }]}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: TEAL }} />
+            <Text style={{ fontSize: 8, fontWeight: '900', color: TEAL, letterSpacing: 1 }}>LIVE</Text>
           </View>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}
-        >
-          <HeroSection />
-          <Divider />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
 
-          <VaarsSection />
-          <Divider />
-
-          <MoonCycleSection />
-          <Divider />
-
-          <NakshatraSection />
-          <Divider />
-
-          <SunSection />
-          <Divider />
-
-          <YogasSection />
-          <Divider />
-
-          <CosmosBodySection />
-
-          {/* Back link */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-            style={S.backLink}
-          >
-            <Text style={{ fontSize: 16 }}>🌿</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={S.backLinkTitle}>Back to body rhythm</Text>
-              <Text style={S.backLinkSub}>Live dosha period · what to do right now</Text>
+          {/* ── HERO ── */}
+          <View style={{ paddingVertical: 24 }}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              <Tag label="🌌  Universal Science" color={MOON} />
+              <Tag label="🔭  5000 Years of Data" color={SUN} />
+              <Tag label="🧬  Chronobiology" color={TEAL} />
             </View>
-            <Text style={{ fontSize: 16, color: MOON }}>→</Text>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: '#FFFFFF', lineHeight: 40, letterSpacing: -0.8, marginBottom: 14 }}>
+              {'The cosmos moves\nthrough you.'}
+            </Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 22 }}>
+              Jyotish (Vedic Astrology) is not religion — it is an empirically observed, mathematically precise system of cosmic timing, developed over 5,000 years. Like astronomy, it belongs to every human being on Earth, regardless of faith, culture, or nationality.
+            </Text>
+            <View style={{ marginTop: 18, borderRadius: 16, borderWidth: 1.5, borderColor: TEAL + '50', backgroundColor: TEAL + '0F', padding: 16 }}>
+              <Text style={{ fontSize: 9, fontWeight: '900', color: TEAL, letterSpacing: 2, marginBottom: 8 }}>✦ UNIVERSAL DECLARATION</Text>
+              <Text style={{ fontSize: 13, color: '#FFFFFFCC', lineHeight: 20, fontWeight: '600' }}>
+                Astrology is a science of natural cycles — as universal and impersonal as physics, chemistry, or biology. The sky is humanity's oldest shared heritage. These patterns belong to everyone.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <Tag label="🌍  For every human" color={TEAL} />
+                <Tag label="🕌  No religion required" color={MOON} />
+                <Tag label="🔬  Scientifically grounded" color={STAR} />
+              </View>
+            </View>
+          </View>
+
+          {/* ── SOLAR SYSTEM ── */}
+          <SectionHeader emoji="☀️" title="The Solar System" subtitle="SOLAR STRUCTURE  ·  SAURA MANDALA" color={SUN} />
+          <SolarSystemDiagram />
+          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: CARD, padding: 16, marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.70)', lineHeight: 20 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '800' }}>Panchanga</Text> — "five limbs" — five simultaneous measures of cosmic time: <Text style={{ color: TEAL }}>Tithi</Text> (lunar day), <Text style={{ color: SUN }}>Vaar</Text> (planetary day), <Text style={{ color: STAR }}>Nakshatra</Text> (Moon's star mansion), <Text style={{ color: '#34d399' }}>Yoga</Text> (Sun+Moon union), and <Text style={{ color: ROSE }}>Karana</Text> (half-tithi). Every moment is defined by all five simultaneously — like coordinates in cosmic space.
+            </Text>
+          </View>
+
+          <Divider />
+
+          {/* ── SACRED TITHIS ── */}
+          <SectionHeader emoji="🌕" title="Sacred Lunar Days" subtitle="LUNAR SCIENCE  ·  TITHI VIGYAN" color={MOON} />
+          <View style={{ borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: CARD, padding: 14, marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 20 }}>
+              The Moon's 29.5-day cycle creates 30 Tithis (lunar days). Each is a 12° elongation of the Moon from the Sun, creating measurable shifts in Earth's tidal forces, electromagnetic fields, and human biology. Several Tithis carry special cosmic significance.
+            </Text>
+          </View>
+          <MoonCycleArc />
+          <View style={{ height: 16 }} />
+          <TithiSpecialSection />
+
+          <Divider />
+
+          {/* ── 7 VAARS ── */}
+          <SectionHeader emoji="🪐" title="Seven Planetary Days" subtitle="PLANETARY RULERS  ·  SAPTA VAAR" color={SUN} />
+          <View style={{ borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: CARD, padding: 14, marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 20 }}>
+              Each day is governed by a planet whose gravitational and electromagnetic signature subtly shifts biological rhythms. Modern chronopharmacology confirms day-of-week variation in hormone levels, drug efficacy, and immune response.
+            </Text>
+          </View>
+          <PlanetWheel todayIdx={todayIdx} />
+          <View style={{ gap: 8, marginTop: 12 }}>
+            {VAAR_SCIENCE.map((v, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 14, borderWidth: 1, borderColor: i === todayIdx ? v.color + '50' : 'rgba(255,255,255,0.07)', backgroundColor: i === todayIdx ? v.color + '10' : CARD, borderLeftWidth: 3, borderLeftColor: v.color, padding: 12 }}>
+                <Text style={{ fontSize: 22, width: 30 }}>{v.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: v.color }}>{v.day}</Text>
+                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: v.color + '15', borderWidth: 1, borderColor: v.color + '30' }}><Text style={{ fontSize: 8, fontWeight: '700', color: v.color + 'AA' }}>{v.vedic}</Text></View>
+                    {i === todayIdx && <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: v.color + '30' }}><Text style={{ fontSize: 7, fontWeight: '900', color: v.color }}>TODAY</Text></View>}
+                  </View>
+                  <Text style={{ fontSize: 11.5, color: '#FFFFFFCC', lineHeight: 16, marginBottom: 4 }}>{v.focus}</Text>
+                  <Text style={{ fontSize: 10.5, color: '#FFFFFF55', lineHeight: 15, fontStyle: 'italic' }}>⚗  {v.science}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <Divider />
+
+          {/* ── 27 NAKSHATRAS ── */}
+          <SectionHeader emoji="⭐" title="27 Star Mansions" subtitle="LUNAR MANSIONS  ·  NAKSHATRA VIGYAN" color={STAR} />
+          <View style={{ borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: CARD, padding: 14, marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 20 }}>
+              The zodiac is divided into 27 Nakshatras of 13.33° each. The Moon transits one nakshatra every ~27 hours. Each is a real star cluster — Rohini = Aldebaran, Chitra = Spica, Jyeshtha = Antares. Your nakshatra tunes your intuitive frequency for the day.
+            </Text>
+          </View>
+          <NakshatraGrid />
+
+          <Divider />
+
+          {/* ── BODY ↔ COSMOS ── */}
+          <SectionHeader emoji="🧬" title="Body & Cosmos" subtitle="YOU ARE THE UNIVERSE  ·  LOKA-PURUSHA SAMYA" color={TEAL} />
+          <View style={{ borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: CARD, padding: 14, marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 20 }}>
+              "As in the body, so in the universe" — Yatha pinde tatha brahmande. Modern physics confirms: the atoms in your body were forged in stellar cores. You are, literally, made of stars.
+            </Text>
+          </View>
+          <View style={{ gap: 10 }}>
+            {BODY_COSMOS.map((r, i) => (
+              <View key={i} style={{ borderRadius: 16, borderWidth: 1, borderColor: r.color + '30', backgroundColor: r.color + '08', borderLeftWidth: 3, borderLeftColor: r.color, padding: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 22 }}>{r.icon}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '900', color: r.color }}>{r.title}</Text>
+                </View>
+                <Text style={{ fontSize: 12.5, color: '#FFFFFFCC', lineHeight: 19 }}>{r.text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── FOOTER ── */}
+          <View style={{ borderRadius: 20, borderWidth: 1.5, borderColor: TEAL + '40', backgroundColor: TEAL + '08', padding: 20, marginTop: 28 }}>
+            <Text style={{ fontSize: 10, fontWeight: '900', color: TEAL, letterSpacing: 2, marginBottom: 10 }}>THE SCIENTIFIC FOUNDATION</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.70)', lineHeight: 21 }}>
+              Vedic Jyotish is grounded in precise astronomical observation developed over 5,000 years. The Panchanga calculations use real planetary positions derived from rigorous mathematical models — the same positions used by modern planetariums. This is celestial mechanics, not mysticism.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              <Tag label="🌍  Humanity's science" color={TEAL} />
+              <Tag label="📡  Astronomical precision" color={MOON} />
+              <Tag label="🧬  Biologically verified" color={STAR} />
+            </View>
+          </View>
+
+          {/* Back */}
+          <TouchableOpacity onPress={() => router.back()} style={S.backLink}>
+            <Text style={{ fontSize: 16 }}>←</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={S.backLinkTitle}>Return to your cosmic day</Text>
+              <Text style={S.backLinkSub}>Live Panchanga · astral story</Text>
+            </View>
+            <Text style={{ fontSize: 16, color: TEAL }}>→</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -418,98 +427,13 @@ export default function CosmicSciencePage() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-    paddingTop: 8, paddingBottom: 14, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerSub:  { fontSize: 8, fontWeight: '700', color: '#FFFFFF40', letterSpacing: 1.4 },
-  headerTitle:{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 },
-  livePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, borderWidth: 1,
-  },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveTxt:    { fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
-
-  secLabel: {
-    fontSize: 9, fontWeight: '900', color: '#FFFFFF45',
-    letterSpacing: 1.8, marginBottom: 10, marginTop: 28,
-  },
-  italicCard: {
-    borderLeftWidth: 2, borderLeftColor: 'rgba(255,255,255,0.22)',
-    paddingLeft: 14, marginBottom: 4,
-  },
-  italicTxt: { fontSize: 13, color: '#FFFFFFCC', fontStyle: 'italic', lineHeight: 20 },
-
-  chip: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99,
-    borderWidth: 1, alignSelf: 'flex-start',
-  },
-  chipTxt: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.4 },
-
-  card: {
-    backgroundColor: CARD, borderRadius: 14,
-    borderWidth: 1, borderColor: BORD,
-  },
-
-  heroTitle: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', lineHeight: 32, marginBottom: 12 },
-  heroBody:  { fontSize: 13.5, color: '#FFFFFFCC', lineHeight: 21 },
-
-  vaarRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORD,
-    borderLeftWidth: 3, padding: 12,
-  },
-  vaarIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  vaarName: { fontSize: 13, fontWeight: '900', lineHeight: 18 },
-  vaarDay:  { fontSize: 10, color: '#FFFFFF50', fontWeight: '600' },
-  vaarEnergy: { fontSize: 11.5, color: '#FFFFFFCC', lineHeight: 17, marginBottom: 3 },
-  vaarBody: { fontSize: 10.5, color: '#FFFFFF60', lineHeight: 16, fontStyle: 'italic' },
-
-  tithiRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: CARD, borderRadius: 12, borderWidth: 1, borderColor: BORD,
-    borderLeftWidth: 3, padding: 12,
-  },
-  tithiName:   { fontSize: 12, fontWeight: '800', marginBottom: 3 },
-  tithiEnergy: { fontSize: 11.5, color: '#FFFFFFCC', lineHeight: 17 },
-  tithiModern: { fontSize: 10.5, color: '#FFFFFF55', lineHeight: 16, marginTop: 3, fontStyle: 'italic' },
-
-  groupDot:  { width: 8, height: 8, borderRadius: 4 },
-  groupLabel:{ fontSize: 12, fontWeight: '800' },
-  nakRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  nakDot: { width: 5, height: 5, borderRadius: 3, marginTop: 5 },
-  nakTxt: { flex: 1, fontSize: 11.5, color: '#FFFFFFCC', lineHeight: 17 },
-
-  sunIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-
-  yogaPill: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-    borderWidth: 1, minWidth: 100,
-  },
-  yogaTxt: { fontSize: 11, fontWeight: '800', lineHeight: 15 },
-  yogaSub: { fontSize: 9.5, color: '#FFFFFF55', lineHeight: 13 },
-
-  cosmosCard: {
-    backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORD,
-    borderLeftWidth: 3, padding: 14,
-  },
-
-  backLink: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: 'rgba(96,165,250,0.08)', borderRadius: 18,
-    borderWidth: 1, borderColor: 'rgba(96,165,250,0.30)',
-    padding: 16, marginTop: 28,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  headerSup: { fontSize: 7.5, fontWeight: '800', color: '#FFFFFF35', letterSpacing: 1.5 },
+  headerTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.2 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
+  backLink: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(96,165,250,0.08)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.28)', padding: 16, marginTop: 28 },
   backLinkTitle: { fontSize: 14, fontWeight: '900', color: '#FFFFFF', lineHeight: 20 },
-  backLinkSub:   { fontSize: 11, color: '#FFFFFF55', marginTop: 3 },
+  backLinkSub: { fontSize: 11, color: '#FFFFFF50', marginTop: 3 },
 });

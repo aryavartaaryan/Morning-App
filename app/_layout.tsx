@@ -2,13 +2,13 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
-  Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
+  Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
   Nunito_800ExtraBold, Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
@@ -17,7 +17,7 @@ import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
 import { ensureAllBgsCached } from '@/lib/bgImages';
-import { prefetchAllSoundImages } from '@/lib/soundImagePreload';
+import { prefetchAllSoundImages, warmSoundImageMap } from '@/lib/soundImagePreload';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
@@ -107,7 +107,7 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
       {/* Center */}
       <View style={SS.center}>
         <Animated.Text style={[SS.arise, { opacity: titleOp, transform: [{ scale: titleSc }] }]}>
-          SolRize
+          Nada
         </Animated.Text>
         <Animated.View style={[SS.subBlock, { opacity: subOp }]}>
           <Text style={SS.tagline}>YOUR DAY  ·  BY DESIGN</Text>
@@ -115,7 +115,7 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
         </Animated.View>
       </View>
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: subOp }]}>SOLRIZE  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: subOp }]}>NADA  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -124,7 +124,7 @@ const SS = StyleSheet.create({
   overlay:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: '#04030F', alignItems: 'center' },
   glowOrb:    { position: 'absolute', top: SH * 0.22, alignSelf: 'center', width: 360, height: 360, borderRadius: 180, backgroundColor: '#F5820A' },
   center:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  arise:      { fontSize: 86, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 3 },
+  arise:      { fontSize: 96, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 8 },
   subBlock:   { alignItems: 'center', gap: 14 },
   tagline:    { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', letterSpacing: 6 },
   accentLine: { width: 64, height: 1.5, backgroundColor: '#F5820A', opacity: 0.70, borderRadius: 1 },
@@ -156,12 +156,32 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
         ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => {});
       }, 3500);
     } catch { /* Expo Go */ }
-    // Route straight to tabs unless already there or on alarm screens
-    const root = segments[0] as string;
-    if (root !== '(tabs)' && root !== 'alarm-ringing' && root !== 'habit-alarm-ringing' && root !== 'mission') {
+    // Route straight to tabs unless already there or on alarm screens.
+    // ALARM DEEP-LINK RACE FIX: On a cold start (app killed) via an alarm deep link,
+    // Expo Router may not have processed Linking.getInitialURL() before this guard
+    // fires. If we redirect to /(tabs) first, the user sees the homepage instead of
+    // the alarm screen. Fix: await the initial URL and skip the redirect when the
+    // app was opened via an alarm deep link — Expo Router will navigate there itself.
+    (async () => {
+      const root = segments[0] as string;
+      const alarmRoutes = ['(tabs)', 'alarm-ringing', 'habit-alarm-ringing', 'mission', 'soundbath-ringing', 'sleep-ringing'];
+      if (!alarmRoutes.includes(root)) {
+        let shouldRedirect = true;
+        try {
+          const initialUrl = await Linking.getInitialURL();
+          if (initialUrl && /soundbath-ringing|habit-alarm-ringing|alarm-ringing|sleep-ringing/.test(initialUrl)) {
+            shouldRedirect = false;
+          }
+        } catch { /* ignore */ }
+        if (shouldRedirect) {
+          router.replace('/(tabs)' as never);
+        }
+      }
+      setTimeout(() => onAuthReady(), 80);
+    })().catch(() => {
       router.replace('/(tabs)' as never);
-    }
-    setTimeout(() => onAuthReady(), 80);
+      setTimeout(() => onAuthReady(), 80);
+    });
   }, [navigationState?.key]);
 
   return null;
@@ -174,6 +194,10 @@ function BodhiNotificationListener() {
   // Guard: ensure we navigate to /alarm-ringing at most once per alarm cycle.
   // Multiple navigation calls re-mount the component, restarting audio playback.
   const alarmRoutedRef = useRef(false);
+  // Guard: prevent double-navigation to habit/soundbath alarm screens.
+  const habitAlarmRoutedRef = useRef(false);
+  // Always-fresh segments ref — used inside async callbacks to avoid stale closure.
+  const segmentsRef = useRef<string[]>([]);
   const navReady = !!navigationState?.key;
 
   // Reset the guard whenever we leave the alarm-ringing screen so the next
@@ -181,6 +205,18 @@ function BodhiNotificationListener() {
   useEffect(() => {
     if (!(segments as string[]).includes('alarm-ringing')) {
       alarmRoutedRef.current = false;
+    }
+  }, [segments]);
+
+  // Keep segmentsRef current so async callbacks always read the latest route.
+  useEffect(() => { segmentsRef.current = segments as string[]; }, [segments]);
+
+  // Reset habitAlarmRoutedRef when leaving habit/soundbath alarm screens so
+  // the next alarm cycle can trigger routing again.
+  useEffect(() => {
+    const segs = segments as string[];
+    if (!segs.includes('soundbath-ringing') && !segs.includes('habit-alarm-ringing')) {
+      habitAlarmRoutedRef.current = false;
     }
   }, [segments]);
 
@@ -294,34 +330,153 @@ function BodhiNotificationListener() {
   }, []);
 
   // ── When app is LAUNCHED by a soundbath alarm fullScreenAction (app was killed) ──
+  // RACE-CONDITION FIX: onBackgroundEvent writes onesutra_pending_soundbath_v1
+  // concurrently with MainActivity launching. A single immediate read races and
+  // loses on OEM devices — poll every 350 ms for up to 2.1 s (same pattern as
+  // PENDING_HABIT_KEY above) so we catch the key regardless of scheduling jitter.
   useEffect(() => {
-    if (!navReady) return;
-    AsyncStorage.getItem('onesutra_pending_soundbath_v1')
-      .then((raw: string | null) => {
-        if (!raw) return;
-        AsyncStorage.removeItem('onesutra_pending_soundbath_v1').catch(() => {});
+    const PENDING_SB_KEY = 'onesutra_pending_soundbath_v1';
+    let cancelled = false;
+
+    const navigateToSoundbath = (raw: string) => {
+      if (cancelled) return;
+      AsyncStorage.removeItem(PENDING_SB_KEY).catch(() => {});
+      try {
         const alarm = JSON.parse(raw);
         const sid = encodeURIComponent(alarm.soundId ?? 'morning_birds');
         const lbl = encodeURIComponent(alarm.label ?? 'Sound Bath');
-        setTimeout(() => router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never), 400);
-      })
-      .catch(() => {});
+        setTimeout(() => { if (!cancelled) router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never); }, 400);
+      } catch { /* ignore parse error */ }
+    };
+
+    const pollPendingSoundbath = async () => {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) return;
+        try {
+          const raw = await AsyncStorage.getItem(PENDING_SB_KEY);
+          if (raw) { navigateToSoundbath(raw); return; }
+        } catch { /* ignore */ }
+        await new Promise<void>(resolve => setTimeout(resolve, 350));
+      }
+    };
+    pollPendingSoundbath().catch(() => {});
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      AsyncStorage.getItem(PENDING_SB_KEY).then((raw) => {
+        if (raw) navigateToSoundbath(raw);
+      }).catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+    };
+  }, []);
+
+  // ── SOUNDBATH DEEP-LINK RACE FIX: native SharedPrefs fallback ────────────────
+  // Problem: HabitAlarmSoundService fires the deep-link solrize://soundbath-ringing
+  // via launchApp(). On a cold start or background resume, AuthGuard sometimes runs
+  // before Expo Router processes the deep-link intent, sees segments[0] ≠ 'soundbath-
+  // ringing', and redirects to /(tabs). pollPendingSoundbath cannot recover because
+  // HabitAlarmSoundService (native AlarmManager path) NEVER writes
+  // onesutra_pending_soundbath_v1 to AsyncStorage — only onBackgroundEvent (Notifee
+  // path) does that.
+  // Fix: read native habit_alarm_prefs SharedPreferences directly via the new
+  // getActiveHabitAlarmParams() bridge method. If alarmType === 'soundbath' and we
+  // are not already on the alarm screen, navigate there. Guarded by
+  // habitAlarmRoutedRef to prevent double-navigation (which would restart audio).
+  useEffect(() => {
+    if (!navReady) return;
+    let cancelled = false;
+
+    const checkNativeSoundbathAlarm = async () => {
+      if (cancelled || habitAlarmRoutedRef.current) return;
+      const freshSegs = segmentsRef.current;
+      if (
+        freshSegs.includes('soundbath-ringing') ||
+        freshSegs.includes('habit-alarm-ringing') ||
+        freshSegs.includes('alarm-ringing')
+      ) {
+        habitAlarmRoutedRef.current = true;
+        return;
+      }
+      try {
+        const params = await (NativeModules.HabitAlarmModule as any)?.getActiveHabitAlarmParams?.();
+        if (!params || cancelled || habitAlarmRoutedRef.current) return;
+        const latestSegs = segmentsRef.current;
+        if (
+          latestSegs.includes('soundbath-ringing') ||
+          latestSegs.includes('habit-alarm-ringing') ||
+          latestSegs.includes('alarm-ringing')
+        ) {
+          habitAlarmRoutedRef.current = true;
+          return;
+        }
+        habitAlarmRoutedRef.current = true;
+        if (params.alarmType === 'soundbath') {
+          const sid = encodeURIComponent(params.habitKey ?? 'morning_birds');
+          const lbl = encodeURIComponent(params.habitLabel ?? 'Sound Bath');
+          console.log('[Layout] Native soundbath fallback → /soundbath-ringing');
+          router.replace(`/soundbath-ringing?soundId=${sid}&label=${lbl}` as never);
+        }
+      } catch { /* ignore */ }
+    };
+
+    checkNativeSoundbathAlarm().catch(() => {});
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      checkNativeSoundbathAlarm().catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+    };
   }, [navReady]);
 
   // ── When app is LAUNCHED by a sleep auto-start fullScreenAction (app was killed) ──
+  // RACE-CONDITION FIX: same polling pattern as soundbath and PENDING_HABIT_KEY.
   useEffect(() => {
-    if (!navReady) return;
-    AsyncStorage.getItem('onesutra_pending_sleep_v1')
-      .then((raw: string | null) => {
-        if (!raw) return;
-        AsyncStorage.removeItem('onesutra_pending_sleep_v1').catch(() => {});
+    const PENDING_SLEEP_KEY = 'onesutra_pending_sleep_v1';
+    let cancelled = false;
+
+    const navigateToSleep = (raw: string) => {
+      if (cancelled) return;
+      AsyncStorage.removeItem(PENDING_SLEEP_KEY).catch(() => {});
+      try {
         const alarm = JSON.parse(raw);
         const sid = encodeURIComponent(alarm.soundId ?? 'light_rain');
         const lbl = encodeURIComponent(alarm.label ?? 'Sleep Sound');
-        setTimeout(() => router.replace(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never), 400);
-      })
-      .catch(() => {});
-  }, [navReady]);
+        setTimeout(() => { if (!cancelled) router.replace(`/sleep-ringing?soundId=${sid}&label=${lbl}` as never); }, 400);
+      } catch { /* ignore parse error */ }
+    };
+
+    const pollPendingSleep = async () => {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) return;
+        try {
+          const raw = await AsyncStorage.getItem(PENDING_SLEEP_KEY);
+          if (raw) { navigateToSleep(raw); return; }
+        } catch { /* ignore */ }
+        await new Promise<void>(resolve => setTimeout(resolve, 350));
+      }
+    };
+    pollPendingSleep().catch(() => {});
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      AsyncStorage.getItem(PENDING_SLEEP_KEY).then((raw) => {
+        if (raw) navigateToSleep(raw);
+      }).catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+    };
+  }, []);
 
   // ── When app is LAUNCHED by a notifee notification (habit alarm / evening mantra) ──
   useEffect(() => {
@@ -379,7 +534,7 @@ function BodhiNotificationListener() {
       // ── Android: ensure notification channel is ready on every app open ──
       if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync('arise-alarms', {
-          name: 'SolRize Alarms',
+          name: 'Nada Alarms',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'mantra_alarm.m4a',
           vibrationPattern: [0, 250, 250, 250],
@@ -547,14 +702,15 @@ function GlobalMoodLayer() {
 
 export default function RootLayout() {
   useEffect(() => {
+    warmSoundImageMap().catch(() => {});         // fast file-exist scan for sound images
     const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 500);
     const t2 = setTimeout(() => ensureAllMantrasDownloaded().catch(() => {}), 10_000);
-    const t3 = setTimeout(() => prefetchAllSoundImages().catch(() => {}), 4_000);
+    const t3 = setTimeout(() => prefetchAllSoundImages().catch(() => {}), 1_500);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   const [fontsLoaded] = useFonts({
-    Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
+    Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
     Nunito_800ExtraBold, Nunito_900Black,
     DancingScript_600SemiBold,
   });

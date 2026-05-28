@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView,
+  StyleSheet, SafeAreaView, ImageBackground,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle as SvgCircle } from 'react-native-svg';
+import { useBgContext } from '@/lib/bgContext';
 
 // ── Full scientific dosha data ─────────────────────────────────────────────
 const DOSHAS_FULL = {
@@ -347,6 +348,7 @@ function SciCard({ title, body, color, subtitle }: { title: string; body: string
 
 export default function DoshaExplorePage() {
   const router = useRouter();
+  const { bgUri } = useBgContext();
   const params = useLocalSearchParams<{ activeDosha?: string; periodLabel?: string; periodStart?: string; periodEnd?: string; sciEmoji?: string; sciTitle?: string; sciDesc?: string; minutesRemaining?: string; durMinutes?: string; activities?: string; avoidances?: string; }>();
   const adk = (params.activeDosha ?? 'vata') as DoshaKey;
   const [sel, setSel] = useState<DoshaKey>(adk);
@@ -372,8 +374,11 @@ export default function DoshaExplorePage() {
   const getAvoidEmoji = (t: string) => { const s = t.toLowerCase(); if (s.includes('oversleep') || (s.includes('sleep') && s.includes('past'))) return '😴'; if (s.includes('screen') || s.includes('phone')) return '📵'; if (s.includes('caffeine') || s.includes('coffee')) return '☕'; if (s.includes('dairy') || s.includes('sweet') || s.includes('sugar')) return '🍬'; if (s.includes('spicy') || s.includes('acidic') || s.includes('acid')) return '🌶️'; if (s.includes('anger') || s.includes('stress') || s.includes('heated')) return '😤'; if (s.includes('cold') || s.includes('raw food')) return '❄️'; if (s.includes('sedent') || s.includes('sitting') || s.includes('long sedent')) return '🪑'; if (s.includes('skip') || s.includes('irregular')) return '🌀'; if (s.includes('excess sleep') || s.includes('> 8')) return '🛌'; return '⚠️'; };
 
   return (
-    <View style={S.screen}>
-      <LinearGradient colors={['#07071a', '#050515']} style={StyleSheet.absoluteFillObject} />
+    <ImageBackground
+      source={bgUri ? { uri: bgUri } : undefined}
+      style={S.screen}
+      imageStyle={{ opacity: 1 }}
+    >
       <SafeAreaView style={{ flex: 1 }}>
         {/* HEADER */}
         <View style={S.hdr}>
@@ -762,7 +767,7 @@ export default function DoshaExplorePage() {
 
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </ImageBackground>
   );
 }
 

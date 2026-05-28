@@ -204,6 +204,13 @@ abstract class AlarmSoundServiceBase : Service() {
         }
     }
 
+    // Safety-net unmute: starts the MediaPlayer at 0f so the JS layer can
+    // immediately take over audio without a Gayatri "flash". If JS never
+    // calls setAlarmVolume (e.g. app was killed), this runnable unmutes
+    // after 4 s so the user still hears the alarm.
+    // Cancelled the instant JS sends ACTION_SET_VOLUME (meaning RN is alive).
+    private val unmuteRunnable = Runnable { mediaPlayer?.setVolume(1f, 1f) }
+
     private fun isAppInForeground(): Boolean = mainActivityResumed
 
     /**
@@ -241,8 +248,10 @@ abstract class AlarmSoundServiceBase : Service() {
                         setDataSource(soundPath)
                         isLooping = true
                         prepare()
+                        setVolume(0f, 0f)
                         start()
                     }
+                    bringToFrontHandler.postDelayed(unmuteRunnable, 4_000)
                     return
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -262,8 +271,10 @@ abstract class AlarmSoundServiceBase : Service() {
                 afd.close()
                 isLooping = true
                 prepare()
+                setVolume(0f, 0f)
                 start()
             }
+            bringToFrontHandler.postDelayed(unmuteRunnable, 4_000)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -473,16 +484,40 @@ abstract class AlarmSoundServiceBase : Service() {
     fun startAlarmVibration() {
         vibrator?.cancel() // cancel any existing pattern before starting fresh
         vibrator = getVibrator() ?: return
-        val pattern = longArrayOf(0, 900, 400, 900, 400, 900, 400)
+
+        // ── Elegant escalating-pulse pattern (like Pixel Clock / Samsung alarms) ──
+        // Three soft pulses build to a confident peak, then a breath pause, repeat.
+        // Format: [delay, on, off, on, off, ...] / amplitude mirrors each segment.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(pattern, 0) // 0 = repeat from index 0
+            // Amplitude-aware waveform: 0 = off, 1–255 = intensity.
+            // Timings and amplitudes must have the same length.
+            val timings = longArrayOf(
+                0,   // start delay
+                120, 80,   // soft pulse 1
+                160, 80,   // soft pulse 2
+                200, 120,  // medium pulse 3
+                280, 120,  // medium pulse 4
+                380, 180,  // strong pulse 5
+                500, 300   // peak pulse + rest before repeat
+            )
+            val amplitudes = intArrayOf(
+                0,          // start delay (off)
+                90,  0,     // soft pulse 1
+                130, 0,     // soft pulse 2
+                180, 0,     // medium pulse 3
+                210, 0,     // medium pulse 4
+                240, 0,     // strong pulse 5
+                255, 0      // peak pulse + rest
+            )
+            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
             val attrs  = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .build()
             vibrator?.vibrate(effect, attrs)
         } else {
+            // API < 26: no amplitude support — use a rhythmic triple-pulse pattern
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(pattern, 0)
+            vibrator?.vibrate(longArrayOf(0, 150, 80, 200, 80, 350, 300), 0)
         }
     }
 
@@ -512,8 +547,20 @@ abstract class AlarmSoundServiceBase : Service() {
         // FGS (and both watchdogs) alive and the alarm flag set.
         if (intent?.action == getActionSetVolume()) {
             val vol = intent.getFloatExtra(getExtraVolumeKey(), 1f)
+            bringToFrontHandler.removeCallbacks(unmuteRunnable)
             mediaPlayer?.setVolume(vol, vol)
             return START_STICKY
+        }
+
+        // ── Guard: reject phantom START_STICKY restarts after intentional stop ─
+        // stopAlarmSound() clears alarm_fired_pending BEFORE calling stopService().
+        // If Android then restarts this service with intent=null (START_STICKY),
+        // isAlarmActive() returns false — we must NOT re-arm the alarm.
+        // Self-stopping here is the single-line fix that prevents phantom
+        // post-mission vibration without touching any other alarm path.
+        if (intent == null && !isAlarmActive()) {
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         // ── Load subclass-specific params ───────────────────────────────────
@@ -592,6 +639,7 @@ abstract class AlarmSoundServiceBase : Service() {
     override fun onDestroy() {
         (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
         bringToFrontHandler.removeCallbacks(bringToFrontRunnable)
+        bringToFrontHandler.removeCallbacks(unmuteRunnable)
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay
         mediaPlayer?.stop()

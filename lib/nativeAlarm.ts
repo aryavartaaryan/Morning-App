@@ -50,7 +50,7 @@ export async function setupAlarmChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await notifee.createChannel({
     id: ALARM_CHANNEL_ID,
-    name: 'SolRize Wake Alarm',
+    name: 'Nada Wake Alarm',
     description: 'Mission alarm — fires even when phone is sleeping',
     importance: AndroidImportance.HIGH,  // HIGH required for fullScreenIntent
     sound: 'mantra_alarm',
@@ -61,17 +61,33 @@ export async function setupAlarmChannel(): Promise<void> {
   });
 }
 
+// ── Schedule helpers ─────────────────────────────────────────────────────────
+/**
+ * Returns the next Unix timestamp (ms) when the alarm should fire.
+ * Respects the optional `days` array (0=Sun…6=Sat, JS Date.getDay convention).
+ * If `days` is empty or undefined the alarm is treated as daily.
+ */
+export function getNextAlarmTimestamp(hour: number, minute: number, days?: number[]): number {
+  const allowed = !days || days.length === 0 ? [0, 1, 2, 3, 4, 5, 6] : days;
+  const now = Date.now();
+  for (let d = 0; d < 8; d++) {
+    const t = new Date();
+    t.setHours(hour, minute, 0, 0);
+    t.setDate(t.getDate() + d);
+    if (t.getTime() > now && allowed.includes(t.getDay())) return t.getTime();
+  }
+  // Fallback: 24 h from now
+  return Date.now() + 86_400_000;
+}
+
 // ── Schedule ───────────────────────────────────────────────────────────────────
-export async function scheduleNativeAlarm(hour: number, minute: number): Promise<void> {
+export async function scheduleNativeAlarm(hour: number, minute: number, days?: number[]): Promise<void> {
   if (Platform.OS !== 'android') return;
 
   await cancelNativeAlarm();
   await setupAlarmChannel();
 
-  const now = new Date();
-  const next = new Date();
-  next.setHours(hour, minute, 0, 0);
-  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+  const next = new Date(getNextAlarmTimestamp(hour, minute, days));
 
   const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   const ampm = hour < 12 ? 'AM' : 'PM';

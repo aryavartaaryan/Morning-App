@@ -30,6 +30,7 @@ import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, Trigger
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import { SOUND_IMAGES as ALARM_SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
@@ -86,26 +87,26 @@ const AYU_HABITS = [
 ];
 
 const HABIT_SOUND_DEFAULTS: Record<string, string> = {
-  meditation:      'singing_bowl_deep',
-  prayer:          'om_chant',
-  morning_prayer:  'gayatri',
-  wake_early:      'morning_birds',
-  hydrate:         'river_flow',
-  shower:          'light_rain',
-  sunlight:        'spring_birds',
-  breakfast:       'forest_birds',
-  main_meal:       'forest_birds',
-  walk:            'morning_birds',
-  herbal_tea:      'forest_birds_spring',
-  evening_walk:    'wanderlust_breeze',
-  light_dinner:    'breeze_trees',
-  screen_free:     'singing_bowl_deep',
-  journaling:      'tibetan_bowl',
-  sleep:           'singing_bowl_deep',
-  stretch:         'morning_flute',
-  morning_stretch: 'morning_flute',
-  workout:         'gayatri',
-  custom:          'morning_birds',
+  meditation:      'cuckoo_chime',
+  prayer:          'cuckoo_chime',
+  morning_prayer:  'cuckoo_chime',
+  wake_early:      'cuckoo_chime',
+  hydrate:         'cuckoo_chime',
+  shower:          'cuckoo_chime',
+  sunlight:        'cuckoo_chime',
+  breakfast:       'cuckoo_chime',
+  main_meal:       'cuckoo_chime',
+  walk:            'cuckoo_chime',
+  herbal_tea:      'cuckoo_chime',
+  evening_walk:    'cuckoo_chime',
+  light_dinner:    'cuckoo_chime',
+  screen_free:     'cuckoo_chime',
+  journaling:      'cuckoo_chime',
+  sleep:           'cuckoo_chime',
+  stretch:         'cuckoo_chime',
+  morning_stretch: 'cuckoo_chime',
+  workout:         'cuckoo_chime',
+  custom:          'cuckoo_chime',
 };
 
 export interface AlarmEntry {
@@ -426,7 +427,7 @@ function AlarmSoundPickerModal({
               {filtered.map(ws => {
                 const active = selectedId === ws.id;
                 const isPrev = previewId === ws.id;
-                const imgUrl = ALARM_SOUND_IMAGES[ws.id];
+                const imgUrl = ALARM_SOUND_IMAGES[ws.id] ? getLocalSoundImageUri(ALARM_SOUND_IMAGES[ws.id]) : undefined;
                 const catCol = ALARM_PICKER_CATS.find(c => c.id === ws.category)?.color ?? '#a78bfa';
                 return (
                   <TouchableOpacity
@@ -507,7 +508,7 @@ export default function AlarmsScreen() {
   const [formHabitKey, setFormHabitKey] = useState('meditation');
   const [formHabitEmoji, setFormHabitEmoji] = useState('🧘');
   const [showCustomHabitInput, setShowCustomHabitInput] = useState(false);
-  const [formSoundId, setFormSoundId] = useState('morning_birds');
+  const [formSoundId, setFormSoundId] = useState('cuckoo_chime');
   const [formSoundPickerOpen, setFormSoundPickerOpen] = useState(false);
   const [formSoundCat, setFormSoundCat] = useState<'nature' | 'sacred'>('nature');
 
@@ -1117,7 +1118,7 @@ export default function AlarmsScreen() {
       try {
         await notifee.createChannel({
           id: 'arise-habit-alarms',
-          name: 'SolRize Habit Alarms',
+          name: 'Nada Habit Alarms',
           importance: AndroidImportance.HIGH,
           sound: 'mantra_alarm',
           vibration: true,
@@ -1247,7 +1248,7 @@ export default function AlarmsScreen() {
     setFormHabitKey(type === 'habit' ? '' : 'meditation');
     setFormHabitEmoji(type === 'habit' ? '' : '🧘');
     setShowCustomHabitInput(false);
-    setFormSoundId(type === 'soundbath' ? 'singing_bowl_deep' : 'morning_birds');
+    setFormSoundId(type === 'soundbath' ? 'singing_bowl_deep' : 'cuckoo_chime');
     setFormSoundPickerOpen(false);
     setFormSoundCat(type === 'soundbath' ? 'sacred' : 'nature');
     setEditEntry(null);
@@ -1883,7 +1884,7 @@ export default function AlarmsScreen() {
                   setFormHabitEmoji('✨');
                   setShowCustomHabitInput(true);
                   setFormLabel('');
-                  setFormSoundId('morning_birds');
+                  setFormSoundId('cuckoo_chime');
                 }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: 18, padding: 16, borderColor: '#FFFFFF14', backgroundColor: '#FFFFFF04' }}
                 activeOpacity={0.8}
@@ -1986,23 +1987,19 @@ export default function AlarmsScreen() {
               </View>
             </View>
 
-            {/* ── Alarm Sound row ── */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFormSoundPickerOpen(true); }}
-              style={{ marginHorizontal: 20, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderColor: '#FFFFFF14', backgroundColor: '#FFFFFF06' }}
-              activeOpacity={0.8}
+            {/* ── Alarm Sound (locked to Cuckoo Chime) ── */}
+            <View
+              style={{ marginHorizontal: 20, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, borderColor: '#FFFFFF08', backgroundColor: '#FFFFFF04' }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Text style={{ fontSize: 22 }}>{WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.icon ?? '🎵'}</Text>
+                <Text style={{ fontSize: 22 }}>🔔</Text>
                 <View>
-                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6 }}>ALARM SOUND</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', marginTop: 2 }}>
-                    {WAKE_SOUNDS.find(ws => ws.id === formSoundId)?.label ?? 'Morning Birds'}
-                  </Text>
+                  <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF18', letterSpacing: 1.6 }}>ALARM SOUND</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF60', marginTop: 2 }}>Cuckoo Chime</Text>
                 </View>
               </View>
-              <Text style={{ color: '#FFFFFF35', fontSize: 18 }}>›</Text>
-            </TouchableOpacity>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF18', letterSpacing: 1 }}>DEFAULT</Text>
+            </View>
 
             {/* ── Shower tip (context card) ── */}
             {formHabitKey === 'shower' && (

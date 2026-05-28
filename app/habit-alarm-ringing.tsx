@@ -84,6 +84,7 @@ export default function HabitAlarmRingingScreen() {
         const mantraId = (mantraIdParam as string | undefined) ?? cfg?.selectedMantraId ?? 'gayatri';
         if (cancelled) return;
         await playAlarmAudio(soundRef, mantraId);
+        if (cancelled) await stopAlarmAudio(soundRef).catch(() => {});
       } catch (e) { console.warn('[HabitAlarm] audio:', e); }
     })();
     return () => {
@@ -130,7 +131,7 @@ export default function HabitAlarmRingingScreen() {
         }
         // No native service — start notifee FGS as fallback
         await notifee.createChannel({
-          id: 'arise-habit-alarms', name: 'SolRize Habit Alarms',
+          id: 'arise-habit-alarms', name: 'Nada Habit Alarms',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);
@@ -145,8 +146,7 @@ export default function HabitAlarmRingingScreen() {
             visibility: AndroidVisibility.PUBLIC,
             ongoing: true,
             asForegroundService: true,
-            fullScreenAction: { id: 'default', launchActivity: 'default' },
-            pressAction:       { id: 'default', launchActivity: 'default' },
+            pressAction: { id: 'default', launchActivity: 'default' },
           } as any,
         });
         notifeeStarted = true;
@@ -268,8 +268,8 @@ export default function HabitAlarmRingingScreen() {
     return { streak: newStreak, weekDays };
   };
 
-  const stopForegroundService = () => {
-    notifee.cancelNotification(HABIT_FS_ID).catch(() => {});
+  const stopForegroundService = async () => {
+    try { await notifee.cancelNotification(HABIT_FS_ID); } catch { /* ignore */ }
   };
 
   const stopNative = () => {
@@ -277,8 +277,12 @@ export default function HabitAlarmRingingScreen() {
   };
 
   const handleComplete = async () => {
-    setStopped(true); await stopAudio(); stopNative(); stopForegroundService();
-    notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {});
+    setStopped(true);
+    await stopAudio();
+    stopNative();
+    await stopForegroundService();
+    try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
+    bttfNotifIdRef.current = null;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
     if (!isQuick && user && habitKey) saveHabitLog({ habitId: habitKey, habitName: habitLabel, userId: user.uid, date: todayStr(), status: 'done' }).catch(() => {});
@@ -292,11 +296,21 @@ export default function HabitAlarmRingingScreen() {
         router.replace('/(tabs)' as never);
       }
     } else {
+      await new Promise<void>(r => setTimeout(r, 150));
       router.replace('/(tabs)' as never);
     }
   };
 
-  const handleQuit = async () => { setStopped(true); await stopAudio(); stopNative(); stopForegroundService(); notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf').catch(() => {}); router.replace('/(tabs)' as never); };
+  const handleQuit = async () => {
+    setStopped(true);
+    await stopAudio();
+    stopNative();
+    await stopForegroundService();
+    try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
+    bttfNotifIdRef.current = null;
+    await new Promise<void>(r => setTimeout(r, 150));
+    router.replace('/(tabs)' as never);
+  };
 
   return (
     <View style={S.screen}>

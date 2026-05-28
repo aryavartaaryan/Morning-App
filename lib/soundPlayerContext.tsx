@@ -5,6 +5,7 @@ import React, {
 import { AppState } from 'react-native';
 import { Audio } from 'expo-av';
 import type { MoodKey } from '@/components/MoodSheet';
+import { initAudioCache, resolveAudioUri, downloadAudioToCache } from './soundAudioCache';
 
 export const MAX_MIX = 4;
 
@@ -28,7 +29,7 @@ type SoundPlayerCtx = {
   sessionSecs: number;
   playingMeta: PlayableSoundMeta | null;
   mixedSounds: PlayableSoundMeta[];
-  playSound: (meta: PlayableSoundMeta, durationSecs: number, onStop?: () => void) => Promise<void>;
+  playSound: (meta: PlayableSoundMeta, durationSecs: number, onStop?: () => void, trimLastSecs?: number) => Promise<void>;
   addToMix: (meta: PlayableSoundMeta) => Promise<void>;
   removeFromMix: (id: string) => Promise<void>;
   togglePause: () => Promise<void>;
@@ -79,7 +80,15 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const stopFnRef       = useRef<(triggerCb?: boolean) => Promise<void>>(async () => {});
   const pendingMetaRef  = useRef<PlayableSoundMeta | null>(null);
   const pendingDurRef   = useRef<number>(21 * 60);
-  const isPausedRef     = useRef(false);
+  const isPausedRef      = useRef(false);
+  const mixedSoundsRef   = useRef<PlayableSoundMeta[]>([]);
+  const heartbeatBusyRef = useRef(false);
+  const restartingIdsRef = useRef<Set<string>>(new Set());
+  // Epoch guard: incremented on every playSound call so that any in-flight
+  // createAsync from a previous call can detect it is stale and self-discard.
+  const playEpochRef = useRef(0);
+  // Trim: ms to cut from the end of each sound loop (set by reel playback)
+  const reelTrimMsRef = useRef(0);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -89,37 +98,152 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
   }, []);
 
+  // Create and start a single Audio.Sound, storing it in mixRefs.
+  // epoch: when provided, the sound is discarded if a newer playSound call
+  // has already started (prevents stale createAsync from bleeding audio).
+  const loadAndPlay = useCallback(async (meta: PlayableSoundMeta, epoch?: number, trimLastMs: number = 0): Promise<Audio.Sound | null> => {
+    try {
+      // Resolve remote URI → local cached file if available;
+      // otherwise stream from remote and download to cache in background.
+      let resolvedSrc = meta.src;
+      if (resolvedSrc && typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
+        const localUri = resolveAudioUri(meta.id, resolvedSrc.uri);
+        if (localUri !== resolvedSrc.uri) {
+          resolvedSrc = { uri: localUri };
+        } else {
+          downloadAudioToCache(meta.id, resolvedSrc.uri).catch(() => {});
+        }
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        resolvedSrc,
+        { isLooping: true, volume: 1.0, shouldPlay: !isPausedRef.current },
+      );
+      // Stale-epoch check: createAsync is async; if a newer playSound displaced
+      // this one while we were awaiting, silently unload and bail.
+      if (epoch !== undefined && epoch !== playEpochRef.current) {
+        try { sound.setOnPlaybackStatusUpdate(null); } catch {}
+        try { await sound.stopAsync(); await sound.unloadAsync(); } catch {}
+        return null;
+      }
+      // Watchdog: expo-av isLooping can silently fail on M4A/certain codecs.
+      // If the sound finishes instead of looping, restart it automatically.
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        // Trim: seek to start when within last trimLastMs of the track
+        if (
+          trimLastMs > 0 &&
+          !isPausedRef.current &&
+          !restartingIdsRef.current.has(meta.id) &&
+          status.durationMillis != null &&
+          status.durationMillis > 16000 &&
+          status.positionMillis >= status.durationMillis - trimLastMs
+        ) {
+          restartingIdsRef.current.add(meta.id);
+          sound.replayAsync()
+            .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
+            .finally(() => { restartingIdsRef.current.delete(meta.id); });
+          return;
+        }
+        // Only restart when the file explicitly finished (isLooping silently failed).
+        // Guard with restartingIdsRef to prevent concurrent replayAsync storms
+        // (heartbeat + this callback firing at the same loop boundary).
+        if (!isPausedRef.current && status.didJustFinish && !restartingIdsRef.current.has(meta.id)) {
+          restartingIdsRef.current.add(meta.id);
+          sound.replayAsync()
+            .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
+            .finally(() => { restartingIdsRef.current.delete(meta.id); });
+        }
+      });
+      // Enable periodic position updates so the trim threshold can be detected
+      if (trimLastMs > 0) {
+        sound.setStatusAsync({ progressUpdateIntervalMillis: 500 }).catch(() => {});
+      }
+      mixRefs.current.set(meta.id, sound);
+      return sound;
+    } catch (e) {
+      console.warn('[SoundPlayer] Failed to load sound:', meta.id, e);
+      return null;
+    }
+  }, []);
+
   const startHeartbeat = useCallback(() => {
     clearHeartbeat();
     heartbeatRef.current = setInterval(async () => {
       if (isPausedRef.current || mixRefs.current.size === 0) return;
-      // Restart any sound that stopped due to a phone-call / notification / iOS interruption.
-      for (const snd of mixRefs.current.values()) {
-        try {
-          const status = await snd.getStatusAsync();
-          if (status.isLoaded && !status.isPlaying) {
-            // Re-activate audio session before resuming (handles iOS interruption deactivation)
-            await Audio.setAudioModeAsync({
-              staysActiveInBackground: true,
-              playsInSilentModeIOS: true,
-              shouldDuckAndroid: false,
-              interruptionModeIOS: 1,
-              interruptionModeAndroid: 1,
-            }).catch(() => {});
-            await snd.playAsync().catch(() => {});
+      // Guard: skip if a previous heartbeat tick is still running
+      if (heartbeatBusyRef.current) return;
+      heartbeatBusyRef.current = true;
+      try {
+        // First pass: check if ANY sound stopped unexpectedly
+        let anyNeedRestart = false;
+        for (const snd of mixRefs.current.values()) {
+          try {
+            const status = await snd.getStatusAsync();
+            if (status.isLoaded && !status.isPlaying) { anyNeedRestart = true; break; }
+          } catch { anyNeedRestart = true; break; }
+        }
+        if (!anyNeedRestart) return;
+        // Re-activate audio session ONCE (not per-sound) before resuming
+        await Audio.setAudioModeAsync({
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: false,
+          interruptionModeIOS: 1,
+          interruptionModeAndroid: 1,
+        }).catch(() => {});
+        // Second pass: restart each stopped sound
+        for (const [id, snd] of Array.from(mixRefs.current.entries())) {
+          // Skip sounds already being restarted by the didJustFinish callback
+          if (restartingIdsRef.current.has(id)) continue;
+          try {
+            const status = await snd.getStatusAsync();
+            if (!status.isLoaded || status.isPlaying) continue;
+            restartingIdsRef.current.add(id);
+            // Use replayAsync only when at end-of-file (isLooping silently failed).
+            // Use playAsync for mid-play interruptions (audio focus lost, etc.)
+            // so we resume from the current position without an audible seek gap.
+            const isAtEnd = status.durationMillis != null &&
+              status.positionMillis >= (status.durationMillis - 500);
+            await (isAtEnd ? snd.replayAsync() : snd.playAsync()).catch(async () => {
+              restartingIdsRef.current.delete(id);
+              // playAsync/replayAsync failed — reload the sound object from scratch
+              const meta = mixedSoundsRef.current.find(s => s.id === id);
+              if (meta) {
+                try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+                try { await snd.unloadAsync(); } catch {}
+                mixRefs.current.delete(id);
+                await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+              }
+              return;
+            });
+            restartingIdsRef.current.delete(id);
+          } catch {
+            restartingIdsRef.current.delete(id);
+            // getStatusAsync threw — native sound object is broken; reload fresh
+            const meta = mixedSoundsRef.current.find(s => s.id === id);
+            if (meta) {
+              mixRefs.current.delete(id);
+              await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+            }
           }
-        } catch { /* sound may have been unloaded */ }
+        }
+      } finally {
+        heartbeatBusyRef.current = false;
       }
-    }, 8_000);
-  }, [clearHeartbeat]);
+    }, 5_000);
+  }, [clearHeartbeat, loadAndPlay]);
 
   // Stop + unload ALL sounds in mix
   const stopAllRefs = useCallback(async () => {
     const entries = Array.from(mixRefs.current.entries());
+    // Clear the map immediately so heartbeat / concurrent calls see an empty set
+    // and do not attempt to restart sounds that are already being torn down.
+    mixRefs.current.clear();
+    restartingIdsRef.current.clear();
     await Promise.all(entries.map(async ([, snd]) => {
+      try { snd.setOnPlaybackStatusUpdate(null); } catch {}
       try { await snd.stopAsync(); await snd.unloadAsync(); } catch {}
     }));
-    mixRefs.current.clear();
   }, []);
 
   const stopSound = useCallback(async (triggerCb = true) => {
@@ -131,12 +255,14 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     setMixedSounds([]);
     setIsPaused(false);
     isPausedRef.current = false;
+    reelTrimMsRef.current = 0;
     setSessionSecs(21 * 60);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
     else { stopCbRef.current = null; }
   }, [clearTimer, clearHeartbeat, stopAllRefs]);
 
   useEffect(() => { stopFnRef.current = stopSound; }, [stopSound]);
+  useEffect(() => { mixedSoundsRef.current = mixedSounds; }, [mixedSounds]);
 
   // Keep clearHeartbeat stable in stopFnRef's closure
   const clearHeartbeatRef = useRef(clearHeartbeat);
@@ -152,44 +278,20 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     }, 1000);
   }, [clearTimer]);
 
-  // Create and start a single Audio.Sound, storing it in mixRefs
-  const loadAndPlay = useCallback(async (meta: PlayableSoundMeta): Promise<Audio.Sound | null> => {
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        meta.src,
-        { isLooping: true, volume: 1.0, shouldPlay: !isPausedRef.current },
-      );
-      // Watchdog: expo-av isLooping can silently fail on M4A/certain codecs.
-      // If the sound finishes instead of looping, restart it automatically.
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return;
-        // Only restart when the file explicitly finished (isLooping silently failed).
-        // Do NOT restart on every !isPlaying poll — that creates a cascading playAsync
-        // storm at loop boundaries that kills the audio engine within 1-2 minutes.
-        if (!isPausedRef.current && status.didJustFinish) {
-          sound.replayAsync().catch(() => {
-            // Fallback: manually seek to start and play
-            sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
-          });
-        }
-      });
-      mixRefs.current.set(meta.id, sound);
-      return sound;
-    } catch (e) {
-      console.warn('[SoundPlayer] Failed to load sound:', meta.id, e);
-      return null;
-    }
-  }, []);
-
   // Primary play — clears mix, starts single sound, sets timer
   const playSound = useCallback(async (
     meta: PlayableSoundMeta,
     durationSecs: number,
     onStop?: () => void,
+    trimLastSecs: number = 0,
   ) => {
+    // Bump epoch FIRST so any concurrent in-flight loadAndPlay can detect it is stale.
+    const epoch = ++playEpochRef.current;
     try {
       clearTimer();
       await stopAllRefs();
+      // If another playSound arrived while we were stopping, let it take over.
+      if (epoch !== playEpochRef.current) return;
       stopCbRef.current = onStop ?? null;
       isPausedRef.current = false;
       setIsPaused(false);
@@ -197,23 +299,28 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       setPlayingMeta(meta);
       setMixedSounds([meta]);
       setSessionSecs(durationSecs);
-      const sound = await loadAndPlay(meta);
+      reelTrimMsRef.current = trimLastSecs * 1000;
+      const sound = await loadAndPlay(meta, epoch, trimLastSecs * 1000);
       if (!sound) {
-        // Audio failed to load — reset state cleanly instead of crashing
-        setPlayingId(null);
-        setPlayingMeta(null);
-        setMixedSounds([]);
-        stopCbRef.current = null;
+        // Either stale (epoch mismatch) or real load failure.
+        if (epoch === playEpochRef.current) {
+          setPlayingId(null);
+          setPlayingMeta(null);
+          setMixedSounds([]);
+          stopCbRef.current = null;
+        }
         return;
       }
       startTimer(durationSecs);
       startHeartbeat();
     } catch (e) {
       console.warn('[SoundPlayer] playSound error:', e);
-      setPlayingId(null);
-      setPlayingMeta(null);
-      setMixedSounds([]);
-      stopCbRef.current = null;
+      if (epoch === playEpochRef.current) {
+        setPlayingId(null);
+        setPlayingMeta(null);
+        setMixedSounds([]);
+        stopCbRef.current = null;
+      }
     }
   }, [clearTimer, stopAllRefs, loadAndPlay, startTimer, startHeartbeat]);
 
@@ -225,7 +332,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         if (prev.find(s => s.id === meta.id)) return prev;
         return [...prev, meta];
       });
-      await loadAndPlay(meta);
+      await loadAndPlay(meta, undefined, reelTrimMsRef.current);
     } catch (e) {
       console.warn('[SoundPlayer] addToMix error:', e);
     }
@@ -234,7 +341,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   // Remove one sound from mix; if last sound, stop session
   const removeFromMix = useCallback(async (id: string) => {
     const snd = mixRefs.current.get(id);
-    if (snd) { try { await snd.stopAsync(); await snd.unloadAsync(); } catch {} mixRefs.current.delete(id); }
+    if (snd) { try { snd.setOnPlaybackStatusUpdate(null); } catch {} try { await snd.stopAsync(); await snd.unloadAsync(); } catch {} mixRefs.current.delete(id); }
     setMixedSounds(prev => {
       const next = prev.filter(s => s.id !== id);
       if (next.length === 0) {
@@ -329,6 +436,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }).catch(() => {});
 
     applyAudioMode();
+    initAudioCache().catch(() => {});
 
     // Re-activate audio session and restart interrupted sounds when app comes to foreground
     const appStateSub = AppState.addEventListener('change', (nextState) => {

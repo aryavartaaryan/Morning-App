@@ -16,6 +16,7 @@ import { registerPreviewStopper } from '@/lib/alarmAudio';
 import { Colors, Font } from '@/constants/theme';
 import { useBgContext } from '@/lib/bgContext';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
 const PURPLE = '#a78bfa';
 const ACCENT  = '#F5820A';
@@ -215,26 +216,34 @@ export default function SettingsTab() {
   ] as const;
 
   return (
-    <View style={[S.screen, { backgroundColor: accentColor }]}>
-      {/* ── Hero image zone ── */}
-      <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={S.heroZone} imageStyle={{ opacity: 1 }}>
-        <LinearGradient colors={['rgba(0,0,0,0.42)', 'rgba(0,0,0,0.14)', 'transparent']} style={StyleSheet.absoluteFillObject} />
-        <LinearGradient colors={['transparent', 'transparent', accentColor]} locations={[0, 0.44, 1]} style={StyleSheet.absoluteFillObject} />
-        <SafeAreaView edges={['top']} style={{ flex: 1, justifyContent: 'space-between' }}>
-          {/* ── Nav bar zone ── */}
-          <View style={S.headerTop}>
-            <Text style={S.appName}>⚙️  Settings</Text>
-            <Text style={{ fontSize: 11, color: PURPLE + 'CC', fontWeight: '700', letterSpacing: 0.3 }}>Morning App</Text>
-          </View>
-          {/* ── Title zone ── */}
-          <View style={{ paddingHorizontal: 22, paddingBottom: 54 }}>
-            <Text style={S.headline}>Preferences</Text>
-            <Text style={S.subline}>Customise your morning ritual</Text>
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
+    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={S.screen} imageStyle={{ opacity: 1 }}>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)', 'transparent']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={[PURPLE + '22', 'transparent']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 0.40 }}
+        pointerEvents="none"
+      />
 
-      <ScrollView style={S.sheet} contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+        <View style={S.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={S.headerCap}>PREFERENCES  ·  YOUR MORNING RITUAL</Text>
+            <Text style={S.appName}>⚙️  Settings</Text>
+          </View>
+          <View style={[S.accentPill, { borderColor: PURPLE + '55', backgroundColor: PURPLE + '18' }]}>
+            <Text style={[S.accentPillTxt, { color: PURPLE }]}>Morning App</Text>
+          </View>
+        </View>
+        <View style={{ height: 1, backgroundColor: '#FFFFFF0C' }} />
+      </SafeAreaView>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
 
         {/* ── Permissions ── */}
         {Platform.OS === 'android' && (
@@ -411,7 +420,7 @@ export default function SettingsTab() {
                       {sounds.map(snd => {
                         const active     = selectedMn === snd.id;
                         const previewing = previewingId === snd.id;
-                        const imgSrc     = snd.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[snd.id] ? { uri: SOUND_IMAGES[snd.id] } : undefined);
+                        const imgSrc     = snd.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[snd.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[snd.id]) } : undefined);
                         return (
                           <TouchableOpacity
                             key={snd.id}
@@ -456,22 +465,21 @@ export default function SettingsTab() {
         </View>
       </Modal>
 
-    </View>
+    </ImageBackground>
   );
 }
 
 const S = StyleSheet.create({
-  screen:      { flex: 1 },
-  heroZone:    { height: 280 },
-  sheet:       { flex: 1, backgroundColor: 'transparent', marginTop: -26 },
-  headerTop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 6 },
-  appName:     { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
-  headline:    { fontSize: 30, fontWeight: '100', color: '#fff', letterSpacing: -0.8 },
-  subline:     { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 5 },
+  screen:        { flex: 1 },
+  headerTop:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
+  headerCap:     { fontSize: 9, fontWeight: '900', color: '#FFFFFF45', letterSpacing: 1.8, marginBottom: 4 },
+  appName:       { fontSize: 22, fontWeight: '200', color: '#fff', letterSpacing: -0.5 },
+  accentPill:    { borderWidth: 1, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 },
+  accentPillTxt: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   secRow:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 20, marginBottom: 10, gap: 6 },
   secLabel:    { fontSize: 8, fontWeight: '900', letterSpacing: 1.8, fontFamily: 'Nunito_900Black' },
   secLine:     { flex: 1, height: 1 },
-  glassCard:   { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden' },
+  glassCard:   { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(6,15,40,0.72)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20, elevation: 12 },
   permRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   permDot:     { width: 8, height: 8, borderRadius: 4 },
   fixBtn:      { margin: 12, backgroundColor: '#ef444410', borderWidth: 1, borderColor: '#ef444430', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },

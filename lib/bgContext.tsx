@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getBgSource, BG_URLS } from '@/lib/bgImages';
+import { getBgSource, getBgSourceSync, BG_URLS, bgWarmup } from '@/lib/bgImages';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
 
@@ -48,7 +48,7 @@ function getTimedBgKey(
     if (h < solarNoon + 2) return 'midday';
     if (h < sunset - 1.5)  return 'afternoon';
     if (h < sunset)        return 'sandhya';
-    if (h < sunset + 0.5)  return 'twilight';
+    if (h < sunset + 35/60) return 'twilight';
     if (h < sunset + 2)    return 'evening';
     return 'night';
   }
@@ -84,7 +84,7 @@ export function BgProvider({ children }: { children: ReactNode }) {
   const h0    = new Date().getHours() + new Date().getMinutes() / 60;
   const key0  = getTimedBgKey(h0);
 
-  const [bgUri,         setBgUri]       = useState<string | null>(BG_URLS[key0] ?? BG_URLS.night);
+  const [bgUri,         setBgUri]       = useState<string | null>(null);
   const [bgKey,         setBgKey]       = useState<string>(key0);
   const [accentColor,   setAccent]      = useState<string>(BG_ACCENT_COLORS[key0]  ?? BG_ACCENT_COLORS.night);
   const [gradientStart, setGradStart]   = useState<string>(BG_GRADIENT_START[key0] ?? BG_GRADIENT_START.night);
@@ -108,18 +108,24 @@ export function BgProvider({ children }: { children: ReactNode }) {
         if (key !== bgKeyRef.current || !resolvedOnce.current) {
           bgKeyRef.current   = key;
           resolvedOnce.current = true;
-          const uri = await getBgSource(key);
+          // Immediately use sync cache only if it's a local file (not a remote URL)
+          const syncUri = getBgSourceSync(key);
+          const localSyncUri = syncUri && !syncUri.startsWith('http') ? syncUri : null;
           if (!cancelled) {
             setBgKey(key);
             setAccent(BG_ACCENT_COLORS[key]  ?? BG_ACCENT_COLORS.night);
             setGradStart(BG_GRADIENT_START[key] ?? BG_GRADIENT_START.night);
-            setBgUri(uri);
+            setBgUri(localSyncUri ?? syncUri ?? null);
           }
+          // Confirm / update with full async disk check (may download on first launch)
+          const uri = await getBgSource(key);
+          if (!cancelled && uri !== localSyncUri) setBgUri(uri);
         }
       } catch { /* silent */ }
     }
 
-    refresh();
+    // Await disk-scan warmup so getBgSourceSync returns local paths on first call
+    bgWarmup.then(() => { if (!cancelled) refresh(); }).catch(() => { if (!cancelled) refresh(); });
     const timer = setInterval(refresh, 60_000);
     return () => { cancelled = true; clearInterval(timer); };
   }, []);

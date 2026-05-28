@@ -166,13 +166,14 @@ export interface ExtraWakeAlarm {
   hour: number;
   minute: number;
   label?: string;
+  days?: number[];
 }
 
 export interface CustomReminder {
   id: string; title: string; body: string; hour: number; minute: number; enabled: boolean;
 }
 export interface AlarmSettings {
-  wakeAlarm: { enabled: boolean; hour: number; minute: number };
+  wakeAlarm: { enabled: boolean; hour: number; minute: number; days?: number[] };
   brahmaReminder: boolean;
   eveningMantra: boolean;
   checkinReminder: boolean;
@@ -185,9 +186,11 @@ export interface AlarmSettings {
   rampMinutes?: number;
   /** Additional wake alarms (beyond the primary one) */
   extraWakeAlarms?: ExtraWakeAlarm[];
+  /** Rise at Brahma Muhurta — dynamic daily sunrise-relative alarm */
+  brahmaMuhurtaAlarm?: { enabled: boolean; days: number[] };
 }
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
-  wakeAlarm: { enabled: false, hour: 4, minute: 0 },
+  wakeAlarm: { enabled: false, hour: 4, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] },
   brahmaReminder: true,
   eveningMantra: false,
   checkinReminder: true,
@@ -197,6 +200,7 @@ export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   gentleWake: false,
   rampMinutes: 5,
   extraWakeAlarms: [],
+  brahmaMuhurtaAlarm: { enabled: false, days: [0, 1, 2, 3, 4, 5, 6] },
 };
 
 // ── Per-habit expiry window (minutes from midnight, alert 15 min before end) ─

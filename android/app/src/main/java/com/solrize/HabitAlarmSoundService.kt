@@ -43,6 +43,12 @@ class HabitAlarmSoundService : AlarmSoundServiceBase() {
             .getBoolean(HabitAlarmModule.KEY_ACTIVE, false)
 
     override fun buildDeepLinkUri(): Uri {
+        if (alarmType == "soundbath") {
+            // For soundbath alarms, habitKey holds the soundId (set by JS scheduler).
+            val sid = Uri.encode(habitKey)
+            val lbl = Uri.encode(habitLabel)
+            return Uri.parse("solrize://soundbath-ringing?soundId=$sid&label=$lbl")
+        }
         val hk = Uri.encode(habitKey)
         val he = Uri.encode(habitEmoji)
         val hl = Uri.encode(habitLabel)
@@ -95,8 +101,11 @@ class HabitAlarmSoundService : AlarmSoundServiceBase() {
     override fun getSoundPath(): String? = mantraPath.ifEmpty { null }
 
     override fun getOverlayTitle(): String = "$habitEmoji  $habitLabel"
-    override fun getOverlayBody(): String  =
-        if (alarmType == "quick") "Your alarm is ringing" else "Time for your daily habit"
+    override fun getOverlayBody(): String = when (alarmType) {
+        "quick"     -> "Your alarm is ringing"
+        "soundbath" -> "Your Sound Bath is ready 🎵"
+        else        -> "Time for your daily habit"
+    }
 
     override fun markAlarmActive() {
         getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
