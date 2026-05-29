@@ -4190,28 +4190,28 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                 {/* Wide outer glow stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-                  fill="none" stroke="#93c5fd" strokeWidth={RING_STROKE + 16} strokeLinecap="round"
+                  fill="none" stroke="#93c5fd" strokeWidth={RING_STROKE + 16} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.14}
                 />
                 {/* Mid glow stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-                  fill="none" stroke="#7dd3fc" strokeWidth={RING_STROKE + 8} strokeLinecap="round"
+                  fill="none" stroke="#7dd3fc" strokeWidth={RING_STROKE + 8} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.26}
                 />
                 {/* Main crisp stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-                  fill="none" stroke="#60a5fa" strokeWidth={RING_STROKE} strokeLinecap="round"
+                  fill="none" stroke="#60a5fa" strokeWidth={RING_STROKE} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
                 />
                 {/* Inner highlight sliver */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
-                  fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="round"
+                  fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.40}
                 />
@@ -4615,45 +4615,33 @@ function SleepSoundsButton() {
   const router = useRouter();
   const { bgKey } = useBgContext();
   const sleepMode = getSleepModeLabel(bgKey);
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ])
-    ).start();
-  }, []);
-  const borderColor = glowAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.30)'] });
-  const shadowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.22] });
   return (
     <TouchableOpacity
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
       activeOpacity={0.80}
       style={{ height: '100%' }}
     >
-      <Animated.View style={{
+      <View style={{
         height: '100%',
         flexDirection: 'row', alignItems: 'center', gap: 10,
         paddingHorizontal: 16,
         borderRadius: 18, overflow: 'hidden',
-        backgroundColor: 'rgba(0,0,0,0.22)',
-        borderWidth: 1, borderColor,
-        shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 0 }, shadowRadius: 8, shadowOpacity,
-        elevation: 4,
+        backgroundColor: 'rgba(6,15,40,0.42)',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20,
+        elevation: 12,
       }}>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
         <LinearGradient
-          colors={['rgba(255,255,255,0.06)', 'transparent']}
+          colors={['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.07)', 'transparent']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }} />
         <Text style={{ fontSize: 18 }}>〰️</Text>
-        <View style={{ flex: 1, gap: 1 }}>
+        <View style={{ gap: 1 }}>
           <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.4 }}>Nada Healing</Text>
           <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(196,181,253,0.85)', letterSpacing: 0.5, fontStyle: 'italic' }}>Transform with the Vibes…</Text>
         </View>
-        <Animated.Text style={{ fontSize: 16, fontWeight: '700', opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }), color: '#c4b5fd' }}>→</Animated.Text>
-      </Animated.View>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#c4b5fd' }}>→</Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -4912,13 +4900,13 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
               <Svg width={RING_S} height={RING_S} viewBox={`0 0 ${RING_S} ${RING_S}`}>
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor + '18'} strokeWidth={RING_STR} />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR + 5}
-                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
                   transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.18} />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR}
-                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
                   transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.95} />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth={1}
-                  strokeLinecap="round" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
+                  strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
                   transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.35} />
               </Svg>
               <View style={{ position: 'absolute', top: 0, left: 0, width: RING_S, height: RING_S, alignItems: 'center', justifyContent: 'center' }}>
@@ -5021,12 +5009,11 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.navigate('/(tabs)/sleep' as never); }}
             activeOpacity={0.84}
-            style={{ borderRadius: 16, borderWidth: 1, borderColor: nadaColor + '32', backgroundColor: nadaColor + '12', overflow: 'hidden', marginBottom: 8 }}>
+            style={{ borderRadius: 16, backgroundColor: nadaColor + '12', overflow: 'hidden', marginBottom: 8 }}>
             <LinearGradient
               colors={[nadaColor + '20', nadaColor + '06', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: nadaColor + '55' }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 13, gap: 12 }}>
               <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: nadaColor + '22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Text style={{ fontSize: 22 }}>〰️</Text>
@@ -5643,7 +5630,7 @@ export default function DailyTab() {
                 {/* Buttons + signal — pinned to bottom */}
                 <View style={{ paddingBottom: soundPlayingId ? 24 : 10 }}>
 
-                  <View style={{ paddingHorizontal: 40, width: '100%', height: 50, marginTop: 8, marginBottom: 0 }}>
+                  <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50, marginTop: 8, marginBottom: 0 }}>
                     <SleepSoundsButton />
                   </View>
                   {currentPeriod && <HomeSignalCycler period={currentPeriod} weather={weather} brahmaInfo={brahmaInfo} />}

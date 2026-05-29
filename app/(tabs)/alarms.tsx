@@ -40,7 +40,7 @@ import { getSolarTimes } from '@/lib/solar';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
-const ALARM_CARD_BG = 'rgba(0,0,0,0.18)';
+const ALARM_CARD_BG = 'rgba(0,0,0,0.26)';
 const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
   bhagya_suktam: 'bhagya_suktam', shiv_sankalpa_suktam: 'shiv_sankalpa_suktam',
@@ -898,10 +898,10 @@ export default function AlarmsTab() {
 
   const nextAlarm = useMemo(() => {
     const alarms: { h: number; m: number; label: string; color: string }[] = [];
-    if (settings.wakeAlarm.enabled) alarms.push({ h: settings.wakeAlarm.hour, m: settings.wakeAlarm.minute, label: 'Wake Alarm', color: '#a78bfa' });
+    if (settings.wakeAlarm.enabled) alarms.push({ h: settings.wakeAlarm.hour, m: settings.wakeAlarm.minute, label: 'Wake Alarm', color: '#38bdf8' });
     if (settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null) alarms.push({ h: bmHour, m: bmMinute, label: 'Brahma Muhurta', color: '#f59e0b' });
-    extraWakeAlarms.filter(a => a.enabled).forEach(a => alarms.push({ h: a.hour, m: a.minute, label: a.label || 'Wake', color: '#c4b5fd' }));
-    alarmEntries.filter(e => e.enabled).forEach(e => alarms.push({ h: e.hour, m: e.minute, label: e.label, color: e.type === 'habit' ? '#10b981' : e.type === 'soundbath' ? '#a78bfa' : '#f97316' }));
+    extraWakeAlarms.filter(a => a.enabled).forEach(a => alarms.push({ h: a.hour, m: a.minute, label: a.label || 'Wake', color: '#38bdf8' }));
+    alarmEntries.filter(e => e.enabled).forEach(e => alarms.push({ h: e.hour, m: e.minute, label: e.label, color: e.type === 'habit' ? '#10b981' : e.type === 'soundbath' ? '#38bdf8' : '#f97316' }));
     if (alarms.length === 0) return null;
     const nowMins = liveClock.getHours() * 60 + liveClock.getMinutes();
     let best: { h: number; m: number; label: string; color: string; diff: number } | null = null;
@@ -945,7 +945,7 @@ export default function AlarmsTab() {
         }}>
           {/* Subtle top shimmer — identical to sleep hero */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.06)', 'transparent']}
+            colors={['rgba(255,255,255,0.08)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
             style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
@@ -1009,22 +1009,6 @@ export default function AlarmsTab() {
         </TouchableOpacity>
       )}
 
-      {/* ── Next Alarm Banner ── */}
-      {nextAlarm && (
-        <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: ALARM_CARD_BG, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' }}>
-            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: nextAlarm.color }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 7.5, fontWeight: '500', color: nextAlarm.color, letterSpacing: 1.0 }}>NEXT ALARM</Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#fff', letterSpacing: -0.2, marginTop: 1 }} numberOfLines={1}>{nextAlarm.label}  ·  {fmt12(nextAlarm.h, nextAlarm.m)}</Text>
-            </View>
-            <View style={{ backgroundColor: nextAlarm.color + '20', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: nextAlarm.color + '50' }}>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: nextAlarm.color }}>{computeTimeUntil(nextAlarm.h, nextAlarm.m, liveClock)}</Text>
-            </View>
-          </View>
-        </View>
-      )}
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
         {/* ── Alarm List (individual slim cards) ── */}
@@ -1032,15 +1016,16 @@ export default function AlarmsTab() {
 
           {/* Primary Wake Alarm Card — Smart A */}
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc', opacity: 0.90 }} />
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
+            <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                  <Ionicons name="alarm" size={9} color="rgba(255,255,255,0.50)" />
-                  <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>WAKE ALARM{missionSettings.lockInMode ? '  🔒' : ''}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
+                    {playingMantra.emoji} {playingMantra.label}
+                  </Text>
                   <View style={{ flex: 1 }} />
-                  <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
                     <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
                       {(() => {
                         const d = settings.wakeAlarm.days;
@@ -1052,23 +1037,16 @@ export default function AlarmsTab() {
                     </Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                  <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                <View style={{ marginBottom: 6 }}>
+                  <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
                     {pad(settings.wakeAlarm.hour)}:{pad(settings.wakeAlarm.minute)}
                   </Text>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
-                    {playingMantra.emoji} {playingMantra.label}
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
+                    {settings.wakeAlarm.enabled ? computeTimeUntil(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
-                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
-                      {settings.wakeAlarm.enabled ? computeTimeUntilShort(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
-                    </Text>
-                  </View>
-                </View>
               </View>
-              <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+              <View style={{ alignItems: 'center', gap: 8, flexDirection: 'column' }}>
                 <Toggle value={settings.wakeAlarm.enabled} onToggle={toggleWake} color='#7dd3fc' />
                 <TouchableOpacity onPress={showWakeAlarmMenu} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                   <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
@@ -1080,15 +1058,14 @@ export default function AlarmsTab() {
           {/* Brahma Muhurta Alarm Card */}
           {settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null && (
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a', opacity: 0.90 }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openBMModal()} activeOpacity={0.8}>
+              <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                    <Text style={{ fontSize: 9, lineHeight: 11 }}>🌄</Text>
-                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>BRAHMA MUHURTA</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
                     <View style={{ flex: 1 }} />
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
                       <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
                         {(() => {
                           const d = settings.brahmaMuhurtaAlarm?.days;
@@ -1100,21 +1077,16 @@ export default function AlarmsTab() {
                       </Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                    <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: '#FFFFFF', lineHeight: 34 }}>
+                  <View style={{ marginBottom: 6 }}>
+                    <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: '#FFFFFF', lineHeight: 50 }}>
                       {pad(bmHour)}:{pad(bmMinute)}
                     </Text>
-                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
-                        {computeTimeUntilShort(bmHour, bmMinute, liveClock)}
-                      </Text>
-                    </View>
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
+                      {computeTimeUntil(bmHour, bmMinute, liveClock)}
+                    </Text>
                   </View>
                 </View>
-                <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                <View style={{ alignItems: 'center', gap: 8, flexDirection: 'column' }}>
                   <Toggle value={settings.brahmaMuhurtaAlarm?.enabled ?? false} onToggle={toggleBMAlarm} color="#fde68a" />
                   <TouchableOpacity onPress={() => openBMModal()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                     <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
@@ -1127,15 +1099,16 @@ export default function AlarmsTab() {
           {/* Extra Wake Alarm Cards — Smart A */}
           {extraWakeAlarms.map(alarm => (
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd', opacity: 0.90 }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+              <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                    <Ionicons name="alarm" size={9} color="rgba(255,255,255,0.50)" />
-                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>WAKE ALARM</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
+                      {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
+                    </Text>
                     <View style={{ flex: 1 }} />
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
                       <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
                         {(() => {
                           const d = alarm.days;
@@ -1147,23 +1120,16 @@ export default function AlarmsTab() {
                       </Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                    <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                  <View style={{ marginBottom: 6 }}>
+                    <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
                       {pad(alarm.hour)}:{pad(alarm.minute)}
                     </Text>
-                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
-                      {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
+                      {alarm.enabled ? computeTimeUntil(alarm.hour, alarm.minute, liveClock) : 'off'}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
-                        {alarm.enabled ? computeTimeUntilShort(alarm.hour, alarm.minute, liveClock) : 'off'}
-                      </Text>
-                    </View>
-                  </View>
                 </View>
-                <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                <View style={{ alignItems: 'center', gap: 8, flexDirection: 'column' }}>
                   <Toggle value={alarm.enabled} onToggle={() => toggleExtraWake(alarm.id)} color="#93c5fd" />
                   <TouchableOpacity onPress={() => showExtraWakeMenu(alarm)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                     <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
@@ -1178,7 +1144,6 @@ export default function AlarmsTab() {
             const isHabit = entry.type === 'habit';
             const isBath  = entry.type === 'soundbath';
             const accent  = isHabit ? '#86efac' : isBath ? '#99f6e4' : '#fed7aa';
-            const badgeLabel = isHabit ? 'HABIT ALARM' : isBath ? 'SOUND BATH' : 'QUICK ALARM';
             const subLine = isHabit
               ? `${entry.habitEmoji ?? '🎯'}  ${entry.label}`
               : isBath
@@ -1186,19 +1151,14 @@ export default function AlarmsTab() {
               : `⚡  ${entry.label || 'Quick Alarm'}`;
             return (
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-                <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent, opacity: 0.90 }} />
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 14 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
+                <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                      {isHabit
-                        ? <Ionicons name="checkmark-done" size={9} color="rgba(255,255,255,0.50)" />
-                        : isBath
-                        ? <Ionicons name="musical-notes" size={9} color="rgba(255,255,255,0.50)" />
-                        : <Feather name="zap" size={8} color="rgba(255,255,255,0.50)" />}
-                      <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.72)' }}>{badgeLabel}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
                       <View style={{ flex: 1 }} />
-                      <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
                         <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.72)' }}>
                           {(() => {
                             const d = entry.days;
@@ -1210,21 +1170,16 @@ export default function AlarmsTab() {
                         </Text>
                       </View>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                      <Text style={{ fontSize: 30, fontWeight: '200', letterSpacing: -1.5, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 34 }}>
+                    <View style={{ marginBottom: 6 }}>
+                      <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
                         {pad(entry.hour)}:{pad(entry.minute)}
                       </Text>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' }}>
-                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: '700' }}>
-                          {entry.enabled ? computeTimeUntilShort(entry.hour, entry.minute, liveClock) : 'off'}
-                        </Text>
-                      </View>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
+                        {entry.enabled ? computeTimeUntil(entry.hour, entry.minute, liveClock) : 'off'}
+                      </Text>
                     </View>
                   </View>
-                  <View style={{ alignItems: 'center', gap: 10, paddingLeft: 10 }}>
+                  <View style={{ alignItems: 'center', gap: 8, flexDirection: 'column' }}>
                     <Toggle value={entry.enabled} onToggle={() => toggleEntry(entry.id)} color={accent} />
                     <TouchableOpacity onPress={() => showAlarmMenu(entry)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                       <Feather name="more-vertical" size={18} color="rgba(255,255,255,0.28)" />
@@ -2030,9 +1985,9 @@ const S = StyleSheet.create({
   cardMenuItem: { paddingHorizontal: 20, paddingVertical: 16 },
   cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
-  alarmCountdownSub: { fontSize: 11, color: '#a78bfaBB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  alarmCountdownSub: { fontSize: 11, color: '#38bdf8BB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)' },
-  alarmCard2: { marginHorizontal: 16, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', elevation: 3, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  alarmCard2: { marginHorizontal: 'auto', width: '77%', borderRadius: 22, overflow: 'hidden', elevation: 3, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9 },
   alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
   alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },

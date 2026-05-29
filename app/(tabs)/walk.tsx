@@ -16,6 +16,9 @@ import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 import { getBgSourceSync } from '@/lib/bgImages';
 import { useBgContext } from '@/lib/bgContext';
+import { store, KEYS } from '@/lib/storage';
+import { getSolarTimes, type SolarTimes } from '@/lib/solar';
+import { getDoshaPeriods, type DoshaPeriod } from '@/lib/ayurvedicPeriods';
 import {
   WALK_BG_TASK, WalkMode, WalkState, DEFAULT_WALK_STATE,
   getWalkState, saveWalkState, clearWalkState, haversineKmWalk,
@@ -104,8 +107,8 @@ const GROUNDING_BENEFITS = [
   {
     id: 'shatapavalli',
     emoji: '🚶',
-    title: 'Why Exactly 100 Steps?',
-    short: 'Shatapavalli — the precise Ayurvedic post-meal prescription',
+    title: 'Shatapavalli: Walk 100 Steps After Meals',
+    short: 'Post-meal walking for perfect digestion',
     detail: 'Shatapavalli literally means "one hundred steps" (shata = 100, pavalli = steps). Ayurveda prescribes exactly 100 steps — no more, no less — after a full meal. This precise number gently activates peristalsis (gut movement), stimulates Agni (digestive fire), and encourages blood flow to the digestive organs without diverting it away from them. Walking more than 100 steps after a heavy meal is actively harmful — it competes with digestion for blood supply, weakens Agni, causes bloating, and disrupts absorption. The wisdom is in the precision: just enough movement to catalyse digestion, not enough to interfere with it.',
   },
 ];
@@ -144,12 +147,12 @@ function fmtDist(km: number): string {
   return Math.round(km * 1000) + ' m';
 }
 
-function bgKeyToWalkLabel(bgKey: string, shata: boolean): string {
-  if (shata) return '100-STEP WALK';
+function bgKeyToWalkLabel(bgKey: string, shata: boolean, period?: DoshaPeriod | null): string {
+  if (shata) return 'SHATAPAVALLI · 100 STEPS';
   if (bgKey === 'night' || bgKey === 'brahma') return 'GOOD NIGHT';
   if (bgKey === 'predawn') return 'EARLY MORNING WALK';
   if (bgKey === 'sunrise' || bgKey === 'morning') return 'MORNING WALK';
-  if (bgKey === 'midday') return 'MID-DAY REST';
+  if (bgKey === 'midday') return 'DEEP WORK TIME';
   if (bgKey === 'afternoon') return 'AFTERNOON WALK';
   return 'EVENING WALK';
 }
@@ -191,6 +194,9 @@ export default function WalkTab() {
   const [celebrateDone,   setCelebrateDone]   = useState(false);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
   const [groundingOpen,   setGroundingOpen]   = useState(false);
+  const [solarTimes,      setSolarTimes]      = useState<SolarTimes | null>(null);
+  const [periods,         setPeriods]         = useState<DoshaPeriod[]>([]);
+  const [currentPeriod,   setCurrentPeriod]   = useState<DoshaPeriod | null>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const pulseAnim       = useRef(new Animated.Value(1)).current;
@@ -200,6 +206,22 @@ export default function WalkTab() {
   const pedometerSubRef = useRef<{ remove: () => void } | null>(null);
   const stepBaseRef     = useRef(0);
   const appStateRef     = useRef(AppState.currentState);
+
+  // ── Load solar times and ayurvedic periods ────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const loc = await store.getItem(KEYS.location);
+      if (loc && typeof loc === 'object' && 'latitude' in loc && 'longitude' in loc) {
+        const solar = getSolarTimes(loc.latitude, loc.longitude);
+        setSolarTimes(solar);
+        const now = new Date();
+        const nowH = now.getHours() + now.getMinutes() / 60;
+        const p = getDoshaPeriods(solar, nowH);
+        setPeriods(p);
+        setCurrentPeriod(p.find(x => x.status === 'active') ?? null);
+      }
+    })();
+  }, []);
 
   // ── Check pedometer availability ──────────────────────────────────────────
   useEffect(() => {
@@ -262,13 +284,20 @@ export default function WalkTab() {
   function startPedometer(baseSteps: number) {
     stopPedometer();
     stepBaseRef.current = baseSteps;
-    if (!pedometerAvail) return;
+    // Try to subscribe even if availability flag hasn't resolved yet
+    try {
     pedometerSubRef.current = Pedometer.watchStepCount(async (result) => {
       const totalSteps = stepBaseRef.current + result.steps;
       const cur = await getWalkState();
       if (!cur.active || cur.paused) return;
       cur.stepCount  = totalSteps;
-      cur.distanceKm = stepsToKm(totalSteps, cur.walkMode);
+      // Prefer GPS distance when available; use steps as fallback or to cap minimum distance
+      const stepsKm = stepsToKm(totalSteps, cur.walkMode);
+      if (cur.lastLat === null || cur.lastLng === null) {
+        cur.distanceKm = stepsKm;
+      } else if (stepsKm > cur.distanceKm) {
+        cur.distanceKm = stepsKm;
+      }
       if (!cur.notifiedTarget && cur.targetSteps && totalSteps >= cur.targetSteps) {
         cur.notifiedTarget = true;
         fireTargetNotif(cur.type, cur.targetSteps);
@@ -290,6 +319,7 @@ export default function WalkTab() {
       await saveWalkState(cur);
       setWalkState({ ...cur });
     });
+    } catch { /* ignore pedometer errors */ }
   }
 
   function stopPedometer() {
@@ -319,15 +349,28 @@ export default function WalkTab() {
   // ── Foreground location subscription ──────────────────────────────────────
   async function startForegroundLocation(state: WalkState) {
     locationSubRef.current?.remove();
+    // Prime last known location so the first delta doesn't wait for 2 samples
+    try {
+      const cur0 = await getWalkState();
+      if (cur0.active && !cur0.paused && (cur0.lastLat === null || cur0.lastLng === null)) {
+        const nowLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        cur0.lastLat = nowLoc.coords.latitude;
+        cur0.lastLng = nowLoc.coords.longitude;
+        await saveWalkState(cur0);
+        setWalkState({ ...cur0 });
+      }
+    } catch { /* ignore */ }
+
     locationSubRef.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000, distanceInterval: 5 },
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 2 },
       async (loc) => {
         const cur = await getWalkState();
         if (!cur.active || cur.paused) return;
         const { latitude: lat, longitude: lng } = loc.coords;
         if (cur.lastLat !== null && cur.lastLng !== null) {
           const d = haversineKmWalk(cur.lastLat, cur.lastLng, lat, lng);
-          if (d >= 0.003 && d <= 0.3) {
+          // Accept ~1 m – 300 m deltas to show progress sooner while filtering teleports
+          if (d >= 0.001 && d <= 0.3) {
             cur.distanceKm = parseFloat((cur.distanceKm + d).toFixed(4));
           }
         }
@@ -369,15 +412,6 @@ export default function WalkTab() {
   // ── Start ──────────────────────────────────────────────────────────────────
   async function startWalk(shata = false) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Location Required', 'Please allow location access to track your walk.');
-      return;
-    }
-    if (!bgPermGranted) {
-      const { status: bg } = await Location.requestBackgroundPermissionsAsync();
-      setBgPermGranted(bg === 'granted');
-    }
     const now  = Date.now();
     const type = bgKeyToWalkType(bgKey);
     const tSteps = shata ? SHATAPAVALLI_STEPS : targetSteps;
@@ -393,6 +427,22 @@ export default function WalkTab() {
     setWalkState(newState);
     setElapsedMs(0);
     setCelebrateDone(false);
+    startPedometer(0);
+    startPolling();
+
+    // Now try to enable location (non-blocking for UI)
+    let fgGranted = false;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      fgGranted = status === 'granted';
+    } catch {}
+
+    if (!bgPermGranted) {
+      try {
+        const { status: bg } = await Location.requestBackgroundPermissionsAsync();
+        setBgPermGranted(bg === 'granted');
+      } catch {}
+    }
 
     if (bgPermGranted) {
       try {
@@ -409,11 +459,11 @@ export default function WalkTab() {
             },
           });
         }
-      } catch { /* */ }
+      } catch { /* ignore */ }
     }
-    await startForegroundLocation(newState);
-    startPedometer(0);
-    startPolling();
+    if (fgGranted) {
+      try { await startForegroundLocation(newState); } catch {}
+    }
   }
 
   // ── Pause ──────────────────────────────────────────────────────────────────
@@ -468,7 +518,8 @@ export default function WalkTab() {
   // ── Derived values ─────────────────────────────────────────────────────────
   const activeMode  = walkState.active ? walkState.walkMode : walkMode;
   const steps       = walkState.stepCount;
-  const dist        = stepsToKm(steps, activeMode);
+  // Use tracked distance from state (GPS and/or pedometer-derived), so UI updates even if pedometer is unavailable
+  const dist        = walkState.distanceKm;
   const cals        = stepsToCals(steps, activeMode);
   const isShata     = walkState.active ? walkState.shatapavalli : shatapavalli;
   const NC          = isShata ? '#a3e635' : bgKeyToNC(bgKey);
@@ -478,7 +529,7 @@ export default function WalkTab() {
       ? Math.min(1, steps / tgt)
       : Math.min(1, elapsedMs / (45 * 60 * 1000))
     : 0;
-  const walkLabel   = bgKeyToWalkLabel(bgKey, isShata);
+  const walkLabel   = bgKeyToWalkLabel(bgKey, isShata, currentPeriod);
   const isRestTime  = (bgKey === 'night' || bgKey === 'brahma') && !walkState.active;
   const isNoonRest  = bgKey === 'midday' && !walkState.active;
   const playingSound = WALK_SOUNDS.find(x => x.id === playingId);
@@ -528,7 +579,7 @@ export default function WalkTab() {
         </View>
 
         {/* ══ 2. MODE SELECTOR (pre-walk only) ═════════════════════════════ */}
-        {!walkState.active && !isRestTime && !isNoonRest && (
+        {!walkState.active && (
           <View style={st.modeRow}>
             {(['barefoot', 'regular'] as WalkMode[]).map(m => {
               const sel = walkMode === m;
@@ -592,9 +643,9 @@ export default function WalkTab() {
                   style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 {!walkState.active ? (
                   <>
-                    <Text style={st.heroIdleTitle}>{isRestTime ? 'Good Night' : isNoonRest ? 'Rest Time' : isShata ? 'Walk 100 Steps' : walkLabel.split(' ').map((w:string) => w.charAt(0)+w.slice(1).toLowerCase()).join(' ')}</Text>
+                    <Text style={st.heroIdleTitle}>{isShata ? 'Walk 100 Steps' : currentPeriod?.englishLabel ? currentPeriod.englishLabel.split('\n')[0] : walkLabel.split(' ').map((w:string) => w.charAt(0)+w.slice(1).toLowerCase()).join(' ')}</Text>
                     <Text style={st.heroIdleSub}>
-                      {isRestTime ? 'Sleep is sacred · Rest deeply' : isNoonRest ? 'Midday sun is high · Rest & digest' : isShata ? 'Walk 100 steps right after eating' : bgKeyToIdleSub(bgKey)}
+                      {isShata ? 'Walk 100 steps right after eating' : currentPeriod?.sciTitle ?? bgKeyToIdleSub(bgKey)}
                     </Text>
                     {tgt !== null && (
                       <View style={[st.targetBadge, { borderColor: NC + '40', backgroundColor: NC + '15' }]}>
@@ -606,6 +657,9 @@ export default function WalkTab() {
                   <>
                     <Text style={[st.heroSteps, { color: NC }]}>{steps.toLocaleString()}</Text>
                     <Text style={st.heroStepsUnit}>steps</Text>
+                    <View style={st.divider} />
+                    <Text style={[st.statValue, { color: NC }]}>{fmtDist(dist)}</Text>
+                    <Text style={st.statLabel}>distance</Text>
                     {walkState.paused && <Text style={[st.pausedLabel, { color: NC + '90' }]}>PAUSED</Text>}
                   </>
                 )}
@@ -615,7 +669,7 @@ export default function WalkTab() {
         </View>
 
         {/* ══ 4. TARGET PICKER ══════════════════════════════════════════════ */}
-        {!walkState.active && !isRestTime && !isNoonRest && (
+        {!walkState.active && (
           <View style={st.targetRow}>
             {STEP_TARGETS.map(opt => {
               const sel = opt.steps === targetSteps;
@@ -634,7 +688,7 @@ export default function WalkTab() {
         )}
 
         {/* ══ 5. SHATAPAVALLI TOGGLE ════════════════════════════════════════ */}
-        {!walkState.active && !isRestTime && !isNoonRest && (
+        {!walkState.active && (
           <TouchableOpacity
             onPress={() => { Haptics.selectionAsync(); setShatapavalli(v => !v); }}
             activeOpacity={0.8}
@@ -649,6 +703,29 @@ export default function WalkTab() {
               {shatapavalli && <Text style={{ fontSize: 8, color: '#000', fontWeight: '900' }}>✓</Text>}
             </View>
           </TouchableOpacity>
+        )}
+
+        {/* ══ 5.5 TODAY'S WALK SCHEDULE ═════════════════════════════════ */}
+        {!walkState.active && periods.length > 0 && (
+          <View style={st.scheduleSection}>
+            <Text style={st.scheduleTitle}>Today's Walk Windows</Text>
+            <View style={st.scheduleGrid}>
+              {periods.map((p) => {
+                const isWalkTime = ['morning_kapha', 'afternoon_vata', 'evening_kapha'].includes(p.id);
+                if (!isWalkTime) return null;
+                const walkType = p.id === 'morning_kapha' ? 'Morning' : p.id === 'afternoon_vata' ? 'Afternoon' : 'Evening';
+                const isActive = p.status === 'active';
+                return (
+                  <View key={p.id} style={[st.scheduleCard, isActive && { borderColor: p.color + '70', backgroundColor: p.color + '15' }]}>
+                    <Text style={{ fontSize: 16 }}>{p.emoji}</Text>
+                    <Text style={[st.scheduleCardTitle, isActive && { color: p.color }]}>{walkType}</Text>
+                    <Text style={st.scheduleCardTime}>{p.startLabel} – {p.endLabel}</Text>
+                    {isActive && <Text style={[st.scheduleCardActive, { color: p.color }]}>NOW</Text>}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
         )}
 
         {/* ══ 5.5 LIVE STATS PANEL ═══════════════════════════════════════ */}
@@ -676,46 +753,32 @@ export default function WalkTab() {
           </View>
         )}
 
-        {/* ══ 6. ACTION BUTTONS ═══════════════════════════════════════════ */}
-        {isRestTime ? (
-          <View style={st.restPanel}>
-            <Text style={st.restIcon}>🌙</Text>
-            <Text style={st.restTitle}>Good Night</Text>
-            <Text style={st.restSub}>{'It\'s sleep time. Walks work best in the\nmorning or evening. Rest well tonight.'}</Text>
-          </View>
-        ) : isNoonRest ? (
-          <View style={st.restPanel}>
-            <Text style={st.restIcon}>☀️</Text>
-            <Text style={st.restTitle}>Rest & Digest</Text>
-            <Text style={st.restSub}>{'Midday is rest time. Come back for your\nafternoon or evening walk.'}</Text>
-          </View>
-        ) : (
-          <View style={st.actionRow}>
-            {!walkState.active ? (
-              <TouchableOpacity style={[st.startBtn, { backgroundColor: NC }]} onPress={() => startWalk(false)} activeOpacity={0.85}>
-                <Text style={[st.startTxt, { color: '#0A1408' }]}>START WALK</Text>
+        {/* ══ 6. ACTION BUTTONS — always available ════════════════════════ */}
+        <View style={st.actionRow}>
+          {!walkState.active ? (
+            <TouchableOpacity style={[st.startBtn, { backgroundColor: NC }]} onPress={() => startWalk(shatapavalli)} activeOpacity={0.85}>
+              <Text style={[st.startTxt, { color: '#0A1408' }]}>START WALK</Text>
+            </TouchableOpacity>
+          ) : walkState.paused ? (
+            <>
+              <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={resumeWalk} activeOpacity={0.8}>
+                <Text style={[st.halfTxt, { color: NC }]}>▶ RESUME</Text>
               </TouchableOpacity>
-            ) : walkState.paused ? (
-              <>
-                <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={resumeWalk} activeOpacity={0.8}>
-                  <Text style={[st.halfTxt, { color: NC }]}>▶ RESUME</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
-                  <Text style={st.endTxt}>■ END</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={pauseWalk} activeOpacity={0.8}>
-                  <Text style={[st.halfTxt, { color: NC }]}>⏸ PAUSE</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
-                  <Text style={st.endTxt}>■ END</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
+              <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
+                <Text style={st.endTxt}>■ END</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={pauseWalk} activeOpacity={0.8}>
+                <Text style={[st.halfTxt, { color: NC }]}>⏸ PAUSE</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
+                <Text style={st.endTxt}>■ END</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {/* ══ 7. GROUNDING BENEFITS ACCORDION ═════════════════════════════ */}
         {!walkState.active && !isRestTime && !isNoonRest && (
@@ -746,6 +809,13 @@ export default function WalkTab() {
               );
             })}
           </View>
+        )}
+
+        {/* DEV status line */}
+        {__DEV__ && (
+          <Text style={st.devLine}>
+            {`DEV · active=${String(walkState.active)} paused=${String(walkState.paused)} steps=${walkState.stepCount} dist=${walkState.distanceKm.toFixed(3)}km pedAvail=${String(pedometerAvail)} bgGranted=${String(bgPermGranted)}`}
+          </Text>
         )}
 
         {/* ══ 8. FOOTER MICRO-INFO ════════════════════════════════════════ */}
@@ -876,6 +946,14 @@ const st = StyleSheet.create({
   shataChipToggle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   // Grounding section header
   groundHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4, marginBottom: 10 },
+  // Schedule section
+  scheduleSection: { marginVertical: 14 },
+  scheduleTitle: { fontSize: 12, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.2, marginBottom: 10 },
+  scheduleGrid: { flexDirection: 'row', gap: 8 },
+  scheduleCard: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center' },
+  scheduleCardTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.65)', marginTop: 4 },
+  scheduleCardTime: { fontSize: 8, color: 'rgba(255,255,255,0.40)', marginTop: 2 },
+  scheduleCardActive: { fontSize: 8, fontWeight: '900', marginTop: 4, letterSpacing: 0.5 },
   // Live stats panel
   statsPanel: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 20, borderWidth: 1, paddingVertical: 20, marginBottom: 14 },
   statCell: { flex: 1, alignItems: 'center' },
@@ -932,4 +1010,5 @@ const st = StyleSheet.create({
   sndBadge: { position: 'absolute', top: 8, right: 8, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 3 },
   sndBadgeTxt: { fontSize: 7, fontWeight: '900', color: '#000000DD', letterSpacing: 0.4 },
   sheetQuote: { fontSize: 10, color: 'rgba(255,255,255,0.28)', textAlign: 'center', fontStyle: 'italic', lineHeight: 16, marginBottom: 6 },
+  devLine: { fontSize: 9, color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 8 },
 });

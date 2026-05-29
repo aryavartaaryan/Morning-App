@@ -17,7 +17,8 @@ import * as TaskManager from 'expo-task-manager';
 // Defined here (before React renders) so the OS can wake the headless JS
 // context and process GPS updates even after the app is killed.
 const WALK_BG_TASK   = 'nada-background-walk-tracker';
-const WALK_STATE_KEY = 'nada_active_walk_v1';
+// Align with lib/walkStore.ts (v2) so background distance updates are reflected in UI
+const WALK_STATE_KEY = 'nada_active_walk_v2';
 
 function _walkHaversineKm(lat1, lng1, lat2, lng2) {
   const R    = 6371;
