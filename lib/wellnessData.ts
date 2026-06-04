@@ -344,3 +344,58 @@ export const DOSHA_FULL_SCIENCE: Record<string, { title: string; body: string }[
     { title: 'When Vata is Disturbed', body: 'Anxiety, insomnia, constipation, dry skin, scattered thoughts, and fear. The antidote is warmth, routine, grounding — oil massage, warm food, and stillness.' },
   ],
 };
+
+export const MIDDAY_PITTA_LATE_WELLNESS: WellnessEntry = {
+  displayName: 'Energy Dip Phase',
+  romanElements: 'Fire + Water',
+  sunDesc: 'Active as the sun begins to descend from zenith',
+  boundaryNote: 'The intense peak of solar noon has passed, and the body\'s energy turns inward for digestion.',
+  elements: [
+    { name: 'Fire (Agni)', emoji: '🔥', desc: 'Metabolic fire turning inward. Not the active, outward burning fire of noon, but the smoldering fire of internal digestion.' },
+    { name: 'Water (Jala)', emoji: '💧', desc: 'Digestive fluids and bile actively breaking down the midday meal.' },
+  ],
+  modernBrief: 'Post-prandial somnolence and the natural post-solar cortisol dip occur in this window. The parasympathetic nervous system is activated to support digestion.',
+  ayurvedaBrief: 'The intense active Pitta phase gives way to the digestive Pitta phase. The body requires a slightly slower pace to allow Pachana (digestion) to complete without interference.',
+  bodyBullets: [
+    { dot: '#E05C3A', text: 'Blood flow strongly diverted to the GI tract for digestion' },
+    { dot: '#10b981', text: 'Cortisol drops from its midday peak, causing a natural energy lull' },
+    { dot: '#fbbf24', text: 'Parasympathetic tone increases to support digestive processes' },
+    { dot: '#60a5fa', text: 'Cognitive sharpness briefly dulls as energy is reallocated' },
+    { dot: '#E05C3A', text: 'Nutrients are actively being broken down and assimilated' },
+  ],
+  doItems: [
+    { emoji: '🚶', text: 'Light walking to aid digestion' },
+    { emoji: '🧘', text: 'Brief restorative pause or meditation' },
+    { emoji: '📋', text: 'Low-cognitive routine tasks' },
+    { emoji: '💧', text: 'Hydrate with warm or room-temperature water' },
+  ],
+  avoidItems: [
+    { emoji: '🧠', text: 'High-stakes decision making' },
+    { emoji: '🏃', text: 'Intense physical exertion immediately after eating' },
+    { emoji: '☕', text: 'Excessive caffeine to fight the dip' },
+    { emoji: '💻', text: 'Deep focused cognitive work' },
+  ],
+  nadaSounds: ['hz_432', 'flowing_water', 'gentle_wind', 'singing_bowl'],
+};
+
+export const MIDDAY_PITTA_LATE_SANSKRIT = { sanskrit: 'Madhyāhna Pariṇāma', meaning: 'The phase of internal transformation and digestion' };
+
+export const MIDDAY_PITTA_LATE_EXTENDED: PeriodExtended = {
+  phonetic: 'mahd-HYAH-nah · (pah-ri-NAA-mah)',
+  etymParts: [
+    { term: 'Madhyāhna', breakdown: 'the centre of the solar day' },
+    { term: 'Pariṇāma', breakdown: 'from pari (around) + nam (to bend) = transformation or digestion' },
+  ],
+  classicalRef: { text: 'Pariṇāme tu bhuktasya vidyāt pittaṃ prakopitam.', source: 'Ashtānga Hridayam' },
+  phaseNumber: 3,
+  circadianSci: 'The post-prandial state is characterised by parasympathetic activation and increased splanchnic blood flow. This causes a transient decrease in systemic blood pressure and cerebral perfusion, leading to the subjective feeling of a "mid-day dip".',
+  sunPosition: '☀️ Sun descending from zenith — solar radiation remains high but the body\'s internal rhythm shifts priority to processing the midday meal.',
+  systemTags: ['Digestive', 'Metabolic', 'Parasympathetic'],
+  elementCombined: 'Agni (Fire) is fully engaged in the gut, breaking down the heaviest meal of the day. Because the fire is concentrated internally, there is less "heat" available for outward cognitive or physical action.',
+};
+
+WELLNESS['midday_pitta_late'] = MIDDAY_PITTA_LATE_WELLNESS;
+PERIOD_SANSKRIT['midday_pitta_late'] = MIDDAY_PITTA_LATE_SANSKRIT;
+PERIOD_EXTENDED['midday_pitta_late'] = MIDDAY_PITTA_LATE_EXTENDED;
+
+

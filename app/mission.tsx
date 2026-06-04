@@ -13,7 +13,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive } from '@/lib/nativeAlarm';
+import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -280,25 +280,54 @@ const cam = StyleSheet.create({
   verifyTxt: { fontSize: 16, fontWeight: '900' },
 });
 
-// ── Morning Mantra mission ────────────────────────────────────────────────────
+// ── Morning Mantra mission — Roman letters, user picks mantra ────────────────
+const CHANT_OPTIONS = [
+  {
+    id: 'gayatri',
+    icon: '🌞',
+    name: 'Gayatri Mantra',
+    roman: 'Om Bhur Bhuva Svaha\nTat Savitur Varenyam\nBhargo Devasya Dhimahi\nDhiyo Yo Nah Prachodayat',
+    meaning: 'We meditate on the radiant glory of the Divine Sun.\nMay that sacred light illuminate our minds\nand guide our intellect toward truth and liberation.',
+    badge: 'Prayer for Wisdom & Light',
+  },
+  {
+    id: 'shivaya',
+    icon: '🔱',
+    name: 'Om Namah Shivaya',
+    roman: 'Om Namah Shivaya\nOm Namah Shivaya\nOm Namah Shivaya',
+    meaning: 'I bow to Lord Shiva — the divine consciousness\nthat dwells within all beings.\nI surrender my ego to the infinite.',
+    badge: 'Mantra of Inner Surrender',
+  },
+];
+
 function MantraMission({ color, onComplete }: { color: string; onComplete: () => void }) {
-  const mantra = MANTRAS[new Date().getDay() % MANTRAS.length];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [taps, setTaps] = useState(0);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState<number | null>(null);
   const TARGET = 11;
   const MIN_SECONDS = 33;
 
+  const selected = CHANT_OPTIONS.find(o => o.id === selectedId);
+
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    setTaps(0);
+    setStartTime(Date.now());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
   const tap = () => {
-    if (taps >= TARGET) return;
+    if (!selected || taps >= TARGET) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const next = taps + 1;
     setTaps(next);
     if (next >= TARGET) {
-      const elapsed = (Date.now() - startTime) / 1000;
+      const elapsed = ((Date.now() - (startTime ?? Date.now())) / 1000);
       if (elapsed < MIN_SECONDS) {
         setTimeout(() => {
           Alert.alert('Slow down 🙏', `Chant mindfully — take at least ${MIN_SECONDS} seconds. You did it in ${Math.floor(elapsed)}s. Go again.`);
           setTaps(0);
+          setStartTime(Date.now());
         }, 400);
       } else {
         setTimeout(() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onComplete(); }, 600);
@@ -306,61 +335,110 @@ function MantraMission({ color, onComplete }: { color: string; onComplete: () =>
     }
   };
 
-  const progress = taps / TARGET;
+  const progress = selected ? taps / TARGET : 0;
 
   return (
     <ScrollView contentContainerStyle={mnt.wrap} showsVerticalScrollIndicator={false}>
-      <Text style={mnt.science}>
-        "Sound is medicine. Every syllable vibrates your nervous system into calm. Science backs this. Tap once per recitation."
-      </Text>
 
-      <View style={[mnt.mantraCard, { borderColor: color + '40' }]}>
-        <Text style={[mnt.mantraText, { color }]}>{mantra.text}</Text>
-        <Text style={mnt.meaning}>{mantra.meaning}</Text>
-        <Text style={mnt.pronounce}>🔊 {mantra.pronounce}</Text>
+      {/* ── Step 1: pick your mantra ── */}
+      <Text style={mnt.stepLabel}>CHOOSE YOUR MANTRA</Text>
+      <View style={mnt.selectorRow}>
+        {CHANT_OPTIONS.map(opt => {
+          const active = selectedId === opt.id;
+          return (
+            <TouchableOpacity
+              key={opt.id}
+              style={[
+                mnt.selectorCard,
+                { borderColor: active ? color : '#FFFFFF18', backgroundColor: active ? color + '18' : '#FFFFFF06' },
+              ]}
+              onPress={() => handleSelect(opt.id)}
+              activeOpacity={0.8}
+            >
+              <Text style={mnt.selectorIcon}>{opt.icon}</Text>
+              <Text style={[mnt.selectorName, { color: active ? color : '#FFFFFF80' }]}>{opt.name}</Text>
+              {active && <View style={[mnt.activeDot, { backgroundColor: color }]} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* Bead counter */}
-      <Text style={mnt.countLabel}>{taps} / {TARGET}</Text>
-      <View style={mnt.beadRow}>
-        {Array.from({ length: TARGET }).map((_, i) => (
-          <View
-            key={i}
-            style={[mnt.bead, { backgroundColor: i < taps ? color : '#FFFFFF15', borderColor: color + '50' }]}
-          />
-        ))}
-      </View>
+      {/* ── Step 2: mantra card (shown after selection) ── */}
+      {selected ? (
+        <>
+          <View style={[mnt.mantraCard, { borderColor: color + '40' }]}>
+            <Text style={mnt.label}>{selected.icon}  {selected.name.toUpperCase()}</Text>
+            <Text style={[mnt.mantraText, { color }]}>{selected.roman}</Text>
+            <View style={mnt.divider} />
+            <Text style={mnt.englishText}>{selected.meaning}</Text>
+            <View style={[mnt.meaningBadge, { borderColor: color + '30', backgroundColor: color + '10' }]}>
+              <Text style={[mnt.meaningText, { color: color + 'CC' }]}>{selected.badge}</Text>
+            </View>
+          </View>
 
-      {/* Progress bar */}
-      <View style={mnt.barBg}>
-        <View style={[mnt.barFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
-      </View>
+          {/* Bead counter */}
+          <View style={mnt.counterRow}>
+            <Text style={[mnt.countLabel, { color }]}>{taps}</Text>
+            <Text style={mnt.countOf}>/ {TARGET} recitations</Text>
+          </View>
+          <View style={mnt.beadRow}>
+            {Array.from({ length: TARGET }).map((_, i) => (
+              <View
+                key={i}
+                style={[mnt.bead, { backgroundColor: i < taps ? color : '#FFFFFF15', borderColor: color + '50' }]}
+              />
+            ))}
+          </View>
 
-      <TouchableOpacity
-        style={[mnt.tapBtn, { backgroundColor: color + '20', borderColor: color + '60' }]}
-        onPress={tap}
-        activeOpacity={0.7}
-        disabled={taps >= TARGET}
-      >
-        <Text style={[mnt.tapIcon, { color }]}>🙏</Text>
-        <Text style={[mnt.tapLabel, { color }]}>Tap — I recited it</Text>
-      </TouchableOpacity>
+          {/* Progress bar */}
+          <View style={mnt.barBg}>
+            <View style={[mnt.barFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
+          </View>
 
-      <Text style={mnt.hint}>Minimum time: 33 seconds · 3s per recitation</Text>
+          <TouchableOpacity
+            style={[mnt.tapBtn, { backgroundColor: color + '20', borderColor: color + '60' }]}
+            onPress={tap}
+            activeOpacity={0.7}
+            disabled={taps >= TARGET}
+          >
+            <Text style={[mnt.tapIcon, { color }]}>🙏</Text>
+            <Text style={[mnt.tapLabel, { color }]}>Tap — I recited it</Text>
+          </TouchableOpacity>
+
+          <Text style={mnt.hint}>Minimum time: 33 seconds · 3 seconds per recitation</Text>
+        </>
+      ) : (
+        <View style={mnt.pickHint}>
+          <Text style={mnt.pickHintText}>Select a mantra above to begin chanting</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
 const mnt = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, gap: 20 },
-  science: { color: '#FFFFFF60', fontSize: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
-  mantraCard: {
-    width: '100%', borderWidth: 1, borderRadius: 20, padding: 24,
-    alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF06',
+  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, gap: 16 },
+  stepLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 },
+  selectorRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  selectorCard: {
+    flex: 1, borderWidth: 1.5, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12,
+    alignItems: 'center', gap: 6,
   },
-  mantraText: { fontSize: 22, fontWeight: '900', textAlign: 'center' },
-  meaning: { color: '#FFFFFF80', fontSize: 13, textAlign: 'center' },
-  pronounce: { color: '#FFFFFF50', fontSize: 11, textAlign: 'center' },
-  countLabel: { fontSize: 36, fontWeight: '900', color: '#FFFFFF' },
+  selectorIcon: { fontSize: 26 },
+  selectorName: { fontSize: 11, fontWeight: '800', textAlign: 'center', lineHeight: 16 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
+  label: { fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 2, marginBottom: 2 },
+  mantraCard: {
+    width: '100%', borderWidth: 1, borderRadius: 22, padding: 24,
+    alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF06',
+  },
+  divider: { width: '40%', height: 1, backgroundColor: '#FFFFFF12', marginVertical: 2 },
+  mantraText: { fontSize: 17, fontWeight: '900', textAlign: 'center', lineHeight: 30, letterSpacing: 0.4 },
+  englishText: { fontSize: 13, color: '#FFFFFFB0', textAlign: 'center', lineHeight: 22, fontStyle: 'italic' },
+  meaningBadge: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 6, marginTop: 4 },
+  meaningText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  counterRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  countLabel: { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
+  countOf: { fontSize: 14, fontWeight: '600', color: '#FFFFFF50' },
   beadRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '80%' },
   bead: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5 },
   barBg: { width: '100%', height: 4, backgroundColor: '#FFFFFF15', borderRadius: 2 },
@@ -372,78 +450,109 @@ const mnt = StyleSheet.create({
   tapIcon: { fontSize: 22 },
   tapLabel: { fontSize: 16, fontWeight: '900' },
   hint: { color: '#FFFFFF30', fontSize: 10, textAlign: 'center' },
+  pickHint: { paddingVertical: 32, alignItems: 'center' },
+  pickHintText: { color: '#FFFFFF30', fontSize: 13, fontStyle: 'italic' },
 });
 
-// ── Gratitude Drop mission ────────────────────────────────────────────────────
+
+
+// ── Gratitude Drop mission — one gratitude, minimum 3 words ──────────────────
+const SINGLE_PROMPTS = [
+  'What are you most grateful for right now?',
+  'Name something that made you smile recently.',
+  'What in your life do you take for granted but shouldn\'t?',
+  'Name something about your body you are grateful for.',
+  'What is a blessing you received this week?',
+  'Who in your life are you most grateful for today?',
+  'Name a simple pleasure that brings you joy.',
+];
+
 function GratitudeMission({ color, onComplete }: { color: string; onComplete: () => void }) {
-  const prompts = GRATITUDE_PROMPTS[new Date().getDay() % GRATITUDE_PROMPTS.length];
-  const [entries, setEntries] = useState(['', '', '']);
+  const prompt = SINGLE_PROMPTS[new Date().getDay() % SINGLE_PROMPTS.length];
+  const [entry, setEntry] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-  const allFilled = entries.every(e => wordCount(e) >= 2);
-
-  const set = (i: number, v: string) => {
-    const arr = [...entries]; arr[i] = v; setEntries(arr);
-  };
+  const wc = wordCount(entry);
+  const isReady = wc >= 3;
 
   const done = () => {
-    if (submitting) return;
+    if (submitting || !isReady) return;
     setSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const uid = auth.currentUser?.uid;
     if (uid) {
       const date = new Date().toISOString().split('T')[0];
-      addDoc(collection(db, `users/${uid}/gratitude_logs`), { entries, date, timestamp: serverTimestamp() }).catch(() => { });
+      addDoc(collection(db, `users/${uid}/gratitude_logs`), { entry, date, timestamp: serverTimestamp() }).catch(() => {});
     }
     onComplete();
   };
 
   return (
-    <ScrollView contentContainerStyle={grt.wrap} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={grt.wrap}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Header quote */}
       <Text style={grt.science}>
-        "Harvard research shows 2 minutes of gratitude rewires your brain for positivity. In Ayurveda, this is called Sattva. Same thing. Go."
+        “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
       </Text>
-      {[0, 1, 2].map(i => (
-        <View key={i} style={grt.fieldWrap}>
-          <Text style={[grt.fieldPrompt, { color }]}>{i + 1}. {prompts[i]}</Text>
-          <TextInput
-            style={grt.input}
-            placeholder="Write at least 2 words..."
-            placeholderTextColor="#FFFFFF30"
-            value={entries[i]}
-            onChangeText={v => set(i, v)}
-            multiline
-            numberOfLines={3}
-          />
-          <Text style={grt.wordCount}>{wordCount(entries[i])}/2 words min</Text>
-        </View>
-      ))}
+
+      {/* Single prompt card */}
+      <View style={[grt.promptCard, { borderColor: color + '35' }]}>
+        <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
+        <Text style={[grt.promptText, { color }]}>{prompt}</Text>
+      </View>
+
+      {/* Input */}
+      <View style={grt.inputWrap}>
+        <TextInput
+          style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
+          placeholder="Write at least 3 words..."
+          placeholderTextColor="#FFFFFF30"
+          value={entry}
+          onChangeText={setEntry}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+        />
+        <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
+          {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
+        </Text>
+      </View>
+
+      {/* Done button */}
       <TouchableOpacity
-        style={[grt.doneBtn, { backgroundColor: allFilled && !submitting ? color : '#FFFFFF15' }]}
+        style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
         onPress={done}
-        disabled={!allFilled || submitting}
+        disabled={!isReady || submitting}
         activeOpacity={0.85}
       >
-        <Text style={[grt.doneTxt, { color: allFilled && !submitting ? '#000' : '#FFFFFF30' }]}>
-          {submitting ? 'Saving...' : allFilled ? 'Done ✓  Lock it in' : 'Fill all 3 (2+ words each)'}
+        <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
+          {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 const grt = StyleSheet.create({
-  wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 60, gap: 18 },
-  science: { color: '#FFFFFF55', fontSize: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
-  fieldWrap: { gap: 6 },
-  fieldPrompt: { fontSize: 13, fontWeight: '800' },
-  input: {
-    backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF20',
-    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-    color: '#FFFFFF', fontSize: 14, lineHeight: 21, textAlignVertical: 'top',
+  wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 60, gap: 20 },
+  science: { color: '#FFFFFF45', fontSize: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
+  promptCard: {
+    width: '100%', borderWidth: 1, borderRadius: 20, padding: 22,
+    alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF07',
   },
-  wordCount: { color: '#FFFFFF35', fontSize: 10, textAlign: 'right' },
-  doneBtn: { borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 8 },
+  promptLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 },
+  promptText: { fontSize: 17, fontWeight: '800', textAlign: 'center', lineHeight: 26 },
+  inputWrap: { gap: 6 },
+  input: {
+    backgroundColor: '#FFFFFF0A', borderWidth: 1,
+    borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14,
+    color: '#FFFFFF', fontSize: 15, lineHeight: 24, minHeight: 110,
+  },
+  wordCount: { fontSize: 11, fontWeight: '700', textAlign: 'right' },
+  doneBtn: { borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 4 },
   doneTxt: { fontSize: 16, fontWeight: '900' },
 });
 
@@ -496,9 +605,13 @@ function AffirmationsMission({ color, onComplete }: { color: string; onComplete:
   const card = cards[current];
 
   return (
-    <View style={aff.wrap}>
+    <ScrollView
+      contentContainerStyle={aff.wrap}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={aff.science}>
-        "Your brain doesn't know the difference between a real memory and a vivid belief. Give it something good."
+        “Your brain doesn’t know the difference between a real memory and a vivid belief. Give it something good.”
       </Text>
 
       <View style={aff.cardProgress}>
@@ -525,11 +638,11 @@ function AffirmationsMission({ color, onComplete }: { color: string; onComplete:
             : `Hold for ${countdown}s...`}
         </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 const aff = StyleSheet.create({
-  wrap: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, gap: 20 },
+  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 20 },
   science: { color: '#FFFFFF55', fontSize: 12, textAlign: 'center', lineHeight: 18, fontStyle: 'italic' },
   cardProgress: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: { height: 8, borderRadius: 4 },
@@ -540,7 +653,7 @@ const aff = StyleSheet.create({
   cardNum: { fontSize: 10, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 },
   affText: { fontSize: 18, fontWeight: '800', textAlign: 'center', lineHeight: 28 },
   readAloud: { color: '#FFFFFF50', fontSize: 12, fontStyle: 'italic' },
-  tapBtn: { width: '100%', borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 'auto' },
+  tapBtn: { width: '100%', borderRadius: 99, paddingVertical: 18, alignItems: 'center' },
   tapTxt: { fontSize: 16, fontWeight: '900' },
 });
 
@@ -878,26 +991,46 @@ export default function MissionScreen() {
     };
   }, [done]);
 
+  // ── Mission complete handler — stops ALL alarm signals with no leakage ────────
   const handleComplete = useCallback(async () => {
+    if (missionCompletedRef.current) return; // guard against double-call
     missionCompletedRef.current = true;
     clearInterval(timerRef.current!);
     setDone(true);
 
-    // ── 1. Clear mission guard + stop native alarm service + background mantra ─
-    await AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
-    await stopAlarmVibration();
-    await stopNativeAlarmSound();
+    // ── 0. Exit screen-pinning immediately — user completed the mission ─────────
+    // stopNativeLockTask() exits Android's Lock Task Mode so Back, Home, and
+    // Recents become responsive again the instant the mission is done.
+    // Belt-and-suspenders alongside MainActivity.onResume() which also calls
+    // stopLockTask() when isAlarmActive() returns false.
+    stopNativeLockTask().catch(() => {});
+
+    // ── 1. Stop ALL alarm signals immediately — no leakage ──────────────────────
+    // Stop vibration FIRST (fast — JVM call)
+    stopAlarmVibration().catch(() => {});
+    // Stop native AlarmSoundService audio (kills MediaPlayer in JVM)
+    await stopNativeAlarmSound().catch(() => {});
+    // Stop JS background mantra sound transferred from alarm-ringing
     const bg = (global as any).__missionBgSound;
     if (bg) {
-      bg.stopAsync().catch(() => {});
-      bg.unloadAsync().catch(() => {});
+      try { await bg.stopAsync(); } catch { /* ignore */ }
+      try { await bg.unloadAsync(); } catch { /* ignore */ }
       (global as any).__missionBgSound = null;
     }
+    // Second vibration stop after 300 ms — catches any JVM vibration that restarted
+    setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
 
-    // ── 2. Dismiss the alarm notification from the notification shade ──────
-    await cancelNativeAlarm();
+    // ── 2. Cancel ALL notifications — prevents any app-reopen after completion ──
+    await AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
+    await cancelNativeAlarm().catch(() => {});
+    await notifee.cancelNotification(MISSION_FS_ID).catch(() => {});
+    await notifee.cancelNotification('mission-bttf').catch(() => {});
+    await notifee.cancelNotification('alarm-bttf').catch(() => {});
+    await notifee.cancelNotification('habit-bttf').catch(() => {});
+    // Safety sweep — cancel every remaining notifee notification
+    await notifee.cancelAllNotifications().catch(() => {});
 
-    // ── 3. Save streak ─────────────────────────────────────────────────────
+    // ── 3. Save streak ──────────────────────────────────────────────────────────
     const ms = await store.getJSON<MissionSettings>(KEYS.missionSettings) ?? DEFAULT_MISSION_SETTINGS;
     const today = new Date().toISOString().split('T')[0];
     const wasYesterday = ms.lastCompletedDate === new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -906,9 +1039,7 @@ export default function MissionScreen() {
     await store.setJSON(KEYS.missionSettings, updated);
     setStreak(newStreak);
 
-    // ── 4. Reschedule tomorrow's alarm ─────────────────────────────────────
-    // Today's alarm already fired — schedule the AlarmManager for the same
-    // time tomorrow so it rings without needing the user to open the app.
+    // ── 4. Reschedule tomorrow's alarm ─────────────────────────────────────────
     const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
     if (alarmCfg?.wakeAlarm?.enabled) {
       scheduleNativeAlarm(
@@ -918,14 +1049,15 @@ export default function MissionScreen() {
       ).catch(() => {});
     }
 
-    // ── 5. Log to Firestore ────────────────────────────────────────────────
+    // ── 5. Log to Firestore ─────────────────────────────────────────────────────
     const uid = auth.currentUser?.uid;
     if (uid) {
       addDoc(collection(db, `users/${uid}/mission_logs`), {
         missionId, elapsedSeconds: elapsed, date: today, timestamp: serverTimestamp(),
-      }).catch(() => { });
+      }).catch(() => {});
     }
   }, [missionId, elapsed]);
+
 
   const handleDismiss = () => router.replace('/(tabs)' as never);
 

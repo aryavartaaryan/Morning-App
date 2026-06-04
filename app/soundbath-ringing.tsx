@@ -73,10 +73,18 @@ export default function SoundBathRingingScreen() {
     );
   }, []);
 
-  // ── Keep awake ──────────────────────────────────────────────────────────────
+  // ── Keep awake + native wake lock ──────────────────────────────────────────────
   useEffect(() => {
     activateKeepAwakeAsync('soundbath');
-    return () => { deactivateKeepAwake('soundbath'); };
+    if (Platform.OS === 'android') {
+      NativeModules.HabitAlarmModule?.acquireWakeLock?.().catch?.(() => {});
+    }
+    return () => {
+      deactivateKeepAwake('soundbath');
+      if (Platform.OS === 'android') {
+        NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
+      }
+    };
   }, []);
 
   // ── Silence ambient + mood sheet ─────────────────────────────────────────────
@@ -100,6 +108,16 @@ export default function SoundBathRingingScreen() {
       try {
         if (cancelled) return;
         await playAlarmAudio(soundRef, soundId);
+        // Ensure sound is playing after a short delay
+        setTimeout(() => {
+          if (!cancelled && soundRef.current) {
+            soundRef.current.getStatusAsync().then((status: any) => {
+              if (status?.isLoaded && !status?.isPlaying) {
+                soundRef.current?.playAsync().catch(() => {});
+              }
+            }).catch(() => {});
+          }
+        }, 500);
       } catch (e) { console.warn('[SoundBath] audio:', e); }
     })();
     return () => { cancelled = true; stopAlarmAudio(soundRef); };
@@ -170,10 +188,22 @@ export default function SoundBathRingingScreen() {
         bttfNotifIdRef.current = BTTF;
       } catch {}
     };
-    const cancelBttf = () => { notifee.cancelNotification(bttfNotifIdRef.current ?? BTTF).catch(() => {}); bttfNotifIdRef.current = null; };
+    const cancelBttf = () => { notifee.cancelNotification(bttfNotifIdRef.current ?? BTTF).catch(() => {}); notifee.cancelNotification(BTTF).catch(() => {}); bttfNotifIdRef.current = null; };
+    const ensureAudioPlaying = async () => {
+      try {
+        if (soundRef.current) {
+          const status = await soundRef.current.getStatusAsync();
+          if (status?.isLoaded && !status?.isPlaying) {
+            await soundRef.current.playAsync();
+          }
+        }
+      } catch (e) {
+        console.warn('[SoundBath] Audio resume error:', e);
+      }
+    };
     const sub = AppState.addEventListener('change', next => {
-      if (!dismissed && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) { appStateRef.current = next; fireBttf(); }
-      else if (!dismissed && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') { appStateRef.current = next; cancelBttf(); }
+      if (!dismissed && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) { appStateRef.current = next; fireBttf(); ensureAudioPlaying(); }
+      else if (!dismissed && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') { appStateRef.current = next; cancelBttf(); ensureAudioPlaying(); }
       else { appStateRef.current = next; }
     });
     return () => { sub.remove(); cancelBttf(); };
@@ -186,6 +216,7 @@ export default function SoundBathRingingScreen() {
     stopAlarmVibration().catch(() => {});
     notifee.cancelNotification(SOUNDBATH_FS_ID).catch(() => {});
     notifee.cancelNotification(bttfNotifIdRef.current ?? 'soundbath-bttf').catch(() => {});
+    notifee.cancelNotification('soundbath-bttf').catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace('/(tabs)' as never);
   };
@@ -210,6 +241,9 @@ export default function SoundBathRingingScreen() {
       style={S.screen}
       imageStyle={{ opacity: 0.68 }}
     >
+      {/* Full-screen touch interceptor — blocks center/right nav buttons from closing screen */}
+      <View style={StyleSheet.absoluteFillObject} />
+
       <StatusBar hidden />
 
       {/* Dark gradient overlay — heavier at top & bottom so text is readable */}
@@ -217,6 +251,7 @@ export default function SoundBathRingingScreen() {
         colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.88)']}
         locations={[0, 0.18, 0.55, 1]}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
 
       {/* Subtle ambient colour wash matching the accent */}
@@ -232,7 +267,7 @@ export default function SoundBathRingingScreen() {
         </View>
       </View>
 
-      {/* ── CENTER: pulsing orb ── */}
+      {/* ── CENTER: pulsing orb (non-interactive) ── */}
       <View style={S.orbWrap} pointerEvents="none">
         <Animated.View style={[S.outerRing, outerStyle, { borderColor: accent + '40' }]} />
         <View style={[S.midRing, { borderColor: accent + '20' }]} />
@@ -266,6 +301,11 @@ export default function SoundBathRingingScreen() {
             </View>
           </TouchableOpacity>
         </Animated.View>
+
+        {/* Lock indicator — mirrors habit alarm locked state */}
+        <View style={S.lockBar}>
+          <Text style={S.lockBarTxt}>🔒  Dismiss only by tapping above</Text>
+        </View>
       </View>
     </ImageBackground>
   );
@@ -290,7 +330,7 @@ const S = StyleSheet.create({
   orbIcon:      { fontSize: 44 },
 
   // Bottom
-  bottomArea:   { paddingHorizontal: 26, paddingBottom: 52, alignItems: 'center', gap: 14 },
+  bottomArea:   { paddingHorizontal: 26, paddingBottom: 48, alignItems: 'center', gap: 14 },
   categoryHint: { fontSize: 10, fontWeight: '800', letterSpacing: 1.8 },
   dismissBtn:   {
     width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -300,4 +340,6 @@ const S = StyleSheet.create({
   dismissIcon:  { fontSize: 20, color: '#FFFFFFEE' },
   dismissTxt:   { fontSize: 18, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 },
   dismissSub:   { fontSize: 10, fontWeight: '600', color: '#FFFFFF70', letterSpacing: 0.5, marginTop: 2 },
+  lockBar:      { alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFFFFF04', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF08' },
+  lockBarTxt:   { fontSize: 9, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 0.5 },
 });

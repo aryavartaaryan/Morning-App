@@ -15,9 +15,10 @@ class AlarmPackage : BaseReactPackage() {
 
     override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
         return when (name) {
-            "AlarmModule"      -> AlarmModule(reactContext)
-            "HabitAlarmModule" -> HabitAlarmModule(reactContext)
-            else               -> null
+            "AlarmModule"       -> AlarmModule(reactContext)
+            "HabitAlarmModule"  -> HabitAlarmModule(reactContext)
+            "StepCounterModule" -> StepCounterModule(reactContext)
+            else                -> null
         }
     }
 
@@ -32,6 +33,11 @@ class AlarmPackage : BaseReactPackage() {
                 "HabitAlarmModule" to ReactModuleInfo(
                     "HabitAlarmModule",
                     "com.solrize.HabitAlarmModule",
+                    false, false, false, false
+                ),
+                "StepCounterModule" to ReactModuleInfo(
+                    "StepCounterModule",
+                    "com.solrize.StepCounterModule",
                     false, false, false, false
                 )
             )

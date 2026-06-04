@@ -38,6 +38,7 @@ const AlarmNative: {
   startAlarmVibration(): Promise<string>;
   stopAlarmVibration(): Promise<string>;
   dismissAlarmOverlay(): Promise<string>;
+  stopLockTask(): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -224,6 +225,14 @@ export async function setNativeAlarmSoundPath(path: string): Promise<void> {
 export async function stopNativeAlarmSound(): Promise<void> {
   if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmSound) return;
   try { await AlarmNative.stopAlarmSound(); } catch { /* ignore */ }
+}
+
+// ── Exit screen-pinning (Lock Task) mode ─────────────────────────────────────
+// Call this immediately after stopping the wake alarm so Android's OS stops
+// blocking Back / Home / Recents, allowing the user to freely navigate.
+export async function stopNativeLockTask(): Promise<void> {
+  if (Platform.OS !== 'android' || !AlarmNative?.stopLockTask) return;
+  try { await AlarmNative.stopLockTask(); } catch { /* ignore */ }
 }
 
 // ── Adjust native alarm volume WITHOUT stopping the service ─────────────────────

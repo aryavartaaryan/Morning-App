@@ -80,7 +80,6 @@ const ALARM_SOUNDS = [
   { id: 'harbor_waves',            label: 'Harbor Waves',           emoji: '⚓', cat: 'Ocean',  color: '#93c5fd', audioUrl: null as string | null },
   { id: 'flowing_water',           label: 'Flowing Water',          emoji: '💧', cat: 'Nature', color: '#67e8f9', audioUrl: null as string | null },
   { id: 'jungle_storm',            label: 'Jungle Storm',           emoji: '🌿', cat: 'Nature', color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Flute',  color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'spiritual_journey',       label: 'Spiritual Journey',      emoji: '🌌', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
   { id: 'om_shanti',               label: 'Om Shanti',              emoji: '🕉️', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
   { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NADA_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
@@ -88,6 +87,30 @@ const ALARM_SOUNDS = [
   { id: 'lalitha',                 label: 'Lalitha Sahasranama',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
   { id: 'nada_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NADA_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
   { id: 'bhagya_suktam',           label: 'Bhagya Suktam',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: null as string | null },
+  // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
+  { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
+  { id: 'sitar_tabla_bells',       label: 'Sitar, Tabla & Bells',   emoji: '🎵', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
+  { id: 'indian_sitar_raga',       label: 'Indian Sitar Raga',      emoji: '🎶', cat: 'Sitar & Flute', color: '#fb923c', audioUrl: null as string | null },
+  { id: 'sitar_summer_raga',       label: 'Summer Healing Raga',    emoji: '☀️', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: null as string | null },
+  { id: 'sitar_radiance',          label: 'Sitar Radiance',         emoji: '✨', cat: 'Sitar & Flute', color: '#f97316', audioUrl: null as string | null },
+  { id: 'sitar_tanpura_sarangi',   label: 'Sitar, Tanpura & Sarangi', emoji: '🪕', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
+  { id: 'sitar_tanpura_bgm',       label: 'Sitar & Tanpura',        emoji: '🎼', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
+  { id: 'veena_classical',         label: 'Classical Veena',        emoji: '🪗', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
+  { id: 'sitar_calm',              label: 'Calm Sitar',             emoji: '🎸', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
+  { id: 'veena_raga',              label: 'Veena Raga Kanada',      emoji: '🪗', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
+  { id: 'andean_flute',            label: 'Andean Flute',           emoji: '🏔️', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'quena_flute',             label: 'Canyon Quena',           emoji: '🏜️', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
+  { id: 'native_flute',            label: 'Native American Flute',  emoji: '🪶', cat: 'Sitar & Flute', color: '#a3e635', audioUrl: null as string | null },
+  { id: 'native_flute_echo',       label: 'Native Flute Echo',      emoji: '🌀', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
+  { id: 'bamboo_flute',            label: 'Bamboo Flute',           emoji: '🎋', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
+  { id: 'pan_flute',               label: 'Pan Flute Drift',        emoji: '🌬️', cat: 'Sitar & Flute', color: '#67e8f9', audioUrl: null as string | null },
+  { id: 'arabian_flute',           label: 'Arabian Flute & Drums',  emoji: '🌙', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
+  { id: 'arabic_flute',            label: 'Arabic Flute',           emoji: '🕌', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: null as string | null },
+  { id: 'flute_scale',             label: 'Flute Meditation',       emoji: '🎶', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'forest_flute',            label: 'Forest Flute',           emoji: '🌿', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
+  { id: 'bansuri_forest',          label: 'Bansuri Forest',         emoji: '🌿', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
+  { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
+  { id: 'bansuri_tarana',          label: 'Bansuri Tarana',         emoji: '🎶', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
 ];
 
 
@@ -99,7 +122,7 @@ const ALARM_BUNDLED: Record<string, any> = {
   shiv_sankalpa_suktam: require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
 };
 
-const ALARM_SOUND_CATS = ['Birds', 'Ocean', 'Nature', 'Flute', 'Sacred', 'Mantra', 'Stotra'] as const;
+const ALARM_SOUND_CATS = ['Birds', 'Ocean', 'Nature', 'Sitar & Flute', 'Sacred', 'Mantra', 'Stotra'] as const;
 
 const AYU_HABITS = [
   { key: 'wake_early',   label: 'Wake Early',       emoji: '🌙' },
@@ -931,12 +954,14 @@ export default function AlarmsTab() {
       <SafeAreaView edges={['top']} />
 
       {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
-      <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 10 }}>
+      <View style={{ marginTop: 8, marginBottom: 10 }}>
         <View style={{
+          width: '100%',
           backgroundColor: 'rgba(0,0,0,0.26)',
-          borderWidth: 1,
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
           borderColor: 'rgba(255,255,255,0.14)',
-          borderRadius: 22,
+          borderRadius: 0,
           overflow: 'hidden',
           paddingHorizontal: 20,
           paddingTop: 18,
@@ -963,7 +988,7 @@ export default function AlarmsTab() {
             fontFamily: 'DancingScript_600SemiBold',
             textShadowColor: 'rgba(60,20,0,0.75)',
             textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 8,
+            textShadowRadius: 12,
             textAlign: 'center',
             marginBottom: 6,
           }}>
@@ -1018,7 +1043,7 @@ export default function AlarmsTab() {
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
             <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
@@ -1060,7 +1085,7 @@ export default function AlarmsTab() {
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
@@ -1101,7 +1126,7 @@ export default function AlarmsTab() {
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
@@ -1153,7 +1178,7 @@ export default function AlarmsTab() {
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
                 <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 16, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
@@ -1987,7 +2012,7 @@ const S = StyleSheet.create({
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#38bdf8BB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)' },
-  alarmCard2: { marginHorizontal: 'auto', width: '77%', borderRadius: 22, overflow: 'hidden', elevation: 3, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  alarmCard2: { marginHorizontal: 'auto', width: '88%', borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9 },
   alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
   alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },

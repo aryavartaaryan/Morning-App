@@ -114,6 +114,44 @@ const WELLNESS: Record<string, {
       { emoji: '💻', text: 'Overworking without breaks' },
     ],
   },
+  midday_pitta_late: {
+    displayName: 'Energy Dip',
+    romanElements: 'Fire + Water',
+    sunDesc: 'Active as sun crosses zenith — 12 PM to 2 PM',
+    boundaryNote: 'The digestive fire is fully engaged. As blood pools in the digestive tract, cognitive sharpness naturally dips.',
+    elements: [
+      {
+        name: 'Fire (Agni)', emoji: '🔥',
+        desc: 'Metabolic fire — focused entirely on digestion and assimilation. The principle of',
+        italic: 'internal transformation.',
+      },
+      {
+        name: 'Water (Jala)', emoji: '💧',
+        desc: 'Bile, digestive fluids, aqueous medium for enzymes. Transformation through the medium of water.',
+      },
+    ],
+    modernBrief: 'Post-prandial somnolence (food coma) occurs as parasympathetic tone increases. Blood flows to the gut (splanchnic circulation). A natural circadian dip begins.',
+    ayurvedaBrief: 'Digestion requires immense energy. Pitta focuses inward. Pushing for high cognitive output now causes stress.',
+    bodyBullets: [
+      { dot: '#E05C3A', text: 'Digestive system is at peak workload' },
+      { dot: '#60a5fa', text: 'Parasympathetic nervous system activates for "rest & digest"' },
+      { dot: '#f87171', text: 'Blood flow diverted from brain to gut' },
+      { dot: '#fbbf24', text: 'Core temperature slightly elevated from digestion' },
+      { dot: '#9B7FD4', text: 'Natural mild drowsiness or "energy dip"' },
+    ],
+    doItems: [
+      { emoji: '🚶', text: 'Light walking to aid digestion' },
+      { emoji: '🧘', text: 'Rest and digest' },
+      { emoji: '📋', text: 'Low-cognitive routine tasks' },
+      { emoji: '🍵', text: 'Warm water or digestive tea' },
+    ],
+    avoidItems: [
+      { emoji: '🧠', text: 'Deep focused cognitive work' },
+      { emoji: '🏃', text: 'Intense physical exertion' },
+      { emoji: '☕', text: 'Excessive caffeine to fight the dip' },
+      { emoji: '😤', text: 'High-stakes decision making' },
+    ],
+  },
   afternoon_vata: {
     displayName: 'Vata time',
     romanElements: 'Air + Space',
@@ -279,7 +317,8 @@ const WELLNESS: Record<string, {
 const NEXT_PERIOD: Record<string, string> = {
   night_vata: 'morning_kapha',
   morning_kapha: 'midday_pitta',
-  midday_pitta: 'afternoon_vata',
+  midday_pitta: 'midday_pitta_late',
+  midday_pitta_late: 'afternoon_vata',
   afternoon_vata: 'evening_kapha',
   evening_kapha: 'night_pitta',
   night_pitta: 'night_vata',
@@ -345,7 +384,7 @@ function RhythmTimeline({ currentId }: { currentId: string }) {
   const periods = useMemo(() => getDoshaPeriods(defaultSolar, nowH), []);
   const nextId = NEXT_PERIOD[currentId] ?? 'morning_kapha';
 
-  const DISPLAY_ORDER = ['morning_kapha', 'midday_pitta', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
+  const DISPLAY_ORDER = ['morning_kapha', 'midday_pitta', 'midday_pitta_late', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
 
   return (
     <View style={{ gap: 0 }}>
@@ -356,20 +395,22 @@ function RhythmTimeline({ currentId }: { currentId: string }) {
         const isNext = id === nextId;
         const color = DOSHA_COLOR[p.dosha] ?? '#FFFFFF';
         const PERIOD_LABELS: Record<string, string> = {
-          morning_kapha:  'Kapha · Earth + Water',
-          midday_pitta:   'Pitta · Fire + Water',
-          afternoon_vata: 'Vata · Air + Space',
-          evening_kapha:  'Kapha · early evening',
-          night_pitta:    'Pitta · night digestion & repair',
-          night_vata:     'Vata · pre-dawn creativity & spirit',
+          morning_kapha:      'Kapha · Earth + Water',
+          midday_pitta:       'Pitta · Peak Focus',
+          midday_pitta_late:  'Pitta · Energy Dip',
+          afternoon_vata:     'Vata · Air + Space',
+          evening_kapha:      'Kapha · early evening',
+          night_pitta:        'Pitta · night digestion & repair',
+          night_vata:         'Vata · pre-dawn creativity & spirit',
         };
         const PERIOD_SUBLABELS: Record<string, string> = {
-          morning_kapha:  `${p.startLabel}  |  ${p.endLabel}`,
-          midday_pitta:   `${p.startLabel}  |  ${p.endLabel}`,
-          afternoon_vata: `${p.startLabel}  |  ${p.endLabel}`,
-          evening_kapha:  `Repeat at ${p.startLabel}`,
-          night_pitta:    `Repeat ${p.startLabel} – ${p.endLabel}`,
-          night_vata:     `Repeat ${p.startLabel} – ${p.endLabel}`,
+          morning_kapha:      `${p.startLabel}  |  ${p.endLabel}`,
+          midday_pitta:       `${p.startLabel}  |  ${p.endLabel}`,
+          midday_pitta_late:  `${p.startLabel}  |  ${p.endLabel}`,
+          afternoon_vata:     `${p.startLabel}  |  ${p.endLabel}`,
+          evening_kapha:      `Repeat at ${p.startLabel}`,
+          night_pitta:        `Repeat ${p.startLabel} – ${p.endLabel}`,
+          night_vata:         `Repeat ${p.startLabel} – ${p.endLabel}`,
         };
 
         return (
@@ -596,7 +637,7 @@ export default function AyurvedicWellnessScreen() {
               <View style={[S.actCard, S.actDoCard]}>
                 <View style={S.actHeader}>
                   <Text style={{ fontSize: 14 }}>✅</Text>
-                  <Text style={S.actHeaderTxt}>Do now</Text>
+                  <Text style={S.actHeaderTxt}>Ideal right now</Text>
                 </View>
                 {data.doItems.map((item, i) => (
                   <View key={i} style={S.actItem}>
@@ -609,7 +650,7 @@ export default function AyurvedicWellnessScreen() {
               <View style={[S.actCard, S.actAvoidCard]}>
                 <View style={S.actHeader}>
                   <Text style={{ fontSize: 14 }}>🚫</Text>
-                  <Text style={[S.actHeaderTxt, { color: '#f87171' }]}>Avoid</Text>
+                  <Text style={[S.actHeaderTxt, { color: '#f87171' }]}>Best to limit</Text>
                 </View>
                 {data.avoidItems.map((item, i) => (
                   <View key={i} style={S.actItem}>

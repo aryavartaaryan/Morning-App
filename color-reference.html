@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Night Period Colors - Hero Ring</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #0f1e3a 0%, #081428 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 32px;
+    }
+    
+    .colors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+    
+    .color-card {
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s ease;
+    }
+    
+    .color-card:hover {
+      transform: translateY(-10px);
+    }
+    
+    .color-swatch {
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+    
+    .color-info {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      color: white;
+    }
+    
+    .period-name {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .period-label {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 12px;
+    }
+    
+    .color-codes {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+    }
+    
+    .code-line {
+      margin: 4px 0;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .time-window {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .timeline {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 30px;
+      margin-top: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    
+    .timeline h2 {
+      color: white;
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+    
+    .timeline-bar {
+      height: 60px;
+      background: linear-gradient(90deg, #34d399 0%, #fbbf24 33%, #818cf8 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .timeline-label {
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    .timeline-description {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌙 Night Period Colors - Hero Ring</h1>
+    
+    <div class="colors-grid">
+      <!-- Evening Kapha -->
+      <div class="color-card">
+        <div class="color-swatch" style="background-color: #c7d2e0;">
+          🌙
+        </div>
+        <div class="color-info">
+          <div class="period-name">Evening Kapha</div>
+          <div class="period-label">Evening Wind Down</div>
+          <div class="color-codes">
+            <div class="code-line">color: #c7d2e0</div>
+            <div class="code-line">rgba(199,210,224,0.06)</div>
+          </div>
+          <div class="time-window">
+            ⏰ Sunset → ~2-3 hours after sunset
+            <br/>✨ Cooling glow effect: #60a5fa
+          </div>
+        </div>
+      </div>
+      
+      <!-- Night Pitta -->
+      <div class="color-card">
+        <div class="color-swatch" style="background-color: #fbbf24;">
+          🌕
+        </div>
+        <div class="color-info">
+          <div class="period-name">Night Pitta</div>
+          <div class="period-label">Deep Repair & Detox Phase</div>
+          <div class="color-codes">
+            <div class="code-line">color: #fbbf24</div>
+            <div class="code-line">rgba(251,191,36,0.06)</div>
+          </div>
+          <div class="time-window">
+            ⏰ ~2-3 hrs after sunset → Brahma Muhurta
+          </div>
+        </div>
+      </div>
+      
+      <!-- Night Vata -->
+      <div class="color-card">
+        <div class="color-swatch" style="background-color: #c7d2e0;">
+          ✨
+        </div>
+        <div class="color-info">
+          <div class="period-name">Night Vata</div>
+          <div class="period-label">Neuroplasticity Peak Hour</div>
+          <div class="color-codes">
+            <div class="code-line">color: #c7d2e0</div>
+            <div class="code-line">rgba(199,210,224,0.08)</div>
+          </div>
+          <div class="time-window">
+            ⏰ Brahma Muhurta → Sunrise
+            <br/>✨ Cooling glow effect: #60a5fa
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div class="timeline">
+      <h2>Night Cycle Timeline</h2>
+      <div class="timeline-bar" style="background: linear-gradient(90deg, #c7d2e0 0%, #fbbf24 50%, #c7d2e0 100%);"></div>
+      <div class="timeline-description">
+        <strong>Sunset</strong> → <span style="color: #c7d2e0;">🌙 Evening Kapha (Silver)</span> 
+        → <span style="color: #fbbf24;">🌕 Night Pitta (Amber)</span> 
+        → <span style="color: #c7d2e0;">✨ Night Vata (Silver)</span> 
+        → <strong>Sunrise</strong>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

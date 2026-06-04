@@ -9,6 +9,8 @@ import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
 import { getStreak, type SunriseStreak } from '@/lib/sunriseStreak';
 import { useBgContext } from '@/lib/bgContext';
+import { getStepTrackingState, get30DayStats, type ThirtyDayStats, getStepGoal } from '@/lib/dailyStepTracker';
+import { getWalkHistory, calcWalkHistoryStats, type WalkHistoryStats } from '@/lib/walkHistory';
 import type { AlarmEntry } from './alarms';
 
 const { width } = Dimensions.get('window');
@@ -45,23 +47,39 @@ export default function ReportsTab() {
   const [entries, setEntries]           = useState<AlarmEntry[]>([]);
   const [habitStreaks, setHabitStreaks] = useState<Record<string, HabitStreakRecord>>({});
   const [sunStreak, setSunStreak]       = useState<SunriseStreak>({ count: 0, lastDate: '', longestEver: 0 });
+  const [stepTrackingEnabled, setStepTrackingEnabled] = useState(false);
+  const [thirtyDayStats, setThirtyDayStats] = useState<ThirtyDayStats | null>(null);
+  const [walkStats, setWalkStats]       = useState<WalkHistoryStats | null>(null);
   const { bgUri } = useBgContext();
   const today = new Date();
 
   useEffect(() => {
     (async () => {
-      const [s, ms, e, hs, ss] = await Promise.all([
+      const [s, ms, e, hs, ss, stepState, hist] = await Promise.all([
         store.getJSON<AlarmSettings>(KEYS.alarmSettings),
         store.getJSON<MissionSettings>(KEYS.missionSettings),
         store.getJSON<AlarmEntry[]>(KEYS.multiAlarms),
         store.getJSON<Record<string, HabitStreakRecord>>(KEYS.habitAlarmStreaks),
         getStreak(),
+        getStepTrackingState(),
+        getWalkHistory(),
       ]);
       if (s)  setSettings(s);
       if (ms) setMission({ ...DEFAULT_MISSION_SETTINGS, ...ms });
       if (e)  setEntries(e);
       if (hs) setHabitStreaks(hs);
       setSunStreak(ss);
+      
+      if (stepState) {
+        setStepTrackingEnabled(stepState.enabled);
+        if (stepState.enabled) {
+          const stats = await get30DayStats();
+          setThirtyDayStats(stats);
+        }
+      }
+      if (hist) {
+        setWalkStats(calcWalkHistoryStats(hist));
+      }
     })();
   }, []);
 
@@ -216,6 +234,88 @@ export default function ReportsTab() {
               <Text style={S.statSub}>{card.sub}</Text>
             </View>
           ))}
+        </View>
+
+        {/* ── Steps & Walking ── */}
+        <View style={S.secRow}>
+          <Text style={{ fontSize: 10 }}>👣</Text>
+          <Text style={[S.secLabel, { color: '#4FD1C580' }]}>STEPS & WALKING</Text>
+          <View style={[S.secLine, { backgroundColor: '#4FD1C522' }]} />
+        </View>
+        <View style={S.glassCard}>
+          <View style={{ padding: 18 }}>
+            {!stepTrackingEnabled ? (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <Text style={{ fontSize: 24, marginBottom: 8 }}>👣</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>Step Tracking is Off</Text>
+                <Text style={{ fontSize: 10, color: '#FFFFFF60', marginTop: 4, textAlign: 'center' }}>
+                  Enable step tracking in the Walk tab to see your daily steps and distance here.
+                </Text>
+              </View>
+            ) : thirtyDayStats ? (
+              <>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#4FD1C5', letterSpacing: 1 }}>LAST 30 DAYS</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 4 }}>
+                      <Text style={{ fontSize: 22, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1 }}>{thirtyDayStats.avgStepsPerDay.toLocaleString()}</Text>
+                      <Text style={{ fontSize: 10, color: '#FFFFFF50', marginBottom: 3 }}>avg steps/day</Text>
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>{thirtyDayStats.totalDistanceKm} km</Text>
+                    <Text style={{ fontSize: 9, color: '#FFFFFF40' }}>step distance</Text>
+                  </View>
+                </View>
+                {/* Mini 14-day sparkline */}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 36, gap: 3, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#FFFFFF10', marginBottom: 14 }}>
+                  {thirtyDayStats.daily.slice(-14).map((d) => {
+                    const h = d.steps > 0 ? Math.max(12, Math.min(100, (d.steps / getStepGoal()) * 100)) : 4;
+                    return (
+                      <View key={d.date} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        <View style={{ width: '80%', height: `${h}%` as any, backgroundColor: d.isToday ? '#4FD1C5' : d.goalMet ? '#34d399' : d.steps > 0 ? '#fb923c' : '#FFFFFF12', borderRadius: 2 }} />
+                      </View>
+                    );
+                  })}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF' }}>{thirtyDayStats.daysGoalMet}</Text>
+                    <Text style={{ fontSize: 8, color: '#FFFFFF40' }}>Goal Days</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF' }}>{thirtyDayStats.currentStreak}</Text>
+                    <Text style={{ fontSize: 8, color: '#FFFFFF40' }}>Current Streak</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF' }}>{thirtyDayStats.bestSteps.toLocaleString()}</Text>
+                    <Text style={{ fontSize: 8, color: '#FFFFFF40' }}>Best Day</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <Text style={{ fontSize: 11, color: '#FFFFFF40', textAlign: 'center' }}>No step data yet — carry your phone and steps will appear here.</Text>
+              </View>
+            )}
+            {/* Walk Sessions summary */}
+            {walkStats && walkStats.totalSessions > 0 && (
+              <View style={{ flexDirection: 'row', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#FFFFFF08' }}>
+                <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#FFFFFF08' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>{walkStats.totalSessions}</Text>
+                  <Text style={{ fontSize: 8, color: '#FFFFFF40', marginTop: 2 }}>Walk Sessions</Text>
+                </View>
+                <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#FFFFFF08' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>{walkStats.totalGpsKm} km</Text>
+                  <Text style={{ fontSize: 8, color: '#FFFFFF40', marginTop: 2 }}>GPS Distance</Text>
+                </View>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>{walkStats.longestWalkMs ? `${Math.round(walkStats.longestWalkMs / 60000)}m` : '—'}</Text>
+                  <Text style={{ fontSize: 8, color: '#FFFFFF40', marginTop: 2 }}>Longest Walk</Text>
+                </View>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* ── Weekly Activity ── */}

@@ -124,9 +124,19 @@ export async function playAlarmAudio(
   await stopActivePreview();
   setActiveAlarmSoundRef(soundRef);
   await stopAlarmAudio(soundRef);
-  // Silence native AlarmSoundService MediaPlayer if it happens to be running.
-  // For habit/quick alarms the native service is not active, so this is a no-op.
-  await setNativeAlarmVolume(0).catch(() => {});
+  // ── FOREGROUND FIX: Completely stop BOTH native alarm services FIRST so they
+  // release audio focus before we claim it with expo-av.
+  // - AlarmSoundService (wake alarm): stopped via stopNativeAlarmSound()
+  // - HabitAlarmSoundService (habit/quick alarm): stopped via HabitAlarmModule
+  // Just muting volume (setNativeAlarmVolume(0)) left the native service holding
+  // audio focus, causing expo-av createAsync to fail silently when the alarm fired
+  // while the app was already open in the foreground.
+  const { stopNativeAlarmSound: stopNative } = require('./nativeAlarm');
+  const { NativeModules } = require('react-native');
+  await Promise.all([
+    stopNative().catch(() => {}),
+    NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.()?.catch?.(() => {}),
+  ]);
 
   const sleepSound = ALL_SLEEP_SOUNDS.find(s => s.id === mantraId);
   const wakeSound = WAKE_SOUNDS.find(s => s.id === mantraId) ?? WAKE_SOUNDS[0];
@@ -138,6 +148,7 @@ export async function playAlarmAudio(
     : (wakeSound.audioUrl ?? null);
 
   try {
+    // Claim audio focus FIRST before touching native volume
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
@@ -145,14 +156,28 @@ export async function playAlarmAudio(
       interruptionModeIOS: 1,
       interruptionModeAndroid: 1,
     });
+    // Belt-and-suspenders: mute any residual native audio after claiming focus
+    await setNativeAlarmVolume(0).catch(() => {});
     const source = bundledAsset ?? (audioSrc ? { uri: audioSrc } : require('../assets/sounds/mantra_alarm.m4a'));
     const { sound } = await Audio.Sound.createAsync(
       source,
       { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },
     );
     soundRef.current = sound;
+    // Verify playback started (foreground audio session can be briefly interrupted)
+    setTimeout(async () => {
+      if (!soundRef.current) return;
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if ((status as any)?.isLoaded && !(status as any)?.isPlaying) {
+          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
+          await soundRef.current.playAsync();
+        }
+      } catch { /* ignore */ }
+    }, 800);
   } catch {
     try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
       const { sound } = await Audio.Sound.createAsync(
         require('../assets/sounds/mantra_alarm.m4a'),
         { shouldPlay: true, isLooping: true, volume: startDucked ? 0.06 : 1.0 },

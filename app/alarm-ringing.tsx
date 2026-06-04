@@ -300,11 +300,16 @@ export default function AlarmRingingScreen() {
     await stopActivePreview();
     setActiveAlarmSoundRef(soundRef);
     await stopWakeAudio();
-    // Silence the native AlarmSoundService MediaPlayer — JS audio takes over from here.
-    // Native service keeps running for wake lock / fullScreen notification, but its
-    // audio output is muted so we never get two mantras playing simultaneously.
-    await setNativeAlarmVolume(0).catch(() => {});
+    // ── FOREGROUND FIX: Completely stop native MediaPlayer FIRST so it releases
+    // audio focus before we claim it with expo-av. Just muting volume (setNativeAlarmVolume(0))
+    // was leaving the native service holding audio focus, which caused expo-av
+    // createAsync to fail silently when the alarm fired while the app was open.
+    // stopNativeAlarmSound() terminates the MediaPlayer and releases focus.
+    // We keep the foreground service alive for wake-lock via setNativeAlarmVolume(0)
+    // AFTER we have established the JS audio session.
+    await stopNativeAlarmSound().catch(() => {});
     try {
+      // Claim audio focus FIRST before touching native volume
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
@@ -312,14 +317,29 @@ export default function AlarmRingingScreen() {
         interruptionModeIOS: 1,
         interruptionModeAndroid: 1,
       });
+      // Now safe to mute any residual native audio (belt-and-suspenders)
+      await setNativeAlarmVolume(0).catch(() => {});
       const source = bundledAsset ?? (uri ? { uri } : require('../assets/sounds/mantra_alarm.m4a'));
       const { sound } = await Audio.Sound.createAsync(
         source,
         { shouldPlay: true, isLooping: true, volume: 1.0 },
       );
       soundRef.current = sound;
+      // Verify it's actually playing (foreground audio session can be interrupted)
+      setTimeout(async () => {
+        if (!soundRef.current) return;
+        try {
+          const status = await soundRef.current.getStatusAsync();
+          if ((status as any)?.isLoaded && !(status as any)?.isPlaying) {
+            await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
+            await soundRef.current.playAsync();
+          }
+        } catch { /* ignore */ }
+      }, 800);
     } catch {
       try {
+        // Retry with fresh audio mode claim
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true, shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1 });
         const { sound } = await Audio.Sound.createAsync(
           require('../assets/sounds/mantra_alarm.m4a'),
           { shouldPlay: true, isLooping: true, volume: 1.0 },
@@ -393,7 +413,9 @@ export default function AlarmRingingScreen() {
     return () => { deactivateKeepAwake('alarm-ringing'); };
   }, []);
 
-  // ── Silence ambient sound player when alarm starts ──────────────────────────
+  // ── Fast-start: begin stopping ambient sound immediately on mount ───────────
+  // The bootstrap also awaits stopAmbientSound before playing — this just
+  // starts the stop process early to reduce any perceived gap.
   useEffect(() => {
     stopAmbientSound(false).catch(() => {});
     dismissMoodSheet();
@@ -462,6 +484,7 @@ export default function AlarmRingingScreen() {
 
     const cancelBttfNotif = () => {
       notifee.cancelNotification(bttfNotifIdRef.current ?? 'alarm-bttf').catch(() => {});
+      notifee.cancelNotification('alarm-bttf').catch(() => {});
       bttfNotifIdRef.current = null;
     };
 
@@ -539,6 +562,18 @@ export default function AlarmRingingScreen() {
       rampMinutesRef.current = rampMins;
 
       // ── Play correct mantra / nature / gentle / fusion audio via JS layer ───
+      // FOREGROUND FIX: Stop ambient sound FIRST and wait for audio session release
+      // before claiming it with expo-av. Previously stopAmbientSound ran in a separate
+      // useEffect concurrently with playWakeAudio, causing audio session conflicts
+      // when the alarm fired while the app was already open.
+      if (!cancelled) {
+        await stopAmbientSound(false).catch(() => {});
+        dismissMoodSheet();
+        // Give the audio session 150ms to release before we reclaim it
+        await new Promise<void>(r => setTimeout(r, 150));
+      }
+      if (cancelled) return;
+
       if (!cancelled) {
         if (mantraId === 'fusion') {
           // Fusion path: 5-phase cross-fade sequence (nature → birds → sitar → mantra → flute)
@@ -641,12 +676,15 @@ export default function AlarmRingingScreen() {
       (global as any).__missionBgSound = soundRef.current;
       soundRef.current = null;
     }
-    // Mute native AlarmSoundService audio but KEEP the service running.
-    // alarm_fired_pending stays true → isAlarmActive() = true in MainActivity
-    // → onUserLeaveHint + lifecycle watchdog keep blocking HOME on mission screen.
-    // The service (and both watchdogs) are stopped in mission.tsx handleComplete().
+    // Stop vibration immediately — double-call after 300 ms catches any JVM restart
+    stopAlarmVibration().catch(() => {});
+    setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
+    // Mute native AlarmSoundService audio (keeps FGS alive for wake-lock on mission screen)
     await setNativeAlarmVolume(0).catch(() => {});
-    await stopAlarmVibration();
+    // Cancel all "bring to front" notifications so no notification can re-open
+    // the alarm screen after the user has tapped Begin Your Day.
+    notifee.cancelNotification('alarm-bttf').catch(() => {});
+    notifee.cancelNotification(bttfNotifIdRef.current ?? 'alarm-bttf').catch(() => {});
   };
 
   // ── START MISSION ───────────────────────────────────────────────────────────

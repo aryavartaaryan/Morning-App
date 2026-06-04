@@ -66,7 +66,7 @@ async function cacheOne(url: string): Promise<void> {
 
 // Night-theme editorial cards defined in sleep.tsx (not in data file)
 const NIGHT_THEME_URLS: readonly string[] = [
-  'https://images.pexels.com/photos/1252869/pexels-photo-1252869.jpeg?auto=compress&cs=tinysrgb&w=400',
+  'https://images.pexels.com/photos/6022435/pexels-photo-6022435.jpeg',
   'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=400',
   'https://images.pexels.com/photos/1295138/pexels-photo-1295138.jpeg?auto=compress&cs=tinysrgb&w=400',
   'https://images.pexels.com/photos/1448055/pexels-photo-1448055.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -117,4 +117,17 @@ export async function prefetchAllSoundImages(concurrency = 10): Promise<void> {
  */
 export async function ensureSoundImageCached(url: string): Promise<void> {
   await cacheOne(url);
+}
+
+/**
+ * Pre-download critical alarm images (habit alarm, wake alarm) immediately.
+ * These should be downloaded first since alarms can fire at any time.
+ * Call this with high priority on app startup.
+ */
+export async function prefetchCriticalAlarmImages(): Promise<void> {
+  const criticalUrls = [
+    SOUND_IMAGES.cuckoo_chime,  // Habit alarm image
+    SOUND_IMAGES.morning_birds, // Wake alarm fallback
+  ];
+  await Promise.allSettled(criticalUrls.map(cacheOne));
 }

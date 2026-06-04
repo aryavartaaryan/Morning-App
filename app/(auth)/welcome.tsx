@@ -1,13 +1,14 @@
 import React, { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Animated, Dimensions, useWindowDimensions,
+  Animated, Dimensions, useWindowDimensions, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { store, KEYS } from '@/lib/storage';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
+import { getBgSourceSync, getBgSource } from '@/lib/bgImages';
 
 const LANGS = [
   { id: 'en', native: 'English', flag: '🇬🇧' },
@@ -30,6 +31,15 @@ export default function WelcomeScreen() {
   const { height } = useWindowDimensions();
   const [lang, setLang] = React.useState('en');
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [bgUri, setBgUri] = React.useState<string>(() => getBgSourceSync('auth'));
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getBgSource('auth').then(uri => {
+      if (!cancelled) setBgUri(uri);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   React.useEffect(() => {
     Animated.loop(Animated.sequence([
@@ -49,7 +59,12 @@ export default function WelcomeScreen() {
   const LANG_W = (width - Spacing.lg * 2 - 8 * 2) / 3;
 
   return (
-    <LinearGradient colors={['#04021A', '#080428', '#0A0A0F']} style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: Colors.bg }}>
+      <Image 
+        source={{ uri: bgUri }} 
+        style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]} 
+        resizeMode="cover" 
+      />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingHorizontal: Spacing.lg, paddingTop: 12, paddingBottom: 16 }}>
 
@@ -117,6 +132,6 @@ export default function WelcomeScreen() {
           </Text>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }

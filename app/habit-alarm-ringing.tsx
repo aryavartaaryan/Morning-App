@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, AppState, Platform, NativeModules } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, BackHandler, StatusBar, Dimensions, AppState, Platform, NativeModules, ImageBackground } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,12 +7,16 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
+import { startAlarmVibration, stopAlarmVibration } from '@/lib/nativeAlarm';
 import { store, KEYS } from '@/lib/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { saveHabitLog, todayStr } from '@/lib/habitLogs';
 import { auth } from '@/lib/firebase';
 import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
+import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
+import { useBgContext } from '@/lib/bgContext';
 
 const { width, height } = Dimensions.get('window');
 const ACCENT = '#10b981';
@@ -25,6 +29,10 @@ export default function HabitAlarmRingingScreen() {
   const habitLabel = label ?? (alarmType === 'quick' ? 'Quick Alarm' : 'Habit Alarm');
   const emoji = habitEmoji ?? (alarmType === 'quick' ? '⚡' : '🌿');
   const isQuick = alarmType === 'quick';
+  // ── Background image (same as wake-up alarm) ──────────────────────────────
+  // Use useBgContext for the user's time-of-day wallpaper as primary source,
+  // fall back to the sound-specific image if no custom wallpaper is set.
+  const { bgUri } = useBgContext();
 
   // ── Safeguard: soundbath alarms should never land here ──────────────────────
   useEffect(() => {
@@ -40,6 +48,7 @@ export default function HabitAlarmRingingScreen() {
   const [stopped, setStopped] = useState(false);
   const [showStreakView, setShowStreakView] = useState(false);
   const [streakData, setStreakData] = useState<{ streak: number; weekDays: boolean[] } | null>(null);
+  const [imageCached, setImageCached] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
@@ -58,11 +67,40 @@ export default function HabitAlarmRingingScreen() {
     innerScale.value = withRepeat(withSequence(withTiming(1.10, { duration: 800 }), withTiming(1, { duration: 800 })), -1);
   }, []);
 
-  useEffect(() => { activateKeepAwakeAsync('habit-alarm'); return () => { deactivateKeepAwake('habit-alarm'); }; }, []);
+  useEffect(() => {
+    activateKeepAwakeAsync('habit-alarm');
+    if (Platform.OS === 'android') {
+      NativeModules.HabitAlarmModule?.acquireWakeLock?.().catch?.(() => {});
+    }
+    // Vibration will start AFTER audio is confirmed playing (see audio useEffect)
+    // This prevents the vibration-only gap when audio loads async
+    return () => {
+      deactivateKeepAwake('habit-alarm');
+      if (Platform.OS === 'android') {
+        NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
+      }
+      // Stop vibration when screen unmounts
+      stopAlarmVibration().catch(() => {});
+    };
+  }, []);
 
   useEffect(() => {
-    stopAmbientSound(false).catch(() => {});
+    // NOTE: stopAmbientSound is now called inside the audio useEffect below,
+    // BEFORE playAlarmAudio, to prevent audio session conflicts.
     dismissMoodSheet();
+  }, []);
+
+  // Preload cuckoo chime image for offline display
+  useEffect(() => {
+    (async () => {
+      try {
+        await ensureSoundImageCached(SOUND_IMAGES.cuckoo_chime);
+        setImageCached(true);
+      } catch (e) {
+        console.warn('[HabitAlarm] Image cache error:', e);
+        setImageCached(true); // Still mark as ready even if cache failed
+      }
+    })();
   }, []);
 
   // Mute the native HabitAlarmSoundService (instant start when killed) so JS takes over
@@ -78,14 +116,58 @@ export default function HabitAlarmRingingScreen() {
   // Play mantra audio — uses shared alarm audio core (same logic as working morning alarm)
   useEffect(() => {
     let cancelled = false;
+    let vibrationStarted = false;
     (async () => {
       try {
-        const cfg = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
-        const mantraId = (mantraIdParam as string | undefined) ?? cfg?.selectedMantraId ?? 'gayatri';
+        // ── FOREGROUND FIX: Stop ambient sound FIRST and wait for audio session
+        // release before claiming it. Running stopAmbientSound in a separate useEffect
+        // caused a race condition where both ran concurrently, leading to audio session
+        // conflicts when the alarm fired while the app was already open.
+        await stopAmbientSound(false).catch(() => {});
+        await new Promise<void>(r => setTimeout(r, 150));
+        if (cancelled) return;
+
+        const mantraId = (mantraIdParam as string | undefined) ?? 'cuckoo_chime';
         if (cancelled) return;
         await playAlarmAudio(soundRef, mantraId);
-        if (cancelled) await stopAlarmAudio(soundRef).catch(() => {});
-      } catch (e) { console.warn('[HabitAlarm] audio:', e); }
+        if (cancelled) { await stopAlarmAudio(soundRef).catch(() => {}); return; }
+        
+        // Start vibration NOW — audio is loaded and playing
+        if (!vibrationStarted) {
+          vibrationStarted = true;
+          startAlarmVibration().catch(() => {});
+        }
+        
+        // Ensure sound is playing after a short delay
+        setTimeout(() => {
+          if (!cancelled && soundRef.current) {
+            soundRef.current.getStatusAsync().then((status: any) => {
+              if (status?.isLoaded && !status?.isPlaying) {
+                soundRef.current?.playAsync().catch(() => {});
+              }
+            }).catch(() => {});
+          }
+        }, 500);
+        
+        // Additional check at 2 seconds to ensure audio is still playing
+        setTimeout(() => {
+          if (!cancelled && soundRef.current) {
+            soundRef.current.getStatusAsync().then((status: any) => {
+              if (status?.isLoaded && !status?.isPlaying) {
+                console.warn('[HabitAlarm] Audio stopped unexpectedly, restarting...');
+                soundRef.current?.playAsync().catch(() => {});
+              }
+            }).catch(() => {});
+          }
+        }, 2000);
+      } catch (e) {
+        // Audio failed — start vibration as fallback so alarm is still audible
+        if (!vibrationStarted) {
+          vibrationStarted = true;
+          startAlarmVibration().catch(() => {});
+        }
+        console.warn('[HabitAlarm] audio:', e);
+      }
     })();
     return () => {
       cancelled = true;
@@ -201,6 +283,19 @@ export default function HabitAlarmRingingScreen() {
       bttfNotifIdRef.current = null;
     };
 
+    const ensureAudioPlaying = async () => {
+      try {
+        if (soundRef.current) {
+          const status = await soundRef.current.getStatusAsync();
+          if (status?.isLoaded && !status?.isPlaying) {
+            await soundRef.current.playAsync();
+          }
+        }
+      } catch (e) {
+        console.warn('[HabitAlarm] Audio resume error:', e);
+      }
+    };
+
     const sub = AppState.addEventListener('change', (nextState) => {
       if (
         !stopped &&
@@ -209,9 +304,7 @@ export default function HabitAlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         fireBttfNotif();
-        soundRef.current?.getStatusAsync().then((st: any) => {
-          if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
-        }).catch(() => {});
+        ensureAudioPlaying();
       } else if (
         !stopped &&
         (appStateRef.current === 'background' || appStateRef.current === 'inactive') &&
@@ -219,9 +312,7 @@ export default function HabitAlarmRingingScreen() {
       ) {
         appStateRef.current = nextState;
         cancelBttfNotif();
-        soundRef.current?.getStatusAsync().then((st: any) => {
-          if (st?.isLoaded && !st?.isPlaying) soundRef.current?.playAsync().catch(() => {});
-        }).catch(() => {});
+        ensureAudioPlaying();
         // Native vibration continues uninterrupted in JVM service — just fire haptic.
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } else {
@@ -236,6 +327,19 @@ export default function HabitAlarmRingingScreen() {
   }, [stopped, emoji, habitLabel]);
 
   const stopAudio = async () => stopAlarmAudio(soundRef);
+
+  /**
+   * Stop habit alarm vibration by sending ACTION_STOP_VIBRATION directly to
+   * HabitAlarmSoundService. The existing stopAlarmVibration() from nativeAlarm.ts
+   * targets AlarmSoundService (wake alarm) — it has no effect on habit alarms.
+   */
+  const stopHabitAlarmVibration = () => {
+    try {
+      NativeModules.HabitAlarmModule?.stopHabitAlarmVibration?.().catch?.(() => {});
+    } catch { /* ignore */ }
+    // Belt-and-suspenders: also cancel any JS-side vibration
+    stopAlarmVibration().catch(() => {});
+  };
 
   const localDateStr = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -272,16 +376,27 @@ export default function HabitAlarmRingingScreen() {
     try { await notifee.cancelNotification(HABIT_FS_ID); } catch { /* ignore */ }
   };
 
-  const stopNative = () => {
-    NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.().catch?.(() => {});
+  const stopNative = async () => {
+    try {
+      await NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.();
+    } catch { /* ignore */ }
   };
 
   const handleComplete = async () => {
     setStopped(true);
+    // 1. Stop ALL alarm signals immediately — audio, vibration, native service
     await stopAudio();
-    stopNative();
+    // 2. Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService
+    stopHabitAlarmVibration();
+    setTimeout(() => { stopHabitAlarmVibration(); }, 300); // double-stop safety
+    // 3. Stop native service BEFORE navigating — this clears isAlarmActive() flag
+    // so the lifecycle watchdog stops trying to bring the app to front
+    await stopNative();
     await stopForegroundService();
     try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
+    try { await notifee.cancelNotification('habit-bttf'); } catch { /* ignore */ }
+    try { await notifee.cancelNotification('alarm-bttf'); } catch { /* ignore */ }
+    await notifee.cancelAllNotifications().catch(() => {});
     bttfNotifIdRef.current = null;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const user = auth.currentUser;
@@ -303,118 +418,140 @@ export default function HabitAlarmRingingScreen() {
 
   const handleQuit = async () => {
     setStopped(true);
+    // Stop ALL alarm signals immediately
     await stopAudio();
-    stopNative();
+    // Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService
+    stopHabitAlarmVibration();
+    setTimeout(() => { stopHabitAlarmVibration(); }, 300); // double-stop safety
+    // Stop native service BEFORE navigating — clears isAlarmActive() flag
+    await stopNative();
     await stopForegroundService();
     try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
+    try { await notifee.cancelNotification('habit-bttf'); } catch { /* ignore */ }
+    try { await notifee.cancelNotification('alarm-bttf'); } catch { /* ignore */ }
+    await notifee.cancelAllNotifications().catch(() => {});
     bttfNotifIdRef.current = null;
     await new Promise<void>(r => setTimeout(r, 150));
     router.replace('/(tabs)' as never);
   };
 
+  const soundImageUri = mantraIdParam === 'cuckoo_chime' || !mantraIdParam ? getLocalSoundImageUri(SOUND_IMAGES.cuckoo_chime) : SOUND_IMAGES[mantraIdParam as keyof typeof SOUND_IMAGES] ? getLocalSoundImageUri(SOUND_IMAGES[mantraIdParam as keyof typeof SOUND_IMAGES]) : getLocalSoundImageUri(SOUND_IMAGES.cuckoo_chime);
+  // Primary background: user's custom wallpaper from bgContext (same as alarm-ringing.tsx)
+  // Fallback: sound-specific image (cuckoo chime by default)
+  const bgSource = bgUri ? { uri: bgUri } : (soundImageUri ? { uri: soundImageUri } : undefined);
+
   return (
-    <View style={S.screen}>
-      <StatusBar hidden />
-      {/* Ambient glow */}
-      <View style={[S.bgGlow, { opacity: phase === 'active' ? 1 : 0.5 }]} pointerEvents="none" />
+    <ImageBackground source={bgSource} style={S.screen} imageStyle={{ opacity: bgUri ? 1 : 0.68 }}>
+      <View style={S.screen}>
+        <StatusBar hidden />
+        {/* Dark gradient overlay — heavier at top & bottom for readability */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.88)']}
+          locations={[0, 0.18, 0.55, 1]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+        {/* Ambient glow */}
+        <View style={[S.bgGlow, { opacity: phase === 'active' ? 1 : 0.5 }]} pointerEvents="none" />
 
-      {phase === 'countdown' ? (
-        /* ── Countdown 3-2-1 ── */
-        <View style={S.centerWrap}>
-          <View style={S.ringWrap} pointerEvents="none">
-            <Animated.View style={[S.outerRing, outerStyle, { borderColor: ACCENT + '55' }]} />
-            <View style={[S.midRing, { borderColor: ACCENT + '25' }]} />
-            <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: ACCENT + '18', borderColor: ACCENT + '50' }]}>
-              <Text style={[S.countdownNum, { color: ACCENT }]}>{countdown}</Text>
-            </Animated.View>
-          </View>
-          <Text style={S.countdownLabel}>{emoji}  {habitLabel}</Text>
-          <Text style={S.countdownSub}>{isQuick ? 'QUICK ALARM ACTIVATED' : 'HABIT ALARM ACTIVATED'}</Text>
-        </View>
-      ) : (
-        /* ── Commitment Screen ── */
-        <View style={S.commitWrap}>
-          <View style={S.commitTop}>
-            <View style={[S.typeBadge, { borderColor: ACCENT + '50', backgroundColor: ACCENT + '12' }]}>
-              <Text style={[S.typeBadgeTxt, { color: ACCENT }]}>{isQuick ? '⚡  QUICK ALARM  ·  LOCKED' : '🌿  HABIT ALARM  ·  LOCKED'}</Text>
+        {phase === 'countdown' ? (
+          /* ── Countdown 3-2-1 ── */
+          <View style={S.centerWrap} pointerEvents="none">
+            <View style={S.ringWrap} pointerEvents="none">
+              <Animated.View style={[S.outerRing, outerStyle, { borderColor: ACCENT + '55' }]} />
+              <View style={[S.midRing, { borderColor: ACCENT + '25' }]} />
+              <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: ACCENT + '18', borderColor: ACCENT + '50' }]}>
+                <Text style={[S.countdownNum, { color: ACCENT }]}>{countdown}</Text>
+              </Animated.View>
             </View>
-            <Animated.View style={[S.emojiRing, innerStyle, { borderColor: ACCENT + '45', backgroundColor: ACCENT + '10' }]}>
-              <Text style={S.bigEmoji}>{emoji}</Text>
-            </Animated.View>
-            <Text style={S.commitHabitName}>{habitLabel}</Text>
-            {!isQuick && (
-              <View style={S.riskBanner}>
-                <Text style={S.riskEmoji}>🔥</Text>
-                <Text style={S.riskTxt}>Your streak is at risk — act now!</Text>
+            <Text style={S.countdownLabel}>{emoji}  {habitLabel}</Text>
+            <Text style={S.countdownSub}>{isQuick ? 'QUICK ALARM ACTIVATED' : 'HABIT ALARM ACTIVATED'}</Text>
+          </View>
+        ) : (
+          /* ── Commitment Screen ── */
+          <View style={S.commitWrap} pointerEvents="box-none">
+            <View style={S.commitTop} pointerEvents="none">
+              <View style={[S.typeBadge, { borderColor: ACCENT + '50', backgroundColor: ACCENT + '12' }]}>
+                <Text style={[S.typeBadgeTxt, { color: ACCENT }]}>{isQuick ? '⚡  QUICK ALARM  ·  LOCKED' : '🌿  HABIT ALARM  ·  LOCKED'}</Text>
               </View>
-            )}
-          </View>
-
-          <View style={S.commitBottom}>
-            <Text style={S.commitQuestion}>{isQuick ? 'Tap below to dismiss your alarm.' : 'Ready to do this right now?'}</Text>
-            <TouchableOpacity style={[S.commitBtn, { backgroundColor: ACCENT }]} onPress={handleComplete} activeOpacity={0.88}>
-              <Text style={S.commitBtnTxt}>{isQuick ? '✓  DISMISS ALARM' : '✊  I COMMIT — I’LL DO IT NOW'}</Text>
-            </TouchableOpacity>
-            {!isQuick && (
-              <TouchableOpacity style={S.skipBtn} onPress={handleQuit} activeOpacity={0.7}>
-                <Text style={S.skipTxt}>Skip this time (streak will reset)</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
-
-      {phase !== 'countdown' && (
-        <View style={S.lockBar}>
-          <Text style={S.lockBarTxt}>{isQuick ? '🔒  Dismiss by tapping above' : '🔒  Dismiss only by committing'}</Text>
-        </View>
-      )}
-
-      {/* ── Alarmy-style streak celebration overlay ── */}
-      {showStreakView && streakData && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,16,10,0.97)', alignItems: 'center', justifyContent: 'center', zIndex: 999, paddingHorizontal: 28 }}>
-          <LinearGradient
-            colors={['#10b98118', '#10b98108']}
-            style={{ width: '100%', borderRadius: 28, borderWidth: 1.5, borderColor: '#10b98135', padding: 32, alignItems: 'center' }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '900', color: '#10b98170', letterSpacing: 2, marginBottom: 2 }}>{emoji}  {habitLabel}</Text>
-            <Text style={{ fontSize: 88, fontWeight: '100', color: '#10b981', letterSpacing: -4, lineHeight: 100 }}>{streakData.streak}</Text>
-            <Text style={{ fontSize: 12, fontWeight: '900', color: '#10b981CC', letterSpacing: 2.5, marginBottom: 28 }}>DAY STREAK  🔥</Text>
-
-            {/* SMTWTFS week pills */}
-            <View style={{ flexDirection: 'row', gap: 7, marginBottom: 28 }}>
-              {['S','M','T','W','T','F','S'].map((d, i) => {
-                const done = streakData.weekDays[i];
-                const isToday = i === new Date().getDay();
-                return (
-                  <View key={i} style={{
-                    width: 36, height: 44, borderRadius: 10, borderWidth: 1.5,
-                    borderColor: done ? '#10b981' : isToday ? '#10b98150' : '#FFFFFF15',
-                    backgroundColor: done ? '#10b98125' : isToday ? '#10b98108' : 'transparent',
-                    alignItems: 'center', justifyContent: 'center', gap: 5
-                  }}>
-                    <Text style={{ fontSize: 9, fontWeight: '900', color: done ? '#10b981' : isToday ? '#10b98180' : '#FFFFFF25' }}>{d}</Text>
-                    {done && <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />}
-                  </View>
-                );
-              })}
+              <Animated.View style={[S.emojiRing, innerStyle, { borderColor: ACCENT + '45', backgroundColor: ACCENT + '10' }]}>
+                <Text style={S.bigEmoji}>{emoji}</Text>
+              </Animated.View>
+              <Text style={S.commitHabitName}>{habitLabel}</Text>
+              {!isQuick && (
+                <View style={S.riskBanner}>
+                  <Text style={S.riskEmoji}>🔥</Text>
+                  <Text style={S.riskTxt}>Your streak is at risk — act now!</Text>
+                </View>
+              )}
             </View>
 
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFFBB', textAlign: 'center', lineHeight: 22 }}>
-              {streakData.streak === 1 ? 'First step taken 🌱\nEvery legend starts here.' : streakData.streak >= 30 ? `${streakData.streak} days — elite level! 👑\nYou are the 1%.` : streakData.streak >= 7 ? `${streakData.streak} days strong! 🏆\nBuilding an unbreakable routine.` : `Keep going! ${streakData.streak} days in 💪`}
-            </Text>
+            <View style={S.commitBottom}>
+              <Text style={S.commitQuestion}>{isQuick ? 'Tap below to dismiss your alarm.' : 'Ready to do this right now?'}</Text>
+              <TouchableOpacity style={[S.commitBtn, { backgroundColor: ACCENT }]} onPress={handleComplete} activeOpacity={0.88}>
+                <Text style={S.commitBtnTxt}>{isQuick ? '✓  DISMISS ALARM' : '✊  I COMMIT — I\'LL DO IT NOW'}</Text>
+              </TouchableOpacity>
+              {!isQuick && (
+                <TouchableOpacity style={S.skipBtn} onPress={handleQuit} activeOpacity={0.7}>
+                  <Text style={S.skipTxt}>Skip this time (streak will reset)</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
-            <TouchableOpacity
-              onPress={() => router.replace('/(tabs)' as never)}
-              style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 15, borderRadius: 16, backgroundColor: '#10b98122', borderWidth: 1, borderColor: '#10b98155' }}
-              activeOpacity={0.8}
+        {phase !== 'countdown' && (
+          <View style={S.lockBar}>
+            <Text style={S.lockBarTxt}>{isQuick ? '🔒  Dismiss by tapping above' : '🔒  Dismiss only by committing'}</Text>
+          </View>
+        )}
+
+        {/* ── Alarmy-style streak celebration overlay ── */}
+        {showStreakView && streakData && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,16,10,0.97)', alignItems: 'center', justifyContent: 'center', zIndex: 999, paddingHorizontal: 28 }}>
+            <LinearGradient
+              colors={['#10b98118', '#10b98108']}
+              style={{ width: '100%', borderRadius: 28, borderWidth: 1.5, borderColor: '#10b98135', padding: 32, alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#10b981', letterSpacing: 0.3 }}>Continue  →</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
-      )}
-    </View>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#10b98170', letterSpacing: 2, marginBottom: 2 }}>{emoji}  {habitLabel}</Text>
+              <Text style={{ fontSize: 88, fontWeight: '100', color: '#10b981', letterSpacing: -4, lineHeight: 100 }}>{streakData.streak}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: '#10b981CC', letterSpacing: 2.5, marginBottom: 28 }}>DAY STREAK  🔥</Text>
+
+              {/* SMTWTFS week pills */}
+              <View style={{ flexDirection: 'row', gap: 7, marginBottom: 28 }}>
+                {['S','M','T','W','T','F','S'].map((d, i) => {
+                  const done = streakData.weekDays[i];
+                  const isToday = i === new Date().getDay();
+                  return (
+                    <View key={i} style={{
+                      width: 36, height: 44, borderRadius: 10, borderWidth: 1.5,
+                      borderColor: done ? '#10b981' : isToday ? '#10b98150' : '#FFFFFF15',
+                      backgroundColor: done ? '#10b98125' : isToday ? '#10b98108' : 'transparent',
+                      alignItems: 'center', justifyContent: 'center', gap: 5
+                    }}>
+                      <Text style={{ fontSize: 9, fontWeight: '900', color: done ? '#10b981' : isToday ? '#10b98180' : '#FFFFFF25' }}>{d}</Text>
+                      {done && <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />}
+                    </View>
+                  );
+                })}
+              </View>
+
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFFBB', textAlign: 'center', lineHeight: 22 }}>
+                {streakData.streak === 1 ? 'First step taken 🌱\nEvery legend starts here.' : streakData.streak >= 30 ? `${streakData.streak} days — elite level! 👑\nYou are the 1%.` : streakData.streak >= 7 ? `${streakData.streak} days strong! 🏆\nBuilding an unbreakable routine.` : `Keep going! ${streakData.streak} days in 💪`}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => router.replace('/(tabs)' as never)}
+                style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 15, borderRadius: 16, backgroundColor: '#10b98122', borderWidth: 1, borderColor: '#10b98155' }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#10b981', letterSpacing: 0.3 }}>Continue  →</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
+      </View>
+    </ImageBackground>
   );
 }
 

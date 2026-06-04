@@ -71,10 +71,12 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopAlarmSound(promise: Promise) {
         try {
-            // Clear the alarm-active flag FIRST so that back/home button is unblocked
-            // immediately, before the service has a chance to re-launch the screen.
+            // Use .commit() (synchronous) not .apply() (async) so that isAlarmActive()
+            // in MainActivity reads false IMMEDIATELY — before onWindowFocusChanged or
+            // any watchdog fires. .apply() was causing a race where the flag was still
+            // true after the alarm was dismissed, making the app re-open itself.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("alarm_fired_pending", false).apply()
+                .edit().putBoolean("alarm_fired_pending", false).commit()
             reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
             promise.resolve("Sound stopped")
         } catch (e: Exception) {
@@ -112,6 +114,26 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             promise.resolve("Overlay dismissed")
         } catch (e: Exception) {
             promise.reject("OVERLAY_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Exit Lock Task (screen pinning) mode.
+     * Called from mission.tsx handleComplete() immediately after stopping the alarm
+     * so the user is never trapped inside the app after mission completion.
+     */
+    @ReactMethod
+    fun stopLockTask(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try { activity.stopLockTask() } catch (_: Exception) {}
+                }
+            }
+            promise.resolve("OK")
+        } catch (e: Exception) {
+            promise.reject("LOCK_TASK_ERROR", e.message, e)
         }
     }
 

@@ -1,13 +1,15 @@
-// ─── Crash Toast Logger ──────────────────────────────────────────────────────
+// ─── Toast Logger ─────────────────────────────────────────────────────────────
 // Intercepts global JS errors + unhandled promise rejections and pipes them
 // to a visible on-screen toast so you can read crash logs without a debugger.
+// Also supports info/debug messages for step tracking diagnostics.
 
-export type ToastType = 'crash' | 'error' | 'warn';
+export type ToastType = 'crash' | 'error' | 'warn' | 'info' | 'debug';
 
 export type ToastEntry = {
   id: number;
   message: string;
   type: ToastType;
+  timestamp: string; // HH:MM:SS
 };
 
 type Listener = (entry: ToastEntry) => void;
@@ -16,21 +18,33 @@ let _id = 1;
 let _listener: Listener | null = null;
 const _queue: ToastEntry[] = [];
 
+function nowTime(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
 export const ToastLogger = {
-  /** Called once when <CrashToast /> mounts. Flushes any queued pre-mount errors. */
+  /** Called once when <CrashToast /> mounts. Flushes any queued pre-mount entries. */
   register(fn: Listener | null) {
     _listener = fn;
     if (fn) _queue.splice(0).forEach(fn);
   },
 
   push(message: string, type: ToastType = 'crash') {
-    const entry: ToastEntry = { id: _id++, message: String(message), type };
+    const entry: ToastEntry = { id: _id++, message: String(message), type, timestamp: nowTime() };
     if (_listener) {
       _listener(entry);
     } else {
       _queue.push(entry);
     }
   },
+
+  /** Shorthand for step-tracking info logs */
+  info(message: string) { this.push(message, 'info'); },
+  /** Shorthand for verbose debug logs */
+  debug(message: string) { this.push(message, 'debug'); },
+  /** Shorthand for warnings */
+  warn(message: string) { this.push(message, 'warn'); },
 };
 
 /**
@@ -38,8 +52,7 @@ export const ToastLogger = {
  * renders. Errors are queued until <CrashToast /> registers its listener.
  */
 export function installCrashToast() {
-  // 1. Global JS exception handler (covers crashes + unhandled promise rejections
-  //    in Hermes/JSC, since RN routes them all through ErrorUtils)
+  // 1. Global JS exception handler
   try {
     const prev = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
@@ -52,11 +65,9 @@ export function installCrashToast() {
     // ErrorUtils unavailable (web / test env) — ignore
   }
 
-  // 2. console.error override — catches errors that don't go through ErrorUtils
-  //    (e.g. explicit console.error calls in catch blocks)
+  // 2. console.error override
   const _origError = console.error.bind(console);
   console.error = (...args: unknown[]) => {
-    // Skip React's own verbose prop-type / deprecation warnings to reduce noise
     const first = String(args[0] ?? '');
     const isReactNoise =
       first.startsWith('Warning:') ||

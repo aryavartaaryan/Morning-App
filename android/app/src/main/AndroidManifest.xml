@@ -23,6 +23,13 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+  <uses-permission android:name="android.permission.BODY_SENSORS"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
+
+  <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false"/>
+  <uses-feature android:name="android.hardware.sensor.stepdetector" android:required="false"/>
+
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -112,5 +119,14 @@
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="alarm"/>
     </service>
+    <!-- StepCounterService — native foreground service for real-time step counting -->
+    <!-- Uses TYPE_STEP_DETECTOR (per-step, no batching) + TYPE_STEP_COUNTER (accuracy) -->
+    <!-- foregroundServiceType="health" allows running while screen is off (Android 14+) -->
+    <service
+      android:name=".StepCounterService"
+      android:exported="false"
+      android:stopWithTask="false"
+      android:foregroundServiceType="health"/>
+
   </application>
 </manifest>

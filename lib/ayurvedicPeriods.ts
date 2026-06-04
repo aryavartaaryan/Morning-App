@@ -52,10 +52,10 @@ export const PERIOD_TEMPLATES = [
     id: 'night_vata',
     dosha: 'vata' as DoshaType,
     label: 'Night Vata',
-    englishLabel: 'Pre-Dawn Clarity Window',
+    englishLabel: 'Neuroplasticity Peak Hour',
     emoji: '✨',
-    color: '#818cf8',
-    bgColor: 'rgba(129,140,248,0.09)',
+    color: '#c7d2e0',
+    bgColor: 'rgba(199,210,224,0.08)',
     sciEmoji: '🧠',
     sciTitle: 'Pre-Dawn Neuroplasticity Peak',
     sciDesc: 'Alpha & theta brainwaves dominate the pre-dawn hours (EEG confirmed). Cortisol Awakening Response begins its surge. The subconscious–conscious veil is thinnest — neuroplasticity peaks. This window contains the sacred Brahma Muhurta (96–48 min before sunrise) — the pinnacle of this period for meditation and spiritual practice.',
@@ -66,7 +66,7 @@ export const PERIOD_TEMPLATES = [
     id: 'morning_kapha',
     dosha: 'kapha' as DoshaType,
     label: 'Morning Kapha',
-    englishLabel: 'Anabolic Power Hour',
+    englishLabel: 'Rise & Build',
     emoji: '💪',
     color: '#34d399',
     bgColor: 'rgba(52,211,153,0.08)',
@@ -80,7 +80,7 @@ export const PERIOD_TEMPLATES = [
     id: 'midday_pitta',
     dosha: 'pitta' as DoshaType,
     label: 'Solar Pitta',
-    englishLabel: 'Metabolic Fire Peak',
+    englishLabel: 'Peak Focus Period',
     emoji: '🔥',
     color: '#fb923c',
     bgColor: 'rgba(251,146,60,0.08)',
@@ -91,11 +91,25 @@ export const PERIOD_TEMPLATES = [
     avoidances: ['Skipping or delaying lunch', 'Overworking without breaks', 'Excessive spicy / fried food', 'Anger, conflict & arguments'],
   },
   {
+    id: 'midday_pitta_late',
+    dosha: 'pitta' as DoshaType,
+    label: 'Digestive Pitta',
+    englishLabel: 'Energy Dip Phase',
+    emoji: '🍃',
+    color: '#f59e0b',
+    bgColor: 'rgba(245,158,11,0.08)',
+    sciEmoji: '🩸',
+    sciTitle: 'Post-Solar Digestive Dip',
+    sciDesc: 'As the sun crosses its zenith, your body shifts blood flow to the digestive tract. A natural post-solar cortisol dip occurs, triggering a mild rest phase. This is an optimal window for digestion, not high-cognitive output.',
+    activities: ['Rest and digest', 'Light walking to aid digestion', 'Low-cognitive routine tasks', 'Brief restorative pause'],
+    avoidances: ['High-stakes decision making', 'Intense physical exertion immediately after eating', 'Excessive caffeine to fight the dip', 'Deep focused cognitive work'],
+  },
+  {
     id: 'afternoon_vata',
     dosha: 'vata' as DoshaType,
     label: 'Vata Flow',
-    englishLabel: 'Neural Peak Phase',
-    emoji: '🌬️',
+    englishLabel: 'Creative Peak Hours',
+    emoji: '⚡',
     color: '#a78bfa',
     bgColor: 'rgba(167,139,250,0.08)',
     sciEmoji: '⚡',
@@ -108,10 +122,10 @@ export const PERIOD_TEMPLATES = [
     id: 'evening_kapha',
     dosha: 'kapha' as DoshaType,
     label: 'Kapha Dusk',
-    englishLabel: 'Parasympathetic Wind-Down',
-    emoji: '🌅',
-    color: '#34d399',
-    bgColor: 'rgba(52,211,153,0.06)',
+    englishLabel: 'Evening Wind Down',
+    emoji: '🌙',
+    color: '#c7d2e0',
+    bgColor: 'rgba(199,210,224,0.06)',
     sciEmoji: '🌙',
     sciTitle: 'Circadian Wind-Down Phase',
     sciDesc: 'Melatonin synthesis begins as ambient light fades. Core temperature drops ~0.5°C/hr. Cortisol declines, parasympathetic NS activates — body enters anabolic rest-preparation mode. Blue-light now disrupts sleep more than any other time.',
@@ -124,9 +138,9 @@ export const PERIOD_TEMPLATES = [
     label: 'Nocturnal Pitta',
     englishLabel: 'Deep Repair & Detox Phase',
     emoji: '🌕',
-    color: '#fbbf24',
-    bgColor: 'rgba(251,191,36,0.06)',
-    sciEmoji: '🔬',
+    color: '#F59E0B',
+    bgColor: 'rgba(245,158,11,0.06)',
+    sciEmoji: '🧬',
     sciTitle: 'Nocturnal Repair & Detox Phase',
     sciDesc: 'Growth Hormone (GH) secretion peaks during slow-wave sleep. Liver Phase I & II detoxification enzymes are maximally active. Cellular autophagy, protein synthesis & DNA repair — the body literally rebuilds itself every night.',
     activities: ['Deep uninterrupted sleep (7–8 hrs)', 'Maintain intermittent fasting window', 'Allow full REM & deep-sleep cycles', 'Dream journaling upon waking'],
@@ -147,14 +161,24 @@ export function getDoshaPeriods(solar: SolarTimes, nowH: number): DoshaPeriod[] 
   // night_vata (pre-dawn clarity) covers that window; it shifts daily with solar sunrise.
   // night_pitta (deep sleep) fills from end of evening_kapha to Brahma Muhurta onset.
   const brahmaMuhurta = sunrise + 24 - (96 / 60); // 96 min before next sunrise
-  // Order: predawn, morning-kapha, midday-pitta, afternoon-vata, evening-kapha, night-pitta
+
+  // Energy Dip: starts 1.5 hrs after solar noon, ends 3 hrs after solar noon (~90 min dip)
+  // This matches the circadian alertness trough confirmed by chronobiology research.
+  // Capped so it never overlaps sunset (edge case protection).
+  const dipStart = solar.solarNoon + 1.5;
+  const dipEnd   = Math.min(solar.solarNoon + 3, sunset - 0.5);
+  // Afternoon Vata starts right when the dip ends — anchored to real sun position.
+  const vataStart = dipEnd;
+
+  // Order: predawn, morning-kapha, midday-pitta, energy-dip, afternoon-vata, evening-kapha, night-pitta
   const RANGES: [string, number, number][] = [
-    ['night_vata',     brahmaMuhurta,           sunrise + 24],        // Brahma Muhurta → sunrise
-    ['morning_kapha',   sunrise,                sunrise + daySeg],    // e.g. 6–10 AM
-    ['midday_pitta',    sunrise + daySeg,        sunrise + 2 * daySeg],
-    ['afternoon_vata',  sunrise + 2 * daySeg,    sunset],
-    ['evening_kapha',   sunset,                  sunset + nightSeg],  // e.g. 18–22
-    ['night_pitta',     sunset + nightSeg,        brahmaMuhurta],     // deep sleep until Brahma Muhurta
+    ['night_vata',        brahmaMuhurta,  sunrise + 24],  // Brahma Muhurta → sunrise
+    ['morning_kapha',     sunrise,        sunrise + daySeg], // e.g. 6–10 AM
+    ['midday_pitta',      sunrise + daySeg, dipStart],    // Peak focus: ~10 AM → 1:30 PM
+    ['midday_pitta_late', dipStart,       dipEnd],         // Energy Dip: ~1:30 PM → 3:00 PM (sun-based)
+    ['afternoon_vata',    vataStart,      sunset],         // Creative peak: ~3 PM → sunset
+    ['evening_kapha',     sunset,         sunset + nightSeg], // e.g. 6:30–10 PM
+    ['night_pitta',       sunset + nightSeg, brahmaMuhurta], // deep sleep until Brahma Muhurta
   ];
 
   // Normalise nowH so early-morning hours map to the night cycle
@@ -166,6 +190,7 @@ export function getDoshaPeriods(solar: SolarTimes, nowH: number): DoshaPeriod[] 
     let status: 'upcoming' | 'active' | 'completed';
     let minutesUntil = 0;
     let minutesRemaining = 0;
+
 
     if (nowNorm < absStart) {
       status = 'upcoming';

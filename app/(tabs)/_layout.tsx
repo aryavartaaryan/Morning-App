@@ -49,6 +49,41 @@ function VeenaIcon({ size = 23, color = '#7A9A7A', filled = false }: {
   );
 }
 
+function SonicSunriseIcon({ size = 23, color = '#7A9A7A', filled = false }: {
+  size?: number;
+  color?: string;
+  filled?: boolean;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* Sun Body */}
+      <Path
+        d="M 6.5 14 A 5.5 5.5 0 0 1 17.5 14 Z"
+        fill={filled ? color : 'none'}
+        stroke={color}
+        strokeWidth={filled ? 0 : 1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Sun Rays */}
+      <Path d="M 12 2 L 12 5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M 5 4.5 L 7 6.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M 19 4.5 L 17 6.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M 2 10 L 4.5 10" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M 22 10 L 19.5 10" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      
+      {/* Soundwave Horizon */}
+      <Path
+        d="M 1 14 C 3 14, 5 17, 7.5 17 C 10 17, 10 11, 12 11 C 14 11, 14 17, 16.5 17 C 19 17, 21 14, 23 14"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const fmtTimer = (s: number) => `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
 
@@ -317,6 +352,7 @@ function WaveformBars({ color, active }: { color: string; active: boolean }) {
 }
 
 function GlobalPlayerBar() {
+  const router = useRouter();
   const { playingId, isPaused, sessionSecs, playingMeta, mixedSounds, togglePause, stopSound, openReelsOrPlayer } = useSoundPlayer();
   const slideAnim  = useRef(new Animated.Value(100)).current;
   const glowAnim   = useRef(new Animated.Value(0.4)).current;
@@ -380,7 +416,12 @@ function GlobalPlayerBar() {
         {/* Left — emoji art square */}
         <TouchableOpacity
           style={GP.bodyTap}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openReelsOrPlayer(); }}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.navigate('/(tabs)/sleep');
+            // Allow navigation state to update before opening modal
+            setTimeout(() => openReelsOrPlayer(), 50);
+          }}
           activeOpacity={0.80}
         >
           <View style={[GP.emojiBox, { backgroundColor: accentColor + '22', borderColor: accentColor + '40' }]}>
@@ -598,6 +639,8 @@ function CustomTabBar() {
       <View style={styles.pill}>
         {TABS.map(tab => {
           const focused = path === '/' ? tab.name === 'index' : path.endsWith(tab.name);
+          const focusedColor = '#1A2E1A';
+          const unfocusedColor = '#5A7A5A';
           return (
             <TouchableOpacity
               key={tab.name}
@@ -605,46 +648,45 @@ function CustomTabBar() {
               activeOpacity={0.7}
               style={styles.tabItem}
             >
-              <View style={[styles.iconWrap, focused && { backgroundColor: '#2D4D2D22' }]}>
+              <View style={[styles.iconWrap, focused && { backgroundColor: focusedColor + '22' }]}>
                 {tab.name === 'sleep' ? (
-                  <VeenaIcon size={23} color={focused ? '#2D4D2D' : '#7A9A7A'} filled={focused} />
+                  <VeenaIcon size={23} color={focused ? focusedColor : unfocusedColor} filled={focused} />
+                ) : tab.name === 'alarms' ? (
+                  <SonicSunriseIcon size={23} color={focused ? focusedColor : unfocusedColor} filled={focused} />
                 ) : (
                   <Ionicons
                     name={getTimeTabIcon(tab.name, hour, focused) as any}
                     size={23}
-                    color={focused ? '#2D4D2D' : '#7A9A7A'}
+                    color={focused ? focusedColor : unfocusedColor}
                   />
                 )}
               </View>
               {tab.name === 'sleep' ? (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontSize: 11, fontWeight: '900', letterSpacing: 0.2 }]}>
+                  <Text style={[styles.label, { color: focused ? focusedColor : unfocusedColor, fontSize: 11, fontWeight: '900', letterSpacing: 0.2 }]}>
                     Nāda
                   </Text>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
+                  <Text style={[styles.label, { color: focused ? focusedColor + '88' : unfocusedColor + '88', fontWeight: '500', marginTop: -1 }]}>
                     Sounds
                   </Text>
                 </View>
               ) : tab.name === 'alarms' ? (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontWeight: '900', letterSpacing: 0.2 }]}>
-                    Heal
-                  </Text>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
-                    Alarm
+                  <Text style={[styles.label, { color: focused ? focusedColor : unfocusedColor, fontWeight: '900', letterSpacing: 0.2 }]}>
+                    Rise
                   </Text>
                 </View>
               ) : tab.name === 'walk' ? (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A', fontWeight: '900', letterSpacing: 0.2 }]}>
-                    Walk
+                  <Text style={[styles.label, { color: focused ? focusedColor : unfocusedColor, fontWeight: '900', letterSpacing: 0.2 }]}>
+                    Step
                   </Text>
-                  <Text style={[styles.label, { color: focused ? '#2D4D2D77' : '#7A9A7A77', fontWeight: '500', marginTop: -1 }]}>
+                  <Text style={[styles.label, { color: focused ? focusedColor + '88' : unfocusedColor + '88', fontWeight: '500', marginTop: -1 }]}>
                     Track
                   </Text>
                 </View>
               ) : (
-                <Text style={[styles.label, { color: focused ? '#2D4D2D' : '#7A9A7A' }]}>
+                <Text style={[styles.label, { color: focused ? focusedColor : unfocusedColor, fontWeight: focused ? '900' : '700', letterSpacing: 0.2 }]}>
                   {tab.label}
                 </Text>
               )}

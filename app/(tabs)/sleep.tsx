@@ -4,6 +4,7 @@ import {
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -148,7 +149,7 @@ const SLEEP_HIDDEN_IDS = new Set([
   'nada_tabla_flute_strings_ii',
   'nada_rhythm_riot',
 ]);
-const CATEGORIES = ['All', 'Nature', 'Meditations', 'Birds', 'Ragas'] as const;
+const CATEGORIES = ['All', 'Nature', 'Sleep', 'Meditations', 'Birds', 'Ragas'] as const;
 type Category = typeof CATEGORIES[number];
 
 const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
@@ -451,7 +452,7 @@ const PERIOD_DAY_HINTS: Record<string, { icon: string; name: string; line1: stri
 
 // ─── Night themes (editorial cards) ────────────────────────────────────────
 const NIGHT_THEMES = [
-  { id: 'deep_sleep',   title: 'Deep Sleep',    subtitle: 'TOTAL SURRENDER', tags: 'All night',  category: 'All'     as Category, gradient: ['#04021A', '#080525', '#030110'] as const, orb1: '#1A0A50', orb2: '#100830', accent: '#7c3aed', featuredId: 'light_rain'    as SoundId, imageUri: 'https://images.pexels.com/photos/1252869/pexels-photo-1252869.jpeg?auto=compress&cs=tinysrgb&w=400' },
+  { id: 'deep_sleep',   title: 'Deep Sleep',    subtitle: 'TOTAL SURRENDER', tags: 'All night',  category: 'All'     as Category, gradient: ['#04021A', '#080525', '#030110'] as const, orb1: '#1A0A50', orb2: '#100830', accent: '#7c3aed', featuredId: 'light_rain'    as SoundId, imageUri: 'https://images.pexels.com/photos/6022435/pexels-photo-6022435.jpeg' },
   { id: 'rain_stories', title: 'Rain Stories',  subtitle: 'WASH IT AWAY',    tags: 'Storm',      category: 'Nature'  as Category, gradient: ['#061825', '#0A2235', '#040E1A'] as const, orb1: '#0D3050', orb2: '#051528', accent: '#60a5fa', featuredId: 'light_rain'    as SoundId, imageUri: 'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=400'   },
   { id: 'ocean_drift',  title: 'Ocean Drift',   subtitle: 'DEEP BLUE PEACE', tags: 'Coastal',    category: 'Nature'  as Category, gradient: ['#041A20', '#062530', '#021015'] as const, orb1: '#083540', orb2: '#041A25', accent: '#38bdf8', featuredId: 'sea_waves'     as SoundId, imageUri: 'https://images.pexels.com/photos/1295138/pexels-photo-1295138.jpeg?auto=compress&cs=tinysrgb&w=400' },
   { id: 'forest_night', title: 'Forest Night',  subtitle: 'EARTH & SILENCE', tags: 'Wilderness', category: 'Nature'  as Category, gradient: ['#041508', '#07200D', '#020A04'] as const, orb1: '#0A2F12', orb2: '#042008', accent: '#4ade80', featuredId: 'forest_breeze' as SoundId, imageUri: 'https://images.pexels.com/photos/1448055/pexels-photo-1448055.jpeg?auto=compress&cs=tinysrgb&w=400' },
@@ -833,6 +834,7 @@ const SwipeHint = memo(function SwipeHint({ color }: { color: string }) {
 });
 
 const CATEGORY_META: Record<string, { emoji: string; color: string }> = {
+  Sleep:       { emoji: '🌙', color: '#60a5fa' },
   Nature:      { emoji: '🍃', color: '#86efac' },
   Meditations: { emoji: '🕉️', color: '#c084fc' },
   Birds:       { emoji: '🐦', color: '#fde68a' },
@@ -840,8 +842,24 @@ const CATEGORY_META: Record<string, { emoji: string; color: string }> = {
   World:       { emoji: '🌍', color: '#34d399' },
 };
 
+function getCategoryMeta(cat: string, periodId?: string | null): { emoji: string; color: string } {
+  if (cat === 'Nature' && periodId) {
+    switch (periodId) {
+      case 'night_vata':        return { emoji: '✨', color: '#22d3ee' }; // Brahma teal / awakening
+      case 'morning_kapha':     return { emoji: '💪', color: '#34d399' }; // kapha green
+      case 'midday_pitta':      return { emoji: '🔥', color: '#fb923c' }; // pitta orange
+      case 'midday_pitta_late': return { emoji: '🍃', color: '#f59e0b' }; // dip amber
+      case 'afternoon_vata':    return { emoji: '⚡', color: '#a78bfa' }; // vata violet
+      case 'evening_kapha':     return { emoji: '🌅', color: '#60a5fa' }; // sunset blue
+      case 'night_pitta':       return { emoji: '🌙', color: '#F59E0B' }; // repair gold
+    }
+  }
+  return CATEGORY_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+}
+
 const CAT_ICONS: Partial<Record<Category, string>> = {
   All:         'apps',
+  Sleep:       'moon',
   Nature:      'leaf',
   Meditations: 'flower',
   Birds:       'feather',
@@ -849,6 +867,11 @@ const CAT_ICONS: Partial<Record<Category, string>> = {
 };
 
 const CATEGORY_SUBTAGS: Partial<Record<Category, Array<{ emoji: string; label: string }>>> = {
+  Sleep: [
+    { emoji: '🌧️', label: 'Rain' },
+    { emoji: '🌊', label: 'Ocean' },
+    { emoji: '🌳', label: 'Forest' },
+  ],
   Nature: [
     { emoji: '🌧️', label: 'Rain' },
     { emoji: '🌊', label: 'Ocean' },
@@ -966,7 +989,10 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const iconName = (CAT_ICONS[cat] ?? 'musical-notes') as any;
               const color = meta.color;
               const cardW = (W - 40 - 12) / 2;
-              const soundCount = [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat)].length;
+              const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
+              const soundCount = cat === 'Sleep'
+                ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length
+                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat)].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -999,10 +1025,11 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
 
 // ─── Category Tab Strip — swipeable top tabs ─────────────────────────────────
 const CategoryTabStrip = memo(function CategoryTabStrip({
-  selectedCat, onSelect,
+  selectedCat, onSelect, activePeriodId,
 }: {
   selectedCat: Category;
   onSelect: (cat: Category, dir?: number) => void;
+  activePeriodId?: string | null;
 }) {
   const tabLayouts = useRef<Record<string, { x: number; width: number }>>({});
   const indicatorX = useRef(new Animated.Value(0)).current;
@@ -1021,8 +1048,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       indicatorW.setValue(layout.width);
     } else {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 22, stiffness: 300, mass: 0.8 }),
-        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 22, stiffness: 300, mass: 0.8 }),
+        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 28, stiffness: 380, mass: 0.6 }),
+        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 28, stiffness: 380, mass: 0.6 }),
       ]).start();
     }
   };
@@ -1033,12 +1060,15 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.2,
+        Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.0,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
         const idx = CATEGORIES.indexOf(selectedCatRef.current);
-        if (gs.dx < -45 && idx < CATEGORIES.length - 1) {
+        const velocity = Math.abs(gs.vx);
+        const threshold = velocity > 0.4 ? 28 : 45;
+        if (gs.dx < -threshold && idx < CATEGORIES.length - 1) {
           onSelectRef.current(CATEGORIES[idx + 1] as Category, -1);
-        } else if (gs.dx > 45 && idx > 0) {
+        } else if (gs.dx > threshold && idx > 0) {
           onSelectRef.current(CATEGORIES[idx - 1] as Category, 1);
         }
       },
@@ -1047,7 +1077,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
 
   const activeColor = selectedCat === 'All'
     ? '#FFFFFF'
-    : (CATEGORY_META[selectedCat]?.color ?? '#FFFFFF');
+    : getCategoryMeta(selectedCat, activePeriodId).color;
 
   return (
     <View
@@ -1147,6 +1177,7 @@ const CategoryModeBadge = memo(function CategoryModeBadge({
 // ─── Calm-style Category Rows ─────────────────────────────────────────────────
 const CategoryRows = memo(function CategoryRows({
   playingId, isPaused, sessionSecs, onPress, selectedCat, onSelectCat, resetKey,
+  natureLabel, activePeriodId,
 }: {
   playingId: string | null;
   isPaused: boolean;
@@ -1155,6 +1186,8 @@ const CategoryRows = memo(function CategoryRows({
   selectedCat: Category;
   onSelectCat: (cat: Category) => void;
   resetKey?: number;
+  natureLabel?: string;
+  activePeriodId?: string | null;
 }) {
   const displayCats = selectedCat === 'All'
     ? (CATEGORIES.slice(1) as readonly Category[])
@@ -1162,24 +1195,17 @@ const CategoryRows = memo(function CategoryRows({
   const isFiltered = selectedCat !== 'All';
   const gridCardW = Math.floor((W - 50) / 2); // 20px pad each side + 10px gap
 
-  // Imperative scroll reset — no remount, images stay in memory (no flicker)
-  const scrollRefs = useRef<Record<string, any>>({});
-  useEffect(() => {
-    if (!resetKey) return;
-    Object.values(scrollRefs.current).forEach(ref => {
-      ref?.scrollTo?.({ x: 0, animated: false });
-    });
-  }, [resetKey]);
-
   return (
     <View style={{ paddingBottom: 8 }}>
       {displayCats.map((cat, catIdx) => {
-        const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
-        const nadaSounds = NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
-        const mantraSounds = MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
+        // 'Sleep' category mirrors all Nature sounds
+        const effectiveCat = cat === 'Sleep' ? 'Nature' : cat;
+        const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
+        const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
+        const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
         const sounds: any[] = [...localSounds, ...nadaSounds, ...mantraSounds];
         if (!sounds.length) return null;
-        const meta = CATEGORY_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+        const meta = getCategoryMeta(cat, activePeriodId);
         const subtags = CATEGORY_SUBTAGS[cat];
         return (
           <View key={cat}>
@@ -1200,11 +1226,33 @@ const CategoryRows = memo(function CategoryRows({
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
                       <View style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: meta.color }} />
                       <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>
-                        {cat}
+                        {cat === 'Nature' ? natureLabel : cat}
                       </Text>
+                      {cat === 'Nature' && activePeriodId && (
+                        <View style={{
+                          backgroundColor: `${meta.color}18`,
+                          borderColor: `${meta.color}38`,
+                          borderWidth: 1,
+                          borderRadius: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 1.5,
+                          alignSelf: 'center',
+                        }}>
+                          <Text style={{
+                            fontSize: 7.5,
+                            fontWeight: '900',
+                            color: meta.color,
+                            letterSpacing: 0.8,
+                            fontFamily: 'Nunito_900Black',
+                          }}>
+                            RHYTHM ALIGNED
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 ) : (
+                  /* All mode — tappable header to switch to filtered view */
                   <TouchableOpacity
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelectCat(cat); }}
                     activeOpacity={0.72}
@@ -1213,15 +1261,36 @@ const CategoryRows = memo(function CategoryRows({
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
                       <View style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: meta.color }} />
                       <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>
-                        {cat}
+                        {cat === 'Nature' ? natureLabel : cat}
+                      </Text>
+                      {cat === 'Nature' && activePeriodId && (
+                        <View style={{
+                          backgroundColor: `${meta.color}18`,
+                          borderColor: `${meta.color}38`,
+                          borderWidth: 1,
+                          borderRadius: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 1.5,
+                          alignSelf: 'center',
+                        }}>
+                          <Text style={{
+                            fontSize: 7.5,
+                            fontWeight: '900',
+                            color: meta.color,
+                            letterSpacing: 0.8,
+                            fontFamily: 'Nunito_900Black',
+                          }}>
+                            RHYTHM ALIGNED
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontWeight: '500', marginLeft: 2 }}>
+                        {sounds.length}
                       </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '500', letterSpacing: 0.5 }}>swipe</Text>
-                        <Ionicons name="chevron-forward" size={11} color="rgba(255,255,255,0.30)" />
-                      </View>
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', fontWeight: '500', letterSpacing: 0.1 }}>See All</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${meta.color}18`, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: `${meta.color}30` }}>
+                      <Text style={{ fontSize: 10, color: meta.color, fontWeight: '700', letterSpacing: 0.4 }}>Filter</Text>
+                      <Ionicons name="chevron-forward" size={10} color={meta.color} />
                     </View>
                   </TouchableOpacity>
                 )}
@@ -1238,44 +1307,19 @@ const CategoryRows = memo(function CategoryRows({
                 </View>
               )}
 
-              {isFiltered ? (
-                /* ── 2-column grid for filtered category view ── */
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10, paddingBottom: 12 }}>
-                  {sounds.map(s => (
-                    <CalmSoundCard
-                      key={s.id}
-                      sound={s}
-                      isPlaying={playingId === s.id}
-                      isPaused={isPaused && playingId === s.id}
-                      onPress={() => onPress(s.id)}
-                      width={gridCardW}
-                    />
-                  ))}
-                </View>
-              ) : (() => {
-                return (
-                  <GHScrollView
-                    ref={(r: any) => { scrollRefs.current[cat] = r; }}
-                    horizontal
-                    directionalLockEnabled
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 18, paddingBottom: 28 }}
-                    decelerationRate={0.992}
-                    overScrollMode="never"
-                    bounces={false}
-                  >
-                    {sounds.map(s => (
-                      <CalmSoundCard
-                        key={s.id}
-                        sound={s}
-                        isPlaying={playingId === s.id}
-                        isPaused={isPaused && playingId === s.id}
-                        onPress={() => onPress(s.id)}
-                      />
-                    ))}
-                  </GHScrollView>
-                );
-              })()}
+              {/* ── 2-column vertical grid for both All and filtered views ── */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10, paddingBottom: 12 }}>
+                {sounds.map(s => (
+                  <CalmSoundCard
+                    key={s.id}
+                    sound={s}
+                    isPlaying={playingId === s.id}
+                    isPaused={isPaused && playingId === s.id}
+                    onPress={() => onPress(s.id)}
+                    width={gridCardW}
+                  />
+                ))}
+              </View>
             </View>
           </View>
         );
@@ -1451,15 +1495,10 @@ function ReelCard({
   onChangeTimer: (i: number) => void;
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
-  const { addToMix, removeFromMix, mixedSounds } = useSoundPlayer();
-  const { bgKey: reelBgKey } = useBgContext();
-  const reelDarkAlpha = (['night','brahma','predawn'].includes(reelBgKey) ? 0.30
-    : ['twilight','evening','sandhya'].includes(reelBgKey) ? 0.18
-    : reelBgKey === 'sunrise' ? 0.08 : 0);
+  const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
   const insets = useSafeAreaInsets();
-  const zoomAnim  = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [mixerOpen, setMixerOpen] = useState(false);
+  const ringRotAnim = useRef(new Animated.Value(0)).current;
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const [, forceRefresh] = useState(0);
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
@@ -1467,8 +1506,7 @@ function ReelCard({
   const rawReelUri = SOUND_IMAGES[sound.id];
   const imgUri     = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
-  const imgFadeAnim = useRef(new Animated.Value(1)).current;
-  const mixerAnim = useRef(new Animated.Value(0)).current;
+  const imgFadeAnim = useRef(new Animated.Value(imgSource ? 0 : 1)).current;
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
 
   const controlsAnim = useRef(new Animated.Value(1)).current;
@@ -1479,19 +1517,23 @@ function ReelCard({
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
   });
 
+  // Slowly rotate ring when playing
   useEffect(() => {
-    if (isActive) {
-      zoomAnim.setValue(1.07);
-      Animated.spring(zoomAnim, { toValue: 1, tension: 38, friction: 9, useNativeDriver: true }).start();
+    if (isPlaying && !isPaused && isActive) {
+      const loop = Animated.loop(
+        Animated.timing(ringRotAnim, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })
+      );
+      loop.start();
+      return () => loop.stop();
     }
-  }, [isActive]);
+  }, [isPlaying, isPaused, isActive]);
 
   useEffect(() => {
     if (isPlaying && !isPaused && isActive) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.035, duration: 2800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,     duration: 2800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.04, duration: 2800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1,    duration: 2800, useNativeDriver: true }),
         ])
       );
       loop.start();
@@ -1510,149 +1552,301 @@ function ReelCard({
     if (!isActive || isLast) { hintAnim.setValue(0); return; }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(hintAnim, { toValue: -5, duration: 480, useNativeDriver: true }),
-        Animated.timing(hintAnim, { toValue: 0,  duration: 480, useNativeDriver: true }),
-        Animated.delay(2400),
+        Animated.timing(hintAnim, { toValue: -6, duration: 500, useNativeDriver: true }),
+        Animated.timing(hintAnim, { toValue: 0,  duration: 500, useNativeDriver: true }),
+        Animated.delay(2200),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [isActive, isLast]);
 
-  const toggleMixer = () => {
-    const toValue = mixerOpen ? 0 : 1;
-    Animated.spring(mixerAnim, { toValue, tension: 72, friction: 10, useNativeDriver: false }).start();
-    setMixerOpen(v => !v);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const mixIds     = new Set(mixedSounds.map(s => s.id));
-
-  const ARTWORK_SIZE = Math.round(REEL_W * 0.76);
+  const RING_SIZE = Math.round(REEL_W * 0.62);
+  const ringRotDeg = ringRotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <View style={{ width: REEL_W, height: REEL_H, backgroundColor: sound.top }}>
+    <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
 
-      {/* ── Ambient color gradient background ── */}
-      <LinearGradient
-        colors={[sound.color + '30', sound.top, sound.bot, '#000']}
-        locations={[0, 0.25, 0.65, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      {/* ── Time-adaptive dark scrim — deepens at dusk/night (Apple-style) ── */}
-      {reelDarkAlpha > 0 && (
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: `rgba(0,0,0,${reelDarkAlpha})` }]} pointerEvents="none" />
+      {/* ── FULL-SCREEN background image ── */}
+      {imgSource ? (
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim }]}>
+          <Image
+            source={imgSource}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start()}
+            onError={() => setImgLoadFailed(true)}
+          />
+        </Animated.View>
+      ) : (
+        // Fallback color gradient when no image
+        <LinearGradient
+          colors={[sound.color + '40', sound.top, sound.bot, '#000']}
+          locations={[0, 0.3, 0.7, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
       )}
-      {/* Subtle radial glow behind artwork */}
-      <View style={{
-        position: 'absolute', top: REEL_H * 0.08, alignSelf: 'center',
-        width: ARTWORK_SIZE + 60, height: ARTWORK_SIZE + 60,
-        borderRadius: (ARTWORK_SIZE + 60) / 2,
-        backgroundColor: sound.color + '16',
-      }} />
 
-      {/* Tap anywhere (upper half) to play/pause */}
+      {/* ── Multi-layer cinematic scrim ── */}
+      {/* Top dark fade for status bar readability */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.70)', 'rgba(0,0,0,0.10)', 'transparent']}
+        locations={[0, 0.18, 0.4]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Bottom dark fade for controls readability */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.72)', 'rgba(0,0,0,0.92)']}
+        locations={[0.38, 0.56, 0.78, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+
+      {/* ── Circular ring in CENTER — shows countdown time inside ── */}
+      <View style={{
+        position: 'absolute',
+        top: 0, bottom: 0, left: 0, right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 4,
+        // Push ring to upper-center (40% from top)
+        marginTop: -REEL_H * 0.10,
+      }}>
+        {/* Outer slow-rotating dashed ring */}
+        <Animated.View style={{
+          width: RING_SIZE,
+          height: RING_SIZE,
+          borderRadius: RING_SIZE / 2,
+          borderWidth: 2,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)',
+          borderStyle: 'solid',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ rotate: ringRotDeg }],
+        }}>
+          {/* Dashes on ring */}
+          {[0,45,90,135,180,225,270,315].map(angle => (
+            <View key={angle} style={{
+              position: 'absolute',
+              width: 8, height: 2.5,
+              borderRadius: 1.5,
+              backgroundColor: isPlaying && !isPaused ? sound.color + 'CC' : 'rgba(255,255,255,0.30)',
+              left: RING_SIZE / 2 - 4 + (RING_SIZE / 2 - 5) * Math.cos(angle * Math.PI / 180),
+              top:  RING_SIZE / 2 - 1.25 + (RING_SIZE / 2 - 5) * Math.sin(angle * Math.PI / 180),
+            }} />
+          ))}
+        </Animated.View>
+
+        {/* Inner static ring */}
+        <View style={{
+          position: 'absolute',
+          width: RING_SIZE - 22,
+          height: RING_SIZE - 22,
+          borderRadius: (RING_SIZE - 22) / 2,
+          borderWidth: 1,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.08)',
+        }} />
+
+        {/* ── CENTER: Big countdown time (or timer label when not playing) ── */}
+        <Animated.View style={{
+          position: 'absolute',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale: pulseAnim }],
+        }}>
+          {isPlaying ? (
+            // When playing: show big countdown MM:SS
+            <>
+              <Text style={{
+                fontSize: Math.round(RING_SIZE * 0.24),
+                fontWeight: '200',
+                color: '#FFFFFF',
+                letterSpacing: -2,
+                fontFamily: 'Nunito_300Light',
+                textShadowColor: 'rgba(0,0,0,0.6)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 8,
+              }}>
+                {fmtTimer(sessionSecs)}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                <Animated.View style={{
+                  width: 6, height: 6, borderRadius: 3,
+                  backgroundColor: isPaused ? 'rgba(255,255,255,0.40)' : sound.color,
+                  transform: [{ scale: pulseAnim }],
+                }} />
+                <Text style={{ fontSize: 9, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.75)', letterSpacing: 2.0 }}>
+                  {isPaused ? 'PAUSED' : 'PLAYING'}
+                </Text>
+              </View>
+            </>
+          ) : (
+            // When not playing: show emoji + label
+            <>
+              <Text style={{ fontSize: 52, textAlign: 'center' }}>{sound.emoji}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.50)', letterSpacing: 1.2, marginTop: 6 }}>TAP TO PLAY</Text>
+            </>
+          )}
+        </Animated.View>
+
+        {/* ── Timer button: pill below the ring ── */}
+        <View style={{
+          position: 'absolute',
+          top: RING_SIZE + 22,
+          alignItems: 'center',
+        }}>
+          {/* Timer picker dropdown */}
+          {timerPickerOpen && (
+            <View style={{ marginBottom: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4 }}>
+                  {STOP_TIMES.map((t, i) => {
+                    const active = stopIdx === i;
+                    return (
+                      <TouchableOpacity key={t.label} onPress={() => { onChangeTimer(i); setTimerPickerOpen(false); }}
+                        style={{
+                          paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99,
+                          borderWidth: 1,
+                          borderColor: active ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.28)',
+                          backgroundColor: active ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.40)',
+                        }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.60)' }}>{t.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Timer pill button — matches reference screenshot */}
+          <TouchableOpacity
+            onPress={() => setTimerPickerOpen(v => !v)}
+            activeOpacity={0.76}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              paddingHorizontal: 24, paddingVertical: 12,
+              borderRadius: 99,
+              borderWidth: 1,
+              borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
+              backgroundColor: timerPickerOpen ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)',
+              overflow: 'hidden',
+              zIndex: 10,
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.03)']}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Ionicons name="timer-outline" size={17} color="rgba(255,255,255,0.90)" />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>
+              Timer
+            </Text>
+          </TouchableOpacity>
+
+          {/* ── Three action icon buttons below timer ── */}
+          <View style={{
+            flexDirection: 'row',
+            gap: 24,
+            marginTop: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {/* Sound / Volume icon */}
+            <View style={{ alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={{
+                  width: 58, height: 58, borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+                }}
+              >
+                <Ionicons name="rainy-outline" size={24} color="rgba(255,255,255,0.80)" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>
+                {isPlaying ? '100%' : sound.cat.slice(0,5)}
+              </Text>
+            </View>
+
+            {/* Boost / Energy icon */}
+            <View style={{ alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={{
+                  width: 58, height: 58, borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+                }}
+              >
+                <Ionicons name="flash-outline" size={24} color="rgba(255,255,255,0.80)" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>50%</Text>
+            </View>
+
+            {/* Edit / Info icon */}
+            <View style={{ alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={{
+                  width: 58, height: 58, borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+                }}
+              >
+                <Ionicons name="create-outline" size={24} color="rgba(255,255,255,0.80)" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>Edit</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Tap upper area to toggle play/pause */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => { bumpControlsRef.current(); isPlaying ? onToggle() : onPlay(); }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: REEL_H * 0.62, zIndex: 2 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: REEL_H * 0.38, zIndex: 3 }}
       />
 
-      {/* ── Centered artwork card ── */}
-      <View style={{ position: 'absolute', top: REEL_H * 0.13, left: 0, right: 0, alignItems: 'center', zIndex: 3 }}>
-        <Animated.View style={{
-          width: ARTWORK_SIZE, height: ARTWORK_SIZE, borderRadius: 22,
-          overflow: 'hidden',
-          transform: [{ scale: Animated.multiply(zoomAnim, pulseAnim) }],
-          shadowColor: sound.color,
-          shadowOpacity: isPlaying && !isPaused ? 0.55 : 0.28,
-          shadowRadius: 28, shadowOffset: { width: 0, height: 10 },
-          elevation: 18,
-        }}>
-          {/* Fallback gradient inside artwork */}
-          <LinearGradient
-            colors={[sound.color + '50', sound.top, sound.bot]}
-            style={StyleSheet.absoluteFillObject}
-          />
-          {/* Actual image — fades in */}
-          {imgSource && (
-            <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim }]}>
-              <Image
-                source={imgSource}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-                onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start()}
-                onError={() => setImgLoadFailed(true)}
-              />
-            </Animated.View>
-          )}
-          {/* Subtle inner bottom vignette for category badge readability */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.44)']}
-            locations={[0.6, 1]}
-            style={StyleSheet.absoluteFillObject}
-            pointerEvents="none"
-          />
-          {/* Category badge inside artwork — bottom-left */}
+      {/* ── Bottom controls ── */}
+      <Animated.View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        paddingHorizontal: 26,
+        paddingBottom: Math.max(insets.bottom + 14, 26),
+        zIndex: 8, opacity: controlsAnim,
+      }}>
+
+        {/* Category badge + title */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
           <View style={{
-            position: 'absolute', bottom: 12, left: 12,
             flexDirection: 'row', alignItems: 'center', gap: 5,
-            backgroundColor: 'rgba(0,0,0,0.38)', borderRadius: 99,
+            backgroundColor: 'rgba(0,0,0,0.42)', borderRadius: 99,
             paddingHorizontal: 10, paddingVertical: 4,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
           }}>
             <Text style={{ fontSize: 12 }}>{sound.emoji}</Text>
             <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.80)', letterSpacing: 0.8 }}>{sound.cat}</Text>
           </View>
-          {/* NOW PLAYING pulse dot — top-right when playing */}
-          {isPlaying && (
-            <View style={{ position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.44)', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: isPaused ? 'rgba(255,255,255,0.08)' : sound.color + '50' }}>
-              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isPaused ? '#555' : sound.color, transform: [{ scale: pulseAnim }] }} />
-              <Text style={{ fontSize: 8, fontWeight: '800', color: isPaused ? 'rgba(255,255,255,0.35)' : sound.color, letterSpacing: 1.2 }}>
-                {isPaused ? 'PAUSED' : 'NOW PLAYING'}
-              </Text>
-            </View>
-          )}
-        </Animated.View>
+        </View>
 
-        {/* Swipe hint dots — below artwork */}
-        {isActive && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 16 }}>
-            {!isFirst && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Ionicons name="chevron-up" size={11} color="rgba(255,255,255,0.28)" />
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.22)', letterSpacing: 0.6 }}>prev</Text>
-              </View>
-            )}
-            {!isFirst && !isLast && <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.18)' }} />}
-            {!isLast && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.22)', letterSpacing: 0.6 }}>next</Text>
-                <Ionicons name="chevron-down" size={11} color="rgba(255,255,255,0.28)" />
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* ── Bottom info + controls ── */}
-      <Animated.View style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        paddingHorizontal: 26, paddingBottom: Math.max(96, insets.bottom + 28),
-        zIndex: 8, opacity: controlsAnim,
-      }}>
         {/* Title */}
-        <Text style={{ fontSize: 26, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.6, marginBottom: 4 }} numberOfLines={1}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 }} numberOfLines={1}>
           {sound.label}
         </Text>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.42)', marginBottom: 18, lineHeight: 18 }} numberOfLines={2}>
+        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 14, lineHeight: 17 }} numberOfLines={1}>
           {sound.desc}
         </Text>
 
         {/* Timer progress bar */}
         {isPlaying && (
-          <View style={{ marginBottom: 18 }}>
-            <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 2 }}>
+          <View style={{ marginBottom: 14 }}>
+            <View style={{ height: 2.5, backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 2 }}>
               <View style={{ height: '100%', borderRadius: 2, backgroundColor: sound.color, width: `${Math.max(2, Math.min(100, (sessionSecs / STOP_TIMES[stopIdx].secs) * 100))}%` }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
@@ -1662,112 +1856,42 @@ function ReelCard({
           </View>
         )}
 
-        {/* Timer picker */}
-        {timerPickerOpen && (
-          <View style={{ marginBottom: 14 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
-              <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4 }}>
-                {STOP_TIMES.map((t, i) => {
-                  const active = stopIdx === i;
-                  return (
-                    <TouchableOpacity key={t.label} onPress={() => { onChangeTimer(i); setTimerPickerOpen(false); }}
-                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1, borderColor: active ? sound.color + '80' : 'rgba(255,255,255,0.22)', backgroundColor: active ? sound.color + '22' : 'rgba(0,0,0,0.30)' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: active ? sound.color : 'rgba(255,255,255,0.55)' }}>{t.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Inline mixer panel */}
-        <Animated.View
-          pointerEvents={mixerOpen ? 'auto' : 'none'}
-          style={{
-            opacity: mixerAnim,
-            maxHeight: mixerAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 120] }),
-            overflow: 'hidden', marginBottom: 12,
-            transform: [{ translateY: mixerAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
-          }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)' }}>
-            {REEL_MIX_SOUNDS.map(ms => {
-              const isMainSound = ms.id === sound.id;
-              const inMix       = mixIds.has(ms.id) && !isMainSound;
-              return (
-                <TouchableOpacity
-                  key={ms.id}
-                  onPress={() => {
-                    if (isMainSound) return;
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    if (inMix) removeFromMix(ms.id); else addToMix(ms);
-                  }}
-                  activeOpacity={isMainSound ? 1 : 0.72}
-                  style={{ alignItems: 'center', gap: 4, opacity: isMainSound ? 0.24 : 1 }}
-                >
-                  <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: inMix ? ms.color + '28' : 'rgba(255,255,255,0.09)', borderWidth: 1.5, borderColor: inMix ? ms.color + '99' : 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 19 }}>{ms.emoji}</Text>
-                    {inMix && (
-                      <View style={{ position: 'absolute', bottom: -2, right: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: ms.color, borderWidth: 2, borderColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="checkmark" size={7} color="#000" />
-                      </View>
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 7, fontWeight: '700', letterSpacing: 0.3, color: inMix ? ms.color : 'rgba(255,255,255,0.32)' }}>{ms.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Animated.View>
-
-        {/* Main controls row: Timer | Play/Pause | Mix */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-
-          {/* Timer button */}
-          <TouchableOpacity
-            onPress={() => setTimerPickerOpen(v => !v)}
-            activeOpacity={0.72}
-            style={{ width: 50, height: 50, borderRadius: 25, borderWidth: 1, borderColor: timerPickerOpen ? sound.color + '80' : 'rgba(255,255,255,0.20)', alignItems: 'center', justifyContent: 'center', backgroundColor: timerPickerOpen ? sound.color + '18' : 'rgba(255,255,255,0.07)' }}
-          >
-            <Ionicons name="timer-outline" size={20} color={timerPickerOpen ? sound.color : 'rgba(255,255,255,0.55)'} />
-          </TouchableOpacity>
-
-          {/* Big play / pause button */}
+        {/* ── Big centered Play/Pause button ── */}
+        <View style={{ alignItems: 'center', marginBottom: 8 }}>
           <TouchableOpacity
             onPress={isPlaying ? onToggle : onPlay}
             activeOpacity={0.82}
-            style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.36)', shadowColor: sound.color, shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 4 }, elevation: 12 }}
+            style={{
+              width: 72, height: 72, borderRadius: 36,
+              alignItems: 'center', justifyContent: 'center',
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.40)',
+              shadowColor: sound.color,
+              shadowOpacity: 0.55, shadowRadius: 22,
+              shadowOffset: { width: 0, height: 5 },
+              elevation: 14,
+              overflow: 'hidden',
+            }}
           >
             <LinearGradient
-              colors={['rgba(255,255,255,0.26)', 'rgba(255,255,255,0.08)']}
+              colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.10)']}
               start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 36 }]}
+              style={StyleSheet.absoluteFillObject}
             />
-            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={28} color="#FFFFFF" style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }} />
+            <Ionicons
+              name={isPlaying && !isPaused ? 'pause' : 'play'}
+              size={28}
+              color="#FFFFFF"
+              style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }}
+            />
           </TouchableOpacity>
-
-          {/* Mix sounds button */}
-          <TouchableOpacity
-            onPress={toggleMixer}
-            activeOpacity={0.72}
-            style={{ width: 50, height: 50, borderRadius: 25, borderWidth: 1, borderColor: mixerOpen ? sound.color + '80' : 'rgba(255,255,255,0.20)', alignItems: 'center', justifyContent: 'center', backgroundColor: mixerOpen ? sound.color + '18' : 'rgba(255,255,255,0.07)' }}
-          >
-            <Ionicons name="layers-outline" size={20} color={mixerOpen ? sound.color : 'rgba(255,255,255,0.55)'} />
-            {mixedSounds.length > 1 && !mixerOpen && (
-              <View style={{ position: 'absolute', top: 6, right: 6, width: 12, height: 12, borderRadius: 6, backgroundColor: sound.color, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 6, fontWeight: '900', color: '#000' }}>{mixedSounds.length - 1}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
         </View>
 
-        {/* Swipe hint label at very bottom */}
+        {/* ── Swipe for next (bottom) ── */}
         {isActive && !isLast && (
-          <Animated.View style={{ alignItems: 'center', marginTop: 12, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.52)" />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.52)', letterSpacing: 1.3, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
+          <Animated.View style={{ alignItems: 'center', marginTop: 4, transform: [{ translateY: hintAnim }] }}>
+            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.45)" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: 1.4, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -1912,7 +2036,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible animationType="slide" transparent={false} statusBarTranslucent onRequestClose={() => onClose(false)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -2039,6 +2163,7 @@ function SoundReelsModal({
 
 export default function SleepTab() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { bgUri, accentColor, gradientStart } = useBgContext();
   const [now, setNow] = useState(new Date());
 
@@ -2083,12 +2208,12 @@ export default function SleepTab() {
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
     Animated.sequence([
-      Animated.timing(contentFadeAnim,  { toValue: 0.55, duration: 70,  useNativeDriver: true }),
-      Animated.timing(contentFadeAnim,  { toValue: 1,    duration: 200, useNativeDriver: true }),
+      Animated.timing(contentFadeAnim,  { toValue: 0.60, duration: 55,  useNativeDriver: true }),
+      Animated.timing(contentFadeAnim,  { toValue: 1,    duration: 180, useNativeDriver: true }),
     ]).start();
     if (dir !== 0) {
-      contentSlideAnim.setValue(-dir * W * 0.10);
-      Animated.spring(contentSlideAnim, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 220, mass: 0.8 }).start();
+      contentSlideAnim.setValue(-dir * W * 0.08);
+      Animated.spring(contentSlideAnim, { toValue: 0, useNativeDriver: true, damping: 28, stiffness: 380, mass: 0.6 }).start();
     }
     setSelectedCat(cat);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -2108,13 +2233,17 @@ export default function SleepTab() {
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 18 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.5,
+        Math.abs(gs.dx) > 14 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.0,
+      onPanResponderGrant: () => {},
+      onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
         const cur = selectedCatPanRef.current;
         const idx = CATEGORIES.indexOf(cur);
-        if (gs.dx < -50 && idx < CATEGORIES.length - 1) {
+        const velocity = Math.abs(gs.vx);
+        const threshold = velocity > 0.4 ? 30 : 50;
+        if (gs.dx < -threshold && idx < CATEGORIES.length - 1) {
           changeCategoryPanRef.current(CATEGORIES[idx + 1] as Category, -1);
-        } else if (gs.dx > 50 && idx > 0) {
+        } else if (gs.dx > threshold && idx > 0) {
           changeCategoryPanRef.current(CATEGORIES[idx - 1] as Category, 1);
         }
       },
@@ -2365,7 +2494,36 @@ export default function SleepTab() {
   const autoMode    = useMemo(() => getAutoMode(h), [h]);
   const currentPeriod = useMemo(() => solarTimes ? getCurrentPeriod(solarTimes, h) : null, [solarTimes, h]);
   const isBrahmaMuhurta = currentPeriod?.id === 'night_vata';
-  const displayMode = isBrahmaMuhurta ? BRAHMA_MODE : autoMode;
+  // ── Solar-period → SoundMode mapping — mirrors home page solar time period ──
+  // When solar data is available, derive displayMode from the actual dosha period
+  // so sleep header stays in sync with home hero ring & walk ring (same solar time).
+  const solarDisplayMode = useMemo((): SoundMode => {
+    if (isBrahmaMuhurta) return BRAHMA_MODE;
+    if (!currentPeriod) return autoMode;
+    switch (currentPeriod.id) {
+      case 'morning_kapha':  return SOUND_MODES.morning;
+      case 'midday_pitta':   return SOUND_MODES.focus;
+      case 'afternoon_vata': return SOUND_MODES.restore;
+      case 'evening_kapha':  return SOUND_MODES.evening;
+      case 'night_pitta':    return SOUND_MODES.sleep;
+      default:               return autoMode; // fallback for any unmapped id
+    }
+  }, [currentPeriod?.id, isBrahmaMuhurta, autoMode]);
+  const displayMode = solarDisplayMode;
+
+  const natureCategoryLabel = useMemo(() => {
+    const periodId = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
+    switch (periodId) {
+      case 'night_vata':        return 'Awaken in Nature';
+      case 'morning_kapha':     return 'Rise in Nature';
+      case 'midday_pitta':      return 'Work in Nature';
+      case 'midday_pitta_late': return 'Relax in Nature';
+      case 'afternoon_vata':    return 'Create in Nature';
+      case 'evening_kapha':     return 'Unwind in Nature';
+      case 'night_pitta':       return 'Sleep in Nature';
+      default:                  return 'Nature';
+    }
+  }, [currentPeriod?.id, autoMode.key]);
   const isNightTime = useMemo(() => {
     if (solarTimes) {
       const nowNorm = h < solarTimes.sunrise ? h + 24 : h;
@@ -2441,7 +2599,7 @@ export default function SleepTab() {
       color,
       textShadowColor: shadowColor,
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 8,
+      textShadowRadius: 12,
       textAlign: 'center' as const,
       fontFamily: 'DancingScript_600SemiBold',
     };
@@ -2451,21 +2609,40 @@ export default function SleepTab() {
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
       style={[S.screen, { backgroundColor: accentColor }]}
-      imageStyle={{ opacity: 0.50, resizeMode: 'cover' }}>
-      {/* Subtle top vignette only — keeps status bar readable, screen stays light */}
+      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
+      {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
-        locations={[0, 0.28, 1]}
+        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
+        locations={[0, 0.40, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
+      {/* Settings floating button — top-right */}
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+        style={{
+          position: 'absolute',
+          top: (insets?.top ?? 44) + 10,
+          right: 16,
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.20)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 20,
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
+      </TouchableOpacity>
+
       {/* ── Content area below header — strip + scroll ── */}
       <View style={{ flex: 1 }}>
-
-        {/* ── Category tab strip ── */}
-        <CategoryTabStrip selectedCat={selectedCat} onSelect={changeCategory} />
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }} {...contentPan.panHandlers}>
         <ScrollView
@@ -2481,15 +2658,17 @@ export default function SleepTab() {
         >
 
         {/* ── Hero area — premium center-aligned glassmorphism card ── */}
-        <View style={{ width: W, height: HERO_H, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+        <View style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}>
           <View style={{
             width: '100%',
-            backgroundColor: 'rgba(0,0,0,0.26)',
-            borderWidth: 1,
+            backgroundColor: 'rgba(0,0,0,0.16)',
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
             borderColor: 'rgba(255,255,255,0.14)',
-            borderRadius: 22,
+            borderRadius: 0,
             paddingHorizontal: 20,
-            paddingVertical: 14,
+            paddingTop: 18,
+            paddingBottom: 16,
             alignItems: 'center',
             overflow: 'hidden',
           }}>
@@ -2500,30 +2679,15 @@ export default function SleepTab() {
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
-            {/* Period badge — colorless pill */}
-            {dayHint && (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
-                borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5,
-                marginBottom: 10,
-              }}>
-                <Text style={{ fontSize: 12 }}>{dayHint.icon}</Text>
-                <Text style={{ fontSize: 9, fontWeight: '400', color: 'rgba(255,255,255,0.60)', letterSpacing: 0.5, fontFamily: 'Nunito_400Regular' }}>
-                  {dayHint.name.toUpperCase()}
-                </Text>
-              </View>
-            )}
             {/* Main title */}
             <Text style={heroTextStyle}>{displayMode.label}</Text>
             {/* Subtitle */}
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 8, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 6, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
               {displayMode.subtitle}
             </Text>
             {/* Divider */}
-            <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 16 }} />
-            {/* Bottom hint — 3 states, compact inline */}
+            <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 12 }} />
+            {/* Bottom hint — compact inline */}
             {showIdealSleepChip ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
@@ -2542,13 +2706,20 @@ export default function SleepTab() {
                   · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
                 </Text>
               </View>
-            ) : dayHint ? (
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.52)', textAlign: 'center', lineHeight: 17, fontWeight: '300', paddingHorizontal: 8 }} numberOfLines={2}>
-                {dayHint.line1}
+            ) : (
+              <Text style={{ fontSize: 10, fontWeight: '300', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic' }}>
+                {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? dayHint.name : 'listen to heal as the day dawns up'}
               </Text>
-            ) : null}
+            )}
           </View>
         </View>
+
+        {/* ── Category tab strip — moved below hero card ── */}
+        <CategoryTabStrip
+          selectedCat={selectedCat}
+          onSelect={changeCategory}
+          activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
+        />
 
         {/* ── Content container — transparent so wallpaper shows through ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
@@ -2569,9 +2740,10 @@ export default function SleepTab() {
             showsHorizontalScrollIndicator={false}
             style={{ marginBottom: 8 }}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 20, paddingBottom: 4 }}
-            decelerationRate={0.992}
+            decelerationRate={0.88}
             bounces={false}
             overScrollMode="never"
+            scrollEventThrottle={8}
           >
             {sectionInfo.isNight && NIGHT_THEMES.map(theme => (
               <NightThemeCard
@@ -2628,6 +2800,8 @@ export default function SleepTab() {
           selectedCat={selectedCat}
           onSelectCat={changeCategory}
           resetKey={rowsResetKey}
+          natureLabel={natureCategoryLabel}
+          activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
         />
 
         {/* ── Sleep Cycles ── */}
@@ -2637,7 +2811,7 @@ export default function SleepTab() {
             <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.55)" />
           </Animated.View>
         </TouchableOpacity>
-        {cyclesOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} decelerationRate={0.992} bounces={false} overScrollMode="never">
+        {cyclesOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} decelerationRate={0.88} bounces={false} overScrollMode="never" scrollEventThrottle={8}>
           <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 6 }}>
             {SLEEP_CYCLES.map(cycle => {
               const bed   = getBedtime(cycle.hours);

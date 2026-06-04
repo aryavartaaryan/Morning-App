@@ -6,17 +6,18 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { store, KEYS } from '@/lib/storage';
 
 export const BG_URLS: Record<string, string> = {
-  brahma:     'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=900&q=85&auto=format&fit=crop',
+  brahma:     'https://images.pexels.com/photos/19566215/pexels-photo-19566215.jpeg',
   predawn:    'https://plus.unsplash.com/premium_photo-1676320526001-07b75bd19ae3?w=900&q=85&auto=format&fit=crop',
   sunrise:    'https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=900&q=85&auto=format&fit=crop',
-  morning:    'https://images.pexels.com/photos/30328856/pexels-photo-30328856.jpeg?auto=compress&cs=tinysrgb&w=900',
-  midday:     'https://images.pexels.com/photos/26860151/pexels-photo-26860151.jpeg?auto=compress&cs=tinysrgb&w=900',
-  afternoon:  'https://images.unsplash.com/photo-1559334642-f57070eadebe?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  morning:    'https://images.pexels.com/photos/1046888/pexels-photo-1046888.jpeg',
+  midday:     'https://images.pexels.com/photos/26728076/pexels-photo-26728076.jpeg',
+  afternoon:  'https://images.pexels.com/photos/33441030/pexels-photo-33441030.jpeg',
   sandhya:    'https://images.unsplash.com/photo-1601562219653-0f16522227b3?w=900&q=85&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8c3Vuc2V0JTIwc2VhfGVufDB8fDB8fHww',
   twilight:   'https://images.pexels.com/photos/14527158/pexels-photo-14527158.jpeg?auto=compress&cs=tinysrgb&w=900',
-  evening:    'https://images.unsplash.com/photo-1664977250570-5c399ec4244b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTExfHxvY2VhbiUyMG5pZ2h0fGVufDB8fDB8fHww',
-  night:      'https://images.pexels.com/photos/13651742/pexels-photo-13651742.jpeg?auto=compress&cs=tinysrgb&w=900',
-  auth:       'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=900&q=85&auto=format&fit=crop',
+  evening:    'https://images.pexels.com/photos/2986560/pexels-photo-2986560.jpeg',
+  night:      'https://images.pexels.com/photos/1674625/pexels-photo-1674625.jpeg',
+  auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
+  splash:     'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
 };
 

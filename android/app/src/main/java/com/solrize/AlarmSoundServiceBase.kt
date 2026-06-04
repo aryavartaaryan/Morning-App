@@ -200,27 +200,43 @@ abstract class AlarmSoundServiceBase : Service() {
             if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
                 launchApp()
             }
-            bringToFrontHandler.postDelayed(this, 500)
+            // Layer 2: 200ms polling — shrinks escape window below human perception threshold
+            bringToFrontHandler.postDelayed(this, 200)
         }
     }
 
     // Safety-net unmute: starts the MediaPlayer at 0f so the JS layer can
     // immediately take over audio without a Gayatri "flash". If JS never
     // calls setAlarmVolume (e.g. app was killed), this runnable unmutes
-    // after 4 s so the user still hears the alarm.
+    // after 10 s so the user still hears the alarm.
+    // Extended from 4s → 10s: the JS alarm screen (alarm-ringing.tsx) mounts
+    // in ≤2s even on low-end Android, so 10s gives it ample headroom to call
+    // stopNativeAlarmSound() before the native MediaPlayer un-mutes.
     // Cancelled the instant JS sends ACTION_SET_VOLUME (meaning RN is alive).
     private val unmuteRunnable = Runnable { mediaPlayer?.setVolume(1f, 1f) }
 
     private fun isAppInForeground(): Boolean = mainActivityResumed
 
     /**
-     * True while the system camera or gallery picker is open.
+     * Layer 4 — True while the system camera or gallery picker is open.
      * When picker_active=true the watchdogs must NOT bring the app back to
      * front — otherwise the camera/gallery overlay is immediately dismissed.
+     *
+     * FIX: Previously this only read AlarmModule.PREFS_NAME (wake alarm prefs).
+     * Habit alarms write picker_active to HabitAlarmModule.PREFS_NAME, so the
+     * watchdog never saw it. Now we check BOTH prefs files.
      */
-    protected fun isPickerActive(): Boolean =
-        getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean("picker_active", false)
+    protected fun isPickerActive(): Boolean {
+        val wakeActive = try {
+            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("picker_active", false)
+        } catch (_: Exception) { false }
+        val habitActive = try {
+            getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("picker_active", false)
+        } catch (_: Exception) { false }
+        return wakeActive || habitActive
+    }
 
     // ── Audio ─────────────────────────────────────────────────────────────────
 
@@ -251,7 +267,10 @@ abstract class AlarmSoundServiceBase : Service() {
                         setVolume(0f, 0f)
                         start()
                     }
-                    bringToFrontHandler.postDelayed(unmuteRunnable, 4_000)
+                    // 10-second safety net: if JS never calls setAlarmVolume (app was killed)
+                    // unmute so the alarm is still audible. JS beats this by calling
+                    // stopNativeAlarmSound() within ~2s when the app is already open.
+                    bringToFrontHandler.postDelayed(unmuteRunnable, 10_000)
                     return
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -274,7 +293,9 @@ abstract class AlarmSoundServiceBase : Service() {
                 setVolume(0f, 0f)
                 start()
             }
-            bringToFrontHandler.postDelayed(unmuteRunnable, 4_000)
+            // 10-second safety net (extended from 4s) — gives JS ample time to
+            // call stopNativeAlarmSound() before the fallback Gayatri un-mutes.
+            bringToFrontHandler.postDelayed(unmuteRunnable, 10_000)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -485,29 +506,21 @@ abstract class AlarmSoundServiceBase : Service() {
         vibrator?.cancel() // cancel any existing pattern before starting fresh
         vibrator = getVibrator() ?: return
 
-        // ── Elegant escalating-pulse pattern (like Pixel Clock / Samsung alarms) ──
-        // Three soft pulses build to a confident peak, then a breath pause, repeat.
-        // Format: [delay, on, off, on, off, ...] / amplitude mirrors each segment.
+        // ── Simple smooth continuous vibration pattern ──
+        // Gentle, continuous vibration that feels smooth and natural.
+        // No harsh pulses — just a steady, pleasant vibration.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Amplitude-aware waveform: 0 = off, 1–255 = intensity.
-            // Timings and amplitudes must have the same length.
+            // Amplitude-aware waveform: smooth continuous vibration
+            // 500ms on, 500ms off, repeating — at medium-high amplitude
             val timings = longArrayOf(
-                0,   // start delay
-                120, 80,   // soft pulse 1
-                160, 80,   // soft pulse 2
-                200, 120,  // medium pulse 3
-                280, 120,  // medium pulse 4
-                380, 180,  // strong pulse 5
-                500, 300   // peak pulse + rest before repeat
+                0,    // start delay
+                500,  // vibrate for 500ms
+                500   // pause for 500ms before repeat
             )
             val amplitudes = intArrayOf(
-                0,          // start delay (off)
-                90,  0,     // soft pulse 1
-                130, 0,     // soft pulse 2
-                180, 0,     // medium pulse 3
-                210, 0,     // medium pulse 4
-                240, 0,     // strong pulse 5
-                255, 0      // peak pulse + rest
+                0,    // start delay (off)
+                200,  // smooth vibration at amplitude 200/255
+                0     // pause (off)
             )
             val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
             val attrs  = AudioAttributes.Builder()
@@ -515,9 +528,9 @@ abstract class AlarmSoundServiceBase : Service() {
                 .build()
             vibrator?.vibrate(effect, attrs)
         } else {
-            // API < 26: no amplitude support — use a rhythmic triple-pulse pattern
+            // API < 26: no amplitude support — use simple on/off pattern
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(longArrayOf(0, 150, 80, 200, 80, 350, 300), 0)
+            vibrator?.vibrate(longArrayOf(0, 500, 500), 0)
         }
     }
 
@@ -545,6 +558,11 @@ abstract class AlarmSoundServiceBase : Service() {
         // ── Volume duck without restarting the service ──────────────────────
         // Lets JS lower MediaPlayer volume for TTS / snooze while keeping the
         // FGS (and both watchdogs) alive and the alarm flag set.
+        // IMPORTANT: removeCallbacks(unmuteRunnable) here is the KEY fix for
+        // Bug 1 — when JS calls setNativeAlarmVolume(0) to mute the native
+        // MediaPlayer, it signals that JS audio is alive. The safety-net
+        // unmuteRunnable MUST be cancelled at this point so Gayatri never
+        // bleeds through after JS has already taken over audio.
         if (intent?.action == getActionSetVolume()) {
             val vol = intent.getFloatExtra(getExtraVolumeKey(), 1f)
             bringToFrontHandler.removeCallbacks(unmuteRunnable)
@@ -603,8 +621,8 @@ abstract class AlarmSoundServiceBase : Service() {
 
         // Register primary watchdog (lifecycle-based, fires on actual pause).
         (application as Application).registerActivityLifecycleCallbacks(lifecycleWatchdog)
-        // Register secondary watchdog (500 ms polling, fires if lifecycle misses anything).
-        bringToFrontHandler.postDelayed(bringToFrontRunnable, 500)
+        // Register secondary watchdog (200ms polling — Layer 2).
+        bringToFrontHandler.postDelayed(bringToFrontRunnable, 200)
 
         return START_STICKY
     }

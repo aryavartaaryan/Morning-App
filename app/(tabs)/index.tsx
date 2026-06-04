@@ -8,9 +8,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { store, KEYS } from '@/lib/storage';
 import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
-import { getSolarTimes, type SolarTimes } from '@/lib/solar';
+import { getSolarTimes, getSunElevation, type SolarTimes } from '@/lib/solar';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import { getDoshaPeriods, type DoshaPeriod } from '@/lib/ayurvedicPeriods';
 import type { DailyPoint } from '@/lib/weather';
@@ -25,7 +26,8 @@ import { useBgContext } from '@/lib/bgContext';
 import { getCardBg, getCardBgLight } from '@/lib/cardTheme';
 import { getBgSource, getBgSourceSync } from '@/lib/bgImages';
 import { Font } from '@/constants/theme';
-import Svg, { Circle as SvgCircle, Path as SvgPath, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Path as SvgPath, Ellipse as SvgEllipse, Rect as SvgRect, Defs, ClipPath, LinearGradient as SvgLinearGradient, RadialGradient as SvgRadialGradient, Stop } from 'react-native-svg';
+
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import MetabolicStoryModal from '@/components/MetabolicStoryModal';
 import CosmicStoryModal from '@/components/CosmicStoryModal';
@@ -133,7 +135,8 @@ function getHourlyAdvice(code: number, temp: number): { icon: string; color: str
 function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
   if (solar) {
     const { sunrise, solarNoon, sunset } = solar;
-    if (h < sunrise - 1.5) return 'night';
+    const brahmaMuhurtaStart = sunrise - (96 / 60); // 96 minutes before sunrise
+    if (h < brahmaMuhurtaStart) return 'night';
     if (h < sunrise - 0.3) return 'brahma';
     if (h < sunrise + 0.5) return 'predawn';
     if (h < sunrise + 2)   return 'sunrise';
@@ -1108,8 +1111,8 @@ function CurrentPeriodCard({
   const router = useRouter();
   const rem  = period.minutesRemaining;
   const remStr = rem >= 60
-    ? `${Math.floor(rem / 60)}h ${rem % 60}m left`
-    : `${rem} min left`;
+    ? `About ${Math.floor(rem / 60)}h ${rem % 60}m left`
+    : `About ${rem}m left`;
   const durH    = (period.endH - period.startH + 24) % 24;
   const totalM  = Math.round(durH * 60);
   const progress = totalM > 0 ? Math.min(1, Math.max(0, (totalM - rem) / totalM)) : 0;
@@ -1562,7 +1565,7 @@ function TodayHeroCard({
 
   const per  = currentPeriod;
   const rem  = per?.minutesRemaining ?? 0;
-  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m left`;
+  const remStr = rem >= 60 ? `About ${Math.floor(rem / 60)}h ${rem % 60}m left` : `About ${rem}m left`;
   const durM = per ? Math.round(((per.endH - per.startH + 24) % 24) * 60) : 1;
   const progress = per ? Math.min(1, Math.max(0, (durM - rem) / durM)) : 0;
 
@@ -1708,7 +1711,7 @@ function TodayHeroCard({
                 <Text style={[TH.activeTxt, { color: per.color }]}>ACTIVE NOW</Text>
               </View>
               <View style={{ flex: 1 }} />
-              <Text style={[TH.countdown, { color: per.color }]}>{remStr}</Text>
+              <Text style={[TH.countdown, { color: per.color, minWidth: 120 }]} numberOfLines={1} adjustsFontSizeToFit>{remStr}</Text>
             </View>
 
             {/* ── Period name ── */}
@@ -2017,7 +2020,10 @@ function getHourlyEnvSuggestion(
   const isRain = wCode >= 51;
   const isCold = temp < 18;
   const isHot  = temp > 32;
-  const isHumid = humid >= 70;
+  const isHumid = humid >= 70 && temp >= 24;
+  const totalMinutes = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
+  const remaining    = Math.max(0, period.minutesRemaining ?? 0);
+  const progress     = 1 - Math.min(1, remaining / totalMinutes);
 
   // ── Night period overrides — body clock takes full control at night ──────
   if (period.id === 'night_vata') {
@@ -2025,6 +2031,17 @@ function getHourlyEnvSuggestion(
   }
   if (period.id === 'night_pitta') {
     return { emoji: '🌕', title: 'Deep Repair Window', desc: 'Full uninterrupted sleep · No eating or drinking · Liver detox is active · Let the body rebuild' };
+  }
+  if (period.id === 'midday_pitta') {
+    if (progress < 0.5) {
+      return { emoji: '🔥', title: 'Solar Focus Peak', desc: 'Digestive fire & cognition are at max · Tackle high-stakes decisions · Keep distractions off' };
+    }
+    return { emoji: '🔥', title: 'Pitta Fire Still High', desc: 'Cognitive peak continues · Use this for deep work, decisions & your main meal · Fire is still burning' };
+  }
+  if (period.id === 'midday_pitta_late') {
+    if (isHot) return { emoji: '🍃', title: 'Circadian Dip · Stay Cool', desc: `${temp}° + cortisol trough = double fatigue · No caffeine to fight it · Cool water, light walk or nap · Your brain is resetting` };
+    if (isRain) return { emoji: '🍃', title: 'Energy Dip · Rest & Digest', desc: 'Post-solar cortisol dip is active · Rain outside — perfect rest window · 20 min nap or light walk indoors · Do not force focus' };
+    return { emoji: '🍃', title: 'Circadian Alertness Trough', desc: 'Cortisol naturally dips · Adenosine builds in brain · Melatonin micro-pulse fires · Rest, digest or walk — do not force focus' };
   }
   if (period.id === 'evening_kapha') {
     if (isHot) return { emoji: '🌇', title: 'Wind-Down · Keep Dinner Cooling', desc: `Hot ${temp}° evening — skip spicy or heavy dinner entirely · Light cooling foods only · Dim screens · Wind down your nervous system` };
@@ -2115,12 +2132,25 @@ function getHourlyEnvSuggestion(
 }
 
 // ── Weather action cards builder ──────────────────────────────────────────
-type HESCard = { emoji: string; title: string; tips: string[]; color: string; label: string; isPair?: boolean; pairDo?: { emoji: string; text: string }; pairDont?: { emoji: string; text: string } };
+type HESCard = {
+  emoji: string;
+  title: string;
+  tips: string[];
+  color: string;
+  label: string;
+  isPair?: boolean;
+  pairDo?: { emoji: string; text: string };
+  pairDont?: { emoji: string; text: string };
+  isDoCard?: boolean;
+  isDontCard?: boolean;
+  isWeatherMini?: boolean;
+};
 
 function getWeatherCards(weather: WeatherData | null): HESCard[] {
   if (!weather) return [];
   const wCode       = weather.weatherCode ?? 0;
   const temp        = weather.temp ?? 25;
+  const humidity    = weather.humidity ?? 50;
   const isThunder   = wCode >= 95;
   const isHeavyRain = wCode >= 63 && wCode < 95;
   const isRain      = wCode >= 51 && wCode < 63;
@@ -2128,6 +2158,8 @@ function getWeatherCards(weather: WeatherData | null): HESCard[] {
   const isClear     = wCode < 2;
   const isHot       = temp > 34;
   const isCold      = temp < 14;
+  const isVeryHumid = humidity >= 75;
+  const isDry       = humidity < 40;
   const hour        = new Date().getHours();
   const cards: HESCard[] = [];
 
@@ -2139,10 +2171,13 @@ function getWeatherCards(weather: WeatherData | null): HESCard[] {
     cards.push({ emoji: '🌦️', title: 'Rain This Hour', tips: ['Carry umbrella before stepping out', 'Wet roads — slow down while driving'], color: '#60a5fa', label: 'RAIN ACTION' });
   }
 
-  const isNight = hour < 5 || hour >= 19;
+  const isNight = hour < 4 || hour >= 19;
+  const isPreDawn = hour >= 4 && hour < 6;
   if (isClear) {
     if (isNight) {
       cards.push({ emoji: '🌙', title: 'Clear Night Sky', tips: ['Cool clear night — crack a window for fresh air', 'Moon & stars visible tonight'], color: '#818cf8', label: 'SKY CONDITION' });
+    } else if (isPreDawn) {
+      cards.push({ emoji: '✨', title: 'Clear Pre-Dawn Sky', tips: ['Peaceful conditions for Brahma Muhurta', 'Stars visible before sunrise'], color: '#8b5cf6', label: 'SKY CONDITION' });
     } else if (hour >= 6 && hour <= 10) {
       cards.push({ emoji: '☀️', title: 'Clear Sunrise Sky', tips: ['Bare feet on earth · 10 min sun', 'Best Vitamin D window of the day'], color: '#fbbf24', label: 'SKY CONDITION' });
     } else {
@@ -2152,10 +2187,19 @@ function getWeatherCards(weather: WeatherData | null): HESCard[] {
     cards.push({ emoji: '☁️', title: 'Overcast Sky', tips: ['Diffused light — gentle on eyes', 'Good window for focused indoor work'], color: '#94a3b8', label: 'SKY CONDITION' });
   }
 
+  // Temperature Signal — separate card
   if (isHot) {
-    cards.push({ emoji: '🌡️', title: `${Math.round(temp)}°  Heat`, tips: ['Stay hydrated · avoid noon sun', 'Light breathable clothing only'], color: '#f97316', label: 'TEMP SIGNAL' });
+    cards.push({ emoji: '🌡️', title: `${Math.round(temp)}° Heat`, tips: ['Stay hydrated · avoid noon sun', 'Light breathable clothing only'], color: '#f97316', label: 'TEMPERATURE' });
   } else if (isCold) {
-    cards.push({ emoji: '❄️', title: `${Math.round(temp)}°  Cool`, tips: ['Warm up before stepping out', 'Sesame oil massage keeps body warm'], color: '#60a5fa', label: 'TEMP SIGNAL' });
+    cards.push({ emoji: '❄️', title: `${Math.round(temp)}° Cool`, tips: ['Warm up before stepping out', 'Sesame oil massage keeps body warm'], color: '#60a5fa', label: 'TEMPERATURE' });
+  }
+
+  // Humidity Signal — separate card
+  if (isVeryHumid) {
+    const timeLabel = isNight ? 'night' : 'day';
+    cards.push({ emoji: '💧', title: `${Math.round(humidity)}% Humid`, tips: [`High humidity at ${timeLabel} — ventilate room for better sleep`, 'Moisture reduces air O₂ — move to boost metabolism'], color: '#06b6d4', label: 'HUMIDITY SIGNAL' });
+  } else if (isDry) {
+    cards.push({ emoji: '🏜️', title: `${Math.round(humidity)}% Dry`, tips: ['Low humidity desiccates skin & mucous membranes', 'Drink more water · use humidifier if indoors'], color: '#f97316', label: 'HUMIDITY SIGNAL' });
   }
 
   return cards;
@@ -2303,7 +2347,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
   const hour = new Date().getHours();
   const s    = getHourlyEnvSuggestion(period, weather, hour);
   const rem  = period.minutesRemaining;
-  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  const remStr = rem >= 60 ? `Window closes in ${Math.floor(rem / 60)}h ${rem % 60}m` : `Window closes in ${rem}m`;
 
   const sciCard: HESCard = {
     emoji: period.emoji,
@@ -2329,7 +2373,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     title: a,
     tips: [period.sciTitle + '  ·  ' + period.label],
     color: period.color,
-    label: '✓  DO THIS HOUR',
+    label: '✓  IDEAL RIGHT NOW',
   }));
 
   const dontCards: HESCard[] = period.avoidances.map(a => ({
@@ -2337,7 +2381,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
     title: a,
     tips: ['Avoid during ' + period.label],
     color: '#f43f5e',
-    label: '⚠️  AVOID THIS HOUR',
+    label: '⏸️  BEST TO LIMIT',
   }));
 
   const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
@@ -2362,10 +2406,9 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
             </View>
           </View>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 18, fontFamily: 'Nunito_900Black' }}>{remStr}</Text>
-          <Text style={{ fontSize: 9, fontWeight: '700', color: period.color, letterSpacing: 0.4 }}>remaining</Text>
-          <Text style={{ fontSize: 9, fontWeight: '500', color: '#FFFFFF45', letterSpacing: 0.3, marginTop: 1 }}>{period.startLabel} – {period.endLabel}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={{ fontSize: 11, fontWeight: '900', color: period.color, letterSpacing: 0.3, lineHeight: 15 }}>{remStr}</Text>
+          <Text style={{ fontSize: 9, fontWeight: '500', color: '#FFFFFF45', letterSpacing: 0.3 }}>{period.startLabel} – {period.endLabel}</Text>
         </View>
       </TouchableOpacity>
 
@@ -2477,8 +2520,8 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
     label: '◎  ACTIVE PHASE',
   };
   const envCard: HESCard   = { emoji: s.emoji, title: s.title, tips: s.desc.split(' · '), color: period.color, label: '⏱  BODY RHYTHM SIGNAL' };
-  const doCards: HESCard[] = period.activities.map(a => ({ emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  DO THIS HOUR' }));
-  const dontCards: HESCard[] = period.avoidances.map(a => ({ emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⚠️  AVOID THIS HOUR' }));
+  const doCards: HESCard[] = period.activities.map(a => ({ emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  IDEAL RIGHT NOW' }));
+  const dontCards: HESCard[] = period.avoidances.map(a => ({ emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⏸️  BEST TO LIMIT' }));
   const allCards: HESCard[] = [sciCard, envCard, ...getWeatherCards(weather), ...doCards, ...dontCards];
   const card = allCards[0];
 
@@ -3704,8 +3747,10 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
   const sectionLabel =
     period.id === 'night_vata'      ? 'BRAHMA MUHURTA  ·  PRE-DAWN'
     : period.id === 'night_pitta'   ? 'SLEEP  ·  DEEP REPAIR PHASE'
-    : period.id === 'evening_kapha' ? 'EVENING  ·  PARASYMPATHETIC WIND-DOWN'
-    : `RELAXATION  ·  ${period.label.toUpperCase()}`;
+    : period.id === 'evening_kapha' ? 'EVENING  ·  WIND-DOWN PHASE'
+    : period.id === 'morning_kapha' ? 'MORNING  ·  POWER HOUR'
+    : period.id === 'midday_pitta'  ? 'MIDDAY  ·  PEAK PERFORMANCE'
+    : 'AFTERNOON  ·  CREATIVE PEAK';
 
   const borderColor =
     period.id === 'night_vata'      ? 'rgba(129,140,248,0.35)'
@@ -3725,8 +3770,10 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
   const tagline =
     period.id === 'night_vata'      ? 'Brahma Muhurta — the sacred pre-dawn window'
     : period.id === 'night_pitta'   ? 'Deep repair · Growth hormone · Autophagy'
-    : period.id === 'evening_kapha' ? 'Parasympathetic wind-down · Melatonin rising'
-    : 'Rest, breathe, and let the body restore';
+    : period.id === 'evening_kapha' ? 'Sleep hormone rising · Body cooling · Relax mode'
+    : period.id === 'morning_kapha' ? 'Strength building · Hormone peak · Energy surge'
+    : period.id === 'midday_pitta'  ? 'Digestion peak · Mental clarity · Metabolism high'
+    : 'Brain sharpest · Creativity peaks · Energy flows';
 
   return (
     <>
@@ -3854,8 +3901,8 @@ function getReelWeatherBlurb(
   const isCold     = temp < 16;
   const isHumid             = humid >= 70;
   const isUncomfortableHumid = isHumid && (isHot || (temp >= 26 && humid >= 70));
-  const isNight    = ['evening_kapha', 'night_pitta', 'night_vata'].includes(period.id);
-  const isDeepNight = ['night_pitta', 'night_vata'].includes(period.id);
+  const isNight    = ['evening_kapha', 'night_pitta'].includes(period.id);
+  const isDeepNight = ['night_pitta'].includes(period.id);
 
   // ── Storm — always top priority ──────────────────────────────────────────
   if (isStorm) return {
@@ -4063,7 +4110,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
   const rem    = period.minutesRemaining;
   const durM   = Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60));
   const prog   = Math.min(1, Math.max(0, (durM - rem) / durM));
-  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  const remStr = rem >= 60 ? `About ${Math.floor(rem / 60)}h ${rem % 60}m left` : `About ${rem}m left`;
 
   // Build Oracle Reel items
   const hour      = new Date().getHours();
@@ -4107,7 +4154,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
       title: a,
       tip: period.sciTitle + '  ·  ' + period.label,
       color: period.color,
-      storyCard: { emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  DO THIS HOUR' } as HESCard,
+      storyCard: { emoji: getActivityEmoji(a), title: a, tips: [period.sciTitle + '  ·  ' + period.label], color: period.color, label: '✓  IDEAL RIGHT NOW' } as HESCard,
     })),
     ...period.avoidances.map(a => ({
       label: '⚠️  AVOID',
@@ -4115,7 +4162,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
       title: a,
       tip: 'Avoid during ' + period.label,
       color: '#f43f5e',
-      storyCard: { emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⚠️  AVOID THIS HOUR' } as HESCard,
+      storyCard: { emoji: getAvoidanceEmoji(a), title: a, tips: ['Avoid during ' + period.label], color: '#f43f5e', label: '⏸️  BEST TO LIMIT' } as HESCard,
     })),
   ];
 
@@ -4430,7 +4477,10 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
   const fadeAnim  = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const hour = new Date().getHours();
-  const envSugg = React.useMemo(() => getHourlyEnvSuggestion(period, weather, hour), [period.id]);
+  const envSugg = React.useMemo(
+    () => getHourlyEnvSuggestion(period, weather, hour),
+    [period.id, period.minutesRemaining, period.startH, period.endH, weather?.weatherCode, weather?.temp, weather?.humidity, hour],
+  );
   const { bgKey } = useBgContext();
   const cardBg = getCardBg(bgKey);
   const isNightBg = ['night', 'brahma', 'predawn', 'twilight', 'evening'].includes(bgKey);
@@ -4441,23 +4491,47 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
       ? ['Deep conscious rest & relaxation', 'Gentle breathwork & pranayama', 'Hydrate with warm water', 'Mindful stillness & observation', 'Set intentions for the coming day']
       : period.activities;
     const avoidances = period.avoidances;
-    const maxLen = Math.max(activities.length, avoidances.length);
-    const pairCards: HESCard[] = [];
-    for (let i = 0; i < maxLen; i++) {
-      const doItem   = i < activities.length  ? { emoji: getActivityEmoji(activities[i]),   text: activities[i]   } : undefined;
-      const dontItem = i < avoidances.length   ? { emoji: getAvoidanceEmoji(avoidances[i]), text: avoidances[i]   } : undefined;
-      pairCards.push({
-        emoji: doItem?.emoji ?? '✓',
-        title: doItem ? doItem.text : dontItem!.text,
-        tips:  [],
+
+    // ── New: each activity / avoidance gets its OWN full-width card ──────────
+    // DO cards
+    const doCards: HESCard[] = activities.map(act => ({
+      emoji: getActivityEmoji(act),
+      title: act,
+      tips:  [],
+      color: period.color,
+      label: '✓ IDEAL FOR THIS PHASE',
+      isDoCard: true,
+      isDontCard: false,
+    }));
+    // DON'T cards
+    const dontCards: HESCard[] = avoidances.map(av => ({
+      emoji: getAvoidanceEmoji(av),
+      title: av,
+      tips:  [],
+      color: '#f43f5e',
+      label: '⛔ DO NOT DO',
+      isDoCard: false,
+      isDontCard: true,
+    }));
+
+    // ── Body Rhythm Signal: split multi-part descriptions into separate cards ──
+    const bodyRhythmCards: HESCard[] = (() => {
+      const parts = envSugg.desc.split(' · ');
+      if (parts.length <= 1) {
+        // Single part — one card
+        return [{ emoji: envSugg.emoji, title: envSugg.title, tips: [envSugg.desc], color: period.color, label: '⏱  BODY RHYTHM SIGNAL' }];
+      }
+      // Multiple parts — create separate signal cards
+      return parts.map((part, idx) => ({
+        emoji: idx === 0 ? envSugg.emoji : '·',
+        title: idx === 0 ? envSugg.title : part.charAt(0).toUpperCase() + part.slice(1),
+        tips: idx === 0 ? [part] : [],
         color: period.color,
-        label: dontItem ? '✓ DO  ·  ⛔ AVOID' : '✓  DO NOW',
-        isPair:   true,
-        pairDo:   doItem,
-        pairDont: dontItem,
-      });
-    }
-    return [
+        label: idx === 0 ? '⏱  BODY RHYTHM SIGNAL' : '⏱  BODY RHYTHM SIGNAL',
+      }));
+    })();
+
+    const cards: HESCard[] = [
       ...(period.id === 'night_vata' && brahmaInfo?.status === 'active' ? [{
         emoji: '🌟',
         title: 'Brahma Muhurta · Sacred Pre-Dawn Window',
@@ -4467,18 +4541,43 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
       } as HESCard] : []),
       ...(weather ? (() => {
         const wb = getReelWeatherBlurb(weather, period, hour);
-        return [{ emoji: wb.emoji, title: wb.title, tips: wb.storyTips, color: '#00D4B8', label: '🌤  WEATHER SIGNAL' } as HESCard];
+        const tempStr = weather.temp !== undefined ? `${weather.temp}°` : '';
+        const condStr = weather.condition ? weather.condition : '';
+        const cityStr = weather.city ? weather.city : '';
+        const summaryLine = [tempStr, condStr, cityStr].filter(Boolean).join('  ·  ');
+        return [
+          {
+            emoji: wb.emoji,
+            title: summaryLine || wb.title,
+            tips: [wb.tip],
+            color: '#00D4B8',
+            label: '🌤  WEATHER SNAPSHOT',
+            isWeatherMini: true,
+          } as HESCard,
+          {
+            emoji: wb.emoji,
+            title: wb.title,
+            tips: wb.storyTips,
+            color: '#00D4B8',
+            label: '',
+          } as HESCard,
+        ];
       })() : []),
-      { emoji: envSugg.emoji, title: envSugg.title, tips: envSugg.desc.split(' · '), color: period.color, label: '⏱  BODY RHYTHM SIGNAL' },
-      ...pairCards,
+      ...bodyRhythmCards,
+      ...doCards,
+      ...dontCards,
     ];
-  }, [period.id, weather?.condition, brahmaInfo?.status]);
+    return cards;
+  }, [period.id, period.minutesRemaining, period.startH, period.endH, weather?.condition, weather?.city, weather?.temp, weather?.humidity, weather?.weatherCode, brahmaInfo?.status, hour]);
 
   const cards: HESCard[] = React.useMemo(() => {
     const result: HESCard[] = [];
     for (const c of rawCards) {
-      if (c.isPair) { result.push(c); continue; }
-      const chunkSize = c.label.includes('WEATHER') ? 1 : 2;
+      // Single-item DO/DON'T cards pass through without chunking
+      if (c.isDoCard || c.isDontCard || c.isPair) { result.push(c); continue; }
+      // Always chunk to exactly 1 tip per card so every card is the same size
+      // and no text is ever truncated or hidden
+      const chunkSize = 1;
       if (c.tips.length <= chunkSize) {
         result.push(c);
       } else {
@@ -4516,82 +4615,160 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
   const card = cards[idx % cards.length];
   const CARD_W = SCREEN_W - 48;
 
-  const CardWrapper = onPress ? TouchableOpacity : View;
+   const CardWrapper = onPress ? TouchableOpacity : View;
+  // ── Period label for DO/DON'T cards — shown as header in single-item cards
+  const periodLabel = period.id === 'morning_kapha' ? 'MORNING KAPHA PERIOD'
+    : period.id === 'midday_pitta' ? 'SOLAR PITTA PERIOD'
+    : period.id === 'afternoon_vata' ? 'AFTERNOON VATA PERIOD'
+    : period.id === 'evening_kapha' ? 'EVENING KAPHA PERIOD'
+    : period.id === 'night_pitta' ? 'NOCTURNAL PITTA PERIOD'
+    : period.id === 'night_vata' ? 'BRAHMA MUHURTA WINDOW'
+    : period.label.toUpperCase();
+  // Period title for single-item cards
+  const periodTitle = period.englishLabel;
+  // Fixed height for ALL card types — ensures hero ring never shifts during transitions
+  const FIXED_CARD_HEIGHT = 170;
+
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], marginTop: 14, width: CARD_W, alignSelf: 'center' }}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], marginTop: 14, width: CARD_W, alignSelf: 'center', height: FIXED_CARD_HEIGHT, overflow: 'hidden' }}>
       <CardWrapper
         {...(onPress ? { onPress, activeOpacity: 0.82 } : {})}
-        style={{ width: CARD_W, minHeight: 148, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.26)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.32, shadowRadius: 22, elevation: 12 }}>
+        style={{ width: CARD_W, height: FIXED_CARD_HEIGHT, borderRadius: 22, borderWidth: 1, borderColor: card.isDoCard || card.isDontCard ? `${period.color}38` : 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.16)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.32, shadowRadius: 22, elevation: 12 }}>
         <LinearGradient
-          colors={['rgba(255,255,255,0.06)', 'transparent']}
+          colors={card.isDoCard || card.isDontCard ? [`${period.color}14`, 'transparent'] : ['rgba(255,255,255,0.06)', 'transparent']}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
           style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.18)', borderTopLeftRadius: 22, borderTopRightRadius: 22 }} />
-        <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 13, gap: 9 }}>
+        {/* Top accent line — period color for both DO and DON'T */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: card.isDoCard || card.isDontCard ? `${period.color}80` : 'rgba(255,255,255,0.18)', borderTopLeftRadius: 22, borderTopRightRadius: 22 }} />
+        <View style={{ paddingHorizontal: 16, paddingTop: 13, paddingBottom: 14, gap: 0 }}>
 
-          {/* ── Standard card header (non-pair) ── */}
-          {!card.isPair && (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-              <Text style={{ fontSize: 26, lineHeight: 31 }}>{card.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.48)', letterSpacing: 1.4, marginBottom: 3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{card.label}</Text>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 7 }} numberOfLines={2}>{card.title}</Text>
-              </View>
-              {cards.length > 1 && (
-                <View style={{ flexDirection: 'row', gap: 4, paddingTop: 3 }}>
-                  {cards.map((_, i) => (
-                    <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.20)' }} />
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* ── Standard tips (non-pair) ── */}
-          {!card.isPair && (
+          {/* ── Weather snapshot card — same fixed layout as standard cards ── */}
+          {card.isWeatherMini && (
             <>
-              <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)' }} />
-              <View style={{ gap: 5 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <Text style={{ fontSize: 26, lineHeight: 31 }}>{card.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  {card.label ? (
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: '#00D4B8CC', letterSpacing: 1.4, marginBottom: 3 }}>{card.label}</Text>
+                  ) : null}
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF', lineHeight: 20 }}>{card.title}</Text>
+                </View>
+                {cards.length > 1 && (
+                  <View style={{ flexDirection: 'row', gap: 4, paddingTop: 3 }}>
+                    {cards.map((_, i) => (
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? '#00D4B8CC' : 'rgba(255,255,255,0.18)' }} />
+                    ))}
+                  </View>
+                )}
+              </View>
+              <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }} />
+              <View style={{ gap: 5, marginTop: 6 }}>
                 {card.tips.map((tip, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}>
-                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.38)', marginTop: 4.5 }} />
-                    <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.88)', lineHeight: 16, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{tip}</Text>
+                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#00D4B8AA', marginTop: 4.5 }} />
+                    <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.88)', lineHeight: 16 }}>{tip}</Text>
                   </View>
                 ))}
               </View>
             </>
           )}
 
-          {/* ── Pair card: label row + side-by-side DO / AVOID ── */}
-          {card.isPair && (
+          {/* ── Single-item DO card — full-width, iOS clean ── */}
+          {card.isDoCard && (
             <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.48)', letterSpacing: 1.6, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{card.label}</Text>
+              {/* Row 1: Period label + dots */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }} />
+                  <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}CC`, letterSpacing: 1.5 }}>{periodLabel}</Text>
+                </View>
                 {cards.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     {cards.map((_, i) => (
-                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.20)' }} />
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }} />
                     ))}
                   </View>
                 )}
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {card.pairDo && (
-                  <View style={{ flex: 1, padding: 10, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-                    <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.55)', letterSpacing: 1.5, marginBottom: 6 }}>✓  DO</Text>
-                    <Text style={{ fontSize: 20, marginBottom: 5 }}>{card.pairDo.emoji}</Text>
-                    <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#FFFFFFDD', lineHeight: 14.5 }} numberOfLines={3}>{card.pairDo.text}</Text>
-                  </View>
-                )}
-                {card.pairDont && (
-                  <View style={{ flex: 1, padding: 10, borderRadius: 14, backgroundColor: 'rgba(244,63,94,0.12)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.40)' }}>
-                    <Text style={{ fontSize: 7, fontWeight: '900', color: '#f43f5e', letterSpacing: 1.5, marginBottom: 6 }}>⛔  AVOID</Text>
-                    <Text style={{ fontSize: 20, marginBottom: 5 }}>{card.pairDont.emoji}</Text>
-                    <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#FFFFFFDD', lineHeight: 14.5 }} numberOfLines={3}>{card.pairDont.text}</Text>
-                  </View>
-                )}
-                {!card.pairDont && card.pairDo && <View style={{ flex: 1 }} />}
+              {/* Row 2: Period title */}
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', marginBottom: 10, letterSpacing: -0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{periodTitle}</Text>
+              {/* Divider */}
+              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }} />
+              {/* Row 3: Section label */}
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}AA`, letterSpacing: 1.6, marginBottom: 8 }}>✓ IDEAL FOR THIS PHASE</Text>
+              {/* Row 4: Activity item */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
               </View>
+            </>
+          )}
+
+          {/* ── Single-item DON'T card — same layout as DO card, period colour ── */}
+          {card.isDontCard && (
+            <>
+              {/* Row 1: Period label + dots */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }} />
+                  <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}CC`, letterSpacing: 1.5 }}>{periodLabel}</Text>
+                </View>
+                {cards.length > 1 && (
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    {cards.map((_, i) => (
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }} />
+                    ))}
+                  </View>
+                )}
+              </View>
+              {/* Row 2: Period title */}
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', marginBottom: 10, letterSpacing: -0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{periodTitle}</Text>
+              {/* Divider */}
+              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }} />
+              {/* Row 3: Section label — only difference from DO card */}
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}AA`, letterSpacing: 1.6, marginBottom: 8 }}>⛔ DO NOT DO</Text>
+              {/* Row 4: Avoidance item */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
+              </View>
+            </>
+          )}
+
+          {/* ── Standard card (weather / brahma / body rhythm signal) ── */}
+          {!card.isDoCard && !card.isDontCard && !card.isWeatherMini && (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <Text style={{ fontSize: 26, lineHeight: 31 }}>{card.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 3, gap: 10 }}>
+                    {card.label ? (
+                      <Text style={{ flex: 1, fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.48)', letterSpacing: 1.4, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{card.label}</Text>
+                    ) : <View style={{ flex: 1 }} />}
+                    {cards.length > 1 && (
+                      <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '50%' }}>
+                        {cards.map((_, i) => (
+                          <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.20)' }} />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 7 }}>{card.title}</Text>
+                </View>
+              </View>
+              {card.tips && card.tips.length > 0 && (
+                <>
+                  <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }} />
+                  <View style={{ gap: 5, marginTop: 6 }}>
+                    {card.tips.map((tip, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}>
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.38)', marginTop: 4.5 }} />
+                        <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.88)', lineHeight: 16, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{tip}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
 
@@ -4604,44 +4781,107 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
 // ══════════════════════════════════════════════════════════════════════════════
 // Sleep Sounds pulsing entry button — home screen shortcut to Sleep tab
 // ══════════════════════════════════════════════════════════════════════════════
-function getSleepModeLabel(bgKey: string): { icon: string; label: string } {
-  if (bgKey === 'brahma' || bgKey === 'predawn') return { icon: '🌄', label: 'Good Morning' };
-  if (bgKey === 'sunrise' || bgKey === 'morning') return { icon: '🌅', label: 'Morning Sounds' };
-  if (bgKey === 'midday' || bgKey === 'afternoon') return { icon: '💼', label: 'Listen & Work' };
-  if (bgKey === 'sandhya' || bgKey === 'twilight' || bgKey === 'evening') return { icon: '🌙', label: 'Wind Down' };
-  return { icon: '🌌', label: 'Good Night' };
+function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaMuhurtaInfo['status'] | null): string {
+  if (!period) return 'Listen Nada Sounds & Heal';
+
+  const getDurationMinutes = () => {
+    const deltaH = (period.endH - period.startH + 24) % 24;
+    const hours = deltaH === 0 ? 24 : deltaH;
+    return Math.max(1, Math.round(hours * 60));
+  };
+
+  switch (period.id) {
+    case 'night_vata':
+      if (brahmaStatus === 'active') return 'Listen Nada Sounds & Meditate';
+      return 'Listen & Drift Toward Dawn';
+    case 'morning_kapha':
+      return 'Listen & Recharge for the Day';
+    case 'midday_pitta': {
+      const total = getDurationMinutes();
+      const remaining = Math.max(0, period.minutesRemaining ?? 0);
+      const progress = 1 - Math.min(1, remaining / total);
+      return progress < 0.5
+        ? 'Listen & Dive Into Deep Work'
+        : 'Listen & Take a Restorative Pause';
+    }
+    case 'afternoon_vata':
+      return 'Listen & Spark Creative Flow';
+    case 'evening_kapha':
+      return 'Listen & Ease into Sunset Calm';
+    case 'night_pitta':
+      return 'Listen to Sounds & Sleep Deep';
+    default:
+      return 'Listen Nada Sounds & Heal';
+  }
 }
-function SleepSoundsButton() {
+
+function SleepSoundsButton({
+  period,
+  brahmaStatus,
+}: {
+  period?: DoshaPeriod | null;
+  brahmaStatus?: BrahmaMuhurtaInfo['status'] | null;
+}) {
   const router = useRouter();
-  const { bgKey } = useBgContext();
-  const sleepMode = getSleepModeLabel(bgKey);
+  const label = getSleepButtonLabel(period, brahmaStatus);
+  // Breathing glow + press scale for a calm, premium feel
+  const glowAnim  = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim,  { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim,  { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const btnScale   = pressAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.98] });
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.14, 0.32] });
   return (
     <TouchableOpacity
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+      onPressIn={() => { Animated.timing(pressAnim, { toValue: 1, duration: 90, useNativeDriver: true }).start(); }}
+      onPressOut={() => { Animated.timing(pressAnim, { toValue: 0, duration: 140, useNativeDriver: true }).start(); }}
       activeOpacity={0.80}
       style={{ height: '100%' }}
     >
-      <View style={{
-        height: '100%',
-        flexDirection: 'row', alignItems: 'center', gap: 10,
-        paddingHorizontal: 16,
-        borderRadius: 18, overflow: 'hidden',
-        backgroundColor: 'rgba(6,15,40,0.42)',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20,
-        elevation: 12,
+      <Animated.View style={{
+        height: '100%', minHeight: 56,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingHorizontal: 22,
+        borderRadius: 28, overflow: 'hidden',
+        backgroundColor: 'rgba(6,15,40,0.44)',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
+        shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.20, shadowRadius: 22,
+        elevation: 8,
+        transform: [{ scale: btnScale }],
       }}>
+        {/* Soft breathing glow layer */}
+        <Animated.View pointerEvents="none" style={{
+          position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+          borderRadius: 28,
+          backgroundColor: 'rgba(0,212,184,0.26)',
+          opacity: glowOpacity,
+        }} />
         <LinearGradient
-          colors={['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.07)', 'transparent']}
+          colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'transparent']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }} />
-        <Text style={{ fontSize: 18 }}>〰️</Text>
-        <View style={{ gap: 1 }}>
-          <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.4 }}>Nada Healing</Text>
-          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(196,181,253,0.85)', letterSpacing: 0.5, fontStyle: 'italic' }}>Transform with the Vibes…</Text>
-        </View>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#c4b5fd' }}>→</Text>
-      </View>
+        {/* Soundwave icon */}
+        <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8 }}>
+          <SvgPath d="M4 12v0.01" stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+          <SvgPath d="M7 10v4"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+          <SvgPath d="M10 7v10"  stroke="#4FD1C5" strokeWidth="2.2" strokeLinecap="round" />
+          <SvgPath d="M13 9v6"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+          <SvgPath d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+          <SvgPath d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
+        </Svg>
+        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.35 }}>{label}</Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -4686,22 +4926,488 @@ function getPeriodActionBlurb(id: string, brahmaStatus?: 'active' | 'upcoming' |
     return 'Rest deeply — Brahma Muhurta window is approaching';
   }
   switch (id) {
-    case 'morning_kapha':  return 'Ideal for workouts, yoga & building strength';
-    case 'midday_pitta':   return 'Best for deep work, decisions & your main meal';
-    case 'afternoon_vata': return 'Ideal for creativity, exercise & collaboration';
-    case 'evening_kapha':  return 'Family time, journaling & gentle creative work';
-    case 'night_pitta':    return 'Body is repairing — sleep now, avoid screens';
+    case 'morning_kapha':      return 'Ideal for workouts, yoga & building strength';
+    case 'midday_pitta':       return 'Best for deep work, decisions & your main meal';
+    case 'midday_pitta_late':  return 'Rest, light walk or nap — do not force focus';
+    case 'afternoon_vata':     return 'Ideal for creativity, exercise & collaboration';
+    case 'evening_kapha':      return 'Family time, journaling & gentle creative work';
+    case 'night_pitta':        return 'Body is repairing — sleep now, avoid screens';
     default: return '';
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Hero Ring Display — clean minimal ring for the Gently-style home screen
+// Ayurvedic Circadian Ring Palette — period-based colour system
+// Each dosha period has its own elegant colour rooted in Ayurvedic tradition:
+//   night_vata       → Deep Indigo-Violet (ether + space energy)
+//   morning_kapha    → Warm Amber-Gold (earth + sunrise anabolic)
+//   midday_pitta_early → Vivid Orange-Red (fire peak, metabolic apex)
+//   midday_pitta_late  → Muted Dusty Amber (post-solar dip, softer fire)
+//   afternoon_vata   → Electric Violet-Lavender (air + creativity)
+//   evening_kapha    → Deep Teal-Green (earth settling, melatonin)
+//   night_pitta      → Warm Gold (nocturnal liver fire, deep repair)
 // ══════════════════════════════════════════════════════════════════════════════
-function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact }: { period: DoshaPeriod | null; brahmaInfo?: BrahmaMuhurtaInfo | null; weather?: WeatherData | null; onPress?: () => void; compact?: boolean }) {
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const bv = Math.round(b1 + (b2 - b1) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bv.toString(16).padStart(2, '0')}`;
+}
+
+type AyurvedicPalette = { ring: string; halo: string; accent: string };
+
+// ── Sacred Hour Detection — sunrise / sunset ±30 min window ─────────────────
+type SacredHourType = 'sunrise' | 'sunset' | null;
+function getSacredHourInfo(nowH: number, solar?: SolarTimes | null): {
+  type: SacredHourType;
+  progress: number; // 0=window-start, 1=window-end, used for color lerp
+} {
+  if (!solar) return { type: null, progress: 0 };
+  const WIN = 15 / 60; // ±15-min window in decimal hours
+  const sr  = solar.sunrise;
+  const ss  = solar.sunset;
+  const dSr = nowH - sr;
+  const dSs = nowH - ss;
+  if (dSr >= -WIN && dSr <= WIN) {
+    return { type: 'sunrise', progress: (dSr + WIN) / (2 * WIN) };
+  }
+  if (dSs >= -WIN && dSs <= WIN) {
+    return { type: 'sunset',  progress: (dSs + WIN) / (2 * WIN) };
+  }
+  return { type: null, progress: 0 };
+}
+
+// Sunrise palette: deep indigo pre-dawn → crimson-rose horizon → gold zenith
+const SUNRISE_PALETTES: Array<AyurvedicPalette> = [
+  { ring: '#7C3AED', halo: '#C026D3', accent: '#F472B6' }, // pre-dawn purple-magenta
+  { ring: '#DC2626', halo: '#EA580C', accent: '#FCA5A5' }, // horizon crimson
+  { ring: '#D97706', halo: '#F59E0B', accent: '#FDE68A' }, // warm gold peak
+];
+// Sunset palette: afternoon gold → crimson-amber → indigo dusk
+const SUNSET_PALETTES: Array<AyurvedicPalette> = [
+  { ring: '#D97706', halo: '#F59E0B', accent: '#FDE68A' }, // gold start
+  { ring: '#C2410C', halo: '#EA580C', accent: '#FCA5A5' }, // crimson mid
+  { ring: '#7C3AED', halo: '#9333EA', accent: '#C4B5FD' }, // violet dusk
+];
+function lerpPalette(palettes: Array<AyurvedicPalette>, t: number): AyurvedicPalette {
+  const n = palettes.length - 1;
+  const idx = Math.min(n - 1, Math.floor(t * n));
+  const frac = (t * n) - idx;
+  const a = palettes[idx];
+  const b = palettes[idx + 1];
+  return {
+    ring:   lerpColor(a.ring,   b.ring,   frac),
+    halo:   lerpColor(a.halo,   b.halo,   frac),
+    accent: lerpColor(a.accent, b.accent, frac),
+  };
+}
+
+
+// ── Day palettes — follows real sun elevation above horizon ─────────────────
+// elevation 0° (horizon) → 60°+ (zenith): warm amber → bright gold
+const DAY_PALETTES: Array<AyurvedicPalette> = [
+  { ring: '#92400E', halo: '#B45309', accent: '#FCD34D' }, // 0° — just risen / about to set
+  { ring: '#B45309', halo: '#D97706', accent: '#FDE68A' }, // ~10° — low morning/evening
+  { ring: '#D97706', halo: '#F59E0B', accent: '#FEF3C7' }, // ~20° — golden hour end
+  { ring: '#F59E0B', halo: '#FBBF24', accent: '#FFFDE0' }, // ~35° — mid-morning / afternoon
+  { ring: '#FBBF24', halo: '#FDE68A', accent: '#FFFFFF' }, // 55°+ — solar noon blazing
+];
+
+// ── Night phases — luminous moonlight silver, changes across the night ───────
+// Phase 1 (Evening):   post-sunset  → Cool Silver-Blue   (moonlit sky tone)
+// Phase 2 (Midnight):  deep night   → Platinum White     (full moon zenith)
+// Phase 3 (Pre-Dawn):  before dawn  → Warm Pearl Silver  (pre-dawn warmth)
+const NIGHT_EVENING:  AyurvedicPalette = { ring: '#7B9BB5', halo: '#A8C4D8', accent: '#C8DDE8' };
+const NIGHT_MIDNIGHT: AyurvedicPalette = { ring: '#B0C8D8', halo: '#D4E8F0', accent: '#EEF5F8' };
+const NIGHT_PREDAWN:  AyurvedicPalette = { ring: '#9BB0C8', halo: '#BED0E0', accent: '#DDE8F0' };
+// ── Brahma Muhurta — sacred pre-dawn window ───────────────────────────
+// Deep Celestial Teal — like sacred still water before the world wakes
+const BRAHMA_PALETTE: AyurvedicPalette = { ring: '#0D3A4A', halo: '#0F5266', accent: '#22D3EE' };
+
+
+function getSolarRingPalette(
+  nowH: number,
+  solarNoon: number,
+  solar?: SolarTimes | null,
+  lat?: number | null,
+  lon?: number | null,
+  brahmaActive?: boolean,
+): AyurvedicPalette {
+  // ── 0. Brahma Muhurta override — sacred teal, highest priority ───────────
+  if (brahmaActive) return BRAHMA_PALETTE;
+
+  // ── 1. Sacred hour override (±15 min sunrise/sunset) ─────────────────────
+  const sacred = getSacredHourInfo(nowH, solar);
+  if (sacred.type === 'sunrise') return lerpPalette(SUNRISE_PALETTES, sacred.progress);
+  if (sacred.type === 'sunset')  return lerpPalette(SUNSET_PALETTES,  sacred.progress);
+
+  // ── 2. Get real sun elevation — GPS if available, else approximate ────────
+  let elevation: number;
+  if (lat != null && lon != null) {
+    elevation = getSunElevation(lat, lon);
+  } else if (solar) {
+    // Approximate from solar times: sine curve peaking at solarNoon
+    const sr = solar.sunrise;
+    const ss = solar.sunset;
+    const dayLen = ss - sr;
+    if (nowH < sr || nowH > ss) {
+      // Night — estimate how far below horizon (rough −18 at midnight, 0 at horizon)
+      const distFromHorizon = nowH < sr ? sr - nowH : nowH - ss;
+      elevation = -Math.min(18, distFromHorizon * 4);
+    } else {
+      // Day — sine approximation
+      const fracDay = (nowH - sr) / dayLen;
+      elevation = Math.sin(fracDay * Math.PI) * 65; // max ~65° at solar noon
+    }
+  } else {
+    // Absolute fallback: linear estimate assuming 6 AM rise / 6 PM set
+    const fracDay = (nowH - 6) / 12;
+    if (fracDay <= 0 || fracDay >= 1) {
+      elevation = -10;
+    } else {
+      elevation = Math.sin(fracDay * Math.PI) * 60;
+    }
+  }
+
+  // ── 3. Night: 3 distinct phases based on time position within night ────────
+  if (elevation <= 0) {
+    if (solar) {
+      const sr = solar.sunrise;
+      const ss = solar.sunset;
+      // Total night length (handles midnight wrap)
+      const nightLen = (sr + 24 - ss) % 24 || 12;
+      // How far we are into the night (0 = just after sunset, 1 = just before sunrise)
+      let distFromSunset: number;
+      if (nowH >= ss) {
+        distFromSunset = nowH - ss;
+      } else {
+        distFromSunset = nowH + 24 - ss; // wrapped past midnight
+      }
+      const nightProgress = Math.min(1, distFromSunset / nightLen);
+
+      if (nightProgress < 0.33) {
+        // Evening phase (post-sunset → early night): Deep Ocean Blue
+        // Smooth entry from SUNSET_PALETTES by lerping from twilight into evening
+        const t = nightProgress / 0.33;
+        return {
+          ring:   lerpColor('#2D1042', NIGHT_EVENING.ring,   t), // from sunset violet into ocean blue
+          halo:   lerpColor('#3B1258', NIGHT_EVENING.halo,   t),
+          accent: lerpColor('#7C3AED', NIGHT_EVENING.accent, t),
+        };
+      } else if (nightProgress < 0.67) {
+        // Deep night phase (midnight): Cosmic Indigo
+        const t = (nightProgress - 0.33) / 0.34;
+        return {
+          ring:   lerpColor(NIGHT_EVENING.ring,   NIGHT_MIDNIGHT.ring,   t),
+          halo:   lerpColor(NIGHT_EVENING.halo,   NIGHT_MIDNIGHT.halo,   t),
+          accent: lerpColor(NIGHT_EVENING.accent, NIGHT_MIDNIGHT.accent, t),
+        };
+      } else {
+        // Pre-dawn phase (approaching sunrise): Deep Mystic Violet
+        const t = (nightProgress - 0.67) / 0.33;
+        return {
+          ring:   lerpColor(NIGHT_MIDNIGHT.ring,   NIGHT_PREDAWN.ring,   t),
+          halo:   lerpColor(NIGHT_MIDNIGHT.halo,   NIGHT_PREDAWN.halo,   t),
+          accent: lerpColor(NIGHT_MIDNIGHT.accent, NIGHT_PREDAWN.accent, t),
+        };
+      }
+    }
+    // Fallback without solar times — cosmic indigo
+    return NIGHT_MIDNIGHT;
+  }
+
+  // ── 4. Day: sun above horizon → scale from warm amber to blazing gold ─────
+  const height = Math.min(1, elevation / 55); // 0=just risen, 1=near zenith
+  return lerpPalette(DAY_PALETTES, height);
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Hero Ring — iOS-clean, 4-element layout, Ayurvedic period colours
+// Inner zone: fully transparent — background image shows through
+// Content: sub-pill · header · "about Xh Ym left" · sentence · science label
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Phase content map — unique per period ────────────────────────────────────
+function getHeroRingContent(periodId: string, nowH: number, solarNoon: number, brahmaActive: boolean): {
+  subPill: string;
+  header: string;
+  sentence: string;
+  sciLabel: string;
+} {
+  if (brahmaActive) {
+    return {
+      subPill: 'BRAHMA MUHURTA · OPEN NOW',
+      header: 'Neuroplasticity Peak Hours',
+      sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
+      sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+    };
+  }
+  if (periodId === 'midday_pitta') {
+    return {
+      subPill: 'PEAK FOCUS PERIOD',
+      header: 'Peak Focus Period',
+      sentence: 'Your metabolic fire and mental sharpness peak together. Decide. Create. Execute.',
+      sciLabel: 'Peak Metabolic Fire · HCl + Pepsin + Bile at maximum · Thyroid apex',
+    };
+  }
+
+  if (periodId === 'midday_pitta_late') {
+    return {
+      subPill: 'CIRCADIAN ALERTNESS TROUGH',
+      header: 'Energy Dip Phase',
+      sentence: 'Cortisol drops, adenosine rises, melatonin pulses. Your brain is resetting — honour it.',
+      sciLabel: 'Post-Solar Cortisol Dip · Adenosine Buildup · Melatonin Micro-Pulse · Parasympathetic Active',
+    };
+  }
+  switch (periodId) {
+    case 'night_vata':
+      return {
+        subPill: 'BRAHMA MUHURTA WINDOW',
+        header: 'Neuroplasticity Peak Hours',
+        sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
+        sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+      };
+    case 'morning_kapha':
+      return {
+        subPill: 'MORNING KAPHA PERIOD',
+        header: 'Rise & Build Hours',
+        sentence: 'Your hormones are primed to build. Move now and it compounds all day.',
+        sciLabel: 'Anabolic Hormone Peak · Lymphatic Clearance · Cortisol Rising',
+      };
+    case 'afternoon_vata':
+      return {
+        subPill: 'AFTERNOON VATA PERIOD',
+        header: 'Creative Peak Hours',
+        sentence: 'Your body is built to move and create right now. Peak athletic window.',
+        sciLabel: 'Lung Capacity Peak · Reaction Time Fastest · Neuromuscular Coordination',
+      };
+    case 'evening_kapha':
+      return {
+        subPill: 'EVENING KAPHA PERIOD',
+        header: 'Evening Wind Down Hours',
+        sentence: 'Melatonin is rising. Your nervous system is ready to let go.',
+        sciLabel: 'Melatonin Synthesis Begins · Core Temp Drops · Parasympathetic NS Active',
+      };
+    case 'night_pitta':
+      return {
+        subPill: 'DEEP REPAIR PHASE',
+        header: 'Deep Repair Hours',
+        sentence: 'Your body is in complete detox mode. Take deep sleep.',
+        sciLabel: 'Liver Detox Phase I & II · Growth Hormone Surge · Cellular Autophagy Active',
+      };
+    default:
+      return {
+        subPill: 'BODY RHYTHM',
+        header: 'Calibrating',
+        sentence: 'Your body rhythm engine is computing your phase.',
+        sciLabel: 'Circadian cycle analysis in progress',
+      };
+  }
+}
+
+// ── Night Moon SVG — photorealistic, ClipPath-masked, multi-layer ────────────
+// Rendered with: ClipPath disc mask · limb-darkening radial gradient ·
+// deep-blue earthshine on dark side · mare ellipses · crater shadow+highlight
+// · soft terminator glow · warm atmospheric corona outside disc
+function NightMoonInRing({ size }: { size: number }) {
+  const moon = React.useMemo(() => getMoonPhase(), []);
+  const tithiNum = moon.tithiNum;
+  const S  = size;           // total SVG canvas
+  const r  = S / 2;          // disc radius
+  const cx = r;              // disc centre x
+  const cy = r;              // disc centre y
+
+  const isWaxing   = tithiNum <= 15;
+  const isPurnima  = tithiNum === 15;
+  const isAmavasya = tithiNum === 0 || tithiNum === 30;
+  const illum = isPurnima ? 1 : isAmavasya ? 0
+    : isWaxing ? tithiNum / 15
+    : 1 - (tithiNum - 15) / 15;
+
+  // ── Terminator arc geometry ──────────────────────────────────────────────
+  // rx = semi-minor axis of the terminator ellipse
+  const termRx = Math.max(0.5, r * Math.abs(Math.cos(Math.PI * illum)));
+  // Which half of the disc is lit determines arc sweep directions
+  const outerSweep      = isWaxing ? 1 : 0;                         // outer limb direction
+  const termSweep       = (isWaxing === (illum >= 0.5)) ? 1 : 0;   // terminator ellipse direction
+  // Illuminated region path (sits on top of the dark disc)
+  const litPath = `M ${cx} 0 A ${r} ${r} 0 1 ${outerSweep} ${cx} ${S} A ${termRx} ${r} 0 0 ${termSweep} ${cx} 0 Z`;
+
+  // ── Mare (dark flat plains) — large ellipses inside disc ─────────────────
+  // Based on real lunar mare positions (mirrored for waxing view)
+  const MARE = [
+    { cx: cx + r*0.08,  cy: cy - r*0.12, rx: r*0.28, ry: r*0.22, op: 0.22 }, // Mare Imbrium
+    { cx: cx + r*0.22,  cy: cy + r*0.18, rx: r*0.20, ry: r*0.16, op: 0.18 }, // Mare Serenitatis
+    { cx: cx - r*0.10,  cy: cy + r*0.20, rx: r*0.22, ry: r*0.15, op: 0.16 }, // Mare Tranquillitatis
+    { cx: cx - r*0.28,  cy: cy - r*0.05, rx: r*0.14, ry: r*0.20, op: 0.14 }, // Oceanus Procellarum
+    { cx: cx + r*0.04,  cy: cy + r*0.36, rx: r*0.16, ry: r*0.12, op: 0.15 }, // Mare Nubium
+  ];
+
+  // ── Craters — shadow floor + bright rim highlight ─────────────────────────
+  const CRATERS = [
+    { ox:  0.30, oy: -0.28, r: 0.065, ang: 220 },  // Tycho
+    { ox: -0.18, oy:  0.22, r: 0.090, ang: 140 },  // Clavius
+    { ox:  0.38, oy:  0.10, r: 0.048, ang: 200 },  // Copernicus
+    { ox: -0.08, oy: -0.36, r: 0.055, ang: 160 },  // Plato
+    { ox:  0.14, oy:  0.34, r: 0.038, ang: 220 },  // Schickard
+    { ox: -0.32, oy: -0.15, r: 0.042, ang: 170 },  // Grimaldi
+    { ox:  0.24, oy: -0.08, r: 0.035, ang: 210 },  // Kepler
+  ];
+
+  // Helper: is a point (ox,oy) inside the lit region?
+  // Used to decide whether to draw craters more visibly
+  const inLit = (ox: number) => isWaxing ? ox >= -termRx/r : ox <= termRx/r;
+
+  // ── Unique gradient IDs keyed to illum so React re-mounts on phase change ─
+  const uid = String(Math.round(illum * 100));
+
+  return (
+    <Svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+      <Defs>
+        {/* Disc clip-path — everything masked to a perfect circle */}
+        <ClipPath id={`mc${uid}`}>
+          <SvgCircle cx={cx} cy={cy} r={r - 0.5} />
+        </ClipPath>
+
+        {/* Earthshine base — deep indigo-blue, never pure black */}
+        <SvgRadialGradient id={`es${uid}`} cx="44%" cy="38%" r="62%" fx="44%" fy="38%">
+          <Stop offset="0%"   stopColor="#1c2d4e" stopOpacity="0.88" />
+          <Stop offset="50%"  stopColor="#0f1c38" stopOpacity="0.95" />
+          <Stop offset="100%" stopColor="#060d20" stopOpacity="1.00" />
+        </SvgRadialGradient>
+
+        {/* Lit-side surface gradient — warm ivory, limb-darkened toward edges */}
+        <SvgRadialGradient id={`lt${uid}`} cx="36%" cy="30%" r="68%" fx="36%" fy="30%">
+          <Stop offset="0%"   stopColor="#fffef4" stopOpacity="1.00" />
+          <Stop offset="30%"  stopColor="#fef5d0" stopOpacity="0.98" />
+          <Stop offset="65%"  stopColor="#fde89a" stopOpacity="0.92" />
+          <Stop offset="88%"  stopColor="#f5c842" stopOpacity="0.85" />
+          <Stop offset="100%" stopColor="#c49020" stopOpacity="0.72" />
+        </SvgRadialGradient>
+
+        {/* Specular hot-spot highlight — tiny bright point near sub-solar point */}
+        <SvgRadialGradient id={`hl${uid}`} cx="33%" cy="27%" r="30%" fx="33%" fy="27%">
+          <Stop offset="0%"   stopColor="#ffffff" stopOpacity="0.45" />
+          <Stop offset="100%" stopColor="#ffffff" stopOpacity="0.00" />
+        </SvgRadialGradient>
+
+        {/* Warm corona outside disc */}
+        <SvgRadialGradient id={`cr${uid}`} cx="50%" cy="50%" r="50%">
+          <Stop offset="70%"  stopColor="transparent"  stopOpacity="0"    />
+          <Stop offset="88%"  stopColor="#fef0b0"      stopOpacity="0.10" />
+          <Stop offset="100%" stopColor="#fde68a"      stopOpacity="0.22" />
+        </SvgRadialGradient>
+      </Defs>
+
+      {/* ── 1. Atmospheric corona — sits OUTSIDE disc, no clip ── */}
+      <SvgCircle cx={cx} cy={cy} r={r + 7} fill={`url(#cr${uid})`} />
+
+      {/* ── 2. Everything inside disc is clipped ── */}
+      {/* 2a. Earthshine base — entire disc */}
+      <SvgCircle cx={cx} cy={cy} r={r} fill={`url(#es${uid})`} clipPath={`url(#mc${uid})`} />
+
+      {/* 2b. Mare on dark side — barely visible earthshine geography */}
+      {MARE.map((m, i) => (
+        <SvgEllipse key={`dm${i}`}
+          cx={m.cx} cy={m.cy} rx={m.rx} ry={m.ry}
+          fill={`rgba(8,12,30,${m.op * 0.40})`}
+          clipPath={`url(#mc${uid})`}
+        />
+      ))}
+
+      {/* 2c. Dark-side crater outlines — ghost visible via earthshine */}
+      {CRATERS.map((c, i) => (
+        <SvgCircle key={`dc${i}`}
+          cx={cx + c.ox * r} cy={cy + c.oy * r} r={c.r * r}
+          fill="none"
+          stroke={`rgba(40,65,120,0.18)`}
+          strokeWidth={0.9}
+          clipPath={`url(#mc${uid})`}
+        />
+      ))}
+
+      {/* 2d. Lit region — painted over dark base */}
+      {illum > 0.01 && (
+        <SvgPath d={litPath} fill={`url(#lt${uid})`} clipPath={`url(#mc${uid})`} />
+      )}
+
+      {/* 2e. Specular highlight on lit side */}
+      {illum > 0.01 && (
+        <SvgPath d={litPath} fill={`url(#hl${uid})`} clipPath={`url(#mc${uid})`} />
+      )}
+
+      {/* 2f. Mare on lit side — darker amber patches like real regolith */}
+      {illum > 0.05 && MARE.map((m, i) => (
+        <SvgEllipse key={`lm${i}`}
+          cx={m.cx} cy={m.cy} rx={m.rx} ry={m.ry}
+          fill={`rgba(160,110,20,${m.op * 0.28})`}
+          clipPath={`url(#mc${uid})`}
+        />
+      ))}
+
+      {/* 2g. Craters on lit side — shadow floor (dark) + bright ejecta rim */}
+      {illum > 0.05 && CRATERS.map((c, i) => {
+        const ccx = cx + c.ox * r;
+        const ccy = cy + c.oy * r;
+        const cr  = c.r * r;
+        return (
+          <React.Fragment key={`lc${i}`}>
+            {/* Shadow floor — slightly off-centre from light source */}
+            <SvgCircle
+              cx={ccx + cr * 0.15} cy={ccy + cr * 0.15} r={cr * 0.78}
+              fill="rgba(90,60,0,0.14)"
+              clipPath={`url(#mc${uid})`}
+            />
+            {/* Bright ejecta rim — top-left catch-light */}
+            <SvgCircle
+              cx={ccx} cy={ccy} r={cr}
+              fill="none"
+              stroke="rgba(255,242,180,0.38)"
+              strokeWidth={cr * 0.35}
+              clipPath={`url(#mc${uid})`}
+            />
+          </React.Fragment>
+        );
+      })}
+
+      {/* 2h. Terminator soft glow — feathered edge between light and shadow */}
+      {illum > 0.01 && illum < 0.99 && (
+        <>
+          <SvgPath d={litPath} fill="none"
+            stroke="rgba(255,235,160,0.30)" strokeWidth={r * 0.09}
+            clipPath={`url(#mc${uid})`}
+          />
+          <SvgPath d={litPath} fill="none"
+            stroke="rgba(255,245,200,0.18)" strokeWidth={r * 0.16}
+            clipPath={`url(#mc${uid})`}
+          />
+        </>
+      )}
+
+      {/* ── 3. Limb rim — thin bright ring at the very edge of disc ── */}
+      <SvgCircle cx={cx} cy={cy} r={r - 1.2}
+        fill="none"
+        stroke={illum > 0.5 ? 'rgba(255,250,220,0.40)' : 'rgba(100,140,200,0.20)'}
+        strokeWidth={1.4}
+        clipPath={`url(#mc${uid})`}
+      />
+    </Svg>
+  );
+}
+
+function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarTimes }: { period: DoshaPeriod | null; brahmaInfo?: BrahmaMuhurtaInfo | null; weather?: WeatherData | null; onPress?: () => void; compact?: boolean; solarTimes?: SolarTimes | null }) {
   const pulse  = useRef(new Animated.Value(1)).current;
   const bounce = useRef(new Animated.Value(0)).current;
   const tapPulse = useRef(new Animated.Value(1)).current;
+  const coolingGlow = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1.06, duration: 2400, useNativeDriver: true }),
@@ -4716,7 +5422,31 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact }: { pe
       Animated.timing(tapPulse, { toValue: 1.22, duration: 700, useNativeDriver: true }),
       Animated.timing(tapPulse, { toValue: 1,    duration: 700, useNativeDriver: true }),
     ])).start();
+    // Cooling effect glow for silver periods (Evening Kapha & Night Vata)
+    Animated.loop(Animated.sequence([
+      Animated.timing(coolingGlow, { toValue: 0.7, duration: 3200, useNativeDriver: true }),
+      Animated.timing(coolingGlow, { toValue: 0.3, duration: 3200, useNativeDriver: true }),
+    ])).start();
   }, []);
+
+  // ── Solar-elevation palette — real sun position drives ring colour ──
+  const now    = new Date();
+  const nowH   = now.getHours() + now.getMinutes() / 60;
+  const solarNoon = solarTimes?.solarNoon ?? 12.5;
+  const periodId  = period?.id ?? 'night_vata';
+  const sacredHour = getSacredHourInfo(nowH, solarTimes);
+  // showBrahma must come before palette (palette uses it)
+  const showBrahma = period?.id === 'night_vata' && brahmaInfo?.status === 'active';
+  // Pass GPS from weather if available for precise elevation
+  const gpsLat = weather?.lat ?? null;
+  const gpsLon = weather?.lon ?? null;
+  const palette   = getSolarRingPalette(nowH, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma);
+  const ringHex   = palette.ring;
+  const haloHex   = palette.halo;
+  const accentHex = palette.accent;
+  const [hR, hG, hB] = hexToRgb(haloHex);
+  const [rR, rG, rB] = hexToRgb(ringHex);
+
   const HERO_RS  = compact ? 216 : 275;
   const HERO_STR = 5;
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
@@ -4724,83 +5454,271 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact }: { pe
   const rem    = period?.minutesRemaining ?? 0;
   const durM   = period ? Math.max(1, Math.round(((period.endH - period.startH + 24) % 24) * 60)) : 1;
   const prog   = period ? Math.min(1, Math.max(0, (durM - rem) / durM)) : 0;
-  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
+  // "Xh Ym left" — friendly, no 'about'
+  const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m left` : `${rem}m left`;
+
+  // ── Hero content per phase ──
+  const heroContent = period ? getHeroRingContent(period.id, nowH, solarNoon, showBrahma) : null;
+
+  // ── Is this a night period? Night gets moon-in-ring treatment ──
+  const isNightRing = ['night_pitta', 'night_vata', 'evening_kapha'].includes(periodId) && !showBrahma;
+  // Moon size: fits inside ring with a small gap
+  const MOON_SIZE = compact ? 130 : 168;
+
+  // ── Tonight's Moon label — US-market friendly, computed once ──
+  const nightMoonData = React.useMemo(() => {
+    const m = getMoonPhase();
+    const day = m.tithiNum;
+    const total = 30;
+    // Friendly name map for US audience
+    const friendlyName: Record<string, string> = {
+      'New Moon':       'New Moon',
+      'Waxing Crescent': 'Waxing Crescent',
+      'First Quarter':  'First Quarter',
+      'Waxing Gibbous': 'Waxing Gibbous',
+      'Full Moon':      'Full Moon',
+      'Waning Gibbous': 'Waning Gibbous',
+      'Last Quarter':   'Last Quarter',
+      'Waning Crescent':'Waning Crescent',
+    };
+    const phase = friendlyName[m.name] ?? m.name;
+    // Ordinal suffix
+    const ord = (n: number) => {
+      if (n === 1 || n === 21) return `${n}st`;
+      if (n === 2 || n === 22) return `${n}nd`;
+      if (n === 3 || n === 23) return `${n}rd`;
+      return `${n}th`;
+    };
+    // Line 1: phase name — punchy
+    const line1 = m.name === 'Full Moon'
+      ? `🌕  Full Moon Tonight`
+      : m.name === 'New Moon'
+      ? `🌑  New Moon Tonight`
+      : `${m.emoji}  ${phase}`;
+    // Line 2: cycle day + illumination
+    const line2 = `${ord(day)} night of cycle  ·  ${m.illumination}% lit`;
+    return { line1, line2 };
+  }, []);
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.90} style={{ alignItems: 'center', marginTop: compact ? 2 : 6 }}>
       <View style={{ width: HERO_RS, height: HERO_RS }}>
-        {/* Deep aura — outermost diffuse ring, pulsing */}
-        <Animated.View style={{ position: 'absolute', width: HERO_RS + 34, height: HERO_RS + 34, borderRadius: (HERO_RS + 34) / 2, backgroundColor: 'rgba(96,165,250,0.07)', transform: [{ scale: pulse }], top: -17, left: -17 }} />
-        <Animated.View style={{ position: 'absolute', width: HERO_RS + 20, height: HERO_RS + 20, borderRadius: (HERO_RS + 20) / 2, backgroundColor: 'rgba(96,165,250,0.16)', transform: [{ scale: pulse }], top: -10, left: -10 }} />
-        <Animated.View style={{ position: 'absolute', width: HERO_RS + 10, height: HERO_RS + 10, borderRadius: (HERO_RS + 10) / 2, backgroundColor: 'rgba(96,165,250,0.28)', transform: [{ scale: pulse }], top: -5, left: -5 }} />
-        <View style={{ position: 'absolute', width: HERO_RS + 4, height: HERO_RS + 4, borderRadius: (HERO_RS + 4) / 2, backgroundColor: 'rgba(96,165,250,0.18)', top: -2, left: -2 }} />
-        {/* Dark glass backdrop — creates contrast so ring pops on bright BG */}
-        <View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2, backgroundColor: compact ? 'rgba(4,10,32,0.08)' : 'rgba(4,10,32,0.10)', borderWidth: 2, borderColor: 'rgba(96,165,250,0.40)', overflow: 'hidden' }}>
+
+        {/* ── Layered aura — night uses silver-moon glow, day uses period colour ── */}
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 38, height: HERO_RS + 38, borderRadius: (HERO_RS + 38) / 2, backgroundColor: isNightRing ? 'rgba(176,200,216,0.05)' : `rgba(${hR},${hG},${hB},0.06)`, transform: [{ scale: pulse }], top: -19, left: -19 }} />
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 22, height: HERO_RS + 22, borderRadius: (HERO_RS + 22) / 2, backgroundColor: isNightRing ? 'rgba(176,200,216,0.11)' : `rgba(${hR},${hG},${hB},0.14)`, transform: [{ scale: pulse }], top: -11, left: -11 }} />
+        <Animated.View style={{ position: 'absolute', width: HERO_RS + 10, height: HERO_RS + 10, borderRadius: (HERO_RS + 10) / 2, backgroundColor: isNightRing ? 'rgba(200,221,232,0.18)' : `rgba(${hR},${hG},${hB},0.24)`, transform: [{ scale: pulse }], top: -5, left: -5 }} />
+        <View style={{ position: 'absolute', width: HERO_RS + 4, height: HERO_RS + 4, borderRadius: (HERO_RS + 4) / 2, backgroundColor: isNightRing ? 'rgba(200,221,232,0.10)' : `rgba(${hR},${hG},${hB},0.14)`, top: -2, left: -2 }} />
+
+        {/* ── Inner zone — dark for night moon, tinted for day ── */}
+        <View style={{
+          position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
+          backgroundColor: isNightRing ? 'rgba(3,6,18,0.82)' : `rgba(${rR},${rG},${rB},0.21)`,
+          overflow: 'hidden',
+        }}>
+          {/* Night: subtle silver edge shimmer / Day: period gradient */}
           <LinearGradient
-            colors={['rgba(96,165,250,0.16)', 'rgba(96,165,250,0.05)', 'transparent']}
-            start={{ x: 0.1, y: 0 }} end={{ x: 0.8, y: 1 }}
+            colors={isNightRing
+              ? ['rgba(200,221,232,0.10)', 'rgba(120,160,180,0.05)', 'transparent', 'rgba(140,180,200,0.08)']
+              : [`${accentHex}30`, `${ringHex}20`, 'transparent', `${ringHex}14`]
+            }
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject} />
         </View>
-        {/* SVG ring — 5 layers: track → wide glow → halo → main arc → bright edge */}
+
+        {/* ── Night: Real moon phase centered inside ring ── */}
+        {isNightRing && (
+          <View style={{
+            position: 'absolute',
+            top: (HERO_RS - MOON_SIZE) / 2,
+            left: (HERO_RS - MOON_SIZE) / 2,
+            width: MOON_SIZE,
+            height: MOON_SIZE,
+            borderRadius: MOON_SIZE / 2,
+            overflow: 'hidden',
+            opacity: 0.88,
+          }}>
+            <NightMoonInRing size={MOON_SIZE} />
+          </View>
+        )}
+
+        {/* ── SVG ring — BOLD SILVER for night, golden for day ── */}
         <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
-          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="rgba(96,165,250,0.32)" strokeWidth={HERO_STR} />
-          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#60a5fa" strokeWidth={HERO_STR+32} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.15} />
-          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#93c5fd" strokeWidth={HERO_STR+14} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.40} />
-          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#60a5fa" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
-          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#e0f2fe" strokeWidth={2.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.78} />
+          {/* Track — visible silver base rail */}
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+            stroke={isNightRing ? 'rgba(180,200,220,0.40)' : `${ringHex}38`}
+            strokeWidth={HERO_STR} />
+          {/* Breathing moon-glow pulse / Day cooling-glow */}
+          {isNightRing ? (
+            <Animated.View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, opacity: coolingGlow }}>
+              <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
+                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+                  stroke="rgba(230,240,248,0.70)" strokeWidth={HERO_STR+12}
+                  strokeLinecap="round" opacity={0.65} />
+              </Svg>
+            </Animated.View>
+          ) : (periodId === 'evening_kapha' || periodId === 'night_vata') && (
+            <Animated.View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, opacity: coolingGlow }}>
+              <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
+                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="#60a5fa" strokeWidth={HERO_STR+8} strokeLinecap="round" opacity={0.35} />
+              </Svg>
+            </Animated.View>
+          )}
+          {/* Wide outer glow — diffused silver haze */}
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+            stroke={isNightRing ? '#B8CCDC' : ringHex}
+            strokeWidth={HERO_STR+32} strokeLinecap="round"
+            strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))}
+            transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`}
+            opacity={isNightRing ? 0.36 : 0.16} />
+          {/* Mid halo — cool steel silver */}
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+            stroke={isNightRing ? '#C8DCEC' : haloHex}
+            strokeWidth={HERO_STR+14} strokeLinecap="round"
+            strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))}
+            transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`}
+            opacity={isNightRing ? 0.72 : 0.42} />
+          {/* Main crisp arc — bright sterling silver */}
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+            stroke={isNightRing ? '#DCE8F2' : ringHex}
+            strokeWidth={HERO_STR + (isNightRing ? 1 : 0)} strokeLinecap="round"
+            strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))}
+            transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`}
+            opacity={1} />
+          {/* Inner highlight sliver — pure white polish for silver, accent for day */}
+          <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none"
+            stroke={isNightRing ? '#FFFFFF' : accentHex}
+            strokeWidth={isNightRing ? 1.5 : 2} strokeLinecap="round"
+            strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))}
+            transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`}
+            opacity={isNightRing ? 0.92 : 0.75} />
         </Svg>
-        {/* Center content */}
-        <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', gap: 1, paddingHorizontal: compact ? 22 : 28 }}>
-          {period === null ? (
+
+
+        {/* ── Center content — iOS-clean: sub-pill · header · time · sentence · science ── */}
+        <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
+
+          {/* Night: dark radial scrim so text floats clearly over the moon */}
+          {isNightRing && (
+            <LinearGradient
+              colors={['transparent', 'rgba(3,5,18,0.55)', 'rgba(3,5,18,0.80)', 'rgba(3,5,18,0.55)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: HERO_RS / 2 }}
+            />
+          )}
+
+          {/* ── SACRED HOUR MODE: sunrise / sunset replaces everything ── */}
+          {sacredHour.type !== null ? (
             <>
-              <Text style={{ fontSize: compact ? 22 : 28, lineHeight: compact ? 28 : 34 }}>🌐</Text>
-              <Text style={{ fontSize: compact ? 6 : 7, fontWeight: '900', color: '#60a5faFF', letterSpacing: 1.8, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>CALIBRATING</Text>
-              <Text style={{ fontSize: compact ? 9 : 11, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', letterSpacing: 0.1, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>{'Body Rhythm\nEngine'}</Text>
-              <View style={{ height: 1, width: compact ? 36 : 44, backgroundColor: 'rgba(96,165,250,0.45)', marginVertical: 2 }} />
-              <Text style={{ fontSize: compact ? 7.5 : 9, fontWeight: '700', color: '#FFFFFFaa', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>computing…</Text>
+              {/* Sacred micro-label */}
+              <Text style={{ fontSize: compact ? 5.5 : 6.5, fontWeight: '900', color: `${accentHex}CC`, letterSpacing: 2.2, textAlign: 'center', marginBottom: compact ? 5 : 10, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                {sacredHour.type === 'sunrise' ? 'SACRED HOUR OF SUNRISE' : 'SACRED HOUR OF SUNSET'}
+              </Text>
+
+              {/* Main sacred message */}
+              <Text style={{
+                fontSize: compact ? 18 : 26,
+                fontWeight: '900',
+                color: '#FFFFFF',
+                textAlign: 'center',
+                fontFamily: 'Nunito_900Black',
+                textShadowColor: 'rgba(0,0,0,0.95)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 12,
+                letterSpacing: -0.5,
+                lineHeight: compact ? 24 : 34,
+                marginBottom: compact ? 6 : 10,
+              }}>
+                {sacredHour.type === 'sunrise' ? 'Sun is\nRising' : 'Sun is\nSetting'}
+              </Text>
+
+              {/* Thin gold divider */}
+              <View style={{ height: 0.8, width: compact ? 44 : 64, backgroundColor: `${accentHex}70`, marginBottom: compact ? 6 : 10 }} />
+
+              {/* Instruction */}
+              <Text style={{
+                fontSize: compact ? 8.5 : 10,
+                fontWeight: '700',
+                color: `${accentHex}EE`,
+                textAlign: 'center',
+                lineHeight: compact ? 12 : 15,
+                letterSpacing: 0.3,
+                textShadowColor: 'rgba(0,0,0,0.9)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 6,
+              }}>
+                Meditate Now
+              </Text>
             </>
-          ) : period.id === 'night_vata' && brahmaInfo?.status === 'active' ? (
+          ) : period === null || !heroContent ? (
+            // Calibrating
             <>
-              <Text style={{ fontSize: compact ? 20 : 24, lineHeight: compact ? 26 : 30 }}>🌟</Text>
-              <Text style={{ fontSize: compact ? 6 : 7, fontWeight: '900', color: '#60a5faFF', letterSpacing: 1.8, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>BRAHMA MUHURTA</Text>
-              <Text style={{ fontSize: compact ? 8.5 : 10.5, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', letterSpacing: 0.1, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>{'Sacred Pre-Dawn\nWindow'}</Text>
-              <Text style={{ fontSize: compact ? 19 : 23, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{brahmaInfo.minutesRemaining >= 60 ? `${Math.floor(brahmaInfo.minutesRemaining / 60)}h ${brahmaInfo.minutesRemaining % 60}m` : `${brahmaInfo.minutesRemaining}m`}</Text>
-              <Text style={{ fontSize: compact ? 7.5 : 9, fontWeight: '700', color: '#FFFFFFaa', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>remaining</Text>
-              <View style={{ height: 1, width: compact ? 36 : 44, backgroundColor: 'rgba(96,165,250,0.45)', marginVertical: 1 }} />
-              <Text style={{ fontSize: compact ? 8 : 9.5, fontWeight: '800', color: '#60a5faFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 7 }} numberOfLines={2}>🧠  Pre-Dawn Neuroplasticity Peak</Text>
-              <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '600', color: 'rgba(255,255,255,0.62)', textAlign: 'center', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{getPeriodActionBlurb(period.id, 'active')}</Text>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.50)', letterSpacing: 1.8, textAlign: 'center', marginBottom: 6 }}>BODY RHYTHM</Text>
+              <Text style={{ fontSize: compact ? 16 : 20, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>Calibrating</Text>
+              <Text style={{ fontSize: compact ? 9 : 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.65)', textAlign: 'center', marginTop: 8, lineHeight: 15 }}>Computing your circadian phase…</Text>
             </>
           ) : (
             <>
-              <Text style={{ fontSize: compact ? 22 : 28, lineHeight: compact ? 28 : 34 }}>{period.emoji}</Text>
-              <Text style={{ fontSize: compact ? 11 : 13, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', letterSpacing: 0.1, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }} numberOfLines={2}>{period.englishLabel}</Text>
-              <Text style={{ fontSize: compact ? 20 : 25, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.95)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 14 }}>{remStr}</Text>
-              <Text style={{ fontSize: compact ? 7.5 : 9, fontWeight: '700', color: '#FFFFFFaa', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>remaining</Text>
-              <View style={{ height: 1, width: compact ? 36 : 44, backgroundColor: 'rgba(96,165,250,0.45)', marginVertical: 1 }} />
-              <Text style={{ fontSize: compact ? 8 : 9.5, fontWeight: '800', color: '#60a5faFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 7 }} numberOfLines={2}>{period.sciEmoji}  {period.sciTitle}</Text>
-              <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '600', color: 'rgba(255,255,255,0.62)', textAlign: 'center', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{getPeriodActionBlurb(period.id, brahmaInfo?.status)}</Text>
+              {/* Sub-pill — silver border at night, accent border at day */}
+              <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.65)', borderWidth: 0.8, borderColor: isNightRing ? 'rgba(200,221,232,0.70)' : `${accentHex}70`, marginBottom: compact ? 7 : 10 }}>
+                <Text style={{ fontSize: compact ? 6 : 7, fontWeight: '900', color: isNightRing ? '#C8DDE8' : '#FFFFFF', letterSpacing: 1.4 }} numberOfLines={1}>{heroContent.subPill}</Text>
+              </View>
+
+              {/* Header — the phase name */}
+              <Text
+                style={{ fontSize: compact ? 15 : 18, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8, letterSpacing: -0.3, lineHeight: compact ? 20 : 24, marginBottom: compact ? 6 : 8 }}
+                numberOfLines={2}
+              >{heroContent.header}</Text>
+
+              {/* Time remaining — pure white, always visible */}
+              <Text style={{ fontSize: compact ? 11 : 13, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10, marginBottom: compact ? 8 : 12 }}>{remStr}</Text>
+
+              {/* Thin divider — silver tint at night */}
+              <View style={{ height: 0.6, width: compact ? 40 : 52, backgroundColor: isNightRing ? 'rgba(200,221,232,0.45)' : 'rgba(255,255,255,0.30)', marginBottom: compact ? 8 : 12 }} />
+
+              {/* Sentence — always readable */}
+              <Text
+                style={{ fontSize: compact ? 9 : 10.5, fontWeight: '600', color: '#FFFFFF', textAlign: 'center', lineHeight: compact ? 13 : 15.5, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginBottom: compact ? 5 : 7 }}
+                numberOfLines={3}
+              >{heroContent.sentence}</Text>
+
+              {/* Science label — always readable */}
+              <Text
+                style={{ fontSize: compact ? 7 : 8, fontWeight: '700', color: '#FFFFFFDD', textAlign: 'center', lineHeight: compact ? 11 : 12, letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}
+                numberOfLines={2}
+              >{'🔬 '}{heroContent.sciLabel}</Text>
+
+              {/* Tonight's Moon label — night only; replaces "Ideal for" */}
+              {isNightRing ? (
+                <View style={{ alignItems: 'center', marginTop: compact ? 5 : 8 }}>
+                  {/* Moon phase name */}
+                  <Text
+                    style={{ fontSize: compact ? 8.5 : 10, fontWeight: '800', color: 'rgba(220,235,248,0.92)', textAlign: 'center', letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}
+                    numberOfLines={1}
+                  >{nightMoonData.line1}</Text>
+                  {/* Cycle day + illumination */}
+                  <Text
+                    style={{ fontSize: compact ? 6.5 : 7.5, fontWeight: '600', color: 'rgba(180,210,230,0.75)', textAlign: 'center', letterSpacing: 0.4, marginTop: 2, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
+                    numberOfLines={1}
+                  >{nightMoonData.line2}</Text>
+                </View>
+              ) : (
+                /* Ideal for — day periods only */
+                period && period.activities.length > 0 && (
+                  <Text
+                    style={{ fontSize: compact ? 7.5 : 9, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: compact ? 11 : 13, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginTop: compact ? 4 : 6 }}
+                    numberOfLines={2}
+                  >{'✦ Ideal for · '}{period.activities[0].split('&')[0].split('·')[0].trim()}</Text>
+                )
+              )}
             </>
           )}
         </View>
-        {/* Āyurveda Story compact pill — inside ring at bottom */}
-        <Animated.View style={{ position: 'absolute', bottom: compact ? 20 : 24, left: 0, right: 0, alignItems: 'center', transform: [{ scale: pulse }] }}>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 5,
-            paddingHorizontal: compact ? 10 : 13, paddingVertical: compact ? 4 : 5,
-            borderRadius: 99,
-            backgroundColor: 'rgba(6,12,36,0.52)',
-            borderWidth: 0.8, borderColor: 'rgba(96,165,250,0.28)',
-          }}>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: period?.color ?? '#60a5fa' }} />
-            <Text style={{ fontSize: compact ? 7 : 7.5, fontWeight: '900', color: '#93c5fd', letterSpacing: 1.3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>
-              ✦  ĀYURVEDA STORY
-            </Text>
-            <Animated.Text style={{ fontSize: compact ? 7 : 7.5, color: 'rgba(96,165,250,0.80)', fontWeight: '900', transform: [{ translateY: bounce }] }}>▶</Animated.Text>
-          </View>
-        </Animated.View>
       </View>
     </TouchableOpacity>
   );
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Phase Body Section — Apple-style: ring card + signal cards + 2-col DO/AVOID
@@ -4889,9 +5807,9 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
               <View style={{ height: 0.5, backgroundColor: accentColor + '40', marginBottom: 8 }} />
               <Text style={{ fontSize: 6.5, fontWeight: '900', color: accentColor + 'AA', letterSpacing: 1.6, marginBottom: 3 }}>◉  PHASE SCIENCE</Text>
               <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFFDD', lineHeight: 15, marginBottom: 3 }}>{period.sciEmoji}  {period.sciTitle}</Text>
-              <Text style={{ fontSize: 9.5, color: '#FFFFFF55', lineHeight: 13.5 }} numberOfLines={3}>{period.sciDesc}</Text>
+              <Text style={{ fontSize: 9.5, color: '#FFFFFFBB', lineHeight: 13.5 }} numberOfLines={3}>{period.sciDesc}</Text>
               {!isBrahma && period.id === 'night_vata' && brahmaInfo?.status === 'upcoming' && (
-                <Text style={{ fontSize: 8.5, color: '#60a5fa88', fontWeight: '600', marginTop: 5 }}>🌅 Brahma Muhurta at {brahmaInfo.startLabel}  ·  {brahmaInfo.minutesUntil >= 60 ? `${Math.floor(brahmaInfo.minutesUntil / 60)}h ${brahmaInfo.minutesUntil % 60}m` : `${brahmaInfo.minutesUntil}m`} away</Text>
+                <Text style={{ fontSize: 8.5, color: '#60a5faCC', fontWeight: '700', marginTop: 5 }}>🌅 Brahma Muhurta at {brahmaInfo.startLabel}  ·  {brahmaInfo.minutesUntil >= 60 ? `${Math.floor(brahmaInfo.minutesUntil / 60)}h ${brahmaInfo.minutesUntil % 60}m` : `${brahmaInfo.minutesUntil}m`} away</Text>
               )}
             </View>
 
@@ -4975,8 +5893,15 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                   <Text style={{ fontSize: 20 }}>{weatherBlurb?.emoji ?? '🌤'}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF', lineHeight: 16, letterSpacing: 0.2 }} numberOfLines={2}>{weatherBlurb ? weatherBlurb.title : 'Weather signal unavailable'}</Text>
-                  <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }} numberOfLines={2}>{weatherBlurb?.tip ?? ''}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF', lineHeight: 16, letterSpacing: 0.2 }} numberOfLines={1}>Weather Suggestion</Text>
+                  {weatherBlurb ? (
+                    <>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 14, marginTop: 3, fontWeight: '600' }} numberOfLines={2}>{weatherBlurb.title}</Text>
+                      <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 1 }} numberOfLines={2}>{weatherBlurb.tip}</Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }}>Weather signal unavailable</Text>
+                  )}
                 </View>
               </View>
             </>
@@ -5505,6 +6430,12 @@ export default function DailyTab() {
       return { label1: '☀️ Polar Day', mainText: '24h Daylight', label2: 'sun stays above horizon', color: 'rgba(251,191,36,0.85)', isLive: false };
     }
 
+    const ZENITH_WIN = 10 / 60; // ±10 min zenith live window
+    // Pitta period boundaries: solarNoon - 1h to solarNoon + 2h
+    const pittaStart = sn - 1;
+    const pittaEnd   = sn + 2;
+    const inPitta    = h >= pittaStart && h < pittaEnd;
+
     // Sunrise ±5 min live window
     if (Math.abs(h - sr) <= WIN) {
       return { label1: '🌅 Sun is', mainText: 'Rising Now', label2: fmtSolar(sr), color: 'rgba(251,146,60,0.95)', isLive: true };
@@ -5513,15 +6444,27 @@ export default function DailyTab() {
     if (Math.abs(h - ss) <= WIN) {
       return { label1: '🌇 Sun is', mainText: 'Setting Now', label2: fmtSolar(ss), color: 'rgba(244,63,94,0.95)', isLive: true };
     }
+    // Solar Zenith ±10 min live window (inside Pitta period)
+    if (Math.abs(h - sn) <= ZENITH_WIN) {
+      return { label1: '☀️ Sun is', mainText: 'At Zenith Now', label2: fmtSolar(sn), color: 'rgba(251,191,36,0.98)', isLive: true };
+    }
     // Before sunrise
     if (h < sr) {
       return { label1: "Today's Sunrise", mainText: fmtSolar(sr), label2: 'will be at', color: 'rgba(251,146,60,0.78)', isLive: false };
     }
-    // After sunrise, before solar noon
-    if (h < sn) {
+    // After sunrise, inside Pitta start-window but before zenith → show upcoming zenith
+    if (h >= pittaStart && h < sn) {
+      return { label1: 'Sun reaches Zenith at', mainText: fmtSolar(sn), label2: 'Solar Noon', color: 'rgba(251,191,36,0.82)', isLive: false };
+    }
+    // After zenith, still inside Pitta → show zenith was at
+    if (h >= sn && h < pittaEnd) {
+      return { label1: 'Sun was at Zenith at', mainText: fmtSolar(sn), label2: 'peak light passed', color: 'rgba(251,191,36,0.75)', isLive: false };
+    }
+    // After sunrise, before pitta start (morning window) → show sunrise was at
+    if (h < pittaStart) {
       return { label1: 'Sunrise was at', mainText: fmtSolar(sr), label2: 'this morning', color: 'rgba(253,230,138,0.80)', isLive: false };
     }
-    // After solar noon, before sunset
+    // After Pitta period, before sunset
     if (h < ss) {
       return { label1: "Today's Sunset", mainText: fmtSolar(ss), label2: 'will be at', color: 'rgba(147,197,253,0.78)', isLive: false };
     }
@@ -5555,12 +6498,12 @@ export default function DailyTab() {
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
       style={[D.screen, { backgroundColor: accentColor }]}
-      imageStyle={{ opacity: 0.50, resizeMode: 'cover' }}>
+      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
 
-      {/* Subtle top vignette only — keeps header readable, screen stays light */}
+      {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
-        locations={[0, 0.28, 1]}
+        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
+        locations={[0, 0.40, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -5569,17 +6512,17 @@ export default function DailyTab() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
 
         {/* ── Unified header card — Weather · Cosmos · Rhythm ── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 }}>
+        <View style={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 8 }}>
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
             activeOpacity={0.88}
-            style={{ borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.26)', overflow: 'hidden' }}>
+            style={{ borderRadius: 0, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.16)', overflow: 'hidden' }}>
             <LinearGradient
               colors={['rgba(255,255,255,0.06)', 'transparent']}
               start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
               style={StyleSheet.absoluteFillObject} />
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   {weather ? (
@@ -5593,13 +6536,22 @@ export default function DailyTab() {
               </View>
               {solarContext && (
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: 'rgba(255,255,255,0.42)', letterSpacing: 0.6 }}>{solarContext.label1}</Text>
-                  <Text style={{ fontSize: 12.5, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.92)', letterSpacing: -0.2 }}>{solarContext.mainText}</Text>
-                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: solarContext.color, letterSpacing: 0.6 }}>{solarContext.label2}</Text>
+                  <Text style={{ fontSize: 8.5, fontWeight: '700', color: 'rgba(255,255,255,0.48)', letterSpacing: 0.6 }}>{solarContext.label1}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.92)', letterSpacing: -0.2 }}>{solarContext.mainText}</Text>
+                  <Text style={{ fontSize: 8.5, fontWeight: '700', color: solarContext.color, letterSpacing: 0.6 }}>{solarContext.label2}</Text>
                 </View>
               )}
-              <TouchableOpacity onPress={loadWeather} style={{ marginLeft: 2 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                {weatherLoading ? <ActivityIndicator size="small" color={ACCENT} /> : <Text style={{ color: ACCENT, fontSize: 16 }}>↻</Text>}
+              {weatherLoading && (
+                <View style={{ marginLeft: 2 }}>
+                  <ActivityIndicator size="small" color={ACCENT} />
+                </View>
+              )}
+              <TouchableOpacity
+                onPress={(e) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.75)" />
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -5623,15 +6575,18 @@ export default function DailyTab() {
               <View style={{ flex: 1 }}>
 
                 {/* Ring — takes all remaining vertical space, truly centred */}
-                <View style={{ flex: 1, paddingTop: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} compact={!!soundPlayingId} />
+                <View style={{ flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} compact={!!soundPlayingId} />
                 </View>
 
                 {/* Buttons + signal — pinned to bottom */}
-                <View style={{ paddingBottom: soundPlayingId ? 24 : 10 }}>
+                <View style={{ paddingTop: 6, paddingBottom: soundPlayingId ? 16 : 4 }}>
 
-                  <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50, marginTop: 8, marginBottom: 0 }}>
-                    <SleepSoundsButton />
+                  <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50, marginTop: 0, marginBottom: 0 }}>
+                    <SleepSoundsButton
+                      period={currentPeriod}
+                      brahmaStatus={brahmaInfo?.status ?? null}
+                    />
                   </View>
                   {currentPeriod && <HomeSignalCycler period={currentPeriod} weather={weather} brahmaInfo={brahmaInfo} />}
                 </View>
@@ -5777,7 +6732,7 @@ const W = StyleSheet.create({
 
 const WS = StyleSheet.create({
   card: {
-    marginHorizontal: 16, marginTop: 10, borderRadius: 20, borderWidth: 1.5,
+    marginHorizontal: 0, marginTop: 10, borderRadius: 0, borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(6,15,40,0.42)', flexDirection: 'row', overflow: 'hidden',
     paddingVertical: 16, paddingRight: 16,
@@ -6154,7 +7109,7 @@ const TH = StyleSheet.create({
   activeTxt:   { fontSize: 8, fontWeight: '800', letterSpacing: 0.4 },
   energyName:  { fontSize: 15, fontWeight: '900', color: '#FFFFFFD0', lineHeight: 22 },
   energySci:   { fontSize: 9,  fontWeight: '600', lineHeight: 14 },
-  countdown:   { fontSize: 17, fontWeight: '900' },
+  countdown:   { fontSize: 19, fontWeight: '900', lineHeight: 24 },
   timeRange:   { fontSize: 8,  color: '#FFFFFF35', fontWeight: '600' },
   progressTrack: { height: 10, backgroundColor: '#FFFFFF0C', borderRadius: 5, marginTop: 10, overflow: 'hidden' },
   progressFill:  { height: 10, borderRadius: 5 },

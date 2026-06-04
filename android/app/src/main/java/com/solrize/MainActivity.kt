@@ -17,6 +17,12 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+
+  // Debounce handler for onWindowFocusChanged focus-loss — prevents the
+  // bring-to-front from firing during the brief gap between alarm dismissal
+  // and the SharedPreferences .commit() becoming visible on the UI thread.
+  private val focusLossHandler  = android.os.Handler(android.os.Looper.getMainLooper())
+  private var focusLossRunnable: Runnable? = null
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
@@ -50,12 +56,26 @@ class MainActivity : ReactActivity() {
     // Re-apply keep-screen-on every time the alarm service brings us back to front
     if (isAlarmActive()) {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // FIX: Start lock task here too — covers the case where the alarm fires
+      // while the app is ALREADY OPEN (onResume is not called again in that case).
+      // This handles wake alarm, habit alarm, and quick alarm equally since
+      // isAlarmActive() checks ALL alarm types from SharedPreferences.
+      try { startLockTask() } catch (_: Exception) {}
     }
   }
 
   override fun onResume() {
     super.onResume()
-    if (!isAlarmActive()) return
+    if (!isAlarmActive()) {
+      // Alarm stopped — cancel any pending focus-loss debounce so the
+      // bring-to-front never fires after the user has dismissed the alarm.
+      focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+      focusLossRunnable = null
+      // NOTE: stopLockTask() is NOT called here unconditionally — it would
+      // interfere with normal in-alarm navigation. The explicit call happens
+      // in mission.tsx handleComplete() via AlarmModule.stopLockTask().
+      return
+    }
     // Re-apply all alarm display flags every time the screen comes back
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -71,6 +91,60 @@ class MainActivity : ReactActivity() {
         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
         WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
       )
+    }
+    // Layer 3 — Screen Pinning (Lock Task Mode).
+    // Pins this task so Android's OS itself blocks Home, Back, and Recent Apps.
+    // This is the same mechanism Alarmy uses for unescapable alarms.
+    // On first use the system shows a one-time "Screen pinned" toast — silent thereafter.
+    try { startLockTask() } catch (_: Exception) {}
+  }
+
+  /**
+   * Layer 1 — onWindowFocusChanged fires the INSTANT the window loses focus,
+   * which is BEFORE onPause() and BEFORE onUserLeaveHint().
+   *
+   * hasFocus=true  → alarm screen is in front — pin it immediately (covers
+   *                   the "app already open" scenario where onResume doesn't fire).
+   * hasFocus=false → window losing focus — start a 350 ms debounce before
+   *                   calling startActivity(). The debounce re-checks isAlarmActive()
+   *                   so we NEVER bring the app to front after the alarm is dismissed
+   *                   (fixes the "app auto-opens after alarm" bug caused by the
+   *                   .apply() async race, now also guarded by .commit()).
+   *
+   * Covers wake alarm, habit alarm, and quick alarm — isAlarmActive() checks all.
+   */
+  override fun onWindowFocusChanged(hasFocus: Boolean) {
+    super.onWindowFocusChanged(hasFocus)
+    if (hasFocus) {
+      // Cancel any pending bring-to-front debounce — we're already in focus.
+      focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+      focusLossRunnable = null
+      // Pin the screen if alarm is active.
+      if (isAlarmActive()) {
+        try { startLockTask() } catch (_: Exception) {}
+      }
+    } else {
+      // Window lost focus — debounce before reacting so we don't fire
+      // startActivity() during the normal alarm-dismissal navigation flow.
+      focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+      val r = Runnable {
+        // Re-check AFTER the debounce — by now .commit() has settled and
+        // isAlarmActive() correctly reflects the real alarm state.
+        if (isAlarmActive()) {
+          try {
+            startActivity(Intent(this, MainActivity::class.java).apply {
+              addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_NO_ANIMATION
+              )
+            })
+          } catch (_: Exception) {}
+        }
+      }
+      focusLossRunnable = r
+      focusLossHandler.postDelayed(r, 350)
     }
   }
 

@@ -44,6 +44,7 @@ class BootReceiver : BroadcastReceiver() {
 
         rescheduleWakeAlarm(context, am)
         rescheduleHabitAlarms(context, am)
+        restartDailyStepTracking(context)
     }
 
     // ── Wake alarm ────────────────────────────────────────────────────────────
@@ -140,4 +141,24 @@ class BootReceiver : BroadcastReceiver() {
             Log.e("AriseAlarm", "BootReceiver: scheduleExact failed", e)
         }
     }
+
+    /** Restarts daily step tracking after boot if it was enabled before shutdown. */
+    private fun restartDailyStepTracking(context: Context) {
+        val prefs   = context.getSharedPreferences(StepCounterService.PREFS_NAME, Context.MODE_PRIVATE)
+        val enabled = prefs.getBoolean("daily_tracking_enabled", false)
+        if (!enabled) {
+            Log.d("AriseAlarm", "BootReceiver: daily step tracking not enabled — skip")
+            return
+        }
+        Log.d("AriseAlarm", "BootReceiver: restarting daily step tracking after boot")
+        val intent = Intent(context, StepCounterService::class.java).apply {
+            action = StepCounterService.ACTION_START_DAILY
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
 }
+

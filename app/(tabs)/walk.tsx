@@ -1,1014 +1,763 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * walk.tsx — Step Counter Home Tab
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Beautiful main hub for the Nada step-counter feature.
+ * Displays: circular progress ring, 4 metric chips, 3 session cards,
+ * 7-day bar chart, and deep-link buttons to Analytics.
+ *
+ * All sensor work is inside StepCounterService.kt (foreground service).
+ * This file is presentation-only — it reads from StepCounter.ts wrapper.
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar,
-  Modal, ImageBackground, Image, ScrollView, Dimensions, Animated, AppState, Alert,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Dimensions,
+  Animated,
+  Easing,
+  Modal,
+  AppState,
+  type AppStateStatus,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
-import * as Haptics from 'expo-haptics';
-import * as Notifications from 'expo-notifications';
-import * as TaskManager from 'expo-task-manager';
-import { Pedometer } from 'expo-sensors';
-import Svg, { Circle as SvgCircle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop, Path, G, Text as SvgText, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
-import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
-import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
-import { getBgSourceSync } from '@/lib/bgImages';
-import { useBgContext } from '@/lib/bgContext';
-import { store, KEYS } from '@/lib/storage';
-import { getSolarTimes, type SolarTimes } from '@/lib/solar';
-import { getDoshaPeriods, type DoshaPeriod } from '@/lib/ayurvedicPeriods';
-import {
-  WALK_BG_TASK, WalkMode, WalkState, DEFAULT_WALK_STATE,
-  getWalkState, saveWalkState, clearWalkState, haversineKmWalk,
-} from '@/lib/walkStore';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/StepCounter';
+import { useBgContext } from '@/lib/bgContext';
+
+const { width: W } = Dimensions.get('window');
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const ACCENT   = '#A78BFA';   // violet-400
+const GREEN    = '#34D399';
+const ORANGE   = '#FB923C';
+const PINK     = '#F472B6';
+const TEAL     = '#2DD4BF';
+const GOLD     = '#FCD34D';
+const BG_DARK  = '#0A0A0F';
+const CARD     = 'rgba(255,255,255,0.06)';
+const BORDER   = 'rgba(255,255,255,0.10)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = Math.min(SCREEN_W - 100, 210);
-const RING_STROKE = 9;
-const R_RING      = (RING_SIZE - RING_STROKE * 2) / 2;
-const C_RING      = 2 * Math.PI * R_RING;
+const RING_SIZE   = Math.min(W - 64, 240);
+const RING_STROKE = 12;
+const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
+const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
-// ── Walk physics ──────────────────────────────────────────────────────────────
-const SHATAPAVALLI_STEPS = 100;
-const STRIDE_KM: Record<WalkMode, number>    = { barefoot: 0.00065, regular: 0.00076 };
-const CAL_PER_STEP: Record<WalkMode, number> = { barefoot: 0.045,   regular: 0.04   };
+// ── Session config ────────────────────────────────────────────────────────────
+function getDynamicSessions() {
+  const hour = new Date().getHours();
+  
+  let mainWalk;
+  if (hour >= 4 && hour < 12) {
+    // 4 AM to 12 PM (Brahma Muhurta to Midday)
+    mainWalk = { type: 'morning' as const, emoji: '🌅', label: 'Morning Walk', btnLabel: 'Start Morning Walk', sub: '3,000 step target', color: GREEN, goal: 3000 };
+  } else if (hour >= 12 && hour < 17) {
+    // 12 PM to 5 PM
+    mainWalk = { type: 'morning' as const, emoji: '☀️', label: 'Walk', btnLabel: 'Start Walk', sub: '3,000 step target', color: GREEN, goal: 3000 };
+  } else {
+    // 5 PM onwards or before 4 AM
+    mainWalk = { type: 'evening' as const, emoji: '🌆', label: 'Evening Walk', btnLabel: 'Start Evening Walk', sub: '3,000 step target', color: PINK, goal: 3000 };
+  }
 
-// ── Step targets ──────────────────────────────────────────────────────────────
-const STEP_TARGETS: Array<{ label: string; steps: number | null }> = [
-  { label: 'Free',   steps: null  },
-  { label: '2,500',  steps: 2500  },
-  { label: '5,000',  steps: 5000  },
-  { label: '8,000',  steps: 8000  },
-  { label: '10K',    steps: 10000 },
-];
-
-// ── Grounding / barefoot education ────────────────────────────────────────────
-const GROUNDING_BENEFITS = [
-  {
-    id: 'what',
-    emoji: '🌍',
-    title: 'What is Earthing?',
-    short: 'Direct skin contact with Earth\'s electric field',
-    detail: 'The Earth carries a mild negative electric charge — a vast reservoir of free electrons generated by lightning storms, solar wind, and geothermal activity. When bare skin touches natural ground — grass, soil, sand, stone — electrons flow freely into your body. This is called Earthing or Grounding. It is not mysticism; it is electrochemistry. Every cell in your body benefits. Shoes with rubber or synthetic soles are electrical insulators — they completely sever this ancient connection that humans maintained for millions of years.',
-  },
-  {
-    id: 'inflammation',
-    emoji: '🔥',
-    title: 'Reduces Inflammation',
-    short: 'Free electrons neutralise free radicals instantly',
-    detail: 'Chronic inflammation — the root of heart disease, diabetes, arthritis, and most modern illness — is driven by positively-charged free radicals that damage cells. Earth\'s free electrons are nature\'s most abundant antioxidant. They neutralise these radicals on contact. Published research in the Journal of Inflammation (2010) demonstrated measurable reduction in white blood cell activity and inflammatory markers after grounding sessions as short as 30 minutes. Barefoot walking on natural ground is anti-inflammatory medicine that costs nothing.',
-  },
-  {
-    id: 'gut',
-    emoji: '🌱',
-    title: 'Heals Gut & Microbiome',
-    short: 'Resets vagal tone, reduces leaky gut, enriches microbiome',
-    detail: 'The vagus nerve — the great wandering nerve that connects brain to gut — is directly calmed by grounding. Lower cortisol improves gut motility and reduces intestinal permeability (leaky gut), one of the silent drivers of autoimmune conditions. Walking barefoot on soil also exposes your feet to diverse soil microbes from genus Mycobacterium and Lactobacillus which enter through small skin contacts. These enrich your gut microbiome — the foundation of immunity, mood regulation, and digestion. Ayurveda has always known this: walking on clean earth is Agni medicine.',
-  },
-  {
-    id: 'cortisol',
-    emoji: '🌙',
-    title: 'Lowers Stress & Cortisol',
-    short: 'Synchronises your nervous system to Earth\'s 7.83 Hz pulse',
-    detail: 'The Earth resonates at 7.83 Hz — the Schumann Resonance — remarkably close to alpha brain waves (8–12 Hz) which are the signature of calm, creative, meditative states. When you ground, your nervous system entrains to this frequency, normalising the cortisol curve throughout the day. Studies show improved sleep depth, reduced anxiety, and better hormonal balance within 2 weeks of regular barefoot practice. This is why walking in nature feels qualitatively different from walking on concrete in shoes — your nervous system is literally syncing with the planet.',
-  },
-  {
-    id: 'blood',
-    emoji: '🩸',
-    title: 'Improves Circulation',
-    short: 'Increases zeta potential — blood cells repel and flow freely',
-    detail: 'Grounding increases the surface charge (zeta potential) of red blood cells. Higher charge causes them to repel each other like same-pole magnets, reducing dangerous clumping and blood viscosity. A landmark 2013 study showed that just 2 hours of grounding significantly reduced blood viscosity — one of the primary modifiable risk factors for heart attack and stroke. Barefoot walking is, quite literally, a cardiovascular intervention.',
-  },
-  {
-    id: 'sleep',
-    emoji: '💤',
-    title: 'Deepens Sleep',
-    short: 'Resets melatonin rhythm through Earth\'s electric field',
-    detail: 'Modern life insulates us entirely from Earth\'s electric field — rubber soles, synthetic flooring, elevated beds. This is an evolutionary anomaly. For millions of years, humans slept on the ground, and their bodies were continuously grounded. This sustained contact regulated melatonin secretion and cortisol timing. Grounding research shows people fall asleep faster, wake less frequently, and feel genuinely restored. Even 20 minutes of barefoot walking in the evening significantly shifts melatonin onset earlier, improving sleep depth.',
-  },
-  {
-    id: 'design',
-    emoji: '🦶',
-    title: 'Your Body\'s Natural Design',
-    short: 'The human foot is a masterpiece — shoes flatten its intelligence',
-    detail: 'The human foot contains 26 bones, 33 joints, and over 100 muscles, tendons, and ligaments — a complex sensory organ that evolved over 4 million years of barefoot movement. The foot\'s arch acts as a spring; its numerous proprioceptors (sensory receptors) constantly communicate with the brain, spine, and postural muscles. Modern cushioned shoes silence this entire system. Research shows that minimal or barefoot walking improves balance, strengthens intrinsic foot muscles, corrects posture, and reduces knee and hip injury risk. Your feet know how to walk — trust them on natural surfaces.',
-  },
-  {
-    id: 'when',
-    emoji: '👟',
-    title: 'When to Use Shoes',
-    short: 'Shoes protect, but not on clean natural ground',
-    detail: 'Shoes serve a vital protective role — on concrete, hot asphalt, sharp gravel, glass, polluted urban surfaces, or extreme temperatures. Use them without hesitation in these contexts. But when you are on clean grass, moist soil, beach sand, flat natural stone, or clean forest ground — taking off your shoes is not a quirk. It is returning to your biological baseline. Ayurveda\'s concept of Prithvi (Earth element) connection is not metaphor — it is physiology. Walk barefoot for at least 20 minutes daily on natural ground, and you will feel the difference within a week.',
-  },
-  {
-    id: 'shatapavalli',
-    emoji: '🚶',
-    title: 'Shatapavalli: Walk 100 Steps After Meals',
-    short: 'Post-meal walking for perfect digestion',
-    detail: 'Shatapavalli literally means "one hundred steps" (shata = 100, pavalli = steps). Ayurveda prescribes exactly 100 steps — no more, no less — after a full meal. This precise number gently activates peristalsis (gut movement), stimulates Agni (digestive fire), and encourages blood flow to the digestive organs without diverting it away from them. Walking more than 100 steps after a heavy meal is actively harmful — it competes with digestion for blood supply, weakens Agni, causes bloating, and disrupts absorption. The wisdom is in the precision: just enough movement to catalyse digestion, not enough to interfere with it.',
-  },
-];
-
-// ── Nada walk sounds ──────────────────────────────────────────────────────────
-const WALK_SOUND_IDS = [
-  'morning_birds', 'spring_birds', 'forest_birds', 'forest_breeze', 'gentle_wind',
-  'jungle_rain', 'sea_waves', 'flowing_water', 'tabla_beat', 'tabla_shuffle',
-  'bansuri_melody', 'bamboo_flute', 'andean_flute', 'forest_flute', 'sitar',
-  'indian_beats', 'om_shanti',
-];
-
-const WALK_SOUNDS: PlayableSoundMeta[] = [
-  ...ALL_SLEEP_SOUNDS.filter(s => WALK_SOUND_IDS.includes(s.id)),
-  { id: 'mantra_gayatri',    label: 'Gayatri',             emoji: '🌞', color: '#fbbf24', top: '#1A1000', bot: '#0A0800', cat: 'Mantra', desc: 'Universal prayer of light',     src: { uri: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' } },
-  { id: 'mantra_shivtandav', label: 'Shiv Tandav',         emoji: '🔱', color: '#60a5fa', top: '#0A1020', bot: '#05080F', cat: 'Mantra', desc: 'The cosmic dance of Shiva',     src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' } },
-  { id: 'mantra_lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', top: '#1A0818', bot: '#0A040C', cat: 'Mantra', desc: 'Thousand names of the Goddess', src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' } },
-  { id: 'stotra_shiv',       label: 'Shiv Sankalpa',       emoji: '🕉️', color: '#93c5fd', top: '#140A1A', bot: '#0A050F', cat: 'Mantra', desc: 'Sacred Vedic intention',        src: require('../../assets/sounds/shiv-sankalpa-suktam.m4a') },
-];
-
-// ── Pure helpers ──────────────────────────────────────────────────────────────
-function stepsToKm(steps: number, mode: WalkMode) { return parseFloat((steps * STRIDE_KM[mode]).toFixed(3)); }
-function stepsToCals(steps: number, mode: WalkMode) { return Math.round(steps * CAL_PER_STEP[mode]); }
-
-function fmtElapsed(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return [
+    mainWalk,
+    { type: 'postmeal' as const, emoji: '🍽️', label: 'Post-meal Walk', btnLabel: 'Start Post-meal Walk', sub: '100 step target', color: ORANGE, goal: 100 },
+  ];
 }
 
-function fmtDist(km: number): string {
-  if (km >= 1) return km.toFixed(2) + ' km';
-  return Math.round(km * 1000) + ' m';
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtK(n: number): string { return n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n); }
+function dayLabel(dateStr: string): string {
+  const days = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  return days[new Date(dateStr + 'T12:00:00').getDay()];
 }
 
-function bgKeyToWalkLabel(bgKey: string, shata: boolean, period?: DoshaPeriod | null): string {
-  if (shata) return 'SHATAPAVALLI · 100 STEPS';
-  if (bgKey === 'night' || bgKey === 'brahma') return 'GOOD NIGHT';
-  if (bgKey === 'predawn') return 'EARLY MORNING WALK';
-  if (bgKey === 'sunrise' || bgKey === 'morning') return 'MORNING WALK';
-  if (bgKey === 'midday') return 'DEEP WORK TIME';
-  if (bgKey === 'afternoon') return 'AFTERNOON WALK';
-  return 'EVENING WALK';
-}
+// ── Default stats ─────────────────────────────────────────────────────────────
+const DEFAULT_STATS: TodayStats = {
+  autoSteps: 0, manualSteps: 0, totalSteps: 0, goalSteps: 8000,
+  distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
+};
 
-function bgKeyToNC(bgKey: string): string {
-  if (bgKey === 'night' || bgKey === 'brahma' || bgKey === 'predawn') return '#60a5fa';
-  if (bgKey === 'sunrise' || bgKey === 'morning') return '#34d399';
-  if (bgKey === 'midday' || bgKey === 'afternoon') return '#fbbf24';
-  return '#f472b6';
-}
-
-function bgKeyToIdleSub(bgKey: string): string {
-  if (bgKey === 'night' || bgKey === 'brahma') return 'Sleep is sacred · Rest deeply';
-  if (bgKey === 'predawn') return 'Rise early · Ground your spirit';
-  if (bgKey === 'sunrise' || bgKey === 'morning') return 'Best time to walk · Boost your day';
-  if (bgKey === 'midday') return 'Sun is high · Rest and digest';
-  if (bgKey === 'afternoon') return 'Great time for a stroll · Stay active';
-  return 'Wind down · Clear your mind';
-}
-
-function bgKeyToWalkType(bgKey: string): 'morning' | 'evening' {
-  return ['night','brahma','predawn','sunrise','morning','midday'].includes(bgKey) ? 'morning' : 'evening';
-}
-
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function WalkTab() {
   const insets = useSafeAreaInsets();
-  const { playingId, isPaused: soundPaused, playSound, stopSound, togglePause } = useSoundPlayer();
+  const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const { bgUri: ctxBgUri, bgKey } = useBgContext();
-  const [walkState,       setWalkState]       = useState<WalkState>({ ...DEFAULT_WALK_STATE });
-  const [elapsedMs,       setElapsedMs]       = useState(0);
-  const [targetSteps,     setTargetSteps]     = useState<number | null>(null);
-  const [walkMode,        setWalkMode]        = useState<WalkMode>('regular');
-  const [shatapavalli,    setShatapavalli]    = useState(false);
-  const [showSounds,      setShowSounds]      = useState(false);
-  const [bgPermGranted,   setBgPermGranted]   = useState(false);
-  const [pedometerAvail,  setPedometerAvail]  = useState(false);
-  const [celebrateDone,   setCelebrateDone]   = useState(false);
-  const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
-  const [groundingOpen,   setGroundingOpen]   = useState(false);
-  const [solarTimes,      setSolarTimes]      = useState<SolarTimes | null>(null);
-  const [periods,         setPeriods]         = useState<DoshaPeriod[]>([]);
-  const [currentPeriod,   setCurrentPeriod]   = useState<DoshaPeriod | null>(null);
+  const [stats,        setStats]        = useState<TodayStats>(DEFAULT_STATS);
+  const [weekData,     setWeekData]     = useState<DailyData[]>([]);
+  const [isAvailable,  setIsAvailable]  = useState(true);
+  const [trackEnabled, setTrackEnabled] = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  const [showGoalModal,setShowGoalModal]= useState(false);
+  const [goalInput,    setGoalInput]    = useState('8000');
+  const [streak,       setStreak]       = useState(0);
+  // Drives SVG strokeDashoffset via listener (avoids createAnimatedComponent crash)
+  const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
 
-  // ── Refs ───────────────────────────────────────────────────────────────────
-  const pulseAnim       = useRef(new Animated.Value(1)).current;
-  const celebAnim       = useRef(new Animated.Value(0)).current;
-  const pollRef         = useRef<ReturnType<typeof setInterval> | null>(null);
-  const locationSubRef  = useRef<Location.LocationSubscription | null>(null);
-  const pedometerSubRef = useRef<{ remove: () => void } | null>(null);
-  const stepBaseRef     = useRef(0);
-  const appStateRef     = useRef(AppState.currentState);
+  // ── Animations ─────────────────────────────────────────────────────────────
+  const ringAnim    = useRef(new Animated.Value(0)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const glowAnim    = useRef(new Animated.Value(0)).current;
+  const cardFade    = useRef(new Animated.Value(0)).current;
+  const cardSlide   = useRef(new Animated.Value(30)).current;
 
-  // ── Load solar times and ayurvedic periods ────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const loc = await store.getItem(KEYS.location);
-      if (loc && typeof loc === 'object' && 'latitude' in loc && 'longitude' in loc) {
-        const solar = getSolarTimes(loc.latitude, loc.longitude);
-        setSolarTimes(solar);
-        const now = new Date();
-        const nowH = now.getHours() + now.getMinutes() / 60;
-        const p = getDoshaPeriods(solar, nowH);
-        setPeriods(p);
-        setCurrentPeriod(p.find(x => x.status === 'active') ?? null);
+      const avail = await StepCounter.isAvailable();
+      setIsAvailable(avail);
+      if (avail) {
+        const enabled = await StepCounter.isTrackingEnabled();
+        setTrackEnabled(enabled);
+        await refreshStats();
       }
+      setLoading(false);
+
+      // Entrance animation
+      Animated.parallel([
+        Animated.timing(cardFade,  { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(cardSlide, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+      ]).start();
     })();
-  }, []);
 
-  // ── Check pedometer availability ──────────────────────────────────────────
-  useEffect(() => {
-    Pedometer.isAvailableAsync().catch(() => false).then(avail => setPedometerAvail(!!avail));
-  }, []);
-
-  // ── Pulse aura loop ────────────────────────────────────────────────────────
-  useEffect(() => {
+    // Pulse loop
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.055, duration: 2400, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,     duration: 2400, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Glow loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  // ── Restore active walk on mount (handles app-kill + reopen) ──────────────
+  // ── App foreground → refresh ────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
-      const state = await getWalkState();
-      if (state.active) {
-        setWalkState(state);
-        setTargetSteps(state.targetSteps);
-        setWalkMode(state.walkMode);
-        setShatapavalli(state.shatapavalli);
-        startPolling();
-        if (!state.paused) {
-          startForegroundLocation(state);
-          startPedometer(state.stepCount);
-        }
-      }
-      const bgStatus = await Location.getBackgroundPermissionsAsync();
-      setBgPermGranted(bgStatus.status === 'granted');
-    })();
-    return () => { stopPolling(); stopPedometer(); };
-  }, []);
-
-  // ── AppState: resume foreground sub when app comes back to front ───────────
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', async (next) => {
-      if (next === 'active' && appStateRef.current !== 'active') {
-        const state = await getWalkState();
-        setWalkState({ ...state });
-        if (state.active && !state.paused) {
-          startForegroundLocation(state);
-          startPedometer(state.stepCount);
-        }
-      }
-      if (next === 'background') {
-        locationSubRef.current?.remove();
-        locationSubRef.current = null;
-        stopPedometer();
-      }
-      appStateRef.current = next;
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') refreshStats();
     });
     return () => sub.remove();
   }, []);
 
-  // ── Pedometer subscription (the fix for step tracking) ───────────────────
-  function startPedometer(baseSteps: number) {
-    stopPedometer();
-    stepBaseRef.current = baseSteps;
-    // Try to subscribe even if availability flag hasn't resolved yet
-    try {
-    pedometerSubRef.current = Pedometer.watchStepCount(async (result) => {
-      const totalSteps = stepBaseRef.current + result.steps;
-      const cur = await getWalkState();
-      if (!cur.active || cur.paused) return;
-      cur.stepCount  = totalSteps;
-      // Prefer GPS distance when available; use steps as fallback or to cap minimum distance
-      const stepsKm = stepsToKm(totalSteps, cur.walkMode);
-      if (cur.lastLat === null || cur.lastLng === null) {
-        cur.distanceKm = stepsKm;
-      } else if (stepsKm > cur.distanceKm) {
-        cur.distanceKm = stepsKm;
-      }
-      if (!cur.notifiedTarget && cur.targetSteps && totalSteps >= cur.targetSteps) {
-        cur.notifiedTarget = true;
-        fireTargetNotif(cur.type, cur.targetSteps);
-      }
-      if (cur.shatapavalli && totalSteps >= SHATAPAVALLI_STEPS && !cur.notifiedTarget) {
-        cur.notifiedTarget = true;
-        await saveWalkState(cur);
-        setWalkState({ ...cur });
-        fireShatapavallNotif();
-        setCelebrateDone(true);
-        Animated.sequence([
-          Animated.timing(celebAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.delay(2200),
-          Animated.timing(celebAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-        ]).start();
-        stopWalk();
-        return;
-      }
-      await saveWalkState(cur);
-      setWalkState({ ...cur });
+  // ── Daily snapshot every 5 min ─────────────────────────────────────────────
+  useEffect(() => {
+    const t = setInterval(() => {
+      StepCounter.snapshotTodayToHistory();
+      refreshStats();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ── Live daily-step events ─────────────────────────────────────────────────
+  useEffect(() => {
+    const sub = StepCounter.onDailyStepUpdate((_steps) => {
+      refreshStats();
     });
-    } catch { /* ignore pedometer errors */ }
-  }
+    return () => sub.remove();
+  }, []);
 
-  function stopPedometer() {
-    pedometerSubRef.current?.remove();
-    pedometerSubRef.current = null;
-  }
+  // ── Ring animation follows goalPercent ─────────────────────────────────────
+  useEffect(() => {
+    Animated.timing(ringAnim, {
+      toValue: stats.goalPercent / 100,
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    // Sync to state so plain SVG Circle gets the value (avoids createAnimatedComponent)
+    const id = ringAnim.addListener(({ value }) => {
+      setRingDashOffset(CIRCUMF - value * CIRCUMF);
+    });
+    return () => ringAnim.removeListener(id);
+  }, [stats.goalPercent]);
 
-  // ── Polling (1 s tick) ─────────────────────────────────────────────────────
-  function startPolling() {
-    stopPolling();
-    pollRef.current = setInterval(async () => {
-      const s = await getWalkState();
-      setWalkState({ ...s });
-      const now = Date.now();
-      if (s.active && !s.paused) {
-        setElapsedMs(now - s.startMs - s.pausedMs);
-      } else if (s.active && s.paused && s.pausedAt) {
-        setElapsedMs(s.pausedAt - s.startMs - s.pausedMs);
-      }
-    }, 1000);
-  }
+  // ── Data refresh ────────────────────────────────────────────────────────────
+  const refreshStats = useCallback(async () => {
+    const [s, analytics] = await Promise.all([
+      StepCounter.getTodayStats(),
+      StepCounter.getThirtyDayAnalytics(),
+    ]);
+    setStats(s);
+    setWeekData(analytics.dailyData.slice(-7));
+    setStreak(analytics.summary.currentStreak);
+  }, []);
 
-  function stopPolling() {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-  }
-
-  // ── Foreground location subscription ──────────────────────────────────────
-  async function startForegroundLocation(state: WalkState) {
-    locationSubRef.current?.remove();
-    // Prime last known location so the first delta doesn't wait for 2 samples
-    try {
-      const cur0 = await getWalkState();
-      if (cur0.active && !cur0.paused && (cur0.lastLat === null || cur0.lastLng === null)) {
-        const nowLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        cur0.lastLat = nowLoc.coords.latitude;
-        cur0.lastLng = nowLoc.coords.longitude;
-        await saveWalkState(cur0);
-        setWalkState({ ...cur0 });
-      }
-    } catch { /* ignore */ }
-
-    locationSubRef.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 2 },
-      async (loc) => {
-        const cur = await getWalkState();
-        if (!cur.active || cur.paused) return;
-        const { latitude: lat, longitude: lng } = loc.coords;
-        if (cur.lastLat !== null && cur.lastLng !== null) {
-          const d = haversineKmWalk(cur.lastLat, cur.lastLng, lat, lng);
-          // Accept ~1 m – 300 m deltas to show progress sooner while filtering teleports
-          if (d >= 0.001 && d <= 0.3) {
-            cur.distanceKm = parseFloat((cur.distanceKm + d).toFixed(4));
-          }
-        }
-        cur.lastLat = lat;
-        cur.lastLng = lng;
-        await saveWalkState(cur);
-        setWalkState({ ...cur });
-      }
-    );
-  }
-
-  // ── Notifications ────────────────────────────────────────────────────────────
-  async function fireTargetNotif(type: 'morning' | 'evening', steps: number) {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: type === 'morning' ? '🌅 Morning Walk Complete!' : '🌆 Evening Walk Complete!',
-          body: `${steps.toLocaleString()} steps achieved. Your prana flows freely. 🙏`,
-          sound: true,
-        },
-        trigger: null,
-      });
-    } catch { /* */ }
-  }
-
-  async function fireShatapavallNotif() {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🚶 Shatapavalli Complete!',
-          body: 'Exactly 100 steps done. Agni is awakened. Walk no more — rest and digest. 🙏',
-          sound: true,
-        },
-        trigger: null,
-      });
-    } catch { /* */ }
-  }
-
-  // ── Start ──────────────────────────────────────────────────────────────────
-  async function startWalk(shata = false) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    const now  = Date.now();
-    const type = bgKeyToWalkType(bgKey);
-    const tSteps = shata ? SHATAPAVALLI_STEPS : targetSteps;
-    const newState: WalkState = {
-      active: true, paused: false, type,
-      walkMode, shatapavalli: shata,
-      startMs: now, pausedMs: 0, pausedAt: null,
-      stepCount: 0, distanceKm: 0,
-      targetKm: null, targetSteps: tSteps,
-      lastLat: null, lastLng: null, notifiedTarget: false,
-    };
-    await saveWalkState(newState);
-    setWalkState(newState);
-    setElapsedMs(0);
-    setCelebrateDone(false);
-    startPedometer(0);
-    startPolling();
-
-    // Now try to enable location (non-blocking for UI)
-    let fgGranted = false;
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      fgGranted = status === 'granted';
-    } catch {}
-
-    if (!bgPermGranted) {
-      try {
-        const { status: bg } = await Location.requestBackgroundPermissionsAsync();
-        setBgPermGranted(bg === 'granted');
-      } catch {}
-    }
-
-    if (bgPermGranted) {
-      try {
-        const running = await TaskManager.isTaskRegisteredAsync(WALK_BG_TASK);
-        if (!running) {
-          await Location.startLocationUpdatesAsync(WALK_BG_TASK, {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 15000,
-            distanceInterval: 15,
-            foregroundService: {
-              notificationTitle: shata ? '🚶 Shatapavalli Active' : type === 'morning' ? '🚶 Morning Walk Active' : '🌆 Evening Walk Active',
-              notificationBody:  shata ? 'Walking 100 steps after your meal…' : 'Tracking your walk in the background…',
-              notificationColor: shata ? '#a3e635' : type === 'morning' ? '#34d399' : '#f472b6',
-            },
-          });
-        }
-      } catch { /* ignore */ }
-    }
-    if (fgGranted) {
-      try { await startForegroundLocation(newState); } catch {}
-    }
-  }
-
-  // ── Pause ──────────────────────────────────────────────────────────────────
-  async function pauseWalk() {
-    Haptics.selectionAsync();
-    locationSubRef.current?.remove();
-    locationSubRef.current = null;
-    stopPedometer();
-    const cur = await getWalkState();
-    const now = Date.now();
-    const updated = { ...cur, paused: true, pausedAt: now };
-    await saveWalkState(updated);
-    setWalkState(updated);
-    setElapsedMs(now - cur.startMs - cur.pausedMs);
-  }
-
-  // ── Resume ─────────────────────────────────────────────────────────────────
-  async function resumeWalk() {
+  // ── Enable/disable background tracking ─────────────────────────────────────
+  const toggleTracking = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const cur = await getWalkState();
-    if (!cur.pausedAt) return;
-    const added = Date.now() - cur.pausedAt;
-    const updated = { ...cur, paused: false, pausedMs: cur.pausedMs + added, pausedAt: null };
-    await saveWalkState(updated);
-    setWalkState(updated);
-    await startForegroundLocation(updated);
-    startPedometer(updated.stepCount);
-  }
+    if (trackEnabled) {
+      await StepCounter.stopBackgroundTracking();
+      setTrackEnabled(false);
+    } else {
+      await StepCounter.startBackgroundTracking();
+      setTrackEnabled(true);
+      await refreshStats();
+    }
+  };
 
-  // ── Stop ───────────────────────────────────────────────────────────────────
-  async function stopWalk() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    locationSubRef.current?.remove();
-    locationSubRef.current = null;
-    stopPolling();
-    stopPedometer();
-    try {
-      const running = await TaskManager.isTaskRegisteredAsync(WALK_BG_TASK);
-      if (running) await Location.stopLocationUpdatesAsync(WALK_BG_TASK);
-    } catch { /* */ }
-    const cur = await getWalkState();
-    const now = Date.now();
-    const finalMs = cur.pausedAt
-      ? cur.pausedAt - cur.startMs - cur.pausedMs
-      : now - cur.startMs - cur.pausedMs;
-    setElapsedMs(finalMs);
-    await clearWalkState();
-    setWalkState({ ...DEFAULT_WALK_STATE });
-    setCelebrateDone(false);
-  }
+  // ── Launch session ──────────────────────────────────────────────────────────
+  const launchSession = (type: 'morning' | 'evening' | 'postmeal') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    router.push({
+      pathname: '/step-session',
+      params: { sessionType: type },
+    } as never);
+  };
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const activeMode  = walkState.active ? walkState.walkMode : walkMode;
-  const steps       = walkState.stepCount;
-  // Use tracked distance from state (GPS and/or pedometer-derived), so UI updates even if pedometer is unavailable
-  const dist        = walkState.distanceKm;
-  const cals        = stepsToCals(steps, activeMode);
-  const isShata     = walkState.active ? walkState.shatapavalli : shatapavalli;
-  const NC          = isShata ? '#a3e635' : bgKeyToNC(bgKey);
-  const tgt         = isShata ? SHATAPAVALLI_STEPS : (walkState.active ? walkState.targetSteps : targetSteps);
-  const prog        = walkState.active
-    ? tgt
-      ? Math.min(1, steps / tgt)
-      : Math.min(1, elapsedMs / (45 * 60 * 1000))
-    : 0;
-  const walkLabel   = bgKeyToWalkLabel(bgKey, isShata, currentPeriod);
-  const isRestTime  = (bgKey === 'night' || bgKey === 'brahma') && !walkState.active;
-  const isNoonRest  = bgKey === 'midday' && !walkState.active;
-  const playingSound = WALK_SOUNDS.find(x => x.id === playingId);
+  // ── Derived values for ring ─────────────────────────────────────────────────
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.4, 1] });
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  const { bgUri, accentColor } = useBgContext();
+  
   return (
-    <ImageBackground source={{ uri: ctxBgUri ?? getBgSourceSync('night') }} style={st.bg} resizeMode="cover">
+    <ImageBackground
+      source={bgUri ? { uri: bgUri } : undefined}
+      style={[{ flex: 1, backgroundColor: accentColor || BG_DARK }]}
+      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Dark gradient — stronger at bottom for readability */}
+      {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.20)', 'rgba(0,0,0,0.36)', 'rgba(0,0,0,0.68)']}
-        locations={[0, 0.4, 1]}
+        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
+        locations={[0, 0.40, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Glass shimmer from top-left */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)', 'transparent']}
-        start={{ x: 0, y: 0 }} end={{ x: 0.65, y: 0.65 }}
-        style={StyleSheet.absoluteFillObject}
+      {/* Violet aura top-left */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { opacity: glowOpacity, pointerEvents: 'none' },
+        ]}
         pointerEvents="none"
-      />
+      >
+        <LinearGradient
+          colors={['rgba(124,58,237,0.08)', 'transparent']}
+          style={{ position: 'absolute', top: -60, left: -60, width: 320, height: 320, borderRadius: 160 }}
+        />
+      </Animated.View>
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16, paddingHorizontal: 18 }}
         showsVerticalScrollIndicator={false}
-        bounces={false}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 80 }}
       >
-
-        {/* ══ 1. HEADER ════════════════════════════════════════════════════ */}
-        <View style={st.headerRow}>
+        {/* ── HEADER ──────────────────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.header, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
+        >
           <View>
-            <Text style={[st.headerLabel, { color: NC }]}>{walkLabel}</Text>
-            {walkState.active && (
-              <View style={st.liveRow}>
-                <Animated.View style={[st.liveDot, { backgroundColor: NC, transform: [{ scale: pulseAnim }] }]} />
-                <Text style={[st.liveTxt, { color: NC }]}>LIVE · {fmtElapsed(elapsedMs)}</Text>
-              </View>
-            )}
+            <Text style={st.headerTitle}>Step Counter</Text>
+            <Text style={st.headerSub}>
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowSounds(true)} activeOpacity={0.82} style={[st.soundBtn, { borderColor: playingId ? NC + '70' : 'rgba(255,255,255,0.22)' }]}>
-            <Text style={{ fontSize: 13 }}>🎧</Text>
-            {playingSound && <Text style={[st.soundBtnLbl, { color: NC }]} numberOfLines={1}>{playingSound.label}</Text>}
-          </TouchableOpacity>
-        </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Tracking toggle */}
+            <TouchableOpacity
+              onPress={toggleTracking}
+              style={[
+                st.headerBtn,
+                trackEnabled && { backgroundColor: ACCENT + '22', borderColor: ACCENT + '50' },
+              ]}
+            >
+              <Text style={{ fontSize: 13 }}>{trackEnabled ? '📡' : '⏸'}</Text>
+            </TouchableOpacity>
+            {/* Analytics button */}
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
+              style={st.headerBtn}
+            >
+              <Text style={{ fontSize: 13 }}>📊</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
-        {/* ══ 2. MODE SELECTOR (pre-walk only) ═════════════════════════════ */}
-        {!walkState.active && (
-          <View style={st.modeRow}>
-            {(['barefoot', 'regular'] as WalkMode[]).map(m => {
-              const sel = walkMode === m;
-              return (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => { Haptics.selectionAsync(); setWalkMode(m); }}
-                  activeOpacity={0.8}
-                  style={[st.modePill, sel && { backgroundColor: NC + '22', borderColor: NC }]}
-                >
-                  <Text style={st.modeEmoji}>{m === 'barefoot' ? '🦶' : '👟'}</Text>
-                  <View>
-                    <Text style={[st.modeName, { color: sel ? NC : 'rgba(255,255,255,0.75)' }]}>
-                      {m === 'barefoot' ? 'Barefoot' : 'Regular'}
-                    </Text>
-                    <Text style={st.modeSub}>{m === 'barefoot' ? 'Ground yourself' : 'Standard walk'}</Text>
-                  </View>
-                  {sel && (
-                    <View style={[st.modeCheck, { backgroundColor: NC }]}>
-                      <Text style={{ fontSize: 9, color: '#000' }}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+        {/* ── NO SENSOR WARNING ───────────────────────────────────────────── */}
+        {!isAvailable && (
+          <View style={st.noSensorCard}>
+            <Text style={st.noSensorEmoji}>📵</Text>
+            <Text style={st.noSensorTitle}>No Step Sensor Found</Text>
+            <Text style={st.noSensorSub}>This device doesn't have a hardware step counter. Step tracking is unavailable.</Text>
           </View>
         )}
 
-        {/* ══ 3. HERO STEP RING ═══════════════════════════════════════════ */}
-        <View style={st.heroWrap}>
-          <View style={{ width: RING_SIZE, height: RING_SIZE, alignSelf: 'center' }}>
-            {/* Aura layers */}
-            <Animated.View style={[st.aura, { width: RING_SIZE + 56, height: RING_SIZE + 56, borderRadius: (RING_SIZE + 56) / 2, backgroundColor: NC + '06', transform: [{ scale: pulseAnim }], top: -28, left: -28 }]} />
-            <Animated.View style={[st.aura, { width: RING_SIZE + 28, height: RING_SIZE + 28, borderRadius: (RING_SIZE + 28) / 2, backgroundColor: NC + '14', transform: [{ scale: pulseAnim }], top: -14, left: -14 }]} />
+        {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.ringWrapper, { opacity: cardFade, transform: [{ scale: pulseAnim }] }]}
+        >
+          {/* Outer glow ring */}
+          <LinearGradient
+            colors={[ACCENT + '30', 'transparent']}
+            style={{
+              position: 'absolute',
+              width: RING_SIZE + 40,
+              height: RING_SIZE + 40,
+              borderRadius: (RING_SIZE + 40) / 2,
+              top: -20, left: -20,
+            }}
+          />
 
-            {/* SVG ring */}
-            <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-              <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_RING} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={RING_STROKE} />
-              <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_RING} fill="none" stroke={NC}
-                strokeWidth={RING_STROKE + 14} strokeLinecap="round"
-                strokeDasharray={String(C_RING)} strokeDashoffset={String(C_RING * (1 - prog))}
-                transform={`rotate(-90,${RING_SIZE / 2},${RING_SIZE / 2})`} opacity={0.12} />
-              <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_RING} fill="none" stroke={NC}
-                strokeWidth={RING_STROKE + 6} strokeLinecap="round"
-                strokeDasharray={String(C_RING)} strokeDashoffset={String(C_RING * (1 - prog))}
-                transform={`rotate(-90,${RING_SIZE / 2},${RING_SIZE / 2})`} opacity={0.26} />
-              <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_RING} fill="none" stroke={NC}
-                strokeWidth={RING_STROKE} strokeLinecap="round"
-                strokeDasharray={String(C_RING)} strokeDashoffset={String(C_RING * (1 - prog))}
-                transform={`rotate(-90,${RING_SIZE / 2},${RING_SIZE / 2})`} opacity={0.97} />
-              <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_RING} fill="none" stroke="#FFFFFF"
-                strokeWidth={2} strokeLinecap="round"
-                strokeDasharray={String(C_RING)} strokeDashoffset={String(C_RING * (1 - prog))}
-                transform={`rotate(-90,${RING_SIZE / 2},${RING_SIZE / 2})`} opacity={0.32} />
-            </Svg>
+          {/* SVG ring */}
+          <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Defs>
+              <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0"   stopColor={ACCENT}  stopOpacity="1" />
+                <Stop offset="0.5" stopColor="#EC4899" stopOpacity="1" />
+                <Stop offset="1"   stopColor={TEAL}    stopOpacity="1" />
+              </SvgGrad>
+            </Defs>
+            {/* Track */}
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={R_OUTER}
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth={RING_STROKE}
+              fill="none"
+            />
+          {/* Progress arc — driven by ringDashOffset state (listener-based, no createAnimatedComponent) */}
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={R_OUTER}
+            stroke="url(#ringGrad)"
+            strokeWidth={RING_STROKE}
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray={CIRCUMF}
+            strokeDashoffset={ringDashOffset}
+          />
+          </Svg>
 
-            {/* Ring center */}
-            <View style={st.ringCenter}>
-              <View style={st.ringCard}>
-                <LinearGradient colors={[NC + '22', NC + '08', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-                {!walkState.active ? (
-                  <>
-                    <Text style={st.heroIdleTitle}>{isShata ? 'Walk 100 Steps' : currentPeriod?.englishLabel ? currentPeriod.englishLabel.split('\n')[0] : walkLabel.split(' ').map((w:string) => w.charAt(0)+w.slice(1).toLowerCase()).join(' ')}</Text>
-                    <Text style={st.heroIdleSub}>
-                      {isShata ? 'Walk 100 steps right after eating' : currentPeriod?.sciTitle ?? bgKeyToIdleSub(bgKey)}
-                    </Text>
-                    {tgt !== null && (
-                      <View style={[st.targetBadge, { borderColor: NC + '40', backgroundColor: NC + '15' }]}>
-                        <Text style={[st.targetBadgeTxt, { color: NC }]}>{tgt.toLocaleString()} steps</Text>
-                      </View>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Text style={[st.heroSteps, { color: NC }]}>{steps.toLocaleString()}</Text>
-                    <Text style={st.heroStepsUnit}>steps</Text>
-                    <View style={st.divider} />
-                    <Text style={[st.statValue, { color: NC }]}>{fmtDist(dist)}</Text>
-                    <Text style={st.statLabel}>distance</Text>
-                    {walkState.paused && <Text style={[st.pausedLabel, { color: NC + '90' }]}>PAUSED</Text>}
-                  </>
-                )}
-              </View>
+          {/* Centre text */}
+          <View style={st.ringCentre}>
+            <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
+            <Text style={st.ringLabel}>steps today</Text>
+            <Text style={[st.ringGoal, { color: ACCENT }]}>{stats.goalPercent}% of {fmtK(stats.goalSteps)}</Text>
+          </View>
+        </Animated.View>
+
+        {/* ── METRIC CHIPS ─────────────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.chipsRow, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
+        >
+          {[
+            { icon: '🏃', label: 'Distance', val: `${stats.distanceKm.toFixed(1)} km`, color: TEAL   },
+            { icon: '🔥', label: 'Calories',  val: `${stats.calories} kcal`,           color: ORANGE  },
+            { icon: '⏱',  label: 'Active',    val: `${stats.activeMinutes} min`,        color: GREEN   },
+            { icon: '🔥', label: 'Streak',    val: `${streak} days`,                    color: GOLD    },
+          ].map((chip, i) => (
+            <View key={i} style={[st.chip, { borderColor: chip.color + '30' }]}>
+              <LinearGradient
+                colors={[chip.color + '12', 'transparent']}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <Text style={st.chipIcon}>{chip.icon}</Text>
+              <Text style={[st.chipVal, { color: chip.color }]}>{chip.val}</Text>
+              <Text style={st.chipLabel}>{chip.label}</Text>
             </View>
-          </View>
-        </View>
+          ))}
+        </Animated.View>
 
-        {/* ══ 4. TARGET PICKER ══════════════════════════════════════════════ */}
-        {!walkState.active && (
-          <View style={st.targetRow}>
-            {STEP_TARGETS.map(opt => {
-              const sel = opt.steps === targetSteps;
-              return (
-                <TouchableOpacity
-                  key={opt.label}
-                  onPress={() => { if (walkState.active) return; Haptics.selectionAsync(); setTargetSteps(opt.steps); }}
-                  style={[st.targetPill, sel ? { backgroundColor: NC + '20', borderColor: NC + '65' } : { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.14)' }]}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[st.targetTxt, { color: sel ? NC : 'rgba(255,255,255,0.50)' }]}>{opt.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        {/* ── SESSION CARDS ─────────────────────────────────────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }] }}>
+          <View style={st.sectionHeader}>
+            <Text style={st.sectionTitle}>Walk Sessions</Text>
+            <Text style={st.sectionSub}>Tap to start a tracked session</Text>
           </View>
-        )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}>
+            {getDynamicSessions().map(s => (
+              <SessionCard
+                key={s.type + s.label}
+                emoji={s.emoji} label={s.label} sub={s.sub}
+                color={s.color} goal={s.goal}
+                btnLabel={s.btnLabel}
+                onStart={() => launchSession(s.type)}
+              />
+            ))}</ScrollView>
+        </Animated.View>
 
-        {/* ══ 5. SHATAPAVALLI TOGGLE ════════════════════════════════════════ */}
-        {!walkState.active && (
+        {/* ── 7-DAY BAR CHART ──────────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.chartCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
+        >
+          <LinearGradient
+            colors={['rgba(124,58,237,0.08)', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={st.chartHeader}>
+            <Text style={st.chartTitle}>7-Day Overview</Text>
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
+              style={st.chartMoreBtn}
+            >
+              <Text style={[st.chartMoreTxt, { color: ACCENT }]}>30 days →</Text>
+            </TouchableOpacity>
+          </View>
+          <WeekBarChart data={weekData} goal={stats.goalSteps} accentColor={ACCENT} />
+        </Animated.View>
+
+        {/* ── QUICK ACTIONS ────────────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.quickRow, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
+        >
           <TouchableOpacity
-            onPress={() => { Haptics.selectionAsync(); setShatapavalli(v => !v); }}
-            activeOpacity={0.8}
-            style={[st.shataChip, shatapavalli && { backgroundColor: 'rgba(163,230,53,0.14)', borderColor: 'rgba(163,230,53,0.45)' }]}
+            style={[st.quickBtn, { borderColor: ACCENT + '40' }]}
+            onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
           >
-            <Text style={{ fontSize: 16 }}>🍽️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[st.shataChipLbl, shatapavalli && { color: '#a3e635' }]}>After-meal Shatapavalli</Text>
-              <Text style={st.shataChipSub}>Walk 100 steps right after eating</Text>
-            </View>
-            <View style={[st.shataChipToggle, shatapavalli && { backgroundColor: '#a3e635', borderColor: '#a3e635' }]}>
-              {shatapavalli && <Text style={{ fontSize: 8, color: '#000', fontWeight: '900' }}>✓</Text>}
-            </View>
+            <LinearGradient colors={[ACCENT + '18', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={{ fontSize: 22 }}>📈</Text>
+            <Text style={[st.quickLabel, { color: ACCENT }]}>Analytics</Text>
+            <Text style={st.quickSub}>30-day history</Text>
           </TouchableOpacity>
-        )}
 
-        {/* ══ 5.5 TODAY'S WALK SCHEDULE ═════════════════════════════════ */}
-        {!walkState.active && periods.length > 0 && (
-          <View style={st.scheduleSection}>
-            <Text style={st.scheduleTitle}>Today's Walk Windows</Text>
-            <View style={st.scheduleGrid}>
-              {periods.map((p) => {
-                const isWalkTime = ['morning_kapha', 'afternoon_vata', 'evening_kapha'].includes(p.id);
-                if (!isWalkTime) return null;
-                const walkType = p.id === 'morning_kapha' ? 'Morning' : p.id === 'afternoon_vata' ? 'Afternoon' : 'Evening';
-                const isActive = p.status === 'active';
-                return (
-                  <View key={p.id} style={[st.scheduleCard, isActive && { borderColor: p.color + '70', backgroundColor: p.color + '15' }]}>
-                    <Text style={{ fontSize: 16 }}>{p.emoji}</Text>
-                    <Text style={[st.scheduleCardTitle, isActive && { color: p.color }]}>{walkType}</Text>
-                    <Text style={st.scheduleCardTime}>{p.startLabel} – {p.endLabel}</Text>
-                    {isActive && <Text style={[st.scheduleCardActive, { color: p.color }]}>NOW</Text>}
-                  </View>
-                );
-              })}
-            </View>
+          <TouchableOpacity
+            style={[st.quickBtn, { borderColor: GREEN + '40' }]}
+            onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
+          >
+            <LinearGradient colors={[GREEN + '18', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={{ fontSize: 22 }}>🎯</Text>
+            <Text style={[st.quickLabel, { color: GREEN }]}>Set Goal</Text>
+            <Text style={st.quickSub}>{fmtK(stats.goalSteps)} steps/day</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* ── TRACKING STATUS CARD ─────────────────────────────────────────── */}
+        <Animated.View
+          style={[st.trackCard, { opacity: cardFade, borderColor: (trackEnabled ? ACCENT : BORDER) + '60' }]}
+        >
+          <LinearGradient
+            colors={trackEnabled ? [ACCENT + '12', 'transparent'] : ['transparent', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={st.trackTitle}>
+              {trackEnabled ? '📡 Background Tracking Active' : '⏸ Background Tracking Off'}
+            </Text>
+            <Text style={st.trackSub}>
+              {trackEnabled
+                ? 'Steps counted even when app is closed. Tap to pause.'
+                : 'Enable to count steps all day automatically.'}
+            </Text>
           </View>
-        )}
-
-        {/* ══ 5.5 LIVE STATS PANEL ═══════════════════════════════════════ */}
-        {walkState.active && (
-          <View style={[st.statsPanel, { borderColor: NC + '30' }]}>
-            <View style={st.statCell}>
-              <Text style={[st.statCellVal, { color: NC }]}>{fmtElapsed(elapsedMs)}</Text>
-              <Text style={st.statCellLbl}>TIME</Text>
-            </View>
-            <View style={[st.statSep, { backgroundColor: NC + '25' }]} />
-            <View style={st.statCell}>
-              <Text style={[st.statCellVal, { color: NC }]}>{steps.toLocaleString()}</Text>
-              <Text style={st.statCellLbl}>STEPS</Text>
-            </View>
-            <View style={[st.statSep, { backgroundColor: NC + '25' }]} />
-            <View style={st.statCell}>
-              <Text style={[st.statCellVal, { color: NC }]}>{fmtDist(dist)}</Text>
-              <Text style={st.statCellLbl}>DIST</Text>
-            </View>
-            <View style={[st.statSep, { backgroundColor: NC + '25' }]} />
-            <View style={st.statCell}>
-              <Text style={[st.statCellVal, { color: NC }]}>{cals}</Text>
-              <Text style={st.statCellLbl}>KCAL</Text>
-            </View>
-          </View>
-        )}
-
-        {/* ══ 6. ACTION BUTTONS — always available ════════════════════════ */}
-        <View style={st.actionRow}>
-          {!walkState.active ? (
-            <TouchableOpacity style={[st.startBtn, { backgroundColor: NC }]} onPress={() => startWalk(shatapavalli)} activeOpacity={0.85}>
-              <Text style={[st.startTxt, { color: '#0A1408' }]}>START WALK</Text>
-            </TouchableOpacity>
-          ) : walkState.paused ? (
-            <>
-              <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={resumeWalk} activeOpacity={0.8}>
-                <Text style={[st.halfTxt, { color: NC }]}>▶ RESUME</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
-                <Text style={st.endTxt}>■ END</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity style={[st.halfBtn, { borderColor: NC + '55' }]} onPress={pauseWalk} activeOpacity={0.8}>
-                <Text style={[st.halfTxt, { color: NC }]}>⏸ PAUSE</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={st.endBtn} onPress={stopWalk} activeOpacity={0.8}>
-                <Text style={st.endTxt}>■ END</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* ══ 7. GROUNDING BENEFITS ACCORDION ═════════════════════════════ */}
-        {!walkState.active && !isRestTime && !isNoonRest && (
-          <View style={{ marginTop: 16 }}>
-            <TouchableOpacity activeOpacity={0.85} onPress={() => setGroundingOpen(v => !v)} style={st.groundHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={st.groundTitle}>Grounding Effect — The Science</Text>
-                <Text style={st.groundSub}>Touch the earth with bare feet. Your body was designed for this.</Text>
-              </View>
-              <Text style={[st.groundChevron, { color: NC, fontSize: 12 }]}>{groundingOpen ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {groundingOpen && GROUNDING_BENEFITS.map(item => {
-              const open = expandedBenefit === item.id;
-              return (
-                <TouchableOpacity key={item.id} activeOpacity={0.9} onPress={() => setExpandedBenefit(open ? null : item.id)} style={st.groundItem}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={st.groundItemTitle}>{item.title}</Text>
-                      <Text style={st.groundItemShort}>{item.short}</Text>
-                    </View>
-                    <Text style={[st.groundChevron, { color: open ? NC : 'rgba(255,255,255,0.30)' }]}>{open ? '▲' : '▼'}</Text>
-                  </View>
-                  {open && (
-                    <Text style={st.groundItemDetail}>{item.detail}</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* DEV status line */}
-        {__DEV__ && (
-          <Text style={st.devLine}>
-            {`DEV · active=${String(walkState.active)} paused=${String(walkState.paused)} steps=${walkState.stepCount} dist=${walkState.distanceKm.toFixed(3)}km pedAvail=${String(pedometerAvail)} bgGranted=${String(bgPermGranted)}`}
-          </Text>
-        )}
-
-        {/* ══ 8. FOOTER MICRO-INFO ════════════════════════════════════════ */}
-        {!bgPermGranted && walkState.active && (
-          <Text style={st.bgWarn}>Enable "Always" location for background tracking</Text>
-        )}
+          <TouchableOpacity
+            style={[st.trackToggle, { backgroundColor: trackEnabled ? ACCENT : 'rgba(255,255,255,0.08)' }]}
+            onPress={toggleTracking}
+          >
+            <Text style={[st.trackToggleTxt, { color: trackEnabled ? '#fff' : 'rgba(255,255,255,0.5)' }]}>
+              {trackEnabled ? 'ON' : 'OFF'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
 
       </ScrollView>
 
-      {/* ══ SHATAPAVALLI CELEBRATION OVERLAY ════════════════════════════ */}
-      {celebrateDone && (
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, st.celebOverlay, { opacity: celebAnim }]}>
-          <Text style={st.celebEmoji}>🚶</Text>
-          <Text style={st.celebTitle}>Shatapavalli Complete!</Text>
-          <Text style={st.celebSub}>{'Exactly 100 steps. Agni is awakened.\nRest now — let your body digest. 🙏'}</Text>
-        </Animated.View>
-      )}
-
-      {/* ══ NADA SOUND PICKER MODAL ══════════════════════════════════════ */}
-      <Modal visible={showSounds} transparent animationType="slide" onRequestClose={() => setShowSounds(false)}>
-        <TouchableOpacity style={st.modalBg} activeOpacity={1} onPress={() => setShowSounds(false)} />
-        <View style={[st.soundSheet, { paddingBottom: insets.bottom + 20 }]}>
-          <LinearGradient colors={['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.03)']} style={StyleSheet.absoluteFillObject} />
-          <View style={st.sheetHandle} />
-          <Text style={st.sheetTitle}>🎧 Headphone Sanctuary</Text>
-          <Text style={st.sheetSub}>Plug in your headphones and let sacred Nada guide every step.{'\n'}Your walk becomes a moving meditation.</Text>
-
-          {playingId && (
-            <TouchableOpacity style={st.stopSndBtn} onPress={() => { stopSound(); setShowSounds(false); }}>
-              <Text style={st.stopSndTxt}>◼ Stop Sound</Text>
-            </TouchableOpacity>
-          )}
-
-          <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false} contentContainerStyle={st.soundGrid}>
-            {WALK_SOUNDS.map(snd => {
-              const isOn = playingId === snd.id && !soundPaused;
-              const isPsd = playingId === snd.id && soundPaused;
-              const rawUri = SOUND_IMAGES[snd.id] ?? (snd as any).imageUri;
-              const imgUri = rawUri ? getLocalSoundImageUri(rawUri) : undefined;
-              return (
-                <TouchableOpacity
-                  key={snd.id}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); if (playingId === snd.id) togglePause(); else playSound(snd, 3600); setShowSounds(false); }}
-                  style={[st.sndChip, (isOn || isPsd) && { borderColor: snd.color + '80', borderWidth: 1.5 }]}
-                  activeOpacity={0.82}
-                >
-                  {imgUri ? (
-                    <Image source={{ uri: imgUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-                  ) : (
-                    <LinearGradient colors={[snd.color + '50', snd.top, snd.bot]} style={StyleSheet.absoluteFillObject} />
-                  )}
-                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.82)']} locations={[0, 0.45, 1]}
-                    style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
-                  {(isOn || isPsd) && (
-                    <View style={[st.sndBadge, { backgroundColor: snd.color + 'DD' }]}>
-                      <Text style={st.sndBadgeTxt}>{isOn ? '◉ PLAYING' : '⏸ PAUSED'}</Text>
-                    </View>
-                  )}
-                  <View style={st.sndCardBottom}>
-                    <Text style={{ fontSize: 17, lineHeight: 22 }}>{snd.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[st.sndLabel, isOn && { color: snd.color }]} numberOfLines={1}>{snd.label}</Text>
-                      <Text style={st.sndDesc} numberOfLines={1}>{snd.desc}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={st.sheetQuote}>"Every step is a mantra. Every breath, a prayer.{'\n'}Walk as though your feet are kissing the earth."</Text>
-        </View>
-      </Modal>
+      {/* ── GOAL MODAL ───────────────────────────────────────────────────────── */}
+      <GoalModal
+        visible={showGoalModal}
+        current={stats.goalSteps}
+        onClose={() => setShowGoalModal(false)}
+        onSave={async (g) => {
+          await StepCounter.setDailyGoal(g);
+          setShowGoalModal(false);
+          await refreshStats();
+        }}
+      />
     </ImageBackground>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionCard component
+// ─────────────────────────────────────────────────────────────────────────────
+function SessionCard({
+  emoji, label, sub, color, goal, btnLabel, onStart,
+}: {
+  emoji: string; label: string; sub: string; color: string; goal: number; btnLabel: string;
+  onStart: () => void;
+}) {
+  const pressAnim = useRef(new Animated.Value(1)).current;
+  const onPressIn  = () => Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true }).start();
+  const onPressOut = () => Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View style={[sCard.wrapper, { transform: [{ scale: pressAnim }] }]}>
+      <TouchableOpacity
+        onPress={onStart}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={1}
+        style={sCard.inner}
+      >
+        <LinearGradient
+          colors={[color + '18', color + '06', 'transparent']}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
+        />
+        {/* Top border glow */}
+        <View style={[sCard.topBorder, { backgroundColor: color }]} />
+
+        <Text style={sCard.emoji}>{emoji}</Text>
+        <Text style={[sCard.label, { color }]}>{label}</Text>
+        <Text style={sCard.sub}>{sub}</Text>
+
+        {/* Goal pill */}
+        <View style={[sCard.goalPill, { backgroundColor: color + '18', borderColor: color + '30' }]}>
+          <Text style={[sCard.goalTxt, { color }]}>🎯 {goal.toLocaleString()} steps</Text>
+        </View>
+
+        {/* Start button */}
+        <TouchableOpacity
+          onPress={onStart}
+          style={[sCard.startBtn, { backgroundColor: color }]}
+        >
+          <Text style={sCard.startTxt}>▶  {btnLabel.toUpperCase()}</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const sCard = StyleSheet.create({
+  wrapper: { width: 160, borderRadius: 20, overflow: 'hidden' },
+  inner: {
+    backgroundColor: CARD,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 16,
+    alignItems: 'center',
+    gap: 6,
+    overflow: 'hidden',
+  },
+  topBorder: { position: 'absolute', top: 0, left: 16, right: 16, height: 2, borderRadius: 1, opacity: 0.8 },
+  emoji:    { fontSize: 32, marginTop: 8 },
+  label:    { fontSize: 13, fontWeight: '800', textAlign: 'center', letterSpacing: 0.2 },
+  sub:      { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontWeight: '500' },
+  goalPill: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, marginTop: 4 },
+  goalTxt:  { fontSize: 10, fontWeight: '700' },
+  startBtn: { borderRadius: 12, paddingVertical: 10, paddingHorizontal: 20, marginTop: 8, alignSelf: 'stretch', alignItems: 'center' },
+  startTxt: { color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 1.5 },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7-Day Bar Chart (SVG — no WebView, no MPAndroidChart)
+// ─────────────────────────────────────────────────────────────────────────────
+function WeekBarChart({ data, goal, accentColor }: { data: DailyData[]; goal: number; accentColor: string }) {
+  const chartW = W - 64;
+  const chartH = 100;
+  const barW   = (chartW - 48) / 7;
+  const maxVal = Math.max(goal, ...data.map(d => d.steps), 1);
+
+  // NOTE: barAnims removed — SVG Rects cannot be driven by Animated.Value directly
+  // (createAnimatedComponent crashes on RN 0.73 New Architecture). Bars render statically.
+  const goalY = chartH - (goal / maxVal) * chartH;
+
+  return (
+    <View style={{ height: chartH + 28 }}>
+      <Svg width={chartW} height={chartH + 24} style={{ marginTop: 4 }}>
+        {/* Goal dashed line */}
+        <Path
+          d={`M0,${goalY} L${chartW},${goalY}`}
+          stroke={GOLD}
+          strokeWidth={1}
+          strokeDasharray="4 4"
+          opacity={0.5}
+        />
+        <SvgText x={chartW - 2} y={goalY - 4} fontSize={8} fill={GOLD} opacity={0.7} textAnchor="end">
+          GOAL
+        </SvgText>
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const x    = i * (barW + 6) + 4;
+          const pct  = Math.min(d.steps / maxVal, 1);
+          const bH   = Math.max(2, pct * chartH);
+          const y    = chartH - bH;
+          const fill = d.goalMet ? GREEN : (d.steps > 0 ? accentColor : 'rgba(255,255,255,0.08)');
+          const label = dayLabel(d.date);
+
+          return (
+            <G key={d.date}>
+              {/* Bar bg */}
+              <Rect x={x} y={0} width={barW} height={chartH} rx={4} fill="rgba(255,255,255,0.03)" />
+              {/* Bar fill */}
+              <Rect x={x} y={y} width={barW} height={bH} rx={4} fill={fill} opacity={0.85} />
+              {/* Day label */}
+              <SvgText x={x + barW / 2} y={chartH + 14} fontSize={9} fill="rgba(255,255,255,0.4)" textAnchor="middle" fontWeight="600">
+                {label}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Goal modal
+// ─────────────────────────────────────────────────────────────────────────────
+function GoalModal({
+  visible, current, onClose, onSave,
+}: {
+  visible: boolean; current: number; onClose: () => void; onSave: (g: number) => void;
+}) {
+  const PRESETS = [3000, 5000, 6000, 8000, 10000, 12000];
+  const [selected, setSelected] = useState(current);
+  useEffect(() => { if (visible) setSelected(current); }, [visible, current]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={gm.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <View style={gm.sheet}>
+          <LinearGradient colors={['#1A0A3A', '#0A0A0F']} style={StyleSheet.absoluteFillObject} />
+          <View style={gm.handle} />
+          <Text style={gm.title}>Daily Step Goal</Text>
+          <Text style={gm.sub}>Choose your target for today</Text>
+          <View style={gm.presets}>
+            {PRESETS.map(p => (
+              <TouchableOpacity
+                key={p}
+                onPress={() => { Haptics.selectionAsync(); setSelected(p); }}
+                style={[gm.preset, selected === p && { backgroundColor: ACCENT + '28', borderColor: ACCENT }]}
+              >
+                <Text style={[gm.presetTxt, selected === p && { color: ACCENT }]}>
+                  {p.toLocaleString()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[gm.saveBtn, { backgroundColor: ACCENT }]}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected); }}
+          >
+            <Text style={gm.saveTxt}>Save Goal</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.35)', textAlign: 'center', fontSize: 14 }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const gm = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
+  sheet:   { backgroundColor: '#0A0A0F', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, overflow: 'hidden' },
+  handle:  { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  title:   { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  sub:     { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+  preset:  { flex: 1, minWidth: '28%', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, alignItems: 'center' },
+  presetTxt: { color: 'rgba(255,255,255,0.6)', fontWeight: '700', fontSize: 15 },
+  saveBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 8 },
+  saveTxt: { color: '#fff', fontWeight: '900', fontSize: 16 },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#0A1A10' },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, marginBottom: 24,
+  },
+  headerTitle: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2, fontWeight: '500' },
+  headerBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
-  // Header
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  headerLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1.8 },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  liveDot: { width: 5, height: 5, borderRadius: 3 },
-  liveTxt: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  soundBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 99, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, maxWidth: 130 },
-  soundBtnLbl: { fontSize: 9, fontWeight: '700' },
+  noSensorCard: {
+    margin: 20, padding: 24, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.16)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', gap: 8,
+  },
+  noSensorEmoji: { fontSize: 36 },
+  noSensorTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  noSensorSub:   { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 18 },
 
-  // Mode selector
-  modeRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
-  modePill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.22)', paddingHorizontal: 12, paddingVertical: 10 },
-  modeEmoji: { fontSize: 20 },
-  modeName: { fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
-  modeSub: { fontSize: 9.5, color: 'rgba(255,255,255,0.40)', marginTop: 1 },
-  modeCheck: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  ringWrapper: {
+    alignSelf: 'center',
+    width:  RING_SIZE + 40,
+    height: RING_SIZE + 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  ringCentre: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: RING_SIZE - RING_STROKE * 2 - 16,
+  },
+  ringSteps: { fontSize: 42, fontWeight: '900', color: '#fff', letterSpacing: -1 },
+  ringLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '600', marginTop: -2 },
+  ringGoal:  { fontSize: 11, fontWeight: '700', marginTop: 4 },
 
-  // Hero ring
-  heroWrap: { marginVertical: 14 },
-  aura: { position: 'absolute' },
-  ringCenter: { position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
-  ringCard: { width: RING_SIZE - 72, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(0,0,0,0.26)', overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center' },
+  chipsRow: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 28,
+  },
+  chip: {
+    flex: 1, borderRadius: 14, borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.12)', padding: 10, alignItems: 'center', gap: 2, overflow: 'hidden',
+  },
+  chipIcon:  { fontSize: 16 },
+  chipVal:   { fontSize: 12, fontWeight: '800' },
+  chipLabel: { fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: '600' },
 
-  // Ring — idle
-  heroIdleTitle: { fontSize: 16, fontWeight: '900', textAlign: 'center', color: '#FFFFFF', marginBottom: 4, letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
-  heroIdleSub: { fontSize: 10, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 15, textShadowColor: 'rgba(0,0,0,0.80)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  targetBadge: { marginTop: 10, borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
-  targetBadgeTxt: { fontSize: 10, fontWeight: '800' },
+  sectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
+  sectionTitle:  { fontSize: 16, fontWeight: '800', color: '#fff' },
+  sectionSub:    { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
 
-  // Ring — active
-  heroSteps: { fontSize: 44, fontWeight: '200', letterSpacing: -2, lineHeight: 50, color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
-  heroStepsUnit: { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: -2, marginBottom: 6 },
-  divider: { width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: 4 },
-  statValue: { fontSize: 12, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
-  statLabel: { fontSize: 8, color: 'rgba(255,255,255,0.40)', marginTop: 1, textAlign: 'center', fontWeight: '600' },
-  pausedLabel: { fontSize: 8, fontWeight: '900', letterSpacing: 2, marginTop: 8 },
+  chartCard: {
+    marginHorizontal: 16, marginBottom: 16, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    padding: 16, overflow: 'hidden',
+  },
+  chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  chartTitle:  { fontSize: 14, fontWeight: '800', color: '#fff' },
+  chartMoreBtn:{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: ACCENT + '18' },
+  chartMoreTxt:{ fontSize: 11, fontWeight: '700' },
 
-  // Target picker
-  targetRow: { flexDirection: 'row', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 14 },
-  targetPill: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
-  targetTxt: { fontSize: 11, fontWeight: '700' },
+  quickRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: 16 },
+  quickBtn: {
+    flex: 1, borderRadius: 18, borderWidth: 1, backgroundColor: 'rgba(0,0,0,0.16)', borderColor: 'rgba(255,255,255,0.12)',
+    padding: 18, alignItems: 'center', gap: 6, overflow: 'hidden',
+  },
+  quickLabel: { fontSize: 14, fontWeight: '800' },
+  quickSub:   { fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
 
-  // Shatapavalli chip
-  shataChip: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 11, marginBottom: 14 },
-  shataChipLbl: { fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.2 },
-  shataChipSub: { fontSize: 9.5, color: 'rgba(255,255,255,0.32)', marginTop: 1.5 },
-  shataChipToggle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
-  // Grounding section header
-  groundHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4, marginBottom: 10 },
-  // Schedule section
-  scheduleSection: { marginVertical: 14 },
-  scheduleTitle: { fontSize: 12, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.2, marginBottom: 10 },
-  scheduleGrid: { flexDirection: 'row', gap: 8 },
-  scheduleCard: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center' },
-  scheduleCardTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.65)', marginTop: 4 },
-  scheduleCardTime: { fontSize: 8, color: 'rgba(255,255,255,0.40)', marginTop: 2 },
-  scheduleCardActive: { fontSize: 8, fontWeight: '900', marginTop: 4, letterSpacing: 0.5 },
-  // Live stats panel
-  statsPanel: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 20, borderWidth: 1, paddingVertical: 20, marginBottom: 14 },
-  statCell: { flex: 1, alignItems: 'center' },
-  statCellVal: { fontSize: 24, fontWeight: '200', letterSpacing: -0.5, lineHeight: 28 },
-  statCellLbl: { fontSize: 8, fontWeight: '800', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.4, marginTop: 4 },
-  statSep: { width: 1, height: 38 },
-
-  // Rest / sleep / noon panels
-  restPanel: { alignItems: 'center', paddingVertical: 30, marginBottom: 8 },
-  restIcon: { fontSize: 46, marginBottom: 12 },
-  restTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginBottom: 8, letterSpacing: 0.2 },
-  restSub: { fontSize: 13, color: 'rgba(255,255,255,0.42)', textAlign: 'center', lineHeight: 20 },
-  // Action buttons
-  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  startBtn: { flex: 1, borderRadius: 99, paddingVertical: 18, alignItems: 'center' },
-  startTxt: { fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
-  halfBtn: { flex: 1, borderRadius: 99, borderWidth: 1.5, paddingVertical: 16, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
-  halfTxt: { fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-  endBtn: { flex: 1, borderRadius: 99, borderWidth: 1.5, borderColor: 'rgba(239,68,68,0.42)', paddingVertical: 16, alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.08)' },
-  endTxt: { fontSize: 13, fontWeight: '900', color: '#f87171', letterSpacing: 1 },
-
-  // Grounding benefits
-  groundTitle: { fontSize: 13, fontWeight: '900', color: '#FFFFFF', marginBottom: 3, letterSpacing: 0.3 },
-  groundSub: { fontSize: 10, color: 'rgba(255,255,255,0.40)', marginBottom: 10, letterSpacing: 0.2 },
-  groundItem: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.18)', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8 },
-  groundItemTitle: { fontSize: 12, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.1 },
-  groundItemShort: { fontSize: 9.5, color: 'rgba(255,255,255,0.40)', marginTop: 2 },
-  groundChevron: { fontSize: 10, fontWeight: '900' },
-  groundItemDetail: { fontSize: 10.5, color: 'rgba(255,255,255,0.60)', marginTop: 10, lineHeight: 16 },
-
-  // Footer
-  footerInfo: { fontSize: 10, textAlign: 'center', fontWeight: '600', marginTop: 6 },
-  bgWarn: { fontSize: 9, color: 'rgba(251,191,36,0.65)', textAlign: 'center', marginTop: 4 },
-
-  // Celebration
-  celebOverlay: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.72)' },
-  celebEmoji: { fontSize: 52, marginBottom: 12 },
-  celebTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginBottom: 6 },
-  celebSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', textAlign: 'center' },
-
-  // Sound picker modal
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.52)' },
-  soundSheet: { backgroundColor: 'rgba(10,16,28,0.97)', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)' },
-  sheetHandle: { width: 36, height: 4, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
-  sheetTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', marginBottom: 6 },
-  sheetSub: { fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginBottom: 16 },
-  stopSndBtn: { borderRadius: 99, borderWidth: 1, borderColor: 'rgba(239,68,68,0.38)', backgroundColor: 'rgba(239,68,68,0.10)', paddingVertical: 10, alignItems: 'center', marginBottom: 14 },
-  stopSndTxt: { fontSize: 12, fontWeight: '800', color: '#f87171' },
-  soundGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 8 },
-  sndChip: { width: (SCREEN_W - 52) / 2, height: 120, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', justifyContent: 'flex-end' },
-  sndCardBottom: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, paddingHorizontal: 10, paddingBottom: 9 },
-  sndLabel: { fontSize: 10, fontWeight: '900', color: '#FFFFFF', lineHeight: 14 },
-  sndDesc: { fontSize: 8, color: 'rgba(255,255,255,0.50)', lineHeight: 11 },
-  sndBadge: { position: 'absolute', top: 8, right: 8, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 3 },
-  sndBadgeTxt: { fontSize: 7, fontWeight: '900', color: '#000000DD', letterSpacing: 0.4 },
-  sheetQuote: { fontSize: 10, color: 'rgba(255,255,255,0.28)', textAlign: 'center', fontStyle: 'italic', lineHeight: 16, marginBottom: 6 },
-  devLine: { fontSize: 9, color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 8 },
+  trackCard: {
+    marginHorizontal: 16, marginBottom: 24, borderRadius: 18, borderWidth: 1,
+    backgroundColor: 'rgba(0,0,0,0.16)', borderColor: 'rgba(255,255,255,0.12)', padding: 16, flexDirection: 'row', alignItems: 'center',
+    gap: 12, overflow: 'hidden',
+  },
+  trackTitle: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  trackSub:   { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 3, lineHeight: 16 },
+  trackToggle: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, minWidth: 48, alignItems: 'center' },
+  trackToggleTxt: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
 });

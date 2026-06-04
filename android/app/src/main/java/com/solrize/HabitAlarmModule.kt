@@ -134,12 +134,39 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopHabitAlarmSound(promise: Promise) {
         try {
+            // Use .commit() (synchronous) not .apply() (async) so that isAlarmActive()
+            // in MainActivity reads false IMMEDIATELY — before onWindowFocusChanged or
+            // any watchdog fires. .apply() was causing a race where the flag was still
+            // true when the alarm screen navigated away, making the app re-open itself.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_ACTIVE, false).apply()
+                .edit().putBoolean(KEY_ACTIVE, false).commit()
             reactContext.stopService(Intent(reactContext, HabitAlarmSoundService::class.java))
             promise.resolve("Habit alarm sound stopped")
         } catch (e: Exception) {
             promise.reject("STOP_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Stop the vibration running inside HabitAlarmSoundService without stopping
+     * the full service. Sends ACTION_STOP_VIBRATION to HabitAlarmSoundService.
+     *
+     * Note: stopAlarmVibration() in nativeAlarm.ts targets AlarmSoundService
+     * (the wake alarm service) — it has NO effect on habit alarm vibration.
+     * This method is the correct way to stop habit/quick alarm vibration from JS.
+     */
+    @ReactMethod
+    fun stopHabitAlarmVibration(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, HabitAlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_STOP_VIBRATION
+                }
+            )
+            promise.resolve("Habit alarm vibration stopped")
+        } catch (e: Exception) {
+            // Non-fatal — if service is already stopped, vibration is already gone
+            promise.resolve("Habit alarm vibration stop (service not running)")
         }
     }
 

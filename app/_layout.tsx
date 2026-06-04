@@ -2,7 +2,7 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,11 +16,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
-import { ensureAllBgsCached } from '@/lib/bgImages';
-import { prefetchAllSoundImages, warmSoundImageMap } from '@/lib/soundImagePreload';
+import { ensureAllBgsCached, getBgSourceSync, getBgSource } from '@/lib/bgImages';
+import { prefetchAllSoundImages, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
@@ -84,6 +85,15 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
   const titleSc = useRef(new Animated.Value(0.84)).current;
   const subOp   = useRef(new Animated.Value(0)).current;
   const screenOp = useRef(new Animated.Value(1)).current;
+  const [bgUri, setBgUri] = useState<string>(() => getBgSourceSync('splash'));
+
+  useEffect(() => {
+    let cancelled = false;
+    getBgSource('splash').then(uri => {
+      if (!cancelled) setBgUri(uri);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     Animated.sequence([
@@ -101,7 +111,11 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
 
   return (
     <Animated.View pointerEvents="none" style={[SS.overlay, { opacity: screenOp }]}>
-      <LinearGradient colors={['#0B052F', '#05040F', '#000009']} style={StyleSheet.absoluteFillObject} />
+      <Image 
+        source={{ uri: bgUri }} 
+        style={StyleSheet.absoluteFillObject} 
+        resizeMode="cover" 
+      />
       {/* Ambient glow orb */}
       <Animated.View style={[SS.glowOrb, { opacity: glowOp }]} />
       {/* Center */}
@@ -154,6 +168,11 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
       setTimeout(() => {
         ImagePicker.requestCameraPermissionsAsync().catch(() => {});
         ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => {});
+        // Request location permission for home page weather + walk distance tracking
+        Location.requestForegroundPermissionsAsync().catch(() => {});
+        // NOTE: Pedometer (Physical Activity) permission is NOT requested here.
+        // It is requested contextually in walk.tsx when the user taps "Start Walk",
+        // so the system dialog appears with clear user intent.
       }, 3500);
     } catch { /* Expo Go */ }
     // Route straight to tabs unless already there or on alarm screens.
@@ -703,6 +722,7 @@ function GlobalMoodLayer() {
 export default function RootLayout() {
   useEffect(() => {
     warmSoundImageMap().catch(() => {});         // fast file-exist scan for sound images
+    prefetchCriticalAlarmImages().catch(() => {}); // download habit/wake alarm images IMMEDIATELY (no delay)
     const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 500);
     const t2 = setTimeout(() => ensureAllMantrasDownloaded().catch(() => {}), 10_000);
     const t3 = setTimeout(() => prefetchAllSoundImages().catch(() => {}), 1_500);
@@ -747,6 +767,8 @@ export default function RootLayout() {
           <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="cosmic-science" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
+          <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
+          <Stack.Screen name="step-analytics" options={{ animation: 'slide_from_right' }} />
         </Stack>
         </BgProvider>
       </SoundPlayerProvider>

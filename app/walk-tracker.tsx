@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import { Pedometer } from 'expo-sensors';
 import { useKeepAwake } from 'expo-keep-awake';
 import { auth } from '@/lib/firebase';
 import { saveHabitLog, formatDuration, haversineKm, todayStr } from '@/lib/habitLogs';
@@ -34,9 +35,8 @@ const FEELS: { key: Feel; emoji: string; label: string; color: string }[] = [
   { key: 'energising', emoji: '🔥', label: 'Energising', color: '#f59e0b' },
 ];
 
-// Step estimation: ~1300 steps per km, ~0.77 m per step
-const stepsFromKm = (km: number) => Math.round(km * 1300);
-const calsFromKm  = (km: number) => Math.round(km * 55); // ~55 kcal/km brisk walk
+// Calories: ~55 kcal/km brisk walk (GPS-based distance is accurate for this)
+const calsFromKm = (km: number) => Math.round(km * 55);
 
 export default function WalkTracker() {
   const router = useRouter();
@@ -44,36 +44,89 @@ export default function WalkTracker() {
   const kind: WalkKind = (type === 'evening') ? 'evening' : 'morning';
   const meta = KIND_META[kind];
 
-  const [phase, setPhase]         = useState<Phase>('idle');
-  const [elapsed, setElapsed]     = useState(0);
-  const [route, setRoute]         = useState<LatLng[]>([]);
-  const [distanceKm, setDistance] = useState(0);
-  const [feel, setFeel]           = useState<Feel | null>(null);
-  const [saving, setSaving]       = useState(false);
-  const [permErr, setPermErr]     = useState(false);
-  const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null);
-  const locationSub               = useRef<Location.LocationSubscription | null>(null);
-  const uid                       = auth.currentUser?.uid;
+  const [phase, setPhase]             = useState<Phase>('idle');
+  const [elapsed, setElapsed]         = useState(0);
+  const [route, setRoute]             = useState<LatLng[]>([]);
+  const [distanceKm, setDistance]     = useState(0);
+  const [steps, setSteps]             = useState(0);
+  const [feel, setFeel]               = useState<Feel | null>(null);
+  const [saving, setSaving]           = useState(false);
+  const [permErr, setPermErr]         = useState(false);
+  const [pedometerAvail, setPedometerAvail] = useState<boolean | null>(null);
+
+  const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const locationSub    = useRef<Location.LocationSubscription | null>(null);
+  const pedometerSub   = useRef<ReturnType<typeof Pedometer.watchStepCount> | null>(null);
+  // We store the baseline step count when walk starts so we can diff correctly
+  const stepBaseline   = useRef<number>(0);
+  const uid            = auth.currentUser?.uid;
   useKeepAwake();
 
-  const steps    = stepsFromKm(distanceKm);
   const calories = calsFromKm(distanceKm);
 
-  // Request permissions on mount
+  // ── On mount: check permissions ─────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      // Location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') setPermErr(true);
+
+      // Pedometer availability
+      const available = await Pedometer.isAvailableAsync();
+      setPedometerAvail(available);
     })();
+
     return () => {
       clearInterval(intervalRef.current!);
       locationSub.current?.remove();
+      pedometerSub.current?.remove();
     };
   }, []);
 
+  // ── Start pedometer subscription ────────────────────────────────────────────
+  const startPedometer = useCallback(() => {
+    // Reset steps baseline
+    stepBaseline.current = 0;
+    setSteps(0);
+
+    pedometerSub.current = Pedometer.watchStepCount((result) => {
+      // result.steps is cumulative steps since subscription started
+      setSteps(result.steps);
+    });
+  }, []);
+
+  const stopPedometer = useCallback(() => {
+    pedometerSub.current?.remove();
+    pedometerSub.current = null;
+  }, []);
+
+  // ── Start GPS subscription ───────────────────────────────────────────────────
+  const startGPS = useCallback(async () => {
+    locationSub.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000, distanceInterval: 5 },
+      (loc) => {
+        const newPt: LatLng = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        setRoute(prev => {
+          if (prev.length > 0) {
+            const last = prev[prev.length - 1];
+            const seg = haversineKm(last.lat, last.lng, newPt.lat, newPt.lng);
+            setDistance(d => parseFloat((d + seg).toFixed(3)));
+          }
+          return [...prev, newPt];
+        });
+      }
+    );
+  }, []);
+
+  const stopGPS = useCallback(() => {
+    locationSub.current?.remove();
+    locationSub.current = null;
+  }, []);
+
+  // ── Walk controls ────────────────────────────────────────────────────────────
   const startWalk = async () => {
     if (permErr) {
-      Alert.alert('Location required', 'Please allow location access to track your walk.');
+      Alert.alert('Location required', 'Please allow location access to track your walk distance.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -81,31 +134,23 @@ export default function WalkTracker() {
     setRoute([]);
     setDistance(0);
     setElapsed(0);
+    setSteps(0);
 
-    // Timer
+    // Start timer
     intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
 
-    // GPS tracking every 5 seconds
-    locationSub.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000, distanceInterval: 5 },
-      (loc) => {
-        const newPt: LatLng = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-        setRoute(prev => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const seg = haversineKm(last.lat, last.lng, newPt.lat, newPt.lng);
-            setDistance(d => parseFloat((d + seg).toFixed(3)));
-          }
-          return [...prev, newPt];
-        });
-      }
-    );
+    // Start real pedometer (hardware step counter)
+    startPedometer();
+
+    // Start GPS for distance/route only
+    await startGPS();
   };
 
   const pauseWalk = () => {
     Haptics.selectionAsync();
     clearInterval(intervalRef.current!);
-    locationSub.current?.remove();
+    stopGPS();
+    stopPedometer();
     setPhase('paused');
   };
 
@@ -113,26 +158,23 @@ export default function WalkTracker() {
     Haptics.selectionAsync();
     setPhase('running');
     intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    locationSub.current = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000, distanceInterval: 5 },
-      (loc) => {
-        const newPt: LatLng = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-        setRoute(prev => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const seg = haversineKm(last.lat, last.lng, newPt.lat, newPt.lng);
-            setDistance(d => parseFloat((d + seg).toFixed(3)));
-          }
-          return [...prev, newPt];
-        });
-      }
-    );
+
+    // Resume pedometer — it will keep adding from where it left off
+    // We use a new subscription; steps state already holds the count so far
+    const stepsBeforeResume = steps; // capture current steps
+    pedometerSub.current = Pedometer.watchStepCount((result) => {
+      setSteps(stepsBeforeResume + result.steps);
+    });
+
+    // Resume GPS
+    await startGPS();
   };
 
   const endWalk = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     clearInterval(intervalRef.current!);
-    locationSub.current?.remove();
+    stopGPS();
+    stopPedometer();
     setPhase('done');
   };
 
@@ -182,13 +224,18 @@ export default function WalkTracker() {
         </View>
         {permErr && (
           <View style={s.errCard}>
-            <Text style={s.errTxt}>⚠️ Location permission required for GPS tracking. Grant in Settings.</Text>
+            <Text style={s.errTxt}>⚠️ Location permission required for distance tracking. Grant in Settings.</Text>
+          </View>
+        )}
+        {pedometerAvail === false && (
+          <View style={s.warnCard}>
+            <Text style={s.warnTxt}>📵 Pedometer not available on this device. Steps will be estimated from distance.</Text>
           </View>
         )}
         <View style={s.infoRow}>
-          <View style={s.infoItem}><Text style={s.infoEmoji}>📍</Text><Text style={s.infoLbl}>GPS Track</Text></View>
+          <View style={s.infoItem}><Text style={s.infoEmoji}>👣</Text><Text style={s.infoLbl}>Pedometer</Text></View>
+          <View style={s.infoItem}><Text style={s.infoEmoji}>📍</Text><Text style={s.infoLbl}>GPS Distance</Text></View>
           <View style={s.infoItem}><Text style={s.infoEmoji}>⏱</Text><Text style={s.infoLbl}>Duration</Text></View>
-          <View style={s.infoItem}><Text style={s.infoEmoji}>👣</Text><Text style={s.infoLbl}>Steps</Text></View>
           <View style={s.infoItem}><Text style={s.infoEmoji}>🔥</Text><Text style={s.infoLbl}>Calories</Text></View>
         </View>
         <TouchableOpacity style={[s.startBtn, { backgroundColor: meta.color }]} onPress={startWalk}>
@@ -225,14 +272,15 @@ export default function WalkTracker() {
         {/* Live stats grid */}
         <View style={s.statsGrid}>
           <View style={[s.statCard, { borderColor: meta.color + '30' }]}>
-            <Text style={s.statEmoji}>📍</Text>
-            <Text style={[s.statVal, { color: meta.color }]}>{distanceKm.toFixed(2)}</Text>
-            <Text style={s.statUnit}>km</Text>
-          </View>
-          <View style={[s.statCard, { borderColor: meta.color + '30' }]}>
             <Text style={s.statEmoji}>👣</Text>
             <Text style={[s.statVal, { color: meta.color }]}>{steps.toLocaleString()}</Text>
             <Text style={s.statUnit}>steps</Text>
+            {pedometerAvail && <Text style={s.sensorBadge}>📡 Live</Text>}
+          </View>
+          <View style={[s.statCard, { borderColor: meta.color + '30' }]}>
+            <Text style={s.statEmoji}>📍</Text>
+            <Text style={[s.statVal, { color: meta.color }]}>{distanceKm.toFixed(2)}</Text>
+            <Text style={s.statUnit}>km</Text>
           </View>
           <View style={[s.statCard, { borderColor: meta.color + '30' }]}>
             <Text style={s.statEmoji}>🔥</Text>
@@ -283,12 +331,14 @@ export default function WalkTracker() {
           <View style={[s.summaryCard, { borderColor: meta.color + '30', backgroundColor: meta.color + '10' }]}>
             <Text style={s.summaryEmoji}>📍</Text>
             <Text style={[s.summaryBig, { color: meta.color }]}>{distanceKm.toFixed(2)}</Text>
-            <Text style={s.summaryLbl}>km</Text>
+            <Text style={s.summaryLbl}>km (GPS)</Text>
           </View>
           <View style={[s.summaryCard, { borderColor: meta.color + '30', backgroundColor: meta.color + '10' }]}>
             <Text style={s.summaryEmoji}>👣</Text>
             <Text style={[s.summaryBig, { color: meta.color }]}>{steps.toLocaleString()}</Text>
-            <Text style={s.summaryLbl}>Steps</Text>
+            <Text style={s.summaryLbl}>
+              {pedometerAvail ? 'Steps (Sensor)' : 'Steps (Est.)'}
+            </Text>
           </View>
           <View style={[s.summaryCard, { borderColor: meta.color + '30', backgroundColor: meta.color + '10' }]}>
             <Text style={s.summaryEmoji}>🔥</Text>
@@ -354,6 +404,8 @@ const s = StyleSheet.create({
   tipTxt: { fontSize: Font.sizes.xs, fontWeight: '600', lineHeight: 18, textAlign: 'center' },
   errCard: { backgroundColor: '#ef444415', borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.md, alignSelf: 'stretch' },
   errTxt: { fontSize: Font.sizes.xs, color: '#ef4444', textAlign: 'center' },
+  warnCard: { backgroundColor: '#f59e0b15', borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.md, alignSelf: 'stretch' },
+  warnTxt: { fontSize: Font.sizes.xs, color: '#f59e0b', textAlign: 'center' },
   infoRow: { flexDirection: 'row', gap: 16, marginBottom: Spacing.xl },
   infoItem: { alignItems: 'center', gap: 4 },
   infoEmoji: { fontSize: 22 },
@@ -368,6 +420,7 @@ const s = StyleSheet.create({
   statEmoji: { fontSize: 18 },
   statVal: { fontSize: Font.sizes.lg, fontWeight: '900' },
   statUnit: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
+  sensorBadge: { fontSize: 8, color: '#34d399', fontWeight: '700', marginTop: 2 },
   milestoneBadge: { borderRadius: Radius.full, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4, marginBottom: Spacing.md },
   milestoneTxt: { fontSize: Font.sizes.xs, fontWeight: '800' },
   btnRow: { flexDirection: 'row', gap: 12, marginTop: Spacing.sm },

@@ -12,13 +12,13 @@ const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
 
 const CAT_COLORS: Record<string, string> = {
   Rain: '#60a5fa', Ocean: '#38bdf8', Nature: '#34d399', Sacred: '#a78bfa',
-  Sitar: '#f59e0b', Flute: '#6ee7b7', Tabla: '#f97316', Birds: '#86efac',
+  'Sitar & Flute': '#f59e0b', Tabla: '#f97316', Birds: '#86efac',
   Tanpura: '#c084fc', World: '#fbbf24', Mantra: '#fbbf24', Stotra: '#c4b5fd',
 };
 
 const CAT_EMOJI: Record<string, string> = {
   Rain: '🌧️', Ocean: '🌊', Nature: '🌿', Sacred: '🕉️',
-  Sitar: '🎸', Flute: '🎶', Tabla: '🥁', Birds: '🐦',
+  'Sitar & Flute': '�', Tabla: '🥁', Birds: '🐦',
   Tanpura: '🎵', World: '🌍', Mantra: '📿', Stotra: '🌟',
 };
 
@@ -82,8 +82,8 @@ export default function SoundPicker({
         })}
       </ScrollView>
 
-      <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, gridStyle]}>
-        {filteredSounds.map(snd => {
+      <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }, gridStyle]}>
+        {filteredSounds.slice(0, 6).map(snd => {
           const active = selectedId === snd.id;
           const previewing = previewingId === snd.id;
           const imgSrc = snd.id === 'lalitha'
@@ -95,7 +95,7 @@ export default function SoundPicker({
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(snd.id); }}
               activeOpacity={0.82}
               style={{
-                width: cardWidth, height: 96, borderRadius: 16, overflow: 'hidden',
+                width: '31%', height: 96, borderRadius: 16, overflow: 'hidden',
                 borderWidth: active ? 2 : 1, borderColor: active ? snd.color : '#FFFFFF14',
               }}
             >

@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "owner": "nadasounds",
+    "owner": "nadaultra",
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -27,6 +27,9 @@
         "NSUserNotificationsUsageDescription": "Nada uses notifications to ring your wake alarm.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Nada tracks your walk distance in the background so your prana session continues even if you lock the screen.",
         "NSLocationAlwaysUsageDescription": "Nada tracks your walk distance in the background so your prana session continues even if you lock the screen.",
+        "NSMotionUsageDescription": "Nada uses motion sensors to accurately count your walking steps.",
+        "NSHealthShareUsageDescription": "Nada tracks your steps and activity for walk sessions.",
+        "NSHealthUpdateUsageDescription": "Nada logs your walking activity and steps.",
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.solrize.alarm-reschedule"
         ]
@@ -77,7 +80,9 @@
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO"
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.BODY_SENSORS",
+        "android.permission.ACTIVITY_RECOGNITION"
       ]
     },
     "plugins": [
@@ -135,7 +140,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c1a713d0-9c28-4f0e-bdac-362435248819"
+        "projectId": "8cc8ed6d-3e11-4cdd-a07e-50af8fd851f1"
       }
     }
   }

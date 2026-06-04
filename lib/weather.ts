@@ -81,21 +81,27 @@ function realWeatherCode(
   cloudCover: number,
 ): number {
   const totalRain = rain + showers;
+
+  // If measured precipitation is effectively zero, override ANY rain/snow/storm model code
+  // to a cloud-cover based code. Open-Meteo often predicts rain that never arrives.
+  if (precipitation <= 0.05 && totalRain <= 0.05 && snowfall === 0) {
+    if (modelCode >= 51) { // Any drizzle, rain, snow, shower, storm
+      if (cloudCover >= 80) return 3;  // Overcast
+      if (cloudCover >= 50) return 2;  // Partly Cloudy
+      if (cloudCover >= 25) return 1;  // Mostly Clear
+      return 0;                        // Clear Sky
+    }
+    return modelCode; // Do not allow noise to escalate non-rain codes
+  }
+
+  // Otherwise, use measured values to escalate or confirm severity
   if (snowfall > 0.5)     return 75; // Heavy Snow
   if (snowfall > 0)       return 71; // Light Snow
   if (totalRain > 4.0)    return 65; // Heavy Rain
   if (totalRain > 1.5)    return 63; // Rain
   if (totalRain > 0.3)    return 61; // Light Rain
   if (precipitation > 0)  return 51; // Light Drizzle
-  // Model codes 95/96/99 (thunderstorm/hail) are forecast predictions.
-  // If zero precipitation is actually measured right now, downgrade to
-  // a cloud-cover-based code so we don't falsely alert the user.
-  if ([95, 96, 99].includes(modelCode) && precipitation === 0 && totalRain === 0) {
-    if (cloudCover >= 80) return 3;  // Overcast
-    if (cloudCover >= 50) return 2;  // Partly Cloudy
-    if (cloudCover >= 25) return 1;  // Mostly Clear
-    return 0;                        // Clear Sky
-  }
+  
   return modelCode;
 }
 
