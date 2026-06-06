@@ -4,7 +4,7 @@ import {
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -148,9 +148,26 @@ const SLEEP_HIDDEN_IDS = new Set([
   'nada_flute_rain_ambiance',
   'nada_tabla_flute_strings_ii',
   'nada_rhythm_riot',
+  'sitar_calm',
+  'tabla_shuffle',
 ]);
-const CATEGORIES = ['All', 'Nature', 'Sleep', 'Meditations', 'Birds', 'Ragas'] as const;
+const CATEGORIES = ['All', 'Nature', 'Ragas', 'Sleep', 'Meditations', 'Birds'] as const;
 type Category = typeof CATEGORIES[number];
+
+// ─── Session shuffle seed — random on every app launch, stable within session ─
+const _DAILY_SEED = (Math.random() * 0xffffffff) >>> 0;
+
+function shuffleSoundsForDay<T>(arr: T[], cat: string): T[] {
+  const a = [...arr];
+  let h = _DAILY_SEED >>> 0;
+  for (let i = 0; i < cat.length; i++) h = (Math.imul(h, 31) ^ cat.charCodeAt(i)) >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    const j = h % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
 
@@ -1096,20 +1113,23 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
               key={cat}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(cat); }}
               activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', paddingTop: 13, paddingBottom: 16 }}
+              style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 12 }}
               onLayout={(e) => {
                 const { x, width } = e.nativeEvent.layout;
                 tabLayouts.current[cat] = { x, width };
                 if (cat === selectedCat) moveIndicator(cat, true);
               }}
             >
-              <Text style={{
-                fontSize: 13,
-                fontWeight: isActive ? '700' : '400',
-                fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
-                color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.34)',
-                letterSpacing: 0.1,
-              }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: isActive ? '700' : '400',
+                  fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
+                  color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.34)',
+                  letterSpacing: 0,
+                }}
+              >
                 {cat}
               </Text>
             </TouchableOpacity>
@@ -1203,7 +1223,7 @@ const CategoryRows = memo(function CategoryRows({
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
         const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const sounds: any[] = [...localSounds, ...nadaSounds, ...mantraSounds];
+        const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
         const subtags = CATEGORY_SUBTAGS[cat];
@@ -1224,30 +1244,14 @@ const CategoryRows = memo(function CategoryRows({
                 {isFiltered ? (
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-                      <View style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: meta.color }} />
-                      <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>
-                        {cat === 'Nature' ? natureLabel : cat}
-                      </Text>
-                      {cat === 'Nature' && activePeriodId && (
-                        <View style={{
-                          backgroundColor: `${meta.color}18`,
-                          borderColor: `${meta.color}38`,
-                          borderWidth: 1,
-                          borderRadius: 6,
-                          paddingHorizontal: 6,
-                          paddingVertical: 1.5,
-                          alignSelf: 'center',
-                        }}>
-                          <Text style={{
-                            fontSize: 7.5,
-                            fontWeight: '900',
-                            color: meta.color,
-                            letterSpacing: 0.8,
-                            fontFamily: 'Nunito_900Black',
-                          }}>
-                            RHYTHM ALIGNED
-                          </Text>
+                      <View style={{ width: 3, height: 30, borderRadius: 2, backgroundColor: meta.color }} />
+                      {cat === 'Nature' ? (
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 8, fontWeight: '900', color: meta.color, letterSpacing: 1.4, fontFamily: 'Nunito_900Black', opacity: 0.8, marginBottom: 3 }}>NATURE</Text>
+                          <Text style={{ fontSize: 13.5, fontWeight: '600', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', lineHeight: 18 }}>{natureLabel}</Text>
                         </View>
+                      ) : (
+                        <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>{cat}</Text>
                       )}
                     </View>
                   </View>
@@ -1258,35 +1262,19 @@ const CategoryRows = memo(function CategoryRows({
                     activeOpacity={0.72}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-                      <View style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: meta.color }} />
-                      <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>
-                        {cat === 'Nature' ? natureLabel : cat}
-                      </Text>
-                      {cat === 'Nature' && activePeriodId && (
-                        <View style={{
-                          backgroundColor: `${meta.color}18`,
-                          borderColor: `${meta.color}38`,
-                          borderWidth: 1,
-                          borderRadius: 6,
-                          paddingHorizontal: 6,
-                          paddingVertical: 1.5,
-                          alignSelf: 'center',
-                        }}>
-                          <Text style={{
-                            fontSize: 7.5,
-                            fontWeight: '900',
-                            color: meta.color,
-                            letterSpacing: 0.8,
-                            fontFamily: 'Nunito_900Black',
-                          }}>
-                            RHYTHM ALIGNED
-                          </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flex: 1 }}>
+                      <View style={{ width: 3, height: cat === 'Nature' ? 30 : 22, borderRadius: 2, backgroundColor: meta.color }} />
+                      {cat === 'Nature' ? (
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 8, fontWeight: '900', color: meta.color, letterSpacing: 1.4, fontFamily: 'Nunito_900Black', opacity: 0.8, marginBottom: 3 }}>NATURE</Text>
+                          <Text style={{ fontSize: 13.5, fontWeight: '600', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', lineHeight: 18 }}>{natureLabel}</Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 19, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.1, fontFamily: 'Nunito_700Bold', textShadowColor: 'rgba(0,0,0,0.70)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>{cat}</Text>
+                          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontWeight: '500' }}>{sounds.length}</Text>
                         </View>
                       )}
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontWeight: '500', marginLeft: 2 }}>
-                        {sounds.length}
-                      </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${meta.color}18`, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: `${meta.color}30` }}>
                       <Text style={{ fontSize: 10, color: meta.color, fontWeight: '700', letterSpacing: 0.4 }}>Filter</Text>
@@ -1470,11 +1458,24 @@ function SoundPlayerModal({
 }
 
 // ─── Instagram Reels-style Sound Player ──────────────────────────────────────
-const REELS_ALL_SOUNDS: PlayableSoundMeta[] = [
-  ...(SLEEP_SOUNDS as readonly any[]).filter(s => !SLEEP_HIDDEN_IDS.has(s.id)).map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] })),
-  ...NADA_SOUNDS.map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] })),
-  ...MANTRA_LIBRARY.flatMap(g => g.sounds).map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id], imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined })),
-];
+// Matches the exact same category order + per-category shuffle used by CategoryRows
+const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
+  const result: PlayableSoundMeta[] = [];
+  for (const cat of (CATEGORIES.slice(1) as readonly string[])) {
+    const effectiveCat = cat === 'Sleep' ? 'Nature' : cat;
+    const local = (SLEEP_SOUNDS as readonly any[])
+      .filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id))
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] }));
+    const nada = cat === 'Sleep' ? [] : NADA_SOUNDS
+      .filter(s => s.cat === cat)
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] }));
+    const mantra = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds)
+      .filter(s => s.cat === cat)
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id], imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
+    result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra], cat));
+  }
+  return result;
+})();
 const { width: REEL_W, height: REEL_H } = Dimensions.get('screen');
 
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
@@ -1496,9 +1497,11 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
+  const { playingDurationSecs } = useSoundPlayer();
   const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const ringRotAnim = useRef(new Animated.Value(0)).current;
+  const kbAnim = useRef(new Animated.Value(0)).current;
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const [, forceRefresh] = useState(0);
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
@@ -1508,6 +1511,43 @@ function ReelCard({
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
   const imgFadeAnim = useRef(new Animated.Value(imgSource ? 0 : 1)).current;
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
+  const [meditLoopMode, setMeditLoopMode] = useState<'once' | 'loop'>('once');
+  useEffect(() => { setMeditLoopMode('once'); }, [sound.id]);
+  // Show Once/Loop for Meditations or Ragas that are actually longer than 5 minutes
+  const isMeditLong = (sound.cat === 'Meditations' || sound.cat === 'Ragas') && isPlaying && (playingDurationSecs ?? 0) > 300;
+
+  // Ken Burns — unique pan direction per sound for variety
+  const kbPanX = sound.id.charCodeAt(0) % 2 === 0 ? 10 : -10;
+  const kbPanY = sound.id.charCodeAt(1) % 2 === 0 ? 7 : -7;
+  const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.09] });
+  const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, kbPanX] });
+  const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, kbPanY] });
+
+  // Ken Burns animation — only animate when this card is active (battery-friendly)
+  useEffect(() => {
+    if (!isActive) {
+      kbAnim.stopAnimation();
+      kbAnim.setValue(0);
+      return;
+    }
+    kbAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(kbAnim, {
+          toValue: 1, duration: 18000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(kbAnim, {
+          toValue: 0, duration: 18000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isActive]);
 
   const controlsAnim = useRef(new Animated.Value(1)).current;
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1564,22 +1604,33 @@ function ReelCard({
   const RING_SIZE = Math.round(REEL_W * 0.62);
   const ringRotDeg = ringRotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
+  // Ring center sits at 34% from top — upper-center premium positioning, like top music players
+  const ringCenterY = REEL_H * 0.34;
+  // Bottom edge of ring from top
+  const ringBottomY = ringCenterY + RING_SIZE / 2;
+  // Timer button lives 18dp below the ring's bottom edge
+  const timerTopY = ringBottomY + 18;
+
   return (
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
 
-      {/* ── FULL-SCREEN background image ── */}
+      {/* ── FULL-SCREEN background image with Ken Burns zoom/pan ── */}
       {imgSource ? (
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim }]}>
-          <Image
-            source={imgSource}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-            onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start()}
-            onError={() => setImgLoadFailed(true)}
-          />
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim, overflow: 'hidden' }]}>
+          <Animated.View style={[
+            StyleSheet.absoluteFillObject,
+            { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
+          ]}>
+            <Image
+              source={imgSource}
+              style={{ width: REEL_W, height: REEL_H }}
+              resizeMode="cover"
+              onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start()}
+              onError={() => setImgLoadFailed(true)}
+            />
+          </Animated.View>
         </Animated.View>
       ) : (
-        // Fallback color gradient when no image
         <LinearGradient
           colors={[sound.color + '40', sound.top, sound.bot, '#000']}
           locations={[0, 0.3, 0.7, 1]}
@@ -1587,68 +1638,61 @@ function ReelCard({
         />
       )}
 
-      {/* ── Multi-layer cinematic scrim ── */}
-      {/* Top dark fade for status bar readability */}
+      {/* ── Cinematic scrims ── */}
+      {/* Top gradient: strong dark cover for category strip + top bar readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.70)', 'rgba(0,0,0,0.10)', 'transparent']}
-        locations={[0, 0.18, 0.4]}
+        colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0.40)', 'rgba(0,0,0,0.00)']}
+        locations={[0, 0.24, 0.52]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Bottom dark fade for controls readability */}
+      {/* Bottom gradient: rich dark for controls area */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.72)', 'rgba(0,0,0,0.92)']}
-        locations={[0.38, 0.56, 0.78, 1]}
+        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.90)']}
+        locations={[0.40, 0.56, 0.76, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* ── Circular ring in CENTER — shows countdown time inside ── */}
+      {/* ── Hero Ring — absolutely positioned at upper-center ── */}
       <View style={{
         position: 'absolute',
-        top: 0, bottom: 0, left: 0, right: 0,
+        left: 0, right: 0,
+        top: ringCenterY - RING_SIZE / 2,
+        height: RING_SIZE,
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 4,
-        // Push ring to upper-center (40% from top)
-        marginTop: -REEL_H * 0.10,
       }}>
-        {/* Outer slow-rotating dashed ring */}
-        <Animated.View style={{
-          width: RING_SIZE,
-          height: RING_SIZE,
-          borderRadius: RING_SIZE / 2,
-          borderWidth: 2,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)',
-          borderStyle: 'solid',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: [{ rotate: ringRotDeg }],
-        }}>
-          {/* Dashes on ring */}
-          {[0,45,90,135,180,225,270,315].map(angle => (
-            <View key={angle} style={{
-              position: 'absolute',
-              width: 8, height: 2.5,
-              borderRadius: 1.5,
-              backgroundColor: isPlaying && !isPaused ? sound.color + 'CC' : 'rgba(255,255,255,0.30)',
-              left: RING_SIZE / 2 - 4 + (RING_SIZE / 2 - 5) * Math.cos(angle * Math.PI / 180),
-              top:  RING_SIZE / 2 - 1.25 + (RING_SIZE / 2 - 5) * Math.sin(angle * Math.PI / 180),
-            }} />
-          ))}
-        </Animated.View>
-
-        {/* Inner static ring */}
+        {/* Outer soft glow halo — depth layer */}
         <View style={{
           position: 'absolute',
-          width: RING_SIZE - 22,
-          height: RING_SIZE - 22,
-          borderRadius: (RING_SIZE - 22) / 2,
-          borderWidth: 1,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.08)',
+          width: RING_SIZE + 30, height: RING_SIZE + 30,
+          borderRadius: (RING_SIZE + 30) / 2,
+          borderWidth: 0.5,
+          borderColor: isPlaying && !isPaused ? sound.color + '30' : 'rgba(255,255,255,0.04)',
         }} />
 
-        {/* ── CENTER: Big countdown time (or timer label when not playing) ── */}
+        {/* Main clean ring — slow-rotating, no tick marks */}
+        <Animated.View style={{
+          position: 'absolute',
+          width: RING_SIZE, height: RING_SIZE,
+          borderRadius: RING_SIZE / 2,
+          borderWidth: isPlaying && !isPaused ? 1.5 : 1,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.20)',
+          transform: [{ rotate: ringRotDeg }],
+        }} />
+
+        {/* Inner delicate ring — Apple Watch style depth */}
+        <View style={{
+          position: 'absolute',
+          width: RING_SIZE - 22, height: RING_SIZE - 22,
+          borderRadius: (RING_SIZE - 22) / 2,
+          borderWidth: 0.5,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+        }} />
+
+        {/* CENTER content */}
         <Animated.View style={{
           position: 'absolute',
           alignItems: 'center',
@@ -1656,162 +1700,167 @@ function ReelCard({
           transform: [{ scale: pulseAnim }],
         }}>
           {isPlaying ? (
-            // When playing: show big countdown MM:SS
             <>
               <Text style={{
-                fontSize: Math.round(RING_SIZE * 0.24),
+                fontSize: Math.round(RING_SIZE * 0.28),
                 fontWeight: '200',
                 color: '#FFFFFF',
                 letterSpacing: -2,
                 fontFamily: 'Nunito_300Light',
-                textShadowColor: 'rgba(0,0,0,0.6)',
-                textShadowOffset: { width: 0, height: 2 },
-                textShadowRadius: 8,
+                textShadowColor: 'rgba(0,0,0,0.35)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 6,
               }}>
                 {fmtTimer(sessionSecs)}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
-                <Animated.View style={{
-                  width: 6, height: 6, borderRadius: 3,
-                  backgroundColor: isPaused ? 'rgba(255,255,255,0.40)' : sound.color,
-                  transform: [{ scale: pulseAnim }],
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                <View style={{
+                  width: 4, height: 4, borderRadius: 2,
+                  backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color,
                 }} />
-                <Text style={{ fontSize: 9, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.75)', letterSpacing: 2.0 }}>
+                <Text style={{ fontSize: 7.5, fontWeight: '500', color: isPaused ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)', letterSpacing: 1.6 }}>
                   {isPaused ? 'PAUSED' : 'PLAYING'}
                 </Text>
               </View>
             </>
           ) : (
-            // When not playing: show emoji + label
             <>
               <Text style={{ fontSize: 52, textAlign: 'center' }}>{sound.emoji}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.50)', letterSpacing: 1.2, marginTop: 6 }}>TAP TO PLAY</Text>
+              <Text style={{ fontSize: 9, fontWeight: '400', color: 'rgba(255,255,255,0.40)', letterSpacing: 1.4, marginTop: 8 }}>TAP TO PLAY</Text>
             </>
           )}
         </Animated.View>
+      </View>
 
-        {/* ── Timer button: pill below the ring ── */}
-        <View style={{
-          position: 'absolute',
-          top: RING_SIZE + 22,
-          alignItems: 'center',
-        }}>
-          {/* Timer picker dropdown */}
-          {timerPickerOpen && (
-            <View style={{ marginBottom: 10 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4 }}>
-                  {STOP_TIMES.map((t, i) => {
-                    const active = stopIdx === i;
+      {/* ── Timer button — separate absolute block, always below ring, no overlap ── */}
+      <View style={{
+        position: 'absolute',
+        left: 0, right: 0,
+        top: timerTopY,
+        alignItems: 'center',
+        zIndex: 12,
+      }}>
+        {/* Frosted-glass timer picker — flat View (no nested ScrollView) */}
+        {timerPickerOpen && (
+          <View style={{
+            marginBottom: 12,
+            backgroundColor: 'rgba(14,14,20,0.88)',
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.14)',
+            paddingTop: 12, paddingBottom: 14,
+            paddingHorizontal: 14,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOpacity: 0.65,
+            shadowRadius: 22,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 20,
+          }}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.07)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            {isMeditLong ? (
+              <>
+                <Text style={{ fontSize: 8.5, fontWeight: '600', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>PLAY MODE</Text>
+                <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
+                  {([{ id: 'once', label: 'Once', icon: 'play-outline' }, { id: 'loop', label: 'Loop', icon: 'repeat-outline' }] as const).map(mode => {
+                    const active = meditLoopMode === mode.id;
                     return (
-                      <TouchableOpacity key={t.label} onPress={() => { onChangeTimer(i); setTimerPickerOpen(false); }}
+                      <TouchableOpacity
+                        key={mode.id}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setMeditLoopMode(mode.id);
+                          onChangeTimer(mode.id === 'once' ? -1 : -2);
+                          setTimerPickerOpen(false);
+                        }}
                         style={{
-                          paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99,
+                          flexDirection: 'row', alignItems: 'center', gap: 7,
+                          paddingHorizontal: 28, paddingVertical: 12, borderRadius: 99,
                           borderWidth: 1,
-                          borderColor: active ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.28)',
-                          backgroundColor: active ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.40)',
+                          borderColor: active ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.16)',
+                          backgroundColor: active ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.04)',
                         }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.60)' }}>{t.label}</Text>
+                        <Ionicons name={mode.icon} size={14} color={active ? '#FFFFFF' : 'rgba(255,255,255,0.50)'} />
+                        <Text style={{ fontSize: 14, fontWeight: active ? '700' : '400', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)' }}>
+                          {mode.label}
+                        </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Timer pill button — matches reference screenshot */}
-          <TouchableOpacity
-            onPress={() => setTimerPickerOpen(v => !v)}
-            activeOpacity={0.76}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              paddingHorizontal: 24, paddingVertical: 12,
-              borderRadius: 99,
-              borderWidth: 1,
-              borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
-              backgroundColor: timerPickerOpen ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)',
-              overflow: 'hidden',
-              zIndex: 10,
-            }}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.03)']}
-              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <Ionicons name="timer-outline" size={17} color="rgba(255,255,255,0.90)" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>
-              Timer
-            </Text>
-          </TouchableOpacity>
-
-          {/* ── Three action icon buttons below timer ── */}
-          <View style={{
-            flexDirection: 'row',
-            gap: 24,
-            marginTop: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {/* Sound / Volume icon */}
-            <View style={{ alignItems: 'center', gap: 6 }}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={{
-                  width: 58, height: 58, borderRadius: 16,
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-                }}
-              >
-                <Ionicons name="rainy-outline" size={24} color="rgba(255,255,255,0.80)" />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>
-                {isPlaying ? '100%' : sound.cat.slice(0,5)}
-              </Text>
-            </View>
-
-            {/* Boost / Energy icon */}
-            <View style={{ alignItems: 'center', gap: 6 }}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={{
-                  width: 58, height: 58, borderRadius: 16,
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-                }}
-              >
-                <Ionicons name="flash-outline" size={24} color="rgba(255,255,255,0.80)" />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>50%</Text>
-            </View>
-
-            {/* Edit / Info icon */}
-            <View style={{ alignItems: 'center', gap: 6 }}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={{
-                  width: 58, height: 58, borderRadius: 16,
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-                }}
-              >
-                <Ionicons name="create-outline" size={24} color="rgba(255,255,255,0.80)" />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>Edit</Text>
-            </View>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 8.5, fontWeight: '600', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>STOP AFTER</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {STOP_TIMES.map((t, i) => {
+                    const active = stopIdx === i;
+                    return (
+                      <TouchableOpacity
+                        key={t.label}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          onChangeTimer(i);
+                          setTimerPickerOpen(false);
+                        }}
+                        style={{
+                          paddingHorizontal: 20, paddingVertical: 10, borderRadius: 99,
+                          borderWidth: 1,
+                          borderColor: active ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.16)',
+                          backgroundColor: active ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.04)',
+                        }}>
+                        <Text style={{ fontSize: 13, fontWeight: active ? '700' : '400', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)', letterSpacing: 0.2 }}>{t.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
           </View>
-        </View>
+        )}
+
+        {/* Elegant clock-style Timer pill */}
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTimerPickerOpen(v => !v); }}
+          activeOpacity={0.78}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 7,
+            paddingHorizontal: 22, paddingVertical: 11,
+            borderRadius: 99,
+            borderWidth: 1,
+            borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
+            backgroundColor: timerPickerOpen ? 'rgba(10,10,16,0.70)' : 'rgba(10,10,16,0.45)',
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOpacity: 0.45,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 10,
+          }}
+        >
+          {/* Subtle glass shimmer */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']}
+            start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {/* Elegant clock icon — using alarm/time icon for clean iOS look */}
+          <Ionicons name="time-outline" size={17} color="rgba(255,255,255,0.90)" />
+          <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>
+            {isMeditLong ? (meditLoopMode === 'loop' ? 'Loop' : 'Once') : 'Timer'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tap upper area to toggle play/pause */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => { bumpControlsRef.current(); isPlaying ? onToggle() : onPlay(); }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: REEL_H * 0.38, zIndex: 3 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: REEL_H * 0.62, zIndex: 3 }}
       />
 
       {/* ── Bottom controls ── */}
@@ -1822,16 +1871,16 @@ function ReelCard({
         zIndex: 8, opacity: controlsAnim,
       }}>
 
-        {/* Category badge + title */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+        {/* Category badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 5,
-            backgroundColor: 'rgba(0,0,0,0.42)', borderRadius: 99,
+            backgroundColor: 'rgba(0,0,0,0.38)', borderRadius: 99,
             paddingHorizontal: 10, paddingVertical: 4,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
           }}>
-            <Text style={{ fontSize: 12 }}>{sound.emoji}</Text>
-            <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.80)', letterSpacing: 0.8 }}>{sound.cat}</Text>
+            <Text style={{ fontSize: 11 }}>{sound.emoji}</Text>
+            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.9 }}>{sound.cat}</Text>
           </View>
         </View>
 
@@ -1839,19 +1888,19 @@ function ReelCard({
         <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 }} numberOfLines={1}>
           {sound.label}
         </Text>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 14, lineHeight: 17 }} numberOfLines={1}>
+        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', marginBottom: 14, lineHeight: 17 }} numberOfLines={1}>
           {sound.desc}
         </Text>
 
-        {/* Timer progress bar */}
-        {isPlaying && (
+        {/* Timer progress bar — hidden for Meditations (session duration is detached from STOP_TIMES) */}
+        {isPlaying && sound.cat !== 'Meditations' && (
           <View style={{ marginBottom: 14 }}>
-            <View style={{ height: 2.5, backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 2 }}>
-              <View style={{ height: '100%', borderRadius: 2, backgroundColor: sound.color, width: `${Math.max(2, Math.min(100, (sessionSecs / STOP_TIMES[stopIdx].secs) * 100))}%` }} />
+            <View style={{ height: 2, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 2 }}>
+              <View style={{ height: '100%', borderRadius: 2, backgroundColor: sound.color, width: `${Math.max(2, Math.min(100, (sessionSecs / (stopIdx >= 0 && stopIdx < STOP_TIMES.length ? STOP_TIMES[stopIdx].secs : sessionSecs || 1)) * 100))}%` }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
-              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.30)' }}>0:00</Text>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: sound.color + 'CC' }}>{fmtTimer(sessionSecs)} left</Text>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)' }}>0:00</Text>
+              <Text style={{ fontSize: 9, fontWeight: '600', color: sound.color + 'CC' }}>{fmtTimer(sessionSecs)} left</Text>
             </View>
           </View>
         )}
@@ -1862,42 +1911,50 @@ function ReelCard({
             onPress={isPlaying ? onToggle : onPlay}
             activeOpacity={0.82}
             style={{
-              width: 72, height: 72, borderRadius: 36,
+              width: 68, height: 68, borderRadius: 34,
               alignItems: 'center', justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: 'rgba(255,255,255,0.40)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.35)',
               shadowColor: sound.color,
-              shadowOpacity: 0.55, shadowRadius: 22,
-              shadowOffset: { width: 0, height: 5 },
-              elevation: 14,
+              shadowOpacity: 0.50, shadowRadius: 20,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 12,
               overflow: 'hidden',
             }}
           >
             <LinearGradient
-              colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.10)']}
+              colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.08)']}
               start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
             <Ionicons
               name={isPlaying && !isPaused ? 'pause' : 'play'}
-              size={28}
+              size={26}
               color="#FFFFFF"
               style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }}
             />
           </TouchableOpacity>
         </View>
 
-        {/* ── Swipe for next (bottom) ── */}
+        {/* ── Swipe for next (bottom) — kept exactly ── */}
         {isActive && !isLast && (
           <Animated.View style={{ alignItems: 'center', marginTop: 4, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.45)" />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: 1.4, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
+            <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.40)" />
+            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.40)', letterSpacing: 1.4, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
           </Animated.View>
         )}
       </Animated.View>
     </View>
   );
 }
+
+const REEL_CAT_META: Record<string, { emoji: string; color: string }> = {
+  Nature:      { emoji: '🍃', color: '#86efac' },
+  Ragas:       { emoji: '🎵', color: '#f59e0b' },
+  Sleep:       { emoji: '🌙', color: '#60a5fa' },
+  Meditations: { emoji: '🕉️', color: '#c084fc' },
+  Birds:       { emoji: '🐦', color: '#fde68a' },
+};
 
 function SoundReelsModal({
   visible, startIndex, playingId, isPaused, sessionSecs, stopIdx,
@@ -1920,6 +1977,24 @@ function SoundReelsModal({
   // Always-fresh ref so debounce callback reads current playingId, not stale closure
   const playingIdRef = useRef(playingId);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
+
+  // ── Grid browse state ────────────────────────────────────
+  const [gridOpen, setGridOpen] = useState(false);
+  const catStartIndices = useMemo(() => {
+    const map: Record<string, number> = {};
+    REELS_ALL_SOUNDS.forEach((s, i) => { if (map[s.cat] === undefined) map[s.cat] = i; });
+    return map;
+  }, []);
+  const scrollToCategory = useCallback((cat: string) => {
+    const idx = catStartIndices[cat];
+    if (idx != null) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setGridOpen(false);
+      activeIndexRef.current = idx;
+      setActiveIndex(idx);
+      setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 60);
+    }
+  }, [catStartIndices]);
 
   // Swipe hint animation (pulsing triple-chevron)
   useEffect(() => {
@@ -2078,6 +2153,14 @@ function SoundReelsModal({
           )}
         />
 
+        {/* ── Persistent top scrim — always visible regardless of reel image brightness ── */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.86)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.00)']}
+          locations={[0, 0.38, 0.72, 1]}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 220, zIndex: 9 }}
+          pointerEvents="none"
+        />
+
         {/* ── Top bar overlay ── */}
         <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
           {/* Thin progress bar at very top */}
@@ -2105,8 +2188,42 @@ function SoundReelsModal({
               {activeSound?.label}
             </Text>
 
-            {/* Right: balance placeholder */}
-            <View style={{ width: 44 }} />
+            {/* Right: sleep page browse button */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(false); }}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="apps-outline" size={20} color="rgba(255,255,255,0.80)" />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Category pills — premium tab bar style ── */}
+          <View style={{ flexDirection: 'row', paddingHorizontal: 10, paddingBottom: 8, marginTop: 2, gap: 0 }}>
+            {(CATEGORIES.slice(1) as string[]).map(cat => {
+              const isActive = activeSound?.cat === cat;
+              const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => scrollToCategory(cat)}
+                  activeOpacity={0.75}
+                  style={{
+                    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3,
+                    paddingVertical: 7, paddingHorizontal: 2, borderRadius: 10,
+                    backgroundColor: isActive ? meta.color + '22' : 'rgba(0,0,0,0.18)',
+                    borderWidth: 1,
+                    borderColor: isActive ? meta.color + '60' : 'rgba(255,255,255,0.08)',
+                    marginHorizontal: 2,
+                  }}
+                >
+                  <Text style={{ fontSize: 11 }}>{meta.emoji}</Text>
+                  <Text style={{ fontSize: 8.5, fontWeight: isActive ? '800' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.55)', letterSpacing: 0.1 }} numberOfLines={1}>
+                    {cat}
+                  </Text>
+                  {isActive && <View style={{ width: 16, height: 1.5, borderRadius: 1, backgroundColor: meta.color, marginTop: 1 }} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </SafeAreaView>
 
@@ -2128,33 +2245,135 @@ function SoundReelsModal({
 
         {/* ── Category transition banner ── */}
         {catBanner && (
-          <Animated.View style={{
-            position: 'absolute', top: '40%', left: 0, right: 0, alignItems: 'center', zIndex: 20,
-            opacity: bannerAnim,
-            transform: [
-              { scale: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] }) },
-              { translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-            ],
-          }}>
-            <View style={{
-              backgroundColor: catBanner.color + '20',
-              borderWidth: 1.5, borderColor: catBanner.color + '50',
-              borderRadius: 22, paddingHorizontal: 32, paddingVertical: 16, alignItems: 'center', gap: 6,
-            }}>
-              <Text style={{ fontSize: 32 }}>{catBanner.emoji}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '400', color: catBanner.color, letterSpacing: 0.8, fontFamily: 'Nunito_400Regular' }}>
-                {catBanner.text.toUpperCase()}
-              </Text>
+          <>
+            {/* Full-screen tint flash */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 18,
+                backgroundColor: catBanner.color + '22',
+                opacity: bannerAnim.interpolate({ inputRange: [0, 0.25, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+              }}
+            />
+            {/* Sliding "NOW ENTERING" banner */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: 88, left: 16, right: 16, zIndex: 20,
+                opacity: bannerAnim,
+                transform: [
+                  { translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [-28, 0] }) },
+                  { scale: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+                ],
+              }}
+            >
               <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 5,
-                backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 99,
-                paddingHorizontal: 10, paddingVertical: 3, marginTop: 2,
+                flexDirection: 'row', alignItems: 'center', gap: 14,
+                backgroundColor: 'rgba(0,0,0,0.78)',
+                borderWidth: 1.5, borderColor: catBanner.color + '65',
+                borderRadius: 20, paddingHorizontal: 20, paddingVertical: 14,
+                overflow: 'hidden',
               }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: catBanner.color }} />
-                <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFFFFF40' }}>Category changed</Text>
+                <LinearGradient
+                  colors={[catBanner.color + '35', catBanner.color + '08', 'transparent']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: catBanner.color + '85' }} />
+                <Text style={{ fontSize: 34 }}>{catBanner.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 8.5, fontWeight: '900', color: catBanner.color + 'BB', letterSpacing: 2.2, marginBottom: 4 }}>
+                    NOW ENTERING
+                  </Text>
+                  <Text style={{ fontSize: 21, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 }}>
+                    {catBanner.text}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 3 }}>
+                  <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.30)', letterSpacing: 0.5 }}>scroll</Text>
+                  <Text style={{ fontSize: 18, color: catBanner.color }}>↓</Text>
+                </View>
               </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
+          </>
+        )}
+
+        {/* ── Grid Browse Overlay ── */}
+        {gridOpen && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,6,20,0.97)', zIndex: 30 }}>
+            <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
+                <View>
+                  <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFF' }}>Browse Sounds</Text>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>{REELS_ALL_SOUNDS.length} sounds · tap any to play instantly</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setGridOpen(false)}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="close" size={20} color="rgba(255,255,255,0.80)" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Category sections */}
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {(CATEGORIES.slice(1) as string[]).map(cat => {
+                  const catSounds = REELS_ALL_SOUNDS.filter(s => s.cat === cat);
+                  if (!catSounds.length) return null;
+                  const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+                  return (
+                    <View key={cat} style={{ marginBottom: 26 }}>
+                      {/* Section header */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, marginBottom: 10 }}>
+                        <Text style={{ fontSize: 15 }}>{meta.emoji}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>{cat}</Text>
+                        <View style={{ flex: 1, height: 0.5, backgroundColor: meta.color + '40', marginLeft: 4 }} />
+                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.30)' }}>{catSounds.length}</Text>
+                      </View>
+                      {/* Horizontal sound pills */}
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+                        {catSounds.map(sound => {
+                          const idx = REELS_ALL_SOUNDS.indexOf(sound);
+                          const isNowPlaying = playingId === sound.id;
+                          return (
+                            <TouchableOpacity
+                              key={sound.id}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                setGridOpen(false);
+                                activeIndexRef.current = idx;
+                                setActiveIndex(idx);
+                                setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 80);
+                              }}
+                              style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 8,
+                                paddingHorizontal: 13, paddingVertical: 10, borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: isNowPlaying ? sound.color + '80' : 'rgba(255,255,255,0.12)',
+                                backgroundColor: isNowPlaying ? sound.color + '1A' : 'rgba(255,255,255,0.06)',
+                                minWidth: 100,
+                              }}
+                            >
+                              <Text style={{ fontSize: 17 }}>{sound.emoji}</Text>
+                              <View style={{ flexShrink: 1 }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: isNowPlaying ? sound.color : '#FFFFFFEE' }} numberOfLines={1}>
+                                  {sound.label}
+                                </Text>
+                                {isNowPlaying && (
+                                  <Text style={{ fontSize: 7, color: sound.color, fontWeight: '900', letterSpacing: 0.5 }}>▶ PLAYING</Text>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </SafeAreaView>
+          </View>
         )}
       </View>
     </Modal>
@@ -2164,6 +2383,7 @@ function SoundReelsModal({
 export default function SleepTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { openReel } = useLocalSearchParams<{ openReel?: string }>();
   const { bgUri, accentColor, gradientStart } = useBgContext();
   const [now, setNow] = useState(new Date());
 
@@ -2268,6 +2488,17 @@ export default function SleepTab() {
   // ── Reels state ───────────────────────────────────────────
   const [showReels,      setShowReels]      = useState(false);
   const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
+  // null = use category default (Meditations → once, others → loop)
+  const reelLoopModeRef = useRef<boolean | null>(null);
+
+  // ── Open reel from home page "Listen & Recharge" button ──────────────────
+  useEffect(() => {
+    if (openReel === '1') {
+      setReelsStartIdx(0);
+      setShowReels(true);
+      router.setParams({ openReel: undefined });
+    }
+  }, [openReel]);
 
   // ── Register reels opener so GlobalPlayerBar re-opens reels ──
   useEffect(() => {
@@ -2358,8 +2589,11 @@ export default function SleepTab() {
   const handleReelPlaySound = useCallback((id: string) => {
     const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
     if (meta) {
+      // Reset loop mode on each new sound — user must explicitly choose Once/Loop per track
+      reelLoopModeRef.current = null;
       const metaFull = { ...meta, imageUri: SOUND_IMAGES[id], imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
-      playSound(metaFull, STOP_TIMES[stopIdx].secs, undefined, 3);
+      const secs = STOP_TIMES[stopIdx >= 0 ? stopIdx : 0]?.secs ?? STOP_TIMES[0].secs;
+      playSound(metaFull, secs, undefined, 5, true); // always loop on swipe; user can change via timer picker
     }
   }, [playSound, stopIdx]);
 
@@ -2370,8 +2604,33 @@ export default function SleepTab() {
 
   const changeStopTimer = (idx: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setStopIdx(idx);
-    changeTimer(STOP_TIMES[idx].secs);
+    if (idx === -1) {
+      // Meditation “Once” mode — play through once then stop
+      reelLoopModeRef.current = false;
+      changeTimer(7200);
+      if (playingId) {
+        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+        if (meta) {
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          playSound(mf, 7200, undefined, 0, false);
+        }
+      }
+    } else if (idx === -2) {
+      // Meditation “Loop” mode — loop indefinitely
+      reelLoopModeRef.current = true;
+      changeTimer(28800);
+      if (playingId) {
+        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+        if (meta) {
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          playSound(mf, 28800, undefined, 5, true);
+        }
+      }
+    } else {
+      reelLoopModeRef.current = null;
+      setStopIdx(idx);
+      changeTimer(STOP_TIMES[idx].secs);
+    }
   };
 
   const toggleSleepIntel = () => {
@@ -2514,14 +2773,14 @@ export default function SleepTab() {
   const natureCategoryLabel = useMemo(() => {
     const periodId = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
     switch (periodId) {
-      case 'night_vata':        return 'Awaken in Nature';
-      case 'morning_kapha':     return 'Rise in Nature';
-      case 'midday_pitta':      return 'Work in Nature';
-      case 'midday_pitta_late': return 'Relax in Nature';
-      case 'afternoon_vata':    return 'Create in Nature';
-      case 'evening_kapha':     return 'Unwind in Nature';
-      case 'night_pitta':       return 'Sleep in Nature';
-      default:                  return 'Nature';
+      case 'night_vata':        return 'The world sleeps... breathe with nature and ease into the dawn';
+      case 'morning_kapha':     return 'Morning rises... listen to nature\'s sounds and align yourself';
+      case 'midday_pitta':      return 'The sun peaks... ground yourself in nature\'s steady rhythm';
+      case 'midday_pitta_late': return 'The afternoon drifts... let nature\'s sounds restore your calm';
+      case 'afternoon_vata':    return 'The day softens... let nature\'s breeze quiet your mind';
+      case 'evening_kapha':     return 'Evening descends... unwind with nature and release the day';
+      case 'night_pitta':       return 'Night deepens... sleep wrapped in nature\'s sounds';
+      default:                  return 'Let nature\'s sounds align your mind and body';
     }
   }, [currentPeriod?.id, autoMode.key]);
   const isNightTime = useMemo(() => {
@@ -2724,74 +2983,7 @@ export default function SleepTab() {
         {/* ── Content container — transparent so wallpaper shows through ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
 
-        {/* ── Recommended section ── */}
-        {false && selectedCat === 'All' && (<>
-          <View style={S.secHeader}>
-            <Text style={S.secTitle}>{sectionInfo.title}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '500', letterSpacing: 0.5 }}>swipe</Text>
-              <Ionicons name="chevron-forward" size={11} color="rgba(255,255,255,0.30)" />
-            </View>
-          </View>
-          <View style={{ position: 'relative' }}>
-          <GHScrollView
-            horizontal
-            directionalLockEnabled
-            showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 8 }}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 20, paddingBottom: 4 }}
-            decelerationRate={0.88}
-            bounces={false}
-            overScrollMode="never"
-            scrollEventThrottle={8}
-          >
-            {sectionInfo.isNight && NIGHT_THEMES.map(theme => (
-              <NightThemeCard
-                key={theme.id}
-                theme={theme}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setCategory(theme.category);
-                  const first = SLEEP_SOUNDS.find(s => s.id === theme.featuredId) ?? SLEEP_SOUNDS.find(s => theme.category === 'All' || s.cat === theme.category)!;
-                  handleSoundCardTap(first.id);
-                }}
-              />
-            ))}
-            {recSounds.map(s => (
-              <CalmSoundCard
-                key={s.id}
-                sound={s}
-                isPlaying={playingId === s.id}
-                isPaused={isPaused && playingId === s.id}
-                onPress={() => handleSoundCardTap(s.id)}
-                width={REC_CARD_W}
-              />
-            ))}
-          </GHScrollView>
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.55)']}
-            start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
-            style={{ position: 'absolute', right: 0, top: 0, bottom: 4, width: 56, pointerEvents: 'none' }}
-          />
-          </View>
-        </>)}
 
-        {/* ── Soundscapes — Netflix rows ── */}
-        {selectedCat === 'All' && (
-          <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.20)', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={{ height: 1.5, borderRadius: 1 }}
-            />
-          </View>
-        )}
-        {selectedCat === 'All' && (
-          <View style={S.secHeader}>
-            <Text style={S.secTitle}>Soundscapes</Text>
-            <Text style={S.secCount}>{SLEEP_SOUNDS.length + NADA_SOUNDS.length} sounds · swipe each row</Text>
-          </View>
-        )}
         <CategoryRows
           playingId={playingId}
           isPaused={isPaused}

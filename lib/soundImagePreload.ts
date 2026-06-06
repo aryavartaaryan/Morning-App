@@ -99,6 +99,16 @@ export async function warmSoundImageMap(): Promise<void> {
   _warmSubs.clear();
 }
 
+/** Total number of sound images the app manages. */
+export const TOTAL_SOUND_IMAGES = ALL_URLS.length;
+
+/**
+ * Returns true when every sound image is already on disk.
+ */
+export function isSoundImageFullyCached(): boolean {
+  return ALL_URLS.every(url => !!LOCAL_URI_MAP[url]);
+}
+
 /**
  * Downloads every sound card & night-theme image to persistent disk storage.
  * Should be called once on app start (with a small delay so it doesn't block
@@ -107,6 +117,26 @@ export async function warmSoundImageMap(): Promise<void> {
 export async function prefetchAllSoundImages(concurrency = 10): Promise<void> {
   for (let i = 0; i < ALL_URLS.length; i += concurrency) {
     await Promise.allSettled(ALL_URLS.slice(i, i + concurrency).map(cacheOne));
+  }
+}
+
+/**
+ * Like prefetchAllSoundImages but reports progress (done / total) after each image.
+ */
+export async function prefetchAllSoundImagesWithProgress(
+  onProgress: (done: number, total: number) => void,
+  concurrency = 8,
+): Promise<void> {
+  const total = ALL_URLS.length;
+  let done = 0;
+  for (let i = 0; i < ALL_URLS.length; i += concurrency) {
+    await Promise.allSettled(
+      ALL_URLS.slice(i, i + concurrency).map(async (url) => {
+        await cacheOne(url);
+        done += 1;
+        onProgress(done, total);
+      }),
+    );
   }
 }
 

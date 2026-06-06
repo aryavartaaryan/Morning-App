@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Nada",
-    "slug": "ariseapp",
+    "slug": "nada-arise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "owner": "nadaultra",
+    "owner": "onesutra",
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -140,7 +140,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8cc8ed6d-3e11-4cdd-a07e-50af8fd851f1"
+        "projectId": "74e6437b-236b-4866-8a86-9df7657eb7ab"
       }
     }
   }

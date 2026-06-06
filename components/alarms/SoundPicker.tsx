@@ -82,8 +82,21 @@ export default function SoundPicker({
         })}
       </ScrollView>
 
+      {/* Sound count header */}
+      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }, { paddingHorizontal: (gridStyle as any)?.paddingHorizontal ?? 0 }]}>
+        <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.5 }}>
+          {filteredSounds.length} SOUND{filteredSounds.length !== 1 ? 'S' : ''}
+        </Text>
+        {previewingId && filteredSounds.some(s => s.id === previewingId) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
+            <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.5 }}>NOW PLAYING</Text>
+          </View>
+        )}
+      </View>
+
       <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }, gridStyle]}>
-        {filteredSounds.slice(0, 6).map(snd => {
+        {filteredSounds.map(snd => {
           const active = selectedId === snd.id;
           const previewing = previewingId === snd.id;
           const imgSrc = snd.id === 'lalitha'
@@ -95,36 +108,40 @@ export default function SoundPicker({
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(snd.id); }}
               activeOpacity={0.82}
               style={{
-                width: '31%', height: 96, borderRadius: 16, overflow: 'hidden',
+                width: '31%', height: 104, borderRadius: 16, overflow: 'hidden',
                 borderWidth: active ? 2 : 1, borderColor: active ? snd.color : '#FFFFFF14',
               }}
             >
               <ImageBackground source={imgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 15 }}>
+                {!imgSrc && <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#0E0C18' }]} />}
                 <LinearGradient
-                  colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']}
+                  colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.78)']}
                   style={[StyleSheet.absoluteFillObject, { borderRadius: 15 }]}
                 />
                 {active && (
-                  <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '18' }]} />
+                  <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '22' }]} />
+                )}
+                {previewing && (
+                  <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#10b98112' }]} />
                 )}
                 <View style={{ flex: 1, padding: 8, justifyContent: 'space-between' }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <TouchableOpacity
                       onPress={e => { e.stopPropagation?.(); onTogglePreview(snd); }}
                       style={{
-                        width: 26, height: 26, borderRadius: 13,
-                        backgroundColor: previewing ? snd.color + '40' : 'rgba(0,0,0,0.45)',
+                        width: 28, height: 28, borderRadius: 14,
+                        backgroundColor: previewing ? '#10b98140' : 'rgba(0,0,0,0.50)',
                         borderWidth: 1,
-                        borderColor: previewing ? snd.color + '80' : 'rgba(255,255,255,0.2)',
+                        borderColor: previewing ? '#10b98180' : 'rgba(255,255,255,0.18)',
                         alignItems: 'center', justifyContent: 'center',
                       }}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Text style={{ fontSize: 9, color: previewing ? snd.color : '#FFFFFFCC' }}>
+                      <Text style={{ fontSize: 9, color: previewing ? '#10b981' : '#FFFFFFCC' }}>
                         {previewing ? '■' : '▶'}
                       </Text>
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 16 }}>{snd.emoji}</Text>
+                    <Text style={{ fontSize: 17 }}>{snd.emoji}</Text>
                   </View>
                   <View>
                     <Text
@@ -133,12 +150,17 @@ export default function SoundPicker({
                     >
                       {snd.label}
                     </Text>
-                    {active && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                    {active ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
                         <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
-                        <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900' }}>SELECTED</Text>
+                        <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900', letterSpacing: 0.3 }}>SELECTED</Text>
                       </View>
-                    )}
+                    ) : previewing ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />
+                        <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.3 }}>PLAYING</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </ImageBackground>

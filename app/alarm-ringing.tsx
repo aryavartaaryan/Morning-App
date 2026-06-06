@@ -647,8 +647,10 @@ export default function AlarmRingingScreen() {
         });
       }
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      // Vibration is already running from AlarmSoundService.startAlarmVibration() — no JS call needed.
+      // NOTE: Do NOT call Haptics.impactAsync() here.
+      // Native AlarmSoundService already runs the hardware vibration pattern via
+      // startAlarmVibration(). Adding a JS Haptics call on top causes abnormal/
+      // chaotic vibration when the alarm fires while the app is in the foreground.
     })();
     return () => {
       cancelled = true;

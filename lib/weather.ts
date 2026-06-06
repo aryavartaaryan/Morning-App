@@ -5,6 +5,7 @@ export interface HourlyPoint {
   temp: number;
   weatherCode: number;
   emoji: string;
+  precipProb: number;
 }
 
 export interface DailyPoint {
@@ -118,7 +119,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       `?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weathercode` +
       `,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day` +
-      `&hourly=temperature_2m,weathercode,precipitation_probability,is_day` +
+      `&hourly=temperature_2m,weathercode,precipitation_probability,is_day,wind_speed_10m` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum` +
       `&forecast_days=7&timezone=auto&models=best_match`;
 
@@ -149,6 +150,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
     const hourlyTemps: number[] = json.hourly?.temperature_2m ?? [];
     const hourlyCodes: number[] = json.hourly?.weathercode ?? [];
     const hourlyIsDay: number[]  = json.hourly?.is_day ?? [];
+    const hourlyPrecipProb: number[] = json.hourly?.precipitation_probability ?? [];
     const hourly: HourlyPoint[] = [];
     for (let i = 0; i < 48 && hourly.length < 24; i++) {
       const h = (json.hourly?.time?.[i] as string | undefined);
@@ -157,7 +159,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       if (hourly.length === 0 && parsedHour !== nowHour && i < nowHour) continue;
       const code  = hourlyCodes[i] ?? 0;
       const isDayH = hourlyIsDay[i] ?? 1;
-      hourly.push({ hour: parsedHour, temp: Math.round(hourlyTemps[i] ?? 0), weatherCode: code, emoji: getWeatherInfo(code, isDayH).emoji });
+      hourly.push({ hour: parsedHour, temp: Math.round(hourlyTemps[i] ?? 0), weatherCode: code, emoji: getWeatherInfo(code, isDayH).emoji, precipProb: Math.round(hourlyPrecipProb[i] ?? 0) });
     }
 
     // Build 7-day daily forecast

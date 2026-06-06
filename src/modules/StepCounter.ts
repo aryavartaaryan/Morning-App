@@ -300,11 +300,24 @@ export const StepCounter = {
     // Build a 30-slot array of daily steps from stored daily snapshots
     const stored = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
 
+    // Determine the earliest date we should show (never show phantom pre-install zeroes)
+    let firstUseStr = await asGet('sc_first_use_date');
+    if (!firstUseStr) {
+      // For existing users: use earliest date in stored history so real data is preserved.
+      // For new users with no history: use today so no phantom past dates appear.
+      const sortedDates = stored.map(x => x.date).sort();
+      firstUseStr = sortedDates.length > 0 ? sortedDates[0] : new Date().toISOString().split('T')[0];
+      await asSet('sc_first_use_date', firstUseStr);
+    }
+    const firstUseTime = new Date(firstUseStr + 'T00:00:00').getTime();
+
     const today = new Date();
     const dailyData: DailyData[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
+      // Skip dates that pre-date the first recorded app use
+      if (d.getTime() < firstUseTime) continue;
       const dateStr = d.toISOString().split('T')[0];
       const entry   = stored.find(x => x.date === dateStr);
       const steps   = entry?.steps ?? (i === 0 ? (await StepCounter.getTodayStats()).totalSteps : 0);

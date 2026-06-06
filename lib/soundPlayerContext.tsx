@@ -27,9 +27,10 @@ type SoundPlayerCtx = {
   playingId: string | null;
   isPaused: boolean;
   sessionSecs: number;
+  playingDurationSecs: number | null;
   playingMeta: PlayableSoundMeta | null;
   mixedSounds: PlayableSoundMeta[];
-  playSound: (meta: PlayableSoundMeta, durationSecs: number, onStop?: () => void, trimLastSecs?: number) => Promise<void>;
+  playSound: (meta: PlayableSoundMeta, durationSecs: number, onStop?: () => void, trimLastSecs?: number, shouldLoop?: boolean) => Promise<void>;
   addToMix: (meta: PlayableSoundMeta) => Promise<void>;
   removeFromMix: (id: string) => Promise<void>;
   togglePause: () => Promise<void>;
@@ -52,10 +53,11 @@ type SoundPlayerCtx = {
 const Ctx = createContext<SoundPlayerCtx | null>(null);
 
 export function SoundPlayerProvider({ children }: { children: ReactNode }) {
-  const [playingId, setPlayingId]       = useState<string | null>(null);
-  const [isPaused, setIsPaused]         = useState(false);
-  const [sessionSecs, setSessionSecs]   = useState(21 * 60);
-  const [playingMeta, setPlayingMeta]   = useState<PlayableSoundMeta | null>(null);
+  const [playingId, setPlayingId]             = useState<string | null>(null);
+  const [isPaused, setIsPaused]               = useState(false);
+  const [sessionSecs, setSessionSecs]         = useState(21 * 60);
+  const [playingDurationSecs, setPlayingDurSecs] = useState<number | null>(null);
+  const [playingMeta, setPlayingMeta]         = useState<PlayableSoundMeta | null>(null);
   const [mixedSounds, setMixedSounds]   = useState<PlayableSoundMeta[]>([]);
 
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
@@ -89,6 +91,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const playEpochRef = useRef(0);
   // Trim: ms to cut from the end of each sound loop (set by reel playback)
   const reelTrimMsRef = useRef(0);
+  // Once-play mode: when true, stop instead of looping when track finishes
+  const noLoopRef = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -116,7 +120,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }
       const { sound } = await Audio.Sound.createAsync(
         resolvedSrc,
-        { isLooping: true, volume: 1.0, shouldPlay: !isPausedRef.current },
+        { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current },
       );
       // Stale-epoch check: createAsync is async; if a newer playSound displaced
       // this one while we were awaiting, silently unload and bail.
@@ -129,13 +133,19 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       // If the sound finishes instead of looping, restart it automatically.
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded) return;
-        // Trim: seek to start when within last trimLastMs of the track
+        // Capture actual track duration once (first time it’s available from decoder)
+        if (status.durationMillis != null) {
+          setPlayingDurSecs(prev => prev ?? Math.round(status.durationMillis! / 1000));
+        }
+        // Trim: seek to start when within last trimLastMs of the track.
+        // Skip in once-play mode — let the track play through fully.
         if (
           trimLastMs > 0 &&
           !isPausedRef.current &&
+          !noLoopRef.current &&
           !restartingIdsRef.current.has(meta.id) &&
           status.durationMillis != null &&
-          status.durationMillis > 16000 &&
+          status.durationMillis > 20000 &&
           status.positionMillis >= status.durationMillis - trimLastMs
         ) {
           restartingIdsRef.current.add(meta.id);
@@ -147,11 +157,18 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         // Only restart when the file explicitly finished (isLooping silently failed).
         // Guard with restartingIdsRef to prevent concurrent replayAsync storms
         // (heartbeat + this callback firing at the same loop boundary).
-        if (!isPausedRef.current && status.didJustFinish && !restartingIdsRef.current.has(meta.id)) {
-          restartingIdsRef.current.add(meta.id);
-          sound.replayAsync()
-            .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
-            .finally(() => { restartingIdsRef.current.delete(meta.id); });
+        if (!isPausedRef.current && status.didJustFinish) {
+          if (noLoopRef.current) {
+            // Once-play mode: stop cleanly when track ends naturally
+            setTimeout(() => stopFnRef.current?.(true), 0);
+            return;
+          }
+          if (!restartingIdsRef.current.has(meta.id)) {
+            restartingIdsRef.current.add(meta.id);
+            sound.replayAsync()
+              .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
+              .finally(() => { restartingIdsRef.current.delete(meta.id); });
+          }
         }
       });
       // Enable periodic position updates so the trim threshold can be detected
@@ -170,6 +187,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     clearHeartbeat();
     heartbeatRef.current = setInterval(async () => {
       if (isPausedRef.current || mixRefs.current.size === 0) return;
+      // Don't restart in once-play mode — let the track stop naturally
+      if (noLoopRef.current) { heartbeatBusyRef.current = false; return; }
       // Guard: skip if a previous heartbeat tick is still running
       if (heartbeatBusyRef.current) return;
       heartbeatBusyRef.current = true;
@@ -256,7 +275,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     setIsPaused(false);
     isPausedRef.current = false;
     reelTrimMsRef.current = 0;
+    noLoopRef.current = false;
     setSessionSecs(21 * 60);
+    setPlayingDurSecs(null);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
     else { stopCbRef.current = null; }
   }, [clearTimer, clearHeartbeat, stopAllRefs]);
@@ -284,7 +305,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     durationSecs: number,
     onStop?: () => void,
     trimLastSecs: number = 0,
+    shouldLoop: boolean = true,
   ) => {
+    noLoopRef.current = !shouldLoop;
     // Bump epoch FIRST so any concurrent in-flight loadAndPlay can detect it is stale.
     const epoch = ++playEpochRef.current;
     try {
@@ -464,7 +487,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      playingId, isPaused, sessionSecs, playingMeta, mixedSounds,
+      playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,

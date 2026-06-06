@@ -14,6 +14,7 @@ export interface WakeLogEntry {
   wasBeforeSunrise: boolean;
   mood: string | null; // emoji e.g. '🔥' or null
   sharedToday: boolean;
+  cardShownToday?: boolean;
 }
 
 export interface SunriseStreak {
@@ -90,6 +91,14 @@ export async function setWakeMood(mood: string): Promise<void> {
   const entry = await store.getJSON<WakeLogEntry>(KEYS.wakeLog);
   if (entry && entry.date === TODAY()) {
     await store.setJSON(KEYS.wakeLog, { ...entry, mood });
+  }
+}
+
+/** Mark today's share card as already shown (prevents re-showing on subsequent app opens) */
+export async function markCardShown(): Promise<void> {
+  const entry = await store.getJSON<WakeLogEntry>(KEYS.wakeLog);
+  if (entry && entry.date === TODAY()) {
+    await store.setJSON(KEYS.wakeLog, { ...entry, cardShownToday: true });
   }
 }
 

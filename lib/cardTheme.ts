@@ -56,8 +56,8 @@ export const CARD_SHADOW: ViewStyle = {
 // Night/dark images (brahma, predawn, twilight, evening, night) → transparent 0.36
 // Golden transition (sunrise, sandhya) → medium 0.44
 // Bright daytime (morning, midday, afternoon) → most opaque 0.50
-const DARK_BG_KEYS  = ['night', 'brahma', 'predawn', 'twilight', 'evening'];
-const GOLDEN_BG_KEYS = ['sunrise', 'sandhya'];
+const DARK_BG_KEYS  = ['night', 'brahma', 'predawn', 'twilight', 'twilight_late', 'twilight_deep', 'evening'];
+const GOLDEN_BG_KEYS = ['sunrise', 'sandhya', 'sandhya_late'];
 
 export function getCardBg(bgKey: string): string {
   if (DARK_BG_KEYS.includes(bgKey))   return 'rgba(6,15,40,0.36)';

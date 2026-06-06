@@ -2,7 +2,7 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, Image } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,8 +16,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
-import { ensureAllBgsCached, getBgSourceSync, getBgSource } from '@/lib/bgImages';
-import { prefetchAllSoundImages, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
+import { ensureAllBgsCachedWithProgress, getBgSourceSync, isBgFullyCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
+import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
+import Svg, { Circle } from 'react-native-svg';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
@@ -79,43 +80,57 @@ class AppErrorBoundary extends Component<
 
 const { height: SH } = Dimensions.get('window');
 
-function SplashOverlay({ onDone }: { onDone: () => void }) {
-  const glowOp  = useRef(new Animated.Value(0)).current;
-  const titleOp = useRef(new Animated.Value(0)).current;
-  const titleSc = useRef(new Animated.Value(0.84)).current;
-  const subOp   = useRef(new Animated.Value(0)).current;
+function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string }) {
+  const bgScale  = useRef(new Animated.Value(1.04)).current;  // Ken Burns start: slightly zoomed
+  const glowOp   = useRef(new Animated.Value(0)).current;
+  const titleOp  = useRef(new Animated.Value(0)).current;
+  const titleSc  = useRef(new Animated.Value(0.78)).current;
+  const subOp    = useRef(new Animated.Value(0)).current;
   const screenOp = useRef(new Animated.Value(1)).current;
-  const [bgUri, setBgUri] = useState<string>(() => getBgSourceSync('splash'));
+  const screenSc = useRef(new Animated.Value(1.0)).current;   // zoom-out on exit
 
   useEffect(() => {
-    let cancelled = false;
-    getBgSource('splash').then(uri => {
-      if (!cancelled) setBgUri(uri);
-    });
-    return () => { cancelled = true; };
-  }, []);
+    // Ken Burns: bg image slowly zooms across the full splash
+    Animated.timing(bgScale, { toValue: 1.10, duration: 4200, useNativeDriver: true }).start();
 
-  useEffect(() => {
+    // Title + glow appear together immediately (bg is already on disk)
+    Animated.parallel([
+      // Logo fades + springs in immediately
+      Animated.timing(titleOp, { toValue: 1, duration: 320, useNativeDriver: true }),
+      Animated.spring(titleSc, { toValue: 1, tension: 55, friction: 9, useNativeDriver: true }),
+      // Glow orb also fades in together
+      Animated.timing(glowOp, { toValue: 0.18, duration: 700, useNativeDriver: true }),
+    ]).start();
+
+    // Tagline fades in 400ms after logo
     Animated.sequence([
-      Animated.timing(glowOp,   { toValue: 0.20, duration: 750, useNativeDriver: true }),
+      Animated.delay(400),
+      Animated.timing(subOp, { toValue: 1, duration: 450, useNativeDriver: true }),
+      // HOLD: total splash ~4.5s (400 + 450 + 2650 hold + 650 exit)
+      Animated.delay(2650),
+      // Exit: fade out + subtle zoom-out
       Animated.parallel([
-        Animated.timing(titleOp, { toValue: 1,    duration: 680, useNativeDriver: true }),
-        Animated.spring(titleSc, { toValue: 1, tension: 48, friction: 9, useNativeDriver: true }),
+        Animated.timing(screenOp, { toValue: 0, duration: 650, useNativeDriver: true }),
+        Animated.timing(screenSc, { toValue: 0.95, duration: 650, useNativeDriver: true }),
       ]),
-      Animated.delay(280),
-      Animated.timing(subOp,    { toValue: 1,    duration: 520, useNativeDriver: true }),
-      Animated.delay(1150),
-      Animated.timing(screenOp, { toValue: 0,    duration: 680, useNativeDriver: true }),
     ]).start(() => onDone());
   }, []);
 
   return (
-    <Animated.View pointerEvents="none" style={[SS.overlay, { opacity: screenOp }]}>
-      <Image 
-        source={{ uri: bgUri }} 
-        style={StyleSheet.absoluteFillObject} 
-        resizeMode="cover" 
-      />
+    <Animated.View
+      pointerEvents="none"
+      style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
+    >
+      {/* Background image with Ken Burns zoom */}
+      {!!bgUri && (
+        <Animated.Image
+          source={{ uri: bgUri }}
+          style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]}
+          resizeMode="cover"
+        />
+      )}
+      {/* Dark overlay so text remains readable over bright background images */}
+      <View style={SS.bgOverlay} />
       {/* Ambient glow orb */}
       <Animated.View style={[SS.glowOrb, { opacity: glowOp }]} />
       {/* Center */}
@@ -136,6 +151,7 @@ function SplashOverlay({ onDone }: { onDone: () => void }) {
 
 const SS = StyleSheet.create({
   overlay:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: '#04030F', alignItems: 'center' },
+  bgOverlay:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,3,15,0.42)' },
   glowOrb:    { position: 'absolute', top: SH * 0.22, alignSelf: 'center', width: 360, height: 360, borderRadius: 180, backgroundColor: '#F5820A' },
   center:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   arise:      { fontSize: 96, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 8 },
@@ -143,6 +159,65 @@ const SS = StyleSheet.create({
   tagline:    { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', letterSpacing: 6 },
   accentLine: { width: 64, height: 1.5, backgroundColor: '#F5820A', opacity: 0.70, borderRadius: 1 },
   version:    { fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: 5, fontWeight: '600', paddingBottom: 50 },
+});
+
+// ─── Download progress screen (first-install gate) ─────────────────────────
+// Only shows a clean progress ring — NO Nada logo, NO tagline.
+// This screen is shown ONLY on first install while BG images are downloading.
+function DownloadScreen({ progress, label }: { progress: number; label: string }) {
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeIn, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+  }, []);
+
+  const pct    = Math.round(Math.min(progress, 1) * 100);
+  const R      = 58;
+  const STRKW  = 6;
+  const circ   = 2 * Math.PI * R;
+  const offset = circ * (1 - Math.min(progress, 1));
+
+  return (
+    <Animated.View pointerEvents="none" style={[DS.screen, { opacity: fadeIn }]}>
+      <LinearGradient colors={['#04030F', '#0C0820', '#04030F']} style={StyleSheet.absoluteFillObject} />
+      {/* Subtle ambient glow — no text branding */}
+      <View style={DS.glow} />
+      <View style={DS.center}>
+        {/* Ring only — pct inside */}
+        <View style={DS.ringWrap}>
+          <Svg width={138} height={138} viewBox="0 0 138 138">
+            <Circle cx={69} cy={69} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={STRKW} fill="none" />
+            <Circle
+              cx={69} cy={69} r={R}
+              stroke="#F5820A"
+              strokeWidth={STRKW}
+              fill="none"
+              strokeDasharray={`${circ}`}
+              strokeDashoffset={`${offset}`}
+              strokeLinecap="round"
+              rotation={-90}
+              origin="69, 69"
+            />
+          </Svg>
+          <View style={DS.pctWrap}>
+            <Text style={DS.pctNum}>{pct}</Text>
+            <Text style={DS.pctSign}>%</Text>
+          </View>
+        </View>
+        <Text style={DS.statusLabel}>{label}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+const DS = StyleSheet.create({
+  screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
+  glow:        { position: 'absolute', top: '20%', alignSelf: 'center', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(245,130,10,0.05)' },
+  center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
+  ringWrap:    { width: 138, height: 138, alignItems: 'center', justifyContent: 'center' },
+  pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
+  pctNum:      { fontSize: 32, color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
+  pctSign:     { fontSize: 14, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 4, marginLeft: 1 },
+  statusLabel: { fontSize: 12, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
@@ -583,7 +658,11 @@ function BodhiNotificationListener() {
 
         // Wake-up alarm tap → open Mission Alarm ringing screen
         if (type === 'wake-alarm' || speechId === 'wake-alarm') {
-          setTimeout(() => router.push('/alarm-ringing' as never), 800);
+          // Guard: only navigate if not already on alarm-ringing screen
+          if (!alarmRoutedRef.current && !segmentsRef.current.includes('alarm-ringing')) {
+            alarmRoutedRef.current = true;
+            setTimeout(() => router.push('/alarm-ringing' as never), 800);
+          }
           return;
         }
 
@@ -645,8 +724,19 @@ function BodhiNotificationListener() {
           const data = detail?.notification?.data as Record<string, string> | undefined;
 
           // Wake alarm delivered while app is in foreground (fullScreenIntent path)
+          // GUARD: use alarmRoutedRef to ensure we navigate at most ONCE per alarm cycle.
+          // Without this guard, multiple DELIVERED events (native service + extra wake alarms)
+          // each push a new /alarm-ringing screen, causing: abnormal vibration (Haptics fires
+          // on each mount), unpin popup loop (dismissAlarmOverlay re-fires each mount),
+          // and the "mantra plays then selected sound" symptom (each fresh mount calls
+          // preemptActiveAlarm() which stops the previous mount's audio and restarts it).
           if (type === EventType.DELIVERED && (notifId === ALARM_NOTIF_ID || (notifId?.startsWith('wake-extra-') && data?.type === 'wake-alarm'))) {
+            if (alarmRoutedRef.current || segmentsRef.current.includes('alarm-ringing')) {
+              console.log('[Layout] Alarm delivered in foreground — already routed, skipping duplicate push.');
+              return;
+            }
             console.log('[Layout] Alarm delivered in foreground → routing to /alarm-ringing');
+            alarmRoutedRef.current = true;
             router.push('/alarm-ringing' as never);
             return;
           }
@@ -719,27 +809,98 @@ function GlobalMoodLayer() {
   );
 }
 
-export default function RootLayout() {
-  useEffect(() => {
-    warmSoundImageMap().catch(() => {});         // fast file-exist scan for sound images
-    prefetchCriticalAlarmImages().catch(() => {}); // download habit/wake alarm images IMMEDIATELY (no delay)
-    const t1 = setTimeout(() => ensureAllBgsCached().catch(() => {}), 500);
-    const t2 = setTimeout(() => ensureAllMantrasDownloaded().catch(() => {}), 10_000);
-    const t3 = setTimeout(() => prefetchAllSoundImages().catch(() => {}), 1_500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
+// Phase values:
+//   'gate'        → fonts loaded, running warm/cache checks (shows dark cover)
+//   'downloading' → images missing, showing download progress screen
+//   'splash'      → all images cached, showing 7-second splash with bg image
+//   'done'        → splash finished, full app visible
+type AppPhase = 'gate' | 'downloading' | 'splash' | 'done';
 
+export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
     Nunito_800ExtraBold, Nunito_900Black,
     DancingScript_600SemiBold,
   });
-  const [authReady, setAuthReady] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
 
+  const [authReady,   setAuthReady]   = useState(false);
+  const [phase,       setPhase]       = useState<AppPhase>('gate');
+  const [dlProgress,  setDlProgress]  = useState(0);
+  const [dlLabel,     setDlLabel]     = useState('Preparing...');
+  const [splashBgUri, setSplashBgUri] = useState('');
+
+  // Hide native splash as soon as fonts + auth are ready
   useEffect(() => {
-    if (fontsLoaded && authReady) SplashScreen.hideAsync();
+    if (fontsLoaded && authReady) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded, authReady]);
+
+  // ── Download gate: runs once fonts are loaded ─────────────────────────────
+  // STRATEGY:
+  //   • Gate ONLY on BG images (16 images, ~5–15 MB total on first install)
+  //   • Sound card images (50+ images) are NOT a gate — they download silently
+  //     after the splash screen so the user never waits for them on first open.
+  //   • Solar positions, Ayurvedic periods etc. are pure JS computation — instant.
+  //   • On subsequent opens all BGs are already cached → gate resolves in <50 ms.
+  useEffect(() => {
+    if (!fontsLoaded) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Alarm images — high priority, fire at any time
+        prefetchCriticalAlarmImages().catch(() => {});
+
+        // Fast disk-scan — no downloads, just file-existence checks (~10 ms)
+        await bgWarmup;
+        // Warm sound image map in parallel but do NOT wait for it to gate
+        warmSoundImageMap().catch(() => {});
+
+        const bgCached = isBgFullyCached();
+
+        if (!bgCached) {
+          // Only show progress ring for BG images (much faster than all images)
+          if (cancelled) return;
+          setPhase('downloading');
+          const bgTotal = Object.keys(BG_URLS).length;
+
+          setDlLabel('Setting up...');
+          await ensureAllBgsCachedWithProgress((done) => {
+            if (!cancelled) setDlProgress(done / bgTotal);
+          });
+
+          if (!cancelled) {
+            setDlProgress(1);
+            // Brief pause so ring fills to 100% before disappearing
+            await new Promise(r => setTimeout(r, 400));
+          }
+        }
+
+        if (cancelled) return;
+
+        // Splash BG is now guaranteed on disk — show splash immediately
+        const splashBg = getBgSourceSync('splash');
+        setSplashBgUri(splashBg);
+        setPhase('splash');
+
+        // Background downloads that do NOT block the user:
+        //   • Sound card images (50+ images) — download silently after splash
+        //   • Mantras — large files, low priority
+        prefetchAllSoundImagesWithProgress(() => {}).catch(() => {});
+        ensureAllMantrasDownloaded().catch(() => {});
+
+      } catch {
+        if (!cancelled) {
+          setSplashBgUri(getBgSourceSync('splash'));
+          setPhase('splash');
+          // Still kick off background downloads even after error
+          prefetchAllSoundImagesWithProgress(() => {}).catch(() => {});
+          ensureAllMantrasDownloaded().catch(() => {});
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
 
@@ -755,7 +916,18 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <AuthGuard onAuthReady={() => setAuthReady(true)} />
         <BodhiNotificationListener />
-        {authReady && showSplash && <SplashOverlay onDone={() => setShowSplash(false)} />}
+        {/* Dark cover while gate check runs (< 100 ms, prevents flash) */}
+        {phase === 'gate' && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: '#04030F' }} />
+        )}
+        {/* Elegant download progress screen — first install only */}
+        {phase === 'downloading' && (
+          <DownloadScreen progress={dlProgress} label={dlLabel} />
+        )}
+        {/* Splash overlay — only renders once bg image is confirmed on disk */}
+        {phase === 'splash' && splashBgUri !== '' && (
+          <SplashOverlay onDone={() => setPhase('done')} bgUri={splashBgUri} />
+        )}
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />

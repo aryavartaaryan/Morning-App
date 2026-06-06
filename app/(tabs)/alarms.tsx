@@ -398,6 +398,8 @@ export default function AlarmsTab() {
   const [formSoundId, setFormSoundId]            = useState('morning_birds');
   const [wakeFormSoundCat, setWakeFormSoundCat]  = useState<typeof ALARM_SOUND_CATS[number]>('Nature');
   const [wakeRepeatDays, setWakeRepeatDays]       = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [wakeFormHour, setWakeFormHour]          = useState(5);
+  const [wakeFormMinute, setWakeFormMinute]       = useState(30);
   const [extraFormRepeatDays, setExtraFormRepeatDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [bmHour, setBmHour]                       = useState<number | null>(null);
   const [bmMinute, setBmMinute]                   = useState(0);
@@ -647,8 +649,6 @@ export default function AlarmsTab() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMenuTarget({ type: 'entry', entry });
   };
-  const setWakeTime = (h: number, m: number) => persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: h, minute: m, days: wakeRepeatDays } });
-  const applyPreset = (p: typeof PRESETS[0]) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: p.hour, minute: p.minute, days: wakeRepeatDays } }); };
 
   const openBMModal = () => {
     const saved = settings.brahmaMuhurtaAlarm;
@@ -818,6 +818,8 @@ export default function AlarmsTab() {
     const upd = { ...settings, selectedMantraId: id }; setSettings(upd);
     store.setJSON(KEYS.alarmSettings, upd); setNativeAlarmSound(id).catch(() => {});
     if (SOUND_IMAGES[id]) ensureSoundImageCached(SOUND_IMAGES[id]).catch(() => {});
+    const snd = ALARM_SOUNDS.find(s => s.id === id);
+    if (snd && previewingId !== id) togglePreview(snd);
     updateMission({ wakeSound: id });
     // Bundled nature/sacred/stotra sounds need no download
     if (ALARM_BUNDLED[id] != null) { setDlStatus(s => ({ ...s, [id]: 'downloaded' })); return; }
@@ -1043,9 +1045,9 @@ export default function AlarmsTab() {
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
             <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setShowWakeEdit(true); }} activeOpacity={0.8}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }} activeOpacity={0.8}>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
                     {playingMantra.emoji} {playingMantra.label}
                   </Text>
@@ -1062,8 +1064,8 @@ export default function AlarmsTab() {
                     </Text>
                   </View>
                 </View>
-                <View style={{ marginBottom: 6 }}>
-                  <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
+                <View style={{ marginBottom: 2 }}>
+                  <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
                     {pad(settings.wakeAlarm.hour)}:{pad(settings.wakeAlarm.minute)}
                   </Text>
                   <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1085,9 +1087,9 @@ export default function AlarmsTab() {
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
                     <View style={{ flex: 1 }} />
                     <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
@@ -1102,8 +1104,8 @@ export default function AlarmsTab() {
                       </Text>
                     </View>
                   </View>
-                  <View style={{ marginBottom: 6 }}>
-                    <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: '#FFFFFF', lineHeight: 50 }}>
+                  <View style={{ marginBottom: 2 }}>
+                    <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: '#FFFFFF', lineHeight: 38 }}>
                       {pad(bmHour)}:{pad(bmMinute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1126,9 +1128,9 @@ export default function AlarmsTab() {
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
                       {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
                     </Text>
@@ -1145,8 +1147,8 @@ export default function AlarmsTab() {
                       </Text>
                     </View>
                   </View>
-                  <View style={{ marginBottom: 6 }}>
-                    <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
+                  <View style={{ marginBottom: 2 }}>
+                    <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
                       {pad(alarm.hour)}:{pad(alarm.minute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1178,9 +1180,9 @@ export default function AlarmsTab() {
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
                 <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
                       <View style={{ flex: 1 }} />
                       <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
@@ -1195,8 +1197,8 @@ export default function AlarmsTab() {
                         </Text>
                       </View>
                     </View>
-                    <View style={{ marginBottom: 6 }}>
-                      <Text style={{ fontSize: 44, fontWeight: '200', letterSpacing: -2, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 50 }}>
+                    <View style={{ marginBottom: 2 }}>
+                      <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
                         {pad(entry.hour)}:{pad(entry.minute)}
                       </Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1295,9 +1297,9 @@ export default function AlarmsTab() {
               {/* ── Time Picker ── */}
               <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 4 }}>
                 <TimeAdjuster
-                  hour={isAddingExtraWake ? extraFormHour : settings.wakeAlarm.hour}
-                  minute={isAddingExtraWake ? extraFormMinute : settings.wakeAlarm.minute}
-                  onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : setWakeTime}
+                  hour={isAddingExtraWake ? extraFormHour : wakeFormHour}
+                  minute={isAddingExtraWake ? extraFormMinute : wakeFormMinute}
+                  onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : (h, m) => { setWakeFormHour(h); setWakeFormMinute(m); }}
                 />
               </View>
 
@@ -1308,11 +1310,11 @@ export default function AlarmsTab() {
                   {PRESETS.map(p => {
                     const active = isAddingExtraWake
                       ? (extraFormHour === p.hour && extraFormMinute === p.minute)
-                      : (settings.wakeAlarm.hour === p.hour && settings.wakeAlarm.minute === p.minute);
+                      : (wakeFormHour === p.hour && wakeFormMinute === p.minute);
                     return (
                       <TouchableOpacity key={p.label} onPress={() => {
                         if (isAddingExtraWake) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setExtraFormHour(p.hour); setExtraFormMinute(p.minute); }
-                        else { applyPreset(p); }
+                        else { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWakeFormHour(p.hour); setWakeFormMinute(p.minute); }
                       }} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
                         <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
                         <Text style={S.presetChipLabel}>{p.label}</Text>
@@ -1325,13 +1327,13 @@ export default function AlarmsTab() {
               {/* ── Prakriti Row (default alarm only) ── */}
               {!isAddingExtraWake && prakritiWake && (
                 <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
-                  <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: prakritiWake.hour, minute: prakritiWake.minute } }); }}>
+                  <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWakeFormHour(prakritiWake.hour); setWakeFormMinute(prakritiWake.minute); }}>
                     <Text style={{ fontSize: 16 }}>🌿</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 9, fontWeight: '900', color: prakritiWake.color, letterSpacing: 1 }}>YOUR RHYTHM PLAN</Text>
                       <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{prakritiWake.label}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: prakritiWake.color }}>{settings.wakeAlarm.hour === prakritiWake.hour && settings.wakeAlarm.minute === prakritiWake.minute ? '✓ SET' : 'Apply →'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: prakritiWake.color }}>{wakeFormHour === prakritiWake.hour && wakeFormMinute === prakritiWake.minute ? '✓ SET' : 'Apply →'}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -1453,16 +1455,16 @@ export default function AlarmsTab() {
                     }
                   } else {
                     const duplicate = extraWakeAlarms.some(
-                      a => a.hour === settings.wakeAlarm.hour && a.minute === settings.wakeAlarm.minute
+                      a => a.hour === wakeFormHour && a.minute === wakeFormMinute
                     );
                     if (duplicate) {
                       Alert.alert(
                         '⚠️ Duplicate Time',
-                        `Another wake alarm is already set for ${fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}. Remove it first or choose a different time.`,
+                        `Another wake alarm is already set for ${fmt12(wakeFormHour, wakeFormMinute)}. Remove it first or choose a different time.`,
                       );
                       return;
                     }
-                    await persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, days: wakeRepeatDays } });
+                    await persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: wakeFormHour, minute: wakeFormMinute, days: wakeRepeatDays } });
                     setShowWakeEdit(false);
                   }
                 }}
@@ -1475,7 +1477,7 @@ export default function AlarmsTab() {
                     ? (editingExtraWake
                         ? `Update  ·  ${fmt12(extraFormHour, extraFormMinute)}`
                         : `Set Alarm  ·  ${fmt12(extraFormHour, extraFormMinute)}`)
-                    : `Set Wake Alarm  ·  ${fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}`}
+                    : `Set Wake Alarm  ·  ${fmt12(wakeFormHour, wakeFormMinute)}`}
                 </Text>
               </TouchableOpacity>
               <View style={{ height: 24 }} />
@@ -1884,7 +1886,7 @@ export default function AlarmsTab() {
                   onPress={() => {
                     const t = menuTarget;
                     setMenuTarget(null);
-                    if (t.type === 'wake') { setIsAddingExtraWake(false); setShowWakeEdit(true); }
+                    if (t.type === 'wake') { setIsAddingExtraWake(false); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }
                     else if (t.type === 'extraWake' && t.extraWake) openEditExtraWake(t.extraWake);
                     else if (t.entry) openEditEntry(t.entry);
                   }}

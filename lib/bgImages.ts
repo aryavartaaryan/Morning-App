@@ -6,15 +6,20 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { store, KEYS } from '@/lib/storage';
 
 export const BG_URLS: Record<string, string> = {
-  brahma:     'https://images.pexels.com/photos/19566215/pexels-photo-19566215.jpeg',
-  predawn:    'https://plus.unsplash.com/premium_photo-1676320526001-07b75bd19ae3?w=900&q=85&auto=format&fit=crop',
-  sunrise:    'https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=900&q=85&auto=format&fit=crop',
-  morning:    'https://images.pexels.com/photos/1046888/pexels-photo-1046888.jpeg',
+  brahma:     'https://images.pexels.com/photos/29719545/pexels-photo-29719545.jpeg',
+  predawn:    'https://images.pexels.com/photos/11829407/pexels-photo-11829407.jpeg',
+  sunrise:    'https://images.pexels.com/photos/31887800/pexels-photo-31887800.jpeg',
+  morning_early: 'https://images.pexels.com/photos/29409461/pexels-photo-29409461.jpeg',
+  morning:    'https://images.pexels.com/photos/35097154/pexels-photo-35097154.jpeg',
+  midday_early: 'https://images.pexels.com/photos/29147908/pexels-photo-29147908.jpeg',
   midday:     'https://images.pexels.com/photos/26728076/pexels-photo-26728076.jpeg',
   afternoon:  'https://images.pexels.com/photos/33441030/pexels-photo-33441030.jpeg',
-  sandhya:    'https://images.unsplash.com/photo-1601562219653-0f16522227b3?w=900&q=85&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8c3Vuc2V0JTIwc2VhfGVufDB8fDB8fHww',
-  twilight:   'https://images.pexels.com/photos/14527158/pexels-photo-14527158.jpeg?auto=compress&cs=tinysrgb&w=900',
-  evening:    'https://images.pexels.com/photos/2986560/pexels-photo-2986560.jpeg',
+  sandhya:    'https://images.pexels.com/photos/13605711/pexels-photo-13605711.jpeg',
+  sandhya_late: 'https://images.pexels.com/photos/31887800/pexels-photo-31887800.jpeg',
+  twilight:   'https://images.pexels.com/photos/9065/night-milky-way-stars.jpg',
+  twilight_late: 'https://images.pexels.com/photos/18278868/pexels-photo-18278868.jpeg',
+  twilight_deep: 'https://images.pexels.com/photos/13104488/pexels-photo-13104488.jpeg',
+  evening:    'https://images.pexels.com/photos/25853779/pexels-photo-25853779.jpeg',
   night:      'https://images.pexels.com/photos/1674625/pexels-photo-1674625.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
   splash:     'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
@@ -132,6 +137,60 @@ export async function ensureAllBgsCached(): Promise<void> {
         }
       })
     );
+
+    await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
+  } catch { /* silent */ }
+}
+
+/**
+ * Returns true when every BG image is already on disk (fast check, no downloads).
+ * Call after bgWarmup resolves.
+ */
+export function isBgFullyCached(): boolean {
+  return Object.keys(BG_URLS).every(k => !!BG_LOCAL_MAP[k]);
+}
+
+/**
+ * Like ensureAllBgsCached but reports progress after each image.
+ * onProgress(done, total) — done counts successfully written images.
+ */
+export async function ensureAllBgsCachedWithProgress(
+  onProgress: (done: number, total: number) => void,
+): Promise<void> {
+  try {
+    await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true });
+    const storedHashes: Record<string, string> =
+      JSON.parse((await store.get(KEYS.bgCacheVersion)) ?? '{}');
+    const updatedHashes: Record<string, string> = { ...storedHashes };
+    const entries = Object.entries(BG_URLS);
+    const total   = entries.length;
+    let done = 0;
+
+    for (const [key, url] of entries) {
+      const path      = cachePath(key);
+      const urlHash   = djb2(url);
+      const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
+      const urlChanged = storedHashes[key] !== urlHash;
+
+      if (urlChanged && (cached as any).exists) {
+        await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
+        delete BG_LOCAL_MAP[key];
+      }
+
+      const needsDownload = urlChanged || !(cached as any).exists;
+      if (needsDownload) {
+        try {
+          await FileSystem.downloadAsync(url, path);
+          updatedHashes[key] = urlHash;
+          BG_LOCAL_MAP[key]  = path;
+        } catch { /* keep old if any */ }
+      } else {
+        updatedHashes[key] = urlHash;
+        BG_LOCAL_MAP[key]  = path;
+      }
+      done += 1;
+      onProgress(done, total);
+    }
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
   } catch { /* silent */ }
