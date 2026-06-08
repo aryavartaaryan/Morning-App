@@ -681,8 +681,15 @@ export default function AlarmRingingScreen() {
     // Stop vibration immediately — double-call after 300 ms catches any JVM restart
     stopAlarmVibration().catch(() => {});
     setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
-    // Mute native AlarmSoundService audio (keeps FGS alive for wake-lock on mission screen)
-    await setNativeAlarmVolume(0).catch(() => {});
+    // Stop native AlarmSoundService completely — clears alarm_fired_pending synchronously
+    // and stops the FGS + bringToFrontRunnable watchdog. Previously setNativeAlarmVolume(0)
+    // only muted the MediaPlayer but left alarm_fired_pending=true and the watchdog running,
+    // causing a crash loop every time the user opened the app after completing the mission.
+    // The JS __missionBgSound (expo-av) continues playing independently of the native FGS.
+    await stopNativeAlarmSound().catch(() => {});
+    // Belt-and-suspenders JS flag: _layout.tsx checks this to skip routing to alarm-ringing
+    // even if the native stopAlarmSound call silently fails (e.g. during ReactContext teardown).
+    await AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
     // Cancel all "bring to front" notifications so no notification can re-open
     // the alarm screen after the user has tapped Begin Your Day.
     notifee.cancelNotification('alarm-bttf').catch(() => {});

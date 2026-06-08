@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
@@ -17,7 +18,7 @@ import { getCurrentPeriod } from '@/lib/ayurvedicPeriods';
 import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta } from '@/lib/soundPlayerContext';
-import { SOUND_IMAGES as SOUND_IMAGES_LIB } from '@/lib/sleepSoundsData';
+import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm } from '@/lib/soundImagePreload';
 import { isAudioCached, downloadAudioToCache, initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
@@ -80,7 +81,7 @@ const SLEEP_SOUNDS = [
   { id: 'sitar_long',          label: 'Sitar Meditation',     emoji: '🎸', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Long classical raga session',            src: require('../../assets/sounds/sitar-long.m4a') },
   { id: 'sitar_tabla_bells',   label: 'Sitar, Tabla & Bells', emoji: '🎵', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Fusion of strings, rhythm & bells',      src: require('../../assets/sounds/sitar-tabla-bells.m4a') },
   { id: 'indian_sitar_raga',   label: 'Indian Sitar Raga',    emoji: '🎶', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0E00' as const, bot: '#0A0700' as const, desc: 'Classical Indian raga melody',           src: require('../../assets/sounds/indian-sitar-raga.m4a') },
-  { id: 'sitar_summer_raga',   label: 'Summer Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: require('../../assets/sounds/sitar-summer-raga.m4a') },
+  { id: 'sitar_summer_raga',   label: '432Hz Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: require('../../assets/sounds/sitar-summer-raga.m4a') },
   { id: 'sitar_radiance',      label: 'Sitar Radiance',       emoji: '✨', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0800' as const, bot: '#0A0400' as const, desc: 'Radiant Indian classical sitar',         src: require('../../assets/sounds/sitar-radiance.m4a') },
   { id: 'sitar_tanpura_sarangi',label: 'Sitar, Tanpura & Sarangi', emoji: '🪕', cat: 'Ragas' as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Full classical Indian ensemble',         src: require('../../assets/sounds/sitar-tanpura-sarangi.m4a') },
   { id: 'sitar_tanpura_bgm',   label: 'Sitar & Tanpura',      emoji: '🎼', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Indian classical background melody',     src: require('../../assets/sounds/sitar-tanpura.m4a') },
@@ -184,14 +185,13 @@ const NADA_SOUNDS: NadaSound[] = [
   // ── Sitar ──────────────────────────────────────────────────────────────────
   { id: 'nada_aar_sitar_classical',    label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Classical Indian sitar melody',              src: { uri: NADA_BASE + 'aar_music-indian-classical-music-sitar-296790.m4a' } },
   { id: 'nada_aar_sitar_flute',        label: 'Sitar & Flute',          emoji: '🎵', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sitar and bansuri flute interplay',          src: { uri: NADA_BASE + 'aar_music-indian-classical-music-sitar-flute-298975.m4a' } },
-  { id: 'nada_golden_sitar_432',       label: 'Golden Sitar 432 Hz',   emoji: '✨', cat: 'Ragas', color: '#fcd34d', top: '#1A1400', bot: '#0A0B00', desc: 'Healing resonance sitar at 432 Hz',          src: { uri: NADA_BASE + 'boopul-golden-sitar-healing-resonance-432hz-525936.m4a' } },
   { id: 'nada_sitar_vibes_i',          label: 'Sitar Vibes I',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NADA_BASE + 'gskvibes-sitar-2-361895.m4a' } },
   { id: 'nada_sitar_vibes_ii',         label: 'Sitar Vibes II',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NADA_BASE + 'gskvibes-sitar-4-361900.m4a' } },
   { id: 'nada_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
   { id: 'nada_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
   { id: 'nada_short_classical_sitar',  label: 'Classical Sitar Short',  emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Short Indian classical sitar',                src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-short-sitar-music-classical-indian-404177.m4a' } },
   { id: 'nada_sitar_moonlight',        label: 'Sitar in Moonlight',     emoji: '🌙', cat: 'Ragas', color: '#fcd34d', top: '#1A1400', bot: '#0A0A00', desc: 'Sitar resonating in the moonlit night',      src: { uri: NADA_BASE + 'nourishedbymusic-sitar-in-the-moonlight-115602.m4a' } },
-  { id: 'nada_sitar_holistic',         label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
+  { id: 'nada_sitar_holistic',         label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Meditations', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
   { id: 'nada_raga_sparkle',           label: 'Raga Sparkle',           emoji: '✨', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NADA_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
   { id: 'nada_sitar_temple',           label: 'Sitar in the Temple',    emoji: '🛕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Sacred sitar resonating in a temple',        src: { uri: NADA_BASE + 'playlistsons-sitar-in-the-temple-of-rats-430832.m4a' } },
   { id: 'nada_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🎸', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NADA_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
@@ -199,8 +199,6 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_sitar_raga_jog',         label: 'Sitar Raga Jog',         emoji: '🎵', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Classical Raga Jog on sitar',                 src: { uri: NADA_BASE + 'saseendran-sitar-melody-raga-jog-364969.m4a' } },
   { id: 'nada_sitar_type_beat',        label: 'Sitar Type Beat',        emoji: '🎶', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Smooth lo-fi sitar beat',                     src: { uri: NADA_BASE + 'u_67ccao27gv-sitar-type-beat-322065.m4a' } },
   // ── Flute ──────────────────────────────────────────────────────────────────
-  { id: 'nada_flute_infinite_sky',     label: 'Infinite Sky Flute',     emoji: '☁️', cat: 'Ragas', color: '#34d399', top: '#081A10', bot: '#040C08', desc: 'Flute soaring through infinite sky',          src: { uri: NADA_BASE + 'djovan-flute-of-the-infinite-sky-486758.m4a' } },
-  { id: 'nada_whispering_bamboo',      label: 'Whispering Bamboo',      emoji: '🎋', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Soft bamboo flute whispers',                   src: { uri: NADA_BASE + 'djovan-whispering-bamboo-melody-497104.m4a' } },
   { id: 'nada_zen_bamboo_flow',        label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
   { id: 'nada_ancestors_flute',        label: 'Ancestors Flute',        emoji: '🪶', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Native American ancestral flute',              src: { uri: NADA_BASE + 'k3lix_music-last-breath-of-ancestors-native-american-flute-214341.m4a' } },
   { id: 'nada_indian_flute_tabla_mix', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
@@ -399,6 +397,39 @@ const SOUND_PERIODS: Record<string, string[]> = {
   bansuri_tarana:       ['morning_kapha', 'afternoon_vata'],
   tanpura_mystic:       ['night_vata', 'afternoon_vata', 'evening_kapha', 'night_pitta'],
   tanpura_serene:       ['night_vata', 'morning_kapha', 'evening_kapha', 'night_pitta'],
+  // ── CDN Ragas — Morning ────────────────────────────────────────────────────
+  cdn_hansdhwani_432:   ['night_vata', 'morning_kapha', 'afternoon_vata', 'evening_kapha'],
+  cdn_bhairav_soul:     ['night_vata', 'morning_kapha'],
+  cdn_morning_aura:     ['night_vata', 'morning_kapha'],
+  cdn_calm_sunrise:     ['morning_kapha', 'midday_pitta'],
+  cdn_jogiya_morning:   ['night_vata', 'morning_kapha'],
+  // ── CDN Ragas — Evening & Focus ───────────────────────────────────────────
+  cdn_yaman_mental:     ['afternoon_vata', 'evening_kapha', 'night_pitta'],
+  cdn_yaman_jugalbandi: ['afternoon_vata', 'evening_kapha'],
+  cdn_bhimpalasi:       ['midday_pitta', 'afternoon_vata', 'evening_kapha'],
+  cdn_darbari_silence:  ['afternoon_vata', 'evening_kapha', 'night_pitta'],
+  cdn_eternal_union:    ['evening_kapha', 'night_pitta'],
+  // ── CDN Ragas — Sleep ─────────────────────────────────────────────────────
+  cdn_bageshree_sleep:  ['evening_kapha', 'night_pitta'],
+  cdn_monsoon_megh:     ['midday_pitta', 'afternoon_vata', 'night_pitta'],
+  cdn_monsoon_temple:   ['afternoon_vata', 'evening_kapha', 'night_pitta'],
+  // ── CDN Ragas — Instrumental ──────────────────────────────────────────────
+  cdn_naad_sangam:      ['morning_kapha', 'afternoon_vata', 'evening_kapha'],
+  cdn_naad_targan:      ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
+  cdn_sitar_tabla_soul: ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
+  cdn_shiv_kailash:     ['morning_kapha', 'midday_pitta', 'afternoon_vata', 'evening_kapha'],
+  cdn_carnatic_essence: ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
+  cdn_carnatic_flow:    ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
+  cdn_what_are_ragas:   ['morning_kapha', 'midday_pitta'],
+  // ── CDN Meditations — Devotional ──────────────────────────────────────────
+  cdn_aigiri_nandini:   ['night_vata', 'morning_kapha', 'evening_kapha'],
+  cdn_auspicious_mantras: ['night_vata', 'morning_kapha'],
+  cdn_kaal_bhairav:     ['evening_kapha', 'night_pitta'],
+  cdn_lingashtakam:     ['night_vata', 'morning_kapha', 'evening_kapha'],
+  cdn_nirvana_shatakam: ['night_vata', 'morning_kapha', 'afternoon_vata', 'evening_kapha'],
+  cdn_shiv_rudrashtakam:['morning_kapha', 'evening_kapha'],
+  cdn_shiv_swarnamala:  ['morning_kapha', 'evening_kapha'],
+  cdn_surya_sukta:      ['night_vata', 'morning_kapha'],
 };
 
 // Fallback when GPS / solar data unavailable
@@ -414,6 +445,8 @@ const ALL_SOUNDS_LIST: any[] = [
   ...(SLEEP_SOUNDS as readonly any[]).filter(s => !SLEEP_HIDDEN_IDS.has(s.id)),
   ...NADA_SOUNDS,
   ...MANTRA_LIBRARY.flatMap(g => g.sounds),
+  // CDN Raga long-form tracks (streamed, not downloaded)
+  ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_')),
 ];
 
 // ─── Solar-aware section label map ────────────────────────────────────────
@@ -1009,7 +1042,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
               const soundCount = cat === 'Sleep'
                 ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length
-                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat)].length;
+                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => s.id.startsWith('cdn_') && s.cat === cat)].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -1223,7 +1256,8 @@ const CategoryRows = memo(function CategoryRows({
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
         const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds], cat);
+        const cdnSounds = cat === 'Sleep' ? [] : ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') && s.cat === cat);
+        const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
         const subtags = CATEGORY_SUBTAGS[cat];
@@ -1472,7 +1506,9 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
     const mantra = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds)
       .filter(s => s.cat === cat)
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id], imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
-    result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra], cat));
+    const cdn = cat === 'Sleep' ? [] : ALL_SLEEP_SOUNDS
+      .filter(s => s.id.startsWith('cdn_') && s.cat === cat);
+    result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
   }
   return result;
 })();
@@ -1486,6 +1522,53 @@ const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
   { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sea_waves')!.src,     imageUri: SOUND_IMAGES['sea_waves'] },
 ];
 
+// ── Wave art helpers ─────────────────────────────────────────────────────────
+const makeWavePath = (W: number, phase: number, amplitude: number, wavelength: number, fillY: number): string => {
+  const pts: string[] = [];
+  for (let i = 0; i <= 48; i++) {
+    const x = (i / 48) * W;
+    const y = fillY + amplitude * Math.sin((x / wavelength) * Math.PI * 2 + phase);
+    pts.push(i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : `L${x.toFixed(1)} ${y.toFixed(1)}`);
+  }
+  pts.push(`L${W} ${W + 4} L0 ${W + 4} Z`);
+  return pts.join(' ');
+};
+
+function WaveView({ size, color, soundId, active, paused }: {
+  size: number; color: string; soundId: string; active: boolean; paused: boolean;
+}) {
+  const { meteringLevel } = useSoundPlayer();
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (!active || paused) return;
+    const iv = setInterval(() => setPhase(p => p + 0.075), 36);
+    return () => clearInterval(iv);
+  }, [active, paused]);
+  // Audio-reactive amplitude: quiet = small waves, loud = tall waves
+  const levelScale = paused ? 0.25 : (0.30 + meteringLevel * 0.70);
+  const fillY = size * 0.62;
+  const waveA = makeWavePath(size, phase, size * 0.058 * levelScale, size * 0.88, fillY);
+  const waveB = makeWavePath(size, -phase * 0.62 + 1.1, size * 0.040 * levelScale, size * 0.70, fillY + size * 0.028);
+  const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
+  return (
+    <View pointerEvents="none" style={{
+      position: 'absolute', width: size, height: size,
+      borderRadius: size / 2, overflow: 'hidden',
+      opacity: paused ? 0.30 : 1,
+    }}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <SvgClipPath id={cid}>
+            <SvgCircle cx={size / 2} cy={size / 2} r={size / 2} />
+          </SvgClipPath>
+        </Defs>
+        <Path d={waveA} fill={color + '22'} clipPath={`url(#${cid})`} />
+        <Path d={waveB} fill={color + '18'} clipPath={`url(#${cid})`} />
+      </Svg>
+    </View>
+  );
+}
+
 function ReelCard({
   sound, isActive, isPlaying, isPaused, sessionSecs, stopIdx,
   onPlay, onToggle, onStop, onChangeTimer, onPrev, onNext, isFirst, isLast,
@@ -1497,7 +1580,7 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
-  const { playingDurationSecs } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig } = useSoundPlayer();
   const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const ringRotAnim = useRef(new Animated.Value(0)).current;
@@ -1511,19 +1594,52 @@ function ReelCard({
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
   const imgFadeAnim = useRef(new Animated.Value(imgSource ? 0 : 1)).current;
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
-  const [meditLoopMode, setMeditLoopMode] = useState<'once' | 'loop'>('once');
-  useEffect(() => { setMeditLoopMode('once'); }, [sound.id]);
-  // Show Once/Loop for Meditations or Ragas that are actually longer than 5 minutes
-  const isMeditLong = (sound.cat === 'Meditations' || sound.cat === 'Ragas') && isPlaying && (playingDurationSecs ?? 0) > 300;
+  const [loopCountText, setLoopCountText] = useState('1');
+  useEffect(() => { setLoopCountText('1'); }, [sound.id]);
+  // Show Once/Loop for Meditations or Ragas that are actually longer than 6 minutes (360 s)
+  const isMeditLong = (sound.cat === 'Meditations' || sound.cat === 'Ragas') && isPlaying && (playingDurationSecs ?? 0) > 360;
+  // Instagram-style play/pause tap overlay
+  const playTapAnim = useRef(new Animated.Value(0)).current;
+  const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
+  const playTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Wave art animations
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const rippleAnimsRef = useRef([
+    new Animated.Value(0), new Animated.Value(0), new Animated.Value(0),
+  ]);
+  const rippleAnims = rippleAnimsRef.current;
+  // Auto-detect: when track duration becomes available for long tracks, silently set correct timer
+  const durSetRef = useRef(false);
+  useEffect(() => { durSetRef.current = false; }, [sound.id]);
+  useEffect(() => {
+    if (isMeditLong && !durSetRef.current && playingDurationSecs) {
+      durSetRef.current = true;
+      setLoopCountText('1');
+      setLoopConfig(false, 0, playingDurationSecs); // silent: update timer + play-once, no restart
+    }
+  }, [isMeditLong, playingDurationSecs]);
 
-  // Ken Burns — unique pan direction per sound for variety
-  const kbPanX = sound.id.charCodeAt(0) % 2 === 0 ? 10 : -10;
-  const kbPanY = sound.id.charCodeAt(1) % 2 === 0 ? 7 : -7;
-  const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.09] });
-  const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, kbPanX] });
-  const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, kbPanY] });
+  const applyCount = (newCount: number) => {
+    const count = Math.max(1, Math.min(9, newCount));
+    setLoopCountText(String(count));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!isPlaying) return;
+    const durSecs = playingDurationSecs ?? 1800;
+    const trimMs = sound.cat === 'Nature' ? 6000 : sound.cat === 'Birds' ? 4000 : 5000;
+    if (count === 1) {
+      setLoopConfig(false, 0, durSecs);
+    } else {
+      setLoopConfig(true, trimMs, Math.min(durSecs * count, 86400));
+    }
+  };
 
-  // Ken Burns animation — only animate when this card is active (battery-friendly)
+  // Zoom in / zoom out — clean cinematic breathe effect (no pan, just scale)
+  const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.16] });
+  // Keep pan values zeroed — pure zoom only
+  const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
+  const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
+
+  // Zoom-in / Zoom-out cinematic breathe — 12 s in, 12 s out, seamless loop
   useEffect(() => {
     if (!isActive) {
       kbAnim.stopAnimation();
@@ -1534,13 +1650,13 @@ function ReelCard({
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(kbAnim, {
-          toValue: 1, duration: 18000,
-          easing: Easing.inOut(Easing.sin),
+          toValue: 1, duration: 12000,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(kbAnim, {
-          toValue: 0, duration: 18000,
-          easing: Easing.inOut(Easing.sin),
+          toValue: 0, duration: 12000,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
       ])
@@ -1603,13 +1719,35 @@ function ReelCard({
 
   const RING_SIZE = Math.round(REEL_W * 0.62);
   const ringRotDeg = ringRotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const shimmerRot = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-  // Ring center sits at 34% from top — upper-center premium positioning, like top music players
-  const ringCenterY = REEL_H * 0.34;
+  useEffect(() => {
+    if (!isActive || !isPlaying || isPaused) {
+      rippleAnims.forEach(a => { a.stopAnimation(); a.setValue(0); });
+      shimmerAnim.stopAnimation(); shimmerAnim.setValue(0);
+      return;
+    }
+    const rippleLoops = rippleAnims.map((anim, i) =>
+      Animated.loop(Animated.sequence([
+        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(i * 680),
+        Animated.timing(anim, { toValue: 1, duration: 2100, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+      ]))
+    );
+    rippleLoops.forEach(l => l.start());
+    const shimmerLoop = Animated.loop(
+      Animated.timing(shimmerAnim, { toValue: 1, duration: 7000, useNativeDriver: true, easing: Easing.linear })
+    );
+    shimmerLoop.start();
+    return () => { rippleLoops.forEach(l => l.stop()); shimmerLoop.stop(); };
+  }, [isActive, isPlaying, isPaused]);
+
+  // Ring center sits at 44% from top — pushed down to clear the JUMP TO CATEGORY strip
+  const ringCenterY = REEL_H * 0.44;
   // Bottom edge of ring from top
   const ringBottomY = ringCenterY + RING_SIZE / 2;
-  // Timer button lives 18dp below the ring's bottom edge
-  const timerTopY = ringBottomY + 18;
+  // Timer button lives 38dp below the ring's bottom edge (increased for breathing room)
+  const timerTopY = ringBottomY + 38;
 
   return (
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
@@ -1692,6 +1830,44 @@ function ReelCard({
           borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
         }} />
 
+        {/* ── Liquid wave art ── */}
+        {isPlaying && (() => {
+          const S = RING_SIZE - 26;
+          return (
+            <>
+              {/* Expanding ripple rings */}
+              {rippleAnims.map((anim, i) => {
+                const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.88] });
+                const opacity = anim.interpolate({ inputRange: [0, 0.12, 0.60, 1], outputRange: [0, 0.42, 0.16, 0] });
+                return (
+                  <Animated.View key={i} pointerEvents="none" style={{
+                    position: 'absolute',
+                    width: S, height: S, borderRadius: S / 2,
+                    borderWidth: 1.2, borderColor: sound.color,
+                    opacity, transform: [{ scale }],
+                  }} />
+                );
+              })}
+              {/* Ambient shimmer sweep */}
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', width: S, height: S,
+                borderRadius: S / 2, overflow: 'hidden',
+                opacity: 0.07,
+                transform: [{ rotate: shimmerRot }],
+              }}>
+                <LinearGradient
+                  colors={['transparent', sound.color + 'CC', 'transparent', sound.color + '55', 'transparent']}
+                  locations={[0, 0.22, 0.50, 0.72, 1]}
+                  start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+                  style={{ flex: 1 }}
+                />
+              </Animated.View>
+              {/* Liquid wave SVG */}
+              <WaveView size={S} color={sound.color} soundId={sound.id} active={isActive} paused={isPaused} />
+            </>
+          );
+        })()}
+
         {/* CENTER content */}
         <Animated.View style={{
           position: 'absolute',
@@ -1702,10 +1878,10 @@ function ReelCard({
           {isPlaying ? (
             <>
               <Text style={{
-                fontSize: Math.round(RING_SIZE * 0.28),
+                fontSize: Math.round(RING_SIZE * 0.22),
                 fontWeight: '200',
                 color: '#FFFFFF',
-                letterSpacing: -2,
+                letterSpacing: -1.5,
                 fontFamily: 'Nunito_300Light',
                 textShadowColor: 'rgba(0,0,0,0.35)',
                 textShadowOffset: { width: 0, height: 1 },
@@ -1732,7 +1908,7 @@ function ReelCard({
         </Animated.View>
       </View>
 
-      {/* ── Timer button — separate absolute block, always below ring, no overlap ── */}
+      {/* ── Repeat counter (isMeditLong) / Stop timer (others) — absolute below ring ── */}
       <View style={{
         position: 'absolute',
         left: 0, right: 0,
@@ -1740,61 +1916,75 @@ function ReelCard({
         alignItems: 'center',
         zIndex: 12,
       }}>
-        {/* Frosted-glass timer picker — flat View (no nested ScrollView) */}
-        {timerPickerOpen && (
+        {isMeditLong ? (
+          /* ── Inline repeat counter — always visible, frictionless +/- ── */
           <View style={{
-            marginBottom: 12,
-            backgroundColor: 'rgba(14,14,20,0.88)',
-            borderRadius: 18,
+            flexDirection: 'row', alignItems: 'center',
+            backgroundColor: 'rgba(10,10,16,0.58)',
+            borderRadius: 99,
             borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.14)',
-            paddingTop: 12, paddingBottom: 14,
-            paddingHorizontal: 14,
+            borderColor: 'rgba(255,255,255,0.22)',
             overflow: 'hidden',
-            shadowColor: '#000',
-            shadowOpacity: 0.65,
-            shadowRadius: 22,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 20,
+            shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14,
+            shadowOffset: { width: 0, height: 3 }, elevation: 10,
           }}>
             <LinearGradient
-              colors={['rgba(255,255,255,0.07)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)']}
+              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
-            {isMeditLong ? (
-              <>
-                <Text style={{ fontSize: 8.5, fontWeight: '600', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>PLAY MODE</Text>
-                <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
-                  {([{ id: 'once', label: 'Once', icon: 'play-outline' }, { id: 'loop', label: 'Loop', icon: 'repeat-outline' }] as const).map(mode => {
-                    const active = meditLoopMode === mode.id;
-                    return (
-                      <TouchableOpacity
-                        key={mode.id}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          setMeditLoopMode(mode.id);
-                          onChangeTimer(mode.id === 'once' ? -1 : -2);
-                          setTimerPickerOpen(false);
-                        }}
-                        style={{
-                          flexDirection: 'row', alignItems: 'center', gap: 7,
-                          paddingHorizontal: 28, paddingVertical: 12, borderRadius: 99,
-                          borderWidth: 1,
-                          borderColor: active ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.16)',
-                          backgroundColor: active ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.04)',
-                        }}>
-                        <Ionicons name={mode.icon} size={14} color={active ? '#FFFFFF' : 'rgba(255,255,255,0.50)'} />
-                        <Text style={{ fontSize: 14, fontWeight: active ? '700' : '400', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)' }}>
-                          {mode.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </>
-            ) : (
-              <>
+            {/* Minus */}
+            <TouchableOpacity
+              onPress={() => applyCount(parseInt(loopCountText, 10) - 1)}
+              activeOpacity={0.65}
+              style={{
+                width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+                opacity: parseInt(loopCountText, 10) <= 1 ? 0.28 : 1,
+              }}
+              disabled={parseInt(loopCountText, 10) <= 1}
+            >
+              <Text style={{ fontSize: 22, color: '#FFFFFF', lineHeight: 26 }}>−</Text>
+            </TouchableOpacity>
+            {/* Label */}
+            <View style={{ paddingHorizontal: 16, alignItems: 'center', minWidth: 120 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>
+                {parseInt(loopCountText, 10) === 1 ? 'Play Once' : `×${loopCountText} Repeats`}
+              </Text>
+              <Text style={{ fontSize: 8, fontWeight: '500', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, marginTop: 2 }}>
+                {parseInt(loopCountText, 10) === 1 ? 'PLAY ONCE' : 'REPEAT'}
+              </Text>
+            </View>
+            {/* Plus */}
+            <TouchableOpacity
+              onPress={() => applyCount(parseInt(loopCountText, 10) + 1)}
+              activeOpacity={0.65}
+              style={{
+                width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+                opacity: parseInt(loopCountText, 10) >= 9 ? 0.28 : 1,
+              }}
+              disabled={parseInt(loopCountText, 10) >= 9}
+            >
+              <Text style={{ fontSize: 22, color: '#FFFFFF', lineHeight: 26 }}>+</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* ── Regular stop-timer picker for non-meditLong sounds ── */
+          <>
+            {timerPickerOpen && (
+              <View style={{
+                marginBottom: 12,
+                backgroundColor: 'rgba(14,14,20,0.88)',
+                borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+                paddingTop: 12, paddingBottom: 14, paddingHorizontal: 14,
+                overflow: 'hidden',
+                shadowColor: '#000', shadowOpacity: 0.65, shadowRadius: 22,
+                shadowOffset: { width: 0, height: 6 }, elevation: 20,
+              }}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.07)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
                 <Text style={{ fontSize: 8.5, fontWeight: '600', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>STOP AFTER</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
                   {STOP_TIMES.map((t, i) => {
@@ -1818,58 +2008,92 @@ function ReelCard({
                     );
                   })}
                 </View>
-              </>
+              </View>
             )}
-          </View>
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTimerPickerOpen(v => !v); }}
+              activeOpacity={0.78}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                paddingHorizontal: 22, paddingVertical: 11, borderRadius: 99,
+                borderWidth: 1,
+                borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
+                backgroundColor: timerPickerOpen ? 'rgba(10,10,16,0.70)' : 'rgba(10,10,16,0.45)',
+                overflow: 'hidden',
+                shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14,
+                shadowOffset: { width: 0, height: 3 }, elevation: 10,
+              }}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']}
+                start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <Ionicons name="time-outline" size={17} color="rgba(255,255,255,0.90)" />
+              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>Timer</Text>
+            </TouchableOpacity>
+          </>
         )}
-
-        {/* Elegant clock-style Timer pill */}
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTimerPickerOpen(v => !v); }}
-          activeOpacity={0.78}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 7,
-            paddingHorizontal: 22, paddingVertical: 11,
-            borderRadius: 99,
-            borderWidth: 1,
-            borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
-            backgroundColor: timerPickerOpen ? 'rgba(10,10,16,0.70)' : 'rgba(10,10,16,0.45)',
-            overflow: 'hidden',
-            shadowColor: '#000',
-            shadowOpacity: 0.45,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 3 },
-            elevation: 10,
-          }}
-        >
-          {/* Subtle glass shimmer */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']}
-            start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          {/* Elegant clock icon — using alarm/time icon for clean iOS look */}
-          <Ionicons name="time-outline" size={17} color="rgba(255,255,255,0.90)" />
-          <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>
-            {isMeditLong ? (meditLoopMode === 'loop' ? 'Loop' : 'Once') : 'Timer'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Tap upper area to toggle play/pause */}
+      {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => { bumpControlsRef.current(); isPlaying ? onToggle() : onPlay(); }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: REEL_H * 0.62, zIndex: 3 }}
+        onPress={() => {
+          bumpControlsRef.current();
+          if (timerPickerOpen) { setTimerPickerOpen(false); return; }
+          isPlaying ? onToggle() : onPlay();
+          // Instagram flash: scale in, hold, fade out
+          playTapScaleAnim.setValue(0.6);
+          playTapAnim.setValue(0);
+          Animated.parallel([
+            Animated.timing(playTapAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
+            Animated.spring(playTapScaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
+          ]).start();
+          if (playTapTimerRef.current) clearTimeout(playTapTimerRef.current);
+          playTapTimerRef.current = setTimeout(() => {
+            Animated.timing(playTapAnim, { toValue: 0, duration: 380, useNativeDriver: true }).start();
+          }, 1100);
+        }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
       />
 
+      {/* Instagram-style center play/pause icon — flashes on tap, fades away */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 6,
+          opacity: playTapAnim,
+          transform: [{ scale: playTapScaleAnim }],
+        }}
+      >
+        <View style={{
+          width: 78, height: 78, borderRadius: 39,
+          backgroundColor: 'rgba(0,0,0,0.52)',
+          alignItems: 'center', justifyContent: 'center',
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+        }}>
+          <Ionicons
+            name={isPlaying && !isPaused ? 'pause' : 'play'}
+            size={36}
+            color="rgba(255,255,255,0.92)"
+            style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }}
+          />
+        </View>
+      </Animated.View>
+
       {/* ── Bottom controls ── */}
-      <Animated.View style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        paddingHorizontal: 26,
-        paddingBottom: Math.max(insets.bottom + 14, 26),
-        zIndex: 8, opacity: controlsAnim,
-      }}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          paddingHorizontal: 26,
+          paddingBottom: Math.max(insets.bottom + 10, 20),
+          zIndex: 8, opacity: controlsAnim,
+        }}
+      >
 
         {/* Category badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -1885,62 +2109,18 @@ function ReelCard({
         </View>
 
         {/* Title */}
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 }} numberOfLines={1}>
+        <Text style={{ fontSize: 21, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3, marginBottom: 2 }} numberOfLines={1}>
           {sound.label}
         </Text>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', marginBottom: 14, lineHeight: 17 }} numberOfLines={1}>
+        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', marginBottom: 10, lineHeight: 16 }} numberOfLines={1}>
           {sound.desc}
         </Text>
 
-        {/* Timer progress bar — hidden for Meditations (session duration is detached from STOP_TIMES) */}
-        {isPlaying && sound.cat !== 'Meditations' && (
-          <View style={{ marginBottom: 14 }}>
-            <View style={{ height: 2, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 2 }}>
-              <View style={{ height: '100%', borderRadius: 2, backgroundColor: sound.color, width: `${Math.max(2, Math.min(100, (sessionSecs / (stopIdx >= 0 && stopIdx < STOP_TIMES.length ? STOP_TIMES[stopIdx].secs : sessionSecs || 1)) * 100))}%` }} />
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)' }}>0:00</Text>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: sound.color + 'CC' }}>{fmtTimer(sessionSecs)} left</Text>
-            </View>
-          </View>
-        )}
-
-        {/* ── Big centered Play/Pause button ── */}
-        <View style={{ alignItems: 'center', marginBottom: 8 }}>
-          <TouchableOpacity
-            onPress={isPlaying ? onToggle : onPlay}
-            activeOpacity={0.82}
-            style={{
-              width: 68, height: 68, borderRadius: 34,
-              alignItems: 'center', justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.35)',
-              shadowColor: sound.color,
-              shadowOpacity: 0.50, shadowRadius: 20,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 12,
-              overflow: 'hidden',
-            }}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.08)']}
-              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <Ionicons
-              name={isPlaying && !isPaused ? 'pause' : 'play'}
-              size={26}
-              color="#FFFFFF"
-              style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Swipe for next (bottom) — kept exactly ── */}
+        {/* ── Swipe hint ── */}
         {isActive && !isLast && (
-          <Animated.View style={{ alignItems: 'center', marginTop: 4, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.40)" />
-            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.40)', letterSpacing: 1.4, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
+          <Animated.View style={{ alignItems: 'center', marginTop: 2, transform: [{ translateY: hintAnim }] }}>
+            <Ionicons name="chevron-up" size={11} color="rgba(255,255,255,0.32)" />
+            <Text style={{ fontSize: 8, fontWeight: '600', color: 'rgba(255,255,255,0.32)', letterSpacing: 1.2, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -2197,33 +2377,55 @@ function SoundReelsModal({
             </TouchableOpacity>
           </View>
 
-          {/* ── Category pills — premium tab bar style ── */}
-          <View style={{ flexDirection: 'row', paddingHorizontal: 10, paddingBottom: 8, marginTop: 2, gap: 0 }}>
-            {(CATEGORIES.slice(1) as string[]).map(cat => {
-              const isActive = activeSound?.cat === cat;
-              const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  onPress={() => scrollToCategory(cat)}
-                  activeOpacity={0.75}
-                  style={{
-                    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3,
-                    paddingVertical: 7, paddingHorizontal: 2, borderRadius: 10,
-                    backgroundColor: isActive ? meta.color + '22' : 'rgba(0,0,0,0.18)',
-                    borderWidth: 1,
-                    borderColor: isActive ? meta.color + '60' : 'rgba(255,255,255,0.08)',
-                    marginHorizontal: 2,
-                  }}
-                >
-                  <Text style={{ fontSize: 11 }}>{meta.emoji}</Text>
-                  <Text style={{ fontSize: 8.5, fontWeight: isActive ? '800' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.55)', letterSpacing: 0.1 }} numberOfLines={1}>
-                    {cat}
-                  </Text>
-                  {isActive && <View style={{ width: 16, height: 1.5, borderRadius: 1, backgroundColor: meta.color, marginTop: 1 }} />}
-                </TouchableOpacity>
-              );
-            })}
+          {/* ── Category selector — instructional tone with clear "tap to jump" cue ── */}
+          <View style={{ paddingHorizontal: 10, paddingBottom: 10, marginTop: 4 }}>
+            {/* Instructional hint row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8, paddingHorizontal: 4 }}>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.36)', fontWeight: '500', letterSpacing: 0.8 }}>JUMP TO CATEGORY →</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {(CATEGORIES.slice(1) as string[]).map(cat => {
+                const isActive = activeSound?.cat === cat;
+                const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => scrollToCategory(cat)}
+                    activeOpacity={0.72}
+                    style={{
+                      flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4,
+                      paddingTop: 9, paddingBottom: isActive ? 7 : 9, paddingHorizontal: 2,
+                      borderRadius: 14,
+                      backgroundColor: isActive ? meta.color + '28' : 'rgba(255,255,255,0.07)',
+                      borderWidth: isActive ? 1.5 : 1,
+                      borderColor: isActive ? meta.color + '80' : 'rgba(255,255,255,0.12)',
+                    }}
+                  >
+                    {/* Large emoji for instant visual recognition */}
+                    <Text style={{ fontSize: 16 }}>{meta.emoji}</Text>
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        fontWeight: isActive ? '800' : '500',
+                        color: isActive ? meta.color : 'rgba(255,255,255,0.50)',
+                        letterSpacing: 0.2,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {cat}
+                    </Text>
+                    {/* Active underline bar */}
+                    {isActive && (
+                      <View style={{
+                        width: '55%', height: 2, borderRadius: 1,
+                        backgroundColor: meta.color,
+                        marginTop: 2,
+                      }} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </SafeAreaView>
 
@@ -2388,7 +2590,7 @@ export default function SleepTab() {
   const [now, setNow] = useState(new Date());
 
   // ── Global sound player (context) ──────────────────────────
-  const { playingId, isPaused, sessionSecs, togglePause, stopSound, changeTimer, playSound, openFullPlayer, registerReelsOpener, unregisterReelsOpener } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, openFullPlayer, registerReelsOpener, unregisterReelsOpener } = useSoundPlayer();
 
   // ── Settings ───────────────────────────────────────────────
   const [wakeHour,      setWakeHour]      = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.hour);
@@ -2494,7 +2696,10 @@ export default function SleepTab() {
   // ── Open reel from home page "Listen & Recharge" button ──────────────────
   useEffect(() => {
     if (openReel === '1') {
-      setReelsStartIdx(0);
+      const ragaIdx = REELS_ALL_SOUNDS.findIndex(s => s.cat === 'Ragas');
+      setReelsStartIdx(ragaIdx !== -1 ? ragaIdx : 0);
+      setCategory('Ragas');
+      setSelectedCat('Ragas');
       setShowReels(true);
       router.setParams({ openReel: undefined });
     }
@@ -2585,6 +2790,16 @@ export default function SleepTab() {
     setShowReels(true);
   }, []);
 
+  // Category-aware trim helper — cuts seamless-loop end before seeking back to 0
+  // Nature: 6 s (ambient loops often have a longer tail / fade)
+  // Birds:  4 s (bird calls end crisply — shorter trim avoids cutting chirps)
+  // Others: 5 s default
+  const getReelTrimSecs = (cat: string): number => {
+    if (cat === 'Nature') return 6;
+    if (cat === 'Birds')  return 4;
+    return 5;
+  };
+
   // Reels: play a sound by id (used when swiping between reels — no mood re-ask)
   const handleReelPlaySound = useCallback((id: string) => {
     const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
@@ -2593,7 +2808,8 @@ export default function SleepTab() {
       reelLoopModeRef.current = null;
       const metaFull = { ...meta, imageUri: SOUND_IMAGES[id], imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
       const secs = STOP_TIMES[stopIdx >= 0 ? stopIdx : 0]?.secs ?? STOP_TIMES[0].secs;
-      playSound(metaFull, secs, undefined, 5, true); // always loop on swipe; user can change via timer picker
+      const trimSecs = getReelTrimSecs(meta.cat);
+      playSound(metaFull, secs, undefined, trimSecs, true); // loop on swipe; trim per category
     }
   }, [playSound, stopIdx]);
 
@@ -2605,25 +2821,44 @@ export default function SleepTab() {
   const changeStopTimer = (idx: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (idx === -1) {
-      // Meditation “Once” mode — play through once then stop
+      // Meditation "Once" mode — use real sound duration, cap at 60 min
       reelLoopModeRef.current = false;
-      changeTimer(7200);
+      const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
+      changeTimer(actualSecs);
       if (playingId) {
         const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
         if (meta) {
           const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-          playSound(mf, 7200, undefined, 0, false);
+          playSound(mf, actualSecs, undefined, 0, false); // 0 trim — play fully to end
         }
       }
     } else if (idx === -2) {
-      // Meditation “Loop” mode — loop indefinitely
+      // Meditation "Loop" mode — loop indefinitely (8 hr window)
       reelLoopModeRef.current = true;
       changeTimer(28800);
       if (playingId) {
         const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
         if (meta) {
           const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-          playSound(mf, 28800, undefined, 5, true);
+          const trimSecs = getReelTrimSecs(meta.cat);
+          playSound(mf, 28800, undefined, trimSecs, true);
+        }
+      }
+    } else if (idx === -3) {
+      // Auto-detect: silently update timer to real track duration, no restart
+      const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
+      changeTimer(actualSecs);
+    } else if (idx > 200) {
+      // Loop x N mode — idx encodes total seconds directly (computed in ReelCard)
+      reelLoopModeRef.current = true;
+      const totalSecs = idx;
+      changeTimer(totalSecs);
+      if (playingId) {
+        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+        if (meta) {
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          const trimSecs = getReelTrimSecs(meta.cat);
+          playSound(mf, totalSecs, undefined, trimSecs, true);
         }
       }
     } else {

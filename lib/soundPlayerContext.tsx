@@ -36,6 +36,8 @@ type SoundPlayerCtx = {
   togglePause: () => Promise<void>;
   stopSound: (triggerCb?: boolean) => Promise<void>;
   changeTimer: (secs: number) => void;
+  setLoopConfig: (shouldLoop: boolean, trimMs: number, totalSecs: number) => void;
+  meteringLevel: number;
   moodPhase: 'pre' | 'post' | 'result' | null;
   preMood: MoodKey | null;
   requestPlay: (meta: PlayableSoundMeta, durationSecs: number) => void;
@@ -59,6 +61,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [playingDurationSecs, setPlayingDurSecs] = useState<number | null>(null);
   const [playingMeta, setPlayingMeta]         = useState<PlayableSoundMeta | null>(null);
   const [mixedSounds, setMixedSounds]   = useState<PlayableSoundMeta[]>([]);
+  const [meteringLevel, setMeteringLevel] = useState(0);
+  const meteringRef = useRef(0);
 
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
   const [preMood, setPreMood]           = useState<MoodKey | null>(null);
@@ -120,7 +124,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }
       const { sound } = await Audio.Sound.createAsync(
         resolvedSrc,
-        { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current },
+        { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 80 },
       );
       // Stale-epoch check: createAsync is async; if a newer playSound displaced
       // this one while we were awaiting, silently unload and bail.
@@ -136,6 +140,13 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         // Capture actual track duration once (first time it’s available from decoder)
         if (status.durationMillis != null) {
           setPlayingDurSecs(prev => prev ?? Math.round(status.durationMillis! / 1000));
+        }
+        // Audio-reactive metering: normalize dB to 0-1 with exponential smoothing
+        if ((status as any).metering != null && !isPausedRef.current) {
+          const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
+          const smoothed = meteringRef.current * 0.38 + raw * 0.62;
+          meteringRef.current = smoothed;
+          setMeteringLevel(smoothed);
         }
         // Trim: seek to start when within last trimLastMs of the track.
         // Skip in once-play mode — let the track play through fully.
@@ -171,9 +182,10 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           }
         }
       });
-      // Enable periodic position updates so the trim threshold can be detected
+      // Enable metering + ensure frequent updates for trim detection
+      sound.setStatusAsync({ isMeteringEnabled: true } as any).catch(() => {});
       if (trimLastMs > 0) {
-        sound.setStatusAsync({ progressUpdateIntervalMillis: 500 }).catch(() => {});
+        sound.setStatusAsync({ progressUpdateIntervalMillis: 200 }).catch(() => {});
       }
       mixRefs.current.set(meta.id, sound);
       return sound;
@@ -216,6 +228,10 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           if (restartingIdsRef.current.has(id)) continue;
           try {
             const status = await snd.getStatusAsync();
+            // Guard: stopAllRefs() may have run while we awaited getStatusAsync().
+            // If this sound was removed from the map, abort — do not reload it into
+            // a playSound() session that has already started its own sounds.
+            if (!mixRefs.current.has(id)) continue;
             if (!status.isLoaded || status.isPlaying) continue;
             restartingIdsRef.current.add(id);
             // Use replayAsync only when at end-of-file (isLooping silently failed).
@@ -225,7 +241,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
               status.positionMillis >= (status.durationMillis - 500);
             await (isAtEnd ? snd.replayAsync() : snd.playAsync()).catch(async () => {
               restartingIdsRef.current.delete(id);
-              // playAsync/replayAsync failed — reload the sound object from scratch
+              // playAsync/replayAsync failed — reload only if sound still belongs to active mix
+              if (!mixRefs.current.has(id)) return;
               const meta = mixedSoundsRef.current.find(s => s.id === id);
               if (meta) {
                 try { snd.setOnPlaybackStatusUpdate(null); } catch {}
@@ -238,7 +255,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             restartingIdsRef.current.delete(id);
           } catch {
             restartingIdsRef.current.delete(id);
-            // getStatusAsync threw — native sound object is broken; reload fresh
+            // getStatusAsync threw — only reload if sound still in active mix
+            if (!mixRefs.current.has(id)) continue;
             const meta = mixedSoundsRef.current.find(s => s.id === id);
             if (meta) {
               mixRefs.current.delete(id);
@@ -259,8 +277,14 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     // and do not attempt to restart sounds that are already being torn down.
     mixRefs.current.clear();
     restartingIdsRef.current.clear();
-    await Promise.all(entries.map(async ([, snd]) => {
+    // CRITICAL: null out callbacks synchronously — before any await — so native audio
+    // events cannot fire between the restartingIdsRef.current.clear() above and the
+    // async Promise.all below. Without this, a didJustFinish event could call
+    // replayAsync() on a sound whose stop is already in-flight, crashing the audio engine.
+    for (const [, snd] of entries) {
       try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+    }
+    await Promise.all(entries.map(async ([, snd]) => {
       try { await snd.stopAsync(); await snd.unloadAsync(); } catch {}
     }));
   }, []);
@@ -278,6 +302,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     noLoopRef.current = false;
     setSessionSecs(21 * 60);
     setPlayingDurSecs(null);
+    meteringRef.current = 0;
+    setMeteringLevel(0);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
     else { stopCbRef.current = null; }
   }, [clearTimer, clearHeartbeat, stopAllRefs]);
@@ -409,6 +435,13 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     if (mixRefs.current.size > 0 && !isPausedRef.current) startTimer(secs);
   }, [startTimer]);
 
+  const setLoopConfig = useCallback((shouldLoop: boolean, trimMs: number, totalSecs: number) => {
+    noLoopRef.current = !shouldLoop;
+    reelTrimMsRef.current = trimMs;
+    setSessionSecs(totalSecs);
+    if (mixRefs.current.size > 0 && !isPausedRef.current) startTimer(totalSecs);
+  }, [startTimer]);
+
   const requestPlay = useCallback((meta: PlayableSoundMeta, durationSecs: number) => {
     stopCbRef.current = null;
     pendingMetaRef.current = meta;
@@ -488,7 +521,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
-      playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer,
+      playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringLevel,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
       showFullPlayer, openFullPlayer, closeFullPlayer,

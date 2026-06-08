@@ -18,7 +18,7 @@ const CAT_COLORS: Record<string, string> = {
 
 const CAT_EMOJI: Record<string, string> = {
   Rain: '🌧️', Ocean: '🌊', Nature: '🌿', Sacred: '🕉️',
-  'Sitar & Flute': '�', Tabla: '🥁', Birds: '🐦',
+  'Sitar & Flute': '🎸', Tabla: '🥁', Birds: '🐦',
   Tanpura: '🎵', World: '🌍', Mantra: '📿', Stotra: '🌟',
 };
 
@@ -44,130 +44,136 @@ type Props = {
   gridStyle?: ViewStyle;
 };
 
+const CARD_W = 106;
+const CARD_H = 108;
+
 export default function SoundPicker({
-  sounds, cats, activeCat, onCatChange,
+  sounds, cats,
   selectedId, onSelect, previewingId, onTogglePreview,
-  cardWidth, catScrollStyle, gridStyle,
+  catScrollStyle,
 }: Props) {
-  const filteredSounds = sounds.filter(s => s.cat === activeCat);
+  const pH = (catScrollStyle as any)?.paddingHorizontal ?? 20;
 
   return (
-    <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={catScrollStyle}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {cats.map(cat => {
-          const isCatActive = activeCat === cat;
-          const color = CAT_COLORS[cat] ?? '#FFFFFF55';
-          return (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCatChange(cat); }}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 5,
-                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1,
-                borderColor: isCatActive ? color : '#FFFFFF15',
-                backgroundColor: isCatActive ? color + '18' : 'transparent',
-              }}
-            >
-              <Text style={{ fontSize: 11 }}>{CAT_EMOJI[cat] ?? '🎵'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: isCatActive ? color : '#FFFFFF55', letterSpacing: 0.5 }}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Sound count header */}
-      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }, { paddingHorizontal: (gridStyle as any)?.paddingHorizontal ?? 0 }]}>
-        <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.5 }}>
-          {filteredSounds.length} SOUND{filteredSounds.length !== 1 ? 'S' : ''}
-        </Text>
-        {previewingId && filteredSounds.some(s => s.id === previewingId) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
-            <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.5 }}>NOW PLAYING</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }, gridStyle]}>
-        {filteredSounds.map(snd => {
-          const active = selectedId === snd.id;
-          const previewing = previewingId === snd.id;
-          const imgSrc = snd.id === 'lalitha'
-            ? LALITHA_IMG
-            : (SOUND_IMAGES[snd.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[snd.id]) } : undefined);
-          return (
-            <TouchableOpacity
-              key={snd.id}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(snd.id); }}
-              activeOpacity={0.82}
-              style={{
-                width: '31%', height: 104, borderRadius: 16, overflow: 'hidden',
-                borderWidth: active ? 2 : 1, borderColor: active ? snd.color : '#FFFFFF14',
-              }}
-            >
-              <ImageBackground source={imgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 15 }}>
-                {!imgSrc && <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#0E0C18' }]} />}
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.78)']}
-                  style={[StyleSheet.absoluteFillObject, { borderRadius: 15 }]}
-                />
-                {active && (
-                  <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '22' }]} />
-                )}
-                {previewing && (
-                  <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#10b98112' }]} />
-                )}
-                <View style={{ flex: 1, padding: 8, justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <TouchableOpacity
-                      onPress={e => { e.stopPropagation?.(); onTogglePreview(snd); }}
-                      style={{
-                        width: 28, height: 28, borderRadius: 14,
-                        backgroundColor: previewing ? '#10b98140' : 'rgba(0,0,0,0.50)',
-                        borderWidth: 1,
-                        borderColor: previewing ? '#10b98180' : 'rgba(255,255,255,0.18)',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={{ fontSize: 9, color: previewing ? '#10b981' : '#FFFFFFCC' }}>
-                        {previewing ? '■' : '▶'}
-                      </Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 17 }}>{snd.emoji}</Text>
-                  </View>
-                  <View>
-                    <Text
-                      style={{ fontSize: 10, fontWeight: '800', color: active ? snd.color : '#FFFFFFEE', lineHeight: 13 }}
-                      numberOfLines={2}
-                    >
-                      {snd.label}
-                    </Text>
-                    {active ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
-                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
-                        <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900', letterSpacing: 0.3 }}>SELECTED</Text>
-                      </View>
-                    ) : previewing ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
-                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />
-                        <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.3 }}>PLAYING</Text>
-                      </View>
-                    ) : null}
-                  </View>
+    <View style={{ paddingBottom: 8 }}>
+      {cats.map(cat => {
+        const catSounds = sounds.filter(s => s.cat === cat);
+        if (catSounds.length === 0) return null;
+        const color = CAT_COLORS[cat] ?? '#FFFFFF55';
+        const emoji = CAT_EMOJI[cat] ?? '🎵';
+        const hasPlayingInCat = previewingId != null && catSounds.some(s => s.id === previewingId);
+        return (
+          <View key={cat} style={{ marginBottom: 18 }}>
+            {/* Section header */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              paddingHorizontal: pH, marginBottom: 10,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <View style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  backgroundColor: color + '18', borderWidth: 1, borderColor: color + '40',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
                 </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </>
+                <Text style={{ fontSize: 12, fontWeight: '900', color: color, letterSpacing: 0.8 }}>
+                  {cat.toUpperCase()}
+                </Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 0.5 }}>
+                  {catSounds.length}
+                </Text>
+              </View>
+              {hasPlayingInCat && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
+                  <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.5 }}>NOW PLAYING</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Horizontal row of sound cards */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: pH, gap: 8 }}
+            >
+              {catSounds.map(snd => {
+                const active = selectedId === snd.id;
+                const previewing = previewingId === snd.id;
+                const imgSrc = snd.id === 'lalitha'
+                  ? LALITHA_IMG
+                  : (SOUND_IMAGES[snd.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[snd.id]) } : undefined);
+                return (
+                  <TouchableOpacity
+                    key={snd.id}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(snd.id); }}
+                    activeOpacity={0.82}
+                    style={{
+                      width: CARD_W, height: CARD_H, borderRadius: 16, overflow: 'hidden',
+                      borderWidth: active ? 2 : 1,
+                      borderColor: active ? snd.color : previewing ? '#10b98155' : '#FFFFFF14',
+                    }}
+                  >
+                    <ImageBackground source={imgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 15 }}>
+                      {!imgSrc && <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#0E0C18' }]} />}
+                      <LinearGradient
+                        colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.80)']}
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 15 }]}
+                      />
+                      {active && (
+                        <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: snd.color + '22' }]} />
+                      )}
+                      {previewing && (
+                        <View style={[StyleSheet.absoluteFillObject, { borderRadius: 15, backgroundColor: '#10b98112' }]} />
+                      )}
+                      <View style={{ flex: 1, padding: 8, justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <TouchableOpacity
+                            onPress={e => { e.stopPropagation?.(); onTogglePreview(snd); }}
+                            style={{
+                              width: 26, height: 26, borderRadius: 13,
+                              backgroundColor: previewing ? '#10b98140' : 'rgba(0,0,0,0.55)',
+                              borderWidth: 1,
+                              borderColor: previewing ? '#10b98180' : 'rgba(255,255,255,0.18)',
+                              alignItems: 'center', justifyContent: 'center',
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={{ fontSize: 8, color: previewing ? '#10b981' : '#FFFFFFCC' }}>
+                              {previewing ? '■' : '▶'}
+                            </Text>
+                          </TouchableOpacity>
+                          <Text style={{ fontSize: 16 }}>{snd.emoji}</Text>
+                        </View>
+                        <View>
+                          <Text
+                            style={{ fontSize: 10, fontWeight: '800', color: active ? snd.color : '#FFFFFFEE', lineHeight: 13 }}
+                            numberOfLines={2}
+                          >
+                            {snd.label}
+                          </Text>
+                          {active ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
+                              <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900', letterSpacing: 0.3 }}>SELECTED</Text>
+                            </View>
+                          ) : previewing ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />
+                              <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.3 }}>PLAYING</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        );
+      })}
+    </View>
   );
 }

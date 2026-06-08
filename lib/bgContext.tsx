@@ -9,7 +9,7 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
-  'brahma', 'predawn', 'sunrise', 'morning_early', 'morning',
+  'brahma', 'predawn', 'sunrise', 'morning_early', 'morning', 'morning_late',
   'midday_early', 'midday', 'afternoon', 'sandhya', 'sandhya_late', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
@@ -18,8 +18,9 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   brahma:    { label: 'Brahma Muhurta', sub: 'The sacred pre-dawn',      emoji: '🌌', time: '4–5 AM' },
   predawn:   { label: 'Pre-Dawn',       sub: 'First glow of morning',    emoji: '🌄', time: '5–5:30 AM' },
   sunrise:   { label: 'Sunrise',        sub: 'Golden hour clarity',      emoji: '🌅', time: '5:30–8 AM' },
-  morning_early: { label: 'Morning (Early)', sub: 'Fresh Kapha sunrise glow', emoji: '🌱', time: '8–9 AM' },
-  morning:   { label: 'Morning',        sub: 'Kapha energy, lush green', emoji: '🌿', time: '9–10 AM' },
+  morning_early: { label: 'Morning (Early)', sub: 'Fresh Kapha sunrise glow', emoji: '🌱', time: '8–8:40 AM' },
+  morning:   { label: 'Morning',        sub: 'Kapha energy, lush green', emoji: '🌿', time: '8:40–9:20 AM' },
+  morning_late: { label: 'Morning (Late)', sub: 'Bright Kapha clarity',   emoji: '🌳', time: '9:20–10 AM' },
   midday_early: { label: 'Midday (Early)', sub: 'Rising solar energy',   emoji: '☀️', time: '10 AM–12 PM' },
   midday:    { label: 'Midday',         sub: 'Peak solar, full power',   emoji: '🔥', time: '12 PM–2 PM' },
   afternoon: { label: 'Afternoon',      sub: 'Warm Pitta fire',          emoji: '🌤️', time: '2–5:30 PM' },
@@ -40,6 +41,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   sunrise:   '#2A1200',
   morning_early: '#0A1602',
   morning:   '#0E1A04',
+  morning_late: '#121E04',
   midday_early: '#1E1200',
   midday:    '#1C1400',
   afternoon: '#1E1000',
@@ -58,6 +60,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   sunrise:   '#4A2200',
   morning_early: '#163006',
   morning:   '#1C3008',
+  morning_late: '#22380A',
   midday_early: '#3C2800',
   midday:    '#3A2600',
   afternoon: '#361C00',
@@ -82,9 +85,12 @@ function getTimedBgKey(
     if (h < sunrise - 0.3) return 'brahma';
     if (h < sunrise + 0.5) return 'predawn';
     if (h < sunrise + 2)   return 'sunrise';
-    const morningMid = (sunrise + 2 + kaphaPeriodEnd) / 2;
-    if (h < morningMid)     return 'morning_early';
-    if (h < kaphaPeriodEnd) return 'morning';
+    const morningWindow = kaphaPeriodEnd - (sunrise + 2);
+    const morningThird1 = sunrise + 2 + morningWindow / 3;
+    const morningThird2 = sunrise + 2 + morningWindow * 2 / 3;
+    if (h < morningThird1)  return 'morning_early';
+    if (h < morningThird2)  return 'morning';
+    if (h < kaphaPeriodEnd) return 'morning_late';
     if (h < solarNoon + 1) return 'midday_early';
     if (h < solarNoon + 2) return 'midday';
     const sandhyaStart = sunset - 1.5;
@@ -103,8 +109,9 @@ function getTimedBgKey(
   if (h >= 2   && h < 5)    return 'brahma';
   if (h >= 5   && h < 5.5)  return 'predawn';
   if (h >= 5.5 && h < 8)    return 'sunrise';
-  if (h >= 8   && h < 9)    return 'morning_early';
-  if (h >= 9   && h < 10)   return 'morning';
+  if (h >= 8   && h < 8 + 2/3) return 'morning_early';
+  if (h >= 8 + 2/3 && h < 9 + 1/3) return 'morning';
+  if (h >= 9 + 1/3 && h < 10)  return 'morning_late';
   if (h >= 10  && h < 12)   return 'midday_early';
   if (h >= 12  && h < 14)   return 'midday';
   if (h >= 14  && h < 17)   return 'afternoon';

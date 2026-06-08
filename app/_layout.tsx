@@ -319,6 +319,14 @@ function BodhiNotificationListener() {
     if (!navReady) return;
     getInitialAlarmNotification().then(async (initial) => {
       if (initial && !alarmRoutedRef.current) {
+        // Guard: if the alarm was already fully handled (mission completed), skip routing.
+        // wasAlarmFired() can stay true on the native side after a completed alarm cycle
+        // causing a crash loop where alarm-ringing remounts into a stopped native service.
+        const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
+        if (handled && Date.now() - Number(handled) < 43_200_000) {
+          alarmRoutedRef.current = true; // suppress future routing this session
+          return;
+        }
         const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
         alarmRoutedRef.current = true;
         if (missionId && !(segments as string[]).includes('mission')) {
@@ -344,6 +352,13 @@ function BodhiNotificationListener() {
       if ((segments as string[]).includes('alarm-ringing')) return; // already on screen
       getInitialAlarmNotification().then(async (fired) => {
         if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('alarm-ringing')) {
+          // Guard: skip routing if alarm was already handled — prevents crash loop
+          // caused by wasAlarmFired() persisting after a completed alarm cycle.
+          const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
+          if (handled && Date.now() - Number(handled) < 43_200_000) {
+            alarmRoutedRef.current = true;
+            return;
+          }
           const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
           alarmRoutedRef.current = true;
           if (missionId) {

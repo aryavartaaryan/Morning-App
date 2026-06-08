@@ -634,13 +634,18 @@ function CustomTabBar() {
 
   return (
     <View style={[styles.wrapper, { paddingBottom: bottomPad }]}>
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.52)']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
       <FullScreenPlayer />
       <GlobalPlayerBar />
       <View style={styles.pill}>
         {TABS.map(tab => {
           const focused = path === '/' ? tab.name === 'index' : path.endsWith(tab.name);
-          const focusedColor = '#1A2E1A';
-          const unfocusedColor = '#5A7A5A';
+          const focusedColor = '#FFFFFF';
+          const unfocusedColor = 'rgba(255,255,255,0.52)';
           return (
             <TouchableOpacity
               key={tab.name}
@@ -648,7 +653,7 @@ function CustomTabBar() {
               activeOpacity={0.7}
               style={styles.tabItem}
             >
-              <View style={[styles.iconWrap, focused && { backgroundColor: focusedColor + '22' }]}>
+              <View style={[styles.iconWrap, focused && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                 {tab.name === 'sleep' ? (
                   <VeenaIcon size={23} color={focused ? focusedColor : unfocusedColor} filled={focused} />
                 ) : tab.name === 'alarms' ? (
@@ -701,7 +706,7 @@ function CustomTabBar() {
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, tabBarStyle: { position: 'absolute', backgroundColor: 'transparent', borderTopWidth: 0, elevation: 0 } }}
       tabBar={() => <CustomTabBar />}
     >
       <Tabs.Screen name="index" />
@@ -716,22 +721,16 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: '#CBD7B8',
+    backgroundColor: 'transparent',
     paddingTop: 0,
   },
   pill: {
     flexDirection: 'row',
-    backgroundColor: '#CBD7B8',
+    backgroundColor: 'transparent',
     borderRadius: 0,
     paddingVertical: 8,
     paddingHorizontal: 0,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -1 },
-    elevation: 8,
+    borderTopWidth: 0,
   },
   tabItem: {
     flex: 1,

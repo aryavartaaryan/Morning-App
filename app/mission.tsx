@@ -1040,6 +1040,8 @@ export default function MissionScreen() {
     setStreak(newStreak);
 
     // ── 4. Reschedule tomorrow's alarm ─────────────────────────────────────────
+    // Clear the JS-side "alarm handled" guard so tomorrow's alarm is not suppressed.
+    await AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
     const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
     if (alarmCfg?.wakeAlarm?.enabled) {
       scheduleNativeAlarm(
