@@ -205,15 +205,6 @@ abstract class AlarmSoundServiceBase : Service() {
         }
     }
 
-    // Safety-net unmute: starts the MediaPlayer at 0f so the JS layer can
-    // immediately take over audio without a Gayatri "flash". If JS never
-    // calls setAlarmVolume (e.g. app was killed), this runnable unmutes
-    // after 10 s so the user still hears the alarm.
-    // Extended from 4s → 10s: the JS alarm screen (alarm-ringing.tsx) mounts
-    // in ≤2s even on low-end Android, so 10s gives it ample headroom to call
-    // stopNativeAlarmSound() before the native MediaPlayer un-mutes.
-    // Cancelled the instant JS sends ACTION_SET_VOLUME (meaning RN is alive).
-    private val unmuteRunnable = Runnable { mediaPlayer?.setVolume(1f, 1f) }
 
     private fun isAppInForeground(): Boolean = mainActivityResumed
 
@@ -264,13 +255,9 @@ abstract class AlarmSoundServiceBase : Service() {
                         setDataSource(soundPath)
                         isLooping = true
                         prepare()
-                        setVolume(0f, 0f)
+                        setVolume(1f, 1f)
                         start()
                     }
-                    // 10-second safety net: if JS never calls setAlarmVolume (app was killed)
-                    // unmute so the alarm is still audible. JS beats this by calling
-                    // stopNativeAlarmSound() within ~2s when the app is already open.
-                    bringToFrontHandler.postDelayed(unmuteRunnable, 10_000)
                     return
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -290,12 +277,9 @@ abstract class AlarmSoundServiceBase : Service() {
                 afd.close()
                 isLooping = true
                 prepare()
-                setVolume(0f, 0f)
+                setVolume(1f, 1f)
                 start()
             }
-            // 10-second safety net (extended from 4s) — gives JS ample time to
-            // call stopNativeAlarmSound() before the fallback Gayatri un-mutes.
-            bringToFrontHandler.postDelayed(unmuteRunnable, 10_000)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -558,14 +542,8 @@ abstract class AlarmSoundServiceBase : Service() {
         // ── Volume duck without restarting the service ──────────────────────
         // Lets JS lower MediaPlayer volume for TTS / snooze while keeping the
         // FGS (and both watchdogs) alive and the alarm flag set.
-        // IMPORTANT: removeCallbacks(unmuteRunnable) here is the KEY fix for
-        // Bug 1 — when JS calls setNativeAlarmVolume(0) to mute the native
-        // MediaPlayer, it signals that JS audio is alive. The safety-net
-        // unmuteRunnable MUST be cancelled at this point so Gayatri never
-        // bleeds through after JS has already taken over audio.
         if (intent?.action == getActionSetVolume()) {
             val vol = intent.getFloatExtra(getExtraVolumeKey(), 1f)
-            bringToFrontHandler.removeCallbacks(unmuteRunnable)
             mediaPlayer?.setVolume(vol, vol)
             return START_STICKY
         }
@@ -577,6 +555,24 @@ abstract class AlarmSoundServiceBase : Service() {
         // Self-stopping here is the single-line fix that prevents phantom
         // post-mission vibration without touching any other alarm path.
         if (intent == null && !isAlarmActive()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // ── Guard: reject START_STICKY restart when service was INTENTIONALLY stopped ──
+        // stopAlarmServiceOnly() sets service_intentionally_stopped=true and calls
+        // stopService(). Android START_STICKY may restart the service with intent=null
+        // even though alarm_fired_pending is still true (mission is in progress).
+        // Without this guard, onStartCommand() would call markAlarmActive() and
+        // re-register BOTH watchdogs (lifecycleWatchdog + bringToFrontRunnable),
+        // causing the app to auto-reopen every time the user presses Home after
+        // completing the alarm. This flag is cleared by stopAlarmSound() in
+        // mission.tsx handleComplete() so future fresh alarm starts are not blocked.
+        val intentionallyStopped = try {
+            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("service_intentionally_stopped", false)
+        } catch (_: Exception) { false }
+        if (intent == null && intentionallyStopped) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -657,7 +653,6 @@ abstract class AlarmSoundServiceBase : Service() {
     override fun onDestroy() {
         (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
         bringToFrontHandler.removeCallbacks(bringToFrontRunnable)
-        bringToFrontHandler.removeCallbacks(unmuteRunnable)
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay
         mediaPlayer?.stop()

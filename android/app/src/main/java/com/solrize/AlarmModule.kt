@@ -75,8 +75,12 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             // in MainActivity reads false IMMEDIATELY — before onWindowFocusChanged or
             // any watchdog fires. .apply() was causing a race where the flag was still
             // true after the alarm was dismissed, making the app re-open itself.
+            // Also clear service_intentionally_stopped so future alarms start clean.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("alarm_fired_pending", false).commit()
+                .edit()
+                .putBoolean("alarm_fired_pending", false)
+                .putBoolean("service_intentionally_stopped", false)
+                .commit()
             reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
             promise.resolve("Sound stopped")
         } catch (e: Exception) {
@@ -114,6 +118,42 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             promise.resolve("Overlay dismissed")
         } catch (e: Exception) {
             promise.reject("OVERLAY_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Stop AlarmSoundService WITHOUT clearing alarm_fired_pending.
+     *
+     * Called from alarm-ringing.tsx when the user taps "Begin Your Day" and
+     * transitions to the mission screen. Stopping the service kills the
+     * bringToFrontRunnable + lifecycleWatchdog (fixes the post-mission crash loop)
+     * while keeping alarm_fired_pending=true so that:
+     *   • isAlarmActive() returns true on the mission screen
+     *   • startLockTask() stays active (screen remains pinned)
+     *   • onUserLeaveHint() continues to block the Home button
+     *
+     * We also write service_intentionally_stopped=true so that Android's
+     * START_STICKY mechanism cannot re-arm the watchdogs via a null-intent restart
+     * while alarm_fired_pending is still true during the mission. Without this flag
+     * Android would restart the service, markAlarmActive() would run, and the
+     * lifecycle watchdog + bringToFrontRunnable would re-register — causing the app
+     * to auto-reopen every time the user presses Home after completing the alarm.
+     *
+     * The full flag clear + lock task exit happens in mission.tsx handleComplete()
+     * via stopAlarmSound() + stopLockTask() once the user finishes the mission.
+     */
+    @ReactMethod
+    fun stopAlarmServiceOnly(promise: Promise) {
+        try {
+            // Mark the service as intentionally stopped so onStartCommand() null-intent
+            // guard returns START_NOT_STICKY even though alarm_fired_pending is still true.
+            // Cleared by stopAlarmSound() when the mission completes.
+            reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("service_intentionally_stopped", true).commit()
+            reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
+            promise.resolve("Service stopped (alarm_fired_pending preserved)")
+        } catch (e: Exception) {
+            promise.reject("STOP_SERVICE_ERROR", e.message, e)
         }
     }
 
