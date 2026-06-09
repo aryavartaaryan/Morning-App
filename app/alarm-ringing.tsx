@@ -16,7 +16,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
-import { stopNativeAlarmSound, setNativeAlarmVolume, startAlarmVibration, stopAlarmVibration, dismissAlarmOverlay } from '@/lib/nativeAlarm';
+import { stopNativeAlarmSound, stopNativeAlarmServiceOnly, setNativeAlarmVolume, startAlarmVibration, stopAlarmVibration, dismissAlarmOverlay, setNativeAlarmSoundPath } from '@/lib/nativeAlarm';
 import { cancelVolumeRamp, cancelFusion, playGentleAlarmAudio, playFusionAlarm, preemptActiveAlarm, setActiveAlarmSoundRef, stopActivePreview } from '@/lib/alarmAudio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalMantraPath } from '@/lib/mantraDownload';
@@ -276,6 +276,7 @@ export default function AlarmRingingScreen() {
   const [alarmStopped, setAlarmStopped] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const alarmStoppedRef = useRef(false);
+  const snoozedForRef    = useRef<number | null>(null);
   const missionStartedRef = useRef(false);
   const gentleWakeRef = useRef(false);
   const rampMinutesRef = useRef(5);
@@ -300,14 +301,15 @@ export default function AlarmRingingScreen() {
     await stopActivePreview();
     setActiveAlarmSoundRef(soundRef);
     await stopWakeAudio();
-    // ── FOREGROUND FIX: Completely stop native MediaPlayer FIRST so it releases
-    // audio focus before we claim it with expo-av. Just muting volume (setNativeAlarmVolume(0))
-    // was leaving the native service holding audio focus, which caused expo-av
-    // createAsync to fail silently when the alarm fired while the app was open.
-    // stopNativeAlarmSound() terminates the MediaPlayer and releases focus.
-    // We keep the foreground service alive for wake-lock via setNativeAlarmVolume(0)
-    // AFTER we have established the JS audio session.
-    await stopNativeAlarmSound().catch(() => {});
+    // ── FOREGROUND FIX: Stop native MediaPlayer FIRST so it releases audio focus
+    // before expo-av claims it. CRITICAL: we use stopNativeAlarmServiceOnly() here
+    // (NOT stopNativeAlarmSound()) because stopNativeAlarmSound() clears the native
+    // alarm_fired_pending flag — which kills screen pinning immediately, letting the
+    // user press Home/Recent to escape the alarm screen.
+    // stopNativeAlarmServiceOnly() stops the MediaPlayer + FGS (releases audio focus)
+    // WITHOUT touching alarm_fired_pending, so isAlarmActive() stays true and
+    // MainActivity.startLockTask() continues to enforce the lock.
+    await stopNativeAlarmServiceOnly().catch(() => {});
     try {
       // Claim audio focus FIRST before touching native volume
       await Audio.setAudioModeAsync({
@@ -325,6 +327,12 @@ export default function AlarmRingingScreen() {
         { shouldPlay: true, isLooping: true, volume: 1.0 },
       );
       soundRef.current = sound;
+      // Cache resolved URI in native SharedPrefs — next alarm fire the native
+      // service can play this exact file at full volume before JS even loads.
+      try {
+        const st = await sound.getStatusAsync() as any;
+        if (st?.isLoaded && st?.uri) setNativeAlarmSoundPath(st.uri).catch(() => {});
+      } catch { /* ignore */ }
       // Verify it's actually playing (foreground audio session can be interrupted)
       setTimeout(async () => {
         if (!soundRef.current) return;
@@ -398,8 +406,31 @@ export default function AlarmRingingScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
   };
 
-  // ── Sync alarmStopped → ref so setTimeout callbacks read it without stale closure ──
+  // ── Sync state → refs so interval callbacks read latest values without stale closures ──
   useEffect(() => { alarmStoppedRef.current = alarmStopped; }, [alarmStopped]);
+  useEffect(() => { snoozedForRef.current = snoozedFor; }, [snoozedFor]);
+
+  // ── Continuous audio guard — every 3 s restart JS sound if OEM/focus-loss stopped it ──
+  // The single 800 ms one-shot check in playWakeAudio() misses interruptions that happen
+  // later (screen-off, audio focus loss, aggressive battery optimisers on MIUI/ColorOS).
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (alarmStoppedRef.current) return;          // alarm dismissed
+      if (snoozedForRef.current !== null) return;  // snooze — JS audio intentionally paused
+      if (!soundRef.current) return;               // sound not yet loaded
+      try {
+        const st = await soundRef.current.getStatusAsync() as any;
+        if (st?.isLoaded && !st?.isPlaying) {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true, staysActiveInBackground: true,
+            shouldDuckAndroid: false, interruptionModeIOS: 1, interruptionModeAndroid: 1,
+          });
+          await soundRef.current.playAsync();
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Phase 4: Dismiss native overlay the moment this screen mounts ──────────
   // AlarmSoundService drew a TYPE_APPLICATION_OVERLAY window ~50 ms after the
@@ -681,12 +712,13 @@ export default function AlarmRingingScreen() {
     // Stop vibration immediately — double-call after 300 ms catches any JVM restart
     stopAlarmVibration().catch(() => {});
     setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
-    // Stop native AlarmSoundService completely — clears alarm_fired_pending synchronously
-    // and stops the FGS + bringToFrontRunnable watchdog. Previously setNativeAlarmVolume(0)
-    // only muted the MediaPlayer but left alarm_fired_pending=true and the watchdog running,
-    // causing a crash loop every time the user opened the app after completing the mission.
-    // The JS __missionBgSound (expo-av) continues playing independently of the native FGS.
-    await stopNativeAlarmSound().catch(() => {});
+    // Stop AlarmSoundService WITHOUT clearing alarm_fired_pending.
+    // This kills the bringToFrontRunnable + lifecycleWatchdog (fixes the post-mission
+    // crash loop) while keeping alarm_fired_pending=true so isAlarmActive() stays
+    // true on the mission screen — mission screen stays screen-pinned and the Home
+    // button remains blocked via onUserLeaveHint(). The full flag clear + lock task
+    // exit happens in mission.tsx handleComplete() via stopAlarmSound() + stopLockTask().
+    await stopNativeAlarmServiceOnly().catch(() => {});
     // Belt-and-suspenders JS flag: _layout.tsx checks this to skip routing to alarm-ringing
     // even if the native stopAlarmSound call silently fails (e.g. during ReactContext teardown).
     await AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
