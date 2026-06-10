@@ -577,6 +577,24 @@ abstract class AlarmSoundServiceBase : Service() {
             return START_NOT_STICKY
         }
 
+        // ── Guard: reject START_STICKY restart when service was INTENTIONALLY stopped ──
+        // stopAlarmServiceOnly() sets service_intentionally_stopped=true and calls
+        // stopService(). Android START_STICKY may restart the service with intent=null
+        // even though alarm_fired_pending is still true (mission is in progress).
+        // Without this guard, onStartCommand() would call markAlarmActive() and
+        // re-register BOTH watchdogs (lifecycleWatchdog + bringToFrontRunnable),
+        // causing the app to auto-reopen every time the user presses Home after
+        // completing the alarm. This flag is cleared by stopAlarmSound() in
+        // mission.tsx handleComplete() so future fresh alarm starts are not blocked.
+        val intentionallyStopped = try {
+            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("service_intentionally_stopped", false)
+        } catch (_: Exception) { false }
+        if (intent == null && intentionallyStopped) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         // ── Load subclass-specific params ───────────────────────────────────
         // Wake alarm: reads sound path from SharedPreferences (no extras).
         // Habit/quick: reads habitKey, label, emoji, alarmType from intent or

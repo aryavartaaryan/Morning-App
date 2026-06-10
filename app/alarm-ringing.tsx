@@ -301,15 +301,16 @@ export default function AlarmRingingScreen() {
     await stopActivePreview();
     setActiveAlarmSoundRef(soundRef);
     await stopWakeAudio();
-    // ── FOREGROUND FIX: Stop native MediaPlayer FIRST so it releases audio focus
-    // before expo-av claims it. CRITICAL: we use stopNativeAlarmServiceOnly() here
-    // (NOT stopNativeAlarmSound()) because stopNativeAlarmSound() clears the native
-    // alarm_fired_pending flag — which kills screen pinning immediately, letting the
-    // user press Home/Recent to escape the alarm screen.
-    // stopNativeAlarmServiceOnly() stops the MediaPlayer + FGS (releases audio focus)
-    // WITHOUT touching alarm_fired_pending, so isAlarmActive() stays true and
-    // MainActivity.startLockTask() continues to enforce the lock.
-    await stopNativeAlarmServiceOnly().catch(() => {});
+    // ── SOUNDBATH APPROACH: Clear alarm_fired_pending immediately on mount ─────
+    // Mirrors how soundbath-ringing.tsx calls stopHabitAlarmSound() in its first
+    // useEffect — it clears the active flag and stops the native service, so
+    // isAlarmActive() returns false. This prevents MainActivity.startLockTask()
+    // from being called on every focus change, which was causing a "Screen pinned"
+    // toast loop that blocked the Start Mission button.
+    // JS-side lock is provided by BackHandler (back button) + BTTF notification
+    // (AppState listener fires fullScreenAction when user presses Home) — the same
+    // JS-only mechanism soundbath uses, proven to work reliably.
+    await stopNativeAlarmSound().catch(() => {});
     try {
       // Claim audio focus FIRST before touching native volume
       await Audio.setAudioModeAsync({
@@ -712,13 +713,9 @@ export default function AlarmRingingScreen() {
     // Stop vibration immediately — double-call after 300 ms catches any JVM restart
     stopAlarmVibration().catch(() => {});
     setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
-    // Stop AlarmSoundService WITHOUT clearing alarm_fired_pending.
-    // This kills the bringToFrontRunnable + lifecycleWatchdog (fixes the post-mission
-    // crash loop) while keeping alarm_fired_pending=true so isAlarmActive() stays
-    // true on the mission screen — mission screen stays screen-pinned and the Home
-    // button remains blocked via onUserLeaveHint(). The full flag clear + lock task
-    // exit happens in mission.tsx handleComplete() via stopAlarmSound() + stopLockTask().
-    await stopNativeAlarmServiceOnly().catch(() => {});
+    // The native AlarmSoundService was already stopped (and alarm_fired_pending
+    // cleared) by stopNativeAlarmSound() inside playWakeAudio() when the screen
+    // mounted — exactly as soundbath-ringing.tsx does. Nothing native to stop here.
     // Belt-and-suspenders JS flag: _layout.tsx checks this to skip routing to alarm-ringing
     // even if the native stopAlarmSound call silently fails (e.g. during ReactContext teardown).
     await AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});

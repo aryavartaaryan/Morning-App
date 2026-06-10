@@ -21,6 +21,7 @@ const AlarmNative: {
   scheduleAlarm(ts: number): Promise<string>;
   cancelAlarm(): Promise<string>;
   stopAlarmSound(): Promise<string>;
+  stopAlarmServiceOnly(): Promise<string>;
   setAlarmVolume(volume: number): Promise<string>;
   setAlarmSound(mantraId: string): Promise<string>;
   setAlarmSoundPath(path: string): Promise<string>;
@@ -225,6 +226,19 @@ export async function setNativeAlarmSoundPath(path: string): Promise<void> {
 export async function stopNativeAlarmSound(): Promise<void> {
   if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmSound) return;
   try { await AlarmNative.stopAlarmSound(); } catch { /* ignore */ }
+}
+
+// ── Stop AlarmSoundService WITHOUT clearing alarm_fired_pending ───────────────
+// Used when transitioning from alarm-ringing → mission screen.
+// Kills the bringToFrontRunnable watchdog (prevents post-mission crash loop)
+// while keeping alarm_fired_pending=true so isAlarmActive() stays true and
+// the mission screen remains screen-pinned + Home-button protected.
+// Also sets service_intentionally_stopped=true to prevent Android START_STICKY
+// from re-arming watchdogs (which caused the app to auto-reopen after mission).
+// The full flag clear happens in mission.tsx handleComplete() via stopNativeAlarmSound().
+export async function stopNativeAlarmServiceOnly(): Promise<void> {
+  if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmServiceOnly) return;
+  try { await AlarmNative.stopAlarmServiceOnly(); } catch { /* ignore */ }
 }
 
 // ── Exit screen-pinning (Lock Task) mode ─────────────────────────────────────

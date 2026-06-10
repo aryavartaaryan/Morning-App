@@ -122,12 +122,31 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     }
 
     /**
+     * Exit Lock Task (screen pinning) mode.
+     * Called from mission.tsx handleComplete() immediately after stopping the alarm
+     * so the user is never trapped inside the app after mission completion.
+     */
+    @ReactMethod
+    fun stopLockTask(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try { activity.stopLockTask() } catch (_: Exception) {}
+                }
+            }
+            promise.resolve("OK")
+        } catch (e: Exception) {
+            promise.reject("LOCK_TASK_ERROR", e.message, e)
+        }
+    }
+
+    /**
      * Stop AlarmSoundService WITHOUT clearing alarm_fired_pending.
      *
      * Called from alarm-ringing.tsx when the user taps "Begin Your Day" and
      * transitions to the mission screen. Stopping the service kills the
-     * bringToFrontRunnable + lifecycleWatchdog (fixes the post-mission crash loop)
-     * while keeping alarm_fired_pending=true so that:
+     * bringToFrontRunnable + lifecycleWatchdog while keeping alarm_fired_pending=true so:
      *   • isAlarmActive() returns true on the mission screen
      *   • startLockTask() stays active (screen remains pinned)
      *   • onUserLeaveHint() continues to block the Home button
@@ -154,26 +173,6 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             promise.resolve("Service stopped (alarm_fired_pending preserved)")
         } catch (e: Exception) {
             promise.reject("STOP_SERVICE_ERROR", e.message, e)
-        }
-    }
-
-    /**
-     * Exit Lock Task (screen pinning) mode.
-     * Called from mission.tsx handleComplete() immediately after stopping the alarm
-     * so the user is never trapped inside the app after mission completion.
-     */
-    @ReactMethod
-    fun stopLockTask(promise: Promise) {
-        try {
-            val activity = reactContext.currentActivity
-            if (activity != null) {
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    try { activity.stopLockTask() } catch (_: Exception) {}
-                }
-            }
-            promise.resolve("OK")
-        } catch (e: Exception) {
-            promise.reject("LOCK_TASK_ERROR", e.message, e)
         }
     }
 
