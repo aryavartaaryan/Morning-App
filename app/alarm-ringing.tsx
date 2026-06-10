@@ -302,13 +302,16 @@ export default function AlarmRingingScreen() {
     setActiveAlarmSoundRef(soundRef);
     await stopWakeAudio();
     // ── FOREGROUND FIX: Stop native MediaPlayer FIRST so it releases audio focus
-    // before expo-av claims it. CRITICAL: we use stopNativeAlarmServiceOnly() here
-    // (NOT stopNativeAlarmSound()) because stopNativeAlarmSound() clears the native
-    // alarm_fired_pending flag — which kills screen pinning immediately, letting the
-    // user press Home/Recent to escape the alarm screen.
-    // stopNativeAlarmServiceOnly() stops the MediaPlayer + FGS (releases audio focus)
-    // WITHOUT touching alarm_fired_pending, so isAlarmActive() stays true and
-    // MainActivity.startLockTask() continues to enforce the lock.
+    // before we claim it with expo-av. Just muting volume (setNativeAlarmVolume(0))
+    // was leaving the native service holding audio focus, which caused expo-av
+    // createAsync to fail silently when the alarm fired while the app was open.
+    //
+    // CRITICAL — use stopNativeAlarmServiceOnly() NOT stopNativeAlarmSound():
+    //   stopNativeAlarmSound() writes alarm_fired_pending=false  ← BREAKS screen pinning!
+    //   stopNativeAlarmServiceOnly() only stops the MediaPlayer/service WITHOUT
+    //   touching alarm_fired_pending, so isAlarmActive() stays true and
+    //   startLockTask() in MainActivity.onResume() / onWindowFocusChanged()
+    //   keeps enforcing the screen pin throughout the entire alarm session.
     await stopNativeAlarmServiceOnly().catch(() => {});
     try {
       // Claim audio focus FIRST before touching native volume

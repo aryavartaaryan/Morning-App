@@ -21,7 +21,6 @@ const AlarmNative: {
   scheduleAlarm(ts: number): Promise<string>;
   cancelAlarm(): Promise<string>;
   stopAlarmSound(): Promise<string>;
-  stopAlarmServiceOnly(): Promise<string>;
   setAlarmVolume(volume: number): Promise<string>;
   setAlarmSound(mantraId: string): Promise<string>;
   setAlarmSoundPath(path: string): Promise<string>;
@@ -40,6 +39,7 @@ const AlarmNative: {
   stopAlarmVibration(): Promise<string>;
   dismissAlarmOverlay(): Promise<string>;
   stopLockTask(): Promise<string>;
+  stopAlarmServiceOnly(): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -229,13 +229,20 @@ export async function stopNativeAlarmSound(): Promise<void> {
 }
 
 // ── Stop AlarmSoundService WITHOUT clearing alarm_fired_pending ───────────────
-// Used when transitioning from alarm-ringing → mission screen.
-// Kills the bringToFrontRunnable watchdog (prevents post-mission crash loop)
-// while keeping alarm_fired_pending=true so isAlarmActive() stays true and
-// the mission screen remains screen-pinned + Home-button protected.
-// Also sets service_intentionally_stopped=true to prevent Android START_STICKY
-// from re-arming watchdogs (which caused the app to auto-reopen after mission).
-// The full flag clear happens in mission.tsx handleComplete() via stopNativeAlarmSound().
+// Use this instead of stopNativeAlarmSound() when the alarm screen has mounted
+// and JS audio (expo-av) is taking over from the native MediaPlayer.
+//
+// WHY THIS EXISTS:
+//   stopNativeAlarmSound() calls AlarmModule.stopAlarmSound() which writes
+//   alarm_fired_pending=false. This immediately makes isAlarmActive() return
+//   false in MainActivity, so startLockTask() stops enforcing the screen pin
+//   even though the alarm screen is still showing — the OS shows "Screen pinned"
+//   toast but Home/Recents buttons work normally.  (Root cause of the bug.)
+//
+//   stopNativeAlarmServiceOnly() calls AlarmModule.stopAlarmServiceOnly() which
+//   only stops the MediaPlayer/service (releases audio focus for expo-av) while
+//   keeping alarm_fired_pending=true, so the screen stays pinned until the user
+//   explicitly completes the mission.
 export async function stopNativeAlarmServiceOnly(): Promise<void> {
   if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmServiceOnly) return;
   try { await AlarmNative.stopAlarmServiceOnly(); } catch { /* ignore */ }

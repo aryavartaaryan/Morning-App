@@ -549,50 +549,22 @@ abstract class AlarmSoundServiceBase : Service() {
         }
 
         // ── Guard: reject phantom START_STICKY restarts after intentional stop ─
-        // stopAlarmSound() clears alarm_fired_pending BEFORE calling stopService().
-        // If Android then restarts this service with intent=null (START_STICKY),
-        // isAlarmActive() returns false — we must NOT re-arm the alarm.
-        // Self-stopping here is the single-line fix that prevents phantom
-        // post-mission vibration without touching any other alarm path.
-        if (intent == null && !isAlarmActive()) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        // ── Guard: reject START_STICKY restart when service was INTENTIONALLY stopped ──
-        // stopAlarmServiceOnly() sets service_intentionally_stopped=true and calls
-        // stopService(). Android START_STICKY may restart the service with intent=null
-        // even though alarm_fired_pending is still true (mission is in progress).
-        // Without this guard, onStartCommand() would call markAlarmActive() and
-        // re-register BOTH watchdogs (lifecycleWatchdog + bringToFrontRunnable),
-        // causing the app to auto-reopen every time the user presses Home after
-        // completing the alarm. This flag is cleared by stopAlarmSound() in
-        // mission.tsx handleComplete() so future fresh alarm starts are not blocked.
-        val intentionallyStopped = try {
-            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean("service_intentionally_stopped", false)
-        } catch (_: Exception) { false }
-        if (intent == null && intentionallyStopped) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        // ── Guard: reject START_STICKY restart when service was INTENTIONALLY stopped ──
-        // stopAlarmServiceOnly() sets service_intentionally_stopped=true and calls
-        // stopService(). Android START_STICKY may restart the service with intent=null
-        // even though alarm_fired_pending is still true (mission is in progress).
-        // Without this guard, onStartCommand() would call markAlarmActive() and
-        // re-register BOTH watchdogs (lifecycleWatchdog + bringToFrontRunnable),
-        // causing the app to auto-reopen every time the user presses Home after
-        // completing the alarm. This flag is cleared by stopAlarmSound() in
-        // mission.tsx handleComplete() so future fresh alarm starts are not blocked.
-        val intentionallyStopped = try {
-            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean("service_intentionally_stopped", false)
-        } catch (_: Exception) { false }
-        if (intent == null && intentionallyStopped) {
-            stopSelf()
-            return START_NOT_STICKY
+        // Case 1: stopAlarmSound() was called — alarm_fired_pending=false, so
+        //   isAlarmActive() returns false. Self-stop here.
+        // Case 2: stopAlarmServiceOnly() was called — alarm_fired_pending stays
+        //   true (screen stays pinned), but service_intentionally_stopped=true.
+        //   We must NOT restart the MediaPlayer in this case — JS expo-av has
+        //   audio focus and re-starting native audio would create a dual-audio
+        //   conflict and break the JS alarm sound.
+        if (intent == null) {
+            val intentionallyStopped = try {
+                getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean("service_intentionally_stopped", false)
+            } catch (_: Exception) { false }
+            if (!isAlarmActive() || intentionallyStopped) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
 
         // ── Load subclass-specific params ───────────────────────────────────
