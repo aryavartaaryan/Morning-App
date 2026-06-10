@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
 import { WAKE_SOUNDS } from '@/lib/missionAlarm';
-import { stopAlarmVibration } from '@/lib/nativeAlarm';
+import { stopAlarmVibration, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
@@ -212,7 +212,12 @@ export default function SoundBathRingingScreen() {
   const handleDismiss = async () => {
     setDismissed(true);
     await stopAlarmAudio(soundRef);
-    NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.().catch?.(() => {});
+    // Await stopHabitAlarmSound so isAlarmActive() = false BEFORE stopNativeLockTask
+    // and BEFORE the 350 ms onWindowFocusChanged watchdog can fire.
+    try { await NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.(); } catch { /* ignore */ }
+    // Exit lock task mode (screen pinning) — without this the app stays pinned
+    // and the user cannot press HOME or close the app after the soundbath ends.
+    await stopNativeLockTask();
     stopAlarmVibration().catch(() => {});
     notifee.cancelNotification(SOUNDBATH_FS_ID).catch(() => {});
     notifee.cancelNotification(bttfNotifIdRef.current ?? 'soundbath-bttf').catch(() => {});

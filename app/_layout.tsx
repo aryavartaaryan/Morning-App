@@ -165,10 +165,7 @@ const SS = StyleSheet.create({
 // Only shows a clean progress ring — NO Nada logo, NO tagline.
 // This screen is shown ONLY on first install while BG images are downloading.
 function DownloadScreen({ progress, label }: { progress: number; label: string }) {
-  const fadeIn = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(fadeIn, { toValue: 1, duration: 350, useNativeDriver: true }).start();
-  }, []);
+  const fadeIn = useRef(new Animated.Value(1)).current;
 
   const pct    = Math.round(Math.min(progress, 1) * 100);
   const R      = 58;
@@ -179,8 +176,6 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
   return (
     <Animated.View pointerEvents="none" style={[DS.screen, { opacity: fadeIn }]}>
       <LinearGradient colors={['#04030F', '#0C0820', '#04030F']} style={StyleSheet.absoluteFillObject} />
-      {/* Subtle ambient glow — no text branding */}
-      <View style={DS.glow} />
       <View style={DS.center}>
         {/* Ring only — pct inside */}
         <View style={DS.ringWrap}>
@@ -211,7 +206,6 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
 
 const DS = StyleSheet.create({
   screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
-  glow:        { position: 'absolute', top: '20%', alignSelf: 'center', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(245,130,10,0.05)' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
   ringWrap:    { width: 138, height: 138, alignItems: 'center', justifyContent: 'center' },
   pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
@@ -258,12 +252,12 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
     // app was opened via an alarm deep link — Expo Router will navigate there itself.
     (async () => {
       const root = segments[0] as string;
-      const alarmRoutes = ['(tabs)', 'alarm-ringing', 'habit-alarm-ringing', 'mission', 'soundbath-ringing', 'sleep-ringing'];
+      const alarmRoutes = ['(tabs)', 'wake-alarm-ringing', 'alarm-ringing', 'habit-alarm-ringing', 'mission', 'soundbath-ringing', 'sleep-ringing'];
       if (!alarmRoutes.includes(root)) {
         let shouldRedirect = true;
         try {
           const initialUrl = await Linking.getInitialURL();
-          if (initialUrl && /soundbath-ringing|habit-alarm-ringing|alarm-ringing|sleep-ringing/.test(initialUrl)) {
+          if (initialUrl && /soundbath-ringing|habit-alarm-ringing|wake-alarm-ringing|alarm-ringing|sleep-ringing/.test(initialUrl)) {
             shouldRedirect = false;
           }
         } catch { /* ignore */ }
@@ -297,7 +291,7 @@ function BodhiNotificationListener() {
   // Reset the guard whenever we leave the alarm-ringing screen so the next
   // alarm cycle can trigger routing again.
   useEffect(() => {
-    if (!(segments as string[]).includes('alarm-ringing')) {
+    if (!(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing')) {
       alarmRoutedRef.current = false;
     }
   }, [segments]);
@@ -333,8 +327,8 @@ function BodhiNotificationListener() {
           console.log('[Layout] App launched mid-mission → routing to /mission');
           setTimeout(() => router.replace(`/mission?id=${missionId}` as never), 150);
         } else if (!missionId) {
-          console.log('[Layout] App launched from alarm notification → routing to /alarm-ringing');
-          setTimeout(() => router.replace('/alarm-ringing' as never), 150);
+          console.log('[Layout] App launched from alarm notification → routing to /wake-alarm-ringing');
+          setTimeout(() => router.replace('/wake-alarm-ringing' as never), 150);
         }
       }
     }).catch(() => { });
@@ -349,9 +343,9 @@ function BodhiNotificationListener() {
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
       if (alarmRoutedRef.current) return; // already routed this alarm cycle
-      if ((segments as string[]).includes('alarm-ringing')) return; // already on screen
+      if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing')) return; // already on screen
       getInitialAlarmNotification().then(async (fired) => {
-        if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('alarm-ringing')) {
+        if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing')) {
           // Guard: skip routing if alarm was already handled — prevents crash loop
           // caused by wasAlarmFired() persisting after a completed alarm cycle.
           const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
@@ -367,14 +361,40 @@ function BodhiNotificationListener() {
               router.push(`/mission?id=${missionId}` as never);
             }
           } else {
-            console.log('[Layout] App foregrounded from alarm (background path) → /alarm-ringing');
-            router.push('/alarm-ringing' as never);
+            console.log('[Layout] App foregrounded from alarm (background path) → /wake-alarm-ringing');
+            router.push('/wake-alarm-ringing' as never);
           }
         }
       }).catch(() => { });
     });
     return () => sub.remove();
   }, [segments]);
+
+  // ── When alarm fires while app is already in the FOREGROUND ─────────────────
+  // AppState does NOT change when the app is already active, so the listener
+  // above never fires in this case. AlarmSoundService.launchApp() sends the
+  // deep-link URI arise://alarm-ringing via onNewIntent → React Native Linking
+  // fires the 'url' event. Without this listener the alarm screen is never
+  // navigated to for foreground alarms — the user sees the native overlay but
+  // the JS alarm-ringing screen never mounts.
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }: { url: string }) => {
+      if (!url.includes('alarm-ringing') && !url.includes('wake-alarm-ringing')) return;
+      if (alarmRoutedRef.current) return;
+      if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
+      (async () => {
+        const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
+        if (handled && Date.now() - Number(handled) < 43_200_000) {
+          alarmRoutedRef.current = true; return;
+        }
+        const fired = await getInitialAlarmNotification().catch(() => false);
+        if (!fired || alarmRoutedRef.current) return;
+        alarmRoutedRef.current = true;
+        router.replace('/wake-alarm-ringing' as never);
+      })().catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── When app is LAUNCHED by a habit alarm fullScreenAction (app was killed) ───
   // index.js background handler writes PENDING_HABIT_KEY to AsyncStorage on

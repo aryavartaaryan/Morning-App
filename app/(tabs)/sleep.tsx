@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from '
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -22,6 +23,7 @@ import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepS
 import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm } from '@/lib/soundImagePreload';
 import { isAudioCached, downloadAudioToCache, initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
+import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const { width: W, height: H } = Dimensions.get('window');
 let _pageScrollRef: ScrollView | null = null;
@@ -139,18 +141,10 @@ const SLEEP_SOUNDS = [
 type SoundId = typeof SLEEP_SOUNDS[number]['id'];
 type SoundItem = typeof SLEEP_SOUNDS[number];
 const SLEEP_HIDDEN_IDS = new Set([
-  'cuckoo_chime',
-  'nada_golden_sitar_432',
-  'nada_sitar_moonlight',
-  'nada_flute_infinite_sky',
-  'nada_whispering_bamboo',
-  'nada_wind_mountain_raga',
-  'nada_emotional_flute',
-  'nada_flute_rain_ambiance',
-  'nada_tabla_flute_strings_ii',
-  'nada_rhythm_riot',
-  'sitar_calm',
-  'tabla_shuffle',
+  'flute_scale',
+  'tabla_beat',
+  'forest_flute',
+  'tabla_loop',
 ]);
 const CATEGORIES = ['All', 'Nature', 'Ragas', 'Sleep', 'Meditations', 'Birds'] as const;
 type Category = typeof CATEGORIES[number];
@@ -995,13 +989,24 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
         }}>
           {/* Handle bar */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 20 }}>
-            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+            <View style={{ width: W, height: 26, alignItems: 'center', justifyContent: 'center' }} {...panResponder.panHandlers}>
+              <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+            </View>
           </View>
 
-          {/* Label */}
-          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.6, textAlign: 'center', marginBottom: 22, textTransform: 'uppercase', fontFamily: 'Nunito_600SemiBold' }}>
-            Browse Sounds
-          </Text>
+          {/* Elegant Label */}
+          <View style={{ alignItems: 'center', marginBottom: 28, paddingHorizontal: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_600SemiBold', textTransform: 'uppercase', letterSpacing: 1.2 }}>CURRENT CATEGORY :</Text>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: selectedCat === 'All' ? '#FFFFFF' : (CATEGORY_META[selectedCat]?.color ?? '#FFFFFF'), fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.8, textTransform: 'uppercase' }}>{selectedCat}</Text>
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '300', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5, textAlign: 'center', fontFamily: 'Nunito_400Regular', marginTop: 8 }}>
+              Select the sound category
+            </Text>
+            <Text style={{ fontSize: 18, fontWeight: '300', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textAlign: 'center', fontFamily: 'Nunito_400Regular', marginTop: 2 }}>
+              you want to listen
+            </Text>
+          </View>
 
           {/* "All Sounds" — full width row */}
           {(() => {
@@ -1011,22 +1016,16 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onSelect('All'); onClose(); }}
                 activeOpacity={0.80}
                 style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 14,
+                  alignItems: 'center', justifyContent: 'center',
                   marginHorizontal: 20, marginBottom: 12,
-                  backgroundColor: isActive ? 'rgba(255,255,255,0.11)' : 'rgba(255,255,255,0.05)',
-                  borderRadius: 18, borderWidth: 1.5,
-                  borderColor: isActive ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.10)',
-                  padding: 16,
+                  backgroundColor: isActive ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)',
+                  borderRadius: 16, borderWidth: 1,
+                  borderColor: isActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.06)',
+                  paddingVertical: 18,
                 }}
               >
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-                  <Ionicons name="apps" size={22} color="#FFFFFF" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.1 }}>All Sounds</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 3, fontFamily: 'Nunito_400Regular' }}>Everything · all categories</Text>
-                </View>
-                {isActive && <Ionicons name="checkmark-circle" size={20} color="rgba(255,255,255,0.75)" />}
+                <Text style={{ fontSize: 16, fontWeight: '600', color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>All Sounds</Text>
+                <Text style={{ fontSize: 11, color: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.38)', marginTop: 4, fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 }}>Everything · all categories</Text>
               </TouchableOpacity>
             );
           })()}
@@ -1036,7 +1035,6 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
             {(CATEGORIES.slice(1) as Category[]).map(cat => {
               const isActive = selectedCat === cat;
               const meta = CATEGORY_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
-              const iconName = (CAT_ICONS[cat] ?? 'musical-notes') as any;
               const color = meta.color;
               const cardW = (W - 40 - 12) / 2;
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
@@ -1050,19 +1048,15 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
                   activeOpacity={0.80}
                   style={{
                     width: cardW,
-                    backgroundColor: isActive ? `${color}1E` : 'rgba(255,255,255,0.05)',
-                    borderRadius: 18, borderWidth: 1.5,
-                    borderColor: isActive ? `${color}5A` : 'rgba(255,255,255,0.10)',
-                    padding: 18,
-                    alignItems: 'flex-start',
+                    backgroundColor: isActive ? `${color}1A` : 'rgba(255,255,255,0.03)',
+                    borderRadius: 16, borderWidth: 1,
+                    borderColor: isActive ? `${color}60` : 'rgba(255,255,255,0.06)',
+                    paddingVertical: 22,
+                    alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: `${color}18`, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${color}30`, marginBottom: 12 }}>
-                    <Ionicons name={iconName} size={22} color={color} />
-                  </View>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: isActive ? color : '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.1 }}>{cat}</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 3, fontFamily: 'Nunito_400Regular' }}>{soundCount} sounds</Text>
-                  {isActive && <Ionicons name="checkmark-circle" size={18} color={color} style={{ position: 'absolute', top: 12, right: 12 }} />}
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: isActive ? color : 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>{cat}</Text>
+                  <Text style={{ fontSize: 11, color: isActive ? `${color}A0` : 'rgba(255,255,255,0.38)', marginTop: 4, fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 }}>{soundCount} sounds</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1517,10 +1511,11 @@ const { width: REEL_W, height: REEL_H } = Dimensions.get('screen');
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
   { id: 'morning_birds', label: 'Birds',  emoji: '🐦', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Birds',  desc: 'Dawn chorus',   src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'morning_birds')!.src, imageUri: SOUND_IMAGES['morning_birds'] },
   { id: 'andean_flute',  label: 'Flute',  emoji: '🏔️', color: '#6ee7b7', top: '#081A10', bot: '#040C08', cat: 'Ragas',  desc: 'Andean melody', src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'andean_flute')!.src,  imageUri: SOUND_IMAGES['andean_flute'] },
-  { id: 'tabla_beat',    label: 'Tabla',  emoji: '🥁', color: '#f97316', top: '#1A0800', bot: '#0A0400', cat: 'Ragas',  desc: 'Tabla beat',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'tabla_beat')!.src,    imageUri: SOUND_IMAGES['tabla_beat'] },
+{ id: 'tabla_beat',    label: 'Tabla',  emoji: '🥁', color: '#f97316', top: '#1A0800', bot: '#0A0400', cat: 'Ragas',  desc: 'Tabla beat',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'tabla_beat')!.src,    imageUri: SOUND_IMAGES['tabla_beat'] },
   { id: 'sitar_long',    label: 'Sitar',  emoji: '🎸', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sitar_long')!.src,    imageUri: SOUND_IMAGES['sitar_long'] },
   { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sea_waves')!.src,     imageUri: SOUND_IMAGES['sea_waves'] },
 ];
+
 
 // ── Wave art helpers ─────────────────────────────────────────────────────────
 const makeWavePath = (W: number, phase: number, amplitude: number, wavelength: number, fillY: number): string => {
@@ -1541,30 +1536,79 @@ function WaveView({ size, color, soundId, active, paused }: {
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     if (!active || paused) return;
-    const iv = setInterval(() => setPhase(p => p + 0.075), 36);
+    const iv = setInterval(() => setPhase(p => p + 0.05), 36);
     return () => clearInterval(iv);
   }, [active, paused]);
-  // Audio-reactive amplitude: quiet = small waves, loud = tall waves
-  const levelScale = paused ? 0.25 : (0.30 + meteringLevel * 0.70);
-  const fillY = size * 0.62;
-  const waveA = makeWavePath(size, phase, size * 0.058 * levelScale, size * 0.88, fillY);
-  const waveB = makeWavePath(size, -phase * 0.62 + 1.1, size * 0.040 * levelScale, size * 0.70, fillY + size * 0.028);
+  
+  // Audio-reactive amplitude — quiet = subtle, loud = dramatic waves
+  const levelScale = paused ? 0.08 : (0.25 + meteringLevel * 1.8);
+  // Fill from the middle so it looks like a half-full glass sphere
+  const fillY = size * 0.55; 
+  
+  const waveA = makeWavePath(size, phase, size * 0.08 * levelScale, size * 0.85, fillY);
+  const waveB = makeWavePath(size, -phase * 0.6 + 1.2, size * 0.06 * levelScale, size * 0.70, fillY + size * 0.03);
+  const waveC = makeWavePath(size, phase * 0.4 + 2.0, size * 0.04 * levelScale, size * 0.55, fillY + size * 0.06);
+  // Glossy wave crest
+  const waveGlass = makeWavePath(size, phase + 0.15, size * 0.015 * levelScale, size * 0.9, fillY - size * 0.01);
+  
   const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
+  
+  // Glow opacity tied to sound volume
+  const glowOpacity = Math.min(0.25, meteringLevel * 0.4).toFixed(2);
+  
   return (
     <View pointerEvents="none" style={{
       position: 'absolute', width: size, height: size,
       borderRadius: size / 2, overflow: 'hidden',
-      opacity: paused ? 0.30 : 1,
+      opacity: paused ? 0.35 : 1,
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.2)', // Glass rim
     }}>
+      {/* Frosted glass backing */}
+      <View pointerEvents="none" style={{
+        position: 'absolute', width: size, height: size,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+      }} />
+      
+      {/* Inner shadow to give a 3D spherical depth */}
+      <View pointerEvents="none" style={{
+        position: 'absolute', width: size, height: size, borderRadius: size / 2,
+        borderWidth: 6, borderColor: 'rgba(0,0,0,0.15)',
+      }} />
+
+      {/* Sea-water translucent wave layers — 3 depth planes */}
       <Svg width={size} height={size}>
         <Defs>
           <SvgClipPath id={cid}>
             <SvgCircle cx={size / 2} cy={size / 2} r={size / 2} />
           </SvgClipPath>
         </Defs>
-        <Path d={waveA} fill={color + '22'} clipPath={`url(#${cid})`} />
-        <Path d={waveB} fill={color + '18'} clipPath={`url(#${cid})`} />
+        {/* Deep water */}
+        <Path d={waveC} fill={color + '22'} clipPath={`url(#${cid})`} />
+        {/* Mid water */}
+        <Path d={waveB} fill={color + '33'} clipPath={`url(#${cid})`} />
+        {/* Surface water */}
+        <Path d={waveA} fill={color + '44'} clipPath={`url(#${cid})`} />
+        {/* Bright glassy crest */}
+        <Path d={waveGlass} fill="rgba(255,255,255,0.35)" clipPath={`url(#${cid})`} />
       </Svg>
+      
+      {/* Top 3D glossy highlight for the glass orb */}
+      <View pointerEvents="none" style={{
+        position: 'absolute', top: size * 0.04, left: size * 0.15, right: size * 0.15,
+        height: size * 0.3,
+        borderRadius: size / 2,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        transform: [{ scaleY: 0.5 }],
+      }} />
+      
+      {/* Subtle audio pulse glow behind the liquid */}
+      <View pointerEvents="none" style={{
+        position: 'absolute', width: size, height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity: Number(glowOpacity),
+      }} />
     </View>
   );
 }
@@ -1580,7 +1624,13 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
-  const { playingDurationSecs, setLoopConfig } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig, meteringLevel, isAudioLoading, audioNetworkError } = useSoundPlayer();
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  useEffect(() => {
+    if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
+    const t = setTimeout(() => setShowLoadingOverlay(true), 380);
+    return () => clearTimeout(t);
+  }, [isActive, isAudioLoading]);
   const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const ringRotAnim = useRef(new Animated.Value(0)).current;
@@ -1606,6 +1656,8 @@ function ReelCard({
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const rippleAnimsRef = useRef([
     new Animated.Value(0), new Animated.Value(0), new Animated.Value(0),
+    new Animated.Value(0), new Animated.Value(0), new Animated.Value(0),
+    new Animated.Value(0),
   ]);
   const rippleAnims = rippleAnimsRef.current;
   // Auto-detect: when track duration becomes available for long tracks, silently set correct timer
@@ -1723,27 +1775,18 @@ function ReelCard({
 
   useEffect(() => {
     if (!isActive || !isPlaying || isPaused) {
-      rippleAnims.forEach(a => { a.stopAnimation(); a.setValue(0); });
       shimmerAnim.stopAnimation(); shimmerAnim.setValue(0);
       return;
     }
-    const rippleLoops = rippleAnims.map((anim, i) =>
-      Animated.loop(Animated.sequence([
-        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
-        Animated.delay(i * 680),
-        Animated.timing(anim, { toValue: 1, duration: 2100, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
-      ]))
-    );
-    rippleLoops.forEach(l => l.start());
     const shimmerLoop = Animated.loop(
       Animated.timing(shimmerAnim, { toValue: 1, duration: 7000, useNativeDriver: true, easing: Easing.linear })
     );
     shimmerLoop.start();
-    return () => { rippleLoops.forEach(l => l.stop()); shimmerLoop.stop(); };
+    return () => shimmerLoop.stop();
   }, [isActive, isPlaying, isPaused]);
 
   // Ring center sits at 44% from top — pushed down to clear the JUMP TO CATEGORY strip
-  const ringCenterY = REEL_H * 0.44;
+  const ringCenterY = REEL_H * 0.47;
   // Bottom edge of ring from top
   const ringBottomY = ringCenterY + RING_SIZE / 2;
   // Timer button lives 38dp below the ring's bottom edge (increased for breathing room)
@@ -1793,7 +1836,7 @@ function ReelCard({
       />
 
       {/* ── Hero Ring — absolutely positioned at upper-center ── */}
-      <View style={{
+      <View pointerEvents="none" style={{
         position: 'absolute',
         left: 0, right: 0,
         top: ringCenterY - RING_SIZE / 2,
@@ -1808,7 +1851,7 @@ function ReelCard({
           width: RING_SIZE + 30, height: RING_SIZE + 30,
           borderRadius: (RING_SIZE + 30) / 2,
           borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? sound.color + '30' : 'rgba(255,255,255,0.04)',
+          borderColor: isPlaying && !isPaused ? '#38bdf860' : 'rgba(255,255,255,0.04)',
         }} />
 
         {/* Main clean ring — slow-rotating, no tick marks */}
@@ -1821,49 +1864,49 @@ function ReelCard({
           transform: [{ rotate: ringRotDeg }],
         }} />
 
-        {/* Inner delicate ring — Apple Watch style depth */}
+        {/* Inner glowing blue ring — electric ocean depth accent */}
         <View style={{
           position: 'absolute',
           width: RING_SIZE - 22, height: RING_SIZE - 22,
           borderRadius: (RING_SIZE - 22) / 2,
-          borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+          borderWidth: isPlaying && !isPaused ? 1 : 0.5,
+          borderColor: isPlaying && !isPaused ? '#38bdf878' : 'rgba(255,255,255,0.04)',
         }} />
 
-        {/* ── Liquid wave art ── */}
+        {/* ── Elegant Professional Vibration Art ── */}
         {isPlaying && (() => {
           const S = RING_SIZE - 26;
+          // Clean single pulsing halo that scales organically with audio level
+          const baseHaloScale = 1 + meteringLevel * 0.15;
+          const haloOpacity = 0.25 + meteringLevel * 0.4;
           return (
             <>
-              {/* Expanding ripple rings */}
-              {rippleAnims.map((anim, i) => {
-                const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.88] });
-                const opacity = anim.interpolate({ inputRange: [0, 0.12, 0.60, 1], outputRange: [0, 0.42, 0.16, 0] });
-                return (
-                  <Animated.View key={i} pointerEvents="none" style={{
-                    position: 'absolute',
-                    width: S, height: S, borderRadius: S / 2,
-                    borderWidth: 1.2, borderColor: sound.color,
-                    opacity, transform: [{ scale }],
-                  }} />
-                );
-              })}
-              {/* Ambient shimmer sweep */}
+              {/* Single refined audio-reactive halo */}
+              <View pointerEvents="none" style={{
+                position: 'absolute',
+                width: S * 1.15, height: S * 1.15, borderRadius: (S * 1.15) / 2,
+                borderWidth: 2,
+                borderColor: 'rgba(56,189,248,' + haloOpacity + ')',
+                transform: [{ scale: baseHaloScale }],
+              }} />
+              
+              {/* Ambient shimmer sweep — bright ocean blue */}
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute', width: S, height: S,
                 borderRadius: S / 2, overflow: 'hidden',
-                opacity: 0.07,
+                opacity: 0.62,
                 transform: [{ rotate: shimmerRot }],
               }}>
                 <LinearGradient
-                  colors={['transparent', sound.color + 'CC', 'transparent', sound.color + '55', 'transparent']}
+                  colors={['transparent', '#38bdf8EE', 'transparent', '#60a5fa99', 'transparent']}
                   locations={[0, 0.22, 0.50, 0.72, 1]}
                   start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
-              {/* Liquid wave SVG */}
-              <WaveView size={S} color={sound.color} soundId={sound.id} active={isActive} paused={isPaused} />
+              
+              {/* Liquid wave SVG (keeps the beautiful center texture) */}
+              <WaveView size={S} color="#38bdf8" soundId={sound.id} active={isActive} paused={isPaused} />
             </>
           );
         })()}
@@ -1879,20 +1922,19 @@ function ReelCard({
             <>
               <Text style={{
                 fontSize: Math.round(RING_SIZE * 0.22),
-                fontWeight: '200',
+                fontWeight: '700',
                 color: '#FFFFFF',
-                letterSpacing: -1.5,
-                fontFamily: 'Nunito_300Light',
-                textShadowColor: 'rgba(0,0,0,0.35)',
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 6,
+                letterSpacing: -2,
+                textShadowColor: 'rgba(56,189,248,0.55)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 14,
               }}>
                 {fmtTimer(sessionSecs)}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
                 <View style={{
                   width: 4, height: 4, borderRadius: 2,
-                  backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color,
+                  backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : '#38bdf8',
                 }} />
                 <Text style={{ fontSize: 7.5, fontWeight: '500', color: isPaused ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)', letterSpacing: 1.6 }}>
                   {isPaused ? 'PAUSED' : 'PLAYING'}
@@ -2124,6 +2166,87 @@ function ReelCard({
           </Animated.View>
         )}
       </Animated.View>
+
+      {/* ── Loading overlay — appears after 380ms while remote audio is buffering ── */}
+      {isActive && showLoadingOverlay && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center', zIndex: 18,
+        }} pointerEvents="none">
+          <View style={{
+            width: 80, height: 80, borderRadius: 40,
+            backgroundColor: 'rgba(0,0,0,0.62)',
+            borderWidth: 1.5, borderColor: sound.color + '55',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ActivityIndicator size="large" color={sound.color} />
+          </View>
+          <Text style={{
+            marginTop: 12, fontSize: 10, color: 'rgba(255,255,255,0.48)',
+            fontWeight: '600', letterSpacing: 1.5,
+          }}>LOADING</Text>
+        </View>
+      )}
+
+      {/* ── No-internet overlay — shown when remote audio fails to load ── */}
+      {isActive && audioNetworkError && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 20, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: 'rgba(0,0,0,0.78)',
+        }}>
+          <View style={{
+            alignItems: 'center', paddingHorizontal: 28, paddingVertical: 26,
+            backgroundColor: 'rgba(10,10,18,0.93)',
+            borderRadius: 24, borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.10)',
+            marginHorizontal: 32, overflow: 'hidden',
+          }}>
+            <LinearGradient
+              colors={[sound.color + '18', 'transparent']}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <View style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
+              backgroundColor: sound.color + '65',
+            }} />
+            <View style={{
+              width: 66, height: 66, borderRadius: 33,
+              backgroundColor: sound.color + '16', borderWidth: 1.5,
+              borderColor: sound.color + '40', alignItems: 'center',
+              justifyContent: 'center', marginBottom: 16,
+            }}>
+              <Ionicons name="cloud-offline-outline" size={30} color={sound.color} />
+            </View>
+            <Text style={{
+              fontSize: 18, fontWeight: '700', color: '#FFFFFF',
+              letterSpacing: -0.3, marginBottom: 6, textAlign: 'center',
+            }}>No Internet</Text>
+            <Text style={{
+              fontSize: 12, color: 'rgba(255,255,255,0.40)',
+              textAlign: 'center', lineHeight: 18, marginBottom: 22,
+            }}>
+              This sound streams online.{'\n'}Connect to WiFi or mobile data to play.
+            </Text>
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPlay(); }}
+              style={{
+                paddingHorizontal: 28, paddingVertical: 12, borderRadius: 99,
+                backgroundColor: sound.color + '20',
+                borderWidth: 1.5, borderColor: sound.color + '70',
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+              }}
+              activeOpacity={0.72}
+            >
+              <Ionicons name="refresh" size={14} color={sound.color} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: sound.color, letterSpacing: 0.2 }}>
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -2135,6 +2258,24 @@ const REEL_CAT_META: Record<string, { emoji: string; color: string }> = {
   Meditations: { emoji: '🕉️', color: '#c084fc' },
   Birds:       { emoji: '🐦', color: '#fde68a' },
 };
+
+function VeenaIcon({ size = 23, color = '#7A9A7A', filled = false }: {
+  size?: number; color?: string; filled?: boolean;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <SvgCircle cx="16" cy="16" r="6" fill={filled ? color : 'none'} stroke={color} strokeWidth={filled ? 0 : 1.6} />
+      <Path d="M11.8 11.8 L5.2 5.2" stroke={color} strokeWidth="2.4" strokeLinecap="round" fill="none" />
+      <SvgCircle cx="3.5" cy="3.5" r="2.8" fill={filled ? color : 'none'} stroke={color} strokeWidth={filled ? 0 : 1.5} />
+      {!filled && (
+        <>
+          <Path d="M12.8 13.5 L6.5 7.2" stroke={color} strokeWidth="0.55" opacity="0.55" fill="none" />
+          <Path d="M14 14.5 L7.7 8.2" stroke={color} strokeWidth="0.55" opacity="0.55" fill="none" />
+        </>
+      )}
+    </Svg>
+  );
+}
 
 function SoundReelsModal({
   visible, startIndex, playingId, isPaused, sessionSecs, stopIdx,
@@ -2236,21 +2377,9 @@ function SoundReelsModal({
     if (!visible) return;
     const sound = REELS_ALL_SOUNDS[activeIndex];
     if (!sound) return;
-    // Cancel any pending play timer
-    if (playDebounceRef.current) { clearTimeout(playDebounceRef.current); playDebounceRef.current = null; }
-    // Do NOT call onStopSilent here — playSound already calls stopAllRefs atomically.
-    // A pre-debounce stop races with the debounced playSound's own stopAllRefs,
-    // causing two concurrent teardowns that corrupt mixRefs and bleed audio.
-    // Debounce is 80ms so swipe feels immediate; audio engine still gets a settle window.
-    playDebounceRef.current = setTimeout(() => {
-      playDebounceRef.current = null;
-      if (playingIdRef.current !== sound.id) {
-        onPlaySoundRef.current(sound.id);
-      }
-    }, 80);
-    return () => {
-      if (playDebounceRef.current) { clearTimeout(playDebounceRef.current); playDebounceRef.current = null; }
-    };
+    if (playingIdRef.current !== sound.id) {
+      onPlaySoundRef.current(sound.id);
+    }
   }, [activeIndex, visible]);
 
   // Category banner animation
@@ -2301,6 +2430,7 @@ function SoundReelsModal({
           pagingEnabled
           bounces={false}
           overScrollMode="never"
+          onScrollBeginDrag={() => { onStopSilentRef.current(); }}
           onViewableItemsChanged={onViewRef.current}
           viewabilityConfig={viewConfigRef.current}
           getItemLayout={(_, index) => ({ length: REEL_H, offset: REEL_H * index, index })}
@@ -2377,55 +2507,41 @@ function SoundReelsModal({
             </TouchableOpacity>
           </View>
 
-          {/* ── Category selector — instructional tone with clear "tap to jump" cue ── */}
-          <View style={{ paddingHorizontal: 10, paddingBottom: 10, marginTop: 4 }}>
-            {/* Instructional hint row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8, paddingHorizontal: 4 }}>
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.36)', fontWeight: '500', letterSpacing: 0.8 }}>JUMP TO CATEGORY →</Text>
+          {/* ── Category selector — elegant pill layout with instructional text ── */}
+          <View style={{ paddingBottom: 10, marginTop: 4 }}>
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 }}>
+                Select the sound category
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5, marginTop: 2 }}>
+                and just swipe to listen that collection
+              </Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
               {(CATEGORIES.slice(1) as string[]).map(cat => {
                 const isActive = activeSound?.cat === cat;
-                const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+                const meta = REEL_CAT_META[cat] ?? { color: '#FFFFFF' };
                 return (
                   <TouchableOpacity
                     key={cat}
                     onPress={() => scrollToCategory(cat)}
-                    activeOpacity={0.72}
+                    activeOpacity={0.70}
                     style={{
-                      flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4,
-                      paddingTop: 9, paddingBottom: isActive ? 7 : 9, paddingHorizontal: 2,
-                      borderRadius: 14,
-                      backgroundColor: isActive ? meta.color + '28' : 'rgba(255,255,255,0.07)',
-                      borderWidth: isActive ? 1.5 : 1,
-                      borderColor: isActive ? meta.color + '80' : 'rgba(255,255,255,0.12)',
+                      paddingHorizontal: 16, paddingVertical: 10,
+                      borderRadius: 20,
+                      alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: isActive ? meta.color + '26' : 'rgba(255,255,255,0.06)',
+                      borderWidth: 1,
+                      borderColor: isActive ? meta.color + '80' : 'rgba(255,255,255,0.1)',
                     }}
                   >
-                    {/* Large emoji for instant visual recognition */}
-                    <Text style={{ fontSize: 16 }}>{meta.emoji}</Text>
-                    <Text
-                      style={{
-                        fontSize: 7.5,
-                        fontWeight: isActive ? '800' : '500',
-                        color: isActive ? meta.color : 'rgba(255,255,255,0.50)',
-                        letterSpacing: 0.2,
-                      }}
-                      numberOfLines={1}
-                    >
+                    <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.7)', fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular', letterSpacing: 0.2 }}>
                       {cat}
                     </Text>
-                    {/* Active underline bar */}
-                    {isActive && (
-                      <View style={{
-                        width: '55%', height: 2, borderRadius: 1,
-                        backgroundColor: meta.color,
-                        marginTop: 2,
-                      }} />
-                    )}
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         </SafeAreaView>
 
@@ -2706,9 +2822,12 @@ export default function SleepTab() {
   }, [openReel]);
 
   // ── Register reels opener so GlobalPlayerBar re-opens reels ──
+  // Use a ref to always read the latest playingId without re-registering on every sound change.
+  const reelsPlayingIdRef = useRef<string | null>(null);
+  useEffect(() => { reelsPlayingIdRef.current = playingId; }, [playingId]);
   useEffect(() => {
     registerReelsOpener(() => {
-      const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === playingId);
+      const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
       const startIdx = idx !== -1 ? idx : 0;
       [-1, 0, 1, 2, 3].forEach(offset => {
         const adj = REELS_ALL_SOUNDS[startIdx + offset];
@@ -2722,7 +2841,7 @@ export default function SleepTab() {
       setShowReels(true);
     });
     return () => unregisterReelsOpener();
-  }, [playingId, registerReelsOpener, unregisterReelsOpener]);
+  }, [registerReelsOpener, unregisterReelsOpener]);
 
   // ── Live clock ──────────────────────────────────────────────
   useEffect(() => {
@@ -3066,7 +3185,7 @@ export default function SleepTab() {
     }) as SoundItem[];
   }, [currentPeriod, autoMode]);
   const featuredSnd = playingSrc ?? (recSounds[0] ?? SLEEP_SOUNDS[0]);
-  const bottomPad   = insets.bottom + 80 + (playingId ? 72 : 0);
+  const bottomPad   = getTabBarClearance(insets.bottom, !!playingId);
   const autoMeta    = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!
 
   // ── Hero greeting: Calm-style serif font, color shifts with scene ────────
@@ -3332,6 +3451,7 @@ export default function SleepTab() {
         </View>}
 
         </View>{/* end lifted container */}
+
       </ScrollView>
         </Animated.View>
       </View>{/* end content area */}
@@ -3543,4 +3663,3 @@ const S = StyleSheet.create({
   confirmBtn:   { marginHorizontal: 20, borderRadius: 16, paddingVertical: 15, alignItems: 'center', borderWidth: 1 },
   confirmTxt:   { fontSize: 14, fontWeight: '900', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
 });
-

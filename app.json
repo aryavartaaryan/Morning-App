@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "owner": "onesutra",
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -140,8 +139,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "74e6437b-236b-4866-8a86-9df7657eb7ab"
+        "projectId": "93f7caca-54b9-4364-9323-c6cb499e0c66"
       }
-    }
+    },
+    "owner": "nadafreq"
   }
 }

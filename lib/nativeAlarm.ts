@@ -15,12 +15,14 @@ import notifee, {
 import { Platform, NativeModules, Alert, AppState } from 'react-native';
 import { getBrahmaMuhurtaResult, type LocationProfile } from './locationIntel';
 import { store, KEYS } from './storage';
+import { resolveNativeWakeAlarmSoundPath } from './wakeAlarmNativeSound';
 
 // Native bridge — AlarmModule.kt (AlarmManager + AlarmSoundService)
 const AlarmNative: {
   scheduleAlarm(ts: number): Promise<string>;
   cancelAlarm(): Promise<string>;
   stopAlarmSound(): Promise<string>;
+  stopAlarmAudioOnly(): Promise<string>;
   setAlarmVolume(volume: number): Promise<string>;
   setAlarmSound(mantraId: string): Promise<string>;
   setAlarmSoundPath(path: string): Promise<string>;
@@ -39,7 +41,6 @@ const AlarmNative: {
   stopAlarmVibration(): Promise<string>;
   dismissAlarmOverlay(): Promise<string>;
   stopLockTask(): Promise<string>;
-  stopAlarmServiceOnly(): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -111,18 +112,17 @@ export async function scheduleNativeAlarm(hour: number, minute: number, days?: n
     }
   }
 
-  // ── 1b. Persist selected mantra so AlarmSoundService plays the right audio ─
-  // Reads selectedMantraId from AlarmSettings (set when user picks Gayatri /
-  // Lalitha / Shiv Tandav in the alarms screen) and saves it to SharedPreferences.
-  if (AlarmNative?.setAlarmSound) {
-    try {
-      const alarmSettings = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
-      const mantraId = alarmSettings?.selectedMantraId ?? 'gayatri';
-      await AlarmNative.setAlarmSound(mantraId);
-      console.log(`[NativeAlarm] 🎵 Alarm sound set to: ${mantraId}`);
-    } catch (e) {
-      console.warn('[NativeAlarm] setAlarmSound failed (non-critical):', e);
-    }
+  // ── 1b. Persist selected sound + native-playable file path ────────────────
+  // AlarmSoundService is the single playback engine for wake alarms. Keeping
+  // the selected file path in native prefs makes open-state and killed-state
+  // alarms start through the same immediate MediaPlayer path.
+  try {
+    const alarmSettings = await store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings);
+    const soundId = alarmSettings?.selectedMantraId ?? 'gayatri';
+    await syncNativeWakeAlarmSound(soundId);
+    console.log(`[NativeAlarm] 🎵 Native wake sound synced: ${soundId}`);
+  } catch (e) {
+    console.warn('[NativeAlarm] Native wake sound sync failed (non-critical):', e);
   }
 
   // NOTE: We intentionally DO NOT schedule a Notifee trigger notification here.
@@ -222,30 +222,23 @@ export async function setNativeAlarmSoundPath(path: string): Promise<void> {
   try { await AlarmNative.setAlarmSoundPath(absPath); } catch { /* ignore */ }
 }
 
+export async function syncNativeWakeAlarmSound(soundId: string): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await setNativeAlarmSound(soundId);
+  const nativePath = await resolveNativeWakeAlarmSoundPath(soundId);
+  await setNativeAlarmSoundPath(nativePath ?? '');
+}
+
 // ── Stop native audio (call from alarm-ringing.tsx on mount) ───────────────────
 export async function stopNativeAlarmSound(): Promise<void> {
   if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmSound) return;
   try { await AlarmNative.stopAlarmSound(); } catch { /* ignore */ }
 }
 
-// ── Stop AlarmSoundService WITHOUT clearing alarm_fired_pending ───────────────
-// Use this instead of stopNativeAlarmSound() when the alarm screen has mounted
-// and JS audio (expo-av) is taking over from the native MediaPlayer.
-//
-// WHY THIS EXISTS:
-//   stopNativeAlarmSound() calls AlarmModule.stopAlarmSound() which writes
-//   alarm_fired_pending=false. This immediately makes isAlarmActive() return
-//   false in MainActivity, so startLockTask() stops enforcing the screen pin
-//   even though the alarm screen is still showing — the OS shows "Screen pinned"
-//   toast but Home/Recents buttons work normally.  (Root cause of the bug.)
-//
-//   stopNativeAlarmServiceOnly() calls AlarmModule.stopAlarmServiceOnly() which
-//   only stops the MediaPlayer/service (releases audio focus for expo-av) while
-//   keeping alarm_fired_pending=true, so the screen stays pinned until the user
-//   explicitly completes the mission.
-export async function stopNativeAlarmServiceOnly(): Promise<void> {
-  if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmServiceOnly) return;
-  try { await AlarmNative.stopAlarmServiceOnly(); } catch { /* ignore */ }
+// ── Stop native audio only, keeping wake locks / vibration / watchdog alive ──
+export async function stopNativeAlarmAudioOnly(): Promise<void> {
+  if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmAudioOnly) return;
+  try { await AlarmNative.stopAlarmAudioOnly(); } catch { /* ignore */ }
 }
 
 // ── Exit screen-pinning (Lock Task) mode ─────────────────────────────────────

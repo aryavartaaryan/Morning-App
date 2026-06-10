@@ -38,6 +38,8 @@ type SoundPlayerCtx = {
   changeTimer: (secs: number) => void;
   setLoopConfig: (shouldLoop: boolean, trimMs: number, totalSecs: number) => void;
   meteringLevel: number;
+  isAudioLoading: boolean;
+  audioNetworkError: boolean;
   moodPhase: 'pre' | 'post' | 'result' | null;
   preMood: MoodKey | null;
   requestPlay: (meta: PlayableSoundMeta, durationSecs: number) => void;
@@ -67,6 +69,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
   const [preMood, setPreMood]           = useState<MoodKey | null>(null);
   const [showFullPlayer, setShowFullPlayer] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [audioNetworkError, setAudioNetworkError] = useState(false);
+  const networkErrorRef = useRef(false);
   const reelsOpenerRef = useRef<(() => void) | null>(null);
 
   const openFullPlayer       = useCallback(() => setShowFullPlayer(true),  []);
@@ -190,6 +195,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       mixRefs.current.set(meta.id, sound);
       return sound;
     } catch (e) {
+      const msg = String(e).toLowerCase();
+      if (
+        msg.includes('network') || msg.includes('unable to resolve') ||
+        msg.includes('nsurlsession') || msg.includes('connection') ||
+        msg.includes('could not connect') || msg.includes('timeout') ||
+        msg.includes('no route to host') || msg.includes('econnrefused') ||
+        msg.includes('failed to fetch') || msg.includes('name or service')
+      ) {
+        networkErrorRef.current = true;
+      }
       console.warn('[SoundPlayer] Failed to load sound:', meta.id, e);
       return null;
     }
@@ -304,6 +319,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     setPlayingDurSecs(null);
     meteringRef.current = 0;
     setMeteringLevel(0);
+    setAudioNetworkError(false);
+    setIsAudioLoading(false);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
     else { stopCbRef.current = null; }
   }, [clearTimer, clearHeartbeat, stopAllRefs]);
@@ -334,8 +351,11 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     shouldLoop: boolean = true,
   ) => {
     noLoopRef.current = !shouldLoop;
+    networkErrorRef.current = false;
     // Bump epoch FIRST so any concurrent in-flight loadAndPlay can detect it is stale.
     const epoch = ++playEpochRef.current;
+    setIsAudioLoading(true);
+    setAudioNetworkError(false);
     try {
       clearTimer();
       await stopAllRefs();
@@ -350,9 +370,12 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       setSessionSecs(durationSecs);
       reelTrimMsRef.current = trimLastSecs * 1000;
       const sound = await loadAndPlay(meta, epoch, trimLastSecs * 1000);
+      // Only this epoch may update loading state — a newer epoch manages its own
+      if (epoch === playEpochRef.current) setIsAudioLoading(false);
       if (!sound) {
         // Either stale (epoch mismatch) or real load failure.
         if (epoch === playEpochRef.current) {
+          if (networkErrorRef.current) setAudioNetworkError(true);
           setPlayingId(null);
           setPlayingMeta(null);
           setMixedSounds([]);
@@ -363,6 +386,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       startTimer(durationSecs);
       startHeartbeat();
     } catch (e) {
+      if (epoch === playEpochRef.current) setIsAudioLoading(false);
       console.warn('[SoundPlayer] playSound error:', e);
       if (epoch === playEpochRef.current) {
         setPlayingId(null);
@@ -522,6 +546,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringLevel,
+      isAudioLoading, audioNetworkError,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
       showFullPlayer, openFullPlayer, closeFullPlayer,

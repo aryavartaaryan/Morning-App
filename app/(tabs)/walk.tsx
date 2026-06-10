@@ -28,12 +28,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop, Path, G, Text as SvgText, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/StepCounter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBgContext } from '@/lib/bgContext';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const { width: W } = Dimensions.get('window');
 
@@ -92,6 +94,7 @@ const DEFAULT_STATS: TodayStats = {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function WalkTab() {
   const insets = useSafeAreaInsets();
+  const { playingId } = useSoundPlayer();
   const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -113,6 +116,11 @@ export default function WalkTab() {
   const glowAnim    = useRef(new Animated.Value(0)).current;
   const cardFade    = useRef(new Animated.Value(0)).current;
   const cardSlide   = useRef(new Animated.Value(30)).current;
+  const walkScrollRef = useRef<ScrollView | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    walkScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -280,8 +288,9 @@ export default function WalkTab() {
       </Animated.View>
 
       <ScrollView
+        ref={walkScrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
       >
         {/* ── HEADER — glassmorphism card matching sleep / alarm pages ──── */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 18 }}>

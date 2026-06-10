@@ -76,14 +76,26 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             // any watchdog fires. .apply() was causing a race where the flag was still
             // true after the alarm was dismissed, making the app re-open itself.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean("alarm_fired_pending", false)
-                .putBoolean("service_intentionally_stopped", false) // clear for next alarm cycle
-                .commit()
+                .edit().putBoolean("alarm_fired_pending", false).commit()
+            (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState()
             reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
             promise.resolve("Sound stopped")
         } catch (e: Exception) {
             promise.reject("STOP_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun stopAlarmAudioOnly(promise: Promise) {
+        try {
+            reactContext.startService(
+                Intent(reactContext, AlarmSoundService::class.java).apply {
+                    action = AlarmSoundServiceBase.ACTION_STOP_AUDIO
+                }
+            )
+            promise.resolve("Alarm audio stopped")
+        } catch (e: Exception) {
+            promise.reject("STOP_AUDIO_ERROR", e.message, e)
         }
     }
 
@@ -121,42 +133,6 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     }
 
     /**
-     * Stop AlarmSoundService WITHOUT clearing alarm_fired_pending.
-     *
-     * Called from alarm-ringing.tsx when the user taps "Begin Your Day" and
-     * transitions to the mission screen. Stopping the service kills the
-     * bringToFrontRunnable + lifecycleWatchdog (fixes the post-mission crash loop)
-     * while keeping alarm_fired_pending=true so that:
-     *   • isAlarmActive() returns true on the mission screen
-     *   • startLockTask() stays active (screen remains pinned)
-     *   • onUserLeaveHint() continues to block the Home button
-     *
-     * The full flag clear + lock task exit happens in mission.tsx handleComplete()
-     * via stopAlarmSound() + stopLockTask() once the user finishes the mission.
-     */
-    @ReactMethod
-    fun stopAlarmServiceOnly(promise: Promise) {
-        try {
-            // Write service_intentionally_stopped=true BEFORE calling stopService().
-            // If Android START_STICKY restarts the service with intent=null, the
-            // AlarmSoundServiceBase.onStartCommand() guard checks this flag and
-            // returns START_NOT_STICKY — preventing the native MediaPlayer from
-            // re-acquiring audio focus while JS expo-av is playing the alarm audio.
-            //
-            // alarm_fired_pending is intentionally NOT cleared here — it must stay
-            // true so isAlarmActive() returns true in MainActivity, keeping the
-            // screen pinned (startLockTask() enforced) and Home button blocked
-            // until mission.tsx handleComplete() calls stopAlarmSound().
-            reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("service_intentionally_stopped", true).commit()
-            reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
-            promise.resolve("Service stopped (alarm_fired_pending preserved)")
-        } catch (e: Exception) {
-            promise.reject("STOP_SERVICE_ERROR", e.message, e)
-        }
-    }
-
-    /**
      * Exit Lock Task (screen pinning) mode.
      * Called from mission.tsx handleComplete() immediately after stopping the alarm
      * so the user is never trapped inside the app after mission completion.
@@ -168,6 +144,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             if (activity != null) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     try { activity.stopLockTask() } catch (_: Exception) {}
+                    (activity as? MainActivity)?.resetAlarmLockTaskState()
                 }
             }
             promise.resolve("OK")

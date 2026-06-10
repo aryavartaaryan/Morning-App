@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
   TextInput, Alert, Animated, Dimensions, NativeModules, Platform,
@@ -22,12 +22,13 @@ import {
 import { MISSIONS, WAKE_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
 import {
   scheduleNativeAlarm, cancelNativeAlarm, checkAlarmPermission,
-  setNativeAlarmSound, setNativeAlarmSoundPath, requestAllAlarmPermissions,
-  scheduleExtraWakeAlarm, cancelExtraWakeAlarm, getNextAlarmTimestamp,
+  requestAllAlarmPermissions,
+  scheduleExtraWakeAlarm, cancelExtraWakeAlarm, getNextAlarmTimestamp, syncNativeWakeAlarmSound,
 } from '@/lib/nativeAlarm';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType, AndroidForegroundServiceType } from '@notifee/react-native';
 import { Colors, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { useBgContext } from '@/lib/bgContext';
 import { getCardBg } from '@/lib/cardTheme';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -37,6 +38,8 @@ import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
 import SoundPicker from '@/components/alarms/SoundPicker';
 import { getSolarTimes } from '@/lib/solar';
+import { useFocusEffect } from 'expo-router';
+import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
@@ -376,6 +379,7 @@ function GlassPulseOverlay() {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function AlarmsTab() {
   const insets = useSafeAreaInsets();
+  const { playingId } = useSoundPlayer();
   const [settings, setSettings]             = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [saving, setSaving]                 = useState(false);
   const [selectedMantraId, setSelectedMantraId] = useState('bhagya_suktam');
@@ -424,8 +428,13 @@ export default function AlarmsTab() {
   const cardBg                              = getCardBg(bgKey);
   const [previewingId, setPreviewingId]     = useState<string | null>(null);
   const previewSoundRef                     = useRef<Audio.Sound | null>(null);
+  const alarmScrollRef                      = useRef<ScrollView | null>(null);
 
   useEffect(() => { const t = setInterval(() => setLiveClock(new Date()), 1000); return () => clearInterval(t); }, []);
+
+  useFocusEffect(useCallback(() => {
+    alarmScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
   useEffect(() => {
     (async () => {
@@ -453,7 +462,7 @@ export default function AlarmsTab() {
       for (const m of MANTRAS) statuses[m.id] = (await isMantraDownloaded(m.id)) ? 'downloaded' : 'idle';
       setDlStatus(statuses);
       const currentId = s?.selectedMantraId ?? 'gayatri';
-      if (statuses[currentId] === 'downloaded') setNativeAlarmSoundPath(getLocalMantraPath(currentId)).catch(() => {});
+      syncNativeWakeAlarmSound(currentId).catch(() => {});
       const ms = await store.getJSON<MissionSettings>(KEYS.missionSettings);
       if (ms) setMissionSettings({ ...DEFAULT_MISSION_SETTINGS, ...ms });
       const entries = await store.getJSON<AlarmEntry[]>(KEYS.multiAlarms);
@@ -501,7 +510,7 @@ export default function AlarmsTab() {
       const hasPerm = await requestNotificationPermission();
       if (hasPerm) await rescheduleAllFromSettings(updated);
       if (updated.wakeAlarm.enabled) {
-        setNativeAlarmSound(selectedMantraId).catch(() => {});
+        await syncNativeWakeAlarmSound(selectedMantraId);
         const next = new Date(getNextAlarmTimestamp(updated.wakeAlarm.hour, updated.wakeAlarm.minute, updated.wakeAlarm.days));
         if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
           try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] schedule failed:', e); }
@@ -816,28 +825,36 @@ export default function AlarmsTab() {
   const handleMantraSelect = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedMantraId(id);
     const upd = { ...settings, selectedMantraId: id }; setSettings(upd);
-    store.setJSON(KEYS.alarmSettings, upd); setNativeAlarmSound(id).catch(() => {});
+    store.setJSON(KEYS.alarmSettings, upd); syncNativeWakeAlarmSound(id).catch(() => {});
     if (SOUND_IMAGES[id]) ensureSoundImageCached(SOUND_IMAGES[id]).catch(() => {});
     const snd = ALARM_SOUNDS.find(s => s.id === id);
     if (snd && previewingId !== id) togglePreview(snd);
     updateMission({ wakeSound: id });
     // Bundled nature/sacred/stotra sounds need no download
-    if (ALARM_BUNDLED[id] != null) { setDlStatus(s => ({ ...s, [id]: 'downloaded' })); return; }
-    if (BUNDLED_MANTRAS.has(id)) { setDlStatus(s => ({ ...s, [id]: 'downloaded' })); return; }
-    if (dlStatus[id] === 'downloaded') { setNativeAlarmSoundPath(getLocalMantraPath(id)).catch(() => {}); return; }
+    if (ALARM_BUNDLED[id] != null) {
+      setDlStatus(s => ({ ...s, [id]: 'downloaded' }));
+      syncNativeWakeAlarmSound(id).catch(() => {});
+      return;
+    }
+    if (BUNDLED_MANTRAS.has(id)) {
+      setDlStatus(s => ({ ...s, [id]: 'downloaded' }));
+      syncNativeWakeAlarmSound(id).catch(() => {});
+      return;
+    }
+    if (dlStatus[id] === 'downloaded') { syncNativeWakeAlarmSound(id).catch(() => {}); return; }
     if (dlStatus[id] === 'downloading') return;
     const m = MANTRAS.find(x => x.id === id);
     if (!m?.audioUrl) return;
     setDlStatus(s => ({ ...s, [id]: 'downloading' })); setDlProgress(s => ({ ...s, [id]: 0 }));
     const result = await downloadMantra(id, m.audioUrl, p => setDlProgress(s => ({ ...s, [id]: p })));
     setDlStatus(s => ({ ...s, [id]: result ? 'downloaded' : 'idle' }));
-    if (result && id === selectedMantraId) setNativeAlarmSoundPath(result).catch(() => {});
+    if (result && id === selectedMantraId) syncNativeWakeAlarmSound(id).catch(() => {});
   };
 
   const fireTestNotification = async () => {
     const granted = await requestNotificationPermission();
     if (!granted) { Alert.alert('Enable notifications in Settings first'); return; }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); setNativeAlarmSound(selectedMantraId).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); syncNativeWakeAlarmSound(selectedMantraId).catch(() => {});
     if (Platform.OS === 'android') {
       if (!NativeModules.AlarmModule?.scheduleAlarm) { playAlarmSound('mantra'); return; }
       try { await NativeModules.AlarmModule.scheduleAlarm(Date.now() + 5000); Alert.alert('🔔 Test alarm (5 sec)', 'Lock your screen now — alarm should break through.'); } catch (e: any) { Alert.alert('Failed', e?.message ?? String(e)); }
@@ -1037,7 +1054,15 @@ export default function AlarmsTab() {
       )}
 
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={alarmScrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingBottom: getTabBarClearance(insets.bottom, !!playingId),
+          paddingTop: 12,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── Alarm List (individual slim cards) ── */}
         <View style={{ gap: 8 }}>
 
@@ -1226,6 +1251,7 @@ export default function AlarmsTab() {
             <Text style={{ color: '#FFFFFF15', fontSize: 11 }}>Tap the + button below</Text>
           </View>
         )}
+
       </ScrollView>
 
       {/* FAB */}

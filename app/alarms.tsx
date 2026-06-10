@@ -23,8 +23,7 @@ import { MISSIONS, WAKE_SOUNDS, SLEEP_SOUNDS, DEFAULT_MISSION_SETTINGS, MissionS
 import {
   scheduleNativeAlarm, cancelNativeAlarm,
   checkAlarmPermission, openAlarmPermissionSettings,
-  setNativeAlarmSound, setNativeAlarmSoundPath,
-  requestAllAlarmPermissions,
+  requestAllAlarmPermissions, syncNativeWakeAlarmSound,
 } from '@/lib/nativeAlarm';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
 import { Colors, Spacing, Radius, Font } from '@/constants/theme';
@@ -581,12 +580,9 @@ export default function AlarmsScreen() {
       }
       setDlStatus(statuses);
 
-      // Ensure native alarm sound path is set for the currently-selected mantra if it's already
-      // downloaded — prevents fallback to bundled mantra_alarm.wav when app restarts
+      // Keep native wake-alarm sound/path synced so the service can play it directly.
       const currentMantraId = s?.selectedMantraId ?? 'gayatri';
-      if (statuses[currentMantraId] === 'downloaded') {
-        setNativeAlarmSoundPath(getLocalMantraPath(currentMantraId)).catch(() => {});
-      }
+      syncNativeWakeAlarmSound(currentMantraId).catch(() => {});
 
       // Load mission settings
       const ms = await store.getJSON<MissionSettings>(KEYS.missionSettings);
@@ -652,7 +648,7 @@ export default function AlarmsScreen() {
       // and leaving the alarm UN-SCHEDULED while the UI shows it as ON.
       if (updated.wakeAlarm.enabled) {
         // 1. Schedule immediately — same direct native call the test alarm uses.
-        setNativeAlarmSound(selectedMantraId).catch(() => {});
+        await syncNativeWakeAlarmSound(selectedMantraId);
         const next = new Date();
         next.setHours(updated.wakeAlarm.hour, updated.wakeAlarm.minute, 0, 0);
         if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
@@ -846,16 +842,19 @@ export default function AlarmsScreen() {
     const upd = { ...settings, selectedMantraId: id };
     setSettings(upd);
     store.setJSON(KEYS.alarmSettings, upd);
-    // Persist to native SharedPreferences so AlarmSoundService plays this mantra
-    setNativeAlarmSound(id).catch(() => {});
+    // Persist to native SharedPreferences so AlarmSoundService plays this sound.
+    syncNativeWakeAlarmSound(id).catch(() => {});
     // Keep MissionSettings.wakeSound in sync so alarm-ringing.tsx plays the same mantra
     const wakeSoundId = MANTRA_TO_WAKE_SOUND[id] ?? 'gayatri';
     updateMission({ wakeSound: wakeSoundId });
     // If bundled locally or already downloaded, no CDN download needed
     const m = MANTRAS.find(x => x.id === id);
-    if (m?.bundledSrc) return;
+    if (m?.bundledSrc) {
+      syncNativeWakeAlarmSound(id).catch(() => {});
+      return;
+    }
     if (dlStatus[id] === 'downloaded') {
-      setNativeAlarmSoundPath(getLocalMantraPath(id)).catch(() => {});
+      syncNativeWakeAlarmSound(id).catch(() => {});
       return;
     }
     if (dlStatus[id] === 'downloading') return;
@@ -868,7 +867,7 @@ export default function AlarmsScreen() {
     setDlStatus(s => ({ ...s, [id]: result ? 'downloaded' : 'idle' }));
     // Save the absolute path so AlarmSoundService plays it when app is closed
     if (result && id === selectedMantraId) {
-      setNativeAlarmSoundPath(result).catch(() => {});
+      syncNativeWakeAlarmSound(id).catch(() => {});
     }
   };
 
@@ -982,8 +981,8 @@ export default function AlarmsScreen() {
     if (!granted) { Alert.alert('Enable notifications in Settings first'); return; }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Persist the user's selected mantra so the native service plays the right sound
-    setNativeAlarmSound(selectedMantraId).catch(() => {});
+    // Persist the user's selected sound so the native service plays the right sound.
+    syncNativeWakeAlarmSound(selectedMantraId).catch(() => {});
 
     if (Platform.OS === 'android') {
       // Diagnostic: explicitly check AlarmModule presence so silent fallback
@@ -1067,7 +1066,7 @@ export default function AlarmsScreen() {
     const upd = { ...settings, selectedMantraId: id };
     setSettings(upd);
     store.setJSON(KEYS.alarmSettings, upd);
-    setNativeAlarmSound(id).catch(() => {});
+    syncNativeWakeAlarmSound(id).catch(() => {});
     updateMission({ wakeSound: id });
   };
 
@@ -1327,6 +1326,29 @@ export default function AlarmsScreen() {
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
+
+      {/* Settings floating button — top-right */}
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+        style={{
+          position: 'absolute',
+          top: (insets?.top ?? 44) + 10,
+          right: 16,
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.20)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 20,
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
+      </TouchableOpacity>
+
       {/* ── Compact Header ── */}
       <SafeAreaView edges={['top']}>
         <View style={S.compactHeader}>
@@ -2253,11 +2275,11 @@ const S = StyleSheet.create({
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
-  fab: { position: 'absolute', bottom: 90, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: '#7C3AED', shadowOpacity: 0.6, shadowRadius: 16 },
+  fab: { position: 'absolute', bottom: 130, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: '#7C3AED', shadowOpacity: 0.6, shadowRadius: 16 },
   fabOpen: { backgroundColor: '#4C1D95' },
   fabTxt: { fontSize: 30, color: '#fff', fontWeight: '200', lineHeight: 36, marginTop: 2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', bottom: 162, right: 24, gap: 8, alignItems: 'flex-end', zIndex: 10 },
+  fabMenu: { position: 'absolute', bottom: 200, right: 24, gap: 8, alignItems: 'flex-end', zIndex: 10 },
   fabMenuItem: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 13, elevation: 8, shadowColor: '#000', shadowOpacity: 0.30, shadowRadius: 16, shadowOffset: { width: 0, height: 5 } },
   fabMenuItemTxt: { fontSize: 14, fontWeight: '800' },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },

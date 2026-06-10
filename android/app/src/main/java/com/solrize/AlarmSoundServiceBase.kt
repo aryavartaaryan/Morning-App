@@ -47,6 +47,8 @@ abstract class AlarmSoundServiceBase : Service() {
         const val ACTION_START_VIBRATION = "com.solrize.START_ALARM_VIBRATION"
         /** Intent action: stop the hardware vibration pattern from the running service. */
         const val ACTION_STOP_VIBRATION  = "com.solrize.STOP_ALARM_VIBRATION"
+        /** Intent action: release the native MediaPlayer while keeping the alarm service alive. */
+        const val ACTION_STOP_AUDIO = "com.solrize.STOP_ALARM_AUDIO"
         /**
          * Intent action: remove the TYPE_APPLICATION_OVERLAY window.
          * Sent from JS (AlarmModule / HabitAlarmModule) the moment the React Native
@@ -205,6 +207,10 @@ abstract class AlarmSoundServiceBase : Service() {
         }
     }
 
+    // Safety-net unmute: retained for volume-duck control paths. Wake alarms
+    // now use native MediaPlayer as the primary playback engine, so normal
+    // alarm startup begins at full volume and does not wait for JS audio.
+    private val unmuteRunnable = Runnable { mediaPlayer?.setVolume(1f, 1f) }
 
     private fun isAppInForeground(): Boolean = mainActivityResumed
 
@@ -317,7 +323,21 @@ abstract class AlarmSoundServiceBase : Service() {
                     )
                 }
             }
-            startActivity(launch)
+            
+            // FIX: On Android 12+, background activity launches are strictly blocked 
+            // even from foreground services. Sending the full-screen PendingIntent 
+            // is the only guaranteed way to bypass BAL restrictions when the 
+            // watchdogs detect the user has escaped to the home screen.
+            try {
+                if (alarmScreenLaunched) {
+                    // Try the PendingIntent first for subsequent launches to guarantee BAL bypass
+                    buildFullScreenPendingIntent().send()
+                } else {
+                    startActivity(launch)
+                }
+            } catch (e: Exception) {
+                startActivity(launch)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -536,35 +556,42 @@ abstract class AlarmSoundServiceBase : Service() {
         // to control vibration during snooze without stopping the FGS.
         if (intent?.action == ACTION_START_VIBRATION) { startAlarmVibration(); return START_STICKY }
         if (intent?.action == ACTION_STOP_VIBRATION)  { stopAlarmVibration();  return START_STICKY }
+        if (intent?.action == ACTION_STOP_AUDIO) {
+            bringToFrontHandler.removeCallbacks(unmuteRunnable)
+            try {
+                mediaPlayer?.stop()
+            } catch (_: Exception) {}
+            mediaPlayer?.release()
+            mediaPlayer = null
+            return START_STICKY
+        }
         // RN alarm screen has mounted — remove the native overlay placeholder.
         if (intent?.action == ACTION_DISMISS_OVERLAY)  { removeOverlay();       return START_STICKY }
 
         // ── Volume duck without restarting the service ──────────────────────
         // Lets JS lower MediaPlayer volume for TTS / snooze while keeping the
         // FGS (and both watchdogs) alive and the alarm flag set.
+        // IMPORTANT: removeCallbacks(unmuteRunnable) here is the KEY fix for
+        // Bug 1 — when JS calls setNativeAlarmVolume(0) to mute the native
+        // MediaPlayer, it signals that JS audio is alive. The safety-net
+        // unmuteRunnable MUST be cancelled at this point so Gayatri never
+        // bleeds through after JS has already taken over audio.
         if (intent?.action == getActionSetVolume()) {
             val vol = intent.getFloatExtra(getExtraVolumeKey(), 1f)
+            bringToFrontHandler.removeCallbacks(unmuteRunnable)
             mediaPlayer?.setVolume(vol, vol)
             return START_STICKY
         }
 
         // ── Guard: reject phantom START_STICKY restarts after intentional stop ─
-        // Case 1: stopAlarmSound() was called — alarm_fired_pending=false, so
-        //   isAlarmActive() returns false. Self-stop here.
-        // Case 2: stopAlarmServiceOnly() was called — alarm_fired_pending stays
-        //   true (screen stays pinned), but service_intentionally_stopped=true.
-        //   We must NOT restart the MediaPlayer in this case — JS expo-av has
-        //   audio focus and re-starting native audio would create a dual-audio
-        //   conflict and break the JS alarm sound.
-        if (intent == null) {
-            val intentionallyStopped = try {
-                getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-                    .getBoolean("service_intentionally_stopped", false)
-            } catch (_: Exception) { false }
-            if (!isAlarmActive() || intentionallyStopped) {
-                stopSelf()
-                return START_NOT_STICKY
-            }
+        // stopAlarmSound() clears alarm_fired_pending BEFORE calling stopService().
+        // If Android then restarts this service with intent=null (START_STICKY),
+        // isAlarmActive() returns false — we must NOT re-arm the alarm.
+        // Self-stopping here is the single-line fix that prevents phantom
+        // post-mission vibration without touching any other alarm path.
+        if (intent == null && !isAlarmActive()) {
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         // ── Load subclass-specific params ───────────────────────────────────
@@ -643,6 +670,7 @@ abstract class AlarmSoundServiceBase : Service() {
     override fun onDestroy() {
         (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
         bringToFrontHandler.removeCallbacks(bringToFrontRunnable)
+        bringToFrontHandler.removeCallbacks(unmuteRunnable)
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay
         mediaPlayer?.stop()

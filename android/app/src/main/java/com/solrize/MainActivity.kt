@@ -23,6 +23,7 @@ class MainActivity : ReactActivity() {
   // and the SharedPreferences .commit() becoming visible on the UI thread.
   private val focusLossHandler  = android.os.Handler(android.os.Looper.getMainLooper())
   private var focusLossRunnable: Runnable? = null
+  private var lockTaskStartedForAlarm = false
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
@@ -60,7 +61,7 @@ class MainActivity : ReactActivity() {
       // while the app is ALREADY OPEN (onResume is not called again in that case).
       // This handles wake alarm, habit alarm, and quick alarm equally since
       // isAlarmActive() checks ALL alarm types from SharedPreferences.
-      try { startLockTask() } catch (_: Exception) {}
+      startAlarmLockTaskOnce()
     }
   }
 
@@ -71,6 +72,7 @@ class MainActivity : ReactActivity() {
       // bring-to-front never fires after the user has dismissed the alarm.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
+      lockTaskStartedForAlarm = false
       // NOTE: stopLockTask() is NOT called here unconditionally — it would
       // interfere with normal in-alarm navigation. The explicit call happens
       // in mission.tsx handleComplete() via AlarmModule.stopLockTask().
@@ -96,7 +98,7 @@ class MainActivity : ReactActivity() {
     // Pins this task so Android's OS itself blocks Home, Back, and Recent Apps.
     // This is the same mechanism Alarmy uses for unescapable alarms.
     // On first use the system shows a one-time "Screen pinned" toast — silent thereafter.
-    try { startLockTask() } catch (_: Exception) {}
+    startAlarmLockTaskOnce()
   }
 
   /**
@@ -121,7 +123,7 @@ class MainActivity : ReactActivity() {
       focusLossRunnable = null
       // Pin the screen if alarm is active.
       if (isAlarmActive()) {
-        try { startLockTask() } catch (_: Exception) {}
+        startAlarmLockTaskOnce()
       }
     } else {
       // Window lost focus — debounce before reacting so we don't fire
@@ -182,6 +184,16 @@ class MainActivity : ReactActivity() {
     } catch (e: Exception) {
       false
     }
+  }
+
+  private fun startAlarmLockTaskOnce() {
+    if (lockTaskStartedForAlarm) return
+    lockTaskStartedForAlarm = true
+    try { startLockTask() } catch (_: Exception) {}
+  }
+
+  fun resetAlarmLockTaskState() {
+    lockTaskStartedForAlarm = false
   }
 
   /**

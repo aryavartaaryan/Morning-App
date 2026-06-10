@@ -7,7 +7,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { startAlarmVibration, stopAlarmVibration } from '@/lib/nativeAlarm';
+import { startAlarmVibration, stopAlarmVibration, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { store, KEYS } from '@/lib/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
@@ -392,6 +392,9 @@ export default function HabitAlarmRingingScreen() {
     // 3. Stop native service BEFORE navigating — this clears isAlarmActive() flag
     // so the lifecycle watchdog stops trying to bring the app to front
     await stopNative();
+    // 4. Exit lock task mode (screen pinning) so the user can press HOME / close the app.
+    // Without this the app stays pinned even after the alarm is fully dismissed.
+    await stopNativeLockTask();
     await stopForegroundService();
     try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
     try { await notifee.cancelNotification('habit-bttf'); } catch { /* ignore */ }
@@ -425,6 +428,8 @@ export default function HabitAlarmRingingScreen() {
     setTimeout(() => { stopHabitAlarmVibration(); }, 300); // double-stop safety
     // Stop native service BEFORE navigating — clears isAlarmActive() flag
     await stopNative();
+    // Exit lock task mode (screen pinning) so the user can close the app after dismissal.
+    await stopNativeLockTask();
     await stopForegroundService();
     try { await notifee.cancelNotification(bttfNotifIdRef.current ?? 'habit-bttf'); } catch { /* ignore */ }
     try { await notifee.cancelNotification('habit-bttf'); } catch { /* ignore */ }
