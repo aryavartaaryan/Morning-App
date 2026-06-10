@@ -574,40 +574,56 @@ export default function AlarmRingingScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const saved = await store.getJSON<MissionSettings>(KEYS.missionSettings);
-      const settings = saved ? { ...DEFAULT_MISSION_SETTINGS, ...saved } : DEFAULT_MISSION_SETTINGS;
-      if (cancelled) return;
-      setMs(settings);
-
-      const dosha = await store.getJSON<{ name?: string }>(KEYS.dosha);
-      const name = dosha?.name ?? 'Champion';
-      if (cancelled) return;
-      setUserName(name);
-
+      // ════════════════════════════════════════════════════════════════════════
+      // PHASE 1 — AUDIO FIRST (start sound ASAP, don't wait for UI settings)
+      // ════════════════════════════════════════════════════════════════════════
+      // Only load the one key we NEED for audio: alarmSettings → mantraId.
+      // missionSettings and dosha/name are loaded in Phase 2 below so they
+      // NEVER delay the sound by even a millisecond.
       const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
+      if (cancelled) return;
       const mantraId = alarmCfg?.selectedMantraId ?? 'gayatri';
-      const meta = ALARM_SOUND_META[mantraId] ?? { label: 'Sacred Sound', icon: '🕉️', color: '#fbbf24' };
-      const bgSrc = ALARM_SOUND_BUNDLED_IMAGES[mantraId]
-        ?? (SOUND_IMAGES[mantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[mantraId]) } : null);
-      if (!cancelled) { setSoundMeta(meta); setBgImageSource(bgSrc); }
       const useGentle = alarmCfg?.gentleWake ?? false;
-      const rampMins = alarmCfg?.rampMinutes ?? 5;
+      const rampMins  = alarmCfg?.rampMinutes ?? 5;
       gentleWakeRef.current = useGentle;
       rampMinutesRef.current = rampMins;
 
-      // ── Play correct mantra / nature / gentle / fusion audio via JS layer ───
-      // FOREGROUND FIX: Stop ambient sound FIRST and wait for audio session release
-      // before claiming it with expo-av. Previously stopAmbientSound ran in a separate
-      // useEffect concurrently with playWakeAudio, causing audio session conflicts
-      // when the alarm fired while the app was already open.
-      if (!cancelled) {
-        await stopAmbientSound(false).catch(() => {});
-        dismissMoodSheet();
-        // Give the audio session 150ms to release before we reclaim it
-        await new Promise<void>(r => setTimeout(r, 150));
+      // Update sound meta + bg image (non-blocking UI update)
+      const meta  = ALARM_SOUND_META[mantraId] ?? { label: 'Sacred Sound', icon: '🕉️', color: '#fbbf24' };
+      const bgSrc = ALARM_SOUND_BUNDLED_IMAGES[mantraId]
+        ?? (SOUND_IMAGES[mantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[mantraId]) } : null);
+      if (!cancelled) { setSoundMeta(meta); setBgImageSource(bgSrc); }
+
+      // ── Stop ambient sound + wait CONCURRENTLY with native mute ─────────────
+      // FOREGROUND FIX: in playWakeAudio() we call stopNativeAlarmServiceOnly()
+      // which releases the native MediaPlayer's audio focus before expo-av
+      // claims it. We kick off stopAmbientSound() here in parallel so the
+      // 150ms session-release wait doesn't add to perceived audio latency.
+      const ambientStopPromise = stopAmbientSound(false).catch(() => {});
+      dismissMoodSheet();
+
+      // Give the ambient audio session 150ms to release — this runs in parallel
+      // with the resolve-audio-source work below, NOT sequentially before it.
+      const sessionReleasePromise = ambientStopPromise.then(
+        () => new Promise<void>(r => setTimeout(r, 150)),
+      );
+
+      // Resolve the audio source (bundled asset lookup is synchronous/fast)
+      const wakeId       = MANTRA_TO_WAKE[mantraId] ?? mantraId;
+      const wakeSound    = WAKE_SOUNDS.find(s => s.id === wakeId) ?? WAKE_SOUNDS.find(s => s.id === mantraId) ?? null;
+      const bundledAsset = BUNDLED_NATURE_ASSETS[mantraId] ?? BUNDLED_MANTRA_ASSETS[mantraId] ?? wakeSound?.bundledAsset;
+      let audioSrc: string | null = null;
+      if (!bundledAsset) {
+        const localPath = getLocalMantraPath(mantraId);
+        const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+        audioSrc = (localInfo as any).exists ? (localInfo as any).uri : (wakeSound?.audioUrl ?? null);
       }
+
+      // Wait for session release to complete before we claim audio focus
+      await sessionReleasePromise;
       if (cancelled) return;
 
+      // ── Play audio ───────────────────────────────────────────────────────────
       if (!cancelled) {
         if (mantraId === 'fusion') {
           // Fusion path: 5-phase cross-fade sequence (nature → birds → sitar → mantra → flute)
@@ -616,17 +632,6 @@ export default function AlarmRingingScreen() {
           // Gentle path: starts at 5 % volume and ramps up
           await playGentleAlarmAudio(soundRef, mantraId, rampMins);
         } else {
-          // Normalise ID: 'shivtandav' in alarms.tsx maps to 'shiv_tandav' in WAKE_SOUNDS
-          const wakeId = MANTRA_TO_WAKE[mantraId] ?? mantraId;
-          const wakeSound = WAKE_SOUNDS.find(s => s.id === wakeId) ?? WAKE_SOUNDS.find(s => s.id === mantraId) ?? null;
-          // BUNDLED_NATURE_ASSETS covers all ALL_SLEEP_SOUNDS IDs — check it first so
-          // no sound ever falls through to gayatri's audioUrl as a wrong default.
-          const bundledAsset = BUNDLED_NATURE_ASSETS[mantraId] ?? BUNDLED_MANTRA_ASSETS[mantraId] ?? wakeSound?.bundledAsset;
-          const localPath = getLocalMantraPath(mantraId);
-          const localInfo = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
-          const audioSrc: string | null = bundledAsset ? null
-            : (localInfo as any).exists ? (localInfo as any).uri
-            : (wakeSound?.audioUrl ?? null);
           await playWakeAudio(audioSrc, bundledAsset);
         }
       }
@@ -641,9 +646,20 @@ export default function AlarmRingingScreen() {
         return;
       }
 
-      // ── Native AlarmSoundService stays alive DURING alarm ─────────
-      // It is stopped in stopAlarmCompletely() right before navigating
-      // to the mission screen. JS audio (__missionBgSound) takes over.
+      // ════════════════════════════════════════════════════════════════════════
+      // PHASE 2 — LOAD REMAINING SETTINGS (audio already playing, no urgency)
+      // ════════════════════════════════════════════════════════════════════════
+      // Load missionSettings + dosha concurrently — neither blocks audio.
+      const [saved, dosha] = await Promise.all([
+        store.getJSON<MissionSettings>(KEYS.missionSettings),
+        store.getJSON<{ name?: string }>(KEYS.dosha),
+      ]);
+      if (cancelled) return;
+
+      const settings = saved ? { ...DEFAULT_MISSION_SETTINGS, ...saved } : DEFAULT_MISSION_SETTINGS;
+      const name = dosha?.name ?? 'Champion';
+      setMs(settings);
+      setUserName(name);
 
       if (settings.bodhiMorningBrief && !cancelled) {
         const mission = MISSIONS.find(m => m.id === settings.selectedMission);
@@ -694,6 +710,7 @@ export default function AlarmRingingScreen() {
       stopWakeAudio();
     };
   }, []);
+
 
   const mission = MISSIONS.find(m => m.id === ms.selectedMission) ?? MISSIONS[4];
   const hour = new Date().getHours();
