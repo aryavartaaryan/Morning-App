@@ -2,7 +2,7 @@ import React, {
   createContext, useContext, useState, useRef,
   useCallback, useEffect, ReactNode,
 } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Animated } from 'react-native';
 import { Audio } from 'expo-av';
 import type { MoodKey } from '@/components/MoodSheet';
 import { initAudioCache, resolveAudioUri, downloadAudioToCache } from './soundAudioCache';
@@ -37,7 +37,8 @@ type SoundPlayerCtx = {
   stopSound: (triggerCb?: boolean) => Promise<void>;
   changeTimer: (secs: number) => void;
   setLoopConfig: (shouldLoop: boolean, trimMs: number, totalSecs: number) => void;
-  meteringLevel: number;
+  meteringAnim: Animated.Value;
+  getMeteringLevel: () => number;
   isAudioLoading: boolean;
   audioNetworkError: boolean;
   moodPhase: 'pre' | 'post' | 'result' | null;
@@ -63,7 +64,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [playingDurationSecs, setPlayingDurSecs] = useState<number | null>(null);
   const [playingMeta, setPlayingMeta]         = useState<PlayableSoundMeta | null>(null);
   const [mixedSounds, setMixedSounds]   = useState<PlayableSoundMeta[]>([]);
-  const [meteringLevel, setMeteringLevel] = useState(0);
+  const meteringAnimRef = useRef(new Animated.Value(0));
   const meteringRef = useRef(0);
 
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
@@ -151,7 +152,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
           const smoothed = meteringRef.current * 0.38 + raw * 0.62;
           meteringRef.current = smoothed;
-          setMeteringLevel(smoothed);
+          Animated.timing(meteringAnimRef.current, { toValue: smoothed, duration: 80, useNativeDriver: true }).start();
         }
         // Trim: seek to start when within last trimLastMs of the track.
         // Skip in once-play mode — let the track play through fully.
@@ -318,7 +319,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     setSessionSecs(21 * 60);
     setPlayingDurSecs(null);
     meteringRef.current = 0;
-    setMeteringLevel(0);
+    meteringAnimRef.current.setValue(0);
     setAudioNetworkError(false);
     setIsAudioLoading(false);
     if (triggerCb) { stopCbRef.current?.(); stopCbRef.current = null; }
@@ -545,7 +546,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
-      playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringLevel,
+      playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
       isAudioLoading, audioNetworkError,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
