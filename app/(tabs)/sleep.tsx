@@ -18,7 +18,7 @@ import { getSolarTimes, SolarTimes } from '@/lib/solar';
 import { getCurrentPeriod } from '@/lib/ayurvedicPeriods';
 import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
-import { useSoundPlayer, PlayableSoundMeta } from '@/lib/soundPlayerContext';
+import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
 import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm } from '@/lib/soundImagePreload';
 import { isAudioCached, downloadAudioToCache, initAudioCache } from '@/lib/soundAudioCache';
@@ -90,21 +90,13 @@ const SLEEP_SOUNDS = [
   { id: 'veena_classical',     label: 'Classical Veena',      emoji: '🪗', cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1A00' as const, bot: '#0A0A00' as const, desc: "Saraswati's divine string instrument",  src: require('../../assets/sounds/veena-classical.m4a') },
   // ── Flute ───────────────────────────────────────────────────────────────────
   { id: 'andean_flute',        label: 'Andean Flute',         emoji: '🏔️', cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081A10' as const, bot: '#040C08' as const, desc: 'High-altitude Andean melody',           src: require('../../assets/sounds/andean-flute.m4a') },
-  { id: 'quena_flute',         label: 'Canyon Quena',         emoji: '🏜️', cat: 'Ragas'   as const, color: '#86efac', top: '#0A1E12' as const, bot: '#050F09' as const, desc: 'Solo Quena through canyon winds',        src: require('../../assets/sounds/quena-flute.m4a') },
+
   { id: 'native_flute',        label: 'Native American Flute',emoji: '🪶', cat: 'Ragas'   as const, color: '#a3e635', top: '#121400' as const, bot: '#090A00' as const, desc: 'Traditional wood flute from the plains', src: require('../../assets/sounds/native-flute.m4a') },
   { id: 'native_flute_echo',   label: 'Native Flute Echo',    emoji: '🌀', cat: 'Ragas'   as const, color: '#86efac', top: '#0A1A10' as const, bot: '#050D08' as const, desc: 'Looping flute with forest echo',         src: require('../../assets/sounds/native-flute-echo.m4a') },
   { id: 'bamboo_flute',        label: 'Bamboo Flute',         emoji: '🎋', cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Amazon bamboo flute groove',             src: require('../../assets/sounds/bamboo-flute.m4a') },
-  { id: 'pan_flute',           label: 'Pan Flute Drift',      emoji: '🌬️', cat: 'Ragas'   as const, color: '#67e8f9', top: '#081820' as const, bot: '#040C10' as const, desc: 'Pan pipe looping melody',                src: require('../../assets/sounds/pan-flute.m4a') },
-  { id: 'arabian_flute',       label: 'Arabian Flute & Drums',emoji: '🌙', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1400' as const, bot: '#0A0A00' as const, desc: 'Desert night flute with rhythm',         src: require('../../assets/sounds/arabian-flute.m4a') },
-  { id: 'arabic_flute',        label: 'Arabic Flute',         emoji: '🕌', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Maqam-style Arabic flute loop',          src: require('../../assets/sounds/arabic-flute.m4a') },
   { id: 'flute_scale',         label: 'Flute Meditation',     emoji: '🎶', cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081810' as const, bot: '#040C08' as const, desc: 'Gentle flute scale for calm mind',       src: require('../../assets/sounds/flute-scale.m4a') },
-  { id: 'forest_flute',        label: 'Forest Flute',         emoji: '🌿', cat: 'Ragas'   as const, color: '#86efac', top: '#081A0A' as const, bot: '#040C05' as const, desc: 'Soft flute among the trees',             src: require('../../assets/sounds/forest-flute.m4a') },
   // ── Tabla ───────────────────────────────────────────────────────────────────
-  { id: 'tabla_beat',          label: 'Tabla Beat',           emoji: '🥁', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0800' as const, bot: '#0A0400' as const, desc: 'Crisp rhythmic tabla beat',              src: require('../../assets/sounds/tabla-beat.m4a') },
-  { id: 'tabla_shuffle',       label: 'Tabla Shuffle',        emoji: '🪘', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: '105 BPM shuffled tabla loop',            src: require('../../assets/sounds/tabla-shuffle.m4a') },
-  { id: 'tabla_loop',          label: 'Tabla Loop 90',        emoji: '🎵', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A0E00' as const, bot: '#0A0700' as const, desc: '90 BPM tabla rhythm for focus',          src: require('../../assets/sounds/tabla-loop.m4a') },
-  { id: 'tabla_jam',           label: 'Tabla Jam',            emoji: '🎶', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Energetic tabla jam session',            src: require('../../assets/sounds/tabla-jam.m4a') },
-  { id: 'tabla_claves',        label: 'Tabla & Claves',       emoji: '🪗', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: 'Tabla meets Latin percussion',           src: require('../../assets/sounds/tabla-claves.m4a') },
+
   // ── Birds ───────────────────────────────────────────────────────────────────
   { id: 'eagle_feather',       label: 'Eagle Call',           emoji: '🦅', cat: 'Birds'   as const, color: '#78716c', top: '#1A1408' as const, bot: '#0A0A04' as const, desc: 'Majestic eagle soaring above',           src: require('../../assets/sounds/eagle-feather.m4a') },
   { id: 'cuckoo_forest',       label: 'Cuckoo Forest',        emoji: '🌳', cat: 'Birds'   as const, color: '#4ade80', top: '#081A08' as const, bot: '#040C04' as const, desc: 'Cuckoo calling deep in the forest',      src: require('../../assets/sounds/cuckoo-forest.m4a') },
@@ -142,9 +134,6 @@ type SoundId = typeof SLEEP_SOUNDS[number]['id'];
 type SoundItem = typeof SLEEP_SOUNDS[number];
 const SLEEP_HIDDEN_IDS = new Set([
   'flute_scale',
-  'tabla_beat',
-  'forest_flute',
-  'tabla_loop',
 ]);
 const CATEGORIES = ['All', 'Nature', 'Ragas', 'Sleep', 'Meditations', 'Birds'] as const;
 type Category = typeof CATEGORIES[number];
@@ -352,15 +341,9 @@ const SOUND_PERIODS: Record<string, string[]> = {
   native_flute:         ['morning_kapha', 'midday_pitta'],
   native_flute_echo:    ['night_vata', 'morning_kapha', 'evening_kapha'],
   bamboo_flute:         ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
-  pan_flute:            ['morning_kapha', 'afternoon_vata', 'evening_kapha'],
-  arabian_flute:        ['evening_kapha', 'night_pitta'],
-  arabic_flute:         ['evening_kapha', 'night_pitta'],
   flute_scale:          ['night_vata', 'morning_kapha', 'evening_kapha'],
-  forest_flute:         ['morning_kapha', 'midday_pitta'],
   // ── Tabla (energetic — midday focus only) ────────────────────────────────
-  tabla_beat:           ['midday_pitta'],
   tabla_shuffle:        ['midday_pitta'],
-  tabla_loop:           ['midday_pitta', 'afternoon_vata'],
   tabla_jam:            ['midday_pitta'],
   tabla_claves:         ['midday_pitta'],
   // ── Birds (morning & midday only) ────────────────────────────────────────
@@ -440,7 +423,7 @@ const ALL_SOUNDS_LIST: any[] = [
   ...NADA_SOUNDS,
   ...MANTRA_LIBRARY.flatMap(g => g.sounds),
   // CDN Raga long-form tracks (streamed, not downloaded)
-  ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_')),
+  ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') || s.id.startsWith('nc_')),
 ];
 
 // ─── Solar-aware section label map ────────────────────────────────────────
@@ -679,7 +662,7 @@ const SoundCard = memo(function SoundCard({
   const [, forceRefresh] = useState(0);
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
-  const rawUri  = SOUND_IMAGES[sound.id];
+  const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgOpacity = useRef(new Animated.Value(1)).current;
   const imgUri  = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
@@ -1040,7 +1023,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
               const soundCount = cat === 'Sleep'
                 ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length
-                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => s.id.startsWith('cdn_') && s.cat === cat)].length;
+                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat)].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -1250,7 +1233,7 @@ const CategoryRows = memo(function CategoryRows({
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
         const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const cdnSounds = cat === 'Sleep' ? [] : ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') && s.cat === cat);
+        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat);
         const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
@@ -1358,7 +1341,8 @@ function SoundPlayerModal({
   const slideAnim  = useRef(new Animated.Value(SCR_H)).current;
   const pulseAnim  = useRef(new Animated.Value(1)).current;
   const imgBundledModal = SOUND_BUNDLED_IMAGES[sound.id];
-  const imgUri     = imgBundledModal ?? (SOUND_IMAGES[sound.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[sound.id]) } : null);
+  const rawModalUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  const imgUri     = imgBundledModal ?? (rawModalUri ? { uri: getLocalSoundImageUri(rawModalUri) } : null);
 
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 60, friction: 11 }).start();
@@ -1493,15 +1477,15 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
     const effectiveCat = cat === 'Sleep' ? 'Nature' : cat;
     const local = (SLEEP_SOUNDS as readonly any[])
       .filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id))
-      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] }));
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? s.imageUri }));
     const nada = cat === 'Sleep' ? [] : NADA_SOUNDS
       .filter(s => s.cat === cat)
-      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] }));
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri }));
     const mantra = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds)
       .filter(s => s.cat === cat)
-      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id], imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
-    const cdn = cat === 'Sleep' ? [] : ALL_SLEEP_SOUNDS
-      .filter(s => s.id.startsWith('cdn_') && s.cat === cat);
+      .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
+    const cdn = ALL_SLEEP_SOUNDS
+      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat);
     result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
   }
   return result;
@@ -1511,7 +1495,6 @@ const { width: REEL_W, height: REEL_H } = Dimensions.get('screen');
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
   { id: 'morning_birds', label: 'Birds',  emoji: '🐦', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Birds',  desc: 'Dawn chorus',   src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'morning_birds')!.src, imageUri: SOUND_IMAGES['morning_birds'] },
   { id: 'andean_flute',  label: 'Flute',  emoji: '🏔️', color: '#6ee7b7', top: '#081A10', bot: '#040C08', cat: 'Ragas',  desc: 'Andean melody', src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'andean_flute')!.src,  imageUri: SOUND_IMAGES['andean_flute'] },
-{ id: 'tabla_beat',    label: 'Tabla',  emoji: '🥁', color: '#f97316', top: '#1A0800', bot: '#0A0400', cat: 'Ragas',  desc: 'Tabla beat',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'tabla_beat')!.src,    imageUri: SOUND_IMAGES['tabla_beat'] },
   { id: 'sitar_long',    label: 'Sitar',  emoji: '🎸', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sitar_long')!.src,    imageUri: SOUND_IMAGES['sitar_long'] },
   { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sea_waves')!.src,     imageUri: SOUND_IMAGES['sea_waves'] },
 ];
@@ -1532,7 +1515,7 @@ const makeWavePath = (W: number, phase: number, amplitude: number, wavelength: n
 function WaveView({ size, color, soundId, active, paused }: {
   size: number; color: string; soundId: string; active: boolean; paused: boolean;
 }) {
-  const { meteringLevel } = useSoundPlayer();
+  const { getMeteringLevel } = useSoundPlayer();
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     if (!active || paused) return;
@@ -1541,7 +1524,8 @@ function WaveView({ size, color, soundId, active, paused }: {
   }, [active, paused]);
   
   // Audio-reactive amplitude — quiet = subtle, loud = dramatic waves
-  const levelScale = paused ? 0.08 : (0.25 + meteringLevel * 1.8);
+  const mLevel = getMeteringLevel();
+  const levelScale = paused ? 0.08 : (0.25 + mLevel * 1.8);
   // Fill from the middle so it looks like a half-full glass sphere
   const fillY = size * 0.55; 
   
@@ -1554,7 +1538,7 @@ function WaveView({ size, color, soundId, active, paused }: {
   const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
   
   // Glow opacity tied to sound volume
-  const glowOpacity = Math.min(0.25, meteringLevel * 0.4).toFixed(2);
+  const glowOpacity = Math.min(0.25, mLevel * 0.4).toFixed(2);
   
   return (
     <View pointerEvents="none" style={{
@@ -1624,7 +1608,7 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
-  const { playingDurationSecs, setLoopConfig, meteringLevel, isAudioLoading, audioNetworkError } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig, meteringAnim, isAudioLoading, audioNetworkError } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -1639,7 +1623,7 @@ function ReelCard({
   const [, forceRefresh] = useState(0);
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
-  const rawReelUri = SOUND_IMAGES[sound.id];
+  const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri     = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
   const imgFadeAnim = useRef(new Animated.Value(imgSource ? 0 : 1)).current;
@@ -1648,6 +1632,8 @@ function ReelCard({
   useEffect(() => { setLoopCountText('1'); }, [sound.id]);
   // Show Once/Loop for Meditations or Ragas that are actually longer than 6 minutes (360 s)
   const isMeditLong = (sound.cat === 'Meditations' || sound.cat === 'Ragas') && isPlaying && (playingDurationSecs ?? 0) > 360;
+  // Whether this is a Ragas/Meditations category (for timer display logic)
+  const isRagaOrMedit = sound.cat === 'Meditations' || sound.cat === 'Ragas';
   // Instagram-style play/pause tap overlay
   const playTapAnim = useRef(new Animated.Value(0)).current;
   const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
@@ -1660,16 +1646,25 @@ function ReelCard({
     new Animated.Value(0),
   ]);
   const rippleAnims = rippleAnimsRef.current;
-  // Auto-detect: when track duration becomes available for long tracks, silently set correct timer
+  // Auto-detect: when track duration becomes available, silently set correct timer
+  // For Ragas/Meditations: long (>6 min) → real duration once-play; short (≤6 min) → 15 min loop
+  // For other categories: no threshold — STOP_TIMES value is already set by playSound
   const durSetRef = useRef(false);
   useEffect(() => { durSetRef.current = false; }, [sound.id]);
   useEffect(() => {
-    if (isMeditLong && !durSetRef.current && playingDurationSecs) {
-      durSetRef.current = true;
+    if (!isPlaying || !playingDurationSecs || durSetRef.current) return;
+    if (!isRagaOrMedit) return;
+    durSetRef.current = true;
+    if (playingDurationSecs > 360) {
+      // Long track: default to Loop
       setLoopCountText('1');
-      setLoopConfig(false, 0, playingDurationSecs); // silent: update timer + play-once, no restart
+      const trimMs = sound.cat === 'Nature' ? 6000 : sound.cat === 'Birds' ? 4000 : 5000;
+      setLoopConfig(true, trimMs, 86400);
+    } else {
+      // Short track: 15 min loop (apply threshold)
+      setLoopConfig(true, 5000, 15 * 60);
     }
-  }, [isMeditLong, playingDurationSecs]);
+  }, [isPlaying, isRagaOrMedit, playingDurationSecs]);
 
   const applyCount = (newCount: number) => {
     const count = Math.max(1, Math.min(9, newCount));
@@ -1679,7 +1674,7 @@ function ReelCard({
     const durSecs = playingDurationSecs ?? 1800;
     const trimMs = sound.cat === 'Nature' ? 6000 : sound.cat === 'Birds' ? 4000 : 5000;
     if (count === 1) {
-      setLoopConfig(false, 0, durSecs);
+      setLoopConfig(true, trimMs, 86400);
     } else {
       setLoopConfig(true, trimMs, Math.min(durSecs * count, 86400));
     }
@@ -1822,15 +1817,15 @@ function ReelCard({
       {/* ── Cinematic scrims ── */}
       {/* Top gradient: strong dark cover for category strip + top bar readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0.40)', 'rgba(0,0,0,0.00)']}
-        locations={[0, 0.24, 0.52]}
+        colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)', 'transparent']}
+        locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
       {/* Bottom gradient: rich dark for controls area */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.90)']}
-        locations={[0.40, 0.56, 0.76, 1]}
+        colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
+        locations={[0.5, 0.7, 0.85, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -1845,67 +1840,101 @@ function ReelCard({
         justifyContent: 'center',
         zIndex: 4,
       }}>
-        {/* Outer soft glow halo — depth layer */}
+        {/* ── Ultra-transparent glassy ring system ── */}
+
+        {/* Outermost feather halo — barely visible, just breath */}
         <View style={{
           position: 'absolute',
-          width: RING_SIZE + 30, height: RING_SIZE + 30,
-          borderRadius: (RING_SIZE + 30) / 2,
+          width: RING_SIZE + 36, height: RING_SIZE + 36,
+          borderRadius: (RING_SIZE + 36) / 2,
           borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? '#38bdf860' : 'rgba(255,255,255,0.04)',
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
         }} />
 
-        {/* Main clean ring — slow-rotating, no tick marks */}
+        {/* Glass ring — ultra-thin, bright frosted edge */}
         <Animated.View style={{
           position: 'absolute',
           width: RING_SIZE, height: RING_SIZE,
           borderRadius: RING_SIZE / 2,
-          borderWidth: isPlaying && !isPaused ? 1.5 : 1,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.20)',
+          borderWidth: isPlaying && !isPaused ? 1 : 0.75,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.18)',
+          // Glass highlight — top-left bright catch light
+          shadowColor: '#fff',
+          shadowOffset: { width: -2, height: -2 },
+          shadowOpacity: isPlaying && !isPaused ? 0.35 : 0.08,
+          shadowRadius: 8,
           transform: [{ rotate: ringRotDeg }],
         }} />
 
-        {/* Inner glowing blue ring — electric ocean depth accent */}
+        {/* Inner accent ring — gossamer thin */}
         <View style={{
           position: 'absolute',
-          width: RING_SIZE - 22, height: RING_SIZE - 22,
-          borderRadius: (RING_SIZE - 22) / 2,
-          borderWidth: isPlaying && !isPaused ? 1 : 0.5,
-          borderColor: isPlaying && !isPaused ? '#38bdf878' : 'rgba(255,255,255,0.04)',
+          width: RING_SIZE - 18, height: RING_SIZE - 18,
+          borderRadius: (RING_SIZE - 18) / 2,
+          borderWidth: 0.5,
+          borderColor: isPlaying && !isPaused ? 'rgba(56,189,248,0.45)' : 'rgba(255,255,255,0.06)',
         }} />
 
-        {/* ── Elegant Professional Vibration Art ── */}
+        {/* Glass gloss arc — top crescent highlight */}
+        <View style={{
+          position: 'absolute',
+          width: RING_SIZE - 4, height: RING_SIZE - 4,
+          borderRadius: (RING_SIZE - 4) / 2,
+          overflow: 'hidden',
+          opacity: isPlaying ? 1 : 0.3,
+        }}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.05)', 'transparent']}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </View>
+
+        {/* ── Live vibration art (only when playing) ── */}
         {isPlaying && (() => {
           const S = RING_SIZE - 26;
-          // Clean single pulsing halo that scales organically with audio level
-          const baseHaloScale = 1 + meteringLevel * 0.15;
-          const haloOpacity = 0.25 + meteringLevel * 0.4;
           return (
             <>
-              {/* Single refined audio-reactive halo */}
-              <View pointerEvents="none" style={{
+              {/* Flashy, transparent synced vibrations */}
+              <Animated.View pointerEvents="none" style={{
                 position: 'absolute',
-                width: S * 1.15, height: S * 1.15, borderRadius: (S * 1.15) / 2,
-                borderWidth: 2,
-                borderColor: 'rgba(56,189,248,' + haloOpacity + ')',
-                transform: [{ scale: baseHaloScale }],
+                width: S, height: S, borderRadius: S / 2,
+                borderWidth: Animated.multiply(meteringAnim, 4),
+                borderColor: (sound.color || '#38bdf8') + '80',
+                backgroundColor: (sound.color || '#38bdf8') + '10',
+                opacity: Animated.add(0.1, Animated.multiply(meteringAnim, 0.8)) as any,
+                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.15)) }],
+                shadowColor: sound.color || '#38bdf8',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: Animated.multiply(meteringAnim, 0.8) as any,
+                shadowRadius: 30,
               }} />
-              
-              {/* Ambient shimmer sweep — bright ocean blue */}
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute',
+                width: S * 1.1, height: S * 1.1, borderRadius: (S * 1.1) / 2,
+                borderWidth: Animated.multiply(meteringAnim, 2),
+                borderColor: (sound.color || '#38bdf8') + '40',
+                opacity: Animated.multiply(meteringAnim, 0.5) as any,
+                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.25)) }],
+              }} />
+
+              {/* Rotating glass shimmer sweep */}
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute', width: S, height: S,
                 borderRadius: S / 2, overflow: 'hidden',
-                opacity: 0.62,
+                opacity: 0.45,
                 transform: [{ rotate: shimmerRot }],
               }}>
                 <LinearGradient
-                  colors={['transparent', '#38bdf8EE', 'transparent', '#60a5fa99', 'transparent']}
-                  locations={[0, 0.22, 0.50, 0.72, 1]}
+                  colors={['transparent', 'rgba(255,255,255,0.55)', 'transparent', 'rgba(56,189,248,0.35)', 'transparent']}
+                  locations={[0, 0.20, 0.50, 0.72, 1]}
                   start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
-              
-              {/* Liquid wave SVG (keeps the beautiful center texture) */}
+
+              {/* Wave art */}
               <WaveView size={S} color="#38bdf8" soundId={sound.id} active={isActive} paused={isPaused} />
             </>
           );
@@ -1922,29 +1951,44 @@ function ReelCard({
             <>
               <Text style={{
                 fontSize: Math.round(RING_SIZE * 0.22),
-                fontWeight: '700',
+                fontWeight: '300',
                 color: '#FFFFFF',
-                letterSpacing: -2,
-                textShadowColor: 'rgba(56,189,248,0.55)',
+                letterSpacing: -1,
+                textShadowColor: 'rgba(255,255,255,0.30)',
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 14,
+                textShadowRadius: 12,
               }}>
-                {fmtTimer(sessionSecs)}
+                {
+                  (() => {
+                    if (isRagaOrMedit && playingDurationSecs == null) return '···';
+                    if (isRagaOrMedit && playingDurationSecs != null && playingDurationSecs > 360) {
+                      const loops = parseInt(loopCountText, 10);
+                      if (loops === 1) {
+                        const elapsed = 86400 - sessionSecs;
+                        const rem = playingDurationSecs - (elapsed % playingDurationSecs);
+                        return fmtTimer(rem);
+                      } else {
+                        return fmtTimer(((sessionSecs - 1) % playingDurationSecs) + 1);
+                      }
+                    }
+                    return fmtTimer(sessionSecs);
+                  })()
+                }
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
                 <View style={{
-                  width: 4, height: 4, borderRadius: 2,
-                  backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : '#38bdf8',
+                  width: 3, height: 3, borderRadius: 1.5,
+                  backgroundColor: isPaused ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.75)',
                 }} />
-                <Text style={{ fontSize: 7.5, fontWeight: '500', color: isPaused ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)', letterSpacing: 1.6 }}>
+                <Text style={{ fontSize: 7, fontWeight: '300', color: isPaused ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.55)', letterSpacing: 2.2 }}>
                   {isPaused ? 'PAUSED' : 'PLAYING'}
                 </Text>
               </View>
             </>
           ) : (
             <>
-              <Text style={{ fontSize: 52, textAlign: 'center' }}>{sound.emoji}</Text>
-              <Text style={{ fontSize: 9, fontWeight: '400', color: 'rgba(255,255,255,0.40)', letterSpacing: 1.4, marginTop: 8 }}>TAP TO PLAY</Text>
+              <Text style={{ fontSize: 50, textAlign: 'center', opacity: 0.9 }}>{sound.emoji}</Text>
+              <Text style={{ fontSize: 8, fontWeight: '300', color: 'rgba(255,255,255,0.35)', letterSpacing: 2.0, marginTop: 10 }}>TAP TO PLAY</Text>
             </>
           )}
         </Animated.View>
@@ -1989,11 +2033,15 @@ function ReelCard({
             </TouchableOpacity>
             {/* Label */}
             <View style={{ paddingHorizontal: 16, alignItems: 'center', minWidth: 120 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>
-                {parseInt(loopCountText, 10) === 1 ? 'Play Once' : `×${loopCountText} Repeats`}
-              </Text>
-              <Text style={{ fontSize: 8, fontWeight: '500', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, marginTop: 2 }}>
-                {parseInt(loopCountText, 10) === 1 ? 'PLAY ONCE' : 'REPEAT'}
+              {parseInt(loopCountText, 10) === 1 ? (
+                <Ionicons name="infinite" size={24} color="#FFFFFF" />
+              ) : (
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>
+                  {`×${loopCountText} Repeats`}
+                </Text>
+              )}
+              <Text style={{ fontSize: 8, fontWeight: '500', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, marginTop: parseInt(loopCountText, 10) === 1 ? 0 : 2 }}>
+                {parseInt(loopCountText, 10) === 1 ? '' : 'REPEAT'}
               </Text>
             </View>
             {/* Plus */}
@@ -2161,8 +2209,8 @@ function ReelCard({
         {/* ── Swipe hint ── */}
         {isActive && !isLast && (
           <Animated.View style={{ alignItems: 'center', marginTop: 2, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={11} color="rgba(255,255,255,0.32)" />
-            <Text style={{ fontSize: 8, fontWeight: '600', color: 'rgba(255,255,255,0.32)', letterSpacing: 1.2, marginTop: 1 }}>SWIPE UP FOR NEXT</Text>
+            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.5)" />
+            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 2.5, marginTop: 1, textTransform: 'uppercase' }}>Swipe up for next</Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -2430,7 +2478,24 @@ function SoundReelsModal({
           pagingEnabled
           bounces={false}
           overScrollMode="never"
-          onScrollBeginDrag={() => { onStopSilentRef.current(); }}
+          // ── Instagram-style: do NOT stop audio on drag start ──
+          // The auto-play effect fires the moment activeIndex changes, giving
+          // zero-delay handoff. Stopping here creates an audible silence gap.
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            const idx = Math.round(y / REEL_H);
+            if (idx !== activeIndexRef.current && idx >= 0 && idx < REELS_ALL_SOUNDS.length) {
+              activeIndexRef.current = idx;
+              setActiveIndex(idx);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              const sound = REELS_ALL_SOUNDS[idx];
+              if (sound && sound.cat !== prevCatRef.current) {
+                prevCatRef.current = sound.cat;
+                showCatBannerRef.current(sound.cat, sound);
+              }
+            }
+          }}
+          scrollEventThrottle={16}
           onViewableItemsChanged={onViewRef.current}
           viewabilityConfig={viewConfigRef.current}
           getItemLayout={(_, index) => ({ length: REEL_H, offset: REEL_H * index, index })}
@@ -2517,7 +2582,7 @@ function SoundReelsModal({
                 and just swipe to listen that collection
               </Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, width: '100%' }}>
               {(CATEGORIES.slice(1) as string[]).map(cat => {
                 const isActive = activeSound?.cat === cat;
                 const meta = REEL_CAT_META[cat] ?? { color: '#FFFFFF' };
@@ -2527,21 +2592,21 @@ function SoundReelsModal({
                     onPress={() => scrollToCategory(cat)}
                     activeOpacity={0.70}
                     style={{
-                      paddingHorizontal: 16, paddingVertical: 10,
-                      borderRadius: 20,
+                      paddingHorizontal: 10, paddingVertical: 6,
+                      borderRadius: 16,
                       alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: isActive ? meta.color + '26' : 'rgba(255,255,255,0.06)',
+                      backgroundColor: isActive ? meta.color + '26' : 'transparent',
                       borderWidth: 1,
-                      borderColor: isActive ? meta.color + '80' : 'rgba(255,255,255,0.1)',
+                      borderColor: isActive ? meta.color + '50' : 'transparent',
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.7)', fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular', letterSpacing: 0.2 }}>
+                    <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.6)', fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular', letterSpacing: 0.2 }}>
                       {cat}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         </SafeAreaView>
 
@@ -2827,21 +2892,24 @@ export default function SleepTab() {
   useEffect(() => { reelsPlayingIdRef.current = playingId; }, [playingId]);
   useEffect(() => {
     registerReelsOpener(() => {
-      const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
-      const startIdx = idx !== -1 ? idx : 0;
-      [-1, 0, 1, 2, 3].forEach(offset => {
-        const adj = REELS_ALL_SOUNDS[startIdx + offset];
-        if (!adj) return;
-        const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
-        if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
-          ensureSoundImageCached(adjUri).catch(() => {});
-        }
-      });
-      setReelsStartIdx(startIdx);
-      setShowReels(true);
+      router.navigate('/(tabs)/sleep');
+      setTimeout(() => {
+        const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
+        const startIdx = idx !== -1 ? idx : 0;
+        [-1, 0, 1, 2, 3].forEach(offset => {
+          const adj = REELS_ALL_SOUNDS[startIdx + offset];
+          if (!adj) return;
+          const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
+          if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
+            ensureSoundImageCached(adjUri).catch(() => {});
+          }
+        });
+        setReelsStartIdx(startIdx);
+        setShowReels(true);
+      }, 50);
     });
     return () => unregisterReelsOpener();
-  }, [registerReelsOpener, unregisterReelsOpener]);
+  }, [registerReelsOpener, unregisterReelsOpener, router]);
 
   // ── Live clock ──────────────────────────────────────────────
   useEffect(() => {
@@ -2881,23 +2949,20 @@ export default function SleepTab() {
   // ── Play from sleep screen (opens Reels immediately, no pre-mood) ──────────
   // NOTE: No direct playSound call here. SoundReelsModal's auto-play effect owns
   // ALL audio start/stop so there is never a concurrent stopAllRefs race.
-  const handleSoundCardTap = useCallback(async (id: string) => {
+  // Instagram-style: open the modal INSTANTLY — cache images non-blocking in background.
+  const handleSoundCardTap = useCallback((id: string) => {
     const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
     if (reelIndex === -1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setReelsStartIdx(reelIndex);
-    // Ensure the opening reel's image is on disk before showing the modal
-    // so the reel never opens with an empty/loading background.
-    // Wait at most 2 seconds — after that open regardless.
+    // Open the modal immediately — Instagram style, no waiting
+    setShowReels(true);
+    // Non-blocking: cache this reel's image + adjacent reels in background
     const sound = REELS_ALL_SOUNDS[reelIndex];
     const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
     if (rawUri && !SOUND_BUNDLED_IMAGES[sound.id] && !isSoundImageCached(rawUri)) {
-      await Promise.race([
-        ensureSoundImageCached(rawUri),
-        new Promise<void>(resolve => setTimeout(resolve, 2000)),
-      ]);
+      ensureSoundImageCached(rawUri).catch(() => {});
     }
-    // Non-blocking: preload adjacent reel images so swiping is always instant
     [-1, 1, 2, 3].forEach(offset => {
       const adj = REELS_ALL_SOUNDS[reelIndex + offset];
       if (!adj) return;
@@ -2906,7 +2971,6 @@ export default function SleepTab() {
         ensureSoundImageCached(adjUri).catch(() => {});
       }
     });
-    setShowReels(true);
   }, []);
 
   // Category-aware trim helper — cuts seamless-loop end before seeking back to 0
@@ -2925,10 +2989,23 @@ export default function SleepTab() {
     if (meta) {
       // Reset loop mode on each new sound — user must explicitly choose Once/Loop per track
       reelLoopModeRef.current = null;
-      const metaFull = { ...meta, imageUri: SOUND_IMAGES[id], imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
-      const secs = STOP_TIMES[stopIdx >= 0 ? stopIdx : 0]?.secs ?? STOP_TIMES[0].secs;
+      const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
       const trimSecs = getReelTrimSecs(meta.cat);
-      playSound(metaFull, secs, undefined, trimSecs, true); // loop on swipe; trim per category
+      const isRagaOrMeditCat = meta.cat === 'Ragas' || meta.cat === 'Meditations';
+      // For Ragas/Meditations:
+      //   - If we've played this track before, duration is cached → use real duration instantly
+      //   - Long cached track (>6 min): loop continuously by default
+      //   - Short cached track (≤6 min): 15 min loop (unchanged)
+      //   - Unknown (first time): 15 min loop; auto-detect effect corrects after audio loads
+      // For all other categories: use user-selected STOP_TIMES value, no threshold.
+      const cachedDur = isRagaOrMeditCat ? getCachedDuration(id) : null;
+      const isKnownLong = cachedDur != null && cachedDur > 360;
+      const secs = isRagaOrMeditCat
+        ? (isKnownLong ? cachedDur! : 15 * 60)
+        : (STOP_TIMES[stopIdx >= 0 ? stopIdx : 0]?.secs ?? STOP_TIMES[0].secs);
+      // Known long tracks loop continuously by default; everything else loops
+      const shouldLoopReel = !isKnownLong;
+      playSound(metaFull, secs, undefined, shouldLoopReel ? trimSecs : 0, shouldLoopReel);
     }
   }, [playSound, stopIdx]);
 
@@ -2947,7 +3024,7 @@ export default function SleepTab() {
       if (playingId) {
         const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
         if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
           playSound(mf, actualSecs, undefined, 0, false); // 0 trim — play fully to end
         }
       }
@@ -2958,7 +3035,7 @@ export default function SleepTab() {
       if (playingId) {
         const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
         if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
           const trimSecs = getReelTrimSecs(meta.cat);
           playSound(mf, 28800, undefined, trimSecs, true);
         }
@@ -2975,7 +3052,7 @@ export default function SleepTab() {
       if (playingId) {
         const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
         if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId], imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
           const trimSecs = getReelTrimSecs(meta.cat);
           playSound(mf, totalSecs, undefined, trimSecs, true);
         }

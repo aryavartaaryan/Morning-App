@@ -138,7 +138,8 @@ function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
     if (h < brahmaMuhurtaStart) return 'night';
     if (h < sunrise - 0.3) return 'brahma';
     if (h < sunrise + 0.5) return 'predawn';
-    if (h < sunrise + 2)   return 'sunrise';
+    if (h < sunrise + 1)   return 'sunrise';
+    if (h < sunrise + 2)   return 'sunrise_late';
     if (h < solarNoon - 1) return 'morning';
     if (h < solarNoon + 2) return 'midday';
     if (h < sunset - 1.5)  return 'afternoon';
@@ -149,7 +150,8 @@ function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
   }
   if (h >= 2  && h < 5)   return 'brahma';
   if (h >= 5  && h < 5.5) return 'predawn';
-  if (h >= 5.5 && h < 8)  return 'sunrise';
+  if (h >= 5.5 && h < 6.75)  return 'sunrise';
+  if (h >= 6.75 && h < 8)  return 'sunrise_late';
   if (h >= 8  && h < 10)  return 'morning';
   if (h >= 10 && h < 14)  return 'midday';
   if (h >= 14 && h < 17)  return 'afternoon';
@@ -5072,9 +5074,7 @@ const DAY_PALETTES: Array<AyurvedicPalette> = [
 // Phase 1 (Evening):   just after sunset   → Calm Moonrise Silver   (soft cool silver, not bright)
 // Phase 2 (Midnight):  deep night          → Full Moon Silver-Blue  (cool, calm, not glaring)
 // Phase 3 (Pre-Dawn):  3-4 AM              → Pre-Dawn Quiet Silver  (hushed, descending moon)
-const NIGHT_EVENING:  AyurvedicPalette = { ring: '#9AA8A0', halo: '#A8B4AC', accent: '#D0D8D0' }; // warm moonrise silver — ivory-white, not blue
-const NIGHT_MIDNIGHT: AyurvedicPalette = { ring: '#7AA0B8', halo: '#8AB0C8', accent: '#B8C8D8' }; // full moon silver-blue — cooler as moon climbs
-const NIGHT_PREDAWN:  AyurvedicPalette = { ring: '#6888A8', halo: '#7E9CB8', accent: '#A8BCD0' }; // pre-dawn quiet silver — hushed, descending
+const TRUE_SILVER: AyurvedicPalette = { ring: '#E2E8F0', halo: '#F1F5F9', accent: '#FFFFFF' }; // True silver moonlit night
 // ── Brahma Muhurta — Sacred blue-silver, the most ethereal hour ──────────────────────────
 const BRAHMA_PALETTE: AyurvedicPalette = { ring: '#567898', halo: '#6A8CAC', accent: '#94B0C8' }; // deep sacred steel
 
@@ -5128,50 +5128,13 @@ function getSolarRingPalette(
     }
   }
 
-  // ── 3. Night: 3 distinct phases based on time position within night ────────
+  // ── 3. Night: True Silver from sunset to sunrise ────────
   if (elevation <= 0) {
-    if (solar) {
-      const sr = solar.sunrise;
-      const ss = solar.sunset;
-      // Total night length (handles midnight wrap)
-      const nightLen = (sr + 24 - ss) % 24 || 12;
-      // How far we are into the night (0 = just after sunset, 1 = just before sunrise)
-      let distFromSunset: number;
-      if (nowH >= ss) {
-        distFromSunset = nowH - ss;
-      } else {
-        distFromSunset = nowH + 24 - ss; // wrapped past midnight
-      }
-      const nightProgress = Math.min(1, distFromSunset / nightLen);
-
-      if (nightProgress < 0.33) {
-        // Evening phase (post-sunset → early night): deep dusk fades → calm moonrise silver
-        const t = nightProgress / 0.33;
-        return {
-          ring:   lerpColor('#1C1C28', NIGHT_EVENING.ring,   t), // deep midnight blue → calm silver
-          halo:   lerpColor('#282838', NIGHT_EVENING.halo,   t), // dark navy → pearl halo
-          accent: lerpColor('#3C3C50', NIGHT_EVENING.accent, t), // deep slate → ivory moonlight
-        };
-      } else if (nightProgress < 0.67) {
-        // Deep night phase (midnight): Cosmic Indigo
-        const t = (nightProgress - 0.33) / 0.34;
-        return {
-          ring:   lerpColor(NIGHT_EVENING.ring,   NIGHT_MIDNIGHT.ring,   t),
-          halo:   lerpColor(NIGHT_EVENING.halo,   NIGHT_MIDNIGHT.halo,   t),
-          accent: lerpColor(NIGHT_EVENING.accent, NIGHT_MIDNIGHT.accent, t),
-        };
-      } else {
-        // Pre-dawn phase (approaching sunrise): Deep Mystic Violet
-        const t = (nightProgress - 0.67) / 0.33;
-        return {
-          ring:   lerpColor(NIGHT_MIDNIGHT.ring,   NIGHT_PREDAWN.ring,   t),
-          halo:   lerpColor(NIGHT_MIDNIGHT.halo,   NIGHT_PREDAWN.halo,   t),
-          accent: lerpColor(NIGHT_MIDNIGHT.accent, NIGHT_PREDAWN.accent, t),
-        };
-      }
+    if (solar && brahmaActive) {
+      // Brahma Muhurta has a distinct, deeper hue if required
+      return BRAHMA_PALETTE;
     }
-    // Fallback without solar times — cosmic indigo
-    return NIGHT_MIDNIGHT;
+    return TRUE_SILVER;
   }
 
   // ── 4. Day: sun above horizon → scale from warm amber to blazing gold ─────
@@ -5326,7 +5289,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const [rR, rG, rB] = hexToRgb(ringHex);
 
   const HERO_RS  = compact ? 216 : 275;
-  const HERO_STR = 5;
+  const HERO_STR = 3; // Elegant slim main arc
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
   const rem    = period?.minutesRemaining ?? 0;
@@ -5351,24 +5314,21 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           {/* Inner hero ring container — centered in wrapper */}
           <View style={{ width: HERO_RS, height: HERO_RS }}>
 
-          {/* ── Layered aura — period colour glow, night = rich moonlit halo ── */}
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 38, height: HERO_RS + 38, borderRadius: (HERO_RS + 38) / 2, backgroundColor: `rgba(${hR},${hG},${hB},${nightMode ? 0.06 : 0.06})`, transform: [{ scale: pulse }], top: -19, left: -19 }} />
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 22, height: HERO_RS + 22, borderRadius: (HERO_RS + 22) / 2, backgroundColor: `rgba(${hR},${hG},${hB},${nightMode ? 0.10 : 0.14})`, transform: [{ scale: pulse }], top: -11, left: -11 }} />
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 10, height: HERO_RS + 10, borderRadius: (HERO_RS + 10) / 2, backgroundColor: `rgba(${hR},${hG},${hB},${nightMode ? 0.16 : 0.24})`, transform: [{ scale: pulse }], top: -5, left: -5 }} />
-          <View style={{ position: 'absolute', width: HERO_RS + 4, height: HERO_RS + 4, borderRadius: (HERO_RS + 4) / 2, backgroundColor: `rgba(${hR},${hG},${hB},${nightMode ? 0.08 : 0.14})`, top: -2, left: -2 }} />
+          {/* ── Layered aura — slim and elegant glow ── */}
+          <Animated.View style={{ position: 'absolute', width: HERO_RS + 24, height: HERO_RS + 24, borderRadius: (HERO_RS + 24) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.06)`, transform: [{ scale: pulse }], top: -12, left: -12 }} />
+          <Animated.View style={{ position: 'absolute', width: HERO_RS + 14, height: HERO_RS + 14, borderRadius: (HERO_RS + 14) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.14)`, transform: [{ scale: pulse }], top: -7, left: -7 }} />
+          <Animated.View style={{ position: 'absolute', width: HERO_RS + 6, height: HERO_RS + 6, borderRadius: (HERO_RS + 6) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.24)`, transform: [{ scale: pulse }], top: -3, left: -3 }} />
+          <View style={{ position: 'absolute', width: HERO_RS + 2, height: HERO_RS + 2, borderRadius: (HERO_RS + 2) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.14)`, top: -1, left: -1 }} />
 
           {/* ── Inner zone — moonlit disk: transparent glass at night, center attraction ── */}
           <View style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-            backgroundColor: nightMode ? `rgba(${rR},${rG},${rB},0.06)` : `rgba(${rR},${rG},${rB},0.10)`,
+            backgroundColor: `rgba(${rR},${rG},${rB},0.10)`,
             overflow: 'hidden',
           }}>
-            {/* Night: whisper-thin silver top → softer mid → barely there fade — glassy moon disk */}
+            {/* Inner fill gradient: true silver luminosity like the day */}
             <LinearGradient
-              colors={nightMode
-                ? [`${accentHex}14`, `${accentHex}0A`, 'transparent', `${ringHex}08`]
-                : [`${accentHex}18`, `${ringHex}0C`, 'transparent', `${ringHex}08`]
-              }
+              colors={[`${accentHex}18`, `${ringHex}0C`, 'transparent', `${ringHex}08`]}
               start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
             {/* ── Lunar breathing — gentle silver glow inhaling & exhaling every 8s ── */}
@@ -5417,14 +5377,14 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 </Svg>
               </Animated.View>
             )}
-            {/* Wide outer glow — brighter at night: moon ring needs stronger luminosity */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+30} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.22 : 0.16} />
+            {/* Wide outer glow — slim and elegant */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+12} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.28 : 0.16} />
             {/* Mid halo — richer at night */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+12} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.48 : 0.42} />
-            {/* Main crisp arc */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+4} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.60 : 0.42} />
+            {/* Main crisp arc — elegant slim */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
             {/* Inner highlight sliver — shimmering moonlight edge */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={nightMode ? 2 : 2} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.70 : 0.75} />
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
           {/* ── Center content — iOS-clean: sub-pill · header · time · sentence · science ── */}
@@ -6274,7 +6234,7 @@ export default function DailyTab() {
   const bgH = hh + mm / 60;
   const timeBgKey = timeBgKeyCtx || getTimedBgKey(bgH, solarTimes);
   const isLight  = timeBgKey === 'morning' || timeBgKey === 'midday' || timeBgKey === 'afternoon';
-  const isGolden = timeBgKey === 'sunrise' || timeBgKey === 'sandhya' || timeBgKey === 'predawn' || timeBgKey === 'twilight';
+  const isGolden = timeBgKey === 'sunrise' || timeBgKey === 'sunrise_late' || timeBgKey === 'sandhya' || timeBgKey === 'predawn' || timeBgKey === 'twilight';
   const isMidday = timeBgKey === 'midday';
   const solarContext = solarTimes ? (() => {
     const h    = hh + mm / 60;

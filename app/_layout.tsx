@@ -221,27 +221,12 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
   const signalled = useRef(false);
 
   useEffect(() => {
-    // EMERGENCY: If navigation container never reports a key, still unblock
-    // the splash screen after 3 seconds so the user isn't stuck forever.
-    const emergency = setTimeout(() => {
-      if (!signalled.current) {
-        signalled.current = true;
-        onAuthReady();
-      }
-    }, 3000);
-
     // Wait until Expo Router's navigation container is fully mounted.
     // Without this guard, router.replace() throws the
     // "Attempted to navigate before mounting the Root Layout" crash.
-    if (!navigationState?.key) {
-      return () => clearTimeout(emergency);
-    }
-    if (signalled.current) {
-      clearTimeout(emergency);
-      return;
-    }
+    if (!navigationState?.key) return;
+    if (signalled.current) return;
     signalled.current = true;
-    clearTimeout(emergency);
     // Init alarm permissions + notification channel silently
     try {
       setupNotificationChannel().catch(() => {});
@@ -884,27 +869,13 @@ export default function RootLayout() {
     if (fontsLoaded && authReady) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded, authReady]);
 
-  // EMERGENCY: Never let the splash screen stay forever.
-  // If any startup step hangs (fonts, auth, bg downloads), force-hide after 6s.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {});
-    }, 6000);
-    return () => clearTimeout(t);
-  }, []);
-
   // ── Download gate: runs once fonts are loaded ─────────────────────────────
   // STRATEGY:
-  //   • Gate ONLY on BG images on TRUE first install (zero cached images).
-  //   • On app updates / new image keys: skip the gate and download silently
-  //     in the background so returning users always open the app immediately.
+  //   • Gate ONLY on BG images (16 images, ~5–15 MB total on first install)
   //   • Sound card images (50+ images) are NOT a gate — they download silently
   //     after the splash screen so the user never waits for them on first open.
   //   • Solar positions, Ayurvedic periods etc. are pure JS computation — instant.
-  //   BUG-FIX (2026-06): Previously, ANY change to BG_URLS (including adding a
-  //   single new key like `sunrise_late`) triggered the blocking download gate
-  //   for ALL users. Combined with no per-download timeout, this caused the app
-  //   to hang on the progress ring screen forever. Fix: gate only on first install.
+  //   • On subsequent opens all BGs are already cached → gate resolves in <50 ms.
   useEffect(() => {
     if (!fontsLoaded) return;
     let cancelled = false;
@@ -915,22 +886,14 @@ export default function RootLayout() {
         prefetchCriticalAlarmImages().catch(() => {});
 
         // Fast disk-scan — no downloads, just file-existence checks (~10 ms)
-        // EMERGENCY: Cap wait at 4s so a broken FileSystem module can't hang startup.
-        await Promise.race([
-          bgWarmup,
-          new Promise<void>((_, reject) => setTimeout(() => reject(new Error('bgWarmup timeout')), 4000)),
-        ]).catch(() => {});
+        await bgWarmup;
         // Warm sound image map in parallel but do NOT wait for it to gate
         warmSoundImageMap().catch(() => {});
 
         const bgCached = isBgFullyCached();
-        // Count how many images are already on disk (from warmup scan).
-        // If ANY are cached → returning user / app update → skip the blocking gate.
-        const cachedCount = Object.keys(BG_URLS).filter(k => !!getBgSourceSync(k)?.startsWith('file')).length;
-        const isFirstInstall = cachedCount === 0;
 
-        if (!bgCached && isFirstInstall) {
-          // TRUE first install: no images on disk at all → show progress ring.
+        if (!bgCached) {
+          // Only show progress ring for BG images (much faster than all images)
           if (cancelled) return;
           setPhase('downloading');
           const bgTotal = Object.keys(BG_URLS).length;
@@ -945,15 +908,11 @@ export default function RootLayout() {
             // Brief pause so ring fills to 100% before disappearing
             await new Promise(r => setTimeout(r, 400));
           }
-        } else if (!bgCached) {
-          // Returning user / app update: new or changed images exist but we have
-          // SOME images already — download missing ones silently in background.
-          ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
         }
 
         if (cancelled) return;
 
-        // Splash BG is now guaranteed on disk (or falls back to remote URL)
+        // Splash BG is now guaranteed on disk — show splash immediately
         const splashBg = getBgSourceSync('splash');
         setSplashBgUri(splashBg);
         setPhase('splash');

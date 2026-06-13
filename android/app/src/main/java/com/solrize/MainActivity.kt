@@ -35,20 +35,23 @@ class MainActivity : ReactActivity() {
     super.onCreate(null)
 
     // Always show over lock screen — required for alarm fullScreenIntent on all Android versions
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-      setShowWhenLocked(true)
-      setTurnScreenOn(true)
-    } else {
-      @Suppress("DEPRECATION")
-      window.addFlags(
-        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-      )
+    // Only apply these flags if an alarm is active. Otherwise, allow normal app launch behaviour.
+    if (isAlarmActive()) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+      } else {
+        @Suppress("DEPRECATION")
+        window.addFlags(
+          WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+          WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+          WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+          WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+      }
+      // KEEP_SCREEN_ON must be set when alarm is active
+      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
-    // KEEP_SCREEN_ON must always be set regardless of API level
-    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -68,6 +71,20 @@ class MainActivity : ReactActivity() {
   override fun onResume() {
     super.onResume()
     if (!isAlarmActive()) {
+      // Alarm stopped (or normal usage) — clear flags to restore normal Android screen lock behaviour
+      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(false)
+        setTurnScreenOn(false)
+      } else {
+        @Suppress("DEPRECATION")
+        window.clearFlags(
+          WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+          WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+          WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+      }
+      
       // Alarm stopped — cancel any pending focus-loss debounce so the
       // bring-to-front never fires after the user has dismissed the alarm.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }

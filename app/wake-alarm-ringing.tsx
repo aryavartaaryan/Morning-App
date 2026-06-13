@@ -54,9 +54,7 @@ const SOUND_ACCENT: Record<string, string> = {
   sitar_calm: '#fcd34d', veena_raga: '#f59e0b',
   // Flute
   andean_flute: '#6ee7b7', quena_flute: '#86efac', native_flute: '#a3e635',
-  native_flute_echo: '#86efac', bamboo_flute: '#34d399', pan_flute: '#67e8f9',
-  arabian_flute: '#fbbf24', arabic_flute: '#fde68a', flute_scale: '#6ee7b7',
-  forest_flute: '#86efac', bansuri_forest: '#34d399', bansuri_melody: '#6ee7b7',
+  native_flute_echo: '#86efac', bamboo_flute: '#34d399',
   bansuri_tarana: '#86efac',
   // Birds
   koel_bird: '#34d399', peacock_wild: '#34d399', peacock_call: '#4ade80',

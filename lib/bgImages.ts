@@ -2,7 +2,7 @@
 // First run with internet: downloads all images to local FileSystem.
 // All subsequent runs (online or offline): serves from local cache instantly.
 // On app update (BG_URLS changed): old cache is wiped and re-downloaded.
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { store, KEYS } from '@/lib/storage';
 
 export const BG_URLS: Record<string, string> = {
@@ -15,7 +15,7 @@ export const BG_URLS: Record<string, string> = {
   morning_early: 'https://images.pexels.com/photos/32210525/pexels-photo-32210525.jpeg',
   morning:    'https://images.pexels.com/photos/9548957/pexels-photo-9548957.jpeg',
   morning_late: 'https://images.pexels.com/photos/9945162/pexels-photo-9945162.jpeg',
-  midday_early: 'https://images.pexels.com/photos/35096659/pexels-photo-35096659.jpeg',
+  midday_early: 'https://images.pexels.com/photos/35042617/pexels-photo-35042617.jpeg',
   midday_early_mid: 'https://images.pexels.com/photos/19011448/pexels-photo-19011448.jpeg',
   midday_early_late: 'https://images.pexels.com/photos/10630194/pexels-photo-10630194.jpeg',
   midday:     'https://images.pexels.com/photos/35521604/pexels-photo-35521604.jpeg',

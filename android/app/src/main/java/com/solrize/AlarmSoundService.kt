@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
  * onTaskRemoved self-restart — lives in AlarmSoundServiceBase.
  *
  * This subclass only supplies wake-alarm-specific configuration:
- * the /alarm-ringing deep-link URI, SharedPreferences key (alarm_fired_pending),
+ * the /wake-alarm-ringing deep-link URI, SharedPreferences key (alarm_fired_pending),
  * notification content, and sound path.
  */
 class AlarmSoundService : AlarmSoundServiceBase() {
@@ -34,7 +34,7 @@ class AlarmSoundService : AlarmSoundServiceBase() {
             .getBoolean("alarm_fired_pending", false)
 
     override fun buildDeepLinkUri(): Uri =
-        Uri.parse("solrize://alarm-ringing")
+        Uri.parse("solrize://wake-alarm-ringing")
 
     override fun getActionSetVolume(): String = ACTION_SET_VOLUME
     override fun getExtraVolumeKey(): String  = EXTRA_VOLUME

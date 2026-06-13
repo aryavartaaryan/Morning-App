@@ -106,11 +106,7 @@ const ALARM_SOUNDS = [
   { id: 'native_flute',            label: 'Native American Flute',  emoji: '🪶', cat: 'Sitar & Flute', color: '#a3e635', audioUrl: null as string | null },
   { id: 'native_flute_echo',       label: 'Native Flute Echo',      emoji: '🌀', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
   { id: 'bamboo_flute',            label: 'Bamboo Flute',           emoji: '🎋', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
-  { id: 'pan_flute',               label: 'Pan Flute Drift',        emoji: '🌬️', cat: 'Sitar & Flute', color: '#67e8f9', audioUrl: null as string | null },
-  { id: 'arabian_flute',           label: 'Arabian Flute & Drums',  emoji: '🌙', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
-  { id: 'arabic_flute',            label: 'Arabic Flute',           emoji: '🕌', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: null as string | null },
   { id: 'flute_scale',             label: 'Flute Meditation',       emoji: '🎶', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'forest_flute',            label: 'Forest Flute',           emoji: '🌿', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
   { id: 'bansuri_forest',          label: 'Bansuri Forest',         emoji: '🌿', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
   { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'bansuri_tarana',          label: 'Bansuri Tarana',         emoji: '🎶', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
@@ -1257,7 +1253,7 @@ export default function AlarmsTab() {
       {/* FAB */}
       {fabOpen && <TouchableOpacity style={S.fabBackdrop} onPress={() => setFabOpen(false)} activeOpacity={1} />}
       {fabOpen && (
-        <View style={S.fabMenu}>
+        <View style={[S.fabMenu, { bottom: getTabBarClearance(insets.bottom, !!playingId) + 82 }]}>
           {([
             { label: '🌄  Rise at Brahma Muhurta',  color: '#f59e0b', onPress: () => { setFabOpen(false); openBMModal(); } },
             { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setFabOpen(false); setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
@@ -1271,7 +1267,7 @@ export default function AlarmsTab() {
           ))}
         </View>
       )}
-      <TouchableOpacity style={[S.fab, fabOpen && S.fabOpen]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFabOpen(v => !v); }} activeOpacity={0.85}>
+      <TouchableOpacity style={[S.fab, { bottom: getTabBarClearance(insets.bottom, !!playingId) + 16 }, fabOpen && S.fabOpen]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFabOpen(v => !v); }} activeOpacity={0.85}>
         <Text style={S.fabTxt}>{fabOpen ? '✕' : '+'}</Text>
       </TouchableOpacity>
 
@@ -1761,101 +1757,105 @@ export default function AlarmsTab() {
             </View>
           </SafeAreaView>
 
-          {/* ── Habit section (no vertical scroll — navigation is horizontal-only) ── */}
-          <View style={{ flex: 1 }}>
-            <Text style={[S.sheetSection, { marginHorizontal: 16, marginTop: 14, marginBottom: 10 }]}>CHOOSE HABIT</Text>
+          {/* ── Habit section (with vertical scroll) ── */}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 16 }} showsVerticalScrollIndicator={false}>
+            <View style={{ paddingBottom: 16 }}>
+              <Text style={[S.sheetSection, { marginHorizontal: 16, marginTop: 14, marginBottom: 10 }]}>CHOOSE HABIT</Text>
 
-            {/* ── Horizontal pager: each page = 4 cols × 2 rows ── */}
-            <View style={{ marginBottom: 2 }}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                decelerationRate="fast"
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={e => {
-                  const pg = Math.round(e.nativeEvent.contentOffset.x / width);
-                  setHabitPage(pg);
-                }}
-              >
-                {habitPages.map((page, pageIdx) => (
-                  <View key={pageIdx} style={{ width, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
-                    {page.map(h => {
-                      const active = formHabitKey === h.key;
-                      return (
-                        <TouchableOpacity
-                          key={h.key}
-                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }}
-                          style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.05 }] }]}
-                          activeOpacity={0.75}
-                        >
-                          <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
-                          {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 1 }} />}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ))}
-              </ScrollView>
-
-              {/* Page indicator dots */}
-              {habitPages.length > 1 && (
-                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 8, paddingBottom: 4 }}>
-                  {habitPages.map((_, i) => (
-                    <View key={i} style={{ width: i === habitPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === habitPage ? '#10b981' : '#FFFFFF22' }} />
+              {/* ── Horizontal pager: each page = 4 cols × 2 rows ── */}
+              <View style={{ marginBottom: 2 }}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  scrollEventThrottle={16}
+                  onMomentumScrollEnd={e => {
+                    const pg = Math.round(e.nativeEvent.contentOffset.x / width);
+                    setHabitPage(pg);
+                  }}
+                >
+                  {habitPages.map((page, pageIdx) => (
+                    <View key={pageIdx} style={{ width, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
+                      {page.map(h => {
+                        const active = formHabitKey === h.key;
+                        return (
+                          <TouchableOpacity
+                            key={h.key}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey(h.key); setFormHabitEmoji(h.emoji); setFormLabel(h.label); setShowCustomHabitInput(false); }}
+                            style={[S.habitChip, active && { borderColor: '#10b981', backgroundColor: '#10b98122', transform: [{ scale: 1.05 }] }]}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={{ fontSize: 26 }}>{h.emoji}</Text>
+                            <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#10b981' : Colors.textDim, textAlign: 'center', lineHeight: 13 }}>{h.label}</Text>
+                            {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', marginTop: 1 }} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   ))}
+                </ScrollView>
+
+                {/* Page indicator dots */}
+                {habitPages.length > 1 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingTop: 8, paddingBottom: 4 }}>
+                    {habitPages.map((_, i) => (
+                      <View key={i} style={{ width: i === habitPage ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === habitPage ? '#10b981' : '#FFFFFF22' }} />
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* ── Custom habit row ── */}
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderColor: formHabitKey === 'custom' ? '#60a5fa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#60a5fa14' : '#FFFFFF04' }} activeOpacity={0.8}>
+                <Text style={{ fontSize: 22 }}>✨</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#60a5fa' : '#fff' }}>Custom Habit</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
                 </View>
+                {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#60a5fa', fontWeight: '900' }}>✓</Text>}
+              </TouchableOpacity>
+              {showCustomHabitInput && (
+                <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
               )}
             </View>
 
-            {/* ── Custom habit row ── */}
-            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setFormHabitKey('custom'); setFormHabitEmoji('✨'); setShowCustomHabitInput(true); setFormLabel(''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 16, marginTop: 6, marginBottom: 4, borderColor: formHabitKey === 'custom' ? '#60a5fa' : '#FFFFFF14', backgroundColor: formHabitKey === 'custom' ? '#60a5fa14' : '#FFFFFF04' }} activeOpacity={0.8}>
-              <Text style={{ fontSize: 22 }}>✨</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: formHabitKey === 'custom' ? '#60a5fa' : '#fff' }}>Custom Habit</Text>
-                <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>Type any habit name</Text>
+            {/* ── Bottom: Time + Days + Save ── */}
+            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+              <View style={{ backgroundColor: '#0E0E20', borderTopWidth: 1, borderTopColor: '#FFFFFF10', paddingHorizontal: 16, paddingTop: 14 }}>
+                {formHabitKey !== '' && (() => {
+                  const w = formHabitKey !== 'custom' ? HABIT_WISDOM[formHabitKey] : null;
+                  if (w) {
+                    return (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, borderColor: w.color + '45', backgroundColor: w.color + '0D', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 10 }}>
+                        <View style={{ width: 34, height: 34, borderRadius: 10, borderColor: w.color + '55', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Text style={{ fontSize: 17 }}>{w.icon}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.4, marginBottom: 2 }}>{w.title}</Text>
+                          <Text style={{ fontSize: 10, color: '#FFFFFFBB', lineHeight: 14 }} numberOfLines={2}>{w.body}</Text>
+                        </View>
+                      </View>
+                    );
+                  }
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 18 }}>✨</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa', flex: 1 }}>{formLabel || 'Custom Habit'}</Text>
+                      <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
+                    </View>
+                  );
+                })()}
+                <Text style={[S.sheetSection, { marginTop: 0, marginBottom: 2, marginHorizontal: 0 }]}>SET TIME</Text>
+                <TimeAdjuster hour={formHour} minute={formMinute} onChange={(hr, mn) => { setFormHour(hr); setFormMinute(mn); }} />
+                <Text style={[S.sheetSection, { marginTop: 8, marginBottom: 6, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
+                <DaySelector days={formDays} onChange={setFormDays} />
+                <TouchableOpacity onPress={saveNewEntry} disabled={formHabitKey === ''} style={[S.saveBtn, { marginTop: 10, opacity: formHabitKey === '' ? 0.4 : 1 }]} activeOpacity={0.8}>
+                  <Text style={S.saveBtnTxt}>{editEntry ? '✓  Update Habit Alarm' : '✓  Save Habit Alarm'}</Text>
+                </TouchableOpacity>
               </View>
-              {formHabitKey === 'custom' && <Text style={{ fontSize: 14, color: '#60a5fa', fontWeight: '900' }}>✓</Text>}
-            </TouchableOpacity>
-            {showCustomHabitInput && (
-              <TextInput style={[S.customInput, { marginHorizontal: 16, marginTop: 4, marginBottom: 4 }]} placeholder="Custom habit name..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} autoFocus />
-            )}
-          </View>
-
-          {/* ── Fixed Bottom: Time + Days + Save ── */}
-          <View style={{ backgroundColor: '#0E0E20', borderTopWidth: 1, borderTopColor: '#FFFFFF10', paddingHorizontal: 16, paddingTop: 14, paddingBottom: insets.bottom + 16 }}>
-            {formHabitKey !== '' && (() => {
-              const w = formHabitKey !== 'custom' ? HABIT_WISDOM[formHabitKey] : null;
-              if (w) {
-                return (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, borderColor: w.color + '45', backgroundColor: w.color + '0D', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 10 }}>
-                    <View style={{ width: 34, height: 34, borderRadius: 10, borderColor: w.color + '55', borderWidth: 1, backgroundColor: w.color + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Text style={{ fontSize: 17 }}>{w.icon}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: w.color, letterSpacing: 1.4, marginBottom: 2 }}>{w.title}</Text>
-                      <Text style={{ fontSize: 10, color: '#FFFFFFBB', lineHeight: 14 }} numberOfLines={2}>{w.body}</Text>
-                    </View>
-                  </View>
-                );
-              }
-              return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 18 }}>✨</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa', flex: 1 }}>{formLabel || 'Custom Habit'}</Text>
-                  <Text style={{ fontSize: 9, color: '#FFFFFF30', fontWeight: '700', letterSpacing: 1 }}>SET TIME  ↓</Text>
-                </View>
-              );
-            })()}
-            <Text style={[S.sheetSection, { marginTop: 0, marginBottom: 2, marginHorizontal: 0 }]}>SET TIME</Text>
-            <TimeAdjuster hour={formHour} minute={formMinute} onChange={(hr, mn) => { setFormHour(hr); setFormMinute(mn); }} />
-            <Text style={[S.sheetSection, { marginTop: 8, marginBottom: 6, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
-            <DaySelector days={formDays} onChange={setFormDays} />
-            <TouchableOpacity onPress={saveNewEntry} disabled={formHabitKey === ''} style={[S.saveBtn, { marginTop: 10, opacity: formHabitKey === '' ? 0.4 : 1 }]} activeOpacity={0.8}>
-              <Text style={S.saveBtnTxt}>{editEntry ? '✓  Update Habit Alarm' : '✓  Save Habit Alarm'}</Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          </ScrollView>
 
         </View>
       </Modal>

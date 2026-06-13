@@ -762,10 +762,10 @@ function GlobalPlayerBar() {
   const lastMetaRef = useRef<typeof playingMeta>(null);
   if (playingMeta) lastMetaRef.current = playingMeta;
   const displayMeta = playingMeta ?? lastMetaRef.current;
-  // `rendered` controls whether the bar occupies layout space.
-  // Set true immediately when sound starts; set false only AFTER the slide-out
-  // animation completes — this eliminates the empty gap left by translateY.
   const [rendered, setRendered] = useState(false);
+
+  const playingIdRef = useRef(playingId);
+  useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
 
   useEffect(() => {
     if (playingId) {
@@ -783,10 +783,10 @@ function GlobalPlayerBar() {
         speed: 18,
         bounciness: 4,
       }).start(({ finished }) => {
-        if (finished) setRendered(false);
+        if (finished && !playingIdRef.current) setRendered(false);
       });
     }
-  }, [!!playingId]);
+  }, [playingId]);
 
   useEffect(() => {
     if (!playingId || isPaused) {

@@ -9,6 +9,13 @@ import { initAudioCache, resolveAudioUri, downloadAudioToCache } from './soundAu
 
 export const MAX_MIX = 4;
 
+// ── Session-level duration cache ────────────────────────────────────────────
+// Populated the first time a track's real duration is decoded by expo-av.
+// Survives reel open/close within the same app session so subsequent plays
+// can show the real timer from frame 1 instead of a placeholder.
+const _durationCache = new Map<string, number>();
+export const getCachedDuration = (id: string): number | null => _durationCache.get(id) ?? null;
+
 export type PlayableSoundMeta = {
   id: string;
   label: string;
@@ -143,9 +150,12 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       // If the sound finishes instead of looping, restart it automatically.
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded) return;
-        // Capture actual track duration once (first time it’s available from decoder)
+        // Capture actual track duration once (first time it's available from decoder)
         if (status.durationMillis != null) {
-          setPlayingDurSecs(prev => prev ?? Math.round(status.durationMillis! / 1000));
+          const durSecs = Math.round(status.durationMillis / 1000);
+          // Persist to session cache so next play of this track shows real duration instantly
+          _durationCache.set(meta.id, durSecs);
+          setPlayingDurSecs(prev => prev ?? durSecs);
         }
         // Audio-reactive metering: normalize dB to 0-1 with exponential smoothing
         if ((status as any).metering != null && !isPausedRef.current) {
@@ -343,7 +353,10 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     }, 1000);
   }, [clearTimer]);
 
-  // Primary play — clears mix, starts single sound, sets timer
+  // Primary play — Instagram-style instant switchover:
+  // 1. UI state updates IMMEDIATELY (playingId, sessionSecs, loading indicator)
+  // 2. Old audio stops + new audio loads in parallel — no sequential wait
+  // 3. Epoch guard ensures stale async ops self-discard
   const playSound = useCallback(async (
     meta: PlayableSoundMeta,
     durationSecs: number,
@@ -353,48 +366,52 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   ) => {
     noLoopRef.current = !shouldLoop;
     networkErrorRef.current = false;
-    // Bump epoch FIRST so any concurrent in-flight loadAndPlay can detect it is stale.
+    // Bump epoch FIRST so any in-flight loadAndPlay from previous call detects it is stale.
     const epoch = ++playEpochRef.current;
+
+    // ── INSTANT UI update — happens synchronously, zero delay ──
+    clearTimer();
+    stopCbRef.current = onStop ?? null;
+    isPausedRef.current = false;
+    setIsPaused(false);
+    setPlayingId(meta.id);
+    setPlayingMeta(meta);
+    setMixedSounds([meta]);
+    setSessionSecs(durationSecs);
+    setPlayingDurSecs(null);     // reset duration so ring shows new track's time immediately
     setIsAudioLoading(true);
     setAudioNetworkError(false);
+    reelTrimMsRef.current = trimLastSecs * 1000;
+
+    // ── ASYNC audio work — stop old + load new in parallel ──
     try {
-      clearTimer();
-      await stopAllRefs();
-      // If another playSound arrived while we were stopping, let it take over.
+      // Fire stop and load concurrently; epoch guard in loadAndPlay handles the race.
+      const stopPromise = stopAllRefs();
+      const [, sound] = await Promise.all([stopPromise, loadAndPlay(meta, epoch, trimLastSecs * 1000)]);
+
+      // If another playSound arrived while we were in the async work, bail out.
       if (epoch !== playEpochRef.current) return;
-      stopCbRef.current = onStop ?? null;
-      isPausedRef.current = false;
-      setIsPaused(false);
-      setPlayingId(meta.id);
-      setPlayingMeta(meta);
-      setMixedSounds([meta]);
-      setSessionSecs(durationSecs);
-      reelTrimMsRef.current = trimLastSecs * 1000;
-      const sound = await loadAndPlay(meta, epoch, trimLastSecs * 1000);
-      // Only this epoch may update loading state — a newer epoch manages its own
-      if (epoch === playEpochRef.current) setIsAudioLoading(false);
+
+      setIsAudioLoading(false);
       if (!sound) {
-        // Either stale (epoch mismatch) or real load failure.
-        if (epoch === playEpochRef.current) {
-          if (networkErrorRef.current) setAudioNetworkError(true);
-          setPlayingId(null);
-          setPlayingMeta(null);
-          setMixedSounds([]);
-          stopCbRef.current = null;
-        }
+        if (networkErrorRef.current) setAudioNetworkError(true);
+        setPlayingId(null);
+        setPlayingMeta(null);
+        setMixedSounds([]);
+        stopCbRef.current = null;
         return;
       }
       startTimer(durationSecs);
       startHeartbeat();
     } catch (e) {
-      if (epoch === playEpochRef.current) setIsAudioLoading(false);
-      console.warn('[SoundPlayer] playSound error:', e);
       if (epoch === playEpochRef.current) {
+        setIsAudioLoading(false);
         setPlayingId(null);
         setPlayingMeta(null);
         setMixedSounds([]);
         stopCbRef.current = null;
       }
+      console.warn('[SoundPlayer] playSound error:', e);
     }
   }, [clearTimer, stopAllRefs, loadAndPlay, startTimer, startHeartbeat]);
 
