@@ -24,16 +24,16 @@ export const BG_URLS: Record<string, string> = {
   afternoon:  'https://images.pexels.com/photos/33441030/pexels-photo-33441030.jpeg',
   afternoon_mid: 'https://images.pexels.com/photos/10630127/pexels-photo-10630127.jpeg',
   afternoon_late: 'https://images.pexels.com/photos/26087641/pexels-photo-26087641.jpeg',
-  sandhya:    'https://images.pexels.com/photos/13605711/pexels-photo-13605711.jpeg',
-  sandhya_late: 'https://images.pexels.com/photos/31887800/pexels-photo-31887800.jpeg',
-  twilight:   'https://images.pexels.com/photos/12174054/pexels-photo-12174054.jpeg',
-  twilight_late: 'https://images.pexels.com/photos/1570394/pexels-photo-1570394.jpeg',
-  twilight_deep: 'https://images.pexels.com/photos/19377475/pexels-photo-19377475.jpeg',
+  sandhya:    'https://images.pexels.com/photos/16271315/pexels-photo-16271315.jpeg',
+  sandhya_late: 'https://images.pexels.com/photos/32179603/pexels-photo-32179603.jpeg',
+  twilight:   'https://images.pexels.com/photos/2812185/pexels-photo-2812185.jpeg',
+  twilight_late: 'https://images.pexels.com/photos/12506672/pexels-photo-12506672.jpeg',
+  twilight_deep: 'https://images.pexels.com/photos/14559095/pexels-photo-14559095.jpeg',
   evening:    'https://images.pexels.com/photos/25853779/pexels-photo-25853779.jpeg',
   night_early: 'https://images.pexels.com/photos/14976665/pexels-photo-14976665.jpeg',
   night:      'https://images.pexels.com/photos/19377475/pexels-photo-19377475.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
-  splash:     'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
+  splash:     'https://images.pexels.com/photos/10881642/pexels-photo-10881642.jpeg',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
 };
 
@@ -161,30 +161,31 @@ export function isBgFullyCached(): boolean {
   return Object.keys(BG_URLS).every(k => !!BG_LOCAL_MAP[k]);
 }
 
+/**
+ * Returns true if the splash image (the minimum-viable image for launch) is
+ * already on disk. Used to decide whether to show the download progress gate:
+ *   • true  → splash cached → skip gate, proceed directly to splash screen.
+ *   • false → first install → show progress ring while images download.
+ */
+export function isSplashCached(): boolean {
+  return !!BG_LOCAL_MAP['splash'];
+}
+
 /** Returns a promise that rejects after `ms` milliseconds. */
 function _timeout(ms: number): Promise<never> {
   return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
 }
 
 /**
- * Like ensureAllBgsCached but reports progress after each image.
- * onProgress(done, total) — done counts successfully written images.
- *
- * BUG-FIX (2026-06): Each download is now raced against a 12-second timeout.
- * Previously, FileSystem.downloadAsync() had no timeout — a single slow or
- * unreachable Pexels URL would hang the sequential loop forever, keeping the
- * app stuck on the progress ring screen and never reaching the splash/home.
- * With the timeout, a failed image is skipped gracefully and the app always
- * proceeds to the splash (using the remote URL as a fallback for that image).
+ * Like ensureAllBgsCached but reports progress after each image completes.
+ * Downloads ALL images in PARALLEL (same as ensureAllBgsCached) so the
+ * total time equals the slowest single image, not the sum of all images.
+ * Each download is individually raced against a 10s timeout.
  */
 export async function ensureAllBgsCachedWithProgress(
   onProgress: (done: number, total: number) => void,
 ): Promise<void> {
-  // Hard cap: if the entire download gate takes longer than 30s, bail out.
-  // This covers edge cases like no internet where all images time out serially.
-  const TOTAL_TIMEOUT_MS = 30_000;
-  const PER_IMAGE_TIMEOUT_MS = 12_000;
-  const gateStart = Date.now();
+  const PER_IMAGE_TIMEOUT_MS = 10_000;
 
   try {
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true });
@@ -195,45 +196,39 @@ export async function ensureAllBgsCachedWithProgress(
     const total   = entries.length;
     let done = 0;
 
-    for (const [key, url] of entries) {
-      // Hard cap: if total time exceeded, skip remaining downloads so app proceeds.
-      if (Date.now() - gateStart > TOTAL_TIMEOUT_MS) {
-        done += 1;
-        onProgress(done, total);
-        continue;
-      }
+    // Parallel: all images download concurrently — total time ≈ slowest image.
+    await Promise.allSettled(
+      entries.map(async ([key, url]) => {
+        const path      = cachePath(key);
+        const urlHash   = djb2(url);
+        const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
+        const urlChanged = storedHashes[key] !== urlHash;
 
-      const path      = cachePath(key);
-      const urlHash   = djb2(url);
-      const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
-      const urlChanged = storedHashes[key] !== urlHash;
+        if (urlChanged && (cached as any).exists) {
+          await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
+          delete BG_LOCAL_MAP[key];
+        }
 
-      if (urlChanged && (cached as any).exists) {
-        await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
-        delete BG_LOCAL_MAP[key];
-      }
-
-      const needsDownload = urlChanged || !(cached as any).exists;
-      if (needsDownload) {
-        try {
-          // Race download against per-image timeout — never hang on one image.
-          await Promise.race([
-            FileSystem.downloadAsync(url, path),
-            _timeout(PER_IMAGE_TIMEOUT_MS),
-          ]);
+        const needsDownload = urlChanged || !(cached as any).exists;
+        if (needsDownload) {
+          try {
+            await Promise.race([
+              FileSystem.downloadAsync(url, path),
+              _timeout(PER_IMAGE_TIMEOUT_MS),
+            ]);
+            updatedHashes[key] = urlHash;
+            BG_LOCAL_MAP[key]  = path;
+          } catch {
+            // Timed-out or failed — keep old cached file; hash not saved → retries next launch.
+          }
+        } else {
           updatedHashes[key] = urlHash;
           BG_LOCAL_MAP[key]  = path;
-        } catch {
-          // Timed-out or failed — keep old cached file if any; remote URL is the fallback.
-          // Hash NOT updated → will retry on next launch when internet is available.
         }
-      } else {
-        updatedHashes[key] = urlHash;
-        BG_LOCAL_MAP[key]  = path;
-      }
-      done += 1;
-      onProgress(done, total);
-    }
+        done += 1;
+        onProgress(done, total);
+      }),
+    );
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
   } catch { /* silent */ }

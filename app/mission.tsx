@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
-  AppState, Platform, Linking,
+  AppState, Platform, Linking, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -471,13 +471,29 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
   const prompt = SINGLE_PROMPTS[new Date().getDay() % SINGLE_PROMPTS.length];
   const [entry, setEntry] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const mountedRef = useRef(true);
+  const submittingRef = useRef(false);
+
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      if (!mountedRef.current || submittingRef.current) return;
+      setTimeout(() => {
+        if (mountedRef.current && !submittingRef.current) inputRef.current?.focus();
+      }, 200);
+    });
+    return () => sub.remove();
+  }, []);
 
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
   const wc = wordCount(entry);
   const isReady = wc >= 3;
 
   const done = () => {
-    if (submitting || !isReady) return;
+    if (submittingRef.current || !isReady) return;
+    submittingRef.current = true;
     setSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const uid = auth.currentUser?.uid;
@@ -508,6 +524,7 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
       {/* Input */}
       <View style={grt.inputWrap}>
         <TextInput
+          ref={inputRef}
           style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
           placeholder="Write at least 3 words..."
           placeholderTextColor="#FFFFFF30"
@@ -568,19 +585,20 @@ function AffirmationsMission({ color, onComplete }: { color: string; onComplete:
   const [canTap, setCanTap] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countStartRef = useRef(Date.now());
 
   useEffect(() => {
     setCanTap(false); setCountdown(5);
+    countStartRef.current = Date.now();
     timerRef.current = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) {
-          clearInterval(timerRef.current!);
-          setCanTap(true);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
+      const elapsed = (Date.now() - countStartRef.current) / 1000;
+      const remaining = Math.max(0, Math.ceil(5 - elapsed));
+      setCountdown(remaining);
+      if (remaining <= 0) {
+        clearInterval(timerRef.current!);
+        setCanTap(true);
+      }
+    }, 250);
     return () => clearInterval(timerRef.current!);
   }, [current]);
 
@@ -659,8 +677,8 @@ const aff = StyleSheet.create({
 
 // ── Move It mission — shake-to-dismiss (20 vigorous shakes) ───────────────────
 const REQUIRED_SHAKES = 20;
-const SHAKE_THRESHOLD = 1.8; // net g-force above gravity
-const SHAKE_COOLDOWN = 300;  // ms between counted shakes
+const SHAKE_THRESHOLD = 0.9; // net g-force above gravity — medium movement works
+const SHAKE_COOLDOWN = 250;  // ms between counted shakes
 
 const MOTIV = [
   'Shake your phone! Wake up! 📱',
@@ -695,30 +713,44 @@ function MoveItMission({ color, onComplete }: { color: string; onComplete: () =>
     ]).start();
   }, [shakeAnim, ringScale]);
 
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
   useEffect(() => {
-    Accelerometer.setUpdateInterval(80);
-    const sub = Accelerometer.addListener(({ x, y, z }) => {
-      const net = Math.sqrt(x * x + y * y + z * z) - 1.0;
-      setIntensity(Math.max(0, Math.min(net / SHAKE_THRESHOLD, 1)));
-      const now = Date.now();
-      if (net > SHAKE_THRESHOLD && now - lastRef.current > SHAKE_COOLDOWN) {
-        lastRef.current = now;
-        const next = countRef.current + 1;
-        countRef.current = next;
-        setShakeCount(next);
-        triggerAnim();
-        Haptics.impactAsync(next % 5 === 0 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light);
-        if (next >= REQUIRED_SHAKES) {
-          sub.remove();
-          setDone(true);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Animated.spring(doneAnim, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }).start();
-          setTimeout(onComplete, 1600);
-        }
+    let sub: ReturnType<typeof Accelerometer.addListener> | null = null;
+    let mounted = true;
+
+    Accelerometer.isAvailableAsync().then(available => {
+      if (!mounted) return;
+      if (!available) {
+        setIntensity(0.5);
+        return;
       }
+      Accelerometer.setUpdateInterval(50);
+      sub = Accelerometer.addListener(({ x, y, z }) => {
+        const net = Math.sqrt(x * x + y * y + z * z) - 1.0;
+        setIntensity(Math.max(0, Math.min(net / SHAKE_THRESHOLD, 1)));
+        const now = Date.now();
+        if (net > SHAKE_THRESHOLD && now - lastRef.current > SHAKE_COOLDOWN) {
+          lastRef.current = now;
+          const next = countRef.current + 1;
+          countRef.current = next;
+          setShakeCount(next);
+          triggerAnim();
+          Haptics.impactAsync(next % 5 === 0 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light);
+          if (next >= REQUIRED_SHAKES) {
+            sub?.remove();
+            setDone(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Animated.spring(doneAnim, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }).start();
+            setTimeout(() => onCompleteRef.current(), 1600);
+          }
+        }
+      });
     });
-    return () => sub.remove();
-  }, [triggerAnim, onComplete]);
+
+    return () => { mounted = false; sub?.remove(); };
+  }, [triggerAnim, doneAnim]);
 
   const ringColor = done ? '#4CD964' : color;
 
@@ -737,7 +769,7 @@ function MoveItMission({ color, onComplete }: { color: string; onComplete: () =>
   return (
     <View style={mv.wrap}>
       <Text style={mv.headline}>SHAKE YOUR PHONE!</Text>
-      <Text style={mv.sub}>Vigorous shaking = alarm dismissed</Text>
+      <Text style={mv.sub}>Shake your phone to dismiss the alarm</Text>
 
       {/* Ring + animated phone */}
       <Animated.View style={[mv.ring, {
@@ -772,7 +804,7 @@ function MoveItMission({ color, onComplete }: { color: string; onComplete: () =>
         </View>
       </View>
 
-      <Text style={mv.hint}>Hold phone firmly · Shake arm or whole body 💪</Text>
+      <Text style={mv.hint}>Hold phone firmly · Move your arm steadily 💪</Text>
     </View>
   );
 

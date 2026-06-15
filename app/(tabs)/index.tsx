@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState,
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar,
 } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6330,6 +6330,7 @@ export default function DailyTab() {
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
+      <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* ── Hero SafeArea ── */}
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>

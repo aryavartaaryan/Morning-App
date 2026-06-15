@@ -203,6 +203,25 @@ class MainActivity : ReactActivity() {
     }
   }
 
+  /**
+   * Returns true when the currently active alarm is a Sound Bath session.
+   * Sound Bath alarms skip Android's startLockTask() because that API
+   * triggers a mandatory system dialog ("Okay to pin?") when the phone
+   * is already unlocked. Protection is still enforced by the native
+   * watchdogs: onUserLeaveHint, dispatchKeyEvent and onBackPressed all
+   * intercept Home/Back at the native layer without any OS prompt.
+   */
+  private fun isSoundBathAlarmActive(): Boolean {
+    return try {
+      val prefs = getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+      if (prefs.getBoolean(HabitAlarmModule.KEY_ACTIVE, false)) {
+        prefs.getString("active_alarm_type", "") == "soundbath"
+      } else {
+        false
+      }
+    } catch (_: Exception) { false }
+  }
+
   private fun startAlarmLockTaskOnce() {
     if (lockTaskStartedForAlarm) return
     lockTaskStartedForAlarm = true

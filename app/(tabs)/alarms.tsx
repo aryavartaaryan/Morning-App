@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
   TextInput, Alert, Animated, Dimensions, NativeModules, Platform,
-  ToastAndroid, ImageBackground, Linking, ActionSheetIOS,
+  ToastAndroid, ImageBackground, Linking, ActionSheetIOS, StatusBar,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,7 +38,7 @@ import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
 import SoundPicker from '@/components/alarms/SoundPicker';
 import { getSolarTimes } from '@/lib/solar';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const ACCENT = '#F5820A';
@@ -372,19 +372,60 @@ function GlassPulseOverlay() {
   );
 }
 
+type FabAction = { label: string; color: string; onPress: () => void };
+
+const AlarmFabMenu = React.memo(function AlarmFabMenu({
+  bottomOffset,
+  actionsRef,
+}: {
+  bottomOffset: number;
+  actionsRef: React.MutableRefObject<FabAction[]>;
+}) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <>
+      {open && (
+        <TouchableOpacity style={S.fabBackdrop} onPress={() => setOpen(false)} activeOpacity={1} />
+      )}
+      {open && (
+        <View style={[S.fabMenu, { bottom: bottomOffset + 82 }]}>
+          {actionsRef.current.map((item, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[S.fabMenuItem, { borderColor: item.color + '70' }]}
+              onPress={() => { setOpen(false); item.onPress(); }}
+              activeOpacity={0.85}
+            >
+              <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      <TouchableOpacity
+        style={[S.fab, { bottom: bottomOffset + 16 }, open && S.fabOpen]}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setOpen(v => !v); }}
+        activeOpacity={0.85}
+      >
+        <Text style={S.fabTxt}>{open ? '✕' : '+'}</Text>
+      </TouchableOpacity>
+    </>
+  );
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 export default function AlarmsTab() {
   const insets = useSafeAreaInsets();
+  const router  = useRouter();
   const { playingId } = useSoundPlayer();
   const [settings, setSettings]             = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [saving, setSaving]                 = useState(false);
   const [selectedMantraId, setSelectedMantraId] = useState('bhagya_suktam');
   const saveAnim                            = useRef(new Animated.Value(0)).current;
   const alarmActiveRef                      = useRef(false);
+  const fabActionsRef                        = useRef<FabAction[]>([]);
   const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', nada_govinda_mantra:'idle', nada_aar_sitar_classical:'idle' });
   const [dlProgress, setDlProgress]         = useState<Record<string, number>>({});
   const [alarmEntries, setAlarmEntries]     = useState<AlarmEntry[]>([]);
-  const [fabOpen, setFabOpen]               = useState(false);
   const [menuOpenId, setMenuOpenId]         = useState<string|null>(null);
   const [menuTarget, setMenuTarget]         = useState<{ type: 'wake' | 'extraWake' | 'entry'; entry?: AlarmEntry; extraWake?: ExtraWakeAlarm } | null>(null);
   const [showWakeEdit, setShowWakeEdit]         = useState(false);
@@ -426,7 +467,7 @@ export default function AlarmsTab() {
   const previewSoundRef                     = useRef<Audio.Sound | null>(null);
   const alarmScrollRef                      = useRef<ScrollView | null>(null);
 
-  useEffect(() => { const t = setInterval(() => setLiveClock(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setLiveClock(new Date()), 30_000); return () => clearInterval(t); }, []);
 
   useFocusEffect(useCallback(() => {
     alarmScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -555,7 +596,12 @@ export default function AlarmsTab() {
     const id = Date.now().toString();
     const a: ExtraWakeAlarm = { id, enabled: true, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined, days: extraFormRepeatDays };
     const updated = [...extraWakeAlarms, a];
-    await persistExtraWakeAlarms(updated).catch(() => {});
+    // Close modal instantly — persist + schedule run in background
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowWakeEdit(false);
+    setIsAddingExtraWake(false);
+    setExtraFormLabel('');
+    persistExtraWakeAlarms(updated).catch(() => {});
     const next = new Date();
     next.setHours(a.hour, a.minute, 0, 0);
     if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
@@ -568,10 +614,6 @@ export default function AlarmsTab() {
     const ampm = a.hour < 12 ? 'AM' : 'PM';
     const mm = String(a.minute).padStart(2, '0');
     (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowWakeEdit(false);
-    setIsAddingExtraWake(false);
-    setExtraFormLabel('');
   };
   const toggleExtraWake = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -622,7 +664,13 @@ export default function AlarmsTab() {
         ? { ...a, hour: extraFormHour, minute: extraFormMinute, label: extraFormLabel.trim() || undefined, days: extraFormRepeatDays }
         : a
     );
-    await persistExtraWakeAlarms(updated).catch(() => {});
+    // Close modal instantly — persist + schedule run in background
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowWakeEdit(false);
+    setIsAddingExtraWake(false);
+    setEditingExtraWake(null);
+    setExtraFormLabel('');
+    persistExtraWakeAlarms(updated).catch(() => {});
     const changed = updated.find(a => a.id === editingExtraWake.id)!;
     if (changed.enabled) {
       const next = new Date();
@@ -638,11 +686,6 @@ export default function AlarmsTab() {
       const mm = String(changed.minute).padStart(2, '0');
       (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowWakeEdit(false);
-    setIsAddingExtraWake(false);
-    setEditingExtraWake(null);
-    setExtraFormLabel('');
   };
 
   const showExtraWakeMenu = (alarm: ExtraWakeAlarm) => {
@@ -956,6 +999,14 @@ export default function AlarmsTab() {
   const playingMantra = ALARM_SOUNDS.find(s => s.id === selectedMantraId) ?? MANTRAS.find(m => m.id === selectedMantraId) ?? MANTRAS[0];
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
+  fabActionsRef.current = [
+    { label: '🌄  Rise at Brahma Muhurta', color: '#f59e0b', onPress: () => openBMModal() },
+    { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
+    { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => openAddModal('habit') },
+    { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => openAddModal('quick') },
+    { label: '🎵  Sound Bath',                 color: '#a78bfa', onPress: () => openAddModal('soundbath') },
+  ];
+
 
   return (
     <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={[S.screen, { backgroundColor: accentColor }]} imageStyle={{ opacity: 0.50, resizeMode: 'cover' }}>
@@ -966,7 +1017,30 @@ export default function AlarmsTab() {
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
+      <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} />
+
+      {/* Settings floating button — top-right */}
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+        style={{
+          position: 'absolute',
+          top: (insets.top ?? 44) + 10,
+          right: 16,
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.20)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 20,
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
+      </TouchableOpacity>
 
       {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
       <View style={{ marginTop: 8, marginBottom: 10 }}>
@@ -1251,30 +1325,15 @@ export default function AlarmsTab() {
       </ScrollView>
 
       {/* FAB */}
-      {fabOpen && <TouchableOpacity style={S.fabBackdrop} onPress={() => setFabOpen(false)} activeOpacity={1} />}
-      {fabOpen && (
-        <View style={[S.fabMenu, { bottom: getTabBarClearance(insets.bottom, !!playingId) + 82 }]}>
-          {([
-            { label: '🌄  Rise at Brahma Muhurta',  color: '#f59e0b', onPress: () => { setFabOpen(false); openBMModal(); } },
-            { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setFabOpen(false); setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
-            { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => { setFabOpen(false); openAddModal('habit'); } },
-            { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => { setFabOpen(false); openAddModal('quick'); } },
-            { label: '🎵  Sound Bath',                 color: '#a78bfa', onPress: () => { setFabOpen(false); openAddModal('soundbath'); } },
-          ] as const).map((item, i) => (
-            <TouchableOpacity key={i} style={[S.fabMenuItem, { borderColor: item.color + '70' }]} onPress={item.onPress} activeOpacity={0.85}>
-              <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-      <TouchableOpacity style={[S.fab, { bottom: getTabBarClearance(insets.bottom, !!playingId) + 16 }, fabOpen && S.fabOpen]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFabOpen(v => !v); }} activeOpacity={0.85}>
-        <Text style={S.fabTxt}>{fabOpen ? '✕' : '+'}</Text>
-      </TouchableOpacity>
+      <AlarmFabMenu
+        bottomOffset={getTabBarClearance(insets.bottom, !!playingId)}
+        actionsRef={fabActionsRef}
+      />
 
       {/* Wake Alarm Edit Modal — full-screen, Sound Bath style */}
       <Modal
         visible={showWakeEdit}
-        animationType="slide"
+        animationType="none"
         transparent={false}
         onRequestClose={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }}
       >
@@ -1292,6 +1351,38 @@ export default function AlarmsTab() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* ── Current Time + Countdown Banner ── */}
+              {(() => {
+                const now = liveClock;
+                const nowH = now.getHours(), nowM = now.getMinutes();
+                const alarmH = isAddingExtraWake ? extraFormHour : wakeFormHour;
+                const alarmM = isAddingExtraWake ? extraFormMinute : wakeFormMinute;
+                const totalNowMins  = nowH * 60 + nowM;
+                const totalAlarmMins = alarmH * 60 + alarmM;
+                let diff = totalAlarmMins - totalNowMins;
+                if (diff <= 0) diff += 24 * 60;
+                const diffH = Math.floor(diff / 60);
+                const diffM = diff % 60;
+                const countdownStr = diffH > 0
+                  ? `${diffH}h ${diffM}m until alarm`
+                  : `${diffM}m until alarm`;
+                const nowAmPm = nowH >= 12 ? 'PM' : 'AM';
+                const nowH12  = nowH % 12 === 0 ? 12 : nowH % 12;
+                const nowStr  = `${nowH12}:${String(nowM).padStart(2, '0')} ${nowAmPm}`;
+                return (
+                  <View style={{ marginHorizontal: 20, marginTop: 14, marginBottom: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF06', borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF0C', paddingHorizontal: 18, paddingVertical: 12 }}>
+                    <View>
+                      <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.8, marginBottom: 3 }}>NOW</Text>
+                      <Text style={{ fontSize: 26, fontWeight: '200', color: '#FFFFFF90', letterSpacing: 0.5 }}>{nowStr}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.8, marginBottom: 3 }}>ALARM IN</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#a78bfa', letterSpacing: 0.2 }}>{countdownStr}</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
               {/* ── Selected Sound Hero Card ── */}
               {(() => {
                 const selSnd = ALARM_SOUNDS.find(s => s.id === selectedMantraId);
@@ -1467,13 +1558,16 @@ export default function AlarmsTab() {
 
               {/* ── Save Button ── */}
               <TouchableOpacity
-                onPress={async () => {
-                  stopPreview();
+                onPress={() => {
                   if (isAddingExtraWake) {
                     if (editingExtraWake) {
-                      await updateExtraWakeAlarm();
+                      setShowWakeEdit(false); setEditingExtraWake(null); setExtraFormLabel('');
+                      stopPreview();
+                      updateExtraWakeAlarm().catch(() => {});
                     } else {
-                      await addExtraWakeAlarm();
+                      setShowWakeEdit(false); setIsAddingExtraWake(false); setExtraFormLabel('');
+                      stopPreview();
+                      addExtraWakeAlarm().catch(() => {});
                     }
                   } else {
                     const duplicate = extraWakeAlarms.some(
@@ -1486,8 +1580,9 @@ export default function AlarmsTab() {
                       );
                       return;
                     }
-                    await persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: wakeFormHour, minute: wakeFormMinute, days: wakeRepeatDays } });
                     setShowWakeEdit(false);
+                    stopPreview();
+                    persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: wakeFormHour, minute: wakeFormMinute, days: wakeRepeatDays } }).catch(() => {});
                   }
                 }}
                 style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10, backgroundColor: '#a78bfa22', borderWidth: 1.5, borderColor: '#a78bfa55', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}

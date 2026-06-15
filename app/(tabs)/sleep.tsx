@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from '
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
-  ActivityIndicator,
+  ActivityIndicator, StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -81,7 +81,7 @@ const SLEEP_SOUNDS = [
   { id: 'night_jungle_chiangmai', label: 'Night Jungle',      emoji: '🦟', cat: 'Nature'  as const, color: '#4ade80', top: '#061A08' as const, bot: '#030C04' as const, desc: 'Wild night in Chiangmai jungle',         src: require('../../assets/sounds/night-jungle-chiangmai.m4a') },
   // ── Sitar ───────────────────────────────────────────────────────────────────
   { id: 'sitar_long',          label: 'Sitar Meditation',     emoji: '🎸', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Long classical raga session',            src: require('../../assets/sounds/sitar-long.m4a') },
-  { id: 'sitar_tabla_bells',   label: 'Sitar, Tabla & Bells', emoji: '🎵', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Fusion of strings, rhythm & bells',      src: require('../../assets/sounds/sitar-tabla-bells.m4a') },
+
   { id: 'indian_sitar_raga',   label: 'Indian Sitar Raga',    emoji: '🎶', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0E00' as const, bot: '#0A0700' as const, desc: 'Classical Indian raga melody',           src: require('../../assets/sounds/indian-sitar-raga.m4a') },
   { id: 'sitar_summer_raga',   label: '432Hz Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: require('../../assets/sounds/sitar-summer-raga.m4a') },
   { id: 'sitar_radiance',      label: 'Sitar Radiance',       emoji: '✨', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0800' as const, bot: '#0A0400' as const, desc: 'Radiant Indian classical sitar',         src: require('../../assets/sounds/sitar-radiance.m4a') },
@@ -328,7 +328,7 @@ const SOUND_PERIODS: Record<string, string[]> = {
   // ── Sitar (morning & afternoon raga hours) ────────────────────────────────
   space_sitar:          ['morning_kapha', 'afternoon_vata'],
   sitar_long:           ['night_vata', 'morning_kapha', 'afternoon_vata'],
-  sitar_tabla_bells:    ['morning_kapha', 'midday_pitta'],
+
   indian_sitar_raga:    ['morning_kapha', 'afternoon_vata'],
   sitar_summer_raga:    ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
   sitar_radiance:       ['morning_kapha', 'midday_pitta', 'afternoon_vata'],
@@ -564,7 +564,10 @@ const CalmSoundCard = memo(function CalmSoundCard({
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
-  const imgFadeAnim = useRef(new Animated.Value(1)).current;
+  // Cached images start fully visible; uncached network images fade in from 0 on load.
+  const imgFadeAnim = useRef(new Animated.Value(
+    (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
+  )).current;
   const cardW = width ?? CALM_CARD_W;
 
   const remoteUri: string | null = typeof (sound as any).src?.uri === 'string' ? (sound as any).src.uri : null;
@@ -663,7 +666,9 @@ const SoundCard = memo(function SoundCard({
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-  const imgOpacity = useRef(new Animated.Value(1)).current;
+  const imgOpacity = useRef(new Animated.Value(
+    (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
+  )).current;
   const imgUri  = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
 
@@ -1522,12 +1527,13 @@ function WaveView({ size, color, soundId, active, paused }: {
     const iv = setInterval(() => setPhase(p => p + 0.05), 36);
     return () => clearInterval(iv);
   }, [active, paused]);
+
   
-  // Audio-reactive amplitude — quiet = subtle, loud = dramatic waves
+  // Audio-reactive amplitude — quiet = barely visible, loud = liquid waves
   const mLevel = getMeteringLevel();
-  const levelScale = paused ? 0.08 : (0.25 + mLevel * 1.8);
-  // Fill from the middle so it looks like a half-full glass sphere
-  const fillY = size * 0.55; 
+  const levelScale = paused ? 0.04 : (0.12 + mLevel * 1.4);
+  // Fill from slightly above center for a half-full glass sphere look
+  const fillY = size * 0.58; 
   
   const waveA = makeWavePath(size, phase, size * 0.08 * levelScale, size * 0.85, fillY);
   const waveB = makeWavePath(size, -phase * 0.6 + 1.2, size * 0.06 * levelScale, size * 0.70, fillY + size * 0.03);
@@ -1536,28 +1542,17 @@ function WaveView({ size, color, soundId, active, paused }: {
   const waveGlass = makeWavePath(size, phase + 0.15, size * 0.015 * levelScale, size * 0.9, fillY - size * 0.01);
   
   const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
-  
-  // Glow opacity tied to sound volume
-  const glowOpacity = Math.min(0.25, mLevel * 0.4).toFixed(2);
-  
+
   return (
     <View pointerEvents="none" style={{
       position: 'absolute', width: size, height: size,
       borderRadius: size / 2, overflow: 'hidden',
-      opacity: paused ? 0.35 : 1,
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.2)', // Glass rim
+      opacity: paused ? 0.25 : 1,
     }}>
-      {/* Frosted glass backing */}
+      {/* Frosted glass backing — barely visible hint */}
       <View pointerEvents="none" style={{
         position: 'absolute', width: size, height: size,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-      }} />
-      
-      {/* Inner shadow to give a 3D spherical depth */}
-      <View pointerEvents="none" style={{
-        position: 'absolute', width: size, height: size, borderRadius: size / 2,
-        borderWidth: 6, borderColor: 'rgba(0,0,0,0.15)',
+        backgroundColor: 'rgba(255,255,255,0.02)',
       }} />
 
       {/* Sea-water translucent wave layers — 3 depth planes */}
@@ -1567,31 +1562,23 @@ function WaveView({ size, color, soundId, active, paused }: {
             <SvgCircle cx={size / 2} cy={size / 2} r={size / 2} />
           </SvgClipPath>
         </Defs>
-        {/* Deep water */}
-        <Path d={waveC} fill={color + '22'} clipPath={`url(#${cid})`} />
+        {/* Deep water — ultra transparent */}
+        <Path d={waveC} fill={color + '06'} clipPath={`url(#${cid})`} />
         {/* Mid water */}
-        <Path d={waveB} fill={color + '33'} clipPath={`url(#${cid})`} />
+        <Path d={waveB} fill={color + '0B'} clipPath={`url(#${cid})`} />
         {/* Surface water */}
-        <Path d={waveA} fill={color + '44'} clipPath={`url(#${cid})`} />
-        {/* Bright glassy crest */}
-        <Path d={waveGlass} fill="rgba(255,255,255,0.35)" clipPath={`url(#${cid})`} />
+        <Path d={waveA} fill={color + '12'} clipPath={`url(#${cid})`} />
+        {/* Bright glassy crest — delicate white highlight */}
+        <Path d={waveGlass} fill="rgba(255,255,255,0.12)" clipPath={`url(#${cid})`} />
       </Svg>
       
-      {/* Top 3D glossy highlight for the glass orb */}
+      {/* Top crescent glossy highlight */}
       <View pointerEvents="none" style={{
-        position: 'absolute', top: size * 0.04, left: size * 0.15, right: size * 0.15,
-        height: size * 0.3,
+        position: 'absolute', top: size * 0.05, left: size * 0.18, right: size * 0.18,
+        height: size * 0.22,
         borderRadius: size / 2,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.10)',
         transform: [{ scaleY: 0.5 }],
-      }} />
-      
-      {/* Subtle audio pulse glow behind the liquid */}
-      <View pointerEvents="none" style={{
-        position: 'absolute', width: size, height: size,
-        borderRadius: size / 2,
-        backgroundColor: color,
-        opacity: Number(glowOpacity),
       }} />
     </View>
   );
@@ -1626,7 +1613,11 @@ function ReelCard({
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri     = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
-  const imgFadeAnim = useRef(new Animated.Value(imgSource ? 0 : 1)).current;
+  // Start at 1 (fully visible) if image is already on disk — no fade delay for cached images.
+  // Start at 0 only when image must load from network — fade in on load.
+  const imgFadeAnim = useRef(new Animated.Value(
+    (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) ? 1 : (imgSource ? 0 : 1)
+  )).current;
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
   useEffect(() => { setLoopCountText('1'); }, [sound.id]);
@@ -1848,16 +1839,17 @@ function ReelCard({
           width: RING_SIZE + 36, height: RING_SIZE + 36,
           borderRadius: (RING_SIZE + 36) / 2,
           borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
         }} />
 
-        {/* Glass ring — ultra-thin, bright frosted edge */}
+        {/* Glass ring — ultra-transparent glassy bubble */}
         <Animated.View style={{
           position: 'absolute',
           width: RING_SIZE, height: RING_SIZE,
           borderRadius: RING_SIZE / 2,
-          borderWidth: isPlaying && !isPaused ? 1 : 0.75,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.18)',
+          backgroundColor: 'rgba(255,255,255,0.02)',
+          borderWidth: isPlaying && !isPaused ? 0.75 : 0.5,
+          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
           // Glass highlight — top-left bright catch light
           shadowColor: '#fff',
           shadowOffset: { width: -2, height: -2 },
@@ -1894,48 +1886,76 @@ function ReelCard({
         {/* ── Live vibration art (only when playing) ── */}
         {isPlaying && (() => {
           const S = RING_SIZE - 26;
+          const accent = sound.color || '#38bdf8';
           return (
             <>
-              {/* Flashy, transparent synced vibrations */}
+              {/* ── Sound-wave concentric rings — expand outward on each audio pulse ── */}
+              {/* Ring 1 — innermost, most responsive */}
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute',
                 width: S, height: S, borderRadius: S / 2,
-                borderWidth: Animated.multiply(meteringAnim, 4),
-                borderColor: (sound.color || '#38bdf8') + '80',
-                backgroundColor: (sound.color || '#38bdf8') + '10',
-                opacity: Animated.add(0.1, Animated.multiply(meteringAnim, 0.8)) as any,
-                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.15)) }],
-                shadowColor: sound.color || '#38bdf8',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: Animated.multiply(meteringAnim, 0.8) as any,
-                shadowRadius: 30,
+                borderWidth: 1.5,
+                borderColor: accent + 'CC',
+                backgroundColor: accent + '08',
+                opacity: Animated.add(0.15, Animated.multiply(meteringAnim, 0.75)) as any,
+                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.18)) as any }],
               }} />
+
+              {/* Ring 2 — mid expansion */}
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute',
-                width: S * 1.1, height: S * 1.1, borderRadius: (S * 1.1) / 2,
-                borderWidth: Animated.multiply(meteringAnim, 2),
-                borderColor: (sound.color || '#38bdf8') + '40',
-                opacity: Animated.multiply(meteringAnim, 0.5) as any,
-                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.25)) }],
+                width: S, height: S, borderRadius: S / 2,
+                borderWidth: 1,
+                borderColor: accent + '88',
+                opacity: Animated.add(0.08, Animated.multiply(meteringAnim, 0.55)) as any,
+                transform: [{ scale: Animated.add(1.12, Animated.multiply(meteringAnim, 0.28)) as any }],
+              }} />
+
+              {/* Ring 3 — outer, ultra-faint ghost */}
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute',
+                width: S, height: S, borderRadius: S / 2,
+                borderWidth: 0.75,
+                borderColor: accent + '50',
+                opacity: Animated.add(0.04, Animated.multiply(meteringAnim, 0.38)) as any,
+                transform: [{ scale: Animated.add(1.28, Animated.multiply(meteringAnim, 0.40)) as any }],
+              }} />
+
+              {/* Ring 4 — outermost whisper ring */}
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute',
+                width: S, height: S, borderRadius: S / 2,
+                borderWidth: 0.5,
+                borderColor: accent + '28',
+                opacity: Animated.add(0.02, Animated.multiply(meteringAnim, 0.25)) as any,
+                transform: [{ scale: Animated.add(1.48, Animated.multiply(meteringAnim, 0.55)) as any }],
+              }} />
+
+              {/* Centre glassy orb glow — fills on loud audio */}
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute',
+                width: S * 0.72, height: S * 0.72, borderRadius: S * 0.36,
+                backgroundColor: accent + '18',
+                opacity: Animated.add(0.12, Animated.multiply(meteringAnim, 0.55)) as any,
               }} />
 
               {/* Rotating glass shimmer sweep */}
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute', width: S, height: S,
                 borderRadius: S / 2, overflow: 'hidden',
-                opacity: 0.45,
+                opacity: 0.35,
                 transform: [{ rotate: shimmerRot }],
               }}>
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.55)', 'transparent', 'rgba(56,189,248,0.35)', 'transparent']}
-                  locations={[0, 0.20, 0.50, 0.72, 1]}
+                  colors={['transparent', 'rgba(255,255,255,0.50)', 'transparent', accent + '44', 'transparent']}
+                  locations={[0, 0.22, 0.50, 0.74, 1]}
                   start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
 
-              {/* Wave art */}
-              <WaveView size={S} color="#38bdf8" soundId={sound.id} active={isActive} paused={isPaused} />
+              {/* Wave liquid art */}
+              <WaveView size={S} color={accent} soundId={sound.id} active={isActive} paused={isPaused} />
             </>
           );
         })()}
@@ -2006,10 +2026,10 @@ function ReelCard({
           /* ── Inline repeat counter — always visible, frictionless +/- ── */
           <View style={{
             flexDirection: 'row', alignItems: 'center',
-            backgroundColor: 'rgba(10,10,16,0.58)',
+            backgroundColor: 'rgba(255,255,255,0.05)',
             borderRadius: 99,
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.22)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(255,255,255,0.12)',
             overflow: 'hidden',
             shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14,
             shadowOffset: { width: 0, height: 3 }, elevation: 10,
@@ -2034,14 +2054,25 @@ function ReelCard({
             {/* Label */}
             <View style={{ paddingHorizontal: 16, alignItems: 'center', minWidth: 120 }}>
               {parseInt(loopCountText, 10) === 1 ? (
-                <Ionicons name="infinite" size={24} color="#FFFFFF" />
+                /* Glassy transparent loop icon */
+                <View style={{
+                  width: 42, height: 26, borderRadius: 13,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(255,255,255,0.55)',
+                  backgroundColor: 'rgba(255,255,255,0.10)',
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#fff', shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.4, shadowRadius: 6,
+                }}>
+                  <Ionicons name="repeat" size={16} color="rgba(255,255,255,0.92)" />
+                </View>
               ) : (
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>
                   {`×${loopCountText} Repeats`}
                 </Text>
               )}
               <Text style={{ fontSize: 8, fontWeight: '500', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, marginTop: parseInt(loopCountText, 10) === 1 ? 0 : 2 }}>
-                {parseInt(loopCountText, 10) === 1 ? '' : 'REPEAT'}
+                {parseInt(loopCountText, 10) === 1 ? 'LOOP' : 'REPEAT'}
               </Text>
             </View>
             {/* Plus */}
@@ -2185,19 +2216,6 @@ function ReelCard({
         }}
       >
 
-        {/* Category badge */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 5,
-            backgroundColor: 'rgba(0,0,0,0.38)', borderRadius: 99,
-            paddingHorizontal: 10, paddingVertical: 4,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-          }}>
-            <Text style={{ fontSize: 11 }}>{sound.emoji}</Text>
-            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.9 }}>{sound.cat}</Text>
-          </View>
-        </View>
-
         {/* Title */}
         <Text style={{ fontSize: 21, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3, marginBottom: 2 }} numberOfLines={1}>
           {sound.label}
@@ -2335,6 +2353,7 @@ function SoundReelsModal({
   onStopSilent: () => void;
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
 }) {
+  const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const flatRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(startIndex);
   const [catBanner, setCatBanner] = useState<{ text: string; emoji: string; color: string } | null>(null);
@@ -2384,13 +2403,14 @@ function SoundReelsModal({
     if (visible) {
       setActiveIndex(startIndex);
       activeIndexRef.current = startIndex;
+      lastAutoPlayedRef.current = null; // allow auto-play to fire for new open
       prevCatRef.current = REELS_ALL_SOUNDS[startIndex]?.cat ?? '';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // Scroll FlatList to the correct reel — critical when startIndex changes
-      // while the modal is already open (e.g. user taps a different sound card)
+      // Scroll FlatList to the correct reel — instant, no animation
+      flatRef.current?.scrollToIndex({ index: startIndex, animated: false });
       setTimeout(() => {
         flatRef.current?.scrollToIndex({ index: startIndex, animated: false });
-      }, 50);
+      }, 40);
     } else {
       // Focus-out: cancel any pending auto-play timer
       if (playDebounceRef.current) {
@@ -2414,6 +2434,21 @@ function SoundReelsModal({
     });
   }, [activeIndex, visible]);
 
+  // Pre-buffer AUDIO for adjacent reels — Instagram-style instant playback on swipe.
+  // createAsync (~500ms cold) is replaced by a near-instant playAsync() on pre-loaded sounds.
+  useEffect(() => {
+    if (!visible) return;
+    [activeIndex + 1, activeIndex + 2, activeIndex - 1].forEach(i => {
+      const s = REELS_ALL_SOUNDS[i];
+      if (s) preBufferSound(s).catch(() => {});
+    });
+  }, [activeIndex, visible]);
+
+  // Release pre-buffered sounds when modal closes (free native audio memory)
+  useEffect(() => {
+    if (!visible) { cleanPreBuffer().catch(() => {}); }
+  }, [visible]);
+
   // Auto-play: immediately stop old sound on swipe, debounce start of new sound.
   // Uses playingIdRef (not prop) so the timeout callback always sees the freshest value.
   const onStopSilentRef = useRef(onStopSilent);
@@ -2421,11 +2456,16 @@ function SoundReelsModal({
   const onPlaySoundRef = useRef(onPlaySound);
   useEffect(() => { onPlaySoundRef.current = onPlaySound; }, [onPlaySound]);
 
+  // Track the last sound we auto-played so we don't re-trigger on visibility toggle
+  const lastAutoPlayedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!visible) return;
     const sound = REELS_ALL_SOUNDS[activeIndex];
     if (!sound) return;
-    if (playingIdRef.current !== sound.id) {
+    // Only play if it's a genuinely new track request — prevents the brief
+    // pre-roll blip where the previous playing sound plays for ~200ms on open
+    if (playingIdRef.current !== sound.id && lastAutoPlayedRef.current !== sound.id) {
+      lastAutoPlayedRef.current = sound.id;
       onPlaySoundRef.current(sound.id);
     }
   }, [activeIndex, visible]);
@@ -2458,7 +2498,7 @@ function SoundReelsModal({
       }
     }
   });
-  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 55 });
+  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 25 });
 
   if (!visible) return null;
 
@@ -2468,7 +2508,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible animationType="slide" transparent={false} statusBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={() => onClose(false)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -2503,10 +2543,10 @@ function SoundReelsModal({
             flatRef.current?.scrollToOffset({ offset: REEL_H * info.index, animated: false });
           }}
           initialScrollIndex={startIndex}
-          initialNumToRender={3}
-          windowSize={7}
-          maxToRenderPerBatch={3}
-          updateCellsBatchingPeriod={30}
+          initialNumToRender={5}
+          windowSize={11}
+          maxToRenderPerBatch={2}
+          updateCellsBatchingPeriod={16}
           removeClippedSubviews={false}
           renderItem={({ item, index }) => (
             <ReelCard
@@ -2558,10 +2598,8 @@ function SoundReelsModal({
               <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.80)" />
             </TouchableOpacity>
 
-            {/* Center: active sound title — smaller, sleeker */}
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.72)', letterSpacing: 0.1, marginHorizontal: 4 }} numberOfLines={1}>
-              {activeSound?.label}
-            </Text>
+            {/* Center: Empty to keep UI clean, elegant and uncluttered */}
+            <View style={{ flex: 1 }} />
 
             {/* Right: sleep page browse button */}
             <TouchableOpacity
@@ -2572,16 +2610,8 @@ function SoundReelsModal({
             </TouchableOpacity>
           </View>
 
-          {/* ── Category selector — elegant pill layout with instructional text ── */}
+          {/* ── Category selector — elegant pill layout ── */}
           <View style={{ paddingBottom: 10, marginTop: 4 }}>
-            <View style={{ alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 }}>
-                Select the sound category
-              </Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5, marginTop: 2 }}>
-                and just swipe to listen that collection
-              </Text>
-            </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, width: '100%' }}>
               {(CATEGORIES.slice(1) as string[]).map(cat => {
                 const isActive = activeSound?.cat === cat;
@@ -3307,6 +3337,7 @@ export default function SleepTab() {
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
+      <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
       {/* Settings floating button — top-right */}
@@ -3345,6 +3376,7 @@ export default function SleepTab() {
           overScrollMode="never"
           nestedScrollEnabled
           removeClippedSubviews
+          stickyHeaderIndices={[1]}
         >
 
         {/* ── Hero area — premium center-aligned glassmorphism card ── */}

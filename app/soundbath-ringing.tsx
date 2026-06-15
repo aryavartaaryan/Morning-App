@@ -93,11 +93,14 @@ export default function SoundBathRingingScreen() {
     dismissMoodSheet();
   }, []);
 
-  // ── Mute native HabitAlarmSoundService immediately so JS takes over ──────────
+  // ── Mute native HabitAlarmSoundService so JS audio takes over ─────────────
+  // We only mute volume and dismiss the native overlay — we do NOT call
+  // stopHabitAlarmSound here. The native service must stay alive so that
+  // isAlarmActive() = true, which powers the Home / Back button watchdogs
+  // and keeps the screen protected without any OS "Okay to pin" dialog.
   useEffect(() => {
     NativeModules.HabitAlarmModule?.setHabitAlarmVolume?.(0).catch?.(() => {});
     NativeModules.HabitAlarmModule?.dismissHabitAlarmOverlay?.().catch?.(() => {});
-    NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.().catch?.(() => {});
     stopAlarmVibration().catch(() => {});
   }, []);
 

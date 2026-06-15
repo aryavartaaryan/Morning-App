@@ -48,6 +48,8 @@ type SoundPlayerCtx = {
   getMeteringLevel: () => number;
   isAudioLoading: boolean;
   audioNetworkError: boolean;
+  preBufferSound: (meta: PlayableSoundMeta) => Promise<void>;
+  cleanPreBuffer: () => Promise<void>;
   moodPhase: 'pre' | 'post' | 'result' | null;
   preMood: MoodKey | null;
   requestPlay: (meta: PlayableSoundMeta, durationSecs: number) => void;
@@ -93,6 +95,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
 
   // Map of soundId -> Audio.Sound for all simultaneously playing sounds
   const mixRefs         = useRef<Map<string, Audio.Sound>>(new Map());
+  // Pre-buffer pool: sounds loaded silently ahead of time so swipe = instant playAsync()
+  const preBufferRef    = useRef<Map<string, Audio.Sound>>(new Map());
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopCbRef       = useRef<(() => void) | null>(null);
@@ -135,12 +139,27 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           downloadAudioToCache(meta.id, resolvedSrc.uri).catch(() => {});
         }
       }
-      const { sound } = await Audio.Sound.createAsync(
-        resolvedSrc,
-        { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 80 },
-      );
-      // Stale-epoch check: createAsync is async; if a newer playSound displaced
-      // this one while we were awaiting, silently unload and bail.
+      // ── Pre-buffer hit: instant play — no createAsync latency ───────────────
+      let sound: Audio.Sound;
+      const preBuffered = preBufferRef.current.get(meta.id);
+      if (preBuffered) {
+        preBufferRef.current.delete(meta.id);
+        try {
+          await preBuffered.setStatusAsync({
+            isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
+            volume: 1.0, progressUpdateIntervalMillis: 500,
+          } as any);
+          sound = preBuffered;
+        } catch {
+          try { await preBuffered.unloadAsync(); } catch {}
+          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+          sound = r.sound;
+        }
+      } else {
+        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+        sound = r.sound;
+      }
+      // Stale-epoch check: if a newer playSound displaced this one, discard.
       if (epoch !== undefined && epoch !== playEpochRef.current) {
         try { sound.setOnPlaybackStatusUpdate(null); } catch {}
         try { await sound.stopAsync(); await sound.unloadAsync(); } catch {}
@@ -297,6 +316,40 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   }, [clearHeartbeat, loadAndPlay]);
 
   // Stop + unload ALL sounds in mix
+  // Pre-load a sound silently so swipe → playAsync() (instant) instead of createAsync() (~500ms)
+  const preBufferSound = useCallback(async (meta: PlayableSoundMeta): Promise<void> => {
+    if (preBufferRef.current.has(meta.id)) return;
+    if (mixRefs.current.has(meta.id)) return;
+    try {
+      let resolvedSrc = meta.src;
+      if (resolvedSrc && typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
+        const localUri = resolveAudioUri(meta.id, resolvedSrc.uri);
+        if (localUri !== resolvedSrc.uri) resolvedSrc = { uri: localUri };
+        else downloadAudioToCache(meta.id, resolvedSrc.uri).catch(() => {});
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        resolvedSrc,
+        { isLooping: true, volume: 1.0, shouldPlay: false },
+      );
+      // Only store if slot is still free and not actively playing
+      if (!mixRefs.current.has(meta.id) && !preBufferRef.current.has(meta.id)) {
+        preBufferRef.current.set(meta.id, sound);
+      } else {
+        try { sound.unloadAsync(); } catch {}
+      }
+    } catch { /* silent — pre-buffer failure is non-fatal */ }
+  }, []);
+
+  // Unload all pre-buffered sounds (called when reels modal closes)
+  const cleanPreBuffer = useCallback(async (): Promise<void> => {
+    const entries = Array.from(preBufferRef.current.entries());
+    preBufferRef.current.clear();
+    await Promise.allSettled(entries.map(async ([, snd]) => {
+      try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+      try { await snd.unloadAsync(); } catch {}
+    }));
+  }, []);
+
   const stopAllRefs = useCallback(async () => {
     const entries = Array.from(mixRefs.current.entries());
     // Clear the map immediately so heartbeat / concurrent calls see an empty set
@@ -565,6 +618,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
       isAudioLoading, audioNetworkError,
+      preBufferSound, cleanPreBuffer,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
       showFullPlayer, openFullPlayer, closeFullPlayer,

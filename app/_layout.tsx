@@ -16,7 +16,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
-import { ensureAllBgsCachedWithProgress, getBgSourceSync, isBgFullyCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
+import { ensureAllBgsCachedWithProgress, getBgSourceSync, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import Svg, { Circle } from 'react-native-svg';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
@@ -81,40 +81,47 @@ class AppErrorBoundary extends Component<
 const { height: SH } = Dimensions.get('window');
 
 function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string }) {
-  const bgScale  = useRef(new Animated.Value(1.04)).current;  // Ken Burns start: slightly zoomed
+  const bgScale  = useRef(new Animated.Value(1.04)).current;
   const glowOp   = useRef(new Animated.Value(0)).current;
   const titleOp  = useRef(new Animated.Value(0)).current;
   const titleSc  = useRef(new Animated.Value(0.78)).current;
   const subOp    = useRef(new Animated.Value(0)).current;
   const screenOp = useRef(new Animated.Value(1)).current;
-  const screenSc = useRef(new Animated.Value(1.0)).current;   // zoom-out on exit
+  const screenSc = useRef(new Animated.Value(1.0)).current;
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const animStarted = useRef(false);
+  const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Ken Burns zoom starts immediately (background colour shows until image decodes)
   useEffect(() => {
-    // Ken Burns: bg image slowly zooms across the full splash
-    Animated.timing(bgScale, { toValue: 1.10, duration: 4200, useNativeDriver: true }).start();
+    Animated.timing(bgScale, { toValue: 1.12, duration: 6800, useNativeDriver: true }).start();
+    // Safety: if onLoad never fires (remote URL / edge case), start after 1.5 s
+    safetyTimer.current = setTimeout(() => setImageLoaded(true), 1500);
+    return () => { if (safetyTimer.current) clearTimeout(safetyTimer.current); };
+  }, []);
 
-    // Title + glow appear together immediately (bg is already on disk)
+  // Logo + content animate only AFTER background image is confirmed rendered —
+  // this guarantees Nada text and background always appear together.
+  useEffect(() => {
+    if (!imageLoaded || animStarted.current) return;
+    animStarted.current = true;
+
     Animated.parallel([
-      // Logo fades + springs in immediately
       Animated.timing(titleOp, { toValue: 1, duration: 320, useNativeDriver: true }),
       Animated.spring(titleSc, { toValue: 1, tension: 55, friction: 9, useNativeDriver: true }),
-      // Glow orb also fades in together
       Animated.timing(glowOp, { toValue: 0.18, duration: 700, useNativeDriver: true }),
     ]).start();
 
-    // Tagline fades in 400ms after logo
     Animated.sequence([
       Animated.delay(400),
       Animated.timing(subOp, { toValue: 1, duration: 450, useNativeDriver: true }),
-      // HOLD: total splash ~4.5s (400 + 450 + 2650 hold + 650 exit)
-      Animated.delay(2650),
-      // Exit: fade out + subtle zoom-out
+      Animated.delay(5500),
       Animated.parallel([
         Animated.timing(screenOp, { toValue: 0, duration: 650, useNativeDriver: true }),
         Animated.timing(screenSc, { toValue: 0.95, duration: 650, useNativeDriver: true }),
       ]),
     ]).start(() => onDone());
-  }, []);
+  }, [imageLoaded]);
 
   return (
     <Animated.View
@@ -127,6 +134,10 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
           source={{ uri: bgUri }}
           style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]}
           resizeMode="cover"
+          onLoad={() => {
+            if (safetyTimer.current) clearTimeout(safetyTimer.current);
+            setImageLoaded(true);
+          }}
         />
       )}
       {/* Dark overlay so text remains readable over bright background images */}
@@ -889,11 +900,18 @@ export default function RootLayout() {
         await bgWarmup;
         // Warm sound image map in parallel but do NOT wait for it to gate
         warmSoundImageMap().catch(() => {});
+        // Start downloading ALL sound images immediately — don't wait for splash.
+        // On return visits images are already on disk (cacheOne exits instantly).
+        // On first install they begin downloading now instead of 7+ seconds later.
+        prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
 
-        const bgCached = isBgFullyCached();
+        // Show the download progress gate ONLY on first install (splash image
+        // not yet on disk). On every subsequent open the splash is already cached
+        // so we skip the gate entirely — any missing images download silently.
+        const splashCached = isSplashCached();
 
-        if (!bgCached) {
-          // Only show progress ring for BG images (much faster than all images)
+        if (!splashCached) {
+          // First install: show progress ring until all BG images are downloaded.
           if (cancelled) return;
           setPhase('downloading');
           const bgTotal = Object.keys(BG_URLS).length;
@@ -905,9 +923,13 @@ export default function RootLayout() {
 
           if (!cancelled) {
             setDlProgress(1);
-            // Brief pause so ring fills to 100% before disappearing
+            // Brief pause so ring fills to 100% before disappearing.
             await new Promise(r => setTimeout(r, 400));
           }
+        } else if (!isBgFullyCached()) {
+          // Re-open with some images missing (e.g. timed out on first install):
+          // retry them silently in the background — no UI shown to user.
+          ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
         }
 
         if (cancelled) return;
@@ -918,9 +940,8 @@ export default function RootLayout() {
         setPhase('splash');
 
         // Background downloads that do NOT block the user:
-        //   • Sound card images (50+ images) — download silently after splash
+        //   • Sound card images already kicked off above — this is a no-op for cached files
         //   • Mantras — large files, low priority
-        prefetchAllSoundImagesWithProgress(() => {}).catch(() => {});
         ensureAllMantrasDownloaded().catch(() => {});
 
       } catch {
@@ -928,7 +949,6 @@ export default function RootLayout() {
           setSplashBgUri(getBgSourceSync('splash'));
           setPhase('splash');
           // Still kick off background downloads even after error
-          prefetchAllSoundImagesWithProgress(() => {}).catch(() => {});
           ensureAllMantrasDownloaded().catch(() => {});
         }
       }
@@ -959,8 +979,10 @@ export default function RootLayout() {
         {phase === 'downloading' && (
           <DownloadScreen progress={dlProgress} label={dlLabel} />
         )}
-        {/* Splash overlay — only renders once bg image is confirmed on disk */}
-        {phase === 'splash' && splashBgUri !== '' && (
+        {/* Splash overlay — NEVER renders without a confirmed bg image URI.
+             splashBgUri is always set before phase is switched to 'splash',
+             so the NADA logo is guaranteed to appear only with the background. */}
+        {phase === 'splash' && splashBgUri.length > 0 && (
           <SplashOverlay onDone={() => setPhase('done')} bgUri={splashBgUri} />
         )}
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
