@@ -18,7 +18,7 @@ import {
   StatusBar, AppState, Platform, NativeModules, ImageBackground,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -131,6 +131,12 @@ export default function WakeAlarmRingingScreen() {
     btnScale.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 900 }), withTiming(1, { duration: 900 })), -1,
     );
+    return () => {
+      cancelAnimation(outerScale);
+      cancelAnimation(outerOpacity);
+      cancelAnimation(innerScale);
+      cancelAnimation(btnScale);
+    };
   }, []);
 
   // ── Keep awake + native wake lock ─────────────────────────────────────────
@@ -369,7 +375,7 @@ export default function WakeAlarmRingingScreen() {
         </View>
 
         {/* CTA — Begin Your Day */}
-        <Animated.View style={[{ width: '100%' }, btnStyle]}>
+        <Animated.View style={[{ width: '100%' }, btnStyle]} pointerEvents="box-none">
           <TouchableOpacity
             style={[S.ctaBtn, { shadowColor: accent }]}
             onPress={handleBeginMission}

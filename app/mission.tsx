@@ -477,16 +477,6 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
 
   useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidHide', () => {
-      if (!mountedRef.current || submittingRef.current) return;
-      setTimeout(() => {
-        if (mountedRef.current && !submittingRef.current) inputRef.current?.focus();
-      }, 200);
-    });
-    return () => sub.remove();
-  }, []);
-
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
   const wc = wordCount(entry);
   const isReady = wc >= 3;
@@ -892,6 +882,8 @@ export default function MissionScreen() {
   const bttfNotifIdRef = useRef<string | null>(null);
   const missionCompletedRef = useRef(false);
   const pickerActiveRef = useRef(false);
+  const elapsedRef = useRef(0);
+  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
 
   useEffect(() => {
     activateKeepAwakeAsync();
@@ -1087,10 +1079,10 @@ export default function MissionScreen() {
     const uid = auth.currentUser?.uid;
     if (uid) {
       addDoc(collection(db, `users/${uid}/mission_logs`), {
-        missionId, elapsedSeconds: elapsed, date: today, timestamp: serverTimestamp(),
+        missionId, elapsedSeconds: elapsedRef.current, date: today, timestamp: serverTimestamp(),
       }).catch(() => {});
     }
-  }, [missionId, elapsed]);
+  }, [missionId]);
 
 
   const handleDismiss = () => router.replace('/(tabs)' as never);

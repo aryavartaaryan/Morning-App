@@ -1018,14 +1018,14 @@ export default function AlarmsTab() {
         pointerEvents="none"
       />
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
-      <SafeAreaView edges={['top']} />
+      <View style={{ height: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : insets.top }} />
 
       {/* Settings floating button — top-right */}
       <TouchableOpacity
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
         style={{
           position: 'absolute',
-          top: (insets.top ?? 44) + 10,
+          top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 10,
           right: 16,
           width: 34,
           height: 34,
@@ -1064,10 +1064,6 @@ export default function AlarmsTab() {
             style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
           />
-          {/* Live clock — top right */}
-          <Text style={[S.pageHeaderClock, { position: 'absolute', top: 14, right: 16 }]}>
-            {pad(liveClock.getHours())}:{pad(liveClock.getMinutes())}
-          </Text>
           {/* Main title — DancingScript matching sleep hero font exactly */}
           <Text style={{
             fontSize: 20,
@@ -1128,7 +1124,7 @@ export default function AlarmsTab() {
         ref={alarmScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingBottom: getTabBarClearance(insets.bottom, !!playingId),
+          paddingBottom: getTabBarClearance(insets.bottom, !!playingId) + 72,
           paddingTop: 12,
         }}
         showsVerticalScrollIndicator={false}
@@ -1161,7 +1157,7 @@ export default function AlarmsTab() {
                 </View>
                 <View style={{ marginBottom: 2 }}>
                   <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
-                    {pad(settings.wakeAlarm.hour)}:{pad(settings.wakeAlarm.minute)}
+                    {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
                   </Text>
                   <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
                     {settings.wakeAlarm.enabled ? computeTimeUntil(settings.wakeAlarm.hour, settings.wakeAlarm.minute, liveClock) : 'off'}
@@ -1201,7 +1197,7 @@ export default function AlarmsTab() {
                   </View>
                   <View style={{ marginBottom: 2 }}>
                     <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: '#FFFFFF', lineHeight: 38 }}>
-                      {pad(bmHour)}:{pad(bmMinute)}
+                      {fmt12(bmHour, bmMinute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
                       {computeTimeUntil(bmHour, bmMinute, liveClock)}
@@ -1244,7 +1240,7 @@ export default function AlarmsTab() {
                   </View>
                   <View style={{ marginBottom: 2 }}>
                     <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
-                      {pad(alarm.hour)}:{pad(alarm.minute)}
+                      {fmt12(alarm.hour, alarm.minute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
                       {alarm.enabled ? computeTimeUntil(alarm.hour, alarm.minute, liveClock) : 'off'}
@@ -1294,7 +1290,7 @@ export default function AlarmsTab() {
                     </View>
                     <View style={{ marginBottom: 2 }}>
                       <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
-                        {pad(entry.hour)}:{pad(entry.minute)}
+                        {fmt12(entry.hour, entry.minute)}
                       </Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
                         {entry.enabled ? computeTimeUntil(entry.hour, entry.minute, liveClock) : 'off'}

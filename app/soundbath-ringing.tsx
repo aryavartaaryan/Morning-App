@@ -4,7 +4,7 @@ import {
   StatusBar, AppState, Platform, NativeModules, ImageBackground,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
 import { WAKE_SOUNDS } from '@/lib/missionAlarm';
-import { stopAlarmVibration, stopNativeLockTask } from '@/lib/nativeAlarm';
+import { stopAlarmVibration, startNativeLockTask, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
@@ -71,6 +71,17 @@ export default function SoundBathRingingScreen() {
     btnScale.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 900 }), withTiming(1, { duration: 900 })), -1,
     );
+    return () => {
+      cancelAnimation(outerScale);
+      cancelAnimation(outerOpacity);
+      cancelAnimation(innerScale);
+      cancelAnimation(btnScale);
+    };
+  }, []);
+
+  // ── Pin screen immediately on mount (Lock Task Mode) ────────────────────────
+  useEffect(() => {
+    startNativeLockTask().catch(() => {});
   }, []);
 
   // ── Keep awake + native wake lock ──────────────────────────────────────────────

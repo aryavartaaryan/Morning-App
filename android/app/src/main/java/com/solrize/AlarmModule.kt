@@ -133,6 +133,30 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     }
 
     /**
+     * Enter Lock Task (screen pinning) mode from JS.
+     * Called from soundbath-ringing.tsx on mount so the screen is pinned
+     * immediately when the alarm opens, matching the wake-alarm behaviour.
+     * Posts to main thread — safe to call from any React lifecycle.
+     */
+    @ReactMethod
+    fun startLockTask(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try {
+                        (activity as? MainActivity)?.resetAlarmLockTaskState()
+                        activity.startLockTask()
+                    } catch (_: Exception) {}
+                }
+            }
+            promise.resolve("OK")
+        } catch (e: Exception) {
+            promise.reject("LOCK_TASK_ERROR", e.message, e)
+        }
+    }
+
+    /**
      * Exit Lock Task (screen pinning) mode.
      * Called from mission.tsx handleComplete() immediately after stopping the alarm
      * so the user is never trapped inside the app after mission completion.

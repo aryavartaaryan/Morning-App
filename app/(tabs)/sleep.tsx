@@ -1595,7 +1595,7 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
-  const { playingDurationSecs, setLoopConfig, meteringAnim, isAudioLoading, audioNetworkError } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig, meteringAnim, isAudioLoading, audioNetworkError, getPositionMs } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -1603,11 +1603,11 @@ function ReelCard({
     return () => clearTimeout(t);
   }, [isActive, isAudioLoading]);
   const insets = useSafeAreaInsets();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const ringRotAnim = useRef(new Animated.Value(0)).current;
   const kbAnim = useRef(new Animated.Value(0)).current;
+  const [positionMs, setPositionMs] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
-  const [, forceRefresh] = useState(0);
+  const [refreshCount, forceRefresh] = useState(0);
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
@@ -1618,6 +1618,13 @@ function ReelCard({
   const imgFadeAnim = useRef(new Animated.Value(
     (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) ? 1 : (imgSource ? 0 : 1)
   )).current;
+  // After warm completes and LOCAL_URI_MAP is populated, sync opacity to 1 so
+  // images cached mid-session (ensureSoundImageCached) become immediately visible.
+  useEffect(() => {
+    if (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) {
+      imgFadeAnim.setValue(1);
+    }
+  }, [refreshCount]);
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
   useEffect(() => { setLoopCountText('1'); }, [sound.id]);
@@ -1629,14 +1636,6 @@ function ReelCard({
   const playTapAnim = useRef(new Animated.Value(0)).current;
   const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
   const playTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Wave art animations
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const rippleAnimsRef = useRef([
-    new Animated.Value(0), new Animated.Value(0), new Animated.Value(0),
-    new Animated.Value(0), new Animated.Value(0), new Animated.Value(0),
-    new Animated.Value(0),
-  ]);
-  const rippleAnims = rippleAnimsRef.current;
   // Auto-detect: when track duration becomes available, silently set correct timer
   // For Ragas/Meditations: long (>6 min) → real duration once-play; short (≤6 min) → 15 min loop
   // For other categories: no threshold — STOP_TIMES value is already set by playSound
@@ -1711,30 +1710,12 @@ function ReelCard({
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
   });
 
-  // Slowly rotate ring when playing
+  // Poll audio position every 500ms for the real-time progress bar
   useEffect(() => {
-    if (isPlaying && !isPaused && isActive) {
-      const loop = Animated.loop(
-        Animated.timing(ringRotAnim, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })
-      );
-      loop.start();
-      return () => loop.stop();
-    }
-  }, [isPlaying, isPaused, isActive]);
-
-  useEffect(() => {
-    if (isPlaying && !isPaused && isActive) {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.04, duration: 2800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,    duration: 2800, useNativeDriver: true }),
-        ])
-      );
-      loop.start();
-      return () => loop.stop();
-    }
-    pulseAnim.setValue(1);
-  }, [isPlaying, isPaused, isActive]);
+    if (!isActive || !isPlaying || isPaused) return;
+    const interval = setInterval(() => setPositionMs(getPositionMs()), 500);
+    return () => clearInterval(interval);
+  }, [isActive, isPlaying, isPaused, getPositionMs]);
 
   useEffect(() => {
     Animated.timing(controlsAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
@@ -1755,28 +1736,18 @@ function ReelCard({
     return () => loop.stop();
   }, [isActive, isLast]);
 
-  const RING_SIZE = Math.round(REEL_W * 0.62);
-  const ringRotDeg = ringRotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const shimmerRot = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
+  // Progress bar: track width = full reel width minus horizontal padding (24 each side)
+  const TRACK_W = REEL_W - 48;
+  const trackDurMs = (playingDurationSecs ?? 0) * 1000;
+  const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
   useEffect(() => {
-    if (!isActive || !isPlaying || isPaused) {
-      shimmerAnim.stopAnimation(); shimmerAnim.setValue(0);
-      return;
-    }
-    const shimmerLoop = Animated.loop(
-      Animated.timing(shimmerAnim, { toValue: 1, duration: 7000, useNativeDriver: true, easing: Easing.linear })
-    );
-    shimmerLoop.start();
-    return () => shimmerLoop.stop();
-  }, [isActive, isPlaying, isPaused]);
-
-  // Ring center sits at 44% from top — pushed down to clear the JUMP TO CATEGORY strip
-  const ringCenterY = REEL_H * 0.47;
-  // Bottom edge of ring from top
-  const ringBottomY = ringCenterY + RING_SIZE / 2;
-  // Timer button lives 38dp below the ring's bottom edge (increased for breathing room)
-  const timerTopY = ringBottomY + 38;
+    Animated.timing(progressAnim, {
+      toValue: loopProgress,
+      duration: 450,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
+  }, [loopProgress]);
 
   return (
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
@@ -1813,349 +1784,35 @@ function ReelCard({
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Bottom gradient: rich dark for controls area */}
+      {/* Bottom gradient: starts low so most of the background image is visible */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
-        locations={[0.5, 0.7, 0.85, 1]}
+        colors={['transparent', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.97)']}
+        locations={[0.52, 0.70, 0.86, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* ── Hero Ring — absolutely positioned at upper-center ── */}
-      <View pointerEvents="none" style={{
-        position: 'absolute',
-        left: 0, right: 0,
-        top: ringCenterY - RING_SIZE / 2,
-        height: RING_SIZE,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 4,
-      }}>
-        {/* ── Ultra-transparent glassy ring system ── */}
-
-        {/* Outermost feather halo — barely visible, just breath */}
-        <View style={{
-          position: 'absolute',
-          width: RING_SIZE + 36, height: RING_SIZE + 36,
-          borderRadius: (RING_SIZE + 36) / 2,
-          borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-        }} />
-
-        {/* Glass ring — ultra-transparent glassy bubble */}
-        <Animated.View style={{
-          position: 'absolute',
-          width: RING_SIZE, height: RING_SIZE,
-          borderRadius: RING_SIZE / 2,
-          backgroundColor: 'rgba(255,255,255,0.02)',
-          borderWidth: isPlaying && !isPaused ? 0.75 : 0.5,
-          borderColor: isPlaying && !isPaused ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
-          // Glass highlight — top-left bright catch light
-          shadowColor: '#fff',
-          shadowOffset: { width: -2, height: -2 },
-          shadowOpacity: isPlaying && !isPaused ? 0.35 : 0.08,
-          shadowRadius: 8,
-          transform: [{ rotate: ringRotDeg }],
-        }} />
-
-        {/* Inner accent ring — gossamer thin */}
-        <View style={{
-          position: 'absolute',
-          width: RING_SIZE - 18, height: RING_SIZE - 18,
-          borderRadius: (RING_SIZE - 18) / 2,
-          borderWidth: 0.5,
-          borderColor: isPlaying && !isPaused ? 'rgba(56,189,248,0.45)' : 'rgba(255,255,255,0.06)',
-        }} />
-
-        {/* Glass gloss arc — top crescent highlight */}
-        <View style={{
-          position: 'absolute',
-          width: RING_SIZE - 4, height: RING_SIZE - 4,
-          borderRadius: (RING_SIZE - 4) / 2,
-          overflow: 'hidden',
-          opacity: isPlaying ? 1 : 0.3,
-        }}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.05)', 'transparent']}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+      {/* ── Ambient metering glow — ultra-subtle center pulse, reacts to audio ── */}
+      {isPlaying && !isPaused && (() => {
+        const glowSize = REEL_W * 0.58;
+        const accent = sound.color || '#38bdf8';
+        return (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: glowSize, height: glowSize,
+              borderRadius: glowSize / 2,
+              backgroundColor: accent + '10',
+              left: (REEL_W - glowSize) / 2,
+              top: (REEL_H - glowSize) / 2 - REEL_H * 0.06,
+              zIndex: 2,
+              opacity: Animated.add(0.06, Animated.multiply(meteringAnim, 0.42)) as any,
+              transform: [{ scale: Animated.add(0.90, Animated.multiply(meteringAnim, 0.22)) as any }],
+            }}
           />
-        </View>
-
-        {/* ── Live vibration art (only when playing) ── */}
-        {isPlaying && (() => {
-          const S = RING_SIZE - 26;
-          const accent = sound.color || '#38bdf8';
-          return (
-            <>
-              {/* ── Sound-wave concentric rings — expand outward on each audio pulse ── */}
-              {/* Ring 1 — innermost, most responsive */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute',
-                width: S, height: S, borderRadius: S / 2,
-                borderWidth: 1.5,
-                borderColor: accent + 'CC',
-                backgroundColor: accent + '08',
-                opacity: Animated.add(0.15, Animated.multiply(meteringAnim, 0.75)) as any,
-                transform: [{ scale: Animated.add(1, Animated.multiply(meteringAnim, 0.18)) as any }],
-              }} />
-
-              {/* Ring 2 — mid expansion */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute',
-                width: S, height: S, borderRadius: S / 2,
-                borderWidth: 1,
-                borderColor: accent + '88',
-                opacity: Animated.add(0.08, Animated.multiply(meteringAnim, 0.55)) as any,
-                transform: [{ scale: Animated.add(1.12, Animated.multiply(meteringAnim, 0.28)) as any }],
-              }} />
-
-              {/* Ring 3 — outer, ultra-faint ghost */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute',
-                width: S, height: S, borderRadius: S / 2,
-                borderWidth: 0.75,
-                borderColor: accent + '50',
-                opacity: Animated.add(0.04, Animated.multiply(meteringAnim, 0.38)) as any,
-                transform: [{ scale: Animated.add(1.28, Animated.multiply(meteringAnim, 0.40)) as any }],
-              }} />
-
-              {/* Ring 4 — outermost whisper ring */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute',
-                width: S, height: S, borderRadius: S / 2,
-                borderWidth: 0.5,
-                borderColor: accent + '28',
-                opacity: Animated.add(0.02, Animated.multiply(meteringAnim, 0.25)) as any,
-                transform: [{ scale: Animated.add(1.48, Animated.multiply(meteringAnim, 0.55)) as any }],
-              }} />
-
-              {/* Centre glassy orb glow — fills on loud audio */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute',
-                width: S * 0.72, height: S * 0.72, borderRadius: S * 0.36,
-                backgroundColor: accent + '18',
-                opacity: Animated.add(0.12, Animated.multiply(meteringAnim, 0.55)) as any,
-              }} />
-
-              {/* Rotating glass shimmer sweep */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', width: S, height: S,
-                borderRadius: S / 2, overflow: 'hidden',
-                opacity: 0.35,
-                transform: [{ rotate: shimmerRot }],
-              }}>
-                <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.50)', 'transparent', accent + '44', 'transparent']}
-                  locations={[0, 0.22, 0.50, 0.74, 1]}
-                  start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
-                  style={{ flex: 1 }}
-                />
-              </Animated.View>
-
-              {/* Wave liquid art */}
-              <WaveView size={S} color={accent} soundId={sound.id} active={isActive} paused={isPaused} />
-            </>
-          );
-        })()}
-
-        {/* CENTER content */}
-        <Animated.View style={{
-          position: 'absolute',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: [{ scale: pulseAnim }],
-        }}>
-          {isPlaying ? (
-            <>
-              <Text style={{
-                fontSize: Math.round(RING_SIZE * 0.22),
-                fontWeight: '300',
-                color: '#FFFFFF',
-                letterSpacing: -1,
-                textShadowColor: 'rgba(255,255,255,0.30)',
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 12,
-              }}>
-                {
-                  (() => {
-                    if (isRagaOrMedit && playingDurationSecs == null) return '···';
-                    if (isRagaOrMedit && playingDurationSecs != null && playingDurationSecs > 360) {
-                      const loops = parseInt(loopCountText, 10);
-                      if (loops === 1) {
-                        const elapsed = 86400 - sessionSecs;
-                        const rem = playingDurationSecs - (elapsed % playingDurationSecs);
-                        return fmtTimer(rem);
-                      } else {
-                        return fmtTimer(((sessionSecs - 1) % playingDurationSecs) + 1);
-                      }
-                    }
-                    return fmtTimer(sessionSecs);
-                  })()
-                }
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                <View style={{
-                  width: 3, height: 3, borderRadius: 1.5,
-                  backgroundColor: isPaused ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.75)',
-                }} />
-                <Text style={{ fontSize: 7, fontWeight: '300', color: isPaused ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.55)', letterSpacing: 2.2 }}>
-                  {isPaused ? 'PAUSED' : 'PLAYING'}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={{ fontSize: 50, textAlign: 'center', opacity: 0.9 }}>{sound.emoji}</Text>
-              <Text style={{ fontSize: 8, fontWeight: '300', color: 'rgba(255,255,255,0.35)', letterSpacing: 2.0, marginTop: 10 }}>TAP TO PLAY</Text>
-            </>
-          )}
-        </Animated.View>
-      </View>
-
-      {/* ── Repeat counter (isMeditLong) / Stop timer (others) — absolute below ring ── */}
-      <View style={{
-        position: 'absolute',
-        left: 0, right: 0,
-        top: timerTopY,
-        alignItems: 'center',
-        zIndex: 12,
-      }}>
-        {isMeditLong ? (
-          /* ── Inline repeat counter — always visible, frictionless +/- ── */
-          <View style={{
-            flexDirection: 'row', alignItems: 'center',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            borderRadius: 99,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255,255,255,0.12)',
-            overflow: 'hidden',
-            shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14,
-            shadowOffset: { width: 0, height: 3 }, elevation: 10,
-          }}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)']}
-              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {/* Minus */}
-            <TouchableOpacity
-              onPress={() => applyCount(parseInt(loopCountText, 10) - 1)}
-              activeOpacity={0.65}
-              style={{
-                width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
-                opacity: parseInt(loopCountText, 10) <= 1 ? 0.28 : 1,
-              }}
-              disabled={parseInt(loopCountText, 10) <= 1}
-            >
-              <Text style={{ fontSize: 22, color: '#FFFFFF', lineHeight: 26 }}>−</Text>
-            </TouchableOpacity>
-            {/* Label */}
-            <View style={{ paddingHorizontal: 16, alignItems: 'center', minWidth: 120 }}>
-              {parseInt(loopCountText, 10) === 1 ? (
-                /* Glassy transparent loop icon */
-                <View style={{
-                  width: 42, height: 26, borderRadius: 13,
-                  borderWidth: 1.5,
-                  borderColor: 'rgba(255,255,255,0.55)',
-                  backgroundColor: 'rgba(255,255,255,0.10)',
-                  alignItems: 'center', justifyContent: 'center',
-                  shadowColor: '#fff', shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.4, shadowRadius: 6,
-                }}>
-                  <Ionicons name="repeat" size={16} color="rgba(255,255,255,0.92)" />
-                </View>
-              ) : (
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>
-                  {`×${loopCountText} Repeats`}
-                </Text>
-              )}
-              <Text style={{ fontSize: 8, fontWeight: '500', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, marginTop: parseInt(loopCountText, 10) === 1 ? 0 : 2 }}>
-                {parseInt(loopCountText, 10) === 1 ? 'LOOP' : 'REPEAT'}
-              </Text>
-            </View>
-            {/* Plus */}
-            <TouchableOpacity
-              onPress={() => applyCount(parseInt(loopCountText, 10) + 1)}
-              activeOpacity={0.65}
-              style={{
-                width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
-                opacity: parseInt(loopCountText, 10) >= 9 ? 0.28 : 1,
-              }}
-              disabled={parseInt(loopCountText, 10) >= 9}
-            >
-              <Text style={{ fontSize: 22, color: '#FFFFFF', lineHeight: 26 }}>+</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* ── Regular stop-timer picker for non-meditLong sounds ── */
-          <>
-            {timerPickerOpen && (
-              <View style={{
-                marginBottom: 12,
-                backgroundColor: 'rgba(14,14,20,0.88)',
-                borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
-                paddingTop: 12, paddingBottom: 14, paddingHorizontal: 14,
-                overflow: 'hidden',
-                shadowColor: '#000', shadowOpacity: 0.65, shadowRadius: 22,
-                shadowOffset: { width: 0, height: 6 }, elevation: 20,
-              }}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.07)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <Text style={{ fontSize: 8.5, fontWeight: '600', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>STOP AFTER</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                  {STOP_TIMES.map((t, i) => {
-                    const active = stopIdx === i;
-                    return (
-                      <TouchableOpacity
-                        key={t.label}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          onChangeTimer(i);
-                          setTimerPickerOpen(false);
-                        }}
-                        style={{
-                          paddingHorizontal: 20, paddingVertical: 10, borderRadius: 99,
-                          borderWidth: 1,
-                          borderColor: active ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.16)',
-                          backgroundColor: active ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.04)',
-                        }}>
-                        <Text style={{ fontSize: 13, fontWeight: active ? '700' : '400', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)', letterSpacing: 0.2 }}>{t.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTimerPickerOpen(v => !v); }}
-              activeOpacity={0.78}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 7,
-                paddingHorizontal: 22, paddingVertical: 11, borderRadius: 99,
-                borderWidth: 1,
-                borderColor: timerPickerOpen ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)',
-                backgroundColor: timerPickerOpen ? 'rgba(10,10,16,0.70)' : 'rgba(10,10,16,0.45)',
-                overflow: 'hidden',
-                shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 14,
-                shadowOffset: { width: 0, height: 3 }, elevation: 10,
-              }}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']}
-                start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Ionicons name="time-outline" size={17} color="rgba(255,255,255,0.90)" />
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.2 }}>Timer</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+        );
+      })()}
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
@@ -2205,30 +1862,200 @@ function ReelCard({
         </View>
       </Animated.View>
 
-      {/* ── Bottom controls ── */}
+      {/* ── Premium bottom player bar ── */}
       <Animated.View
         pointerEvents="box-none"
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
-          paddingHorizontal: 26,
-          paddingBottom: Math.max(insets.bottom + 10, 20),
+          paddingHorizontal: 24,
+          paddingBottom: Math.max(insets.bottom + 8, 18),
           zIndex: 8, opacity: controlsAnim,
         }}
       >
+        {/* Timer picker popup — floats above the controls row */}
+        {timerPickerOpen && (
+          <View style={{
+            marginBottom: 12,
+            backgroundColor: 'rgba(10,10,18,0.94)',
+            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+            paddingTop: 14, paddingBottom: 16, paddingHorizontal: 14,
+            overflow: 'hidden',
+            shadowColor: '#000', shadowOpacity: 0.70, shadowRadius: 24,
+            shadowOffset: { width: 0, height: 8 }, elevation: 22,
+          }}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.08)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Text style={{ fontSize: 8.5, fontWeight: '700', color: 'rgba(255,255,255,0.28)', letterSpacing: 2.2, textAlign: 'center', marginBottom: 14 }}>STOP AFTER</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              {STOP_TIMES.map((t, i) => {
+                const active = stopIdx === i;
+                return (
+                  <TouchableOpacity
+                    key={t.label}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onChangeTimer(i);
+                      setTimerPickerOpen(false);
+                    }}
+                    style={{
+                      paddingHorizontal: 22, paddingVertical: 10, borderRadius: 99,
+                      borderWidth: 1,
+                      borderColor: active ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.16)',
+                      backgroundColor: active ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.04)',
+                    }}>
+                    <Text style={{ fontSize: 13, fontWeight: active ? '700' : '400', color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)', letterSpacing: 0.2 }}>{t.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
-        {/* Title */}
-        <Text style={{ fontSize: 21, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3, marginBottom: 2 }} numberOfLines={1}>
-          {sound.label}
-        </Text>
-        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', marginBottom: 10, lineHeight: 16 }} numberOfLines={1}>
+        {/* Title row + playing status badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.4, flex: 1, marginRight: 10 }} numberOfLines={1}>
+            {sound.label}
+          </Text>
+          {isPlaying && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color }} />
+              <Text style={{ fontSize: 9, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.30)' : sound.color, letterSpacing: 1.8 }}>
+                {isPaused ? 'PAUSED' : 'PLAYING'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', marginBottom: 16, lineHeight: 16 }} numberOfLines={1}>
           {sound.desc}
         </Text>
 
-        {/* ── Swipe hint ── */}
+        {/* ── Real-time progress bar ── */}
+        {trackDurMs > 0 ? (
+          <View style={{ marginBottom: 18 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3 }}>
+                {fmtTimer(Math.round(positionMs / 1000))}
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.30)', letterSpacing: 0.3 }}>
+                {fmtTimer(playingDurationSecs ?? 0)}
+              </Text>
+            </View>
+            {/* Track + thumb */}
+            <View style={{ height: 16, justifyContent: 'center' }}>
+              {/* Track background */}
+              <View style={{ height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)' }}>
+                <Animated.View style={{
+                  height: '100%', borderRadius: 3,
+                  backgroundColor: sound.color,
+                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
+                }} />
+              </View>
+              {/* Thumb dot */}
+              <Animated.View style={{
+                position: 'absolute',
+                left: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13] }),
+                top: 1.5,
+                width: 13, height: 13, borderRadius: 6.5,
+                backgroundColor: '#fff',
+                shadowColor: sound.color, shadowOpacity: 0.85, shadowRadius: 7, shadowOffset: { width: 0, height: 0 },
+                elevation: 5,
+              }} />
+            </View>
+          </View>
+        ) : (
+          /* Looping sound — show animated shimmer bar */
+          <View style={{ height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 28, overflow: 'hidden' }}>
+            <Animated.View style={{
+              height: '100%', borderRadius: 3,
+              backgroundColor: sound.color + '70',
+              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
+            }} />
+          </View>
+        )}
+
+        {/* ── Controls row: Loop | Timer countdown ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+
+          {/* Loop / Repeat button */}
+          {isMeditLong ? (
+            /* Raga/Meditation: inline +/- repeat counter pill */
+            <View style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
+              overflow: 'hidden',
+            }}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.02)']}
+                start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <TouchableOpacity
+                onPress={() => applyCount(parseInt(loopCountText, 10) - 1)}
+                disabled={parseInt(loopCountText, 10) <= 1}
+                activeOpacity={0.65}
+                style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', opacity: parseInt(loopCountText, 10) <= 1 ? 0.28 : 1 }}>
+                <Text style={{ fontSize: 22, color: '#fff', lineHeight: 26 }}>−</Text>
+              </TouchableOpacity>
+              <View style={{ paddingHorizontal: 8, alignItems: 'center', minWidth: 72 }}>
+                {parseInt(loopCountText, 10) === 1 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Ionicons name="repeat" size={14} color="rgba(255,255,255,0.88)" />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.88)', letterSpacing: 0.3 }}>Loop</Text>
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>×{loopCountText}</Text>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => applyCount(parseInt(loopCountText, 10) + 1)}
+                disabled={parseInt(loopCountText, 10) >= 9}
+                activeOpacity={0.65}
+                style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', opacity: parseInt(loopCountText, 10) >= 9 ? 0.28 : 1 }}>
+                <Text style={{ fontSize: 22, color: '#fff', lineHeight: 26 }}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Nature/Birds/etc: always-loop indicator pill */
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 99, backgroundColor: sound.color + '18', borderWidth: 1, borderColor: sound.color + '55' }}>
+              <Ionicons name="repeat" size={15} color={sound.color} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: sound.color, letterSpacing: 0.3 }}>Loop</Text>
+            </View>
+          )}
+
+          {/* Timer button — shows countdown when playing */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTimerPickerOpen(v => !v); }}
+            activeOpacity={0.78}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 7,
+              paddingHorizontal: 18, paddingVertical: 10, borderRadius: 99,
+              borderWidth: 1,
+              borderColor: timerPickerOpen ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.26)',
+              backgroundColor: timerPickerOpen ? 'rgba(12,12,22,0.80)' : 'rgba(255,255,255,0.07)',
+              overflow: 'hidden',
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)']}
+              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Ionicons name="time-outline" size={15} color="rgba(255,255,255,0.88)" />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.88)', letterSpacing: 0.2 }}>
+              {isPlaying ? fmtTimer(sessionSecs) : (STOP_TIMES[stopIdx]?.label ?? 'Timer')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Swipe hint */}
         {isActive && !isLast && (
           <Animated.View style={{ alignItems: 'center', marginTop: 2, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.5)" />
-            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 2.5, marginTop: 1, textTransform: 'uppercase' }}>Swipe up for next</Text>
+            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.45)" />
+            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, marginTop: 1, textTransform: 'uppercase' }}>Swipe up for next</Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -2362,6 +2189,9 @@ function SoundReelsModal({
   const prevCatRef = useRef(REELS_ALL_SOUNDS[startIndex]?.cat ?? '');
   const activeIndexRef = useRef(startIndex);
   const playDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Gate: false while FlatList is scrolling to initialScrollIndex so onViewableItemsChanged
+  // doesn't fire for items 0-4 (rendered first by initialNumToRender) and trigger the wrong sound.
+  const isScrollReadyRef = useRef(startIndex === 0);
   // Always-fresh ref so debounce callback reads current playingId, not stale closure
   const playingIdRef = useRef(playingId);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
@@ -2401,6 +2231,7 @@ function SoundReelsModal({
   // Reset + focus-in haptic when modal becomes visible; clear debounce on close
   useEffect(() => {
     if (visible) {
+      isScrollReadyRef.current = (startIndex === 0); // block viewability until initial scroll settles
       setActiveIndex(startIndex);
       activeIndexRef.current = startIndex;
       lastAutoPlayedRef.current = null; // allow auto-play to fire for new open
@@ -2410,7 +2241,8 @@ function SoundReelsModal({
       flatRef.current?.scrollToIndex({ index: startIndex, animated: false });
       setTimeout(() => {
         flatRef.current?.scrollToIndex({ index: startIndex, animated: false });
-      }, 40);
+        isScrollReadyRef.current = true; // ungate — initial scroll + viewability settled
+      }, 80);
     } else {
       // Focus-out: cancel any pending auto-play timer
       if (playDebounceRef.current) {
@@ -2420,10 +2252,10 @@ function SoundReelsModal({
     }
   }, [visible, startIndex]);
 
-  // Pre-cache images for the next 2 reels ahead so swipe transitions never show an empty image
+  // Pre-cache images for current + next 2 reels so swipe transitions never show an empty image
   useEffect(() => {
     if (!visible) return;
-    const ahead = [activeIndex + 1, activeIndex + 2];
+    const ahead = [activeIndex, activeIndex + 1, activeIndex + 2];
     ahead.forEach(i => {
       const s = REELS_ALL_SOUNDS[i];
       if (!s) return;
@@ -2484,6 +2316,7 @@ function SoundReelsModal({
   };
 
   const onViewRef = useRef(({ viewableItems }: any) => {
+    if (!isScrollReadyRef.current) return; // suppress during initial scroll-to-startIndex
     if (viewableItems?.length > 0) {
       const idx = viewableItems[0].index;
       if (idx != null && idx !== activeIndexRef.current) {
@@ -2518,24 +2351,30 @@ function SoundReelsModal({
           pagingEnabled
           bounces={false}
           overScrollMode="never"
-          // ── Instagram-style: do NOT stop audio on drag start ──
-          // The auto-play effect fires the moment activeIndex changes, giving
-          // zero-delay handoff. Stopping here creates an audible silence gap.
+          // ── Instagram scroll strategy ─────────────────────────────────────
+          // onScroll: haptic feedback ONLY — no setState. Calling setActiveIndex
+          // every 16ms forces React to re-render the entire tree on every frame,
+          // which is the primary cause of FlatList jank.
+          // onViewableItemsChanged (25% threshold) owns setActiveIndex for the
+          // mid-swipe update. onMomentumScrollEnd is the guaranteed safety-net
+          // that fires once after pagingEnabled snaps to a new page.
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / REEL_H);
             if (idx !== activeIndexRef.current && idx >= 0 && idx < REELS_ALL_SOUNDS.length) {
-              activeIndexRef.current = idx;
-              setActiveIndex(idx);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const sound = REELS_ALL_SOUNDS[idx];
-              if (sound && sound.cat !== prevCatRef.current) {
-                prevCatRef.current = sound.cat;
-                showCatBannerRef.current(sound.cat, sound);
-              }
             }
           }}
-          scrollEventThrottle={16}
+          scrollEventThrottle={150}
+          onMomentumScrollEnd={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            const idx = Math.round(y / REEL_H);
+            if (idx >= 0 && idx < REELS_ALL_SOUNDS.length && idx !== activeIndexRef.current) {
+              activeIndexRef.current = idx;
+              setActiveIndex(idx);
+            }
+          }}
+          disableIntervalMomentum
           onViewableItemsChanged={onViewRef.current}
           viewabilityConfig={viewConfigRef.current}
           getItemLayout={(_, index) => ({ length: REEL_H, offset: REEL_H * index, index })}

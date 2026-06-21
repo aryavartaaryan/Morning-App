@@ -37,6 +37,11 @@
         "com.apple.developer.usernotifications.time-sensitive": true
       }
     },
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true,
+      "barStyle": "light-content"
+    },
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {

@@ -82,7 +82,6 @@ const { height: SH } = Dimensions.get('window');
 
 function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string }) {
   const bgScale  = useRef(new Animated.Value(1.04)).current;
-  const glowOp   = useRef(new Animated.Value(0)).current;
   const titleOp  = useRef(new Animated.Value(0)).current;
   const titleSc  = useRef(new Animated.Value(0.78)).current;
   const subOp    = useRef(new Animated.Value(0)).current;
@@ -109,7 +108,6 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
     Animated.parallel([
       Animated.timing(titleOp, { toValue: 1, duration: 320, useNativeDriver: true }),
       Animated.spring(titleSc, { toValue: 1, tension: 55, friction: 9, useNativeDriver: true }),
-      Animated.timing(glowOp, { toValue: 0.18, duration: 700, useNativeDriver: true }),
     ]).start();
 
     Animated.sequence([
@@ -140,10 +138,6 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
           }}
         />
       )}
-      {/* Dark overlay so text remains readable over bright background images */}
-      <View style={SS.bgOverlay} />
-      {/* Ambient glow orb */}
-      <Animated.View style={[SS.glowOrb, { opacity: glowOp }]} />
       {/* Center */}
       <View style={SS.center}>
         <Animated.Text style={[SS.arise, { opacity: titleOp, transform: [{ scale: titleSc }] }]}>
@@ -354,9 +348,9 @@ function BodhiNotificationListener() {
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
       if (alarmRoutedRef.current) return; // already routed this alarm cycle
-      if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing')) return; // already on screen
+      if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing') || (segments as string[]).includes('mission')) return; // already on alarm/mission screen
       getInitialAlarmNotification().then(async (fired) => {
-        if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing')) {
+        if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing') && !(segments as string[]).includes('mission')) {
           // Guard: skip routing if alarm was already handled — prevents crash loop
           // caused by wasAlarmFired() persisting after a completed alarm cycle.
           const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);

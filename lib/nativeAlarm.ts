@@ -41,6 +41,7 @@ const AlarmNative: {
   stopAlarmVibration(): Promise<string>;
   dismissAlarmOverlay(): Promise<string>;
   stopLockTask(): Promise<string>;
+  startLockTask(): Promise<string>;
 } = NativeModules.AlarmModule ?? {};
 
 export const ALARM_NOTIF_ID = 'onesutra-wake-alarm';
@@ -239,6 +240,14 @@ export async function stopNativeAlarmSound(): Promise<void> {
 export async function stopNativeAlarmAudioOnly(): Promise<void> {
   if (Platform.OS !== 'android' || !AlarmNative?.stopAlarmAudioOnly) return;
   try { await AlarmNative.stopAlarmAudioOnly(); } catch { /* ignore */ }
+}
+
+// ── Enter screen-pinning (Lock Task) mode ────────────────────────────────────
+// Call this on alarm screen mount so Android's OS blocks Back / Home / Recents
+// immediately when the alarm opens — no user confirmation required.
+export async function startNativeLockTask(): Promise<void> {
+  if (Platform.OS !== 'android' || !AlarmNative?.startLockTask) return;
+  try { await AlarmNative.startLockTask(); } catch { /* ignore */ }
 }
 
 // ── Exit screen-pinning (Lock Task) mode ─────────────────────────────────────

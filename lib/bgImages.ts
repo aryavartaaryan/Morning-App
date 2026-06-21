@@ -15,7 +15,7 @@ export const BG_URLS: Record<string, string> = {
   morning_early: 'https://images.pexels.com/photos/32210525/pexels-photo-32210525.jpeg',
   morning:    'https://images.pexels.com/photos/9548957/pexels-photo-9548957.jpeg',
   morning_late: 'https://images.pexels.com/photos/9945162/pexels-photo-9945162.jpeg',
-  midday_early: 'https://images.pexels.com/photos/35042617/pexels-photo-35042617.jpeg',
+  midday_early: 'https://images.pexels.com/photos/37108279/pexels-photo-37108279.jpeg',
   midday_early_mid: 'https://images.pexels.com/photos/19011448/pexels-photo-19011448.jpeg',
   midday_early_late: 'https://images.pexels.com/photos/10630194/pexels-photo-10630194.jpeg',
   midday:     'https://images.pexels.com/photos/35521604/pexels-photo-35521604.jpeg',
@@ -23,7 +23,7 @@ export const BG_URLS: Record<string, string> = {
   midday_late: 'https://images.pexels.com/photos/36505945/pexels-photo-36505945.jpeg',
   afternoon:  'https://images.pexels.com/photos/33441030/pexels-photo-33441030.jpeg',
   afternoon_mid: 'https://images.pexels.com/photos/10630127/pexels-photo-10630127.jpeg',
-  afternoon_late: 'https://images.pexels.com/photos/26087641/pexels-photo-26087641.jpeg',
+  afternoon_late: 'https://images.pexels.com/photos/35630780/pexels-photo-35630780.jpeg',
   sandhya:    'https://images.pexels.com/photos/16271315/pexels-photo-16271315.jpeg',
   sandhya_late: 'https://images.pexels.com/photos/32179603/pexels-photo-32179603.jpeg',
   twilight:   'https://images.pexels.com/photos/2812185/pexels-photo-2812185.jpeg',
@@ -33,7 +33,7 @@ export const BG_URLS: Record<string, string> = {
   night_early: 'https://images.pexels.com/photos/14976665/pexels-photo-14976665.jpeg',
   night:      'https://images.pexels.com/photos/19377475/pexels-photo-19377475.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
-  splash:     'https://images.pexels.com/photos/10881642/pexels-photo-10881642.jpeg',
+  splash:     'https://images.pexels.com/photos/26570345/pexels-photo-26570345.jpeg',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
 };
 

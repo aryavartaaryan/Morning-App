@@ -62,6 +62,7 @@ type SoundPlayerCtx = {
   openReelsOrPlayer: () => void;
   registerReelsOpener: (fn: () => void) => void;
   unregisterReelsOpener: () => void;
+  getPositionMs: () => number;
 };
 
 const Ctx = createContext<SoundPlayerCtx | null>(null);
@@ -75,6 +76,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [mixedSounds, setMixedSounds]   = useState<PlayableSoundMeta[]>([]);
   const meteringAnimRef = useRef(new Animated.Value(0));
   const meteringRef = useRef(0);
+  const positionMsRef = useRef(0);
 
   const [moodPhase, setMoodPhase]       = useState<'pre' | 'post' | 'result' | null>(null);
   const [preMood, setPreMood]           = useState<MoodKey | null>(null);
@@ -84,6 +86,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const networkErrorRef = useRef(false);
   const reelsOpenerRef = useRef<(() => void) | null>(null);
 
+  const getPositionMs        = useCallback(() => positionMsRef.current, []);
   const openFullPlayer       = useCallback(() => setShowFullPlayer(true),  []);
   const closeFullPlayer      = useCallback(() => setShowFullPlayer(false), []);
   const openReelsOrPlayer    = useCallback(() => {
@@ -168,53 +171,69 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       // Watchdog: expo-av isLooping can silently fail on M4A/certain codecs.
       // If the sound finishes instead of looping, restart it automatically.
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return;
-        // Capture actual track duration once (first time it's available from decoder)
-        if (status.durationMillis != null) {
-          const durSecs = Math.round(status.durationMillis / 1000);
-          // Persist to session cache so next play of this track shows real duration instantly
-          _durationCache.set(meta.id, durSecs);
-          setPlayingDurSecs(prev => prev ?? durSecs);
-        }
-        // Audio-reactive metering: normalize dB to 0-1 with exponential smoothing
-        if ((status as any).metering != null && !isPausedRef.current) {
-          const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
-          const smoothed = meteringRef.current * 0.38 + raw * 0.62;
-          meteringRef.current = smoothed;
-          Animated.timing(meteringAnimRef.current, { toValue: smoothed, duration: 80, useNativeDriver: true }).start();
-        }
-        // Trim: seek to start when within last trimLastMs of the track.
-        // Skip in once-play mode — let the track play through fully.
-        if (
-          trimLastMs > 0 &&
-          !isPausedRef.current &&
-          !noLoopRef.current &&
-          !restartingIdsRef.current.has(meta.id) &&
-          status.durationMillis != null &&
-          status.durationMillis > 20000 &&
-          status.positionMillis >= status.durationMillis - trimLastMs
-        ) {
-          restartingIdsRef.current.add(meta.id);
-          sound.replayAsync()
-            .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
-            .finally(() => { restartingIdsRef.current.delete(meta.id); });
-          return;
-        }
-        // Only restart when the file explicitly finished (isLooping silently failed).
-        // Guard with restartingIdsRef to prevent concurrent replayAsync storms
-        // (heartbeat + this callback firing at the same loop boundary).
-        if (!isPausedRef.current && status.didJustFinish) {
-          if (noLoopRef.current) {
-            // Once-play mode: stop cleanly when track ends naturally
-            setTimeout(() => stopFnRef.current?.(true), 0);
-            return;
+        // ── Outer try/catch is CRITICAL ─────────────────────────────────────────
+        // This callback is invoked from native code. Any unhandled synchronous
+        // throw (Android MediaPlayer IllegalStateException, metering math, etc.)
+        // propagates to native and crashes the entire app. Swallow everything.
+        try {
+          if (!status.isLoaded) return;
+          // Capture actual track duration once (first time it's available from decoder)
+          if (status.durationMillis != null) {
+            const durSecs = Math.round(status.durationMillis / 1000);
+            // Persist to session cache so next play of this track shows real duration instantly
+            _durationCache.set(meta.id, durSecs);
+            setPlayingDurSecs(prev => prev ?? durSecs);
           }
-          if (!restartingIdsRef.current.has(meta.id)) {
+          if (status.positionMillis != null) positionMsRef.current = status.positionMillis;
+          // Audio-reactive metering: normalize dB to 0-1 with exponential smoothing
+          if ((status as any).metering != null && !isPausedRef.current) {
+            const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
+            const smoothed = meteringRef.current * 0.38 + raw * 0.62;
+            meteringRef.current = smoothed;
+            Animated.timing(meteringAnimRef.current, { toValue: smoothed, duration: 80, useNativeDriver: true }).start();
+          }
+          // Trim: seek to start when within last trimLastMs of the track.
+          // Skip in once-play mode — let the track play through fully.
+          if (
+            trimLastMs > 0 &&
+            !isPausedRef.current &&
+            !noLoopRef.current &&
+            !restartingIdsRef.current.has(meta.id) &&
+            mixRefs.current.has(meta.id) &&
+            status.durationMillis != null &&
+            status.durationMillis > 20000 &&
+            status.positionMillis >= status.durationMillis - trimLastMs
+          ) {
             restartingIdsRef.current.add(meta.id);
             sound.replayAsync()
-              .catch(() => sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {}))
+              .catch(() => {
+                if (!mixRefs.current.has(meta.id)) return;
+                return sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
+              })
               .finally(() => { restartingIdsRef.current.delete(meta.id); });
+            return;
           }
+          // Only restart when the file explicitly finished (isLooping silently failed).
+          // Guard with restartingIdsRef to prevent concurrent replayAsync storms
+          // (heartbeat + this callback firing at the same loop boundary).
+          if (!isPausedRef.current && status.didJustFinish) {
+            if (noLoopRef.current) {
+              // Once-play mode: stop cleanly when track ends naturally
+              setTimeout(() => stopFnRef.current?.(true), 0);
+              return;
+            }
+            if (!restartingIdsRef.current.has(meta.id) && mixRefs.current.has(meta.id)) {
+              restartingIdsRef.current.add(meta.id);
+              sound.replayAsync()
+                .catch(() => {
+                  if (!mixRefs.current.has(meta.id)) return;
+                  return sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
+                })
+                .finally(() => { restartingIdsRef.current.delete(meta.id); });
+            }
+          }
+        } catch (cbErr) {
+          console.warn('[SoundPlayer] playback status callback error (non-fatal):', cbErr);
         }
       });
       // Enable metering + ensure frequent updates for trim detection
@@ -290,10 +309,14 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
               if (!mixRefs.current.has(id)) return;
               const meta = mixedSoundsRef.current.find(s => s.id === id);
               if (meta) {
+                const epochSnap = playEpochRef.current;
                 try { snd.setOnPlaybackStatusUpdate(null); } catch {}
                 try { await snd.unloadAsync(); } catch {}
                 mixRefs.current.delete(id);
-                await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+                // Guard: bail if stopAllRefs+playSound ran while we were cleaning up
+                if (epochSnap === playEpochRef.current) {
+                  await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+                }
               }
               return;
             });
@@ -304,8 +327,12 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             if (!mixRefs.current.has(id)) continue;
             const meta = mixedSoundsRef.current.find(s => s.id === id);
             if (meta) {
+              const epochSnap = playEpochRef.current;
               mixRefs.current.delete(id);
-              await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+              // Guard: bail if stopAllRefs+playSound ran while we were cleaning up
+              if (epochSnap === playEpochRef.current) {
+                await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+              }
             }
           }
         }
@@ -381,6 +408,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     noLoopRef.current = false;
     setSessionSecs(21 * 60);
     setPlayingDurSecs(null);
+    positionMsRef.current = 0;
     meteringRef.current = 0;
     meteringAnimRef.current.setValue(0);
     setAudioNetworkError(false);
@@ -617,7 +645,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
-      isAudioLoading, audioNetworkError,
+      isAudioLoading, audioNetworkError, getPositionMs,
       preBufferSound, cleanPreBuffer,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
