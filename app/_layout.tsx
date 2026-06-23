@@ -16,7 +16,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
-import { ensureAllBgsCachedWithProgress, getBgSourceSync, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
+import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import Svg, { Circle } from 'react-native-svg';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
@@ -894,25 +894,33 @@ export default function RootLayout() {
         await bgWarmup;
         // Warm sound image map in parallel but do NOT wait for it to gate
         warmSoundImageMap().catch(() => {});
-        // Start downloading ALL sound images immediately — don't wait for splash.
-        // On return visits images are already on disk (cacheOne exits instantly).
-        // On first install they begin downloading now instead of 7+ seconds later.
-        prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
 
-        // Show the download progress gate ONLY on first install (splash image
-        // not yet on disk). On every subsequent open the splash is already cached
-        // so we skip the gate entirely — any missing images download silently.
-        const splashCached = isSplashCached();
+        // ── FIRST-INSTALL GATE ────────────────────────────────────────────
+        // Use a persistent AsyncStorage flag as the primary check.
+        // isSplashCached() reads an in-memory map (BG_LOCAL_MAP) that resets
+        // every cold start — on some Android devices FileSystem.getInfoAsync
+        // can return exists:false even for files that ARE on disk, causing the
+        // download screen to appear on every open. The AsyncStorage flag is set
+        // once after the first successful download and survives app restarts.
+        const SETUP_DONE_KEY = 'arise_bg_setup_done_v1';
+        const setupFlagRaw = await AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null);
+        const setupDone    = !!setupFlagRaw;
+        const splashOnDisk = isSplashCached();
+        const isFirstInstall = !setupDone && !splashOnDisk;
 
-        if (!splashCached) {
-          // First install: show progress ring until all BG images are downloaded.
+        if (isFirstInstall) {
+          // First install: gate ONLY on BG images (~27, all parallel).
+          // Sound card images (100+) are NOT a gate — they download silently
+          // in the background after setup so the user is never blocked by them.
           if (cancelled) return;
           setPhase('downloading');
-          const bgTotal = Object.keys(BG_URLS).length;
+          const bgCount = Object.keys(BG_URLS).length;
+          let completedFiles = 0;
 
           setDlLabel('Setting up...');
-          await ensureAllBgsCachedWithProgress((done) => {
-            if (!cancelled) setDlProgress(done / bgTotal);
+          await ensureAllBgsCachedWithProgress(() => {
+            completedFiles++;
+            if (!cancelled) setDlProgress(completedFiles / bgCount);
           });
 
           if (!cancelled) {
@@ -920,22 +928,36 @@ export default function RootLayout() {
             // Brief pause so ring fills to 100% before disappearing.
             await new Promise(r => setTimeout(r, 400));
           }
-        } else if (!isBgFullyCached()) {
-          // Re-open with some images missing (e.g. timed out on first install):
-          // retry them silently in the background — no UI shown to user.
-          ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
+          // Mark setup complete — download gate will never show again.
+          AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {});
+
+          if (cancelled) return;
+          // After first-install setup, open the app immediately — skip splash.
+          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+          ensureAllMantrasDownloaded().catch(() => {});
+          setPhase('done');
+          return;
+        } else {
+          // Subsequent opens — ensure the flag is set (handles upgrade from
+          // older builds that had no flag but already had images on disk).
+          if (!setupDone) AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {});
+          // Re-download any BG images that are missing silently in the background.
+          if (!isBgFullyCached()) {
+            ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
+          }
+          // Download sound card images in background — instant if already cached.
+          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
         }
 
         if (cancelled) return;
 
-        // Splash BG is now guaranteed on disk — show splash immediately
-        const splashBg = getBgSourceSync('splash');
-        setSplashBgUri(splashBg);
+        // Use whatever splash BG is available — local path if cached, remote URL
+        // as instant fallback. getBgSourceSync never hangs (synchronous lookup).
+        setSplashBgUri(getBgSourceSync('splash'));
         setPhase('splash');
 
-        // Background downloads that do NOT block the user:
-        //   • Sound card images already kicked off above — this is a no-op for cached files
-        //   • Mantras — large files, low priority
+        // Sound + mantra images: download silently after splash appears (non-blocking).
+        prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
         ensureAllMantrasDownloaded().catch(() => {});
 
       } catch {
@@ -943,6 +965,7 @@ export default function RootLayout() {
           setSplashBgUri(getBgSourceSync('splash'));
           setPhase('splash');
           // Still kick off background downloads even after error
+          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
           ensureAllMantrasDownloaded().catch(() => {});
         }
       }

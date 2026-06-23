@@ -20,7 +20,7 @@ import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
 import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
-import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm } from '@/lib/soundImagePreload';
+import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm, subscribeToImageCached } from '@/lib/soundImagePreload';
 import { isAudioCached, downloadAudioToCache, initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
@@ -153,10 +153,12 @@ function shuffleSoundsForDay<T>(arr: T[], cat: string): T[] {
   return a;
 }
 
-const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
+const LALITHA_IMG  = require('../../assets/images/mata-lalitha.jpg');
+const HANUMAN_IMG  = require('../../assets/images/hanumanji.png');
 
 const SOUND_BUNDLED_IMAGES: Record<string, any> = {
-  mantra_lalitha: LALITHA_IMG,
+  mantra_lalitha:    LALITHA_IMG,
+  med_hanuman_chalisa: HANUMAN_IMG,
 };
 
 const SOUND_IMAGES = SOUND_IMAGES_LIB;
@@ -422,8 +424,8 @@ const ALL_SOUNDS_LIST: any[] = [
   ...(SLEEP_SOUNDS as readonly any[]).filter(s => !SLEEP_HIDDEN_IDS.has(s.id)),
   ...NADA_SOUNDS,
   ...MANTRA_LIBRARY.flatMap(g => g.sounds),
-  // CDN Raga long-form tracks (streamed, not downloaded)
-  ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') || s.id.startsWith('nc_')),
+  // CDN / remote long-form tracks (streamed, not downloaded)
+  ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')),
 ];
 
 // ─── Solar-aware section label map ────────────────────────────────────────
@@ -562,6 +564,13 @@ const CalmSoundCard = memo(function CalmSoundCard({
 
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  useEffect(() => {
+    if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
+    return subscribeToImageCached(rawUri, () => {
+      setImgError(false);
+      forceRefresh(n => n + 1);
+    });
+  }, [rawUri]);
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
   // Cached images start fully visible; uncached network images fade in from 0 on load.
@@ -666,6 +675,13 @@ const SoundCard = memo(function SoundCard({
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  useEffect(() => {
+    if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
+    return subscribeToImageCached(rawUri, () => {
+      setImgError(false);
+      forceRefresh(n => n + 1);
+    });
+  }, [rawUri]);
   const imgOpacity = useRef(new Animated.Value(
     (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
   )).current;
@@ -1028,7 +1044,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
               const soundCount = cat === 'Sleep'
                 ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length
-                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat)].length;
+                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat)].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -1055,7 +1071,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
   );
 });
 
-// ─── Category Tab Strip — swipeable top tabs ─────────────────────────────────
+// ─── Category Tab Strip — swipeable sticky tabs ──────────────────────────────
 const CategoryTabStrip = memo(function CategoryTabStrip({
   selectedCat, onSelect, activePeriodId,
 }: {
@@ -1114,35 +1130,90 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
   return (
     <View
       style={{
-        backgroundColor: 'rgba(0,0,0,0.34)',
+        backgroundColor: 'rgba(4,8,28,0.93)',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.11)',
+        borderBottomColor: 'rgba(255,255,255,0.07)',
+        overflow: 'hidden',
       }}
       {...pan.panHandlers}
     >
-      <View style={{ flexDirection: 'row', position: 'relative' }}>
+      {/* Glass shimmer overlay */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.055)', 'transparent']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Animated colored top accent line */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          height: 2,
+          position: 'absolute',
+          top: 0,
+          left: indicatorX,
+          width: indicatorW,
+          backgroundColor: activeColor,
+          opacity: 0.85,
+          shadowColor: activeColor,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 1,
+          shadowRadius: 6,
+          elevation: 3,
+        }}
+      />
+
+      <View style={{ flexDirection: 'row', position: 'relative', paddingTop: 2 }}>
+        {/* Animated glowing pill background */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 5,
+            left: indicatorX,
+            width: indicatorW,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: activeColor + '20',
+            borderWidth: 1,
+            borderColor: activeColor + '45',
+            shadowColor: activeColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.50,
+            shadowRadius: 12,
+            elevation: 5,
+          }}
+        />
+
         {CATEGORIES.map(cat => {
           const isActive = selectedCat === cat;
+          const catColor = cat === 'All' ? '#FFFFFF' : getCategoryMeta(cat, activePeriodId).color;
+          const catIcon = (CAT_ICONS[cat] ?? 'apps') as any;
           return (
             <TouchableOpacity
               key={cat}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(cat); }}
               activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 12 }}
+              style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 11, gap: 3 }}
               onLayout={(e) => {
                 const { x, width } = e.nativeEvent.layout;
                 tabLayouts.current[cat] = { x, width };
                 if (cat === selectedCat) moveIndicator(cat, true);
               }}
             >
+              <Ionicons
+                name={catIcon}
+                size={13}
+                color={isActive ? catColor : 'rgba(255,255,255,0.22)'}
+              />
               <Text
                 numberOfLines={1}
                 style={{
-                  fontSize: 10.5,
+                  fontSize: 9.5,
                   fontWeight: isActive ? '700' : '400',
                   fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
-                  color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.34)',
-                  letterSpacing: 0,
+                  color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.28)',
+                  letterSpacing: 0.3,
                 }}
               >
                 {cat}
@@ -1157,13 +1228,13 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
             bottom: 0,
             left: indicatorX,
             width: indicatorW,
-            height: 2.5,
+            height: 2,
             borderRadius: 2,
             backgroundColor: activeColor,
             shadowColor: activeColor,
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.90,
-            shadowRadius: 7,
+            shadowOpacity: 0.95,
+            shadowRadius: 8,
             elevation: 4,
           }}
         />
@@ -1238,7 +1309,7 @@ const CategoryRows = memo(function CategoryRows({
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
         const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat);
+        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat);
         const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
@@ -1490,7 +1561,7 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
       .filter(s => s.cat === cat)
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
     const cdn = ALL_SLEEP_SOUNDS
-      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_')) && s.cat === cat);
+      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat);
     result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
   }
   return result;
@@ -1613,18 +1684,27 @@ function ReelCard({
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri     = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
   const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
-  // Start at 1 (fully visible) if image is already on disk — no fade delay for cached images.
-  // Start at 0 only when image must load from network — fade in on load.
-  const imgFadeAnim = useRef(new Animated.Value(
-    (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) ? 1 : (imgSource ? 0 : 1)
-  )).current;
+  // Start at 1 (fully visible) whenever imgSource is defined — image appears as soon as
+  // React Native loads it from cache or network, without waiting for a fade-in trigger.
+  const imgFadeAnim = useRef(new Animated.Value(imgSource ? 1 : 0)).current;
   // After warm completes and LOCAL_URI_MAP is populated, sync opacity to 1 so
   // images cached mid-session (ensureSoundImageCached) become immediately visible.
+  // Also reset imgLoadFailed so the image component re-renders with the local path.
   useEffect(() => {
     if (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) {
+      setImgLoadFailed(false);
       imgFadeAnim.setValue(1);
     }
   }, [refreshCount]);
+  // Per-URL subscriber: when this card's specific image finishes downloading,
+  // reset imgLoadFailed so the Image component renders again using the local path.
+  useEffect(() => {
+    if (!rawReelUri || imgBundled != null || isSoundImageCached(rawReelUri)) return;
+    return subscribeToImageCached(rawReelUri, () => {
+      setImgLoadFailed(false);
+      forceRefresh(n => n + 1);
+    });
+  }, [rawReelUri]);
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
   useEffect(() => { setLoopCountText('1'); }, [sound.id]);
@@ -3201,7 +3281,7 @@ export default function SleepTab() {
         <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
       </TouchableOpacity>
 
-      {/* ── Content area below header — strip + scroll ── */}
+      {/* ── Content area — hero + sticky tab strip + scroll ── */}
       <View style={{ flex: 1 }}>
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }} {...contentPan.panHandlers}>
@@ -3275,7 +3355,7 @@ export default function SleepTab() {
           </View>
         </View>
 
-        {/* ── Category tab strip — moved below hero card ── */}
+        {/* ── Category tab strip — sticky (stickyHeaderIndices={[1]}) — sits below hero, pins to top on scroll ── */}
         <CategoryTabStrip
           selectedCat={selectedCat}
           onSelect={changeCategory}

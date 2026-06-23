@@ -8,15 +8,15 @@ import { store, KEYS } from '@/lib/storage';
 export const BG_URLS: Record<string, string> = {
   brahma:     'https://images.pexels.com/photos/20494584/pexels-photo-20494584.jpeg',
   predawn:    'https://images.pexels.com/photos/10729000/pexels-photo-10729000.jpeg',
-  predawn_mid: 'https://images.pexels.com/photos/17918217/pexels-photo-17918217.jpeg',
-  predawn_late: 'https://images.pexels.com/photos/31887800/pexels-photo-31887800.jpeg',
+  predawn_mid: 'https://images.pexels.com/photos/8576018/pexels-photo-8576018.jpeg',
+  predawn_late: 'https://images.pexels.com/photos/35701856/pexels-photo-35701856.jpeg',
   sunrise:    'https://images.pexels.com/photos/7067945/pexels-photo-7067945.jpeg',
-  sunrise_late: 'https://images.pexels.com/photos/9945162/pexels-photo-9945162.jpeg',
-  morning_early: 'https://images.pexels.com/photos/32210525/pexels-photo-32210525.jpeg',
-  morning:    'https://images.pexels.com/photos/9548957/pexels-photo-9548957.jpeg',
+  sunrise_late: 'https://images.pexels.com/photos/14146976/pexels-photo-14146976.jpeg',
+  morning_early: 'https://images.pexels.com/photos/13067636/pexels-photo-13067636.jpeg',
+  morning:    'https://images.pexels.com/photos/12826618/pexels-photo-12826618.jpeg',
   morning_late: 'https://images.pexels.com/photos/9945162/pexels-photo-9945162.jpeg',
-  midday_early: 'https://images.pexels.com/photos/37108279/pexels-photo-37108279.jpeg',
-  midday_early_mid: 'https://images.pexels.com/photos/19011448/pexels-photo-19011448.jpeg',
+  midday_early: 'https://images.pexels.com/photos/14475875/pexels-photo-14475875.jpeg',
+  midday_early_mid: 'https://images.pexels.com/photos/32414982/pexels-photo-32414982.jpeg',
   midday_early_late: 'https://images.pexels.com/photos/10630194/pexels-photo-10630194.jpeg',
   midday:     'https://images.pexels.com/photos/35521604/pexels-photo-35521604.jpeg',
   midday_mid: 'https://images.pexels.com/photos/10635417/pexels-photo-10635417.jpeg',
@@ -25,11 +25,11 @@ export const BG_URLS: Record<string, string> = {
   afternoon_mid: 'https://images.pexels.com/photos/10630127/pexels-photo-10630127.jpeg',
   afternoon_late: 'https://images.pexels.com/photos/35630780/pexels-photo-35630780.jpeg',
   sandhya:    'https://images.pexels.com/photos/16271315/pexels-photo-16271315.jpeg',
-  sandhya_late: 'https://images.pexels.com/photos/32179603/pexels-photo-32179603.jpeg',
+  sandhya_late: 'https://images.pexels.com/photos/22705447/pexels-photo-22705447.jpeg',
   twilight:   'https://images.pexels.com/photos/2812185/pexels-photo-2812185.jpeg',
   twilight_late: 'https://images.pexels.com/photos/12506672/pexels-photo-12506672.jpeg',
-  twilight_deep: 'https://images.pexels.com/photos/14559095/pexels-photo-14559095.jpeg',
-  evening:    'https://images.pexels.com/photos/25853779/pexels-photo-25853779.jpeg',
+  twilight_deep: 'https://images.pexels.com/photos/36097390/pexels-photo-36097390.jpeg',
+  evening:    'https://images.pexels.com/photos/36497785/pexels-photo-36497785.jpeg',
   night_early: 'https://images.pexels.com/photos/14976665/pexels-photo-14976665.jpeg',
   night:      'https://images.pexels.com/photos/19377475/pexels-photo-19377475.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg',
@@ -169,6 +169,28 @@ export function isBgFullyCached(): boolean {
  */
 export function isSplashCached(): boolean {
   return !!BG_LOCAL_MAP['splash'];
+}
+
+/**
+ * Guarantees a single BG key is on disk before returning its local path.
+ * If already cached in memory: returns instantly (zero network).
+ * If missing: downloads it now and returns the local path.
+ * Falls back to the remote URL only if download fails (no internet).
+ * Use this for critical images (splash, current period BG) so they are
+ * never loaded from the network mid-render.
+ */
+export async function ensureBgKey(key: string): Promise<string> {
+  if (BG_LOCAL_MAP[key]) return BG_LOCAL_MAP[key];
+  const url = BG_URLS[key] ?? BG_URLS.night;
+  try {
+    const path = cachePath(key);
+    await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
+    await FileSystem.downloadAsync(url, path);
+    BG_LOCAL_MAP[key] = path;
+    return path;
+  } catch {
+    return url; // fallback to remote URL if no internet
+  }
 }
 
 /** Returns a promise that rejects after `ms` milliseconds. */

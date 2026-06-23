@@ -4,7 +4,7 @@
 // All subsequent app opens: images are served instantly from local storage.
 // Falls back to the remote URL gracefully if download fails (no internet).
 import * as FileSystem from 'expo-file-system/legacy';
-import { SOUND_IMAGES } from './sleepSoundsData';
+import { SOUND_IMAGES, ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 
 const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache/';
 
@@ -15,6 +15,19 @@ const LOCAL_URI_MAP: Record<string, string> = {};
 // with local URIs once warmSoundImageMap() finishes populating LOCAL_URI_MAP.
 let _warmDone = false;
 const _warmSubs: Set<() => void> = new Set();
+
+// Per-URL subscriber system — notifies when a specific image finishes downloading.
+const _urlSubs: Map<string, Set<() => void>> = new Map();
+
+/** Subscribe to be notified when a specific remote URL is cached on disk.
+ *  If already cached, the callback is called synchronously.
+ *  Returns an unsubscribe function. */
+export function subscribeToImageCached(url: string, cb: () => void): () => void {
+  if (LOCAL_URI_MAP[url]) { cb(); return () => {}; }
+  if (!_urlSubs.has(url)) _urlSubs.set(url, new Set());
+  _urlSubs.get(url)!.add(cb);
+  return () => { _urlSubs.get(url)?.delete(cb); };
+}
 
 /** Subscribe to be notified when warmSoundImageMap() completes.
  *  If warm already finished, the callback is called synchronously.
@@ -54,11 +67,15 @@ async function cacheOne(url: string): Promise<void> {
     const info = await FileSystem.getInfoAsync(path);
     if ((info as any).exists) {
       LOCAL_URI_MAP[url] = path;
+      _urlSubs.get(url)?.forEach(cb => cb());
+      _urlSubs.delete(url);
       return;
     }
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
     await FileSystem.downloadAsync(url, path);
     LOCAL_URI_MAP[url] = path;
+    _urlSubs.get(url)?.forEach(cb => cb());
+    _urlSubs.delete(url);
   } catch {
     // silent — remote URL remains as fallback on next render
   }
@@ -73,8 +90,12 @@ const NIGHT_THEME_URLS: readonly string[] = [
   'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=400',
 ];
 
+const SLEEP_SOUNDS_IMAGE_URLS: readonly string[] = ALL_SLEEP_SOUNDS
+  .map(s => (s as any).imageUri as string | undefined)
+  .filter((u): u is string => !!u);
+
 const ALL_URLS: readonly string[] = [
-  ...new Set([...Object.values(SOUND_IMAGES), ...NIGHT_THEME_URLS]),
+  ...new Set([...Object.values(SOUND_IMAGES), ...NIGHT_THEME_URLS, ...SLEEP_SOUNDS_IMAGE_URLS]),
 ];
 
 /**

@@ -256,14 +256,22 @@ export function BgProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       await bgWarmup;
-      const uris: Partial<Record<BgKey, string>> = {};
+      // Immediately populate from in-memory map — no I/O, instant after warmup.
+      // This ensures the wallpaper picker renders all thumbnails right away
+      // instead of showing a loading state while waiting for async file checks.
+      const syncUris: Partial<Record<BgKey, string>> = {};
+      for (const k of BG_KEYS) {
+        syncUris[k] = getBgSourceSync(k);
+      }
+      setAllBgUris(syncUris);
+      // Then update each key individually as getBgSource resolves —
+      // covers remote-URL fallbacks and verifies on-disk file existence.
       await Promise.allSettled(
         BG_KEYS.map(async (k) => {
           const uri = await getBgSource(k);
-          uris[k] = uri;
+          setAllBgUris(prev => ({ ...prev, [k]: uri }));
         })
       );
-      setAllBgUris(uris);
     })();
   }, []);
 
