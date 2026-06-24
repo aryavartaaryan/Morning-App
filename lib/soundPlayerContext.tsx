@@ -5,7 +5,7 @@ import React, {
 import { AppState, Animated } from 'react-native';
 import { Audio } from 'expo-av';
 import type { MoodKey } from '@/components/MoodSheet';
-import { initAudioCache, resolveAudioUri, downloadAudioToCache } from './soundAudioCache';
+import { initAudioCache, resolveAudioUri } from './soundAudioCache';
 
 export const MAX_MIX = 4;
 
@@ -133,14 +133,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     try {
       // Resolve remote URI → local cached file if available;
       // otherwise stream from remote and download to cache in background.
+      // Stream from remote URL — use cached local file only if one already exists
+      // (user-initiated download from a previous session). Never download in background.
       let resolvedSrc = meta.src;
       if (resolvedSrc && typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
         const localUri = resolveAudioUri(meta.id, resolvedSrc.uri);
         if (localUri !== resolvedSrc.uri) {
+          // A locally cached file exists from a prior user-initiated download — use it
           resolvedSrc = { uri: localUri };
-        } else {
-          downloadAudioToCache(meta.id, resolvedSrc.uri).catch(() => {});
         }
+        // Otherwise: stream directly from remoteUri — no background download
       }
       // ── Pre-buffer hit: instant play — no createAsync latency ───────────────
       let sound: Audio.Sound;
@@ -352,7 +354,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       if (resolvedSrc && typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
         const localUri = resolveAudioUri(meta.id, resolvedSrc.uri);
         if (localUri !== resolvedSrc.uri) resolvedSrc = { uri: localUri };
-        else downloadAudioToCache(meta.id, resolvedSrc.uri).catch(() => {});
+        // Stream directly — no background download
       }
       const { sound } = await Audio.Sound.createAsync(
         resolvedSrc,

@@ -21,7 +21,7 @@ import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
 import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm, subscribeToImageCached } from '@/lib/soundImagePreload';
-import { isAudioCached, downloadAudioToCache, initAudioCache } from '@/lib/soundAudioCache';
+import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
@@ -555,12 +555,8 @@ const CalmSoundCard = memo(function CalmSoundCard({
   sound: SoundItem | NadaSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
 }) {
   const [imgError, setImgError] = useState(false);
-  const [dlState, setDlState] = useState<'idle' | 'downloading' | 'done'>(() =>
-    isAudioCached(sound.id) ? 'done' : 'idle'
-  );
-  const [dlProgress, setDlProgress] = useState(0);
   const [, forceRefresh] = useState(0);
-  useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
+  useEffect(() => subscribeToWarm(() => { setImgError(false); forceRefresh(n => n + 1); }), []);
 
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
@@ -572,28 +568,18 @@ const CalmSoundCard = memo(function CalmSoundCard({
     });
   }, [rawUri]);
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
-  const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
+  // Always show an image: bundled > local/remote cached > raw remote URL fallback.
+  // imgError only triggers a fallback to raw URL, never hides image completely.
+  const imgSource = imgBundled
+    ? imgBundled
+    : imgUri
+    ? (!imgError ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined))
+    : undefined;
   // Cached images start fully visible; uncached network images fade in from 0 on load.
   const imgFadeAnim = useRef(new Animated.Value(
     (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
   )).current;
   const cardW = width ?? CALM_CARD_W;
-
-  const remoteUri: string | null = typeof (sound as any).src?.uri === 'string' ? (sound as any).src.uri : null;
-  const canDownload = !!remoteUri;
-
-  const handleDownload = useCallback(async (e: any) => {
-    e.stopPropagation?.();
-    if (!remoteUri || dlState !== 'idle') return;
-    setDlState('downloading');
-    setDlProgress(0);
-    try {
-      await downloadAudioToCache(sound.id, remoteUri, (p) => setDlProgress(p));
-      setDlState('done');
-    } catch {
-      setDlState('idle');
-    }
-  }, [remoteUri, dlState, sound.id]);
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={{ width: cardW }}>
@@ -630,26 +616,6 @@ const CalmSoundCard = memo(function CalmSoundCard({
             <Ionicons name={isPaused ? 'pause' : 'musical-notes'} size={12} color={sound.color} />
           </View>
         )}
-        {canDownload && (
-          <TouchableOpacity
-            onPress={handleDownload}
-            activeOpacity={0.75}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={{
-              position: 'absolute', top: 8, left: 8,
-              width: 26, height: 26, borderRadius: 13,
-              backgroundColor: 'rgba(0,0,0,0.45)',
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {dlState === 'done'
-              ? <Ionicons name="checkmark" size={13} color="#4ade80" />
-              : dlState === 'downloading'
-              ? <Text style={{ fontSize: 8, color: '#fff', fontWeight: '700' }}>{Math.round(dlProgress * 100)}%</Text>
-              : <Ionicons name="cloud-download-outline" size={13} color="rgba(255,255,255,0.75)" />
-            }
-          </TouchableOpacity>
-        )}
       </View>
       <Text style={{
         fontSize: 12.5, fontWeight: '400', color: 'rgba(255,255,255,0.90)',
@@ -672,7 +638,7 @@ const SoundCard = memo(function SoundCard({
   const pulse = useRef(new Animated.Value(1)).current;
   const [imgError, setImgError] = useState(false);
   const [, forceRefresh] = useState(0);
-  useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
+  useEffect(() => subscribeToWarm(() => { setImgError(false); forceRefresh(n => n + 1); }), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   useEffect(() => {
@@ -686,7 +652,12 @@ const SoundCard = memo(function SoundCard({
     (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
   )).current;
   const imgUri  = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
-  const imgSource = imgError ? undefined : (imgBundled ?? (imgUri ? { uri: imgUri } : undefined));
+  // Always show an image: bundled > local/remote cached > raw remote URL fallback.
+  const imgSource = imgBundled
+    ? imgBundled
+    : imgUri
+    ? (!imgError ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined))
+    : undefined;
 
   useEffect(() => {
     if (isPlaying && !isPaused) {
@@ -910,7 +881,7 @@ const CAT_ICONS: Partial<Record<Category, string>> = {
   Sleep:       'moon',
   Nature:      'leaf',
   Meditations: 'flower',
-  Birds:       'feather',
+  Birds:       'egg-outline',
   Ragas:       'musical-notes',
 };
 
@@ -1130,16 +1101,17 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
   return (
     <View
       style={{
-        backgroundColor: 'rgba(4,8,28,0.93)',
+        backgroundColor: 'rgba(8,12,36,0.82)',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.07)',
+        borderBottomColor: 'rgba(255,255,255,0.10)',
         overflow: 'hidden',
+        zIndex: 15,
       }}
       {...pan.panHandlers}
     >
-      {/* Glass shimmer overlay */}
+      {/* Frosted glass shimmer overlay */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.055)', 'transparent']}
+        colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
@@ -1682,8 +1654,17 @@ function ReelCard({
   useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-  const imgUri     = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
-  const imgSource  = (!imgLoadFailed) ? (imgBundled ?? (imgUri ? { uri: imgUri } : undefined)) : undefined;
+  // Always resolve: local cached path if available, otherwise remote URL directly.
+  // This guarantees imgSource is never undefined — no blank reel ever.
+  const imgUri     = !imgBundled
+    ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined)
+    : undefined;
+  // imgSource: use bundled > local/remote URI. imgLoadFailed only blocks if truly no source at all.
+  const imgSource  = imgBundled
+    ? imgBundled
+    : imgUri
+    ? (!imgLoadFailed ? { uri: imgUri } : (rawReelUri ? { uri: rawReelUri } : undefined))
+    : undefined;
   // Start at 1 (fully visible) whenever imgSource is defined — image appears as soon as
   // React Native loads it from cache or network, without waiting for a fade-in trigger.
   const imgFadeAnim = useRef(new Animated.Value(imgSource ? 1 : 0)).current;
@@ -1696,7 +1677,7 @@ function ReelCard({
       imgFadeAnim.setValue(1);
     }
   }, [refreshCount]);
-  // Per-URL subscriber: when this card's specific image finishes downloading,
+  // Per-URL subscriber: when this reel's specific image finishes downloading,
   // reset imgLoadFailed so the Image component renders again using the local path.
   useEffect(() => {
     if (!rawReelUri || imgBundled != null || isSoundImageCached(rawReelUri)) return;
@@ -2884,16 +2865,8 @@ export default function SleepTab() {
     }).catch(() => {});
   }, []);
 
-  // ── Background auto-download all NADA remote sounds ────────────────────────
-  useEffect(() => {
-    (async () => {
-      await initAudioCache();
-      const pending = NADA_SOUNDS.filter(s => !isAudioCached(s.id));
-      for (const s of pending) {
-        try { await downloadAudioToCache(s.id, s.src.uri); } catch { /* silent */ }
-      }
-    })();
-  }, []);
+  // Audio cache init (reads existing index — does NOT download anything)
+  useEffect(() => { initAudioCache().catch(() => {}); }, []);
 
   // ── Play from sleep screen (opens Reels immediately, no pre-mood) ──────────
   // NOTE: No direct playSound call here. SoundReelsModal's auto-play effect owns
@@ -3247,12 +3220,17 @@ export default function SleepTab() {
   return (
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
-      style={[S.screen, { backgroundColor: accentColor }]}
-      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
-      {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
+      style={[S.screen, { backgroundColor: bgUri ? accentColor : '#04040E' }]}
+      imageStyle={{ opacity: 0.72, resizeMode: 'cover' }}>
+      {/* Premium frosted-glass gradient overlay — lets background image breathe while keeping text readable */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
-        locations={[0, 0.40, 1]}
+        colors={[
+          'rgba(0,0,0,0.08)',
+          'rgba(0,0,0,0.18)',
+          'rgba(0,0,0,0.28)',
+          'rgba(0,0,0,0.48)',
+        ]}
+        locations={[0, 0.25, 0.60, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -3266,25 +3244,30 @@ export default function SleepTab() {
           position: 'absolute',
           top: (insets?.top ?? 44) + 10,
           right: 16,
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          backgroundColor: 'rgba(255,255,255,0.12)',
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: 'rgba(255,255,255,0.14)',
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.20)',
+          borderColor: 'rgba(255,255,255,0.26)',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 20,
+          zIndex: 25,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.35,
+          shadowRadius: 6,
+          elevation: 8,
         }}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
+        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.85)" />
       </TouchableOpacity>
 
       {/* ── Content area — hero + sticky tab strip + scroll ── */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, zIndex: 1 }}>
 
-        <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }} {...contentPan.panHandlers}>
+        <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
         <ScrollView
           ref={(r) => { _pageScrollRef = r; }}
           style={{ flex: 1 }}
@@ -3362,8 +3345,8 @@ export default function SleepTab() {
           activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
         />
 
-        {/* ── Content container — transparent so wallpaper shows through ── */}
-        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
+        {/* ── Content container — transparent so wallpaper shows through; swipe handler for category change ── */}
+        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...contentPan.panHandlers}>
 
 
         <CategoryRows
@@ -3568,7 +3551,7 @@ export default function SleepTab() {
 
 const S = StyleSheet.create({
   // ── Scaffold ──────────────────────────────────────────────
-  screen:     { flex: 1, backgroundColor: '#04040E', overflow: 'hidden' },
+  screen:     { flex: 1, backgroundColor: '#04040E', overflow: 'hidden' }, // base fallback; actual bg set dynamically via bgUri/accentColor
   headerGrad: { backgroundColor: 'rgba(4,8,26,0.74)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.10)' },
   soundImgBg: { width: '100%', flex: 1 } as any,
 

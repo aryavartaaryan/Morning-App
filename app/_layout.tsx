@@ -15,7 +15,7 @@ import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { store, KEYS } from '@/lib/storage';
-import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
+
 import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import Svg, { Circle } from 'react-native-svg';
@@ -909,19 +909,29 @@ export default function RootLayout() {
         const isFirstInstall = !setupDone && !splashOnDisk;
 
         if (isFirstInstall) {
-          // First install: gate ONLY on BG images (~27, all parallel).
-          // Sound card images (100+) are NOT a gate — they download silently
-          // in the background after setup so the user is never blocked by them.
+          // First install: gate on BG images + sound card images together.
+          // Both run in parallel with high concurrency so setup stays fast.
+          // After this, every sound card and every reel has its image ready.
           if (cancelled) return;
           setPhase('downloading');
-          const bgCount = Object.keys(BG_URLS).length;
+
+          const bgCount   = Object.keys(BG_URLS).length;
+          const { TOTAL_SOUND_IMAGES: soundImgCount } = require('@/lib/soundImagePreload');
+          const totalFiles = bgCount + soundImgCount;
           let completedFiles = 0;
 
-          setDlLabel('Setting up...');
-          await ensureAllBgsCachedWithProgress(() => {
+          const tick = () => {
             completedFiles++;
-            if (!cancelled) setDlProgress(completedFiles / bgCount);
-          });
+            if (!cancelled) setDlProgress(completedFiles / totalFiles);
+          };
+
+          setDlLabel('Setting up...');
+          // Phase 1: BG images (critical — splash depends on these)
+          await ensureAllBgsCachedWithProgress(tick);
+
+          if (!cancelled) setDlLabel('Preparing your sounds...');
+          // Phase 2: Sound card + reel images (high concurrency for speed)
+          await prefetchAllSoundImagesWithProgress(tick, 20);
 
           if (!cancelled) {
             setDlProgress(1);
@@ -933,8 +943,6 @@ export default function RootLayout() {
 
           if (cancelled) return;
           // After first-install setup, open the app immediately — skip splash.
-          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
-          ensureAllMantrasDownloaded().catch(() => {});
           setPhase('done');
           return;
         } else {
@@ -956,17 +964,14 @@ export default function RootLayout() {
         setSplashBgUri(getBgSourceSync('splash'));
         setPhase('splash');
 
-        // Sound + mantra images: download silently after splash appears (non-blocking).
+        // Download sound card images in background — instant if already cached.
         prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
-        ensureAllMantrasDownloaded().catch(() => {});
 
       } catch {
         if (!cancelled) {
           setSplashBgUri(getBgSourceSync('splash'));
           setPhase('splash');
-          // Still kick off background downloads even after error
           prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
-          ensureAllMantrasDownloaded().catch(() => {});
         }
       }
     })();
