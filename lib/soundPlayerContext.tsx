@@ -63,6 +63,7 @@ type SoundPlayerCtx = {
   registerReelsOpener: (fn: () => void) => void;
   unregisterReelsOpener: () => void;
   getPositionMs: () => number;
+  seekTo: (positionMs: number) => Promise<void>;
 };
 
 const Ctx = createContext<SoundPlayerCtx | null>(null);
@@ -567,6 +568,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     if (mixRefs.current.size > 0 && !isPausedRef.current) startTimer(totalSecs);
   }, [startTimer]);
 
+  // Seek all active mix sounds to a given position in milliseconds.
+  // Also updates positionMsRef so the UI reflects the new position immediately.
+  const seekTo = useCallback(async (positionMs: number): Promise<void> => {
+    positionMsRef.current = positionMs;
+    const sounds = Array.from(mixRefs.current.values());
+    await Promise.allSettled(
+      sounds.map(snd => snd.setPositionAsync(positionMs).catch(() => {}))
+    );
+  }, []);
+
   const requestPlay = useCallback((meta: PlayableSoundMeta, durationSecs: number) => {
     stopCbRef.current = null;
     pendingMetaRef.current = meta;
@@ -647,7 +658,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
-      isAudioLoading, audioNetworkError, getPositionMs,
+      isAudioLoading, audioNetworkError, getPositionMs, seekTo,
       preBufferSound, cleanPreBuffer,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,

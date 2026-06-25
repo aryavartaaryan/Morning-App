@@ -39,6 +39,15 @@ export function subscribeToWarm(cb: () => void): () => void {
 }
 
 /**
+ * Synchronously returns true once warmSoundImageMap() has finished
+ * scanning disk and LOCAL_URI_MAP is fully populated.
+ * Safe to call inside useState lazy initializers during render.
+ */
+export function isWarmDone(): boolean {
+  return _warmDone;
+}
+
+/**
  * Returns the local cached file URI for the given remote URL if already
  * downloaded, otherwise returns the remote URL as-is.
  * Synchronous — safe to call during component render.

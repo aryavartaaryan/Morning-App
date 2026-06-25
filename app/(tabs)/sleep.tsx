@@ -10,7 +10,7 @@ import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
@@ -20,7 +20,7 @@ import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
 import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
-import { getLocalSoundImageUri, isSoundImageCached, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm, subscribeToImageCached } from '@/lib/soundImagePreload';
+import { getLocalSoundImageUri, isSoundImageCached, isWarmDone, warmSoundImageMap, prefetchAllSoundImages, ensureSoundImageCached, subscribeToWarm, subscribeToImageCached } from '@/lib/soundImagePreload';
 import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
@@ -555,16 +555,42 @@ const CalmSoundCard = memo(function CalmSoundCard({
   sound: SoundItem | NadaSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
 }) {
   const [imgError, setImgError] = useState(false);
-  const [, forceRefresh] = useState(0);
-  useEffect(() => subscribeToWarm(() => { setImgError(false); forceRefresh(n => n + 1); }), []);
-
+  // ── Image visibility — useState lazy init is the correct pattern here. ──────
+  // useRef(new Animated.Value(...)) only evaluates its argument ONCE on first
+  // mount; subsequent re-renders (triggered by warm/cache callbacks) cannot
+  // change the initial value. useState(() => ...) re-evaluates on every fresh
+  // mount, so it always reads the up-to-date isSoundImageCached() result.
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  const [imgVisible, setImgVisible] = useState<boolean>(
+    () => imgBundled != null || isSoundImageCached(rawUri ?? '') || isWarmDone(),
+  );
+  const imgFadeAnim = useRef(new Animated.Value(imgVisible ? 1 : 0)).current;
+
+  // When warmSoundImageMap() finishes (or if already done — fires synchronously),
+  // re-check cache status and make the image visible.
+  useEffect(() => subscribeToWarm(() => {
+    if (imgBundled != null || isSoundImageCached(rawUri ?? '')) {
+      setImgError(false);
+      setImgVisible(true);
+      imgFadeAnim.setValue(1);
+    }
+  }), []);
+
+  // When warm is already done but the image finishes downloading mid-session,
+  // or when warm fires after mount — ensure image becomes visible.
+  useEffect(() => {
+    if (imgVisible) {
+      imgFadeAnim.setValue(1);
+    }
+  }, [imgVisible]);
+
   useEffect(() => {
     if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
     return subscribeToImageCached(rawUri, () => {
       setImgError(false);
-      forceRefresh(n => n + 1);
+      setImgVisible(true);
+      imgFadeAnim.setValue(1);
     });
   }, [rawUri]);
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
@@ -575,21 +601,23 @@ const CalmSoundCard = memo(function CalmSoundCard({
     : imgUri
     ? (!imgError ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined))
     : undefined;
-  // Cached images start fully visible; uncached network images fade in from 0 on load.
-  const imgFadeAnim = useRef(new Animated.Value(
-    (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
-  )).current;
   const cardW = width ?? CALM_CARD_W;
 
   return (
+    // No outer wrapper needed — title is now inside the card image itself
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={{ width: cardW }}>
       <View style={{
-        width: cardW, height: cardW,
-        borderRadius: 14, overflow: 'hidden',
-        borderWidth: isPlaying ? 2 : 0,
-        borderColor: sound.color + '90',
+        width: cardW,
+        // Card is slightly taller than square to give title room inside
+        height: Math.round(cardW * 1.15),
+        borderRadius: 16, overflow: 'hidden',
+        borderWidth: isPlaying ? 2 : 1,
+        borderColor: isPlaying ? sound.color + '90' : 'rgba(255,255,255,0.08)',
       }}>
+        {/* Background gradient fallback */}
         <LinearGradient colors={[sound.top, sound.bot]} style={StyleSheet.absoluteFillObject} />
+
+        {/* Image layer */}
         {imgSource && !imgError && (
           <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim }]}>
             <Image
@@ -601,30 +629,63 @@ const CalmSoundCard = memo(function CalmSoundCard({
             />
           </Animated.View>
         )}
+
+        {/* Strong bottom scrim so title is always readable */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.22)']}
+          colors={['transparent', 'transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.88)']}
+          locations={[0, 0.38, 0.70, 1]}
           style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
         />
+
+        {/* ── Title inside the card — bottom overlay ── */}
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          paddingHorizontal: 10, paddingBottom: 9, paddingTop: 4,
+        }}>
+          <Text
+            style={{
+              fontSize: 11.5,
+              fontWeight: '700',
+              color: '#FFFFFF',
+              fontFamily: 'Nunito_700Bold',
+              letterSpacing: 0.1,
+              lineHeight: 15,
+              textShadowColor: 'rgba(0,0,0,0.70)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 4,
+            }}
+            numberOfLines={2}
+          >
+            {sound.label}
+          </Text>
+          <Text
+            style={{
+              fontSize: 9,
+              color: 'rgba(255,255,255,0.52)',
+              fontFamily: 'Nunito_400Regular',
+              marginTop: 1,
+              letterSpacing: 0.3,
+            }}
+            numberOfLines={1}
+          >
+            {sound.cat}
+          </Text>
+        </View>
+
+        {/* Playing indicator — top right */}
         {isPlaying && (
           <View style={{
             position: 'absolute', top: 8, right: 8,
-            width: 28, height: 28, borderRadius: 14,
+            width: 26, height: 26, borderRadius: 13,
             backgroundColor: sound.color + '35',
             borderWidth: 1, borderColor: sound.color + '80',
             alignItems: 'center', justifyContent: 'center',
           }}>
-            <Ionicons name={isPaused ? 'pause' : 'musical-notes'} size={12} color={sound.color} />
+            <Ionicons name={isPaused ? 'pause' : 'musical-notes'} size={11} color={sound.color} />
           </View>
         )}
       </View>
-      <Text style={{
-        fontSize: 12.5, fontWeight: '400', color: 'rgba(255,255,255,0.90)',
-        marginTop: 6, paddingHorizontal: 2, fontFamily: 'Nunito_400Regular', letterSpacing: 0.1,
-      }} numberOfLines={2}>{sound.label}</Text>
-      <Text style={{
-        fontSize: 10.5, color: 'rgba(255,255,255,0.38)',
-        marginTop: 1, paddingHorizontal: 2, fontFamily: 'Nunito_400Regular',
-      }} numberOfLines={1}>{sound.cat}</Text>
     </TouchableOpacity>
   );
 });
@@ -637,20 +698,37 @@ const SoundCard = memo(function SoundCard({
 }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const [imgError, setImgError] = useState(false);
-  const [, forceRefresh] = useState(0);
-  useEffect(() => subscribeToWarm(() => { setImgError(false); forceRefresh(n => n + 1); }), []);
+  // ── useState lazy init — correct pattern (see CalmSoundCard for explanation) ─
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  const [imgVisible, setImgVisible] = useState<boolean>(
+    () => imgBundled != null || isSoundImageCached(rawUri ?? '') || isWarmDone(),
+  );
+  const imgOpacity = useRef(new Animated.Value(imgVisible ? 1 : 0)).current;
+
+  // When warmSoundImageMap() finishes (fires synchronously if already done),
+  // re-check cache and make the image visible.
+  useEffect(() => subscribeToWarm(() => {
+    if (imgBundled != null || isSoundImageCached(rawUri ?? '')) {
+      setImgError(false);
+      setImgVisible(true);
+      imgOpacity.setValue(1);
+    }
+  }), []);
+
+  // Keep Animated.Value in sync whenever imgVisible flips to true.
+  useEffect(() => {
+    if (imgVisible) { imgOpacity.setValue(1); }
+  }, [imgVisible]);
+
   useEffect(() => {
     if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
     return subscribeToImageCached(rawUri, () => {
       setImgError(false);
-      forceRefresh(n => n + 1);
+      setImgVisible(true);
+      imgOpacity.setValue(1);
     });
   }, [rawUri]);
-  const imgOpacity = useRef(new Animated.Value(
-    (imgBundled != null || isSoundImageCached(rawUri ?? '')) ? 1 : 0
-  )).current;
   const imgUri  = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   // Always show an image: bundled > local/remote cached > raw remote URL fallback.
   const imgSource = imgBundled
@@ -881,7 +959,7 @@ const CAT_ICONS: Partial<Record<Category, string>> = {
   Sleep:       'moon',
   Nature:      'leaf',
   Meditations: 'flower',
-  Birds:       'egg-outline',
+  Birds:       'bird',      // MaterialCommunityIcons — realistic bird silhouette
   Ragas:       'musical-notes',
 };
 
@@ -1044,20 +1122,35 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
 
 // ─── Category Tab Strip — swipeable sticky tabs ──────────────────────────────
 const CategoryTabStrip = memo(function CategoryTabStrip({
-  selectedCat, onSelect, activePeriodId,
+  selectedCat, onSelect, activePeriodId, onSettingsPress,
 }: {
   selectedCat: Category;
   onSelect: (cat: Category, dir?: number) => void;
   activePeriodId?: string | null;
+  onSettingsPress: () => void;
 }) {
   const tabLayouts = useRef<Record<string, { x: number; width: number }>>({});
   const indicatorX = useRef(new Animated.Value(0)).current;
   const indicatorW = useRef(new Animated.Value(50)).current;
   const selectedCatRef = useRef(selectedCat);
   const onSelectRef    = useRef(onSelect);
+  // Subtle shimmer pulse for the glassmorphic strip
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { selectedCatRef.current = selectedCat; }, [selectedCat]);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  // Continuous shimmer animation
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 2800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0, duration: 2800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
 
   const moveIndicator = (cat: Category, instant = false) => {
     const layout = tabLayouts.current[cat];
@@ -1067,24 +1160,30 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       indicatorW.setValue(layout.width);
     } else {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 28, stiffness: 380, mass: 0.6 }),
-        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 28, stiffness: 380, mass: 0.6 }),
+        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
+        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
       ]).start();
     }
   };
 
   useEffect(() => { moveIndicator(selectedCat); }, [selectedCat]);
 
+  // PanResponder — light horizontal swipe changes category; taps pass through
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.0,
+      onStartShouldSetPanResponderCapture: () => false,
+      // Claim on a very light horizontal flick — dx > 7 and clearly more horizontal than vertical
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 7 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.8,
+      onMoveShouldSetPanResponderCapture: () => false,
+      // CRITICAL: false = once we claim the gesture, the ScrollView cannot steal it back
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
         const idx = CATEGORIES.indexOf(selectedCatRef.current);
         const velocity = Math.abs(gs.vx);
-        const threshold = velocity > 0.4 ? 28 : 45;
+        // Light flick (velocity > 0.3) needs only 18px; slow drag needs 36px
+        const threshold = velocity > 0.3 ? 18 : 36;
         if (gs.dx < -threshold && idx < CATEGORIES.length - 1) {
           onSelectRef.current(CATEGORIES[idx + 1] as Category, -1);
         } else if (gs.dx > threshold && idx > 0) {
@@ -1094,29 +1193,58 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
     })
   ).current;
 
+
   const activeColor = selectedCat === 'All'
-    ? '#FFFFFF'
+    ? '#a78bfa'
     : getCategoryMeta(selectedCat, activePeriodId).color;
+
+  const shimmerOpacity = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.04, 0.11] });
 
   return (
     <View
       style={{
-        backgroundColor: 'rgba(8,12,36,0.82)',
+        // Deep, rich glass-black — fully opaque so cards NEVER bleed through
+        backgroundColor: 'rgba(6,8,28,0.96)',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.10)',
+        borderBottomColor: 'rgba(255,255,255,0.08)',
+        // Crisp shadow so it lifts above the scrollable cards below
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.55,
+        shadowRadius: 8,
+        elevation: 16,
+        zIndex: 50,
         overflow: 'hidden',
-        zIndex: 15,
       }}
       {...pan.panHandlers}
     >
-      {/* Frosted glass shimmer overlay */}
+      {/* ── Layer 1: base gradient shimmer — glass diffusion ── */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
-        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+        colors={['rgba(120,100,255,0.10)', 'rgba(60,80,200,0.06)', 'rgba(0,0,0,0.00)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Animated colored top accent line */}
+      {/* ── Layer 2: animated shimmer pulse ── */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            opacity: shimmerOpacity,
+            backgroundColor: activeColor,
+          },
+        ]}
+      />
+      {/* ── Layer 3: top-edge highlight (frosted rim) ── */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.12)', 'transparent']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.4 }}
+        style={[StyleSheet.absoluteFillObject, { height: 2 }]}
+        pointerEvents="none"
+      />
+
+      {/* ── Glowing top accent bar under the active tab ── */}
       <Animated.View
         pointerEvents="none"
         style={{
@@ -1126,75 +1254,122 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           left: indicatorX,
           width: indicatorW,
           backgroundColor: activeColor,
-          opacity: 0.85,
+          opacity: 0.9,
           shadowColor: activeColor,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 1,
-          shadowRadius: 6,
+          shadowRadius: 8,
           elevation: 3,
+          borderRadius: 1,
         }}
       />
 
-      <View style={{ flexDirection: 'row', position: 'relative', paddingTop: 2 }}>
-        {/* Animated glowing pill background */}
+      {/* ── Row: tabs + settings button ── */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingTop: 2 }}>
+
+        {/* ── Glowing pill background ── */}
         <Animated.View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: 5,
+            top: 4,
             left: indicatorX,
             width: indicatorW,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: activeColor + '20',
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: activeColor + '22',
             borderWidth: 1,
-            borderColor: activeColor + '45',
+            borderColor: activeColor + '50',
             shadowColor: activeColor,
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.50,
-            shadowRadius: 12,
-            elevation: 5,
+            shadowOpacity: 0.55,
+            shadowRadius: 14,
+            elevation: 6,
           }}
         />
 
-        {CATEGORIES.map(cat => {
-          const isActive = selectedCat === cat;
-          const catColor = cat === 'All' ? '#FFFFFF' : getCategoryMeta(cat, activePeriodId).color;
-          const catIcon = (CAT_ICONS[cat] ?? 'apps') as any;
-          return (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(cat); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 11, gap: 3 }}
-              onLayout={(e) => {
-                const { x, width } = e.nativeEvent.layout;
-                tabLayouts.current[cat] = { x, width };
-                if (cat === selectedCat) moveIndicator(cat, true);
-              }}
-            >
-              <Ionicons
-                name={catIcon}
-                size={13}
-                color={isActive ? catColor : 'rgba(255,255,255,0.22)'}
-              />
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 9.5,
-                  fontWeight: isActive ? '700' : '400',
-                  fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
-                  color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.28)',
-                  letterSpacing: 0.3,
+        {/* ── Category tabs ── */}
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {CATEGORIES.map(cat => {
+            const isActive = selectedCat === cat;
+            const catColor = cat === 'All' ? '#c4b5fd' : getCategoryMeta(cat, activePeriodId).color;
+            const catIcon = (CAT_ICONS[cat] ?? 'apps') as any;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onSelect(cat);
+                }}
+                activeOpacity={0.60}
+                style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 10, gap: 3 }}
+                onLayout={(e) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  tabLayouts.current[cat] = { x, width };
+                  if (cat === selectedCat) moveIndicator(cat, true);
                 }}
               >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-        {/* Glowing animated underline */}
+                {cat === 'Birds' ? (
+                  <MaterialCommunityIcons
+                    name={catIcon}
+                    size={14}
+                    color={isActive ? catColor : 'rgba(255,255,255,0.25)'}
+                  />
+                ) : (
+                  <Ionicons
+                    name={catIcon}
+                    size={13}
+                    color={isActive ? catColor : 'rgba(255,255,255,0.25)'}
+                  />
+                )}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 9,
+                    fontWeight: isActive ? '700' : '400',
+                    fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
+                    color: isActive ? catColor : 'rgba(255,255,255,0.30)',
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── Settings button — right-aligned inside strip ── */}
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onSettingsPress();
+          }}
+          activeOpacity={0.70}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{
+            width: 34,
+            height: 34,
+            marginRight: 10,
+            borderRadius: 17,
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.20)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.30,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
+        >
+          <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.80)" />
+        </TouchableOpacity>
+
+        {/* ── Glowing underline ── */}
         <Animated.View
+          pointerEvents="none"
           style={{
             position: 'absolute',
             bottom: 0,
@@ -1205,8 +1380,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
             backgroundColor: activeColor,
             shadowColor: activeColor,
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.95,
-            shadowRadius: 8,
+            shadowOpacity: 1,
+            shadowRadius: 10,
             elevation: 4,
           }}
         />
@@ -1271,7 +1446,8 @@ const CategoryRows = memo(function CategoryRows({
     ? (CATEGORIES.slice(1) as readonly Category[])
     : ([selectedCat] as readonly Category[]);
   const isFiltered = selectedCat !== 'All';
-  const gridCardW = Math.floor((W - 50) / 2); // 20px pad each side + 10px gap
+  // Slightly smaller cards with more gap — cleaner, airier layout like the reference design
+  const gridCardW = Math.floor((W - 60) / 2); // 22px pad each side + 16px gap
 
   return (
     <View style={{ paddingBottom: 8 }}>
@@ -1355,7 +1531,7 @@ const CategoryRows = memo(function CategoryRows({
               )}
 
               {/* ── 2-column vertical grid for both All and filtered views ── */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10, paddingBottom: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 22, gap: 16, paddingBottom: 12 }}>
                 {sounds.map(s => (
                   <CalmSoundCard
                     key={s.id}
@@ -1638,7 +1814,7 @@ function ReelCard({
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
   const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
-  const { playingDurationSecs, setLoopConfig, meteringAnim, isAudioLoading, audioNetworkError, getPositionMs } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig, meteringAnim, isAudioLoading, audioNetworkError, getPositionMs, seekTo } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -1650,42 +1826,53 @@ function ReelCard({
   const [positionMs, setPositionMs] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
-  const [refreshCount, forceRefresh] = useState(0);
-  useEffect(() => subscribeToWarm(() => forceRefresh(n => n + 1)), []);
+  // ── useState lazy init — correct pattern (see CalmSoundCard for explanation) ─
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  // imgReelVisible: true if image is ready to show right now at mount time.
+  // Using useState lazy initializer (not useRef) so it re-evaluates every mount.
+  const [imgReelVisible, setImgReelVisible] = useState<boolean>(
+    () => imgBundled != null || isSoundImageCached(rawReelUri ?? '') || isWarmDone(),
+  );
   // Always resolve: local cached path if available, otherwise remote URL directly.
-  // This guarantees imgSource is never undefined — no blank reel ever.
   const imgUri     = !imgBundled
     ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined)
     : undefined;
-  // imgSource: use bundled > local/remote URI. imgLoadFailed only blocks if truly no source at all.
+  // imgSource: bundled > local/remote URI. imgLoadFailed triggers remote URL fallback.
   const imgSource  = imgBundled
     ? imgBundled
     : imgUri
     ? (!imgLoadFailed ? { uri: imgUri } : (rawReelUri ? { uri: rawReelUri } : undefined))
     : undefined;
-  // Start at 1 (fully visible) whenever imgSource is defined — image appears as soon as
-  // React Native loads it from cache or network, without waiting for a fade-in trigger.
-  const imgFadeAnim = useRef(new Animated.Value(imgSource ? 1 : 0)).current;
-  // After warm completes and LOCAL_URI_MAP is populated, sync opacity to 1 so
-  // images cached mid-session (ensureSoundImageCached) become immediately visible.
-  // Also reset imgLoadFailed so the image component re-renders with the local path.
-  useEffect(() => {
+  // imgFadeAnim: start at 1 if image is ready, otherwise 0 (fades in on onLoad).
+  const imgFadeAnim = useRef(new Animated.Value(imgReelVisible ? 1 : 0)).current;
+
+  // When warmSoundImageMap() finishes (fires synchronously if already done),
+  // flip imgReelVisible so the image renders and syncs opacity.
+  useEffect(() => subscribeToWarm(() => {
     if (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) {
       setImgLoadFailed(false);
+      setImgReelVisible(true);
       imgFadeAnim.setValue(1);
     }
-  }, [refreshCount]);
+  }), []);
+
+  // Keep Animated.Value in sync whenever imgReelVisible flips to true.
+  useEffect(() => {
+    if (imgReelVisible) { imgFadeAnim.setValue(1); }
+  }, [imgReelVisible]);
+
   // Per-URL subscriber: when this reel's specific image finishes downloading,
-  // reset imgLoadFailed so the Image component renders again using the local path.
+  // flip visible so the Image component renders with the local path.
   useEffect(() => {
     if (!rawReelUri || imgBundled != null || isSoundImageCached(rawReelUri)) return;
     return subscribeToImageCached(rawReelUri, () => {
       setImgLoadFailed(false);
-      forceRefresh(n => n + 1);
+      setImgReelVisible(true);
+      imgFadeAnim.setValue(1);
     });
   }, [rawReelUri]);
+
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
   useEffect(() => { setLoopCountText('1'); }, [sound.id]);
@@ -1802,6 +1989,8 @@ function ReelCard({
   const trackDurMs = (playingDurationSecs ?? 0) * 1000;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
   useEffect(() => {
+    // Don't animate while user is dragging — they control position directly
+    if (isDragging.current) return;
     Animated.timing(progressAnim, {
       toValue: loopProgress,
       duration: 450,
@@ -1809,6 +1998,68 @@ function ReelCard({
       useNativeDriver: false,
     }).start();
   }, [loopProgress]);
+
+  // ── Scrubber drag state ──────────────────────────────────────────────────
+  const isDragging = useRef(false);
+  const dragProgress = useRef(new Animated.Value(0)).current;
+  const thumbScale = useRef(new Animated.Value(1)).current;
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubPositionMs, setScrubPositionMs] = useState(0);
+  // Use refs so the PanResponder (created once) always sees current values
+  const trackDurMsRef = useRef(trackDurMs);
+  const trackWRef = useRef(TRACK_W);
+  const seekToRef = useRef(seekTo);
+  useEffect(() => { trackDurMsRef.current = trackDurMs; }, [trackDurMs]);
+  useEffect(() => { trackWRef.current = TRACK_W; }, [TRACK_W]);
+  useEffect(() => { seekToRef.current = seekTo; }, [seekTo]);
+
+  const scrubPan = useRef(
+    PanResponder.create({
+      // Claim the touch immediately so vertical scroll doesn't steal it
+      onStartShouldSetPanResponder: () => trackDurMsRef.current > 0,
+      onMoveShouldSetPanResponder: () => trackDurMsRef.current > 0,
+      onPanResponderGrant: (evt) => {
+        if (trackDurMsRef.current <= 0) return;
+        isDragging.current = true;
+        setIsScrubbing(true);
+        bumpControlsRef.current();
+        // Animate thumb to a larger size for visual feedback
+        Animated.spring(thumbScale, { toValue: 1.6, useNativeDriver: true, speed: 40 }).start();
+        // Initialise drag position from current touch X within track
+        const TW = trackWRef.current;
+        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
+        const fraction = x / TW;
+        dragProgress.setValue(fraction);
+        setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
+      },
+      onPanResponderMove: (evt) => {
+        const TW = trackWRef.current;
+        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
+        const fraction = x / TW;
+        dragProgress.setValue(fraction);
+        setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
+      },
+      onPanResponderRelease: (evt) => {
+        const TW = trackWRef.current;
+        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
+        const fraction = Math.max(0, Math.min(1, x / TW));
+        const ms = Math.round(fraction * trackDurMsRef.current);
+        // Snap the base anim to avoid a jump when drag ends
+        progressAnim.setValue(fraction);
+        setScrubPositionMs(ms);
+        setPositionMs(ms);
+        isDragging.current = false;
+        setIsScrubbing(false);
+        Animated.spring(thumbScale, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
+        seekToRef.current(ms).catch(() => {});
+      },
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+        setIsScrubbing(false);
+        Animated.spring(thumbScale, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
+      },
+    })
+  ).current;
 
   return (
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
@@ -1998,31 +2249,42 @@ function ReelCard({
           <View style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3 }}>
-                {fmtTimer(Math.round(positionMs / 1000))}
+                {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.30)', letterSpacing: 0.3 }}>
                 {fmtTimer(playingDurationSecs ?? 0)}
               </Text>
             </View>
-            {/* Track + thumb */}
-            <View style={{ height: 16, justifyContent: 'center' }}>
+            {/* Draggable track + thumb — hit target is taller than visible track */}
+            <View
+              style={{ height: 28, justifyContent: 'center' }}
+              {...scrubPan.panHandlers}
+              hitSlop={{ top: 10, bottom: 10, left: 0, right: 0 }}
+            >
               {/* Track background */}
-              <View style={{ height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)' }}>
+              <View style={{
+                height: isScrubbing ? 5 : 3,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                // Smooth height transition on drag start/end
+                overflow: 'hidden',
+              }}>
                 <Animated.View style={{
                   height: '100%', borderRadius: 3,
                   backgroundColor: sound.color,
-                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
+                  width: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
                 }} />
               </View>
-              {/* Thumb dot */}
+              {/* Thumb dot — scales up when dragging */}
               <Animated.View style={{
                 position: 'absolute',
-                left: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13] }),
-                top: 1.5,
+                left: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13] }),
+                top: 7.5,
                 width: 13, height: 13, borderRadius: 6.5,
                 backgroundColor: '#fff',
                 shadowColor: sound.color, shadowOpacity: 0.85, shadowRadius: 7, shadowOffset: { width: 0, height: 0 },
                 elevation: 5,
+                transform: [{ scale: thumbScale }],
               }} />
             </View>
           </View>
@@ -2721,6 +2983,10 @@ export default function SleepTab() {
   const stripScrollRef  = useRef<any>(null);
   const [rowsResetKey, setRowsResetKey] = useState(0);
   const hasRowResetRef = useRef(false);
+  // scrollY drives the JS-based sticky strip (replaces stickyHeaderIndices)
+  const scrollY  = useRef(new Animated.Value(0)).current;
+  const [heroH, setHeroH] = useState(100); // measured via onLayout on hero View
+
 
   useFocusEffect(useCallback(() => {
     _pageScrollRef?.scrollTo({ y: 0, animated: false });
@@ -2730,6 +2996,8 @@ export default function SleepTab() {
 
   const onMainScroll = useCallback((e: any) => {
     const y = e.nativeEvent.contentOffset.y;
+    // Drive the sticky strip translateY — clamp so it only moves between 0 and heroH
+    scrollY.setValue(y);
     if (y > 250 && !hasRowResetRef.current) {
       // Reset while rows are off-screen (scrolled above) — invisible to user
       hasRowResetRef.current = true;
@@ -2737,7 +3005,8 @@ export default function SleepTab() {
     } else if (y < 50) {
       hasRowResetRef.current = false;
     }
-  }, []);
+  }, [scrollY]);
+
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
     Animated.sequence([
@@ -3237,34 +3506,9 @@ export default function SleepTab() {
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
-      {/* Settings floating button — top-right */}
-      <TouchableOpacity
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
-        style={{
-          position: 'absolute',
-          top: (insets?.top ?? 44) + 10,
-          right: 16,
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: 'rgba(255,255,255,0.14)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.26)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 25,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.35,
-          shadowRadius: 6,
-          elevation: 8,
-        }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.85)" />
-      </TouchableOpacity>
+      {/* Settings button is now inside CategoryTabStrip — no longer a separate floating button */}
 
-      {/* ── Content area — hero + sticky tab strip + scroll ── */}
+      {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
@@ -3273,16 +3517,20 @@ export default function SleepTab() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: bottomPad }}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
+          scrollEventThrottle={8}
           onScroll={onMainScroll}
           overScrollMode="never"
           nestedScrollEnabled
           removeClippedSubviews
-          stickyHeaderIndices={[1]}
+          // NO stickyHeaderIndices — we use a JS/Animated sticky instead to avoid
+          // React Native's native reparenting which breaks touch events on Android.
         >
 
-        {/* ── Hero area — premium center-aligned glassmorphism card ── */}
-        <View style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}>
+        {/* ── Hero area — measures its height so the strip knows where to stick ── */}
+        <View
+          style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
+          onLayout={(e) => setHeroH(e.nativeEvent.layout.height)}
+        >
           <View style={{
             width: '100%',
             backgroundColor: 'rgba(0,0,0,0.16)',
@@ -3338,16 +3586,12 @@ export default function SleepTab() {
           </View>
         </View>
 
-        {/* ── Category tab strip — sticky (stickyHeaderIndices={[1]}) — sits below hero, pins to top on scroll ── */}
-        <CategoryTabStrip
-          selectedCat={selectedCat}
-          onSelect={changeCategory}
-          activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
-        />
+        {/* ── Strip placeholder — reserves the strip's height in the scroll layout ── */}
+        {/* The real strip is rendered outside the ScrollView as an absolute overlay. */}
+        <View style={{ height: 52 }} />
 
-        {/* ── Content container — transparent so wallpaper shows through; swipe handler for category change ── */}
+        {/* ── Content container — transparent, swipe handler for category change ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...contentPan.panHandlers}>
-
 
         <CategoryRows
           playingId={playingId}
@@ -3360,6 +3604,7 @@ export default function SleepTab() {
           natureLabel={natureCategoryLabel}
           activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
         />
+
 
         {/* ── Sleep Cycles ── */}
         <TouchableOpacity onPress={toggleCycles} activeOpacity={0.75} style={S.secHeader}>
@@ -3465,7 +3710,37 @@ export default function SleepTab() {
 
       </ScrollView>
         </Animated.View>
+
+        {/* ── JS-sticky CategoryTabStrip — rendered OUTSIDE the ScrollView so its
+            view hierarchy is never reparented by stickyHeaderIndices.
+            translateY starts at heroH (inline position) and clamps to 0 (top of container)
+            as the user scrolls down past the hero. Taps and swipes always work. ── */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            zIndex: 100,
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, heroH],
+                outputRange: [heroH, 0],
+                extrapolate: 'clamp',
+              }),
+            }],
+          }}
+        >
+          <CategoryTabStrip
+            selectedCat={selectedCat}
+            onSelect={changeCategory}
+            activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
+            onSettingsPress={() => { router.push('/(tabs)/settings' as never); }}
+          />
+        </Animated.View>
+
       </View>{/* end content area */}
+
 
       {/* ── Auto-start modal ── */}
       <Modal visible={showAutoStart} animationType="slide" transparent onRequestClose={() => setShowAutoStart(false)}>
