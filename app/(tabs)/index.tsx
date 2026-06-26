@@ -2034,10 +2034,10 @@ function getHourlyEnvSuggestion(
     return { emoji: '🌕', title: 'Deep Repair Window', desc: 'Full uninterrupted sleep · No eating or drinking · Liver detox is active · Let the body rebuild' };
   }
   if (period.id === 'midday_pitta') {
-    if (progress < 0.5) {
-      return { emoji: '🔥', title: 'Solar Focus Peak', desc: 'Digestive fire & cognition are at max · Tackle high-stakes decisions · Keep distractions off' };
-    }
-    return { emoji: '🫧', title: 'Post-Lunch Recovery Flow', desc: 'Body diverts energy to digestion · Slow your pace · Light stretch, mindful breath, micro-rest' };
+    return { emoji: '🔥', title: 'Solar Focus Peak', desc: 'Digestive fire & cognition are at max · Tackle high-stakes decisions · Keep distractions off' };
+  }
+  if (period.id === 'midday_pitta_late') {
+    return { emoji: '🫧', title: 'Energy Dip Phase', desc: 'Body diverts energy to digestion · Slow your pace · Light stretch, mindful breath, micro-rest' };
   }
   if (period.id === 'evening_kapha') {
     if (isHot) return { emoji: '🌇', title: 'Wind-Down · Keep Dinner Cooling', desc: `Hot ${temp}° evening — skip spicy or heavy dinner entirely · Light cooling foods only · Dim screens · Wind down your nervous system` };
@@ -5234,6 +5234,12 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const coolingGlow   = useRef(new Animated.Value(0.3)).current;
   const rippleAnims   = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   const lunarBreath   = useRef(new Animated.Value(0)).current;
+
+  // ── Inner content cycling state — premium appearance/disappearance ─────────
+  const [slideIdx, setSlideIdx] = useState(0);
+  const contentOpacity   = useRef(new Animated.Value(1)).current;
+  const contentTranslateY = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1.06, duration: 2400, useNativeDriver: true }),
@@ -5305,6 +5311,63 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const nightMode = isAfterSunset(nowH, solarTimes);
   // Wrapper adds padding so the outer aura glow is not clipped
   const MOON_RS = HERO_RS + 28;
+
+  // ── Body rhythm slides: unique non-repetitive content that cycles inside ring ──
+  const hour = now.getHours();
+  const bodySlides: Array<{ label: string; emoji: string; title: string; sub: string }> = React.useMemo(() => {
+    if (!period || sacredHour.type !== null) return [];
+    const envS = getHourlyEnvSuggestion(period, weather ?? null, hour);
+    const slides: Array<{ label: string; emoji: string; title: string; sub: string }> = [];
+    // Slide A: body rhythm signal
+    slides.push({ label: '⏱  PHYSIOLOGICAL STATE', emoji: envS.emoji, title: envS.title, sub: envS.desc.split(' · ')[0] });
+    // Slide B: top ideal activity (only if not same as existing hero sentence)
+    const act0 = period.activities[0];
+    if (act0) slides.push({ label: '✓  OPTIMAL ACTIVITY', emoji: getActivityEmoji(act0), title: act0, sub: '' });
+    // Slide C: top avoidance
+    const av0 = period.avoidances[0];
+    if (av0) slides.push({ label: '⏸  BEST TO PAUSE', emoji: getAvoidanceEmoji(av0), title: av0, sub: '' });
+    // Slide D: second activity (different from first)
+    const act1 = period.activities[1];
+    if (act1 && act1 !== act0) slides.push({ label: '✓  OPTIMAL ACTIVITY', emoji: getActivityEmoji(act1), title: act1, sub: '' });
+    return slides;
+  }, [period?.id, period?.minutesRemaining, weather?.weatherCode, weather?.temp, hour, sacredHour.type]);
+
+  const totalSlides = bodySlides.length > 0 ? bodySlides.length + 1 : 0; // +1 for anchor slide
+
+  // ── Content cycling timer — premium appearance & disappearance ─────────────
+  // Disappear: fade out + drift gently upward (-6px) over 700ms
+  // Appear:    snap to +8px below center, then float up to 0 while fading in over 900ms
+  useEffect(() => {
+    if (totalSlides <= 1 || sacredHour.type !== null) return;
+    let alive = true;
+    const HOLD       = 5000;  // how long each slide is fully visible
+    const FADE_OUT   = 700;   // disappear duration
+    const FADE_IN    = 900;   // appear duration
+    const timer = setInterval(() => {
+      // Phase 1 — dissolve out: opacity → 0, drift up slightly
+      Animated.parallel([
+        Animated.timing(contentOpacity,    { toValue: 0,  duration: FADE_OUT, easing: Easing.in(Easing.cubic),  useNativeDriver: true }),
+        Animated.timing(contentTranslateY, { toValue: -6, duration: FADE_OUT, easing: Easing.in(Easing.cubic),  useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (!alive || !finished) return;
+        // Swap slide while invisible
+        setSlideIdx(prev => (prev + 1) % totalSlides);
+        // Reset translate to below-center instantly (invisible, so no flash)
+        contentTranslateY.setValue(8);
+        // Phase 2 — materialize in: float up to center, fade in
+        Animated.parallel([
+          Animated.timing(contentOpacity,    { toValue: 1, duration: FADE_IN, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(contentTranslateY, { toValue: 0, duration: FADE_IN, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]).start();
+      });
+    }, HOLD);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      contentOpacity.stopAnimation();
+      contentTranslateY.stopAnimation();
+    };
+  }, [totalSlides, sacredHour.type]);
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.90} style={{ alignItems: 'center', marginTop: compact ? 2 : 6 }}>
@@ -5387,7 +5450,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Center content — iOS-clean: sub-pill · header · time · sentence · science ── */}
+          {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
 
           {/* ── SACRED HOUR MODE: sunrise / sunset replaces everything ── */}
@@ -5442,6 +5505,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             </>
           ) : (
             <>
+              {/* ── PERSISTENT TOP: Always visible ── */}
               {/* Sub-pill — small period label, border keeps accent, text is white */}
               <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 0.8, borderColor: `${accentHex}70`, marginBottom: compact ? 7 : 10 }}>
                 <Text style={{ fontSize: compact ? 6 : 7, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.4 }} numberOfLines={1}>{heroContent.subPill}</Text>
@@ -5459,24 +5523,57 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               {/* Thin divider */}
               <View style={{ height: 0.6, width: compact ? 40 : 52, backgroundColor: 'rgba(255,255,255,0.30)', marginBottom: compact ? 8 : 12 }} />
 
-              {/* Sentence — always readable */}
-              <Text
-                style={{ fontSize: compact ? 9 : 10.5, fontWeight: '600', color: '#FFFFFF', textAlign: 'center', lineHeight: compact ? 13 : 15.5, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginBottom: compact ? 5 : 7 }}
-                numberOfLines={3}
-              >{heroContent.sentence}</Text>
+              {/* ── ANIMATED MIDDLE: fixed height so nothing jumps ── */}
+              <View style={{ height: compact ? 65 : 85, justifyContent: 'center', width: '100%' }}>
+                <Animated.View style={{ alignItems: 'center', opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}>
+                  {slideIdx === 0 ? (
+                    // ── ANCHOR SLIDE: sentence + science ──
+                    <>
+                      {/* Sentence */}
+                      <Text style={{ fontSize: compact ? 9 : 10.5, fontWeight: '600', color: '#FFFFFF', textAlign: 'center', lineHeight: compact ? 13 : 15.5, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginBottom: compact ? 4 : 6 }} numberOfLines={3}>{heroContent.sentence}</Text>
 
-              {/* Science label — always readable */}
-              <Text
-                style={{ fontSize: compact ? 7 : 8, fontWeight: '700', color: '#FFFFFFDD', textAlign: 'center', lineHeight: compact ? 11 : 12, letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}
-                numberOfLines={2}
-              >{'🔬 '}{heroContent.sciLabel}</Text>
+                      {/* Science label */}
+                      <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '700', color: '#FFFFFFDD', textAlign: 'center', lineHeight: compact ? 11 : 12, letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }} numberOfLines={2}>{'🔬 '}{heroContent.sciLabel}</Text>
+                    </>
+                  ) : (() => {
+                    // ── CYCLING INSIGHTS SLIDE ──
+                    const slide = bodySlides[(slideIdx - 1) % bodySlides.length];
+                    if (!slide) return null;
+                    const isAvoid = slide.label.includes('PAUSE');
+                    const slideAccent = isAvoid ? '#f87171' : accentHex;
+                    return (
+                      <>
+                        {/* Slide label badge */}
+                        <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 0.8, borderColor: `${slideAccent}70`, marginBottom: compact ? 5 : 7 }}>
+                          <Text style={{ fontSize: compact ? 5.5 : 6.5, fontWeight: '900', color: slideAccent, letterSpacing: 1.4 }} numberOfLines={1}>{slide.label}</Text>
+                        </View>
 
-              {/* Ideal for — white at 85%, always readable */}
-              {period && period.activities.length > 0 && (
-                <Text
-                  style={{ fontSize: compact ? 7.5 : 9, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: compact ? 11 : 13, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginTop: compact ? 4 : 6 }}
-                  numberOfLines={2}
-                >{'✦ Ideal for · '}{period.activities[0].split('&')[0].split('·')[0].trim()}</Text>
+                        {/* Emoji */}
+                        <Text style={{ fontSize: compact ? 22 : 28, marginBottom: compact ? 5 : 6, textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{slide.emoji}</Text>
+
+                        {/* Title */}
+                        <Text style={{ fontSize: compact ? 12 : 14, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8, letterSpacing: -0.2, lineHeight: compact ? 16 : 20, marginBottom: compact ? 3 : 5 }} numberOfLines={3}>{slide.title}</Text>
+
+                        {/* Sub detail */}
+                        {slide.sub ? (
+                          <>
+                            <View style={{ height: 0.6, width: compact ? 34 : 44, backgroundColor: `${slideAccent}40`, marginBottom: compact ? 4 : 6 }} />
+                            <Text style={{ fontSize: compact ? 8.5 : 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.80)', textAlign: 'center', lineHeight: compact ? 12 : 14, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{slide.sub}</Text>
+                          </>
+                        ) : null}
+                      </>
+                    );
+                  })()}
+                </Animated.View>
+              </View>
+
+              {/* Dot indicator (persistent below the middle area) */}
+              {totalSlides > 1 && (
+                <View style={{ flexDirection: 'row', gap: 4, marginTop: compact ? 4 : 6 }}>
+                  {Array.from({ length: totalSlides }).map((_, i) => (
+                    <View key={i} style={{ width: slideIdx === i ? 10 : 4, height: 3, borderRadius: 1.5, backgroundColor: slideIdx === i ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.22)' }} />
+                  ))}
+                </View>
               )}
             </>
           )}
@@ -6430,21 +6527,20 @@ export default function DailyTab() {
             ) : (
               <View style={{ flex: 1 }}>
 
-                {/* Ring — takes all remaining vertical space, truly centred */}
-                <View style={{ flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {/* Ring — takes all remaining vertical space, slightly shifted up for balance */}
+                <View style={{ flex: 1, paddingVertical: 14, paddingBottom: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} compact={!!soundPlayingId} />
                 </View>
 
                 {/* Buttons + signal — pinned to bottom */}
-                <View style={{ paddingTop: 6, paddingBottom: insets.bottom + 80 + (soundPlayingId ? 72 : 0) }}>
-
+                <View style={{ paddingTop: 6, paddingBottom: insets.bottom + 180 + (soundPlayingId ? 72 : 0) }}>
                   <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50, marginTop: 0, marginBottom: 0 }}>
                     <SleepSoundsButton
                       period={currentPeriod}
                       brahmaStatus={brahmaInfo?.status ?? null}
                     />
                   </View>
-                  {currentPeriod && <HomeSignalCycler period={currentPeriod} weather={weather} brahmaInfo={brahmaInfo} />}
+                  {/* HomeSignalCycler removed — body rhythm signal now cycles inside the hero ring */}
                 </View>
               </View>
             )}

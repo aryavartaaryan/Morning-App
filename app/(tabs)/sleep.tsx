@@ -554,53 +554,11 @@ const CalmSoundCard = memo(function CalmSoundCard({
 }: {
   sound: SoundItem | NadaSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
 }) {
-  const [imgError, setImgError] = useState(false);
-  // ── Image visibility — useState lazy init is the correct pattern here. ──────
-  // useRef(new Animated.Value(...)) only evaluates its argument ONCE on first
-  // mount; subsequent re-renders (triggered by warm/cache callbacks) cannot
-  // change the initial value. useState(() => ...) re-evaluates on every fresh
-  // mount, so it always reads the up-to-date isSoundImageCached() result.
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-  const [imgVisible, setImgVisible] = useState<boolean>(
-    () => imgBundled != null || isSoundImageCached(rawUri ?? '') || isWarmDone(),
-  );
-  const imgFadeAnim = useRef(new Animated.Value(imgVisible ? 1 : 0)).current;
-
-  // When warmSoundImageMap() finishes (or if already done — fires synchronously),
-  // re-check cache status and make the image visible.
-  useEffect(() => subscribeToWarm(() => {
-    if (imgBundled != null || isSoundImageCached(rawUri ?? '')) {
-      setImgError(false);
-      setImgVisible(true);
-      imgFadeAnim.setValue(1);
-    }
-  }), []);
-
-  // When warm is already done but the image finishes downloading mid-session,
-  // or when warm fires after mount — ensure image becomes visible.
-  useEffect(() => {
-    if (imgVisible) {
-      imgFadeAnim.setValue(1);
-    }
-  }, [imgVisible]);
-
-  useEffect(() => {
-    if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
-    return subscribeToImageCached(rawUri, () => {
-      setImgError(false);
-      setImgVisible(true);
-      imgFadeAnim.setValue(1);
-    });
-  }, [rawUri]);
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
-  // Always show an image: bundled > local/remote cached > raw remote URL fallback.
-  // imgError only triggers a fallback to raw URL, never hides image completely.
-  const imgSource = imgBundled
-    ? imgBundled
-    : imgUri
-    ? (!imgError ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined))
-    : undefined;
+  const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
+
   const cardW = width ?? CALM_CARD_W;
 
   return (
@@ -617,17 +575,15 @@ const CalmSoundCard = memo(function CalmSoundCard({
         {/* Background gradient fallback */}
         <LinearGradient colors={[sound.top, sound.bot]} style={StyleSheet.absoluteFillObject} />
 
-        {/* Image layer */}
-        {imgSource && !imgError && (
-          <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim }]}>
+        {/* Image layer - directly rendered from local file system, no opacity race conditions */}
+        {imgSource && (
+          <View style={StyleSheet.absoluteFillObject}>
             <Image
               source={imgSource}
               style={{ width: '100%', height: '100%' }}
-              onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start()}
-              onError={() => setImgError(true)}
               resizeMode="cover"
             />
-          </Animated.View>
+          </View>
         )}
 
         {/* Strong bottom scrim so title is always readable */}
@@ -697,45 +653,10 @@ const SoundCard = memo(function SoundCard({
   sound: SoundItem; isPlaying: boolean; isPaused: boolean; remaining: number; onPress: () => void; compact?: boolean; grid?: boolean;
 }) {
   const pulse = useRef(new Animated.Value(1)).current;
-  const [imgError, setImgError] = useState(false);
-  // ── useState lazy init — correct pattern (see CalmSoundCard for explanation) ─
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
-  const rawUri  = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-  const [imgVisible, setImgVisible] = useState<boolean>(
-    () => imgBundled != null || isSoundImageCached(rawUri ?? '') || isWarmDone(),
-  );
-  const imgOpacity = useRef(new Animated.Value(imgVisible ? 1 : 0)).current;
-
-  // When warmSoundImageMap() finishes (fires synchronously if already done),
-  // re-check cache and make the image visible.
-  useEffect(() => subscribeToWarm(() => {
-    if (imgBundled != null || isSoundImageCached(rawUri ?? '')) {
-      setImgError(false);
-      setImgVisible(true);
-      imgOpacity.setValue(1);
-    }
-  }), []);
-
-  // Keep Animated.Value in sync whenever imgVisible flips to true.
-  useEffect(() => {
-    if (imgVisible) { imgOpacity.setValue(1); }
-  }, [imgVisible]);
-
-  useEffect(() => {
-    if (!rawUri || imgBundled != null || isSoundImageCached(rawUri)) return;
-    return subscribeToImageCached(rawUri, () => {
-      setImgError(false);
-      setImgVisible(true);
-      imgOpacity.setValue(1);
-    });
-  }, [rawUri]);
-  const imgUri  = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
-  // Always show an image: bundled > local/remote cached > raw remote URL fallback.
-  const imgSource = imgBundled
-    ? imgBundled
-    : imgUri
-    ? (!imgError ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined))
-    : undefined;
+  const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
+  const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
 
   useEffect(() => {
     if (isPlaying && !isPaused) {
@@ -757,17 +678,15 @@ const SoundCard = memo(function SoundCard({
         <View style={[S.soundCard, { flex: 1 }, isPlaying && { borderColor: sound.color + '80', borderWidth: 1.5 }]}>
           {/* Fallback gradient — always visible as base layer */}
           <LinearGradient colors={[sound.top, sound.bot]} style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]} />
-          {/* Nature image — Animated.View wrapper ensures reliable native-driver opacity */}
+          {/* Nature image */}
           {imgSource && (
-            <Animated.View style={[StyleSheet.absoluteFillObject, { borderRadius: 20, overflow: 'hidden', opacity: imgOpacity }]}>
+            <View style={[StyleSheet.absoluteFillObject, { borderRadius: 20, overflow: 'hidden' }]}>
               <Image
                 source={imgSource}
                 style={{ width: '100%', height: '100%' }}
-                onLoad={() => Animated.timing(imgOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start()}
-                onError={() => setImgError(true)}
                 resizeMode="cover"
               />
-            </Animated.View>
+            </View>
           )}
           {/* Gradient overlay for text legibility */}
           <LinearGradient
@@ -1825,53 +1744,33 @@ function ReelCard({
   const kbAnim = useRef(new Animated.Value(0)).current;
   const [positionMs, setPositionMs] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const [imgLoadFailed, setImgLoadFailed] = useState(false);
-  // ── useState lazy init — correct pattern (see CalmSoundCard for explanation) ─
+
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-  // imgReelVisible: true if image is ready to show right now at mount time.
-  // Using useState lazy initializer (not useRef) so it re-evaluates every mount.
-  const [imgReelVisible, setImgReelVisible] = useState<boolean>(
-    () => imgBundled != null || isSoundImageCached(rawReelUri ?? '') || isWarmDone(),
-  );
-  // Always resolve: local cached path if available, otherwise remote URL directly.
-  const imgUri     = !imgBundled
-    ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined)
-    : undefined;
-  // imgSource: bundled > local/remote URI. imgLoadFailed triggers remote URL fallback.
-  const imgSource  = imgBundled
-    ? imgBundled
-    : imgUri
-    ? (!imgLoadFailed ? { uri: imgUri } : (rawReelUri ? { uri: rawReelUri } : undefined))
-    : undefined;
-  // imgFadeAnim: start at 1 if image is ready, otherwise 0 (fades in on onLoad).
-  const imgFadeAnim = useRef(new Animated.Value(imgReelVisible ? 1 : 0)).current;
-
-  // When warmSoundImageMap() finishes (fires synchronously if already done),
-  // flip imgReelVisible so the image renders and syncs opacity.
-  useEffect(() => subscribeToWarm(() => {
-    if (imgBundled != null || isSoundImageCached(rawReelUri ?? '')) {
-      setImgLoadFailed(false);
-      setImgReelVisible(true);
-      imgFadeAnim.setValue(1);
+  const imgUri = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
+  
+  // To avoid Fresco's concurrent `file://` lock bug when both SoundCard and Reel
+  // try to load the exact same local file path simultaneously, we read it to base64
+  // into memory. This bypasses the lock completely and guarantees it shows.
+  const [base64Img, setBase64Img] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (imgUri && imgUri.startsWith('file://')) {
+      import('expo-file-system/legacy').then(FS => {
+        FS.readAsStringAsync(imgUri, { encoding: FS.EncodingType.Base64 })
+          .then(b64 => { if (active) setBase64Img(`data:image/jpeg;base64,${b64}`); })
+          .catch(() => {});
+      });
+    } else {
+      setBase64Img(null);
     }
-  }), []);
+    return () => { active = false; };
+  }, [imgUri]);
 
-  // Keep Animated.Value in sync whenever imgReelVisible flips to true.
-  useEffect(() => {
-    if (imgReelVisible) { imgFadeAnim.setValue(1); }
-  }, [imgReelVisible]);
-
-  // Per-URL subscriber: when this reel's specific image finishes downloading,
-  // flip visible so the Image component renders with the local path.
-  useEffect(() => {
-    if (!rawReelUri || imgBundled != null || isSoundImageCached(rawReelUri)) return;
-    return subscribeToImageCached(rawReelUri, () => {
-      setImgLoadFailed(false);
-      setImgReelVisible(true);
-      imgFadeAnim.setValue(1);
-    });
-  }, [rawReelUri]);
+  // If it's a file:// URI, strictly wait for the base64 version to avoid the lock.
+  // If it's a bundled or remote URL, use it directly.
+  const isLocalFile = imgUri?.startsWith('file://');
+  const imgSource = imgBundled ?? (isLocalFile ? (base64Img ? { uri: base64Img } : undefined) : (imgUri ? { uri: imgUri } : undefined));
 
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
@@ -2066,7 +1965,7 @@ function ReelCard({
 
       {/* ── FULL-SCREEN background image with Ken Burns zoom/pan ── */}
       {imgSource ? (
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: imgFadeAnim, overflow: 'hidden' }]}>
+        <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
           <Animated.View style={[
             StyleSheet.absoluteFillObject,
             { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
@@ -2075,11 +1974,9 @@ function ReelCard({
               source={imgSource}
               style={{ width: REEL_W, height: REEL_H }}
               resizeMode="cover"
-              onLoad={() => Animated.timing(imgFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start()}
-              onError={() => setImgLoadFailed(true)}
             />
           </Animated.View>
-        </Animated.View>
+        </View>
       ) : (
         <LinearGradient
           colors={[sound.color + '40', sound.top, sound.bot, '#000']}

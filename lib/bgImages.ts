@@ -226,7 +226,9 @@ export async function ensureAllBgsCachedWithProgress(
         const path      = cachePath(key);
         const urlHash   = djb2(url);
         const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false }));
-        const urlChanged = storedHashes[key] !== urlHash;
+        // Only consider URL changed if we previously HAD a hash and it differs.
+        const hasHash    = typeof storedHashes[key] === 'string';
+        const urlChanged = hasHash && storedHashes[key] !== urlHash;
 
         if (urlChanged && (cached as any).exists) {
           await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
