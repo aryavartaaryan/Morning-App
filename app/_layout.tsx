@@ -20,7 +20,7 @@ import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFully
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import Svg, { Circle } from 'react-native-svg';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
-import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
+import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, syncNativeWakeAlarmSound, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
@@ -238,6 +238,15 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
       scheduleHabitReminders();
       scheduleAllNativeReminders().catch(() => {});
       checkAndRescheduleDaily().catch(() => {});
+      // ── Bug 3 fix: re-sync native alarm sound path on every app open ──────────
+      // The expo-asset path persisted in SharedPrefs at schedule time can go stale
+      // after an APK update (asset hash changes, old file deleted). Re-syncing here
+      // ensures AlarmSoundService.playAlarm() always finds a valid file path and
+      // never falls back to the raw beep resource.
+      store.getJSON<{ selectedMantraId?: string }>(KEYS.alarmSettings).then(cfg => {
+        const soundId = cfg?.selectedMantraId;
+        if (soundId) syncNativeWakeAlarmSound(soundId).catch(() => {});
+      }).catch(() => {});
       setTimeout(() => requestAllAlarmPermissions().catch(() => {}), 2500);
       setTimeout(() => {
         ImagePicker.requestCameraPermissionsAsync().catch(() => {});
@@ -892,8 +901,11 @@ export default function RootLayout() {
 
         // Fast disk-scan — no downloads, just file-existence checks (~10 ms)
         await bgWarmup;
-        // Warm sound image map in parallel but do NOT wait for it to gate
-        warmSoundImageMap().catch(() => {});
+        // Warm sound image map — MUST be awaited before showing any UI.
+        // This populates LOCAL_URI_MAP so getLocalSoundImageUri() returns
+        // the local file:// path synchronously at render time.
+        // Without this await, cards render with remote URLs (may fail offline).
+        await warmSoundImageMap();
 
         // ── FIRST-INSTALL GATE ────────────────────────────────────────────
         // Use a persistent AsyncStorage flag as the primary check.
@@ -953,7 +965,10 @@ export default function RootLayout() {
           if (!isBgFullyCached()) {
             ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
           }
-          // Download sound card images in background — instant if already cached.
+          // Sound images: warmSoundImageMap() already ran above and LOCAL_URI_MAP
+          // is now populated. Kick off any missing downloads silently in the background.
+          // Do NOT race this with rendering — warmSoundImageMap already ensures
+          // every card gets a local path synchronously.
           prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
         }
 
@@ -964,7 +979,8 @@ export default function RootLayout() {
         setSplashBgUri(getBgSourceSync('splash'));
         setPhase('splash');
 
-        // Download sound card images in background — instant if already cached.
+        // Any missing sound images: download in background after UI is shown.
+        // warmSoundImageMap() already ran above — cards already have local paths.
         prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
 
       } catch {
@@ -999,7 +1015,11 @@ export default function RootLayout() {
         )}
         {/* Elegant download progress screen — first install only */}
         {phase === 'downloading' && (
-          <DownloadScreen progress={dlProgress} label={dlLabel} />
+          <>
+            <DownloadScreen progress={dlProgress} label={dlLabel} />
+            {/* Full-screen touch blocker: prevents user from tapping cards/reels during setup */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }} pointerEvents="box-only" />
+          </>
         )}
         {/* Splash overlay — NEVER renders without a confirmed bg image URI.
              splashBgUri is always set before phase is switched to 'splash',

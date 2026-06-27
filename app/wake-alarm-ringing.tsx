@@ -291,15 +291,30 @@ export default function WakeAlarmRingingScreen() {
     missionStartedRef.current = true;
     setDismissed(true);
 
-    // DO NOT stop native alarm sound here!
-    // We want the Native AlarmSoundService to keep playing the wake sound 
-    // seamlessly while the user completes their mission.
-    // The sound will be stopped in mission.tsx handleComplete().
+    // ── ROOT-CAUSE FIX (Bug 1 & Mission-sluggish) ───────────────────────────
+    // MUST stop the native AlarmSoundService FIRST, BEFORE navigating.
+    //
+    // The service runs a 200ms polling watchdog (bringToFrontRunnable) that
+    // calls launchApp() whenever alarm_fired_pending=true and the app is not
+    // in foreground. During router.replace('/mission'), the Activity briefly
+    // pauses (mainActivityResumed=false). The watchdog fires immediately and
+    // re-launches solrize://wake-alarm-ringing, snapping the user back and
+    // making "Begin Your Day" feel stuck — especially on 2nd+ alarms where
+    // alarmScreenLaunched is reset to false by onStartCommand.
+    //
+    // stopNativeAlarmSound() calls SharedPrefs.edit().putBoolean(false).commit()
+    // (synchronous write) which makes isAlarmActive() return false instantly.
+    // The watchdog halts. mission.tsx starts its own FGS to keep the JVM alive.
+    // This also eliminates the 200ms polling overhead that was slowing down
+    // Gratitude typing and Mantra timer inside the mission screen.
+    try { await stopNativeAlarmSound(); } catch {}
+
+    // Stop habit alarm and vibration
     try { await NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.(); } catch {}
     stopAlarmVibration().catch(() => {});
 
-    // Note: We DO NOT stop screen pinning (stopNativeLockTask) here.
-    // The mission screen will stop it when the mission is completed.
+    // Exit screen pinning now — mission screen does not need Lock Task.
+    stopNativeLockTask().catch(() => {});
 
     // Mark alarm as handled
     await AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});

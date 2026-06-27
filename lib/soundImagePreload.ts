@@ -6,7 +6,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { SOUND_IMAGES, ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 
-const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache/';
+const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache-v2/';
 
 // In-memory map: remote URL → local file URI (populated during prefetch/cache-hit)
 const LOCAL_URI_MAP: Record<string, string> = {};
@@ -74,19 +74,22 @@ async function cacheOne(url: string): Promise<void> {
   const path = CACHE_DIR + cacheFilename(url);
   try {
     const info = await FileSystem.getInfoAsync(path);
-    if ((info as any).exists) {
+    if ((info as any).exists && (info as any).size > 100) {
       LOCAL_URI_MAP[url] = path;
       _urlSubs.get(url)?.forEach(cb => cb());
       _urlSubs.delete(url);
       return;
     }
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
-    await FileSystem.downloadAsync(url, path);
+    // Atomic write to prevent partial/corrupted files if app is killed mid-download
+    await FileSystem.downloadAsync(url, path + '.tmp');
+    await FileSystem.moveAsync({ from: path + '.tmp', to: path });
     LOCAL_URI_MAP[url] = path;
     _urlSubs.get(url)?.forEach(cb => cb());
     _urlSubs.delete(url);
   } catch {
     // silent — remote URL remains as fallback on next render
+    await FileSystem.deleteAsync(path + '.tmp', { idempotent: true }).catch(() => {});
   }
 }
 

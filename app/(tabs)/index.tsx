@@ -6529,7 +6529,7 @@ export default function DailyTab() {
 
                 {/* Ring — takes all remaining vertical space, slightly shifted up for balance */}
                 <View style={{ flex: 1, paddingVertical: 14, paddingBottom: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} compact={!!soundPlayingId} />
+                  <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
                 </View>
 
                 {/* Buttons + signal — pinned to bottom */}

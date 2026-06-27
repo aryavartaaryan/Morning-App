@@ -554,10 +554,18 @@ const CalmSoundCard = memo(function CalmSoundCard({
 }: {
   sound: SoundItem | NadaSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
 }) {
+  const [imgLoadFailed, setImgLoadFailed] = useState(false);
+  // Safety net: force a re-render once warmSoundImageMap() finishes.
+  // Because _layout.tsx now awaits warmSoundImageMap() before showing the UI,
+  // this fires synchronously (no-op) in 99.99% of cases. It only matters if
+  // the component somehow mounts before warm completes (e.g., dev fast-refresh).
+  const [, forceUpdate] = useState(0);
+  useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceUpdate(n => n + 1); }), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
+  const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
 
   const cardW = width ?? CALM_CARD_W;
 
@@ -576,12 +584,13 @@ const CalmSoundCard = memo(function CalmSoundCard({
         <LinearGradient colors={[sound.top, sound.bot]} style={StyleSheet.absoluteFillObject} />
 
         {/* Image layer - directly rendered from local file system, no opacity race conditions */}
-        {imgSource && (
+        {finalSource && (
           <View style={StyleSheet.absoluteFillObject}>
             <Image
-              source={imgSource}
+              source={finalSource}
               style={{ width: '100%', height: '100%' }}
               resizeMode="cover"
+              onError={() => setImgLoadFailed(true)}
             />
           </View>
         )}
@@ -652,11 +661,16 @@ const SoundCard = memo(function SoundCard({
 }: {
   sound: SoundItem; isPlaying: boolean; isPaused: boolean; remaining: number; onPress: () => void; compact?: boolean; grid?: boolean;
 }) {
+  const [imgLoadFailed, setImgLoadFailed] = useState(false);
+  // Safety net: force a re-render once warmSoundImageMap() finishes.
+  const [, forceUpdate] = useState(0);
+  useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceUpdate(n => n + 1); }), []);
   const pulse = useRef(new Animated.Value(1)).current;
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
   const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
+  const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
 
   useEffect(() => {
     if (isPlaying && !isPaused) {
@@ -679,12 +693,13 @@ const SoundCard = memo(function SoundCard({
           {/* Fallback gradient — always visible as base layer */}
           <LinearGradient colors={[sound.top, sound.bot]} style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]} />
           {/* Nature image */}
-          {imgSource && (
+          {finalSource && (
             <View style={[StyleSheet.absoluteFillObject, { borderRadius: 20, overflow: 'hidden' }]}>
               <Image
-                source={imgSource}
+                source={finalSource}
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="cover"
+                onError={() => setImgLoadFailed(true)}
               />
             </View>
           )}
@@ -961,7 +976,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
         }}>
           {/* Handle bar */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 20 }}>
-            <View style={{ width: W, height: 26, alignItems: 'center', justifyContent: 'center' }} {...panResponder.panHandlers}>
+            <View style={{ width: W, height: 26, alignItems: 'center', justifyContent: 'center' }}>
               <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' }} />
             </View>
           </View>
@@ -1745,10 +1760,14 @@ function ReelCard({
   const [positionMs, setPositionMs] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  const [imgLoadFailed, setImgLoadFailed] = useState(false);
+  // Safety net: force a re-render once warmSoundImageMap() finishes.
+  const [, forceReelUpdate] = useState(0);
+  useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceReelUpdate(n => n + 1); }), []);
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
-  
+
   // To avoid Fresco's concurrent `file://` lock bug when both SoundCard and Reel
   // try to load the exact same local file path simultaneously, we read it to base64
   // into memory. This bypasses the lock completely and guarantees it shows.
@@ -1771,6 +1790,7 @@ function ReelCard({
   // If it's a bundled or remote URL, use it directly.
   const isLocalFile = imgUri?.startsWith('file://');
   const imgSource = imgBundled ?? (isLocalFile ? (base64Img ? { uri: base64Img } : undefined) : (imgUri ? { uri: imgUri } : undefined));
+  const finalSource = imgLoadFailed ? (rawReelUri ? { uri: rawReelUri } : undefined) : imgSource;
 
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
   const [loopCountText, setLoopCountText] = useState('1');
@@ -1964,16 +1984,17 @@ function ReelCard({
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
 
       {/* ── FULL-SCREEN background image with Ken Burns zoom/pan ── */}
-      {imgSource ? (
+      {finalSource ? (
         <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
           <Animated.View style={[
             StyleSheet.absoluteFillObject,
             { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
           ]}>
             <Image
-              source={imgSource}
+              source={finalSource}
               style={{ width: REEL_W, height: REEL_H }}
               resizeMode="cover"
+              onError={() => setImgLoadFailed(true)}
             />
           </Animated.View>
         </View>

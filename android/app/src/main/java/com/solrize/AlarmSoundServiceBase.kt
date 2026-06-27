@@ -246,11 +246,18 @@ abstract class AlarmSoundServiceBase : Service() {
 
     /**
      * Start looping alarm audio.
-     * Priority 1 — path returned by getSoundPath() (locally downloaded mantra).
-     * Priority 2 — bundled mantra_alarm.wav raw resource (always present in APK).
+     *
+     * Priority 1 — path returned by getSoundPath() (expo-asset or downloaded path).
+     * Priority 2 — permanent mantras/ document directory fallback.
+     *              Handles the case where the expo-asset path goes stale after an
+     *              app update (asset hash changes, old file deleted) — we try the
+     *              user's downloaded MP3 before giving up.
+     * Priority 3 — bundled mantra_alarm.wav raw resource (always present in APK).
      */
     protected fun playAlarm() {
         val soundPath = getSoundPath()
+
+        // Priority 1: stored path (expo-asset or explicit download)
         if (!soundPath.isNullOrEmpty()) {
             val file = File(soundPath)
             if (file.exists()) {
@@ -270,6 +277,47 @@ abstract class AlarmSoundServiceBase : Service() {
                 }
             }
         }
+
+        // Priority 2: search the permanent mantras/ directory using the stored sound ID.
+        // This recovers from stale expo-asset paths caused by APK updates or cache eviction.
+        try {
+            val prefs = getSharedPreferences(AlarmModule.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            val soundId = prefs.getString(AlarmModule.KEY_SOUND, null)
+            if (!soundId.isNullOrEmpty()) {
+                // Mirror of getLocalMantraPath() in mantraDownload.ts:
+                // FileSystem.documentDirectory + 'mantras/' + id + '.mp3'
+                val docDir = filesDir.parentFile?.absolutePath ?: filesDir.absolutePath
+                val candidates = listOf(
+                    "$docDir/files/mantras/$soundId.mp3",
+                    "$docDir/files/mantras/$soundId.m4a",
+                    "${filesDir.absolutePath}/mantras/$soundId.mp3",
+                    "${filesDir.absolutePath}/mantras/$soundId.m4a"
+                )
+                for (candidatePath in candidates) {
+                    val candidateFile = File(candidatePath)
+                    if (candidateFile.exists()) {
+                        try {
+                            mediaPlayer?.release()
+                            mediaPlayer = MediaPlayer().apply {
+                                setAudioAttributes(buildAudioAttrs())
+                                setDataSource(candidatePath)
+                                isLooping = true
+                                prepare()
+                                setVolume(1f, 1f)
+                                start()
+                            }
+                            return
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Priority 3: bundled fallback raw resource
         playFromRaw()
     }
 
@@ -510,31 +558,31 @@ abstract class AlarmSoundServiceBase : Service() {
         vibrator?.cancel() // cancel any existing pattern before starting fresh
         vibrator = getVibrator() ?: return
 
-        // ── Simple smooth continuous vibration pattern ──
-        // Gentle, continuous vibration that feels smooth and natural.
-        // No harsh pulses — just a steady, pleasant vibration.
+        // ── Smooth, slow, gentle vibration pattern ──────────────────────────
+        // Long on-time (1200ms) at moderate amplitude (140/255 ≈ 55%) with a
+        // brief 400ms pause creates a slow "breathing" rhythm that feels calm
+        // and smooth — not the jarring rapid pulses of the previous 500ms/200
+        // pattern. The lower amplitude prevents the harsh mechanical feel.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Amplitude-aware waveform: smooth continuous vibration
-            // 500ms on, 500ms off, repeating — at medium-high amplitude
             val timings = longArrayOf(
-                0,    // start delay
-                500,  // vibrate for 500ms
-                500   // pause for 500ms before repeat
+                0,     // no start delay
+                1200,  // vibrate for 1200ms — feels continuous, not choppy
+                400    // brief pause before next cycle
             )
             val amplitudes = intArrayOf(
-                0,    // start delay (off)
-                200,  // smooth vibration at amplitude 200/255
-                0     // pause (off)
+                0,     // no delay
+                140,   // comfortable amplitude (≈55% of max) — smooth, not jarring
+                0      // pause
             )
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
+            val effect = VibrationEffect.createWaveform(timings, amplitudes, 0) // repeat from index 0
             val attrs  = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .build()
             vibrator?.vibrate(effect, attrs)
         } else {
-            // API < 26: no amplitude support — use simple on/off pattern
+            // API < 26: no amplitude support — use longer on/off pattern
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(longArrayOf(0, 500, 500), 0)
+            vibrator?.vibrate(longArrayOf(0, 1200, 400), 0)
         }
     }
 
