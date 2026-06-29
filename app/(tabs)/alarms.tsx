@@ -36,7 +36,7 @@ import { getLocalMantraPath, isMantraDownloaded, downloadMantra } from '@/lib/ma
 import { registerPreviewStopper } from '@/lib/alarmAudio';
 import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
-import SoundPicker from '@/components/alarms/SoundPicker';
+import SoundPicker, { AlarmSoundItem } from '@/components/alarms/SoundPicker';
 import { getSolarTimes } from '@/lib/solar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
@@ -48,7 +48,7 @@ const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
   bhagya_suktam: 'bhagya_suktam', shiv_sankalpa_suktam: 'shiv_sankalpa_suktam',
 };
-const BUNDLED_MANTRAS = new Set(['bhagya_suktam', 'shiv_sankalpa_suktam']);
+const BUNDLED_MANTRAS = new Set<string>([]); // CDN sounds — download-based, not bundled
 const PRESETS = [
   { label: 'Brahma',  sub: '4:00 AM', hour: 4,  minute: 0,  color: '#60a5fa' },
   { label: 'Dawn',    sub: '4:30 AM', hour: 4,  minute: 30, color: '#60a5fa' },
@@ -59,8 +59,8 @@ const MANTRAS = [
   { id: 'gayatri',    label: 'Gayatri Mantra',      emoji: '🌞', color: '#fbbf24', hint: 'ॐ भूर्भुवः स्वः', pitch: 0.85, rate: 0.70, text: 'Om Bhur Bhuva Swaha, Tat Savitur Varenyam, Bhargo Devasya Dhimahi, Dhiyo Yo Nah Prachodayat. Om Shanti Shanti Shanti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
   { id: 'lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65, text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
   { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
-  { id: 'bhagya_suktam',        label: 'Bhagya Suktam',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: '' },
-  { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: '' },
+  { id: 'bhagya_suktam',        label: 'Bhagya Suktam',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' },
+  { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' },
   { id: 'nada_govinda_mantra',      label: 'Govinda Mantra',         emoji: '💙', color: '#818cf8', hint: 'Govinda Hari', pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
   { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', color: '#f59e0b', hint: 'Indian Raga',   pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
 ];
@@ -83,22 +83,25 @@ const ALARM_SOUNDS = [
   { id: 'harbor_waves',            label: 'Harbor Waves',           emoji: '⚓', cat: 'Ocean',  color: '#93c5fd', audioUrl: null as string | null },
   { id: 'flowing_water',           label: 'Flowing Water',          emoji: '💧', cat: 'Nature', color: '#67e8f9', audioUrl: null as string | null },
   { id: 'jungle_storm',            label: 'Jungle Storm',           emoji: '🌿', cat: 'Nature', color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'spiritual_journey',       label: 'Spiritual Journey',      emoji: '🌌', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
+  { id: 'spiritual_journey',       label: 'Spiritual Journey',      emoji: '🌌', cat: 'Sacred', color: '#c084fc', audioUrl: 'https://audio.onesutralabs.com/sounds-large/spiritual-journey.m4a' as string | null },
   { id: 'om_shanti',               label: 'Om Shanti',              emoji: '🕉️', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
   { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NADA_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
   { id: 'gayatri',                 label: 'Gayatri Mantra',         emoji: '🌞', cat: 'Mantra', color: '#fbbf24', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' as string | null },
   { id: 'lalitha',                 label: 'Lalitha Sahasranama',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
   { id: 'nada_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NADA_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
-  { id: 'bhagya_suktam',           label: 'Bhagya Suktam',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: null as string | null },
+  { id: 'med_govind_bolo',         label: 'Govind Bolo · Krishna',  emoji: '🪈', cat: 'Mantra', color: '#38bdf8', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' as string | null },
+  { id: 'cdn_ultra_vedic_healing_chant', label: 'Vedic Healing Chanting', emoji: '🌿', cat: 'Mantra', color: '#86efac', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' as string | null },
+  { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
+  { id: 'bhagya_suktam',           label: 'Bhagya Suktam',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
   // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
   { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'sitar_tabla_bells',       label: 'Sitar, Tabla & Bells',   emoji: '🎵', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
   { id: 'indian_sitar_raga',       label: 'Indian Sitar Raga',      emoji: '🎶', cat: 'Sitar & Flute', color: '#fb923c', audioUrl: null as string | null },
-  { id: 'sitar_summer_raga',       label: 'Summer Healing Raga',    emoji: '☀️', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: null as string | null },
-  { id: 'sitar_radiance',          label: 'Sitar Radiance',         emoji: '✨', cat: 'Sitar & Flute', color: '#f97316', audioUrl: null as string | null },
+  { id: 'sitar_summer_raga',       label: 'Summer Healing Raga',    emoji: '☀️', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a' as string | null },
+  { id: 'sitar_radiance',          label: 'Sitar Radiance',         emoji: '✨', cat: 'Sitar & Flute', color: '#f97316', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-radiance.m4a' as string | null },
   { id: 'sitar_tanpura_sarangi',   label: 'Sitar, Tanpura & Sarangi', emoji: '🪕', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'sitar_tanpura_bgm',       label: 'Sitar & Tanpura',        emoji: '🎼', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
-  { id: 'veena_classical',         label: 'Classical Veena',        emoji: '🪗', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
+  { id: 'veena_classical',         label: 'Classical Veena',        emoji: '🪗', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a' as string | null },
   { id: 'sitar_calm',              label: 'Calm Sitar',             emoji: '🎸', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
   { id: 'veena_raga',              label: 'Veena Raga Kanada',      emoji: '🪗', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'andean_flute',            label: 'Andean Flute',           emoji: '🏔️', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
@@ -107,18 +110,17 @@ const ALARM_SOUNDS = [
   { id: 'native_flute_echo',       label: 'Native Flute Echo',      emoji: '🌀', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
   { id: 'bamboo_flute',            label: 'Bamboo Flute',           emoji: '🎋', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
   { id: 'flute_scale',             label: 'Flute Meditation',       emoji: '🎶', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'bansuri_forest',          label: 'Bansuri Forest',         emoji: '🌿', cat: 'Sitar & Flute', color: '#34d399', audioUrl: null as string | null },
+  { id: 'bansuri_forest',          label: 'Bansuri Forest',         emoji: '🌿', cat: 'Sitar & Flute', color: '#34d399', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' as string | null },
   { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
-  { id: 'bansuri_tarana',          label: 'Bansuri Tarana',         emoji: '🎶', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
+  { id: 'bansuri_tarana',          label: 'Bansuri Tarana',         emoji: '🎶', cat: 'Sitar & Flute', color: '#86efac', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a' as string | null },
 ];
 
 
 const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
 
 const ALARM_BUNDLED: Record<string, any> = {
-  ...Object.fromEntries(ALL_SLEEP_SOUNDS.map(s => [s.id, s.src])),
-  bhagya_suktam:        require('../../assets/sounds/bhagya-suktam.m4a'),
-  shiv_sankalpa_suktam: require('../../assets/sounds/shiv-sankalpa-suktam.m4a'),
+  // Only truly bundled sounds (require() module IDs = numbers), not CDN URI objects
+  ...Object.fromEntries(ALL_SLEEP_SOUNDS.filter(s => typeof s.src === 'number').map(s => [s.id, s.src])),
 };
 
 const ALARM_SOUND_CATS = ['Birds', 'Ocean', 'Nature', 'Sitar & Flute', 'Sacred', 'Mantra', 'Stotra'] as const;
@@ -423,7 +425,7 @@ export default function AlarmsTab() {
   const saveAnim                            = useRef(new Animated.Value(0)).current;
   const alarmActiveRef                      = useRef(false);
   const fabActionsRef                        = useRef<FabAction[]>([]);
-  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', nada_govinda_mantra:'idle', nada_aar_sitar_classical:'idle' });
+  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', nada_govinda_mantra:'idle', nada_aar_sitar_classical:'idle', spiritual_journey:'idle', sitar_summer_raga:'idle', sitar_radiance:'idle', veena_classical:'idle', bansuri_forest:'idle', bansuri_tarana:'idle', med_govind_bolo:'idle', cdn_ultra_vedic_healing_chant:'idle', med_ganesha_pancharatnam:'idle' });
   const [dlProgress, setDlProgress]         = useState<Record<string, number>>({});
   const [alarmEntries, setAlarmEntries]     = useState<AlarmEntry[]>([]);
   const [menuOpenId, setMenuOpenId]         = useState<string|null>(null);
@@ -464,6 +466,7 @@ export default function AlarmsTab() {
   const { bgUri, bgKey, accentColor }        = useBgContext();
   const cardBg                              = getCardBg(bgKey);
   const [previewingId, setPreviewingId]     = useState<string | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
   const previewSoundRef                     = useRef<Audio.Sound | null>(null);
   const alarmScrollRef                      = useRef<ScrollView | null>(null);
 
@@ -497,6 +500,7 @@ export default function AlarmsTab() {
       }
       const statuses: Record<string,'idle'|'downloading'|'downloaded'> = {};
       for (const m of MANTRAS) statuses[m.id] = (await isMantraDownloaded(m.id)) ? 'downloaded' : 'idle';
+      for (const s of ALARM_SOUNDS.filter(s => s.audioUrl)) { if (!(s.id in statuses)) statuses[s.id] = (await isMantraDownloaded(s.id)) ? 'downloaded' : 'idle'; }
       setDlStatus(statuses);
       const currentId = s?.selectedMantraId ?? 'gayatri';
       syncNativeWakeAlarmSound(currentId).catch(() => {});
@@ -794,6 +798,7 @@ export default function AlarmsTab() {
       }
     } catch { /* ignore */ }
     setPreviewingId(null);
+    setPreviewLoadingId(null);
   };
 
   useEffect(() => {
@@ -801,16 +806,24 @@ export default function AlarmsTab() {
     return () => { registerPreviewStopper(null); };
   }, []);
 
-  const togglePreview = async (snd: typeof ALARM_SOUNDS[0]) => {
-    if (previewingId === snd.id) { await stopPreview(); return; }
+  const togglePreview = async (snd: AlarmSoundItem) => {
+    if (previewingId === snd.id || previewLoadingId === snd.id) { await stopPreview(); return; }
     await stopPreview();
+    // Show loading badge immediately so user knows tap was registered
+    setPreviewLoadingId(snd.id);
     try {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false, shouldDuckAndroid: true });
       const bundled = ALARM_BUNDLED[snd.id];
-      const source = bundled ?? (snd.audioUrl ? { uri: snd.audioUrl } : null);
-      if (!source) return;
+      // Fallback: find the URI from ALL_SLEEP_SOUNDS if audioUrl is null and not bundled
+      const sleepSrc = ALL_SLEEP_SOUNDS.find(s => s.id === snd.id)?.src;
+      const fallbackUri = (!bundled && !snd.audioUrl && sleepSrc && typeof sleepSrc !== 'number')
+        ? (sleepSrc as { uri: string }).uri
+        : null;
+      const source = bundled ?? (snd.audioUrl ? { uri: snd.audioUrl } : (fallbackUri ? { uri: fallbackUri } : null));
+      if (!source) { setPreviewLoadingId(null); return; }
       const { sound } = await Audio.Sound.createAsync(source, { shouldPlay: true, isLooping: false, volume: 0.9 });
       previewSoundRef.current = sound;
+      setPreviewLoadingId(null);
       setPreviewingId(snd.id);
       sound.setOnPlaybackStatusUpdate(status => {
         if (status.isLoaded && status.didJustFinish) {
@@ -819,7 +832,10 @@ export default function AlarmsTab() {
           setPreviewingId(null);
         }
       });
-    } catch { setPreviewingId(null); }
+    } catch {
+      setPreviewLoadingId(null);
+      setPreviewingId(null);
+    }
   };
 
   const chantMantra = (mantra: typeof MANTRAS[0], repeat = true) => {
@@ -875,17 +891,14 @@ export default function AlarmsTab() {
       syncNativeWakeAlarmSound(id).catch(() => {});
       return;
     }
-    if (BUNDLED_MANTRAS.has(id)) {
-      setDlStatus(s => ({ ...s, [id]: 'downloaded' }));
-      syncNativeWakeAlarmSound(id).catch(() => {});
-      return;
-    }
     if (dlStatus[id] === 'downloaded') { syncNativeWakeAlarmSound(id).catch(() => {}); return; }
     if (dlStatus[id] === 'downloading') return;
     const m = MANTRAS.find(x => x.id === id);
-    if (!m?.audioUrl) return;
+    const cdnSnd = ALARM_SOUNDS.find(x => x.id === id);
+    const dlUrl = m?.audioUrl || cdnSnd?.audioUrl || null;
+    if (!dlUrl) return;
     setDlStatus(s => ({ ...s, [id]: 'downloading' })); setDlProgress(s => ({ ...s, [id]: 0 }));
-    const result = await downloadMantra(id, m.audioUrl, p => setDlProgress(s => ({ ...s, [id]: p })));
+    const result = await downloadMantra(id, dlUrl, p => setDlProgress(s => ({ ...s, [id]: p })));
     setDlStatus(s => ({ ...s, [id]: result ? 'downloaded' : 'idle' }));
     if (result && id === selectedMantraId) syncNativeWakeAlarmSound(id).catch(() => {});
   };
@@ -1504,6 +1517,9 @@ export default function AlarmsTab() {
                 cardWidth={(width - 40 - 8) / 2}
                 catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
                 gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
+                dlStatus={dlStatus}
+                dlProgress={dlProgress}
+                previewLoadingId={previewLoadingId}
               />
 
               {/* ── Morning Mission + System (default alarm only) ── */}
@@ -1792,6 +1808,7 @@ export default function AlarmsTab() {
                 cardWidth={(width - 40 - 8) / 2}
                 catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
                 gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
+                previewLoadingId={previewLoadingId}
               />
 
               {/* Optional label */}

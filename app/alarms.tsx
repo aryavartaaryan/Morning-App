@@ -30,6 +30,7 @@ import { Colors, Spacing, Radius, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import { SOUND_IMAGES as ALARM_SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
@@ -146,15 +147,15 @@ const MANTRAS = [
     id: 'bhagya_suktam', label: 'Bhagya Suktam', emoji: '🌟', color: '#fde68a',
     hint: 'ॐ श्री सूक्तम्', pitch: 0.80, rate: 0.65,
     text: 'Om Hiranyavarnaam Harineem Suvarna Rajata Srajaam. Chandraam Hiranmayeem Lakshmeem Jaatavedo Ma Aavaha.',
-    audioUrl: '',
-    bundledSrc: require('../assets/sounds/bhagya-suktam.m4a'),
+    audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a',
+    bundledSrc: null as any,
   },
   {
     id: 'shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd',
     hint: 'ॐ यज्जाग्रतो', pitch: 0.78, rate: 0.62,
     text: 'Yaj Jaagrato Dooaram Udaiti Daivam. Tad U Suptasya Tathaivati. Tan Me Manah Shiva Sankalpam Astu.',
-    audioUrl: '',
-    bundledSrc: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
+    audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a',
+    bundledSrc: null as any,
   },
 ];
 
@@ -333,10 +334,12 @@ function AlarmSoundPickerModal({
   const [previewId, setPreviewId] = useState<string | null>(null);
   const soundRef = useRef<any>(null);
   const CARD_SIZE = (width - 52) / 3;
+  const { stopSound: stopGlobalPlayer } = useSoundPlayer();
 
   const stopPreview = async () => {
     try {
       if (soundRef.current) {
+        soundRef.current.setOnPlaybackStatusUpdate(null);
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
@@ -346,7 +349,9 @@ function AlarmSoundPickerModal({
   };
 
   useEffect(() => {
+    // Stop preview when modal closes
     if (!visible) { stopPreview(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const handleCardTap = async (ws: (typeof WAKE_SOUNDS)[number]) => {
@@ -354,17 +359,65 @@ function AlarmSoundPickerModal({
     onSelect(ws.id);
     if (previewId === ws.id) { await stopPreview(); return; }
     await stopPreview();
-    const source = ws.bundledAsset ?? (ws.audioUrl ? { uri: ws.audioUrl } : null);
-    if (!source) return;
+
+    // Stop any globally playing reel/sleep sound so our preview gets Audio Focus
+    stopGlobalPlayer(false).catch(() => {});
+    // Also stop any background mantra playing in the global scope
     try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false });
+      const bg = (global as any).__alarmSound;
+      if (bg) { await bg.stopAsync().catch(() => {}); }
+      const ms = (global as any).__missionBgSound;
+      if (ms) { await ms.stopAsync().catch(() => {}); }
+    } catch {}
+
+    // Prefer the locally downloaded file (instant, offline) over the network URI.
+    // If not downloaded yet, fall back to the network URL.
+    let source: any = ws.bundledAsset ?? null;
+    if (!source) {
+      try {
+        const localPath = getLocalMantraPath(ws.id);
+        const info = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+        if ((info as any).exists) {
+          source = { uri: `file://${localPath}` };
+        }
+      } catch {}
+    }
+    if (!source && ws.audioUrl) {
+      source = { uri: ws.audioUrl };
+    }
+    if (!source) return;
+
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        staysActiveInBackground: false,
+      });
       const { sound } = await Audio.Sound.createAsync(source, { shouldPlay: true, volume: 1.0, isLooping: false });
       soundRef.current = sound;
       setPreviewId(ws.id);
       sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.isLoaded && status.didJustFinish) { soundRef.current = null; setPreviewId(null); }
+        if (status.isLoaded && status.didJustFinish) {
+          soundRef.current = null;
+          setPreviewId(null);
+        }
       });
-    } catch {}
+    } catch (e) {
+      // Retry with network URL if local file failed
+      if (ws.audioUrl && source?.uri !== ws.audioUrl) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: ws.audioUrl },
+            { shouldPlay: true, volume: 1.0, isLooping: false },
+          );
+          soundRef.current = sound;
+          setPreviewId(ws.id);
+          sound.setOnPlaybackStatusUpdate((status: any) => {
+            if (status.isLoaded && status.didJustFinish) { soundRef.current = null; setPreviewId(null); }
+          });
+        } catch {}
+      }
+    }
   };
 
   const handleClose = async () => { await stopPreview(); onClose(); };
@@ -1066,8 +1119,50 @@ export default function AlarmsScreen() {
     const upd = { ...settings, selectedMantraId: id };
     setSettings(upd);
     store.setJSON(KEYS.alarmSettings, upd);
-    syncNativeWakeAlarmSound(id).catch(() => {});
     updateMission({ wakeSound: id });
+
+    // \u2500\u2500 Permanent sound fix \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // Most WAKE_SOUNDS only have audioUrl (network streams). syncNativeWakeAlarmSound
+    // returns a null path for any sound that isn't already a local file, causing
+    // AlarmSoundService to fall back to the raw beep. Fix: download the sound to
+    // the permanent mantras/ directory NOW (at selection time), then sync the path.
+    // This guarantees the native MediaPlayer always has a valid absolute file path.
+    (async () => {
+      try {
+        // If the sound has a bundled asset, expo-asset handles it \u2014 just sync.
+        if (ws.bundledAsset || ws.bundledKey) {
+          await syncNativeWakeAlarmSound(id);
+          return;
+        }
+        // Check if already downloaded
+        const localPath = getLocalMantraPath(id);
+        const info = await FileSystem.getInfoAsync(localPath).catch(() => ({ exists: false }));
+        if ((info as any).exists) {
+          // Already on disk \u2014 sync the path directly
+          await syncNativeWakeAlarmSound(id);
+          return;
+        }
+        // Not downloaded yet: download from audioUrl to permanent mantras/ dir
+        if (ws.audioUrl) {
+          setDlStatus(s => ({ ...s, [id]: 'downloading' }));
+          setDlProgress(s => ({ ...s, [id]: 0 }));
+          const result = await downloadMantra(id, ws.audioUrl, (p) =>
+            setDlProgress(s => ({ ...s, [id]: p }))
+          );
+          setDlStatus(s => ({ ...s, [id]: result ? 'downloaded' : 'idle' }));
+          if (result) {
+            // Re-sync now that the file exists locally
+            await syncNativeWakeAlarmSound(id);
+          }
+        } else {
+          // No URL and no bundled asset \u2014 best-effort sync (may still return null)
+          await syncNativeWakeAlarmSound(id);
+        }
+      } catch {
+        // Non-critical: fall back to best-effort sync
+        syncNativeWakeAlarmSound(id).catch(() => {});
+      }
+    })();
   };
 
   const stopSleepSound = async () => {

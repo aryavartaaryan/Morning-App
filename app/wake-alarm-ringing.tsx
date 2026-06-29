@@ -74,6 +74,7 @@ export default function WakeAlarmRingingScreen() {
   const router = useRouter();
 
   // ── Resolve sound from stored alarm settings ──────────────────────────────
+  const [isLoaded, setIsLoaded] = useState(false);
   const [soundId, setSoundId] = useState('morning_birds');
   const [ms, setMs] = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [userName, setUserName] = useState('Champion');
@@ -105,6 +106,7 @@ export default function WakeAlarmRingingScreen() {
         const dosha = await store.getJSON<{ name?: string }>(KEYS.dosha);
         setUserName(dosha?.name ?? 'Champion');
       } catch { /* ignore */ }
+      finally { setIsLoaded(true); }
     })();
   }, []);
 
@@ -286,49 +288,35 @@ export default function WakeAlarmRingingScreen() {
   const kala = getKalaMessage(hour);
 
   // ── Begin Your Day (mission start) ────────────────────────────────────────
-  const handleBeginMission = async () => {
+  const handleBeginMission = () => {
+    // Guard against double-tap
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
     setDismissed(true);
 
-    // ── ROOT-CAUSE FIX (Bug 1 & Mission-sluggish) ───────────────────────────
-    // MUST stop the native AlarmSoundService FIRST, BEFORE navigating.
-    //
-    // The service runs a 200ms polling watchdog (bringToFrontRunnable) that
-    // calls launchApp() whenever alarm_fired_pending=true and the app is not
-    // in foreground. During router.replace('/mission'), the Activity briefly
-    // pauses (mainActivityResumed=false). The watchdog fires immediately and
-    // re-launches solrize://wake-alarm-ringing, snapping the user back and
-    // making "Begin Your Day" feel stuck — especially on 2nd+ alarms where
-    // alarmScreenLaunched is reset to false by onStartCommand.
-    //
-    // stopNativeAlarmSound() calls SharedPrefs.edit().putBoolean(false).commit()
-    // (synchronous write) which makes isAlarmActive() return false instantly.
-    // The watchdog halts. mission.tsx starts its own FGS to keep the JVM alive.
-    // This also eliminates the 200ms polling overhead that was slowing down
-    // Gratitude typing and Mantra timer inside the mission screen.
-    try { await stopNativeAlarmSound(); } catch {}
-
-    // Stop habit alarm and vibration
-    try { await NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.(); } catch {}
-    stopAlarmVibration().catch(() => {});
-
-    // Exit screen pinning now — mission screen does not need Lock Task.
-    stopNativeLockTask().catch(() => {});
-
-    // Mark alarm as handled
-    await AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
-    await AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
-
-    // Cancel foreground service + bttf notifications
-    notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
-    notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
-    notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
-    notifee.cancelNotification('alarm-bttf').catch(() => {});
-
+    // Fire haptic FIRST so the button feels instantly responsive
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Navigate INSTANTLY — do NOT await anything before this.
+    // All cleanup runs fire-and-forget in the background.
+    // The native launchApp() fix ensures the watchdog will NOT re-launch
+    // wake-alarm-ringing mid-navigation (REORDER_TO_FRONT, not deep-link).
     router.replace(`/mission?id=${mission.id}` as never);
+
+    // Background cleanup — none of these block navigation
+    void stopAlarmVibration().catch(() => {});
+    void stopNativeLockTask().catch(() => {});
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+    void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
+    void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
+    void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
+    void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
+    void notifee.cancelNotification('alarm-bttf').catch(() => {});
   };
+
+  if (!isLoaded) {
+    return <View style={{ flex: 1, backgroundColor: '#060610' }} />;
+  }
 
   return (
     <ImageBackground

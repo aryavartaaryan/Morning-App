@@ -571,10 +571,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   // Seek all active mix sounds to a given position in milliseconds.
   // Also updates positionMsRef so the UI reflects the new position immediately.
   const seekTo = useCallback(async (positionMs: number): Promise<void> => {
+    if (!isFinite(positionMs) || positionMs < 0) return;
     positionMsRef.current = positionMs;
     const sounds = Array.from(mixRefs.current.values());
     await Promise.allSettled(
-      sounds.map(snd => snd.setPositionAsync(positionMs).catch(() => {}))
+      sounds.map(async (snd) => {
+        try {
+          const status = await snd.getStatusAsync();
+          if (status.isLoaded) await snd.setPositionAsync(positionMs);
+        } catch {}
+      })
     );
   }, []);
 

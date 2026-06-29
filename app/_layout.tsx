@@ -18,7 +18,7 @@ import { store, KEYS } from '@/lib/storage';
 
 import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, syncNativeWakeAlarmSound, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,6 +26,7 @@ import * as Location from 'expo-location';
 import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DATA_TYPE } from '@/lib/nativeReminders';
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
+import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
 import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
 import { BgProvider } from '@/lib/bgContext';
 import { MoodSheet } from '@/components/MoodSheet';
@@ -167,43 +168,93 @@ const SS = StyleSheet.create({
 });
 
 // ─── Download progress screen (first-install gate) ─────────────────────────
-// Only shows a clean progress ring — NO Nada logo, NO tagline.
-// This screen is shown ONLY on first install while BG images are downloading.
 function DownloadScreen({ progress, label }: { progress: number; label: string }) {
-  const fadeIn = useRef(new Animated.Value(1)).current;
+  const pulseAnim  = useRef(new Animated.Value(0.75)).current;
+  const glowAnim   = useRef(new Animated.Value(0.45)).current;
+  const shimmerAnim = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim,  { toValue: 1.06, duration: 1700, useNativeDriver: true }),
+        Animated.timing(pulseAnim,  { toValue: 0.75, duration: 1700, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim,   { toValue: 0.90, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowAnim,   { toValue: 0.45, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1.0, duration: 2400, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.5, duration: 2400, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   const pct    = Math.round(Math.min(progress, 1) * 100);
-  const R      = 58;
-  const STRKW  = 6;
+  const R      = 92;
+  const STRKW  = 11;
+  const svgSize = 228;
+  const cx     = svgSize / 2;
   const circ   = 2 * Math.PI * R;
   const offset = circ * (1 - Math.min(progress, 1));
 
   return (
-    <Animated.View pointerEvents="none" style={[DS.screen, { opacity: fadeIn }]}>
-      <LinearGradient colors={['#04030F', '#0C0820', '#04030F']} style={StyleSheet.absoluteFillObject} />
+    <Animated.View pointerEvents="none" style={DS.screen}>
+      <LinearGradient colors={['#06041A', '#0D0921', '#030210']} style={StyleSheet.absoluteFillObject} />
+
       <View style={DS.center}>
-        {/* Ring only — pct inside */}
+        {/* App name */}
+        <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NADA</Animated.Text>
+        <Text style={DS.subTagline}>नाद · Your Morning Companion</Text>
+
+        {/* Ring */}
         <View style={DS.ringWrap}>
-          <Svg width={138} height={138} viewBox="0 0 138 138">
-            <Circle cx={69} cy={69} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={STRKW} fill="none" />
+          {/* Layered glow orbs */}
+          <Animated.View style={[DS.glowOuter, { opacity: glowAnim, transform: [{ scale: pulseAnim }] }]} />
+          <Animated.View style={[DS.glowInner, { opacity: shimmerAnim }]} />
+
+          <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+            <Defs>
+              <SvgLinearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%"   stopColor="#F5C518" stopOpacity="1" />
+                <Stop offset="55%"  stopColor="#F5820A" stopOpacity="1" />
+                <Stop offset="100%" stopColor="#FF4D0D" stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
+            {/* Outer decorative ring */}
+            <Circle cx={cx} cy={cx} r={R + 18} stroke="rgba(245,197,24,0.06)" strokeWidth={1} fill="none" />
+            {/* Inner decorative ring */}
+            <Circle cx={cx} cy={cx} r={R - 18} stroke="rgba(245,130,10,0.09)" strokeWidth={1} fill="none" />
+            {/* Track */}
+            <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.07)" strokeWidth={STRKW} fill="none" />
+            {/* Progress arc */}
             <Circle
-              cx={69} cy={69} r={R}
-              stroke="#F5820A"
+              cx={cx} cy={cx} r={R}
+              stroke="url(#arcGrad)"
               strokeWidth={STRKW}
               fill="none"
               strokeDasharray={`${circ}`}
               strokeDashoffset={`${offset}`}
               strokeLinecap="round"
               rotation={-90}
-              origin="69, 69"
+              origin={`${cx}, ${cx}`}
             />
           </Svg>
+
+          {/* Pct overlay */}
           <View style={DS.pctWrap}>
             <Text style={DS.pctNum}>{pct}</Text>
             <Text style={DS.pctSign}>%</Text>
           </View>
         </View>
+
+        {/* Status */}
         <Text style={DS.statusLabel}>{label}</Text>
+        <Text style={DS.setupHint}>First-time setup · takes about 30 sec</Text>
       </View>
     </Animated.View>
   );
@@ -211,12 +262,17 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
 
 const DS = StyleSheet.create({
   screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
-  center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
-  ringWrap:    { width: 138, height: 138, alignItems: 'center', justifyContent: 'center' },
+  center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  appName:     { fontSize: 40, fontFamily: 'Nunito_900Black', color: '#F5C518', letterSpacing: 10, marginBottom: 6 },
+  subTagline:  { fontSize: 11, color: 'rgba(245,197,24,0.45)', fontFamily: 'Nunito_400Regular', letterSpacing: 2, marginBottom: 36 },
+  ringWrap:    { width: 228, height: 228, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
+  glowOuter:   { position: 'absolute', width: 196, height: 196, borderRadius: 98, backgroundColor: '#F5820A', opacity: 0.07 },
+  glowInner:   { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: '#F5C518', opacity: 0.05 },
   pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
-  pctNum:      { fontSize: 32, color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
-  pctSign:     { fontSize: 14, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 4, marginLeft: 1 },
-  statusLabel: { fontSize: 12, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5 },
+  pctNum:      { fontSize: 54, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -1 },
+  pctSign:     { fontSize: 18, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 9, marginLeft: 2 },
+  statusLabel: { fontSize: 13, color: 'rgba(255,255,255,0.60)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 },
+  setupHint:   { fontSize: 10, color: 'rgba(255,255,255,0.22)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.3, marginTop: 8 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
@@ -898,6 +954,8 @@ export default function RootLayout() {
       try {
         // Alarm images — high priority, fire at any time
         prefetchCriticalAlarmImages().catch(() => {});
+        // Pre-download CDN alarm sounds for offline native alarm playback
+        ensureAllMantrasDownloaded().catch(() => {});
 
         // Fast disk-scan — no downloads, just file-existence checks (~10 ms)
         await bgWarmup;
@@ -914,7 +972,7 @@ export default function RootLayout() {
         // can return exists:false even for files that ARE on disk, causing the
         // download screen to appear on every open. The AsyncStorage flag is set
         // once after the first successful download and survives app restarts.
-        const SETUP_DONE_KEY = 'arise_bg_setup_done_v1';
+        const SETUP_DONE_KEY = 'arise_bg_setup_done_v2';
         const setupFlagRaw = await AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null);
         const setupDone    = !!setupFlagRaw;
         const splashOnDisk = isSplashCached();

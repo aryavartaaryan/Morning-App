@@ -226,7 +226,41 @@ export async function setNativeAlarmSoundPath(path: string): Promise<void> {
 export async function syncNativeWakeAlarmSound(soundId: string): Promise<void> {
   if (Platform.OS !== 'android') return;
   await setNativeAlarmSound(soundId);
-  const nativePath = await resolveNativeWakeAlarmSoundPath(soundId);
+
+  // Try resolving a local file path (expo-asset or already-downloaded mantras/ file)
+  let nativePath = await resolveNativeWakeAlarmSoundPath(soundId);
+
+  // If no local file found, try downloading from WAKE_SOUNDS.audioUrl.
+  // This handles: first-time selection of non-bundled sounds, stale expo-asset paths
+  // after APK updates, and cache evictions between schedule time and alarm fire time.
+  if (!nativePath) {
+    try {
+      const { WAKE_SOUNDS } = await import('./missionAlarm');
+      const { downloadMantra, getLocalMantraPath } = await import('./mantraDownload');
+      const FileSystem = await import('expo-file-system/legacy');
+
+      const ws = WAKE_SOUNDS.find((s: any) => s.id === soundId);
+      if (ws?.audioUrl) {
+        const localPath = getLocalMantraPath(soundId);
+        // Check if already on disk (might have been downloaded by alarms.tsx)
+        const info = await (FileSystem as any).getInfoAsync(localPath).catch(() => ({ exists: false }));
+        if ((info as any).exists) {
+          nativePath = `file://${localPath}`;
+        } else {
+          // Download to permanent mantras/ directory
+          console.log(`[NativeAlarm] Downloading alarm sound: ${soundId}`);
+          const result = await downloadMantra(soundId, ws.audioUrl);
+          if (result) {
+            nativePath = `file://${localPath}`;
+            console.log(`[NativeAlarm] ✅ Downloaded alarm sound: ${soundId}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[NativeAlarm] Could not auto-download alarm sound:', e);
+    }
+  }
+
   await setNativeAlarmSoundPath(nativePath ?? '');
 }
 

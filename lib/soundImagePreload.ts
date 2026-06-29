@@ -6,7 +6,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { SOUND_IMAGES, ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 
-const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache-v2/';
+const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache-v3/';
 
 // In-memory map: remote URL → local file URI (populated during prefetch/cache-hit)
 const LOCAL_URI_MAP: Record<string, string> = {};

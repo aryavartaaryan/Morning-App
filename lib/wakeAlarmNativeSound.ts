@@ -5,10 +5,7 @@ import { getLocalMantraPath } from './mantraDownload';
 
 const { Asset } = require('expo-asset') as typeof import('expo-asset');
 
-const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
-  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.m4a'),
-  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
-};
+const BUNDLED_MANTRA_ASSETS: Record<string, any> = {}; // CDN sounds — no longer bundled locally
 
 const WAKE_SOUND_ALIASES: Record<string, string> = {
   shivtandav: 'shiv_tandav',
@@ -56,7 +53,9 @@ export async function resolveNativeWakeAlarmSoundPath(id: string): Promise<strin
   const wakeSound = WAKE_SOUNDS.find(s => s.id === normalizedId) ?? WAKE_SOUNDS.find(s => s.id === id);
   const bundledAsset = sleepSound?.src ?? wakeSound?.bundledAsset ?? BUNDLED_MANTRA_ASSETS[id] ?? BUNDLED_MANTRA_ASSETS[normalizedId];
 
-  if (bundledAsset) {
+  // Skip expo-asset resolution for CDN URI objects — they need to be pre-downloaded via mantraDownload
+  const isCdnUri = bundledAsset && typeof bundledAsset === 'object' && typeof bundledAsset.uri === 'string' && bundledAsset.uri.startsWith('http');
+  if (bundledAsset && !isCdnUri) {
     const path = await getAssetFilePath(bundledAsset);
     if (path) return path;
   }

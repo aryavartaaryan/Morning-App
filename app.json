@@ -130,7 +130,9 @@
             "minSdkVersion": 26,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "extraProguardRules": "-keep class app.notifee.** { *; }\n-keep class com.solrize.** { *; }"
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class app.notifee.** { *; }\n-keep class com.solrize.** { *; }\n-keep class expo.modules.** { *; }\n-keep class com.google.firebase.** { *; }\n-keep class com.google.android.gms.** { *; }\n-dontwarn com.google.firebase.**\n-dontwarn javax.annotation.**"
           },
           "ios": {
             "deploymentTarget": "15.1"

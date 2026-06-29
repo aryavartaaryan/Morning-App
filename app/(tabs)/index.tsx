@@ -3363,8 +3363,8 @@ const ZEN_SOUNDS: PlayableSoundMeta[] = [
   { id: 'flowing_water',    label: 'Flowing Water',    emoji: '💧', color: '#67e8f9', top: '#0A1E28', bot: '#050F14', cat: 'Nature',  desc: 'Stream over stones',                src: require('../../assets/sounds/mixkit-water-flowing-ambience-loop-3126.m4a') },
   { id: 'gentle_wind',      label: 'Gentle Wind',      emoji: '🌬️', color: '#a3e635', top: '#141808', bot: '#0A0F05', cat: 'Nature',  desc: 'Open meadow breeze',               src: require('../../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
   { id: 'jungle_rain',      label: 'Jungle Rain',      emoji: '🦜', color: '#34d399', top: '#0A2418', bot: '#05100A', cat: 'Nature',  desc: 'Rain with tropical birds',          src: require('../../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a') },
-  { id: 'stotra_bhagya',    label: 'Bhagya Suktam',   emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Stotra', desc: 'Vedic hymn for prosperity',         src: require('../../assets/sounds/bhagya-suktam.m4a') },
-  { id: 'stotra_shiv',      label: 'Shiv Sankalpa',   emoji: '🕉️', color: '#93c5fd', top: '#140A1A', bot: '#0A050F', cat: 'Stotra', desc: 'Vedic prayer for pure mind',        src: require('../../assets/sounds/shiv-sankalpa-suktam.m4a') },
+  { id: 'stotra_bhagya',    label: 'Bhagya Suktam',   emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Stotra', desc: 'Vedic hymn for prosperity',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' } },
+  { id: 'stotra_shiv',      label: 'Shiv Sankalpa',   emoji: '🕉️', color: '#93c5fd', top: '#140A1A', bot: '#0A050F', cat: 'Stotra', desc: 'Vedic prayer for pure mind',        src: { uri: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' } },
   { id: 'mantra_gayatri',   label: 'Gayatri Mantra',  emoji: '🌞', color: '#fbbf24', top: '#1A1000', bot: '#0A0800', cat: 'Mantra', desc: 'Universal prayer of light',         src: { uri: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' } },
   { id: 'mantra_lalitha',   label: 'Lalitha Sahasra', emoji: '🌺', color: '#f472b6', top: '#1A0010', bot: '#0A0008', cat: 'Stotra', desc: 'Thousand names of the divine',      src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' } },
   { id: 'mantra_shivtandav',label: 'Shiv Tandav',     emoji: '🔱', color: '#60a5fa', top: '#100A1A', bot: '#08050A', cat: 'Mantra', desc: 'Cosmic dance of Shiva',             src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' } },
@@ -6525,24 +6525,20 @@ export default function DailyTab() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={{ flex: 1 }}>
-
-                {/* Ring — takes all remaining vertical space, slightly shifted up for balance */}
-                <View style={{ flex: 1, paddingVertical: 14, paddingBottom: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
-                </View>
-
-                {/* Buttons + signal — pinned to bottom */}
-                <View style={{ paddingTop: 6, paddingBottom: insets.bottom + 180 + (soundPlayingId ? 72 : 0) }}>
-                  <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50, marginTop: 0, marginBottom: 0 }}>
-                    <SleepSoundsButton
-                      period={currentPeriod}
-                      brahmaStatus={brahmaInfo?.status ?? null}
-                    />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 + (soundPlayingId ? 72 : 0) }}>
+                  <View style={{ paddingTop: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
                   </View>
-                  {/* HomeSignalCycler removed — body rhythm signal now cycles inside the hero ring */}
+
+                  <View style={{ marginTop: 24, alignItems: 'center', width: '100%' }}>
+                    <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50 }}>
+                      <SleepSoundsButton
+                        period={currentPeriod}
+                        brahmaStatus={brahmaInfo?.status ?? null}
+                      />
+                    </View>
+                  </View>
                 </View>
-              </View>
             )}
         </View>
       </SafeAreaView>

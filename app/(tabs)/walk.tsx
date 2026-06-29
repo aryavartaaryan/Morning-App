@@ -52,7 +52,7 @@ const BORDER   = 'rgba(255,255,255,0.10)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SIZE   = Math.min(W - 64, 240);
-const RING_STROKE = 12;
+const RING_STROKE = 4;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
@@ -386,71 +386,72 @@ export default function WalkTab() {
         </Animated.View>
 
         {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
-        <Animated.View
-          style={[st.ringWrapper, { opacity: cardFade, transform: [{ scale: pulseAnim }] }]}
-        >
-          {/* Outer glow ring */}
-          <LinearGradient
-            colors={[ACCENT + '30', 'transparent']}
-            style={{
-              position: 'absolute',
-              width: RING_SIZE + 40,
-              height: RING_SIZE + 40,
-              borderRadius: (RING_SIZE + 40) / 2,
-              top: -20, left: -20,
-            }}
-          />
+        <Animated.View style={[st.ringWrapper, { opacity: cardFade }]}>
+          {/* Inner container — exact ring dimensions; auras overflow via absolute negative offsets */}
+          <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
-          {/* SVG ring */}
-          <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
-            <Defs>
-              <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0"   stopColor={ACCENT}  stopOpacity="1" />
-                <Stop offset="0.5" stopColor="#EC4899" stopOpacity="1" />
-                <Stop offset="1"   stopColor={TEAL}    stopOpacity="1" />
-              </SvgGrad>
-            </Defs>
-            {/* Track */}
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={R_OUTER}
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth={RING_STROKE}
-              fill="none"
-            />
-          {/* Progress arc — driven by ringDashOffset state (listener-based, no createAnimatedComponent) */}
-          <Circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={R_OUTER}
-            stroke="url(#ringGrad)"
-            strokeWidth={RING_STROKE}
-            strokeLinecap="round"
-            fill="none"
-            strokeDasharray={CIRCUMF}
-            strokeDashoffset={ringDashOffset}
-          />
-          </Svg>
+            {/* === 5-layer pulsing aura (breathing glow around ring) === */}
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 32, height: RING_SIZE + 32, borderRadius: (RING_SIZE + 32) / 2, backgroundColor: 'rgba(167,139,250,0.025)', transform: [{ scale: pulseAnim }], top: -16, left: -16 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 22, height: RING_SIZE + 22, borderRadius: (RING_SIZE + 22) / 2, backgroundColor: 'rgba(167,139,250,0.05)', transform: [{ scale: pulseAnim }], top: -11, left: -11 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 14, height: RING_SIZE + 14, borderRadius: (RING_SIZE + 14) / 2, backgroundColor: 'rgba(167,139,250,0.10)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 7, height: RING_SIZE + 7, borderRadius: (RING_SIZE + 7) / 2, backgroundColor: 'rgba(167,139,250,0.17)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 2, height: RING_SIZE + 2, borderRadius: (RING_SIZE + 2) / 2, backgroundColor: 'rgba(167,139,250,0.22)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
 
-          {/* Centre text */}
-          <View style={st.ringCentre}>
-            <Text style={st.ringIcon}>👣</Text>
-            <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
-            <Text style={st.ringLabel}>STEPS TODAY</Text>
-            <View style={st.ringDivider} />
-            <View style={st.ringBreakRow}>
-              <View style={st.ringBreakItem}>
-                <Text style={st.ringBreakNum}>{fmtK(stats.autoSteps)}</Text>
-                <Text style={st.ringBreakLbl}>Ambient</Text>
+            {/* Inner zone — glassy violet moonlit disk */}
+            <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2, backgroundColor: 'rgba(167,139,250,0.07)', overflow: 'hidden' }}>
+              <LinearGradient
+                colors={['rgba(167,139,250,0.14)', 'rgba(45,212,191,0.05)', 'transparent', 'rgba(167,139,250,0.04)']}
+                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </View>
+
+            {/* SVG ring — 4-layer glow stroke */}
+            <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
+              <Defs>
+                <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0"   stopColor={ACCENT}  stopOpacity="1" />
+                  <Stop offset="0.5" stopColor="#EC4899" stopOpacity="1" />
+                  <Stop offset="1"   stopColor={TEAL}    stopOpacity="1" />
+                </SvgGrad>
+              </Defs>
+              {/* Track */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(167,139,250,0.13)" strokeWidth={RING_STROKE} />
+              {/* Wide outer glow */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ACCENT} strokeWidth={RING_STROKE + 14} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.16} />
+              {/* Mid halo */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#C4B5FD" strokeWidth={RING_STROKE + 7} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.32} />
+              {/* Main crisp arc */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#ringGrad)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={1} />
+              {/* Inner sliver highlight */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#E9D5FF" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.45} />
+            </Svg>
+
+            {/* Centre content */}
+            <View style={st.ringCentre}>
+              {/* Sub-pill badge */}
+              <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 0.8, borderColor: 'rgba(167,139,250,0.60)', marginBottom: 8 }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fff', letterSpacing: 1.4 }}>👣  STEPS TODAY  ·  {trackEnabled ? 'ACTIVE' : 'ENABLE'}</Text>
               </View>
-              <Text style={st.ringPlus}>+</Text>
-              <View style={st.ringBreakItem}>
-                <Text style={st.ringBreakNum}>{fmtK(stats.manualSteps)}</Text>
-                <Text style={st.ringBreakLbl}>🏃 Sessions</Text>
+              <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
+              <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
+              <View style={st.ringDivider} />
+              <View style={st.ringBreakRow}>
+                <View style={st.ringBreakItem}>
+                  <Text style={st.ringBreakNum}>{fmtK(stats.autoSteps)}</Text>
+                  <Text style={st.ringBreakLbl}>Ambient</Text>
+                </View>
+                <Text style={st.ringPlus}>+</Text>
+                <View style={st.ringBreakItem}>
+                  <Text style={st.ringBreakNum}>{fmtK(stats.manualSteps)}</Text>
+                  <Text style={st.ringBreakLbl}>🏃 Sessions</Text>
+                </View>
+              </View>
+              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '55', marginTop: 4 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: ACCENT, letterSpacing: 0.3 }}>{stats.goalPercent}% complete</Text>
               </View>
             </View>
-            <Text style={[st.ringGoal, { color: ACCENT }]}>{stats.goalPercent}% of {fmtK(stats.goalSteps)}</Text>
+
           </View>
         </Animated.View>
 
@@ -868,15 +869,18 @@ const st = StyleSheet.create({
   },
   ringCentre: {
     position: 'absolute',
+    top: 0, left: 0,
+    width: RING_SIZE,
+    height: RING_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    width: RING_SIZE - RING_STROKE * 2 - 16,
+    paddingHorizontal: 24,
   },
   ringIcon:      { fontSize: 20, marginBottom: 2 },
-  ringSteps:     { fontSize: 34, fontWeight: '900', color: '#fff', letterSpacing: -1 },
-  ringLabel:     { fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: '700', letterSpacing: 1.5, marginTop: -2 },
+  ringSteps:     { fontSize: 34, fontWeight: '900', color: '#fff', letterSpacing: -1, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 },
+  ringLabel:     { fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: '700', letterSpacing: 1.5, marginTop: -2 },
   ringGoal:      { fontSize: 11, fontWeight: '700', marginTop: 2 },
-  ringDivider:   { width: 52, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 7 },
+  ringDivider:   { width: 52, height: 1, backgroundColor: 'rgba(167,139,250,0.35)', marginVertical: 7 },
   ringBreakRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 3 },
   ringBreakItem: { alignItems: 'center', minWidth: 50 },
   ringBreakNum:  { fontSize: 17, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },

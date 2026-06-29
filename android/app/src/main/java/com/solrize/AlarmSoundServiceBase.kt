@@ -344,25 +344,33 @@ abstract class AlarmSoundServiceBase : Service() {
     /**
      * Bring the alarm screen to the foreground.
      *
-     * FIRST call  → deep-link Intent so Expo Router navigates to the correct
-     *               alarm screen (e.g. /alarm-ringing or /habit-alarm-ringing).
-     * SUBSEQUENT  → plain MainActivity Intent with REORDER_TO_FRONT so the OS
-     *               does NOT re-process the deep-link and re-mount the screen.
+     * FIRST call  → fires buildFullScreenPendingIntent() which deep-links to the
+     *               alarm screen (wake-alarm-ringing / habit-alarm-ringing).
+     * SUBSEQUENT  → fires a separate PendingIntent targeting MainActivity with
+     *               REORDER_TO_FRONT — brings whatever screen is already on top
+     *               back to front WITHOUT re-routing via the deep-link URI.
+     *
+     * The previous implementation sent buildFullScreenPendingIntent() on ALL
+     * calls (the alarmScreenLaunched flag only changed the local `launch` var
+     * but was immediately overridden by the outer `if (alarmScreenLaunched)` check).
+     * This caused the watchdog to re-launch wake-alarm-ringing mid-navigation when
+     * the user was transitioning to the mission screen — the root cause of "Begin
+     * Your Day" being stuck on 2nd+ alarms and mission screen freezing.
      */
     protected fun launchApp() {
         try {
             markAlarmActive()
-            val launch = if (!alarmScreenLaunched) {
+            if (!alarmScreenLaunched) {
+                // First call: deep-link to the alarm screen
                 alarmScreenLaunched = true
-                Intent(Intent.ACTION_VIEW, buildDeepLinkUri()).apply {
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    )
-                }
+                buildFullScreenPendingIntent().send()
             } else {
-                Intent(applicationContext, MainActivity::class.java).apply {
+                // Subsequent calls: just bring MainActivity to front without re-routing.
+                // Using a direct PendingIntent to MainActivity bypasses the deep-link URI
+                // so Expo Router does NOT navigate to wake-alarm-ringing again.
+                // On Android 12+, startActivity() from a background service is blocked;
+                // wrapping in PendingIntent.getActivity().send() bypasses BAL restrictions.
+                val reorderIntent = Intent(applicationContext, MainActivity::class.java).apply {
                     addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
@@ -370,21 +378,18 @@ abstract class AlarmSoundServiceBase : Service() {
                         Intent.FLAG_ACTIVITY_NO_ANIMATION
                     )
                 }
-            }
-            
-            // FIX: On Android 12+, background activity launches are strictly blocked 
-            // even from foreground services. Sending the full-screen PendingIntent 
-            // is the only guaranteed way to bypass BAL restrictions when the 
-            // watchdogs detect the user has escaped to the home screen.
-            try {
-                if (alarmScreenLaunched) {
-                    // Try the PendingIntent first for subsequent launches to guarantee BAL bypass
-                    buildFullScreenPendingIntent().send()
-                } else {
-                    startActivity(launch)
+                val pi = PendingIntent.getActivity(
+                    applicationContext,
+                    getNotifId() + 100,
+                    reorderIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                try {
+                    pi.send()
+                } catch (e: Exception) {
+                    // Fallback: direct startActivity (may be blocked on Android 12+ from bg)
+                    try { startActivity(reorderIntent) } catch (_: Exception) { e.printStackTrace() }
                 }
-            } catch (e: Exception) {
-                startActivity(launch)
             }
         } catch (e: Exception) {
             e.printStackTrace()

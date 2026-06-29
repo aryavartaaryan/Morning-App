@@ -28,6 +28,7 @@ export type AlarmSoundItem = {
   emoji: string;
   cat: string;
   color: string;
+  audioUrl?: string | null;
 };
 
 type Props = {
@@ -42,6 +43,9 @@ type Props = {
   cardWidth: number;
   catScrollStyle?: ViewStyle;
   gridStyle?: ViewStyle;
+  dlStatus?: Record<string, 'idle' | 'downloading' | 'downloaded'>;
+  dlProgress?: Record<string, number>;
+  previewLoadingId?: string | null;
 };
 
 const CARD_W = 106;
@@ -50,7 +54,7 @@ const CARD_H = 108;
 export default function SoundPicker({
   sounds, cats,
   selectedId, onSelect, previewingId, onTogglePreview,
-  catScrollStyle,
+  catScrollStyle, dlStatus, dlProgress, previewLoadingId,
 }: Props) {
   const pH = (catScrollStyle as any)?.paddingHorizontal ?? 20;
 
@@ -101,6 +105,7 @@ export default function SoundPicker({
               {catSounds.map(snd => {
                 const active = selectedId === snd.id;
                 const previewing = previewingId === snd.id;
+                const loadingPreview = previewLoadingId === snd.id;
                 const imgSrc = snd.id === 'lalitha'
                   ? LALITHA_IMG
                   : (SOUND_IMAGES[snd.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[snd.id]) } : undefined);
@@ -133,15 +138,15 @@ export default function SoundPicker({
                             onPress={e => { e.stopPropagation?.(); onTogglePreview(snd); }}
                             style={{
                               width: 26, height: 26, borderRadius: 13,
-                              backgroundColor: previewing ? '#10b98140' : 'rgba(0,0,0,0.55)',
+                              backgroundColor: loadingPreview ? '#fbbf2440' : previewing ? '#10b98140' : 'rgba(0,0,0,0.55)',
                               borderWidth: 1,
-                              borderColor: previewing ? '#10b98180' : 'rgba(255,255,255,0.18)',
+                              borderColor: loadingPreview ? '#fbbf2480' : previewing ? '#10b98180' : 'rgba(255,255,255,0.18)',
                               alignItems: 'center', justifyContent: 'center',
                             }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Text style={{ fontSize: 8, color: previewing ? '#10b981' : '#FFFFFFCC' }}>
-                              {previewing ? '■' : '▶'}
+                            <Text style={{ fontSize: loadingPreview ? 7 : 8, color: loadingPreview ? '#fbbf24' : previewing ? '#10b981' : '#FFFFFFCC' }}>
+                              {loadingPreview ? '…' : previewing ? '■' : '▶'}
                             </Text>
                           </TouchableOpacity>
                           <Text style={{ fontSize: 16 }}>{snd.emoji}</Text>
@@ -153,7 +158,19 @@ export default function SoundPicker({
                           >
                             {snd.label}
                           </Text>
-                          {active ? (
+                          {loadingPreview ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#fbbf24' }} />
+                              <Text style={{ fontSize: 7, color: '#fbbf24', fontWeight: '900', letterSpacing: 0.3 }}>LOADING…</Text>
+                            </View>
+                          ) : dlStatus?.[snd.id] === 'downloading' ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#fbbf24' }} />
+                              <Text style={{ fontSize: 7, color: '#fbbf24', fontWeight: '900', letterSpacing: 0.3 }}>
+                                {dlProgress?.[snd.id] != null ? `DL ${Math.round((dlProgress[snd.id] ?? 0) * 100)}%` : 'LOADING…'}
+                              </Text>
+                            </View>
+                          ) : active ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
                               <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: snd.color }} />
                               <Text style={{ fontSize: 7, color: snd.color, fontWeight: '900', letterSpacing: 0.3 }}>SELECTED</Text>
@@ -163,7 +180,8 @@ export default function SoundPicker({
                               <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10b981' }} />
                               <Text style={{ fontSize: 7, color: '#10b981', fontWeight: '900', letterSpacing: 0.3 }}>PLAYING</Text>
                             </View>
-                          ) : null}
+                          ) : null
+                          }
                         </View>
                       </View>
                     </ImageBackground>

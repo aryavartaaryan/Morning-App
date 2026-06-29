@@ -156,17 +156,15 @@ export const WAKE_SOUNDS: WakeSound[] = [
     id: 'bhagya_suktam',
     label: 'Bhagya Suktam',
     icon: '🌟',
-    audioUrl: '',
+    audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a',
     category: 'mantra',
-    bundledKey: 'bhagya_suktam',
   },
   {
     id: 'shiv_sankalpa_suktam',
     label: 'Shiv Sankalpa Suktam',
     icon: '🔱',
-    audioUrl: '',
+    audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a',
     category: 'mantra',
-    bundledKey: 'shiv_sankalpa_suktam',
   },
 
   // ── Gentle wake sounds ─────────────────────────────────────────────────────
@@ -206,10 +204,9 @@ export const WAKE_SOUNDS: WakeSound[] = [
     id: 'singing_bowl_deep',
     label: 'Deep Singing Bowl',
     icon: '🔮',
-    audioUrl: '',
+    audioUrl: 'https://audio.onesutralabs.com/sounds-large/singing-bowl-deep.m4a',
     category: 'gentle',
     isGentle: true,
-    bundledAsset: require('../assets/sounds/singing-bowl-deep.m4a'),
   },
   {
     id: 'tibetan_bowl',
@@ -336,7 +333,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
     audioUrl: '',
     category: 'nature',
     isGentle: true,
-    bundledAsset: require('../assets/sounds/wanderlust-breeze.m4a'),
+    bundledAsset: require('../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a'),
   },
   {
     id: 'forest_campfire',
@@ -361,11 +358,11 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'sitar_long',           label: 'Sitar Meditation',        icon: '🎸', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-long.m4a') },
   { id: 'sitar_tabla_bells',    label: 'Sitar, Tabla & Bells',    icon: '🎵', audioUrl: '', category: 'sitar',   isGentle: false, bundledAsset: require('../assets/sounds/sitar-tabla-bells.m4a') },
   { id: 'indian_sitar_raga',    label: 'Indian Sitar Raga',       icon: '🎶', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/indian-sitar-raga.m4a') },
-  { id: 'sitar_summer_raga',    label: 'Summer Healing Raga',     icon: '☀️', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-summer-raga.m4a') },
-  { id: 'sitar_radiance',       label: 'Sitar Radiance',          icon: '✨', audioUrl: '', category: 'sitar',   isGentle: false, bundledAsset: require('../assets/sounds/sitar-radiance.m4a') },
+  { id: 'sitar_summer_raga',    label: 'Summer Healing Raga',     icon: '☀️', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a', category: 'sitar',   isGentle: true },
+  { id: 'sitar_radiance',       label: 'Sitar Radiance',          icon: '✨', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-radiance.m4a', category: 'sitar',   isGentle: false },
   { id: 'sitar_tanpura_sarangi',label: 'Sitar, Tanpura & Sarangi',icon: '🪕', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura-sarangi.m4a') },
   { id: 'sitar_tanpura_bgm',    label: 'Sitar & Tanpura',         icon: '🎼', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura.m4a') },
-  { id: 'veena_classical',      label: 'Classical Veena',         icon: '🪗', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/veena-classical.m4a') },
+  { id: 'veena_classical',      label: 'Classical Veena',         icon: '🪗', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a', category: 'sitar',   isGentle: true },
   { id: 'sitar_calm',            label: 'Calm Sitar',              icon: '🎸', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-calm.m4a') },
   { id: 'veena_raga',            label: 'Veena Raga Kanada',       icon: '🪗', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/veena-raga.m4a') },
   // ── Flute ──────────────────────────────────────────────────────────────────────
@@ -374,9 +371,9 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'native_flute_echo',    label: 'Native Flute Echo',       icon: '🌀', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/native-flute-echo.m4a') },
   { id: 'bamboo_flute',         label: 'Bamboo Flute',            icon: '🎋', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/bamboo-flute.m4a') },
   { id: 'flute_scale',          label: 'Flute Meditation',        icon: '🎶', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/flute-scale.m4a') },
-  { id: 'bansuri_forest',        label: 'Bansuri Forest',          icon: '🌿', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/bansuri-forest.m4a') },
+  { id: 'bansuri_forest',        label: 'Bansuri Forest',          icon: '🌿', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a', category: 'flute',   isGentle: true },
   { id: 'bansuri_melody',        label: 'Bansuri Melody',          icon: '🎵', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/bansuri-melody.m4a') },
-  { id: 'bansuri_tarana',        label: 'Bansuri Tarana',          icon: '🎶', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/bansuri-tarana.m4a') },
+  { id: 'bansuri_tarana',        label: 'Bansuri Tarana',          icon: '🎶', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a', category: 'flute',   isGentle: true },
   // ── Tabla ──────────────────────────────────────────────────────────────────────
   // ── Birds ──────────────────────────────────────────────────────────────────────
   { id: 'koel_bird',            label: 'Koel Bird Song',          icon: '🎵', audioUrl: '', category: 'birds',   isGentle: true,  bundledAsset: require('../assets/sounds/koel-bird.m4a') },
@@ -390,21 +387,21 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'india_countryside_birds', label: 'India Countryside',    icon: '🌾', audioUrl: '', category: 'birds',   isGentle: true,  bundledAsset: require('../assets/sounds/india-countryside-birds.m4a') },
   { id: 'cuckoo_birds_forest',  label: 'Cuckoo & Forest Birds',   icon: '🌲', audioUrl: '', category: 'birds',   isGentle: true,  bundledAsset: require('../assets/sounds/cuckoo-birds-forest.m4a') },
   // ── Tanpura ─────────────────────────────────────────────────────────────────
-  { id: 'tanpura_sacred_432hz', label: 'Sacred Tanpura 432 Hz',   icon: '🕉️', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/tanpura-sacred-432hz.m4a') },
-  { id: 'tanpura_breath',       label: 'Tanpura Breath',          icon: '🌬️', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/tanpura-breath.m4a') },
-  { id: 'tanpura_loop',         label: 'Tanpura Loop',            icon: '🔁', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/tanpura-loop.m4a') },
-  { id: 'raga_tanpura_drone',   label: 'Raga Tanpura Drone',      icon: '🌌', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/raga-tanpura-drone.m4a') },
+  { id: 'tanpura_sacred_432hz', label: 'Sacred Tanpura 432 Hz',   icon: '🕉️', audioUrl: 'https://audio.onesutralabs.com/sounds-large/tanpura-sacred-432hz.m4a', category: 'tanpura', isGentle: true },
+  { id: 'tanpura_breath',       label: 'Tanpura Breath',          icon: '🌬️', audioUrl: 'https://audio.onesutralabs.com/sounds-large/tanpura-breath.m4a', category: 'tanpura', isGentle: true },
+  { id: 'tanpura_loop',         label: 'Tanpura Loop',            icon: '🔁', audioUrl: 'https://audio.onesutralabs.com/sounds-large/tanpura-loop.m4a', category: 'tanpura', isGentle: true },
+  { id: 'raga_tanpura_drone',   label: 'Raga Tanpura Drone',      icon: '🌌', audioUrl: 'https://audio.onesutralabs.com/sounds-large/raga-tanpura-drone.m4a', category: 'tanpura', isGentle: true },
   { id: 'tanpura_mystic',        label: 'Mystic Tanpura',          icon: '🌌', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/tanpura-mystic.m4a') },
-  { id: 'tanpura_serene',        label: 'Serene Tanpura',          icon: '🧘', audioUrl: '', category: 'tanpura', isGentle: true,  bundledAsset: require('../assets/sounds/tanpura-serene.m4a') },
+  { id: 'tanpura_serene',        label: 'Serene Tanpura',          icon: '🧘', audioUrl: 'https://audio.onesutralabs.com/sounds-large/tanpura-serene.m4a', category: 'tanpura', isGentle: true },
   // ── World ──────────────────────────────────────────────────────────────────────
-  { id: 'sargija_eastern',      label: 'Eastern Sargija',         icon: '🌏', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/sargija-eastern.m4a') },
-  { id: 'tagore_festival',      label: 'Tagore Festival',         icon: '🎊', audioUrl: '', category: 'world',   isGentle: false, bundledAsset: require('../assets/sounds/tagore-festival.m4a') },
-  { id: 'world_ambient',        label: 'World Ambient',           icon: '🌍', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/world-ambient.m4a') },
+  { id: 'sargija_eastern',      label: 'Eastern Sargija',         icon: '🌏', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sargija-eastern.m4a', category: 'world',   isGentle: true },
+  { id: 'tagore_festival',      label: 'Tagore Festival',         icon: '🎊', audioUrl: 'https://audio.onesutralabs.com/sounds-large/tagore-festival.m4a', category: 'world',   isGentle: false },
+  { id: 'world_ambient',        label: 'World Ambient',           icon: '🌍', audioUrl: 'https://audio.onesutralabs.com/sounds-large/world-ambient.m4a', category: 'world',   isGentle: true },
   { id: 'tibetan_dreams',       label: 'Tibetan Dreams',          icon: '🧘', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/tibetan-dreams.m4a') },
-  { id: 'spiritual_journey',    label: 'Spiritual Journey',       icon: '🌌', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/spiritual-journey.m4a') },
+  { id: 'spiritual_journey',    label: 'Spiritual Journey',       icon: '🌌', audioUrl: 'https://audio.onesutralabs.com/sounds-large/spiritual-journey.m4a', category: 'world',   isGentle: true },
   { id: 'reincarnation_tones',  label: 'Reincarnation Tones',     icon: '♾️', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/reincarnation-tones.m4a') },
-  { id: 'night_jungle_chiangmai', label: 'Night Jungle',          icon: '🦟', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/night-jungle-chiangmai.m4a') },
-  { id: 'heaven_tune',           label: 'Heaven Tune',             icon: '✨', audioUrl: '', category: 'world',   isGentle: true,  bundledAsset: require('../assets/sounds/heaven-tune.m4a') },
+  { id: 'night_jungle_chiangmai', label: 'Night Jungle',          icon: '🦟', audioUrl: 'https://audio.onesutralabs.com/sounds-large/night-jungle-chiangmai.m4a', category: 'world',   isGentle: true },
+  { id: 'heaven_tune',           label: 'Heaven Tune',             icon: '✨', audioUrl: 'https://audio.onesutralabs.com/sounds-large/heaven-tune.m4a', category: 'world',   isGentle: true },
   { id: 'om_shanti',              label: 'Om Shanti',               icon: '🕉️', audioUrl: '', category: 'mantra',  isGentle: true,  bundledAsset: require('../assets/sounds/om-shanti.m4a') },
 ];
 
@@ -413,7 +410,8 @@ export interface SleepSound {
   id: string;
   label: string;
   icon: string;
-  bundledAsset: any;
+  bundledAsset?: any;
+  audioUrl?: string;
 }
 
 export const SLEEP_SOUNDS: SleepSound[] = [
@@ -430,7 +428,7 @@ export const SLEEP_SOUNDS: SleepSound[] = [
   { id: 'sl_close_waves',     label: 'Close Sea Waves',   icon: '🏖️',  bundledAsset: require('../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a') },
   { id: 'sl_rain_thunder',    label: 'Rain & Thunder',    icon: '🌧️',  bundledAsset: require('../assets/sounds/mixkit-rain-and-thunder-storm-2390.m4a') },
   { id: 'sl_urban_day',       label: 'Urban Ambience',    icon: '🏙️',  bundledAsset: require('../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a') },
-  { id: 'sl_singing_bowl',    label: 'Deep Singing Bowl', icon: '🔮',  bundledAsset: require('../assets/sounds/singing-bowl-deep.m4a') },
+  { id: 'sl_singing_bowl',    label: 'Deep Singing Bowl', icon: '🔮',  audioUrl: 'https://audio.onesutralabs.com/sounds-large/singing-bowl-deep.m4a' },
   { id: 'sl_tibetan_bowl',    label: 'Tibetan Bowl',      icon: '🫙',  bundledAsset: require('../assets/sounds/tibetan-bowl.m4a') },
   { id: 'sl_morning_birds',   label: 'Morning Birds',     icon: '🐦',  bundledAsset: require('../assets/sounds/morning-birds-loop.m4a') },
   { id: 'sl_spring_birds',    label: 'Spring Birds',      icon: '🌸',  bundledAsset: require('../assets/sounds/spring-birds-morning.m4a') },
@@ -438,7 +436,7 @@ export const SLEEP_SOUNDS: SleepSound[] = [
   { id: 'sl_morning_flute',   label: 'Light Meditation Tone', icon: '🎶',  bundledAsset: require('../assets/sounds/morning-flute.m4a') },
   { id: 'sl_sitar',           label: 'Calm Raga',         icon: '🎸',  bundledAsset: require('../assets/sounds/sitar-morning.m4a') },
   { id: 'sl_432hz',           label: '432 Hz Bells',      icon: '🔔',  bundledAsset: require('../assets/sounds/432hz-healing-bells.m4a') },
-  { id: 'sl_wanderlust',      label: 'Wanderlust Breeze', icon: '🌬️',  bundledAsset: require('../assets/sounds/wanderlust-breeze.m4a') },
+  { id: 'sl_wanderlust',      label: 'Wanderlust Breeze', icon: '🌬️',  bundledAsset: require('../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
   { id: 'sl_campfire',        label: 'Forest Campfire',   icon: '🔥',  bundledAsset: require('../assets/sounds/forest-campfire.m4a') },
   { id: 'sl_indian_beats',    label: 'Indian Beats',      icon: '🥁',  bundledAsset: require('../assets/sounds/indian-beats.m4a') },
 ];

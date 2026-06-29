@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
-  AppState, Platform, Linking, Keyboard,
+  AppState, Platform, Linking, Keyboard, KeyboardAvoidingView, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -477,6 +477,15 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
 
   useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
+  // Force-focus the keyboard after 600ms — fires AFTER the FGS startup (400ms)
+  // finishes blocking the JS bridge, ensuring the keyboard always appears.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mountedRef.current) { inputRef.current?.focus(); }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
+
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
   const wc = wordCount(entry);
   const isReady = wc >= 3;
@@ -495,52 +504,63 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={grt.wrap}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Header quote */}
-      <Text style={grt.science}>
-        “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
-      </Text>
+      {/* Tap anywhere to re-focus keyboard */}
+      <Pressable style={{ flex: 1 }} onPress={() => inputRef.current?.focus()}>
+        <ScrollView
+          contentContainerStyle={grt.wrap}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+        >
+          {/* Header quote */}
+          <Text style={grt.science}>
+            “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
+          </Text>
 
-      {/* Single prompt card */}
-      <View style={[grt.promptCard, { borderColor: color + '35' }]}>
-        <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
-        <Text style={[grt.promptText, { color }]}>{prompt}</Text>
-      </View>
+          {/* Single prompt card */}
+          <View style={[grt.promptCard, { borderColor: color + '35' }]}>
+            <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
+            <Text style={[grt.promptText, { color }]}>{prompt}</Text>
+          </View>
 
-      {/* Input */}
-      <View style={grt.inputWrap}>
-        <TextInput
-          ref={inputRef}
-          style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
-          placeholder="Write at least 3 words..."
-          placeholderTextColor="#FFFFFF30"
-          value={entry}
-          onChangeText={setEntry}
-          multiline
-          autoFocus
-          textAlignVertical="top"
-        />
-        <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
-          {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
-        </Text>
-      </View>
+          {/* Input */}
+          <View style={grt.inputWrap}>
+            <TextInput
+              ref={inputRef}
+              style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
+              placeholder="Write at least 3 words..."
+              placeholderTextColor="#FFFFFF30"
+              value={entry}
+              onChangeText={setEntry}
+              multiline
+              textAlignVertical="top"
+              blurOnSubmit={false}
+              returnKeyType="default"
+            />
+            <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
+              {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
+            </Text>
+          </View>
 
-      {/* Done button */}
-      <TouchableOpacity
-        style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
-        onPress={done}
-        disabled={!isReady || submitting}
-        activeOpacity={0.85}
-      >
-        <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
-          {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Done button */}
+          <TouchableOpacity
+            style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
+            onPress={done}
+            disabled={!isReady || submitting}
+            activeOpacity={0.85}
+          >
+            <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
+              {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Pressable>
+    </KeyboardAvoidingView>
   );
 }
 const grt = StyleSheet.create({
@@ -829,6 +849,18 @@ function MissionComplete({ mission, elapsed, streak, onDismiss }: {
   mission: ReturnType<typeof MISSIONS[0]['id']>; elapsed: number; streak: number; onDismiss: () => void;
 }) {
   const m = MISSIONS.find(x => x.id === mission)!;
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(interval); setTimeout(onDismiss, 100); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [onDismiss]);
+
   return (
     <View style={cmp.wrap}>
       <Text style={cmp.crown}>🏆</Text>
@@ -845,10 +877,11 @@ function MissionComplete({ mission, elapsed, streak, onDismiss }: {
           <Text style={cmp.statLabel}>Time Taken</Text>
         </View>
       </View>
-      <Text style={cmp.congrats}>You showed up. That's 90% of the battle. 🔥</Text>
+      <Text style={cmp.congrats}>You showed up. That’s 90% of the battle. 🔥</Text>
       <TouchableOpacity style={[cmp.btn, { backgroundColor: m.color }]} onPress={onDismiss} activeOpacity={0.85}>
         <Text style={cmp.btnTxt}>Back to App →</Text>
       </TouchableOpacity>
+      <Text style={cmp.countdownTxt}>Returning to home in {countdown}s…</Text>
     </View>
   );
 }
@@ -865,6 +898,7 @@ const cmp = StyleSheet.create({
   congrats: { color: '#FFFFFF70', fontSize: 14, textAlign: 'center', lineHeight: 22, fontStyle: 'italic' },
   btn: { width: '100%', borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 16 },
   btnTxt: { fontSize: 16, fontWeight: '900', color: '#000' },
+  countdownTxt: { fontSize: 12, color: '#FFFFFF30', fontWeight: '600', marginTop: 4 },
 });
 
 // ── Root screen ────────────────────────────────────────────────────────────────
@@ -917,10 +951,11 @@ export default function MissionScreen() {
   // Without a new FGS, pressing HOME lets Android kill the process and the
   // background mantra audio stops — the alarm is beaten. This service keeps
   // the JVM + audio alive until the mission is actually completed.
+  // CRITICAL: defer FGS 400ms so screen renders first before bridge blocks
   useEffect(() => {
     if (Platform.OS !== 'android' || done) return;
     let active = true;
-    (async () => {
+    const fgsTimeoutId = setTimeout(async () => {
       try {
         await notifee.createChannel({
           id: 'alarm-bttf-silent',
@@ -945,9 +980,10 @@ export default function MissionScreen() {
           },
         });
       } catch (e) { console.warn('[Mission] FGS start error:', e); }
-    })();
+    }, 400);
     return () => {
       active = false;
+      clearTimeout(fgsTimeoutId);
       notifee.cancelNotification(MISSION_FS_ID).catch(() => {});
     };
   }, [done]);

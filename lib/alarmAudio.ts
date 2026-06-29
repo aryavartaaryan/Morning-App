@@ -86,10 +86,7 @@ export function cancelFusion(): void {
   if (_fusionRampInterval !== null) { clearInterval(_fusionRampInterval); _fusionRampInterval = null; }
 }
 
-const BUNDLED_MANTRA_ASSETS: Record<string, any> = {
-  bhagya_suktam:        require('../assets/sounds/bhagya-suktam.m4a'),
-  shiv_sankalpa_suktam: require('../assets/sounds/shiv-sankalpa-suktam.m4a'),
-};
+const BUNDLED_MANTRA_ASSETS: Record<string, any> = {}; // CDN sounds — no longer bundled locally
 
 /**
  * Stop and unload the currently playing alarm audio.

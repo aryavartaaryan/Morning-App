@@ -61,14 +61,14 @@ const SLEEP_SOUNDS = [
   { id: 'forest_breeze', label: 'Forest Breeze',   emoji: '🌳', cat: 'Nature',  color: '#86efac', top: '#0A1E10' as const, bot: '#050F08' as const, desc: 'Wind through the canopy',         src: require('../../assets/sounds/mixkit-breeze-through-the-trees-2427.m4a') },
   { id: 'night_forest',  label: 'Night Forest',    emoji: '🦗', cat: 'Nature',  color: '#4ade80', top: '#0A1E0E' as const, bot: '#050F07' as const, desc: 'Crickets at midnight',             src: require('../../assets/sounds/mixkit-night-forest-with-insects-2414.m4a') },
   { id: 'gentle_wind',   label: 'Gentle Wind',     emoji: '🌬️', cat: 'Nature',  color: '#a3e635', top: '#141808' as const, bot: '#0A0F05' as const, desc: 'Open meadow breeze',              src: require('../../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
-  { id: 'city_night',      label: 'City Night',       emoji: '🏙️', cat: 'Nature', color: '#fbbf24', top: '#201808' as const, bot: '#100D05' as const, desc: 'Distant city hum',                   src: require('../../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a') },
+  { id: 'city_night',      label: 'City Park Night',  emoji: '🏙️', cat: 'Nature', color: '#fbbf24', top: '#201808' as const, bot: '#100D05' as const, desc: 'Distant city hum',                   src: require('../../assets/sounds/mixkit-urban-ambience-during-the-day-2505.m4a') },
   { id: 'campfire',        label: 'Forest Campfire',  emoji: '🔥', cat: 'Nature',  color: '#f97316', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: 'Crackling fire in the woods',         src: require('../../assets/sounds/forest-campfire.m4a') },
   { id: 'morning_birds',   label: 'Morning Birds',    emoji: '🐦', cat: 'Birds',  color: '#fde68a', top: '#1A1400' as const, bot: '#0A0A00' as const, desc: 'Dawn chorus at sunrise',              src: require('../../assets/sounds/morning-birds-loop.m4a') },
   { id: 'spring_birds',    label: 'Spring Birds',     emoji: '🌸', cat: 'Birds',  color: '#f9a8d4', top: '#1A0A12' as const, bot: '#0A050A' as const, desc: 'Birds of a blooming spring day',      src: require('../../assets/sounds/spring-birds-morning.m4a') },
-  { id: 'wanderlust',      label: 'Wanderlust Breeze',emoji: '🌬️', cat: 'Nature',  color: '#bae6fd', top: '#0A1620' as const, bot: '#050B10' as const, desc: 'Open skies and wandering wind',       src: require('../../assets/sounds/wanderlust-breeze.m4a') },
+  { id: 'wanderlust',      label: 'Wanderlust Breeze',emoji: '🌬️', cat: 'Nature',  color: '#bae6fd', top: '#0A1620' as const, bot: '#050B10' as const, desc: 'Open skies and wandering wind',       src: require('../../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
   { id: 'forest_birds',    label: 'Forest Birds',     emoji: '🌳', cat: 'Birds',  color: '#86efac', top: '#081808' as const, bot: '#040C04' as const, desc: 'Birds singing deep in the forest',    src: require('../../assets/sounds/forest-birds-spring.m4a') },
   { id: 'hz_432',          label: '432 Hz Bells',     emoji: '🔔', cat: 'Meditations',  color: '#c084fc', top: '#14082A' as const, bot: '#0A0516' as const, desc: 'Healing frequency, calm the mind',    src: require('../../assets/sounds/432hz-healing-bells.m4a') },
-  { id: 'singing_bowl',    label: 'Deep Singing Bowl',emoji: '🔮', cat: 'Meditations',  color: '#a78bfa', top: '#10082A' as const, bot: '#080515' as const, desc: 'Deep resonance for meditation',       src: require('../../assets/sounds/singing-bowl-deep.m4a') },
+  { id: 'singing_bowl',    label: 'Deep Singing Bowl',emoji: '🔮', cat: 'Meditations',  color: '#a78bfa', top: '#10082A' as const, bot: '#080515' as const, desc: 'Deep resonance for meditation',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/singing-bowl-deep.m4a' } },
   { id: 'tibetan_bowl',    label: 'Tibetan Bowl',     emoji: '🫙', cat: 'Meditations',  color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Ancient healing bowl tones',          src: require('../../assets/sounds/tibetan-bowl.m4a') },
   { id: 'morning_flute',   label: 'Light Meditation Tone', emoji: '🎶', cat: 'Meditations',  color: '#6ee7b7', top: '#082018' as const, bot: '#04100C' as const, desc: 'Gentle tones for a peaceful dawn',       src: require('../../assets/sounds/morning-flute.m4a') },
   { id: 'sitar',           label: 'Calm Raga',        emoji: '🎸', cat: 'Meditations',  color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Classical raga to ease the mind',     src: require('../../assets/sounds/sitar-morning.m4a') },
@@ -76,18 +76,18 @@ const SLEEP_SOUNDS = [
   // ── Sacred additions ────────────────────────────────────────────────────────
   { id: 'tibetan_dreams',     label: 'Tibetan Dreams',        emoji: '🧘', cat: 'Meditations' as const, color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Deep Himalayan soundscape',              src: require('../../assets/sounds/tibetan-dreams.m4a') },
   { id: 'reincarnation_tones',label: 'Reincarnation Tones',   emoji: '♾️', cat: 'Meditations' as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Timeless tones of past lives',           src: require('../../assets/sounds/reincarnation-tones.m4a') },
-  { id: 'spiritual_journey',  label: 'Spiritual Journey',     emoji: '🌌', cat: 'Meditations' as const, color: '#c084fc', top: '#140A28' as const, bot: '#0A0518' as const, desc: 'A journey through sacred realms',        src: require('../../assets/sounds/spiritual-journey.m4a') },
+  { id: 'spiritual_journey',  label: 'Spiritual Journey',     emoji: '🌌', cat: 'Meditations' as const, color: '#c084fc', top: '#140A28' as const, bot: '#0A0518' as const, desc: 'A journey through sacred realms',        src: { uri: 'https://audio.onesutralabs.com/sounds-large/spiritual-journey.m4a' } },
   // ── Nature addition ─────────────────────────────────────────────────────────
-  { id: 'night_jungle_chiangmai', label: 'Night Jungle',      emoji: '🦟', cat: 'Nature'  as const, color: '#4ade80', top: '#061A08' as const, bot: '#030C04' as const, desc: 'Wild night in Chiangmai jungle',         src: require('../../assets/sounds/night-jungle-chiangmai.m4a') },
+  { id: 'night_jungle_chiangmai', label: 'Night Jungle',      emoji: '🦟', cat: 'Nature'  as const, color: '#4ade80', top: '#061A08' as const, bot: '#030C04' as const, desc: 'Wild night in Chiangmai jungle',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/night-jungle-chiangmai.m4a' } },
   // ── Sitar ───────────────────────────────────────────────────────────────────
   { id: 'sitar_long',          label: 'Sitar Meditation',     emoji: '🎸', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Long classical raga session',            src: require('../../assets/sounds/sitar-long.m4a') },
 
   { id: 'indian_sitar_raga',   label: 'Indian Sitar Raga',    emoji: '🎶', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0E00' as const, bot: '#0A0700' as const, desc: 'Classical Indian raga melody',           src: require('../../assets/sounds/indian-sitar-raga.m4a') },
-  { id: 'sitar_summer_raga',   label: '432Hz Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: require('../../assets/sounds/sitar-summer-raga.m4a') },
-  { id: 'sitar_radiance',      label: 'Sitar Radiance',       emoji: '✨', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0800' as const, bot: '#0A0400' as const, desc: 'Radiant Indian classical sitar',         src: require('../../assets/sounds/sitar-radiance.m4a') },
+  { id: 'sitar_summer_raga',   label: '432Hz Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: { uri: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a' } },
+  { id: 'sitar_radiance',      label: 'Sitar Radiance',       emoji: '✨', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0800' as const, bot: '#0A0400' as const, desc: 'Radiant Indian classical sitar',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/sitar-radiance.m4a' } },
   { id: 'sitar_tanpura_sarangi',label: 'Sitar, Tanpura & Sarangi', emoji: '🪕', cat: 'Ragas' as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Full classical Indian ensemble',         src: require('../../assets/sounds/sitar-tanpura-sarangi.m4a') },
   { id: 'sitar_tanpura_bgm',   label: 'Sitar & Tanpura',      emoji: '🎼', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Indian classical background melody',     src: require('../../assets/sounds/sitar-tanpura.m4a') },
-  { id: 'veena_classical',     label: 'Classical Veena',      emoji: '🪗', cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1A00' as const, bot: '#0A0A00' as const, desc: "Saraswati's divine string instrument",  src: require('../../assets/sounds/veena-classical.m4a') },
+  { id: 'veena_classical',     label: 'Classical Veena',      emoji: '🪗', cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1A00' as const, bot: '#0A0A00' as const, desc: "Saraswati's divine string instrument",  src: { uri: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a' } },
   // ── Flute ───────────────────────────────────────────────────────────────────
   { id: 'andean_flute',        label: 'Andean Flute',         emoji: '🏔️', cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081A10' as const, bot: '#040C08' as const, desc: 'High-altitude Andean melody',           src: require('../../assets/sounds/andean-flute.m4a') },
 
@@ -107,25 +107,25 @@ const SLEEP_SOUNDS = [
   { id: 'peacock_call',        label: 'Peacock Call',         emoji: '🦚', cat: 'Birds'   as const, color: '#4ade80', top: '#081808' as const, bot: '#040C04' as const, desc: 'Clear peacock call in silence',          src: require('../../assets/sounds/peacock.m4a') },
   { id: 'koel_bird',           label: 'Koel Bird Song',       emoji: '🎵', cat: 'Birds'   as const, color: '#34d399', top: '#081808' as const, bot: '#040C04' as const, desc: 'Indian cuckoo koel singing at dawn',     src: require('../../assets/sounds/koel-bird.m4a') },
   // ── Tanpura ─────────────────────────────────────────────────────────────────
-  { id: 'tanpura_sacred_432hz', label: 'Sacred Tanpura 432Hz', emoji: '🕉️', cat: 'Ragas'   as const, color: '#c084fc', top: '#14082A' as const, bot: '#0A0516' as const, desc: 'Gilded tanpura drone at 432 Hz',        src: require('../../assets/sounds/tanpura-sacred-432hz.m4a') },
-  { id: 'tanpura_breath',      label: 'Tanpura Breath',        emoji: '🌬️', cat: 'Ragas'   as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Soft tanpura drone for meditation',      src: require('../../assets/sounds/tanpura-breath.m4a') },
-  { id: 'tanpura_loop',        label: 'Tanpura Loop',          emoji: '🔁', cat: 'Ragas'   as const, color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Continuous looping tanpura music',       src: require('../../assets/sounds/tanpura-loop.m4a') },
-  { id: 'raga_tanpura_drone',  label: 'Raga Tanpura Drone',    emoji: '🌌', cat: 'Ragas'   as const, color: '#6366f1', top: '#0A0820' as const, bot: '#050410' as const, desc: 'Deep space tanpura drone for raga',      src: require('../../assets/sounds/raga-tanpura-drone.m4a') },
+  { id: 'tanpura_sacred_432hz', label: 'Sacred Tanpura 432Hz', emoji: '🕉️', cat: 'Ragas'   as const, color: '#c084fc', top: '#14082A' as const, bot: '#0A0516' as const, desc: 'Gilded tanpura drone at 432 Hz',        src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-sacred-432hz.m4a' } },
+  { id: 'tanpura_breath',      label: 'Tanpura Breath',        emoji: '🌬️', cat: 'Ragas'   as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Soft tanpura drone for meditation',      src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-breath.m4a' } },
+  { id: 'tanpura_loop',        label: 'Tanpura Loop',          emoji: '🔁', cat: 'Ragas'   as const, color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Continuous looping tanpura music',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-loop.m4a' } },
+  { id: 'raga_tanpura_drone',  label: 'Raga Tanpura Drone',    emoji: '🌌', cat: 'Ragas'   as const, color: '#6366f1', top: '#0A0820' as const, bot: '#050410' as const, desc: 'Deep space tanpura drone for raga',      src: { uri: 'https://audio.onesutralabs.com/sounds-large/raga-tanpura-drone.m4a' } },
   // ── World (merged into Ragas) ───────────────────────────────────────────────
-  { id: 'sargija_eastern',     label: 'Eastern Sargija',       emoji: '🌏', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: 'Traditional Eastern string improvisation', src: require('../../assets/sounds/sargija-eastern.m4a') },
-  { id: 'tagore_festival',     label: 'Tagore Festival',       emoji: '🎊', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Joyful Tagore festival music',           src: require('../../assets/sounds/tagore-festival.m4a') },
-  { id: 'world_ambient',       label: 'World Ambient',         emoji: '🌍', cat: 'Ragas'   as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Global ambient soundscape',              src: require('../../assets/sounds/world-ambient.m4a') },
-  { id: 'heaven_tune',         label: 'Heaven Tune',           emoji: '✨',  cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Traditional heavenly melody',            src: require('../../assets/sounds/heaven-tune.m4a') },
+  { id: 'sargija_eastern',     label: 'Eastern Sargija',       emoji: '🌏', cat: 'Ragas'   as const, color: '#f97316', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: 'Traditional Eastern string improvisation', src: { uri: 'https://audio.onesutralabs.com/sounds-large/sargija-eastern.m4a' } },
+  { id: 'tagore_festival',     label: 'Tagore Festival',       emoji: '🎊', cat: 'Ragas'   as const, color: '#fbbf24', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Joyful Tagore festival music',           src: { uri: 'https://audio.onesutralabs.com/sounds-large/tagore-festival.m4a' } },
+  { id: 'world_ambient',       label: 'World Ambient',         emoji: '🌍', cat: 'Ragas'   as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Global ambient soundscape',              src: { uri: 'https://audio.onesutralabs.com/sounds-large/world-ambient.m4a' } },
+  { id: 'heaven_tune',         label: 'Heaven Tune',           emoji: '✨',  cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Traditional heavenly melody',            src: { uri: 'https://audio.onesutralabs.com/sounds-large/heaven-tune.m4a' } },
   // ── Sitar additions ────────────────────────────────────────────────────────
   { id: 'sitar_calm',          label: 'Calm Sitar',            emoji: '🎸',  cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Soft sitar for deep relaxation',         src: require('../../assets/sounds/sitar-calm.m4a') },
   { id: 'veena_raga',          label: 'Veena Raga Kanada',     emoji: '🪗',  cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Raga Kanada on veena with mridangam',   src: require('../../assets/sounds/veena-raga.m4a') },
   // ── Flute additions ────────────────────────────────────────────────────────
-  { id: 'bansuri_forest',      label: 'Bansuri Forest',        emoji: '🌿',  cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Bansuri flute echoing through a forest', src: require('../../assets/sounds/bansuri-forest.m4a') },
+  { id: 'bansuri_forest',      label: 'Bansuri Forest',        emoji: '🌿',  cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Bansuri flute echoing through a forest', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' } },
   { id: 'bansuri_melody',      label: 'Bansuri Melody',        emoji: '🎵',  cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081810' as const, bot: '#040C08' as const, desc: 'Serene Indian bansuri flute melody',     src: require('../../assets/sounds/bansuri-melody.m4a') },
-  { id: 'bansuri_tarana',      label: 'Bansuri Tarana',        emoji: '🎶',  cat: 'Ragas'   as const, color: '#86efac', top: '#0A1A10' as const, bot: '#050D08' as const, desc: 'Classical tarana raga on bansuri',       src: require('../../assets/sounds/bansuri-tarana.m4a') },
+  { id: 'bansuri_tarana',      label: 'Bansuri Tarana',        emoji: '🎶',  cat: 'Ragas'   as const, color: '#86efac', top: '#0A1A10' as const, bot: '#050D08' as const, desc: 'Classical tarana raga on bansuri',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a' } },
   // ── Tanpura additions ──────────────────────────────────────────────────────
   { id: 'tanpura_mystic',      label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Ragas'   as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
-  { id: 'tanpura_serene',      label: 'Serene Tanpura',        emoji: '🧘',  cat: 'Ragas'   as const, color: '#a78bfa', top: '#100828' as const, bot: '#080414' as const, desc: 'Calm serene tanpura meditation',         src: require('../../assets/sounds/tanpura-serene.m4a') },
+  { id: 'tanpura_serene',      label: 'Serene Tanpura',        emoji: '🧘',  cat: 'Ragas'   as const, color: '#a78bfa', top: '#100828' as const, bot: '#080414' as const, desc: 'Calm serene tanpura meditation',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-serene.m4a' } },
   // ── Sacred mantra addition ─────────────────────────────────────────────────
   { id: 'om_shanti',           label: 'Om Shanti',             emoji: '🕉️',  cat: 'Meditations' as const, color: '#c084fc', top: '#140A28' as const, bot: '#0A0516' as const, desc: 'Vedic peace chant — Om Shanti Shanti Shanti', src: require('../../assets/sounds/om-shanti.m4a') },
 ] as const;
@@ -276,8 +276,8 @@ const MANTRA_LIBRARY = [
     color: '#34d399',
     icon: '🕉️',
     sounds: [
-      { id: 'stotra_bhagya',        label: 'Bhagya Suktam',        emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', desc: 'Vedic hymn for prosperity & fortune',      cat: 'Meditations', src: require('../../assets/sounds/bhagya-suktam.m4a') },
-      { id: 'stotra_shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd', top: '#140A1A', bot: '#0A050F', desc: 'Vedic prayer for pure mind & right will', cat: 'Meditations', src: require('../../assets/sounds/shiv-sankalpa-suktam.m4a') },
+      { id: 'stotra_bhagya',        label: 'Bhagya Suktam',        emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', desc: 'Vedic hymn for prosperity & fortune',      cat: 'Meditations', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' } },
+      { id: 'stotra_shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd', top: '#140A1A', bot: '#0A050F', desc: 'Vedic prayer for pure mind & right will', cat: 'Meditations', src: { uri: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' } },
     ],
   },
 ];
@@ -1026,7 +1026,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const cardW = (W - 40 - 12) / 2;
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
               const soundCount = cat === 'Sleep'
-                ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length
+                ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length + ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === 'Nature').length
                 : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat)].length;
               return (
                 <TouchableOpacity
@@ -1391,7 +1391,7 @@ const CategoryRows = memo(function CategoryRows({
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
         const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat);
+        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === effectiveCat);
         const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
@@ -1643,7 +1643,7 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
       .filter(s => s.cat === cat)
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
     const cdn = ALL_SLEEP_SOUNDS
-      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat);
+      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === effectiveCat);
     result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
   }
   return result;
@@ -1778,7 +1778,7 @@ function ReelCard({
       import('expo-file-system/legacy').then(FS => {
         FS.readAsStringAsync(imgUri, { encoding: FS.EncodingType.Base64 })
           .then(b64 => { if (active) setBase64Img(`data:image/jpeg;base64,${b64}`); })
-          .catch(() => {});
+          .catch(() => { if (active) setImgLoadFailed(true); });
       });
     } else {
       setBase64Img(null);
@@ -1789,7 +1789,9 @@ function ReelCard({
   // If it's a file:// URI, strictly wait for the base64 version to avoid the lock.
   // If it's a bundled or remote URL, use it directly.
   const isLocalFile = imgUri?.startsWith('file://');
-  const imgSource = imgBundled ?? (isLocalFile ? (base64Img ? { uri: base64Img } : undefined) : (imgUri ? { uri: imgUri } : undefined));
+  // While base64 is loading for a local file, fall back to rawReelUri immediately so the
+  // image is visible from frame 1 instead of flashing blank for the ~100-500ms read time.
+  const imgSource = imgBundled ?? (isLocalFile ? (base64Img ? { uri: base64Img } : (rawReelUri ? { uri: rawReelUri } : undefined)) : (imgUri ? { uri: imgUri } : undefined));
   const finalSource = imgLoadFailed ? (rawReelUri ? { uri: rawReelUri } : undefined) : imgSource;
 
   const [timerPickerOpen, setTimerPickerOpen] = useState(false);
@@ -1877,11 +1879,36 @@ function ReelCard({
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
   });
 
-  // Poll audio position every 500ms for the real-time progress bar
+  // Poll audio position every 500ms for the real-time progress bar + stall detection
   useEffect(() => {
-    if (!isActive || !isPlaying || isPaused) return;
-    const interval = setInterval(() => setPositionMs(getPositionMs()), 500);
-    return () => clearInterval(interval);
+    if (!isActive || !isPlaying || isPaused) {
+      stallCountRef.current = 0;
+      setIsAudioStalled(false);
+      return;
+    }
+    stallCountRef.current = 0;
+    prevPositionMsRef.current = getPositionMs();
+    const interval = setInterval(() => {
+      const newPos = getPositionMs();
+      setPositionMs(newPos);
+      // Stall detection: if position hasn't advanced for 2 s (4 × 500 ms)
+      // and the track has a known duration, audio is buffering/stuck
+      if (trackDurMsRef.current > 0) {
+        if (newPos === prevPositionMsRef.current) {
+          stallCountRef.current += 1;
+          if (stallCountRef.current >= 4) setIsAudioStalled(true);
+        } else {
+          stallCountRef.current = 0;
+          setIsAudioStalled(false);
+        }
+      }
+      prevPositionMsRef.current = newPos;
+    }, 500);
+    return () => {
+      clearInterval(interval);
+      setIsAudioStalled(false);
+      stallCountRef.current = 0;
+    };
   }, [isActive, isPlaying, isPaused, getPositionMs]);
 
   useEffect(() => {
@@ -1924,6 +1951,9 @@ function ReelCard({
   const thumbScale = useRef(new Animated.Value(1)).current;
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPositionMs, setScrubPositionMs] = useState(0);
+  const prevPositionMsRef = useRef(0);
+  const stallCountRef = useRef(0);
+  const [isAudioStalled, setIsAudioStalled] = useState(false);
   // Use refs so the PanResponder (created once) always sees current values
   const trackDurMsRef = useRef(trackDurMs);
   const trackWRef = useRef(TRACK_W);
@@ -1934,42 +1964,56 @@ function ReelCard({
 
   const scrubPan = useRef(
     PanResponder.create({
-      // Claim the touch immediately so vertical scroll doesn't steal it
       onStartShouldSetPanResponder: () => trackDurMsRef.current > 0,
-      onMoveShouldSetPanResponder: () => trackDurMsRef.current > 0,
+      // Only steal horizontal gestures — vertical swipes go to the reel FlatList
+      onMoveShouldSetPanResponder: (_, gs) =>
+        trackDurMsRef.current > 0 &&
+        Math.abs(gs.dx) > Math.abs(gs.dy) &&
+        Math.abs(gs.dx) > 3,
       onPanResponderGrant: (evt) => {
         if (trackDurMsRef.current <= 0) return;
+        const TW = trackWRef.current;
+        if (TW <= 0) return;
+        const rawX = evt.nativeEvent.locationX;
+        if (rawX == null || !isFinite(rawX)) return;
         isDragging.current = true;
         setIsScrubbing(true);
         bumpControlsRef.current();
-        // Animate thumb to a larger size for visual feedback
         Animated.spring(thumbScale, { toValue: 1.6, useNativeDriver: true, speed: 40 }).start();
-        // Initialise drag position from current touch X within track
-        const TW = trackWRef.current;
-        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
+        const x = Math.max(0, Math.min(rawX, TW));
         const fraction = x / TW;
         dragProgress.setValue(fraction);
         setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
       },
       onPanResponderMove: (evt) => {
         const TW = trackWRef.current;
-        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
+        if (TW <= 0) return;
+        const rawX = evt.nativeEvent.locationX;
+        if (rawX == null || !isFinite(rawX)) return;
+        const x = Math.max(0, Math.min(rawX, TW));
         const fraction = x / TW;
+        if (!isFinite(fraction)) return;
         dragProgress.setValue(fraction);
         setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
       },
       onPanResponderRelease: (evt) => {
-        const TW = trackWRef.current;
-        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, TW));
-        const fraction = Math.max(0, Math.min(1, x / TW));
-        const ms = Math.round(fraction * trackDurMsRef.current);
-        // Snap the base anim to avoid a jump when drag ends
-        progressAnim.setValue(fraction);
-        setScrubPositionMs(ms);
-        setPositionMs(ms);
+        // Always clean up drag state first, even on early return
         isDragging.current = false;
         setIsScrubbing(false);
         Animated.spring(thumbScale, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
+        const TW = trackWRef.current;
+        if (TW <= 0) return;
+        const rawX = evt.nativeEvent.locationX;
+        if (rawX == null || !isFinite(rawX)) return;
+        const x = Math.max(0, Math.min(rawX, TW));
+        const fraction = Math.max(0, Math.min(1, x / TW));
+        if (!isFinite(fraction)) return;
+        const ms = Math.round(fraction * trackDurMsRef.current);
+        progressAnim.setValue(fraction);
+        setScrubPositionMs(ms);
+        setPositionMs(ms);
+        stallCountRef.current = 0;
+        setIsAudioStalled(false);
         seekToRef.current(ms).catch(() => {});
       },
       onPanResponderTerminate: () => {
@@ -2190,13 +2234,13 @@ function ReelCard({
                 <Animated.View style={{
                   height: '100%', borderRadius: 3,
                   backgroundColor: sound.color,
-                  width: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
+                  width: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W], extrapolate: 'clamp' }),
                 }} />
               </View>
               {/* Thumb dot — scales up when dragging */}
               <Animated.View style={{
                 position: 'absolute',
-                left: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13] }),
+                left: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13], extrapolate: 'clamp' }),
                 top: 7.5,
                 width: 13, height: 13, borderRadius: 6.5,
                 backgroundColor: '#fff',
@@ -2319,6 +2363,27 @@ function ReelCard({
             marginTop: 12, fontSize: 10, color: 'rgba(255,255,255,0.48)',
             fontWeight: '600', letterSpacing: 1.5,
           }}>LOADING</Text>
+        </View>
+      )}
+
+      {/* ── Buffering overlay — shown when stream stalls mid-play (slow network) ── */}
+      {isActive && isAudioStalled && !showLoadingOverlay && !audioNetworkError && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center', zIndex: 18,
+        }} pointerEvents="none">
+          <View style={{
+            width: 80, height: 80, borderRadius: 40,
+            backgroundColor: 'rgba(0,0,0,0.62)',
+            borderWidth: 1.5, borderColor: sound.color + '55',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ActivityIndicator size="large" color={sound.color} />
+          </View>
+          <Text style={{
+            marginTop: 12, fontSize: 10, color: 'rgba(255,255,255,0.48)',
+            fontWeight: '600', letterSpacing: 1.5,
+          }}>BUFFERING</Text>
         </View>
       )}
 
@@ -2533,10 +2598,13 @@ function SoundReelsModal({
   const lastAutoPlayedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!visible) return;
+    // Guard: on modal open, activeIndexRef.current is updated SYNCHRONOUSLY to startIndex
+    // but activeIndex (state) still holds the previous stale value until the next render.
+    // Skipping until they match prevents sound[old-index] (e.g. rain at index 0) from
+    // playing for ~200ms before the intended reel's auto-play fires.
+    if (activeIndex !== activeIndexRef.current) return;
     const sound = REELS_ALL_SOUNDS[activeIndex];
     if (!sound) return;
-    // Only play if it's a genuinely new track request — prevents the brief
-    // pre-roll blip where the previous playing sound plays for ~200ms on open
     if (playingIdRef.current !== sound.id && lastAutoPlayedRef.current !== sound.id) {
       lastAutoPlayedRef.current = sound.id;
       onPlaySoundRef.current(sound.id);
