@@ -7,7 +7,7 @@ import { store, KEYS } from '@/lib/storage';
 
 export const BG_URLS: Record<string, string> = {
   brahma:     'https://images.pexels.com/photos/20494584/pexels-photo-20494584.jpeg?auto=compress&cs=tinysrgb&w=600',
-  predawn:    'https://images.pexels.com/photos/10729000/pexels-photo-10729000.jpeg?auto=compress&cs=tinysrgb&w=600',
+  predawn:    'https://images.pexels.com/photos/13467695/pexels-photo-13467695.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn_mid: 'https://images.pexels.com/photos/8576018/pexels-photo-8576018.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn_late: 'https://images.pexels.com/photos/35701856/pexels-photo-35701856.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise:    'https://images.pexels.com/photos/7067945/pexels-photo-7067945.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -33,7 +33,7 @@ export const BG_URLS: Record<string, string> = {
   evening:    'https://images.pexels.com/photos/36497785/pexels-photo-36497785.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early: 'https://images.pexels.com/photos/28281171/pexels-photo-28281171.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_late: 'https://images.pexels.com/photos/27413337/pexels-photo-27413337.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night:      'https://images.pexels.com/photos/19377475/pexels-photo-19377475.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night:      'https://images.pexels.com/photos/12895916/pexels-photo-12895916.jpeg?auto=compress&cs=tinysrgb&w=600',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg?auto=compress&cs=tinysrgb&w=600',
   splash:     'https://images.pexels.com/photos/26570345/pexels-photo-26570345.jpeg?auto=compress&cs=tinysrgb&w=600',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',

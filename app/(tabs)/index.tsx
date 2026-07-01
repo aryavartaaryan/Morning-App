@@ -2041,8 +2041,8 @@ function getHourlyEnvSuggestion(
   }
   if (period.id === 'evening_kapha') {
     if (isHot) return { emoji: '🌇', title: 'Wind-Down · Keep Dinner Cooling', desc: `Hot ${temp}° evening — skip spicy or heavy dinner entirely · Light cooling foods only · Dim screens · Wind down your nervous system` };
-    if (isHumid) return { emoji: '🌇', title: 'Wind-Down · Eat Very Light', desc: 'Humid evening — heavy food will feel worse · Very light early dinner before 7 PM · Open windows · Begin calming down' };
-    return { emoji: '🌇', title: 'Wind-Down Phase', desc: 'Light early dinner before 7 PM · Dim all screens · Gentle stretching · Begin calming your nervous system' };
+    if (isHumid) return { emoji: '🌇', title: 'Wind-Down · Eat Very Light', desc: 'Humid evening — heavy food will feel worse · Very light early dinner · Open windows · Begin calming down' };
+    return { emoji: '🌇', title: 'Wind-Down Phase', desc: 'Light early dinner · Dim all screens · Gentle stretching · Begin calming your nervous system' };
   }
 
   // ── Pre-dawn ──────────────────────────────────────────────────────────────
@@ -2107,7 +2107,7 @@ function getHourlyEnvSuggestion(
   if (hour >= 18 && hour < 20) {
     if (isHot) return { emoji: '🌇', title: 'Transition Hour · Eat Cooling', desc: `Still ${temp}° — keep dinner very light and cooling · No spicy or oily food tonight · Dim screens · Begin winding down` };
     if (isHumid) return { emoji: '🌇', title: 'Transition Hour · Eat Light', desc: 'Humid evening — keep dinner very light · Avoid heavy proteins or fried food tonight · Dim screens · Begin slowing down' };
-    return { emoji: '🌇', title: 'Transition Hour', desc: 'Light early dinner before 7:30 PM · Reduce screen brightness · Begin winding your nervous system down' };
+    return { emoji: '🌇', title: 'Transition Hour', desc: 'Light early dinner · Reduce screen brightness · Begin winding your nervous system down' };
   }
 
   // ── Pre-sleep ─────────────────────────────────────────────────────────────

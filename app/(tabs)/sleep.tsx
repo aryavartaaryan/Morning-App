@@ -25,7 +25,7 @@ import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
-const { width: W, height: H } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('screen');
 let _pageScrollRef: ScrollView | null = null;
 let _pageScrollLocked = false;
 const _lockPageScroll   = () => { if (!_pageScrollLocked) { _pageScrollLocked = true;  _pageScrollRef?.setNativeProps({ scrollEnabled: false }); } };
@@ -1490,7 +1490,7 @@ const CategoryRows = memo(function CategoryRows({
 });
 
 // ─── Full-screen Immersive Sound Player Modal ────────────────────────────────
-const { height: SCR_H } = Dimensions.get('window');
+const { height: SCR_H } = Dimensions.get('screen');
 
 function SoundPlayerModal({
   sound, isPlaying, isPaused, sessionSecs,
@@ -1652,6 +1652,9 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
   }
   return result;
 })();
+// Use 'window' (not 'screen') — on Android, 'screen' includes the system
+// navigation bar height, causing each reel to overflow and pushing the
+// bottom controls out of the visible area.
 const { width: REEL_W, height: REEL_H } = Dimensions.get('screen');
 
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
@@ -1942,6 +1945,7 @@ function ReelCard({
   useEffect(() => {
     // Don't animate while user is dragging — they control position directly
     if (isDragging.current) return;
+    progressAnim.stopAnimation();
     Animated.timing(progressAnim, {
       toValue: loopProgress,
       duration: 450,
@@ -1954,22 +1958,28 @@ function ReelCard({
   useEffect(() => {
     if (trackDurMs > 0 || !isActive || !isPlaying || isPaused) return;
     let loop: Animated.CompositeAnimation | null = null;
-    progressAnim.setValue(0);
-    loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(progressAnim, { toValue: 0.65, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(progressAnim, { toValue: 0.05, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ])
-    );
-    loop.start();
-    return () => { loop?.stop(); };
+    progressAnim.stopAnimation(() => {
+      progressAnim.setValue(0);
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progressAnim, { toValue: 0.65, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(progressAnim, { toValue: 0.05, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ])
+      );
+      loop!.start();
+    });
+    return () => { loop?.stop(); progressAnim.stopAnimation(); };
   }, [trackDurMs, isActive, isPlaying, isPaused]);
 
   // ── Scrubber drag state ──────────────────────────────────────────────────
   const isDragging = useRef(false);
-  const dragProgress = useRef(new Animated.Value(0)).current;
-  const thumbScale = useRef(new Animated.Value(1)).current;
+  // dragFraction: 0→1 value set directly (no animation) during drag — JS driver, width-only
+  const dragFraction = useRef(new Animated.Value(0)).current;
+  // thumbScaleAnim removed — thumb is now a plain View (no animated driver conflicts)
   const [isScrubbing, setIsScrubbing] = useState(false);
+  // Use a ref for the current scrub fraction — PanResponder is created once
+  // so closures over state would capture stale values.
+  const scrubFractionRef = useRef(0);
   const [scrubPositionMs, setScrubPositionMs] = useState(0);
   const prevPositionMsRef = useRef(0);
   const stallCountRef = useRef(0);
@@ -1984,28 +1994,30 @@ function ReelCard({
 
   const scrubPan = useRef(
     PanResponder.create({
+      // Only claim the gesture if there's a known duration to scrub
       onStartShouldSetPanResponder: () => trackDurMsRef.current > 0,
-      // Only steal horizontal gestures — vertical swipes go to the reel FlatList
+      // Only steal clearly horizontal gestures — vertical swipes go to the reel FlatList
       onMoveShouldSetPanResponder: (_, gs) =>
         trackDurMsRef.current > 0 &&
         Math.abs(gs.dx) > Math.abs(gs.dy) &&
-        Math.abs(gs.dx) > 3,
+        Math.abs(gs.dx) > 4,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (evt) => {
         if (trackDurMsRef.current <= 0) return;
         const TW = trackWRef.current;
         if (TW <= 0) return;
         const rawX = evt.nativeEvent.locationX;
         if (rawX == null || !isFinite(rawX)) return;
+        // Stop any running progressAnim before entering scrub mode
+        progressAnim.stopAnimation();
         isDragging.current = true;
-        setIsScrubbing(true);
         bumpControlsRef.current();
-        // thumbScale uses useNativeDriver:false — same driver as `left` on the same Animated.View
-        thumbScale.stopAnimation();
-        Animated.spring(thumbScale, { toValue: 1.6, useNativeDriver: false, speed: 40 }).start();
         const x = Math.max(0, Math.min(rawX, TW));
         const fraction = x / TW;
-        dragProgress.setValue(fraction);
+        dragFraction.setValue(fraction);
+        scrubFractionRef.current = fraction;
         setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
+        setIsScrubbing(true);
       },
       onPanResponderMove: (evt) => {
         const TW = trackWRef.current;
@@ -2015,35 +2027,35 @@ function ReelCard({
         const x = Math.max(0, Math.min(rawX, TW));
         const fraction = x / TW;
         if (!isFinite(fraction)) return;
-        dragProgress.setValue(fraction);
+        dragFraction.setValue(fraction);
+        scrubFractionRef.current = fraction;
         setScrubPositionMs(Math.round(fraction * trackDurMsRef.current));
       },
       onPanResponderRelease: (evt) => {
-        // Always clean up drag state first, even on early return
+        const TW = trackWRef.current;
+        const rawX = evt?.nativeEvent?.locationX;
+        // Use ref (not state) — PanResponder closure would capture stale state
+        let fraction = scrubFractionRef.current;
+        if (rawX != null && isFinite(rawX) && TW > 0) {
+          fraction = Math.max(0, Math.min(1, rawX / TW));
+          scrubFractionRef.current = fraction;
+        }
+        const ms = Math.round(fraction * trackDurMsRef.current);
+        // Snap progressAnim to the scrubbed position
+        progressAnim.setValue(fraction);
         isDragging.current = false;
         setIsScrubbing(false);
-        thumbScale.stopAnimation();
-        Animated.spring(thumbScale, { toValue: 1, useNativeDriver: false, speed: 40, friction: 4 }).start();
-        const TW = trackWRef.current;
-        if (TW <= 0) return;
-        const rawX = evt.nativeEvent.locationX;
-        if (rawX == null || !isFinite(rawX)) return;
-        const x = Math.max(0, Math.min(rawX, TW));
-        const fraction = Math.max(0, Math.min(1, x / TW));
-        if (!isFinite(fraction)) return;
-        const ms = Math.round(fraction * trackDurMsRef.current);
-        progressAnim.setValue(fraction);
         setScrubPositionMs(ms);
         setPositionMs(ms);
         stallCountRef.current = 0;
         setIsAudioStalled(false);
-        seekToRef.current(ms).catch(() => {});
+        if (isFinite(ms) && ms >= 0) {
+          seekToRef.current(ms).catch(() => {});
+        }
       },
       onPanResponderTerminate: () => {
         isDragging.current = false;
         setIsScrubbing(false);
-        thumbScale.stopAnimation();
-        Animated.spring(thumbScale, { toValue: 1, useNativeDriver: false, speed: 40, friction: 4 }).start();
       },
     })
   ).current;
@@ -2165,7 +2177,7 @@ function ReelCard({
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           paddingHorizontal: 24,
-          paddingBottom: Math.max(insets.bottom + 8, 18),
+          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 8, 48) : Math.max(insets.bottom + 8, 18),
           zIndex: 8, opacity: controlsAnim,
         }}
       >
@@ -2253,39 +2265,82 @@ function ReelCard({
         {/* ── Real-time scrubber — only visible when track duration is known ── */}
         {trackDurMs > 0 ? (
           <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.50)', letterSpacing: 0.3 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.60)', letterSpacing: 0.3 }}>
                 {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
               </Text>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.26)', letterSpacing: 0.3 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.28)', letterSpacing: 0.3 }}>
                 {fmtTimer(playingDurationSecs ?? 0)}
               </Text>
             </View>
-            {/* Draggable track + thumb */}
+            {/*
+              Crash-proof Instagram-style scrubber:
+              ─ Fill uses Animated.View `width` (JS driver, safe in FlatList)
+              ─ Thumb is a plain `View` with JS-computed `left` via scrubPositionMs
+                so it NEVER mixes native/JS drivers on the same animated node.
+              ─ panHandlers on outer View captures locationX relative to the track.
+            */}
             <View
-              style={{ height: 28, justifyContent: 'center' }}
+              style={{ height: 36, justifyContent: 'center' }}
               {...scrubPan.panHandlers}
-              hitSlop={{ top: 10, bottom: 10, left: 0, right: 0 }}
+              hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
+              collapsable={false}
             >
-              <View style={{ height: isScrubbing ? 5 : 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+              {/* Track rail */}
+              <View style={{
+                height: isScrubbing ? 5 : 3,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                width: TRACK_W,
+                overflow: 'visible',
+              }}>
+                {/* Filled portion — Animated.View with JS-driver `width` only */}
                 <Animated.View style={{
-                  height: '100%', borderRadius: 3,
+                  position: 'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  borderRadius: 3,
                   backgroundColor: sound.color,
-                  width: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W], extrapolate: 'clamp' }),
+                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, TRACK_W],
+                    extrapolate: 'clamp',
+                  }),
                 }} />
               </View>
-              <Animated.View style={{
-                position: 'absolute',
-                left: (isScrubbing ? dragProgress : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W - 13], extrapolate: 'clamp' }),
-                top: 7.5, width: 13, height: 13, borderRadius: 6.5,
-                backgroundColor: '#fff',
-                shadowColor: sound.color, shadowOpacity: 0.85, shadowRadius: 7, shadowOffset: { width: 0, height: 0 },
-                elevation: 5, transform: [{ scale: thumbScale }],
-              }} />
+              {/* Thumb — plain View, position derived from scrubPositionMs/positionMs state.
+                  Using a regular View avoids ANY animated node driver conflict. */}
+              {(() => {
+                const ms = isScrubbing ? scrubPositionMs : positionMs;
+                const dur = trackDurMsRef.current;
+                const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
+                const thumbLeft = thumbFrac * TRACK_W;
+                const thumbSize = isScrubbing ? 20 : 14;
+                return (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      // Vertically center on track (32px height, track is 3–5px)
+                      top: (36 - thumbSize) / 2,
+                      left: thumbLeft - thumbSize / 2,
+                      width: thumbSize,
+                      height: thumbSize,
+                      borderRadius: thumbSize / 2,
+                      backgroundColor: '#FFFFFF',
+                      shadowColor: sound.color,
+                      shadowOpacity: isScrubbing ? 0.95 : 0.80,
+                      shadowRadius: isScrubbing ? 10 : 6,
+                      shadowOffset: { width: 0, height: 0 },
+                      elevation: 8,
+                      transform: [{ scale: isScrubbing ? 1.2 : 1 }],
+                    }}
+                  />
+                );
+              })()}
             </View>
           </View>
         ) : (
-          /* Looping ambient sound — subtle 2-px shimmer bar, JS-driver width to avoid native conflict */
+          /* Looping ambient sound — subtle shimmer bar, JS-driver width */
           <View style={{ height: 2, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 16 }}>
             <Animated.View style={{
               position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
@@ -2690,7 +2745,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible animationType="none" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -3181,6 +3236,7 @@ export default function SleepTab() {
   const getReelTrimSecs = (cat: string): number => {
     if (cat === 'Nature') return 6;
     if (cat === 'Birds')  return 4;
+    if (cat === 'Ragas' || cat === 'Meditations') return 0;
     return 5;
   };
 

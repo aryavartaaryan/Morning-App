@@ -122,8 +122,30 @@ const hdr = StyleSheet.create({
   streak: { color: '#FFFFFF50', fontSize: 10, fontWeight: '700' },
 });
 
-// ── Camera mission (sky check / make bed / hydrate) ───────────────────────────
-function CameraMission({
+// ── Self-contained timer — tick never re-renders parent or mission children ────
+// elapsed lives ONLY here; parent reads elapsedRef.current at completion time.
+function MissionTimer({
+  color, streak, icon, name, elapsedRef,
+}: {
+  color: string; streak: number; icon: string; name: string;
+  elapsedRef: React.MutableRefObject<number>;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setElapsed(prev => {
+        const next = prev + 1;
+        elapsedRef.current = next;
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [elapsedRef]);
+  return <MissionHeader icon={icon} name={name} color={color} elapsed={elapsed} streak={streak} />;
+}
+
+
+const CameraMission = React.memo(function CameraMission({
   missionId, color, instructions, onComplete, suppressBttf,
 }: { missionId: string; color: string; instructions: string; onComplete: () => void; suppressBttf?: React.MutableRefObject<boolean> }) {
   const [imageB64, setImageB64] = useState<string | null>(null);
@@ -260,7 +282,7 @@ function CameraMission({
       </TouchableOpacity>
     </View>
   );
-}
+});
 const cam = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, gap: 20 },
   instruction: { color: '#FFFFFF90', fontSize: 14, textAlign: 'center', lineHeight: 22 },
@@ -301,7 +323,7 @@ const CHANT_OPTIONS = [
   },
 ];
 
-function MantraMission({ color, onComplete }: { color: string; onComplete: () => void }) {
+const MantraMission = React.memo(function MantraMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [taps, setTaps] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -415,7 +437,7 @@ function MantraMission({ color, onComplete }: { color: string; onComplete: () =>
       )}
     </ScrollView>
   );
-}
+});
 const mnt = StyleSheet.create({
   wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, gap: 16 },
   stepLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 },
@@ -468,7 +490,7 @@ const SINGLE_PROMPTS = [
   'Name a simple pleasure that brings you joy.',
 ];
 
-function GratitudeMission({ color, onComplete }: { color: string; onComplete: () => void }) {
+const GratitudeMission = React.memo(function GratitudeMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const prompt = SINGLE_PROMPTS[new Date().getDay() % SINGLE_PROMPTS.length];
   const [entry, setEntry] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -584,7 +606,7 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
     );
   }
   return <>{inner}</>;
-}
+});
 const grt = StyleSheet.create({
   wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 60, gap: 20 },
   science: { color: '#FFFFFF45', fontSize: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
@@ -606,7 +628,7 @@ const grt = StyleSheet.create({
 });
 
 // ── Affirmations mission ──────────────────────────────────────────────────────
-function AffirmationsMission({ color, onComplete }: { color: string; onComplete: () => void }) {
+const AffirmationsMission = React.memo(function AffirmationsMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const startIdx = (new Date().getDay() * 3) % AFFIRMATIONS.length;
   const cards = [
     AFFIRMATIONS[startIdx % AFFIRMATIONS.length],
@@ -691,7 +713,7 @@ function AffirmationsMission({ color, onComplete }: { color: string; onComplete:
       </TouchableOpacity>
     </ScrollView>
   );
-}
+});
 const aff = StyleSheet.create({
   wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 20 },
   science: { color: '#FFFFFF55', fontSize: 12, textAlign: 'center', lineHeight: 18, fontStyle: 'italic' },
@@ -720,7 +742,7 @@ const MOTIV = [
   "Almost there! Don't stop! ⚡",
 ];
 
-function MoveItMission({ color, onComplete }: { color: string; onComplete: () => void }) {
+const MoveItMission = React.memo(function MoveItMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const [shakeCount, setShakeCount] = useState(0);
   const [intensity, setIntensity] = useState(0);
   const [done, setDone] = useState(false);
@@ -841,7 +863,7 @@ function MoveItMission({ color, onComplete }: { color: string; onComplete: () =>
     </View>
   );
 
-}
+});
 const mv = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, gap: 18 },
   doneWrap: { alignItems: 'center', gap: 16 },
@@ -931,27 +953,22 @@ export default function MissionScreen() {
   const missionId = (id ?? 'gratitude_drop') as MissionId;
   const mission = MISSIONS.find(m => m.id === missionId) ?? MISSIONS[4];
 
-  const [elapsed, setElapsed] = useState(0);
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
   const missionCompletedRef = useRef(false);
   const pickerActiveRef = useRef(false);
   const elapsedRef = useRef(0);
-  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
 
   useEffect(() => {
     activateKeepAwakeAsync();
-    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
     store.getJSON<MissionSettings>(KEYS.missionSettings).then(ms => {
       setStreak(ms?.streak ?? 0);
     });
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => {
       deactivateKeepAwake();
-      clearInterval(timerRef.current!);
       sub.remove();
       // Stop background mantra carried over from alarm-ringing
       const bg = (global as any).__missionBgSound;
@@ -1079,7 +1096,7 @@ export default function MissionScreen() {
   const handleComplete = useCallback(async () => {
     if (missionCompletedRef.current) return; // guard against double-call
     missionCompletedRef.current = true;
-    clearInterval(timerRef.current!);
+    // Note: timer lives in MissionTimer component and stops when component unmounts
 
     // ── CRITICAL: Stop native alarm FIRST, BEFORE setDone or any navigation ────
     // Root cause of "app auto-opens after mission":
@@ -1154,7 +1171,7 @@ export default function MissionScreen() {
   if (done) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
-        <MissionComplete mission={missionId} elapsed={elapsed} streak={streak} onDismiss={handleDismiss} />
+        <MissionComplete mission={missionId} elapsed={elapsedRef.current} streak={streak} onDismiss={handleDismiss} />
       </View>
     );
   }
@@ -1162,12 +1179,12 @@ export default function MissionScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <MissionHeader
+        <MissionTimer
           icon={mission.icon}
           name={mission.name}
           color={mission.color}
-          elapsed={elapsed}
           streak={streak}
+          elapsedRef={elapsedRef}
         />
 
         {missionId === 'move_it' && (
