@@ -134,18 +134,18 @@ export const VAAR_ACTIONS: string[] = [
 
 // ── Vedic months ─────────────────────────────────────────────────────────────
 export const RASHI_TO_VEDIC_MONTH = [
-  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Mesha',     en: 'Apr–May', season: 'Late spring — Agni season begins' },
-  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Vrishabha', en: 'May–Jun', season: 'Peak summer — maximum solar energy' },
-  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Mithuna',   en: 'Jun–Jul', season: 'Monsoon approach — heat transitions' },
-  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Karka',     en: 'Jul–Aug', season: 'Full monsoon — Vishnu\'s sacred month' },
-  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Simha',     en: 'Aug–Sep', season: 'Late monsoon — Ganesha festival' },
-  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Kanya',     en: 'Sep–Oct', season: 'Autumn begins — Navaratri season' },
-  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Tula',      en: 'Oct–Nov', season: 'Post-monsoon — Diwali, sacred month' },
-  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Vrischika', en: 'Nov–Dec', season: 'Early winter — Gita Jayanti month' },
-  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Dhanu',     en: 'Dec–Jan', season: 'Deep winter — retreat and reflection' },
-  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Makara',    en: 'Jan–Feb', season: 'Makar Sankranti — solar return begins' },
-  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Kumbha',    en: 'Feb–Mar', season: 'Spring arrives — Holi festival' },
-  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Meena',     en: 'Mar–Apr', season: 'New Year — Ugadi and Chaitra Navratri' },
+  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Mesha',     en: 'Mar–Apr', season: 'New Year — Ugadi and Chaitra Navratri' },
+  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Vrishabha', en: 'Apr–May', season: 'Late spring — Agni season begins' },
+  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Mithuna',   en: 'May–Jun', season: 'Peak summer — maximum solar energy' },
+  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Karka',     en: 'Jun–Jul', season: 'Monsoon approach — heat transitions' },
+  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Simha',     en: 'Jul–Aug', season: 'Full monsoon — Vishnu\'s sacred month' },
+  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Kanya',     en: 'Aug–Sep', season: 'Late monsoon — Ganesha festival' },
+  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Tula',      en: 'Sep–Oct', season: 'Autumn begins — Navaratri season' },
+  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Vrischika', en: 'Oct–Nov', season: 'Post-monsoon — Diwali, sacred month' },
+  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Dhanu',     en: 'Nov–Dec', season: 'Early winter — Gita Jayanti month' },
+  { name: 'Pausha',       sanskrit: 'पौष',         rashi: 'Makara',    en: 'Dec–Jan', season: 'Deep winter — retreat and reflection' },
+  { name: 'Magha',        sanskrit: 'माघ',         rashi: 'Kumbha',    en: 'Jan–Feb', season: 'Makar Sankranti — solar return begins' },
+  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Meena',     en: 'Feb–Mar', season: 'Spring arrives — Holi festival' },
 ];
 
 export const SCORE_META: Record<number, { label: string; color: string; emoji: string; desc: string }> = {
@@ -239,11 +239,26 @@ export function getVedicMonth(date: Date = new Date()) {
   const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
   const CYCLE    = 29.53058867;
   const moonAge  = ((((date.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE) + CYCLE) % CYCLE;
-  const halfCycle = CYCLE / 2;
-  const daysToClosingPurnima = moonAge < halfCycle ? halfCycle - moonAge : CYCLE - moonAge + halfCycle;
-  const sunAtClosingPurnima = ((siderealSun + daysToClosingPurnima * 0.9856) % 360 + 360) % 360;
-  const rashiIdx = Math.floor(sunAtClosingPurnima / 30) % 12;
-  return RASHI_TO_VEDIC_MONTH[rashiIdx]!;
+  
+  const daysToClosingAmavasya = CYCLE - moonAge;
+  const sunAtClosingAmavasya = ((siderealSun + daysToClosingAmavasya * 0.9856) % 360 + 360) % 360;
+  const rashiEnd = Math.floor(sunAtClosingAmavasya / 30) % 12;
+  
+  const daysSinceLastAmavasya = moonAge;
+  const sunAtLastAmavasya = ((siderealSun - daysSinceLastAmavasya * 0.9856) % 360 + 360) % 360;
+  const rashiStart = Math.floor(sunAtLastAmavasya / 30) % 12;
+
+  const isAdhik = rashiStart === rashiEnd;
+  const baseMonthIdx = isAdhik ? (rashiStart + 1) % 12 : rashiEnd;
+  const baseMonth = RASHI_TO_VEDIC_MONTH[baseMonthIdx]!;
+
+  if (isAdhik) {
+    return {
+      ...baseMonth,
+      name: `Adhik ${baseMonth.name}`,
+    };
+  }
+  return baseMonth;
 }
 
 export function getNextLunarEvents(): { daysToFull: number; daysToNew: number } {

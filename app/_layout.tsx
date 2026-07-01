@@ -370,10 +370,20 @@ function BodhiNotificationListener() {
   const segmentsRef = useRef<string[]>([]);
   const navReady = !!navigationState?.key;
 
-  // Reset the guard whenever we leave the alarm-ringing screen so the next
-  // alarm cycle can trigger routing again.
+  // BUG 1 FIX: Reset the guard only when ALL alarm-related screens are gone.
+  // Previously this reset when leaving wake-alarm-ringing — but the user legitimately
+  // navigates from wake-alarm-ringing → mission, so alarmRoutedRef was reset mid-alarm
+  // cycle. The AppState/Linking listeners then re-routed back to wake-alarm-ringing ON
+  // TOP of the mission screen, causing it to freeze on the second alarm.
+  // Now: keep alarmRoutedRef=true while on mission too — only reset when the full
+  // alarm cycle is complete (user is on a non-alarm, non-mission screen).
   useEffect(() => {
-    if (!(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing')) {
+    const segs = segments as string[];
+    if (
+      !segs.includes('wake-alarm-ringing') &&
+      !segs.includes('alarm-ringing') &&
+      !segs.includes('mission')
+    ) {
       alarmRoutedRef.current = false;
     }
   }, [segments]);

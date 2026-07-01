@@ -2661,11 +2661,11 @@ function WeatherSection({
   return (
     <View style={WSEC.container}>
       <LinearGradient
-        colors={['rgba(56,189,248,0.18)', 'rgba(103,232,249,0.08)', 'transparent']}
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(103,232,249,0.55)' }} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.25)' }} />
 
       {/* ── Tap-to-toggle hero row ── */}
       <TouchableOpacity onPress={toggle} activeOpacity={0.82} style={WSEC.heroRow}>
@@ -2684,7 +2684,7 @@ function WeatherSection({
         {/* Right: metrics + chevron */}
         <View style={WSEC.heroRight}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            {maxT !== null && <Text style={WSEC.hiLo}><Text style={{ color: 'rgba(251,146,60,0.95)' }}>↑{maxT}°</Text>  <Text style={{ color: 'rgba(147,197,253,0.95)' }}>↓{minT}°</Text></Text>}
+            {maxT !== null && <Text style={WSEC.hiLo}><Text style={{ color: 'rgba(255,255,255,0.95)' }}>↑{maxT}°</Text>  <Text style={{ color: 'rgba(255,255,255,0.65)' }}>↓{minT}°</Text></Text>}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <Text style={WSEC.metricChip}>💧 {weather.humidity}%</Text>
@@ -2702,9 +2702,6 @@ function WeatherSection({
         <View style={WSEC.divider} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 11, paddingBottom: 2 }}>
           <Text style={WSEC.forecastLabel}>⏱  HOURLY FORECAST</Text>
-          <TouchableOpacity onPress={onMore} hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}>
-            <Text style={{ fontSize: 7.5, fontWeight: '800', color: 'rgba(103,232,249,0.65)', letterSpacing: 1 }}>7-DAY →</Text>
-          </TouchableOpacity>
         </View>
         <ScrollView
           horizontal
@@ -2717,19 +2714,24 @@ function WeatherSection({
             const showRain = rp >= 10;
             return (
               <View key={i} style={[WSEC.hourCard, isNow && WSEC.hourCardNow]}>
-                <Text style={[WSEC.hourTime, isNow && { color: '#67e8f9' }]}>{isNow ? 'NOW' : hrLabel(pt.hour)}</Text>
+                <Text style={[WSEC.hourTime, isNow && { color: '#FFF' }]}>{isNow ? 'NOW' : hrLabel(pt.hour)}</Text>
                 <Text style={WSEC.hourEmoji}>{nightAwareEmoji(pt.emoji, pt.hour, solarTimes)}</Text>
                 <Text style={WSEC.hourTemp}>{pt.temp}°</Text>
                 {/* Rain probability bar */}
                 <View style={WSEC.rainBarTrack}>
                   <View style={[WSEC.rainBarFill, { width: `${rp}%` as any, opacity: showRain ? 1 : 0.2 }]} />
                 </View>
-                <Text style={[WSEC.rainPct, { color: showRain ? (rp > 60 ? '#60a5fa' : '#93c5fd') : 'rgba(255,255,255,0.22)' }]}>
+                <Text style={[WSEC.rainPct, { color: showRain ? '#FFF' : 'rgba(255,255,255,0.22)' }]}>
                   {showRain ? `${rp}%` : '—'}
                 </Text>
               </View>
             );
           })}
+          <TouchableOpacity onPress={onMore} activeOpacity={0.8} style={[WSEC.hourCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', paddingHorizontal: 16 }]}>
+            <Text style={{ fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5, marginBottom: 4 }}>7 DAY</Text>
+            <Text style={{ fontSize: 20 }}>📅</Text>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>More →</Text>
+          </TouchableOpacity>
         </ScrollView>
       </Animated.View>
     </View>
@@ -2739,9 +2741,9 @@ function WeatherSection({
 const WSEC = StyleSheet.create({
   container: {
     marginHorizontal: 16, marginTop: 4, marginBottom: 6,
-    borderRadius: 22, borderWidth: 1, borderColor: 'rgba(103,232,249,0.30)',
-    backgroundColor: 'rgba(4,12,36,0.55)', overflow: 'hidden',
-    shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 18, elevation: 14,
+    borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(20,20,20,0.55)', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14,
   },
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 12 },
   heroLeft:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -2751,24 +2753,24 @@ const WSEC = StyleSheet.create({
   feelsLike: { fontSize: 10, color: 'rgba(255,255,255,0.50)', fontWeight: '700', marginBottom: 4 },
   cond:      { fontSize: 11.5, color: 'rgba(255,255,255,0.72)', fontWeight: '600', marginTop: 2 },
   hiLo:      { fontSize: 11.5, fontWeight: '800', color: '#FFFFFF' },
-  metricChip:{ fontSize: 10.5, fontWeight: '700', color: 'rgba(103,232,249,0.90)' },
-  rainBadge: { fontSize: 10, fontWeight: '800', color: 'rgba(96,165,250,0.90)', marginBottom: 2 },
+  metricChip:{ fontSize: 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
+  rainBadge: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.85)', marginBottom: 2 },
   chevronWrap:{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignSelf: 'flex-end' },
   chevron:   { fontSize: 14, color: 'rgba(255,255,255,0.60)', fontWeight: '700', lineHeight: 17 },
-  divider:   { height: 1, backgroundColor: 'rgba(103,232,249,0.15)', marginHorizontal: 14 },
-  forecastLabel: { fontSize: 7, fontWeight: '900', color: 'rgba(103,232,249,0.65)', letterSpacing: 1.6 },
+  divider:   { height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginHorizontal: 14 },
+  forecastLabel: { fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.6 },
   hourCard: {
     alignItems: 'center', paddingHorizontal: 11, paddingTop: 10, paddingBottom: 8,
     borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
     minWidth: 60, gap: 3,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
   },
-  hourCardNow: { backgroundColor: 'rgba(103,232,249,0.14)', borderColor: 'rgba(103,232,249,0.35)' },
+  hourCardNow: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.25)' },
   hourTime:  { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.4 },
   hourEmoji: { fontSize: 22, marginVertical: 2 },
   hourTemp:  { fontSize: 13, fontWeight: '900', color: '#FFFFFFF0' },
   rainBarTrack: { width: 38, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.10)', marginTop: 3, overflow: 'hidden' },
-  rainBarFill:  { height: 3, borderRadius: 2, backgroundColor: '#60a5fa' },
+  rainBarFill:  { height: 3, borderRadius: 2, backgroundColor: '#FFFFFF' },
   rainPct:   { fontSize: 8.5, fontWeight: '800', marginTop: 1 },
 });
 
@@ -5862,18 +5864,18 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
   return (
     <TouchableOpacity
-      style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(167,139,250,0.30)', backgroundColor: 'rgba(4,8,28,0.62)', overflow: 'hidden', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.24, shadowRadius: 22, elevation: 14 }}
+      style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,20,0.55)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14 }}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
       activeOpacity={0.82}>
 
-      {/* Deep space purple gradient */}
+      {/* Glassmorphism gradient */}
       <LinearGradient
-        colors={['rgba(124,58,237,0.22)', 'rgba(109,40,217,0.10)', 'rgba(6,15,40,0.03)', 'transparent']}
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Top accent line — violet */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(167,139,250,0.65)' }} />
+      {/* Top accent line */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.25)' }} />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
 
@@ -5882,35 +5884,31 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           <View style={{ flex: 1 }}>
             {/* Vedic month badge */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(167,139,250,0.45)', backgroundColor: 'rgba(124,58,237,0.20)' }}>
-                <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#c4b5fd', letterSpacing: 1.3 }}>
+              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#FFF', letterSpacing: 1.3 }}>
                   🪐  {vMonth?.name?.toUpperCase() ?? 'VEDIC MONTH'}
                 </Text>
               </View>
-              {vMonth?.sanskrit && (
-                <Text style={{ fontSize: 14, color: 'rgba(196,181,253,0.72)', fontWeight: '700' }}>{vMonth.sanskrit}</Text>
-              )}
             </View>
             <Text style={{ fontSize: 6.5, fontWeight: '900', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.8, marginBottom: 3 }}>✦  VEDIC ALMANAC  ·  TODAY</Text>
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#FFFFFF', lineHeight: 22, letterSpacing: 0.1 }}>
               {now.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(167,139,250,0.28)', backgroundColor: 'rgba(124,58,237,0.14)', marginLeft: 10, marginTop: 2 }}>
-            <Text style={{ fontSize: 7.5, fontWeight: '800', color: '#c4b5fdBB', letterSpacing: 0.8 }}>EXPLORE</Text>
-            <Text style={{ fontSize: 12, color: '#c4b5fdBB', fontWeight: '900' }}>›</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: 10, marginTop: 2 }}>
+            <Text style={{ fontSize: 7.5, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.8 }}>EXPLORE</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '900' }}>›</Text>
           </View>
         </View>
 
-        {/* ── MOON SECTION — large SVG + illumination + tithi ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16, marginBottom: 14, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.09)' }}>
-          {/* Large moon + illumination badge */}
-          <View style={{ alignItems: 'center', gap: 5 }}>
-            <MoonSVG tithiNum={moon.tithiNum} size={70} />
-            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(251,191,36,0.18)', borderWidth: 0.5, borderColor: 'rgba(251,191,36,0.40)' }}>
-              <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#fbbf24', letterSpacing: 0.4 }}>{moon.illumination}% lit</Text>
+        {/* ── MOON SECTION — circular ring design ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 14, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.09)' }}>
+          {/* Circular ring moon */}
+          <View style={{ width: 90, height: 90, borderRadius: 45, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center' }}>
+            <MoonSVG tithiNum={moon.tithiNum} size={64} />
+            <View style={{ position: 'absolute', bottom: -6, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(20,20,20,0.9)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
+              <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#FFF', letterSpacing: 0.4 }}>{moon.illumination}% lit</Text>
             </View>
-            <Text style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.40)', fontWeight: '600', textAlign: 'center' }}>{moon.name}</Text>
           </View>
 
           {/* Tithi + energy + next event */}
@@ -5924,8 +5922,8 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
               {p.paksha === 'Shukla' ? '🌒 Shukla Paksha · Bright Fortnight' : '🌘 Krishna Paksha · Dark Fortnight'}
             </Text>
             {/* Next lunar event pill */}
-            <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: nextEvent.color + '1A', borderWidth: 0.5, borderColor: nextEvent.color + '50', alignSelf: 'flex-start' }}>
-              <Text style={{ fontSize: 9, fontWeight: '800', color: nextEvent.color }}>
+            <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.25)', alignSelf: 'flex-start' }}>
+              <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF' }}>
                 {nextEvent.icon}  {nextEvent.label}
               </Text>
             </View>
@@ -5935,62 +5933,62 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
         {/* ── DATA CHIPS: NAKSHATRA + YOGA + VAAR ── */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
           {[
-            { label: 'NAKSHATRA', val: nakshatra.name, sub: nakshatra.constellation, emoji: '⭐', color: '#00D4B8' },
-            { label: 'YOGA',      val: yoga.name,      sub: yoga.en,                 emoji: '🔮', color: '#a78bfa' },
-            { label: 'VAAR',      val: ENGLISH_DAYS[p.vaarIdx], sub: vaar.planet,    emoji: vaar.emoji, color: vaar.color },
+            { label: 'NAKSHATRA', val: nakshatra.name, sub: nakshatra.constellation, emoji: '⭐' },
+            { label: 'YOGA',      val: yoga.name,      sub: yoga.en,                 emoji: '🔮' },
+            { label: 'VAAR',      val: ENGLISH_DAYS[p.vaarIdx], sub: vaar.planet,    emoji: vaar.emoji },
           ].map((item, i) => (
-            <View key={i} style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: item.color + '30', backgroundColor: item.color + '0E', paddingVertical: 10, paddingHorizontal: 7, alignItems: 'center', gap: 3 }}>
-              <Text style={{ fontSize: 6, fontWeight: '900', color: item.color + 'BB', letterSpacing: 1.3, marginBottom: 1 }}>{item.label}</Text>
+            <View key={i} style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 10, paddingHorizontal: 7, alignItems: 'center', gap: 3 }}>
+              <Text style={{ fontSize: 6, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.3, marginBottom: 1 }}>{item.label}</Text>
               <Text style={{ fontSize: 17 }}>{item.emoji}</Text>
               <Text style={{ fontSize: 11, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', lineHeight: 14 }}>{item.val}</Text>
-              <Text style={{ fontSize: 7.5, fontWeight: '700', color: item.color + 'CC', textAlign: 'center', lineHeight: 11 }} numberOfLines={1}>{item.sub}</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: '700', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 11 }} numberOfLines={1}>{item.sub}</Text>
             </View>
           ))}
         </View>
 
         {/* ── SOLAR DAY PROGRESS + TIMES ── */}
         {csr !== null && css !== null && (
-          <View style={{ borderRadius: 16, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 14, paddingTop: 11, paddingBottom: 12 }}>
+          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 14, paddingTop: 11, paddingBottom: 12 }}>
             {/* Day progress bar */}
             {dayPct !== null && (
               <View style={{ marginBottom: 10 }}>
                 <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' }}>
                   <LinearGradient
-                    colors={['#fb923c', '#fbbf24', '#fde68a']}
+                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.8)', 'rgba(255,255,255,1)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={{ height: 4, borderRadius: 2, width: `${Math.round(dayPct * 100)}%` as any }}
                   />
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                  <Text style={{ fontSize: 6.5, color: '#fb923c', fontWeight: '800', letterSpacing: 0.5 }}>🌅 SUNRISE</Text>
-                  <Text style={{ fontSize: 6.5, color: '#fbbf24', fontWeight: '800' }}>{Math.round(dayPct * 100)}% OF DAY</Text>
-                  <Text style={{ fontSize: 6.5, color: '#c084fc', fontWeight: '800', letterSpacing: 0.5 }}>SUNSET 🌆</Text>
+                  <Text style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.7)', fontWeight: '800', letterSpacing: 0.5 }}>🌅 SUNRISE</Text>
+                  <Text style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.9)', fontWeight: '800' }}>{Math.round(dayPct * 100)}% OF DAY</Text>
+                  <Text style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.7)', fontWeight: '800', letterSpacing: 0.5 }}>SUNSET 🌆</Text>
                 </View>
               </View>
             )}
             {/* Solar times */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
               <View style={{ alignItems: 'center', gap: 2 }}>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#fb923c' }}>{fmtSolar(csr)}</Text>
-                <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>SUNRISE</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csr)}</Text>
+                <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8 }}>SUNRISE</Text>
               </View>
-              <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+              <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.1)' }} />
               {csn !== null && (<>
                 <View style={{ alignItems: 'center', gap: 2 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#fbbf24' }}>{fmtSolar(csn)}</Text>
-                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>SOLAR NOON</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csn)}</Text>
+                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8 }}>SOLAR NOON</Text>
                 </View>
-                <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.1)' }} />
               </>)}
               <View style={{ alignItems: 'center', gap: 2 }}>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#c084fc' }}>{fmtSolar(css)}</Text>
-                <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>SUNSET</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFF' }}>{fmtSolar(css)}</Text>
+                <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8 }}>SUNSET</Text>
               </View>
               {cdaylight && (<>
-                <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                <View style={{ width: 0.5, height: 26, backgroundColor: 'rgba(255,255,255,0.1)' }} />
                 <View style={{ alignItems: 'center', gap: 2 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#7dd3fc' }}>{cdaylight}</Text>
-                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF35', letterSpacing: 0.8 }}>DAYLIGHT</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFF' }}>{cdaylight}</Text>
+                  <Text style={{ fontSize: 6.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.8 }}>DAYLIGHT</Text>
                 </View>
               </>)}
             </View>

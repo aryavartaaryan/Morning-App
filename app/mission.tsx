@@ -14,7 +14,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive, stopNativeLockTask } from '@/lib/nativeAlarm';
+import { cancelNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -826,19 +826,24 @@ const MoveItMission = React.memo(function MoveItMission({ color, onComplete }: {
       <Text style={mv.headline}>SHAKE YOUR PHONE!</Text>
       <Text style={mv.sub}>Shake your phone to dismiss the alarm</Text>
 
-      {/* Ring + animated phone */}
-      <Animated.View style={[mv.ring, {
+      {/* Ring + animated phone
+           CRITICAL: shadowOpacity / shadowRadius / elevation are JS-driver-only props.
+           ringScale uses useNativeDriver:true. Putting them on the same Animated.View
+           causes "JS animation on native node" crash.
+           Fix: outer plain View holds shadow+border, inner Animated.View holds ONLY transform. */}
+      <View style={[mv.ringOuter, {
         borderColor: ringColor + '60',
         shadowColor: ringColor,
         shadowOpacity: 0.3 + progress * 0.5,
         shadowRadius: 8 + progress * 20,
         elevation: 4 + Math.round(progress * 12),
-        transform: [{ scale: ringScale }],
       }]}>
-        <Animated.Text style={[mv.phone, { transform: [{ translateX: shakeAnim }] }]}>📱</Animated.Text>
-        <Text style={[mv.countBig, { color: ringColor }]}>{shakeCount}</Text>
-        <Text style={mv.countOf}>/ {REQUIRED_SHAKES} shakes</Text>
-      </Animated.View>
+        <Animated.View style={[mv.ring, { transform: [{ scale: ringScale }] }]}>
+          <Animated.Text style={[mv.phone, { transform: [{ translateX: shakeAnim }] }]}>📱</Animated.Text>
+          <Text style={[mv.countBig, { color: ringColor }]}>{shakeCount}</Text>
+          <Text style={mv.countOf}>/ {REQUIRED_SHAKES} shakes</Text>
+        </Animated.View>
+      </View>
 
       {/* Progress bar */}
       <View style={mv.barBg}>
@@ -869,10 +874,17 @@ const mv = StyleSheet.create({
   doneWrap: { alignItems: 'center', gap: 16 },
   headline: { fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center' },
   sub: { fontSize: 13, color: '#FFFFFF55', textAlign: 'center', lineHeight: 20 },
-  ring: {
+  // ringOuter: plain View — holds shadow + border (JS-driver-only props).
+  // ring: Animated.View — holds ONLY transform:scale (native driver safe).
+  // Keeping them on separate nodes prevents the 'JS animation on native node' crash.
+  ringOuter: {
     width: 210, height: 210, borderRadius: 105, borderWidth: 4,
-    alignItems: 'center', justifyContent: 'center', gap: 2,
     backgroundColor: '#FFFFFF06', shadowOffset: { width: 0, height: 0 },
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ring: {
+    width: '100%', height: '100%', borderRadius: 105,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
   },
   phone: { fontSize: 44, marginBottom: 2 },
   countBig: { fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 54 },
@@ -1145,16 +1157,15 @@ export default function MissionScreen() {
     setStreak(newStreak);
 
     // ── 4. Reschedule tomorrow's alarm ─────────────────────────────────────────
-    // Clear the JS-side "alarm handled" guard so tomorrow's alarm is not suppressed.
+    // BUG 5 FIX: Do NOT call scheduleNativeAlarm() here from JS.
+    // The native AlarmBroadcastReceiver.onReceive() already rescheduled tomorrow's
+    // alarm the moment this alarm fired. Calling scheduleNativeAlarm() here
+    // was racing with the cancelNativeAlarm() call above (line 1142), cancelling
+    // the alarm the receiver had just set — causing the next alarm to never fire.
+    // The native receiver handles all daily repeat scheduling reliably without JS.
+    // We only need to clear the JS-side guard so tomorrow's layout routing works.
     await AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
-    const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
-    if (alarmCfg?.wakeAlarm?.enabled) {
-      scheduleNativeAlarm(
-        alarmCfg.wakeAlarm.hour,
-        alarmCfg.wakeAlarm.minute,
-        alarmCfg.wakeAlarm.days,
-      ).catch(() => {});
-    }
+
 
     // ── 5. Log to Firestore ─────────────────────────────────────────────────────
     const uid = auth.currentUser?.uid;

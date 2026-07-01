@@ -278,37 +278,56 @@ abstract class AlarmSoundServiceBase : Service() {
             }
         }
 
-        // Priority 2: search the permanent mantras/ directory using the stored sound ID.
-        // This recovers from stale expo-asset paths caused by APK updates or cache eviction.
+        // Priority 2: exhaustive search of ALL known permanent storage locations.
+        // BUG 4 FIX: expo-asset caches files in a hash-named directory that is wiped
+        // on APK updates. KEY_SOUND_PATH stores that cache path, which is stale after
+        // any app update. We now search EVERY permanent location before giving up.
+        // When we find a valid file we also update KEY_SOUND_PATH so the NEXT alarm
+        // fires on Priority 1 without searching.
         try {
             val prefs = getSharedPreferences(AlarmModule.PREFS_NAME, android.content.Context.MODE_PRIVATE)
             val soundId = prefs.getString(AlarmModule.KEY_SOUND, null)
             if (!soundId.isNullOrEmpty()) {
-                // Mirror of getLocalMantraPath() in mantraDownload.ts:
-                // FileSystem.documentDirectory + 'mantras/' + id + '.mp3'
-                val docDir = filesDir.parentFile?.absolutePath ?: filesDir.absolutePath
-                val candidates = listOf(
-                    "$docDir/files/mantras/$soundId.mp3",
-                    "$docDir/files/mantras/$soundId.m4a",
-                    "${filesDir.absolutePath}/mantras/$soundId.mp3",
-                    "${filesDir.absolutePath}/mantras/$soundId.m4a"
-                )
-                for (candidatePath in candidates) {
-                    val candidateFile = File(candidatePath)
-                    if (candidateFile.exists()) {
-                        try {
-                            mediaPlayer?.release()
-                            mediaPlayer = MediaPlayer().apply {
-                                setAudioAttributes(buildAudioAttrs())
-                                setDataSource(candidatePath)
-                                isLooping = true
-                                prepare()
-                                setVolume(1f, 1f)
-                                start()
+                val exts = listOf(".mp3", ".m4a", ".wav", ".ogg")
+                // Build all candidate directory roots
+                val roots = buildList {
+                    // Internal files dir: /data/user/0/<pkg>/files
+                    add(filesDir.absolutePath)
+                    // Parent of files dir (catches /data/user/0/<pkg>)
+                    filesDir.parentFile?.absolutePath?.let { add(it + "/files") }
+                    // External files dirs (SD card or emulated)
+                    getExternalFilesDirs(null).filterNotNull().forEach { add(it.absolutePath) }
+                    // Cache dirs — some expo-asset paths land here
+                    add(cacheDir.absolutePath)
+                    externalCacheDir?.absolutePath?.let { add(it) }
+                }
+                // Subdirectories to check within each root
+                val subdirs = listOf("mantras", "mantra", "sounds", "alarm", "")
+
+                for (root in roots) {
+                    for (sub in subdirs) {
+                        val dir = if (sub.isEmpty()) root else "$root/$sub"
+                        for (ext in exts) {
+                            val candidatePath = "$dir/$soundId$ext"
+                            val candidateFile = File(candidatePath)
+                            if (candidateFile.exists() && candidateFile.length() > 0) {
+                                try {
+                                    mediaPlayer?.release()
+                                    mediaPlayer = MediaPlayer().apply {
+                                        setAudioAttributes(buildAudioAttrs())
+                                        setDataSource(candidatePath)
+                                        isLooping = true
+                                        prepare()
+                                        setVolume(1f, 1f)
+                                        start()
+                                    }
+                                    // Update stored path so next alarm uses Priority 1 directly
+                                    prefs.edit().putString(AlarmModule.KEY_SOUND_PATH, candidatePath).apply()
+                                    return
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
-                            return
-                        } catch (e: Exception) {
-                            e.printStackTrace()
                         }
                     }
                 }
@@ -317,9 +336,16 @@ abstract class AlarmSoundServiceBase : Service() {
             e.printStackTrace()
         }
 
-        // Priority 3: bundled fallback raw resource
+        // Priority 3: bundled fallback raw resource (mantra_alarm.wav).
+        // This only plays if ALL file-based lookups above failed — i.e. the user's
+        // selected sound was never downloaded to this device. Log clearly so it's
+        // obvious in logcat when investigating "beep instead of mantra" reports.
+        android.util.Log.w("AlarmSound", "BUG4: All sound file lookups failed — falling back to bundled mantra_alarm.wav. soundPath=$soundPath soundId=${
+            try { getSharedPreferences(AlarmModule.PREFS_NAME, android.content.Context.MODE_PRIVATE).getString(AlarmModule.KEY_SOUND, "null") } catch (_: Exception) { "error" }
+        }")
         playFromRaw()
     }
+
 
     private fun playFromRaw() {
         try {
@@ -505,12 +531,17 @@ abstract class AlarmSoundServiceBase : Service() {
                 else
                     @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
 
+                // BUG 3 FIX: Do NOT include FLAG_NOT_FOCUSABLE.
+                // That flag was blocking all touch input including the lock-screen
+                // keyguard (fingerprint / PIN / pattern) — the user couldn't unlock.
+                // FLAG_NOT_TOUCH_MODAL lets touches outside the overlay pass through
+                // to the system keyguard while still keeping our overlay visible.
                 val flags =
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED   or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON     or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON     or
                     WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD   or
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE       or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL    or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
 
                 val params = WindowManager.LayoutParams(
@@ -678,12 +709,39 @@ abstract class AlarmSoundServiceBase : Service() {
         ).also { it.acquire(10 * 60 * 1000L) } // 10-minute safety cap
 
         markAlarmActive()
-        alarmScreenLaunched = false
         startForeground(getNotifId(), buildNotification())
-        playAlarm()
-        startAlarmVibration() // Phase 3: vibration owned by native — survives JS thread issues
-        addOverlay()          // Phase 4: cover screen immediately, before RN has mounted
-        launchApp()
+
+        // BUG 1 FIX: Distinguish fresh alarm start from START_STICKY mid-alarm restart.
+        //
+        // OLD CODE: alarmScreenLaunched was unconditionally reset to false here,
+        // then launchApp() was always called — even on START_STICKY null-intent
+        // restarts where the user is already on the mission screen. This caused:
+        //   • alarmScreenLaunched = false  →  launchApp() fires the deep-link URI
+        //   • Deep-link re-navigates to wake-alarm-ringing OVER the mission screen
+        //   • Mission screen frozen/stuck on every 2nd alarm test.
+        //
+        // FIX: Only do the full startup sequence (reset flag + deep-link launch)
+        // when intent is non-null (genuine AlarmBroadcastReceiver trigger).
+        // For null-intent START_STICKY restarts (mid-alarm), just restore audio
+        // and watchdogs without touching navigation.
+        if (intent != null) {
+            // Fresh alarm start — reset flag so deep-link fires exactly once
+            alarmScreenLaunched = false
+            playAlarm()
+            startAlarmVibration() // Phase 3: vibration owned by native — survives JS thread issues
+            addOverlay()          // Phase 4: cover screen immediately, before RN has mounted
+            launchApp()
+        } else {
+            // START_STICKY mid-alarm restart — alarm is still active but service was killed.
+            // Restore audio/vibration without resetting alarmScreenLaunched.
+            // alarmScreenLaunched stays true → subsequent launchApp() calls use
+            // REORDER_TO_FRONT instead of the deep-link, so navigation is not disrupted.
+            playAlarm()
+            startAlarmVibration()
+            // Do NOT call launchApp() here — the user may be mid-mission.
+            // The 200ms bringToFrontRunnable will call launchApp() if the app
+            // is genuinely not in the foreground.
+        }
 
         // Register primary watchdog (lifecycle-based, fires on actual pause).
         (application as Application).registerActivityLifecycleCallbacks(lifecycleWatchdog)

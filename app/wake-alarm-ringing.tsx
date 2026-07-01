@@ -168,9 +168,18 @@ export default function WakeAlarmRingingScreen() {
     NativeModules.HabitAlarmModule?.dismissHabitAlarmOverlay?.().catch?.(() => {});
     NativeModules.HabitAlarmModule?.stopHabitAlarmSound?.().catch?.(() => {});
     stopAlarmVibration().catch(() => {});
-    // Dismiss native overlay if present
+    // BUG 3 FIX: Dismiss native overlay IMMEDIATELY on mount.
+    // The overlay was using FLAG_NOT_FOCUSABLE (now changed to FLAG_NOT_TOUCH_MODAL
+    // in AlarmSoundServiceBase), but dismissing it quickly also removes any residual
+    // risk of it blocking keyguard/fingerprint interaction.
+    // Call twice: immediately + 200ms safety-net for START_STICKY service race.
     NativeModules.AlarmModule?.dismissAlarmOverlay?.().catch?.(() => {});
+    const t = setTimeout(() => {
+      NativeModules.AlarmModule?.dismissAlarmOverlay?.().catch?.(() => {});
+    }, 200);
+    return () => clearTimeout(t);
   }, []);
+
 
   // ── Native AlarmSoundService is playing the alarm sound natively. ───────
   // We do not play JS audio here to avoid double-playing sounds.
