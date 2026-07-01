@@ -18,7 +18,7 @@ export const BG_URLS: Record<string, string> = {
   midday_early: 'https://images.pexels.com/photos/36672522/pexels-photo-36672522.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_mid: 'https://images.pexels.com/photos/32414982/pexels-photo-32414982.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_late: 'https://images.pexels.com/photos/24482717/pexels-photo-24482717.jpeg?auto=compress&cs=tinysrgb&w=600',
-  midday:     'https://images.pexels.com/photos/35521604/pexels-photo-35521604.jpeg?auto=compress&cs=tinysrgb&w=600',
+  midday:     'https://images.pexels.com/photos/13795794/pexels-photo-13795794.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_mid: 'https://images.pexels.com/photos/14406384/pexels-photo-14406384.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_late: 'https://images.pexels.com/photos/27685316/pexels-photo-27685316.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon:  'https://images.pexels.com/photos/33441030/pexels-photo-33441030.jpeg?auto=compress&cs=tinysrgb&w=600',

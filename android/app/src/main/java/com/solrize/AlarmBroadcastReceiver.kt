@@ -6,16 +6,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import java.util.Calendar
 
 class AlarmBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d("AriseAlarm", "AlarmBroadcastReceiver fired at ${System.currentTimeMillis()}")
-        showToast(context, "[DBG 1/3] Alarm broadcast received ✅")
 
         // 1. Start the foreground service that plays the alarm and shows full-screen UI.
         val serviceIntent = Intent(context, AlarmSoundService::class.java)
@@ -25,10 +21,8 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             } else {
                 context.startService(serviceIntent)
             }
-            showToast(context, "[DBG 2/3] AlarmSoundService start sent ✅")
         } catch (e: Exception) {
             Log.e("AriseAlarm", "Failed to start AlarmSoundService", e)
-            showToast(context, "[DBG] Service start FAILED ❌: ${e.message}")
         }
 
         // 2. Reschedule for tomorrow at the same wall-clock time so this alarm
@@ -62,16 +56,8 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                 am.setAlarmClock(AlarmManager.AlarmClockInfo(next.timeInMillis, pi), pi)
             }
             Log.d("AriseAlarm", "Rescheduled next alarm for ${next.time}")
-            showToast(context, "[DBG 3/3] Next alarm set for ${next.time} ✅")
         } catch (e: Exception) {
             Log.e("AriseAlarm", "Failed to reschedule alarm", e)
-            showToast(context, "[DBG] Reschedule FAILED ❌: ${e.message}")
-        }
-    }
-
-    private fun showToast(context: Context, msg: String) {
-        Handler(Looper.getMainLooper()).post {
-            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
     }
 }

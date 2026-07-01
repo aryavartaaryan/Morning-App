@@ -211,6 +211,8 @@ async function fadeSound(sound: Audio.Sound, fromVol: number, toVol: number, dur
   }
 }
 
+let _fusionEpoch = 0;
+
 /**
  * Fusion Wake — sequences 5 phases for the ultimate gently-style wake:
  *   Phase 0 · 90 s  : Nature (Breeze & Trees)
@@ -229,8 +231,11 @@ export async function playFusionAlarm(
   gentle = false,
   rampMinutes = 5,
 ): Promise<void> {
+  const epoch = ++_fusionEpoch;
   await preemptActiveAlarm();
   await stopActivePreview();
+  if (epoch !== _fusionEpoch) return;
+
   setActiveAlarmSoundRef(soundRef);
   cancelFusion();
   cancelVolumeRamp();
@@ -281,6 +286,7 @@ export async function playFusionAlarm(
   };
 
   const playPhase = async (idx: number): Promise<void> => {
+    if (epoch !== _fusionEpoch) return;
     if (idx >= phases.length) return;
     const isLast = idx === phases.length - 1;
 
@@ -291,10 +297,14 @@ export async function playFusionAlarm(
         { shouldPlay: true, isLooping: true, volume: 0 },
       );
       sound = s;
+      if (epoch !== _fusionEpoch) {
+        try { await sound.stopAsync(); await sound.unloadAsync(); } catch {}
+        return;
+      }
       soundRef.current = sound;
     } catch (err) {
       console.warn(`[Fusion] Phase ${idx} (${phases[idx].label}) load error:`, err);
-      if (!isLast) {
+      if (!isLast && epoch === _fusionEpoch) {
         _fusionPhaseTimer = setTimeout(() => playPhase(idx + 1), 500);
       }
       return;
@@ -303,9 +313,11 @@ export async function playFusionAlarm(
     // Fade in to current gentle target
     currentTargetVol = getTargetVol();
     await fadeSound(sound, 0, currentTargetVol, FADE_MS);
+    if (epoch !== _fusionEpoch) return;
 
     if (!isLast) {
       _fusionPhaseTimer = setTimeout(async () => {
+        if (epoch !== _fusionEpoch) return;
         const dying = soundRef.current;
         // Fade out then unload
         if (dying) {
@@ -321,8 +333,12 @@ export async function playFusionAlarm(
   await playPhase(0);
 
   // Independent gentle ramp — keeps nudging volume up across all phases
-  if (gentle) {
+  if (gentle && epoch === _fusionEpoch) {
     _fusionRampInterval = setInterval(async () => {
+      if (epoch !== _fusionEpoch) {
+        if (_fusionRampInterval !== null) { clearInterval(_fusionRampInterval); _fusionRampInterval = null; }
+        return;
+      }
       const vol = getTargetVol();
       currentTargetVol = vol;
       try {

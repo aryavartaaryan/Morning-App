@@ -112,7 +112,7 @@ function DebugToggleBtn({ onPress, count }: { onPress: () => void; count: number
 // ─── Public component — render once at root level ─────────────────────────────
 export function CrashToast() {
   const [toasts,    setToasts]    = useState<ToastEntry[]>([]);
-  const [showDebug, setShowDebug] = useState(true); // show info/debug by default for testing
+  const [showDebug, setShowDebug] = useState(false); // Default to off in production
   const insets = useSafeAreaInsets();
 
   useEffect(() => {

@@ -65,6 +65,19 @@ export function installCrashToast() {
     // ErrorUtils unavailable (web / test env) — ignore
   }
 
+  // 1.5. Global Promise Rejection handler
+  try {
+    const tracking = require('promise/setimmediate/rejection-tracking');
+    tracking.enable({
+      allRejections: true,
+      onUnhandled: (id: string, error: Error | any) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        ToastLogger.push(`⚠️ UNHANDLED PROMISE: ${msg}`, 'error');
+      },
+      onHandled: () => {},
+    });
+  } catch (_) {}
+
   // 2. console.error override
   const _origError = console.error.bind(console);
   console.error = (...args: unknown[]) => {

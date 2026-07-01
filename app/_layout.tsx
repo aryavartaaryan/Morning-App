@@ -2,7 +2,7 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -62,6 +62,10 @@ class AppErrorBoundary extends Component<
     );
   }
 
+  resetError = () => {
+    this.setState({ hasError: false, errorMsg: '' });
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -71,7 +75,15 @@ class AppErrorBoundary extends Component<
           <Text style={{ fontSize: 11, color: '#FFFFFF45', textAlign: 'center', fontFamily: 'monospace', lineHeight: 18 }} selectable>
             {this.state.errorMsg}
           </Text>
-          <Text style={{ fontSize: 10, color: '#FFFFFF20', marginTop: 20 }}>See toast overlay for full details</Text>
+          
+          <TouchableOpacity 
+            onPress={this.resetError}
+            style={{ marginTop: 32, backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)' }}
+          >
+            <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 14, letterSpacing: 1 }}>RECOVER & RELOAD</Text>
+          </TouchableOpacity>
+
+          <Text style={{ fontSize: 10, color: '#FFFFFF20', marginTop: 24 }}>See toast overlay for full details</Text>
         </View>
       );
     }

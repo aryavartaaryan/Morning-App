@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
   AppState, Platform, Linking, Keyboard, KeyboardAvoidingView, Pressable,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -477,13 +478,25 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
 
   useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
-  // Force-focus the keyboard after 600ms — fires AFTER the FGS startup (400ms)
-  // finishes blocking the JS bridge, ensuring the keyboard always appears.
+  // Focus keyboard on mount only.
+  // We do NOT auto-reopen keyboard when the user dismisses it — they may be
+  // dismissing to click the "Lock it in" button.
+  // InteractionManager waits for screen animations, then retries 3 times.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mountedRef.current) { inputRef.current?.focus(); }
-    }, 600);
-    return () => clearTimeout(timer);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const tryFocus = () => {
+      if (!mountedRef.current) return;
+      inputRef.current?.focus();
+    };
+    const handle = InteractionManager.runAfterInteractions(() => {
+      timers.push(setTimeout(tryFocus, 50));
+      timers.push(setTimeout(tryFocus, 400));
+      timers.push(setTimeout(tryFocus, 900));
+    });
+    return () => {
+      handle.cancel();
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
@@ -494,74 +507,83 @@ function GratitudeMission({ color, onComplete }: { color: string; onComplete: ()
     if (submittingRef.current || !isReady) return;
     submittingRef.current = true;
     setSubmitting(true);
+    // Dismiss keyboard first so the completion screen animates cleanly
+    Keyboard.dismiss();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const uid = auth.currentUser?.uid;
     if (uid) {
       const date = new Date().toISOString().split('T')[0];
       addDoc(collection(db, `users/${uid}/gratitude_logs`), { entry, date, timestamp: serverTimestamp() }).catch(() => {});
     }
-    onComplete();
+    // Small delay after keyboard dismiss so the animation is smooth
+    setTimeout(() => { if (mountedRef.current) onComplete(); }, 150);
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      {/* Tap anywhere to re-focus keyboard */}
-      <Pressable style={{ flex: 1 }} onPress={() => inputRef.current?.focus()}>
-        <ScrollView
-          contentContainerStyle={grt.wrap}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="none"
-        >
-          {/* Header quote */}
-          <Text style={grt.science}>
-            “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
+  // On Android, windowSoftInputMode=adjustResize handles keyboard avoidance natively.
+  // KeyboardAvoidingView with behavior="height" conflicts with adjustResize and can
+  // prevent the keyboard from appearing. We only use it on iOS.
+  const inner = (
+    <Pressable style={{ flex: 1 }} onPress={() => inputRef.current?.focus()}>
+      <ScrollView
+        contentContainerStyle={grt.wrap}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+      >
+        {/* Header quote */}
+        <Text style={grt.science}>
+          “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
+        </Text>
+
+        {/* Single prompt card */}
+        <View style={[grt.promptCard, { borderColor: color + '35' }]}>
+          <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
+          <Text style={[grt.promptText, { color }]}>{prompt}</Text>
+        </View>
+
+        {/* Input — showSoftInputOnFocus forces keyboard open on Android */}
+        <View style={grt.inputWrap}>
+          <TextInput
+            ref={inputRef}
+            style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
+            placeholder="Write at least 3 words..."
+            placeholderTextColor="#FFFFFF30"
+            value={entry}
+            onChangeText={setEntry}
+            multiline
+            textAlignVertical="top"
+            blurOnSubmit={false}
+            returnKeyType="default"
+            showSoftInputOnFocus
+          />
+          <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
+            {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
           </Text>
+        </View>
 
-          {/* Single prompt card */}
-          <View style={[grt.promptCard, { borderColor: color + '35' }]}>
-            <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
-            <Text style={[grt.promptText, { color }]}>{prompt}</Text>
-          </View>
-
-          {/* Input */}
-          <View style={grt.inputWrap}>
-            <TextInput
-              ref={inputRef}
-              style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
-              placeholder="Write at least 3 words..."
-              placeholderTextColor="#FFFFFF30"
-              value={entry}
-              onChangeText={setEntry}
-              multiline
-              textAlignVertical="top"
-              blurOnSubmit={false}
-              returnKeyType="default"
-            />
-            <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
-              {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
-            </Text>
-          </View>
-
-          {/* Done button */}
-          <TouchableOpacity
-            style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
-            onPress={done}
-            disabled={!isReady || submitting}
-            activeOpacity={0.85}
-          >
-            <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
-              {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </Pressable>
-    </KeyboardAvoidingView>
+        {/* Done button */}
+        <TouchableOpacity
+          style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
+          onPress={done}
+          disabled={!isReady || submitting}
+          activeOpacity={0.85}
+        >
+          <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
+            {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </Pressable>
   );
+
+  if (Platform.OS === 'ios') {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={90}>
+        {inner}
+      </KeyboardAvoidingView>
+    );
+  }
+  return <>{inner}</>;
 }
 const grt = StyleSheet.create({
   wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 60, gap: 20 },
@@ -606,9 +628,10 @@ function AffirmationsMission({ color, onComplete }: { color: string; onComplete:
       setCountdown(remaining);
       if (remaining <= 0) {
         clearInterval(timerRef.current!);
+        timerRef.current = null;
         setCanTap(true);
       }
-    }, 250);
+    }, 200);
     return () => clearInterval(timerRef.current!);
   }, [current]);
 
@@ -969,18 +992,19 @@ export default function MissionScreen() {
           body: 'Complete your mission to stop the alarm.',
           android: {
             channelId: 'alarm-bttf-silent',
-            importance: AndroidImportance.HIGH,
+            importance: AndroidImportance.LOW,
             category: AndroidCategory.ALARM,
             visibility: AndroidVisibility.PUBLIC,
             ongoing: true,
             autoCancel: false,
-            asForegroundService: true,
-            fullScreenAction: { id: 'default', launchActivity: 'default' },
+            // asForegroundService REMOVED: it starts a 2nd FGS that blocks
+            // the JS bridge continuously, causing jerky typing and UI freezes.
+            // The native AlarmSoundService FGS already keeps the JVM alive.
             pressAction: { id: 'default', launchActivity: 'default' },
           },
         });
       } catch (e) { console.warn('[Mission] FGS start error:', e); }
-    }, 400);
+    }, 600);
     return () => {
       active = false;
       clearTimeout(fgsTimeoutId);
@@ -1056,20 +1080,24 @@ export default function MissionScreen() {
     if (missionCompletedRef.current) return; // guard against double-call
     missionCompletedRef.current = true;
     clearInterval(timerRef.current!);
-    setDone(true);
 
-    // ── 0. Exit screen-pinning immediately — user completed the mission ─────────
-    // stopNativeLockTask() exits Android's Lock Task Mode so Back, Home, and
-    // Recents become responsive again the instant the mission is done.
-    // Belt-and-suspenders alongside MainActivity.onResume() which also calls
-    // stopLockTask() when isAlarmActive() returns false.
+    // ── CRITICAL: Stop native alarm FIRST, BEFORE setDone or any navigation ────
+    // Root cause of "app auto-opens after mission":
+    // router.replace('/') causes MainActivity.onPause() during the nav transition.
+    // The lifecycle watchdog fires onActivityPaused() and checks isAlarmActive().
+    // If alarm_fired_pending is still true at that moment, launchApp() is called
+    // and the app pops back to the alarm screen.
+    //
+    // stopNativeAlarmSound() calls SharedPreferences.commit() (synchronous) to
+    // set alarm_fired_pending=false BEFORE any navigation or state changes happen.
+    // This guarantees the watchdog sees false when the transition triggers onPause.
+    await stopNativeAlarmSound().catch(() => {});
+    stopAlarmVibration().catch(() => {});
     stopNativeLockTask().catch(() => {});
 
-    // ── 1. Stop ALL alarm signals immediately — no leakage ──────────────────────
-    // Stop vibration FIRST (fast — JVM call)
-    stopAlarmVibration().catch(() => {});
-    // Stop native AlarmSoundService audio (kills MediaPlayer in JVM)
-    await stopNativeAlarmSound().catch(() => {});
+    setDone(true);
+
+    // ── 1. Stop remaining alarm signals ─────────────────────────────────────────
     // Stop JS background mantra sound transferred from alarm-ringing
     const bg = (global as any).__missionBgSound;
     if (bg) {
