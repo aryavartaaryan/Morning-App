@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
   Image, Alert, ActivityIndicator, BackHandler, Dimensions, Animated,
-  AppState, Platform, Linking, Keyboard, KeyboardAvoidingView, Pressable,
+  AppState, Platform, Linking, Keyboard, KeyboardAvoidingView,
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store, KEYS } from '@/lib/storage';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
-import { cancelNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive, stopNativeLockTask } from '@/lib/nativeAlarm';
+import { cancelNativeAlarm, scheduleNativeAlarm, stopNativeAlarmSound, stopAlarmVibration, setNativePickerActive, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { type AlarmSettings } from '@/lib/notifications';
 import { auth, db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -500,24 +500,18 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
 
   useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
-  // Focus keyboard on mount only.
-  // We do NOT auto-reopen keyboard when the user dismisses it — they may be
-  // dismissing to click the "Lock it in" button.
-  // InteractionManager waits for screen animations, then retries 3 times.
+  // Focus keyboard on mount only — single attempt after screen animation settles.
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const tryFocus = () => {
-      if (!mountedRef.current) return;
-      inputRef.current?.focus();
-    };
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const handle = InteractionManager.runAfterInteractions(() => {
-      timers.push(setTimeout(tryFocus, 50));
-      timers.push(setTimeout(tryFocus, 400));
-      timers.push(setTimeout(tryFocus, 900));
+      if (!mountedRef.current) return;
+      timer = setTimeout(() => {
+        if (mountedRef.current) inputRef.current?.focus();
+      }, 200);
     });
     return () => {
       handle.cancel();
-      timers.forEach(clearTimeout);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
@@ -545,13 +539,12 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
   // KeyboardAvoidingView with behavior="height" conflicts with adjustResize and can
   // prevent the keyboard from appearing. We only use it on iOS.
   const inner = (
-    <Pressable style={{ flex: 1 }} onPress={() => inputRef.current?.focus()}>
-      <ScrollView
-        contentContainerStyle={grt.wrap}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-      >
+    <ScrollView
+      contentContainerStyle={grt.wrap}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+    >
         {/* Header quote */}
         <Text style={grt.science}>
           “Gratitude turns what we have into enough. Harvard research shows 2 minutes rewires your brain.”
@@ -595,7 +588,6 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </Pressable>
   );
 
   if (Platform.OS === 'ios') {
@@ -631,15 +623,16 @@ const grt = StyleSheet.create({
 const AffirmationsMission = React.memo(function AffirmationsMission({ color, onComplete }: { color: string; onComplete: () => void }) {
   const startIdx = (new Date().getDay() * 3) % AFFIRMATIONS.length;
   const cards = [
-    AFFIRMATIONS[startIdx % AFFIRMATIONS.length],
-    AFFIRMATIONS[(startIdx + 1) % AFFIRMATIONS.length],
-    AFFIRMATIONS[(startIdx + 2) % AFFIRMATIONS.length],
+    AFFIRMATIONS[startIdx % AFFIRMATIONS.length]!,
+    AFFIRMATIONS[(startIdx + 1) % AFFIRMATIONS.length]!,
+    AFFIRMATIONS[(startIdx + 2) % AFFIRMATIONS.length]!,
   ];
   const [current, setCurrent] = useState(0);
   const [canTap, setCanTap] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countStartRef = useRef(Date.now());
+  const processingRef = useRef(false);
 
   useEffect(() => {
     setCanTap(false); setCountdown(5);
@@ -658,24 +651,26 @@ const AffirmationsMission = React.memo(function AffirmationsMission({ color, onC
   }, [current]);
 
   const next = () => {
-    if (!canTap) return;
+    if (!canTap || processingRef.current) return;
+    processingRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (current >= 2) {
       const uid = auth.currentUser?.uid;
       if (uid) {
         const date = new Date().toISOString().split('T')[0];
         addDoc(collection(db, `users/${uid}/affirmation_logs`), {
-          affirmations: cards.map(c => c.text), date, timestamp: serverTimestamp(),
+          affirmations: cards.map(c => c?.text ?? ''), date, timestamp: serverTimestamp(),
         }).catch(() => { });
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onComplete();
     } else {
       setCurrent(c => c + 1);
+      setTimeout(() => { processingRef.current = false; }, 300);
     }
   };
 
-  const card = cards[current];
+  const card = cards[Math.min(current, 2)];
 
   return (
     <ScrollView
@@ -963,7 +958,7 @@ export default function MissionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const missionId = (id ?? 'gratitude_drop') as MissionId;
-  const mission = MISSIONS.find(m => m.id === missionId) ?? MISSIONS[4];
+  const mission = MISSIONS.find(m => m.id === missionId) ?? MISSIONS[0]!;
 
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -975,6 +970,20 @@ export default function MissionScreen() {
 
   useEffect(() => {
     activateKeepAwakeAsync();
+    // KEYBOARD FIX: Release lock task (screen pinning) immediately on mission mount.
+    // Lock task mode blocks the Android IME (soft keyboard) system-wide — keeping it
+    // active throughout the mission was preventing the keyboard from appearing in
+    // Gratitude. Home/Back are still blocked by BackHandler + bttf notification.
+    // stopNativeLockTask() is idempotent — safe to call even if not in lock task.
+    stopNativeLockTask().catch(() => {});
+
+    // STALE STATE FIX: If the phone was restarted without completing a previous
+    // mission (e.g., keyboard was stuck so user couldn't finish), the
+    // onesutra_alarm_handled_v1 guard may be set from the old cycle.
+    // Clearing it here ensures the next alarm rings correctly without being
+    // suppressed by the routing guard in _layout.tsx.
+    AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
+
     store.getJSON<MissionSettings>(KEYS.missionSettings).then(ms => {
       setStreak(ms?.streak ?? 0);
     });
@@ -1157,15 +1166,21 @@ export default function MissionScreen() {
     setStreak(newStreak);
 
     // ── 4. Reschedule tomorrow's alarm ─────────────────────────────────────────
-    // BUG 5 FIX: Do NOT call scheduleNativeAlarm() here from JS.
-    // The native AlarmBroadcastReceiver.onReceive() already rescheduled tomorrow's
-    // alarm the moment this alarm fired. Calling scheduleNativeAlarm() here
-    // was racing with the cancelNativeAlarm() call above (line 1142), cancelling
-    // the alarm the receiver had just set — causing the next alarm to never fire.
-    // The native receiver handles all daily repeat scheduling reliably without JS.
-    // We only need to clear the JS-side guard so tomorrow's layout routing works.
+    // IMPORTANT: cancelNativeAlarm() above cancels the shared AlarmManager PendingIntent
+    // (REQUEST_CODE). This ALSO wipes the alarm that AlarmBroadcastReceiver just
+    // rescheduled for tomorrow — they share the same PendingIntent key.
+    // We must re-schedule AFTER the cancel so tomorrow's alarm is not permanently lost.
+    // This is safe: scheduleNativeAlarm() internally calls cancelNativeAlarm() first,
+    // so there is exactly ONE alarm set when this block completes.
     await AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
-
+    const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
+    if (alarmCfg?.wakeAlarm?.enabled) {
+      scheduleNativeAlarm(
+        alarmCfg.wakeAlarm.hour,
+        alarmCfg.wakeAlarm.minute,
+        alarmCfg.wakeAlarm.days,
+      ).catch(() => {});
+    }
 
     // ── 5. Log to Firestore ─────────────────────────────────────────────────────
     const uid = auth.currentUser?.uid;

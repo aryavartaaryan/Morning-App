@@ -42,9 +42,26 @@ class BootReceiver : BroadcastReceiver() {
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+        // STALE STATE FIX: Clear alarm_fired_pending on reboot.
+        // If the phone was restarted mid-mission (e.g., user restarted because
+        // the keyboard was not working in gratitude mission), alarm_fired_pending
+        // stays true. On next app launch, _layout.tsx routes to wake-alarm-ringing
+        // even though no alarm is actually ringing — causing a stuck/broken state.
+        // Clearing it on boot ensures the app opens normally. The rescheduled alarm
+        // (below) will ring at the correct time and set the flag again properly.
+        clearStaleAlarmState(context)
+
         rescheduleWakeAlarm(context, am)
         rescheduleHabitAlarms(context, am)
         restartDailyStepTracking(context)
+    }
+
+    private fun clearStaleAlarmState(context: Context) {
+        context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("alarm_fired_pending", false)
+            .apply()
+        Log.d("AriseAlarm", "BootReceiver: cleared stale alarm_fired_pending")
     }
 
     // ── Wake alarm ────────────────────────────────────────────────────────────

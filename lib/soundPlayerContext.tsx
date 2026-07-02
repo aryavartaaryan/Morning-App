@@ -62,6 +62,8 @@ type SoundPlayerCtx = {
   openReelsOrPlayer: () => void;
   registerReelsOpener: (fn: () => void) => void;
   unregisterReelsOpener: () => void;
+  pendingOpenReels: number;
+  clearPendingOpenReels: () => void;
   getPositionMs: () => number;
   seekTo: (positionMs: number) => Promise<void>;
 };
@@ -86,14 +88,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [audioNetworkError, setAudioNetworkError] = useState(false);
   const networkErrorRef = useRef(false);
   const reelsOpenerRef = useRef<(() => void) | null>(null);
+  const [pendingOpenReels, setPendingOpenReels] = useState(0);
 
   const getPositionMs        = useCallback(() => positionMsRef.current, []);
   const openFullPlayer       = useCallback(() => setShowFullPlayer(true),  []);
   const closeFullPlayer      = useCallback(() => setShowFullPlayer(false), []);
-  const openReelsOrPlayer    = useCallback(() => {
-    if (reelsOpenerRef.current) reelsOpenerRef.current();
-    else setShowFullPlayer(true);
-  }, []);
+  // Always increment the pending counter — sleep tab's useEffect picks it up
+  // regardless of whether the reelsOpenerRef is currently registered.
+  // This eliminates the race condition where the ref is briefly null.
+  const openReelsOrPlayer    = useCallback(() => { setPendingOpenReels(n => n + 1); }, []);
+  const clearPendingOpenReels = useCallback(() => setPendingOpenReels(0), []);
   const registerReelsOpener  = useCallback((fn: () => void) => { reelsOpenerRef.current = fn; }, []);
   const unregisterReelsOpener = useCallback(() => { reelsOpenerRef.current = null; }, []);
 
@@ -690,6 +694,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
       showFullPlayer, openFullPlayer, closeFullPlayer,
       openReelsOrPlayer, registerReelsOpener, unregisterReelsOpener,
+      pendingOpenReels, clearPendingOpenReels,
     }}>
       {children}
     </Ctx.Provider>

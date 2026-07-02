@@ -233,60 +233,79 @@ export async function syncNativeWakeAlarmSound(soundId: string): Promise<void> {
   if (Platform.OS !== 'android') return;
   await setNativeAlarmSound(soundId);
 
-  // BUG 4 FIX: Always prefer the PERMANENT mantras/ directory path over any
-  // expo-asset cache path. expo-asset caches files using hashed filenames that
-  // are wiped on every APK update — storing that path in KEY_SOUND_PATH means
-  // the sound file is missing when the alarm fires after an update.
-  //
-  // Strategy: ALWAYS try to ensure the file is in the permanent mantras/ dir first.
-  // Only fall back to expo-asset / CDN paths if that fails.
   let nativePath: string | null = null;
 
+  // Step 1: Try expo-asset / bundled asset resolution first.
+  // This is the MOST RELIABLE path for sounds bundled inside the APK.
+  // expo-asset copies the file to a local cache and gives us a file:// URI.
+  // BUG 4 note: this path CAN become stale after an APK update (cache wiped),
+  // but we handle that in Steps 2 & 3 and in the native exhaustive search fallback.
   try {
-    const { WAKE_SOUNDS } = await import('./missionAlarm');
-    const { downloadMantra, getLocalMantraPath } = await import('./mantraDownload');
-    const FileSystem = await import('expo-file-system/legacy');
-
-    const ws = WAKE_SOUNDS.find((s: any) => s.id === soundId);
-    const localPath = getLocalMantraPath(soundId);
-
-    // Step 1: Check if the permanent file already exists (best case)
-    const info = await (FileSystem as any).getInfoAsync(localPath).catch(() => ({ exists: false }));
-    if ((info as any).exists && (info as any).size > 0) {
-      nativePath = localPath; // absolute path (no file:// prefix) — MediaPlayer needs this
-      console.log(`[NativeAlarm] ✅ Permanent sound file found: ${soundId}`);
-    } else if (ws?.audioUrl) {
-      // Step 2: Download to permanent mantras/ directory
-      console.log(`[NativeAlarm] Downloading alarm sound to permanent dir: ${soundId}`);
-      const result = await downloadMantra(soundId, ws.audioUrl);
-      if (result) {
-        nativePath = localPath;
-        console.log(`[NativeAlarm] ✅ Downloaded to permanent dir: ${soundId}`);
-      }
-    }
-  } catch (e) {
-    console.warn('[NativeAlarm] Permanent dir sync failed, falling back to expo-asset:', e);
-  }
-
-  // Step 3: If permanent dir failed, try expo-asset / bundled asset resolution
-  if (!nativePath) {
     const assetPath = await resolveNativeWakeAlarmSoundPath(soundId);
     if (assetPath) {
-      // Strip file:// prefix for MediaPlayer
-      nativePath = assetPath.replace(/^file:\/\//, '');
-      console.log(`[NativeAlarm] Using expo-asset path (may be stale after APK update): ${nativePath}`);
+      // Strip file:// prefix — Android MediaPlayer needs an absolute path
+      nativePath = assetPath.startsWith('file://') ? assetPath.slice(7) : assetPath;
+      console.log(`[NativeAlarm] ✅ expo-asset path resolved: ${soundId} → ${nativePath}`);
+    }
+  } catch (e) {
+    console.warn('[NativeAlarm] expo-asset resolution failed:', e);
+  }
+
+  // Step 2: Check the permanent mantras/ directory (downloaded CDN sounds or previously
+  // copied bundled files). This survives APK updates because it lives in documentDirectory.
+  if (!nativePath) {
+    try {
+      const { getLocalMantraPath } = await import('./mantraDownload');
+      const FileSystem = await import('expo-file-system/legacy');
+      const localPath = getLocalMantraPath(soundId);
+      const info = await (FileSystem as any).getInfoAsync(localPath).catch(() => ({ exists: false }));
+      if ((info as any).exists) {
+        // Strip file:// prefix from documentDirectory-based path
+        const stripped = localPath.startsWith('file://') ? localPath.slice(7) : localPath;
+        nativePath = stripped;
+        console.log(`[NativeAlarm] ✅ Permanent dir path found: ${soundId} → ${nativePath}`);
+      }
+    } catch (e) {
+      console.warn('[NativeAlarm] Permanent dir check failed:', e);
+    }
+  }
+
+  // Step 3: If neither worked, try downloading from CDN (WAKE_SOUNDS.audioUrl).
+  // This handles non-bundled CDN-only sounds (paid/premium mantras).
+  if (!nativePath) {
+    try {
+      const { WAKE_SOUNDS } = await import('./missionAlarm');
+      const { downloadMantra, getLocalMantraPath } = await import('./mantraDownload');
+      const FileSystem = await import('expo-file-system/legacy');
+      const ws = WAKE_SOUNDS.find((s: any) => s.id === soundId);
+      if (ws?.audioUrl) {
+        const localPath = getLocalMantraPath(soundId);
+        const info = await (FileSystem as any).getInfoAsync(localPath).catch(() => ({ exists: false }));
+        if (!(info as any).exists) {
+          console.log(`[NativeAlarm] Downloading CDN alarm sound: ${soundId}`);
+          await downloadMantra(soundId, ws.audioUrl);
+        }
+        const stripped = localPath.startsWith('file://') ? localPath.slice(7) : localPath;
+        nativePath = stripped;
+        console.log(`[NativeAlarm] ✅ CDN sound ready: ${soundId} → ${nativePath}`);
+      }
+    } catch (e) {
+      console.warn('[NativeAlarm] CDN download failed:', e);
     }
   }
 
   if (nativePath) {
     await setNativeAlarmSoundPath(nativePath);
-    console.log(`[NativeAlarm] 🔊 KEY_SOUND_PATH set to: ${nativePath}`);
+    console.log(`[NativeAlarm] 🔊 KEY_SOUND_PATH set: ${nativePath}`);
   } else {
-    console.warn(`[NativeAlarm] ⚠️ Could not resolve any sound path for: ${soundId} — native will fall back to bundled beep`);
+    // Leave path empty — native AlarmSoundServiceBase will exhaustively search
+    // all storage dirs at ring time before falling back to bundled beep.
+    console.warn(`[NativeAlarm] ⚠️ No path resolved for: ${soundId} — native fallback will handle it`);
     await setNativeAlarmSoundPath('');
   }
-
 }
+
+
 
 // ── Stop native audio (call from alarm-ringing.tsx on mount) ───────────────────
 export async function stopNativeAlarmSound(): Promise<void> {

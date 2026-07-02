@@ -842,9 +842,8 @@ function GlobalPlayerBar() {
           style={GP.bodyTap}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            openReelsOrPlayer();
             router.navigate("/(tabs)/sleep");
-            // Allow sleep tab to fully mount + register reels opener before calling
-            setTimeout(() => openReelsOrPlayer(), 300);
           }}
           activeOpacity={0.8}
         >

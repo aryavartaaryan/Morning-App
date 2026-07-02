@@ -409,7 +409,8 @@ function BodhiNotificationListener() {
         // wasAlarmFired() can stay true on the native side after a completed alarm cycle
         // causing a crash loop where alarm-ringing remounts into a stopped native service.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        if (handled && Date.now() - Number(handled) < 43_200_000) {
+        if (handled && Date.now() - Number(handled) < 300_000) {
+          // Handled within last 5 minutes = just completed this cycle. Prevent crash loop.
           alarmRoutedRef.current = true; // suppress future routing this session
           return;
         }
@@ -441,7 +442,8 @@ function BodhiNotificationListener() {
           // Guard: skip routing if alarm was already handled — prevents crash loop
           // caused by wasAlarmFired() persisting after a completed alarm cycle.
           const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-          if (handled && Date.now() - Number(handled) < 43_200_000) {
+          if (handled && Date.now() - Number(handled) < 300_000) {
+            // Handled within last 5 minutes = just completed. Prevent crash loop.
             alarmRoutedRef.current = true;
             return;
           }
@@ -476,7 +478,7 @@ function BodhiNotificationListener() {
       if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
       (async () => {
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        if (handled && Date.now() - Number(handled) < 43_200_000) {
+        if (handled && Date.now() - Number(handled) < 300_000) {
           alarmRoutedRef.current = true; return;
         }
         const fired = await getInitialAlarmNotification().catch(() => false);

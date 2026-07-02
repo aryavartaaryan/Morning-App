@@ -189,6 +189,7 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_zen_bamboo_flow',        label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
   { id: 'nada_ancestors_flute',        label: 'Ancestors Flute',        emoji: '🪶', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Native American ancestral flute',              src: { uri: NADA_BASE + 'k3lix_music-last-breath-of-ancestors-native-american-flute-214341.m4a' } },
   { id: 'nada_indian_flute_tabla_mix', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
+  { id: 'nada_indian_flute_tabla_mix_sleep', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
   { id: 'nada_bansuri_tabla_fusion',   label: 'Bansuri Tabla Fusion',   emoji: '🎶', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Indian bansuri tabla fusion',                  src: { uri: NADA_BASE + 'kalsstockmedia-indian-bansuri-tabla-fusion-short-music-25-seconds-track-269954.m4a' } },
   { id: 'nada_flute_tabla_remastered', label: 'Flute Tabla Remastered', emoji: '🌟', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Remastered flute and tabla melody',            src: { uri: NADA_BASE + 'kalsstockmedia-indian-flute-and-tabla-new-tune-remastered-277266.m4a' } },
   { id: 'nada_summer_flute_tabla',     label: 'Summer Flute Tabla',     emoji: '☀️', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Warm summer flute & tabla blend',              src: { uri: NADA_BASE + 'kalsstockmedia-indian-summer-tabla-flute-calm-background-music-track-280183.m4a' } },
@@ -217,6 +218,7 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_bhajan_flute_tabla',     label: 'Bhajan Flute & Tabla',   emoji: '🕉️', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Bhajan-style Indian flute and tabla',        src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-tabla-bhajan-style-452175.m4a' } },
   { id: 'nada_shiva_nirvana_mantra',   label: 'Shiva Nirvana Mantra',   emoji: '🔱', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Shiva nirvana rupam mantra',                  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-nirvana-rupam-mantra-487340.m4a' } },
   { id: 'nada_shiva_panchakshara',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
+  { id: 'nada_shiva_panchakshara_sleep',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Sleep', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
   { id: 'nada_om_namah_shivaya',       label: 'Om Namah Shivaya',       emoji: '🌺', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Om Namah Shivaya devotional song',            src: { uri: NADA_BASE + 'kalsstockmedia-om-namah-shivaya-song-229613.m4a' } },
   { id: 'nada_govinda_mantra',         label: 'Govinda Mantra',         emoji: '💙', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Govinda mantra with female voice, tanpura and sitar', src: { uri: NADA_BASE + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' } },
   { id: 'nada_shiv_swarnamala',        label: 'Shiv Swarnamala',        emoji: '🔱', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiv Swarnamala Samb Sadashiv',               src: { uri: NADA_BASE + 'shiv-swarnamala-samb-sadashiv-version1-410249.m4a' } },
@@ -1027,9 +1029,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const color = meta.color;
               const cardW = (W - 40 - 12) / 2;
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
-              const soundCount = cat === 'Sleep'
-                ? (SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === 'Nature' && !SLEEP_HIDDEN_IDS.has(s.id)).length + ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === 'Nature').length
-                : [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === cat)].length;
+              const soundCount = [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id)), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCatForCount || s.cat === cat))].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -1393,9 +1393,9 @@ const CategoryRows = memo(function CategoryRows({
         // 'Sleep' category mirrors all Nature sounds
         const effectiveCat = cat === 'Sleep' ? 'Nature' : cat;
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
-        const nadaSounds = cat === 'Sleep' ? [] : NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
-        const mantraSounds = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
-        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === effectiveCat);
+        const nadaSounds = NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
+        const mantraSounds = MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
+        const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCat || s.cat === cat));
         const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
@@ -1640,14 +1640,14 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
     const local = (SLEEP_SOUNDS as readonly any[])
       .filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id))
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? s.imageUri }));
-    const nada = cat === 'Sleep' ? [] : NADA_SOUNDS
-      .filter(s => s.cat === cat)
+    const nada = NADA_SOUNDS
+      .filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id))
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri }));
-    const mantra = cat === 'Sleep' ? [] : MANTRA_LIBRARY.flatMap(g => g.sounds)
+    const mantra = MANTRA_LIBRARY.flatMap(g => g.sounds)
       .filter(s => s.cat === cat)
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
     const cdn = ALL_SLEEP_SOUNDS
-      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && s.cat === effectiveCat);
+      .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCat || s.cat === cat));
     result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
   }
   return result;
@@ -1803,9 +1803,9 @@ function ReelCard({
 
   // ── Duration picker state (Calm-style unified control) ──────────────────
   const [durationOpen, setDurationOpen] = useState(false);
-  const [selectedDurationId, setSelectedDurationId] = useState<DurationId>('30m');
+  const [selectedDurationId, setSelectedDurationId] = useState<DurationId>('night');
   // Reset duration picker when sound changes
-  useEffect(() => { setSelectedDurationId('30m'); setDurationOpen(false); }, [sound.id]);
+  useEffect(() => { setSelectedDurationId('night'); setDurationOpen(false); }, [sound.id]);
 
   // ── Instagram-style play/pause tap overlay ─────────────────────────────
   const playTapAnim = useRef(new Animated.Value(0)).current;
@@ -3027,7 +3027,7 @@ export default function SleepTab() {
   const [now, setNow] = useState(new Date());
 
   // ── Global sound player (context) ──────────────────────────
-  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, openFullPlayer, registerReelsOpener, unregisterReelsOpener } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels } = useSoundPlayer();
 
   // ── Settings ───────────────────────────────────────────────
   const [wakeHour,      setWakeHour]      = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.hour);
@@ -3150,30 +3150,28 @@ export default function SleepTab() {
     }
   }, [openReel]);
 
-  // ── Register reels opener so GlobalPlayerBar re-opens reels ──
-  // Use a ref to always read the latest playingId without re-registering on every sound change.
+  // ── Re-open reels from GlobalPlayerBar compact player tap ──────────────────
+  // pendingOpenReels is incremented by openReelsOrPlayer() in the context.
+  // Using a counter (not a boolean) means repeated taps always trigger the effect.
+  // This is race-condition-free: no callback ref, no setTimeout, no registration.
   const reelsPlayingIdRef = useRef<string | null>(null);
   useEffect(() => { reelsPlayingIdRef.current = playingId; }, [playingId]);
   useEffect(() => {
-    registerReelsOpener(() => {
-      router.navigate('/(tabs)/sleep');
-      setTimeout(() => {
-        const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
-        const startIdx = idx !== -1 ? idx : 0;
-        [-1, 0, 1, 2, 3].forEach(offset => {
-          const adj = REELS_ALL_SOUNDS[startIdx + offset];
-          if (!adj) return;
-          const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
-          if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
-            ensureSoundImageCached(adjUri).catch(() => {});
-          }
-        });
-        setReelsStartIdx(startIdx);
-        setShowReels(true);
-      }, 50);
+    if (!pendingOpenReels) return;
+    clearPendingOpenReels();
+    const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
+    const startIdx = idx !== -1 ? idx : 0;
+    [-1, 0, 1, 2, 3].forEach(offset => {
+      const adj = REELS_ALL_SOUNDS[startIdx + offset];
+      if (!adj) return;
+      const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
+      if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
+        ensureSoundImageCached(adjUri).catch(() => {});
+      }
     });
-    return () => unregisterReelsOpener();
-  }, [registerReelsOpener, unregisterReelsOpener, router]);
+    setReelsStartIdx(startIdx);
+    setShowReels(true);
+  }, [pendingOpenReels]);
 
   // ── Live clock ──────────────────────────────────────────────
   useEffect(() => {
@@ -3248,23 +3246,12 @@ export default function SleepTab() {
       reelLoopModeRef.current = null;
       const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
       const trimSecs = getReelTrimSecs(meta.cat);
-      const isRagaOrMeditCat = meta.cat === 'Ragas' || meta.cat === 'Meditations';
-      // For Ragas/Meditations:
-      //   - If we've played this track before, duration is cached → use real duration instantly
-      //   - Long cached track (>6 min): loop continuously by default
-      //   - Short cached track (≤6 min): 15 min loop (unchanged)
-      //   - Unknown (first time): 15 min loop; auto-detect effect corrects after audio loads
-      // For all other categories: use user-selected STOP_TIMES value, no threshold.
-      const cachedDur = isRagaOrMeditCat ? getCachedDuration(id) : null;
-      const isKnownLong = cachedDur != null && cachedDur > 360;
-      const secs = isRagaOrMeditCat
-        ? (isKnownLong ? cachedDur! : 15 * 60)
-        : (STOP_TIMES[stopIdx >= 0 ? stopIdx : 0]?.secs ?? STOP_TIMES[0].secs);
-      // Known long tracks loop continuously by default; everything else loops
-      const shouldLoopReel = !isKnownLong;
-      playSound(metaFull, secs, undefined, shouldLoopReel ? trimSecs : 0, shouldLoopReel);
+      // Always default to 8-hour looping in reel mode — sound never stops unless the user
+      // explicitly picks a shorter duration or closes the reel. This matches the behaviour
+      // of Calm / Spotify ambient: keep playing until the user decides to stop.
+      playSound(metaFull, 28800, undefined, trimSecs, true);
     }
-  }, [playSound, stopIdx]);
+  }, [playSound]);
 
   // Reels: close handler — collapses reels to mini bar; sound keeps playing
   const handleReelClose = useCallback((_fromLastReel: boolean) => {

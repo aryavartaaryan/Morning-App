@@ -487,18 +487,18 @@ function getPanchangData(date: Date = new Date()) {
 // Rashi (sidereal sign) → Vedic Saura Maasa (solar month)
 // Order: Mesha=0 … Meena=11
 const RASHI_TO_VEDIC_MONTH = [
-  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Mesha',     en: 'Apr–May' },
-  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Vrishabha', en: 'May–Jun' },
-  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Mithuna',   en: 'Jun–Jul' },
-  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Karka',     en: 'Jul–Aug' },
-  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Simha',     en: 'Aug–Sep' },
-  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Kanya',     en: 'Sep–Oct' },
-  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Tula',      en: 'Oct–Nov' },
-  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Vrischika', en: 'Nov–Dec' },
-  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Dhanu',     en: 'Dec–Jan' },
-  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Makara',    en: 'Jan–Feb' },
-  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Kumbha',    en: 'Feb–Mar' },
-  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Meena',     en: 'Mar–Apr' },
+  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Mesha',     en: 'Mar–Apr' },
+  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Vrishabha', en: 'Apr–May' },
+  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Mithuna',   en: 'May–Jun' },
+  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Karka',     en: 'Jun–Jul' },
+  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Simha',     en: 'Jul–Aug' },
+  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Kanya',     en: 'Aug–Sep' },
+  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Tula',      en: 'Sep–Oct' },
+  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Vrischika', en: 'Oct–Nov' },
+  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Dhanu',     en: 'Nov–Dec' },
+  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Makara',    en: 'Dec–Jan' },
+  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Kumbha',    en: 'Jan–Feb' },
+  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Meena',     en: 'Feb–Mar' },
 ];
 function getVedicMonth(date: Date = new Date()) {
   const dJ2000 = (date.getTime() - 946728000000) / 86400000;
@@ -2740,10 +2740,10 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 16, marginTop: 4, marginBottom: 6,
-    borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(20,20,20,0.55)', overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14,
+    marginHorizontal: 0, marginTop: 4, marginBottom: 6,
+    borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14,
   },
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 12 },
   heroLeft:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -2760,12 +2760,12 @@ const WSEC = StyleSheet.create({
   divider:   { height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginHorizontal: 14 },
   forecastLabel: { fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.6 },
   hourCard: {
-    alignItems: 'center', paddingHorizontal: 11, paddingTop: 10, paddingBottom: 8,
-    borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
-    minWidth: 60, gap: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+    alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 10,
+    borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    minWidth: 64, gap: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
   },
-  hourCardNow: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.25)' },
+  hourCardNow: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)' },
   hourTime:  { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.4 },
   hourEmoji: { fontSize: 22, marginVertical: 2 },
   hourTemp:  { fontSize: 13, fontWeight: '900', color: '#FFFFFFF0' },
@@ -5864,13 +5864,13 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
   return (
     <TouchableOpacity
-      style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,20,0.55)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14 }}
+      style={{ marginHorizontal: 0, marginBottom: 8, borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14 }}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
       activeOpacity={0.82}>
 
       {/* Glassmorphism gradient */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
+        colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.05)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -5937,7 +5937,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
             { label: 'YOGA',      val: yoga.name,      sub: yoga.en,                 emoji: '🔮' },
             { label: 'VAAR',      val: ENGLISH_DAYS[p.vaarIdx], sub: vaar.planet,    emoji: vaar.emoji },
           ].map((item, i) => (
-            <View key={i} style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 10, paddingHorizontal: 7, alignItems: 'center', gap: 3 }}>
+            <View key={i} style={{ flex: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', gap: 4 }}>
               <Text style={{ fontSize: 6, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.3, marginBottom: 1 }}>{item.label}</Text>
               <Text style={{ fontSize: 17 }}>{item.emoji}</Text>
               <Text style={{ fontSize: 11, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', lineHeight: 14 }}>{item.val}</Text>
@@ -5948,7 +5948,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
         {/* ── SOLAR DAY PROGRESS + TIMES ── */}
         {csr !== null && css !== null && (
-          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 14, paddingTop: 11, paddingBottom: 12 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
             {/* Day progress bar */}
             {dayPct !== null && (
               <View style={{ marginBottom: 10 }}>
@@ -6413,10 +6413,12 @@ export default function DailyTab() {
   const heroDate = liveClock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
-      style={[D.screen, { backgroundColor: accentColor }]}
-      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
+    <View style={[D.screen, { backgroundColor: accentColor }]}>
+      <ImageBackground
+        source={bgUri ? { uri: bgUri } : undefined}
+        style={StyleSheet.absoluteFillObject}
+        imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}
+      />
 
       {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
       <LinearGradient
@@ -6584,7 +6586,7 @@ export default function DailyTab() {
         visible={zenActive}
         onClose={() => { setZenActive(false); setMode('normal'); }}
       />
-    </ImageBackground>
+    </View>
   );
 }
 

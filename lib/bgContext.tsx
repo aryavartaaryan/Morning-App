@@ -117,7 +117,22 @@ function getTimedBgKey(
     const dayLen = sunset - sunrise;
     const kaphaPeriodEnd = sunrise + dayLen / 3;
     const brahmaMuhurtaStart = sunrise - (96 / 60);
-    if (h < brahmaMuhurtaStart) return 'night';
+
+    const getNightPhase = (hour: number) => {
+      const nStart = sunset + 2;
+      const nEnd = brahmaMuhurtaStart + 24;
+      const nDur = nEnd - nStart;
+      const q1 = nStart + nDur / 4;
+      const q2 = nStart + (nDur * 2) / 4;
+      const q3 = nStart + (nDur * 3) / 4;
+      const hAdj = hour < brahmaMuhurtaStart ? hour + 24 : hour;
+      if (hAdj < q1) return 'night_early';
+      if (hAdj < q2) return 'night_early_late';
+      if (hAdj < q3) return 'night';
+      return 'night_late';
+    };
+
+    if (h < brahmaMuhurtaStart) return getNightPhase(h);
     if (h < sunrise - 0.3) return 'brahma';
     const predawnDuration = (sunrise + 0.5) - (sunrise - 0.3);
     const predawnStep = predawnDuration / 3;
@@ -165,14 +180,7 @@ function getTimedBgKey(
     if (h < sunset + twilightStep * 2) return 'twilight_late';
     if (h < sunset + twilightDuration) return 'twilight_deep';
     if (h < sunset + 2)    return 'evening';
-    const nightStart = sunset + 2;
-    const nightEnd = brahmaMuhurtaStart;
-    const nightDuration = nightEnd - nightStart;
-    const nightMid = nightStart + nightDuration / 2;
-    const nightEarlyMid = nightStart + (nightMid - nightStart) / 2;
-    if (h < nightEarlyMid) return 'night_early';
-    if (h < nightMid) return 'night_early_late';
-    return 'night';
+    return getNightPhase(h);
   }
   if (h >= 2   && h < 5)    return 'brahma';
   if (h >= 5   && h < 5 + 10/60) return 'predawn';
@@ -201,7 +209,8 @@ function getTimedBgKey(
   if (h >= 19 + 35 / 60 && h < 21)  return 'evening';
   if (h >= 21 && h < 22.25) return 'night_early';
   if (h >= 22.25 && h < 23.5) return 'night_early_late';
-  if (h >= 23.5 || h < 2)  return 'night';
+  if (h >= 23.5 || h < 0.75) return 'night';
+  if (h >= 0.75 && h < 2) return 'night_late';
 }
 
 export type WallpaperMode = 'solar' | 'manual';
