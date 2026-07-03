@@ -212,12 +212,15 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             status.positionMillis >= status.durationMillis - trimLastMs
           ) {
             restartingIdsRef.current.add(meta.id);
-            sound.replayAsync()
-              .catch(() => {
-                if (!mixRefs.current.has(meta.id)) return;
-                return sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
-              })
-              .finally(() => { restartingIdsRef.current.delete(meta.id); });
+            // Use setPositionAsync(0) instead of replayAsync() for seamless trimming 
+            // of an already playing sound to avoid expo-av state machine hangs.
+            sound.setPositionAsync(0)
+              .catch(() => {})
+              .finally(() => { 
+                // Debounce removing from restartingIdsRef to ignore stale native status updates 
+                // that still have the old positionMillis before the seek takes effect.
+                setTimeout(() => restartingIdsRef.current.delete(meta.id), 1500); 
+              });
             return;
           }
           // Only restart when the file explicitly finished (isLooping silently failed).
@@ -236,7 +239,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
                   if (!mixRefs.current.has(meta.id)) return;
                   return sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
                 })
-                .finally(() => { restartingIdsRef.current.delete(meta.id); });
+                .finally(() => { 
+                  setTimeout(() => restartingIdsRef.current.delete(meta.id), 1500); 
+                });
             }
           }
         } catch (cbErr) {
@@ -270,31 +275,37 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     clearHeartbeat();
     heartbeatRef.current = setInterval(async () => {
       try {
-        if (isPausedRef.current || mixRefs.current.size === 0) return;
+        if (mixRefs.current.size === 0) return;
         // Don't restart in once-play mode — let the track stop naturally
         if (noLoopRef.current) { heartbeatBusyRef.current = false; return; }
         // Guard: skip if a previous heartbeat tick is still running
         if (heartbeatBusyRef.current) return;
         heartbeatBusyRef.current = true;
         try {
+          // LOCK-SCREEN FIX: Re-assert audio session on EVERY tick while
+          // sounds are playing, not just on restart. This prevents the OS
+          // from silently revoking the audio focus when the screen locks.
+          if (!isPausedRef.current) {
+            await Audio.setAudioModeAsync({
+              staysActiveInBackground: true,
+              playsInSilentModeIOS: true,
+              shouldDuckAndroid: false,
+              interruptionModeIOS: 1,
+              interruptionModeAndroid: 1,
+            }).catch(() => {});
+          }
           // First pass: check if ANY sound stopped unexpectedly
           let anyNeedRestart = false;
-          for (const snd of mixRefs.current.values()) {
-            try {
-              if (!snd) continue;
-              const status = await snd.getStatusAsync();
-              if (status.isLoaded && !status.isPlaying) { anyNeedRestart = true; break; }
-            } catch { anyNeedRestart = true; break; }
+          if (!isPausedRef.current) {
+            for (const snd of mixRefs.current.values()) {
+              try {
+                if (!snd) continue;
+                const status = await snd.getStatusAsync();
+                if (status.isLoaded && !status.isPlaying) { anyNeedRestart = true; break; }
+              } catch { anyNeedRestart = true; break; }
+            }
           }
           if (!anyNeedRestart) return;
-          // Re-activate audio session ONCE (not per-sound) before resuming
-          await Audio.setAudioModeAsync({
-            staysActiveInBackground: true,
-            playsInSilentModeIOS: true,
-            shouldDuckAndroid: false,
-            interruptionModeIOS: 1,
-            interruptionModeAndroid: 1,
-          }).catch(() => {});
           // Second pass: restart each stopped sound
           for (const [id, snd] of Array.from(mixRefs.current.entries())) {
             // Skip sounds already being restarted by the didJustFinish callback
@@ -660,18 +671,55 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     applyAudioMode();
     initAudioCache().catch(() => {});
 
-    // Re-activate audio session and restart interrupted sounds when app comes to foreground
-    const appStateSub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
+    // LOCK-SCREEN FIX: Re-activate audio session and restart interrupted sounds
+    // when app transitions from any non-active state (background, screen lock on
+    // iOS which fires 'inactive', or Android screen lock which fires 'background').
+    // We respond to EVERY active transition so unlock is handled immediately
+    // without waiting for the 5-second heartbeat cycle.
+    let prevState = 'active';
+    const appStateSub = AppState.addEventListener('change', async (nextState) => {
+      const comingToForeground = nextState === 'active' && prevState !== 'active';
+      const goingToBackground  = nextState === 'inactive' || nextState === 'background';
+      prevState = nextState;
+
+      if (goingToBackground) {
+        // Proactively re-assert audio session as OS may interrupt on lock.
+        // This is a no-op if audio focus is already held; it's cheap to call.
         applyAudioMode();
+        return;
+      }
+
+      if (comingToForeground) {
+        // Step 1: Re-assert audio session immediately on unlock/foreground
+        await applyAudioMode();
+
+        // Step 2: If sounds should be playing (not paused by user), resume any
+        // that were stopped by screen lock / audio-focus loss.
         if (!isPausedRef.current && mixRefs.current.size > 0) {
-          Array.from(mixRefs.current.values()).forEach(snd => {
-            snd.getStatusAsync()
-              .then(status => {
-                if (status.isLoaded && !status.isPlaying) snd.playAsync().catch(() => {});
-              })
-              .catch(() => {});
-          });
+          await Promise.allSettled(
+            Array.from(mixRefs.current.entries()).map(async ([id, snd]) => {
+              try {
+                if (!snd) return;
+                const status = await snd.getStatusAsync();
+                if (status.isLoaded && !status.isPlaying) {
+                  // Prefer resuming from current position; fall back to replay
+                  const isAtEnd = status.durationMillis != null &&
+                    status.positionMillis >= (status.durationMillis - 500);
+                  await (isAtEnd ? snd.replayAsync() : snd.playAsync()).catch(async () => {
+                    // Full reload as last resort
+                    if (!mixRefs.current.has(id)) return;
+                    const meta = mixedSoundsRef.current.find(s => s.id === id);
+                    if (meta) {
+                      try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+                      try { await snd.unloadAsync(); } catch {}
+                      mixRefs.current.delete(id);
+                      await loadAndPlay(meta, undefined, reelTrimMsRef.current);
+                    }
+                  });
+                }
+              } catch { /* ignore — heartbeat will retry in 5s */ }
+            })
+          );
         }
       }
     });

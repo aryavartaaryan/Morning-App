@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   Alert, Modal, Platform, Linking, ImageBackground, Dimensions,
@@ -22,6 +22,40 @@ const PURPLE = '#a78bfa';
 const GOLD   = '#fbbf24';
 const GREEN  = '#34d399';
 const { width, height } = Dimensions.get('window');
+
+// ─── Local Error Boundary ────────────────────────────────────────────────────
+// Prevents any render-time error in Settings from crashing the whole app.
+class SettingsErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(e: Error) { console.warn('[Settings] Render error caught by boundary:', e?.message); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#060A18', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 28, marginBottom: 12 }}>⚙️</Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 8 }}>Settings couldn't load</Text>
+          <Text style={{ fontSize: 11, color: '#FFFFFF50', textAlign: 'center', lineHeight: 18 }}>
+            An unexpected error occurred.{`\n`}Please restart the app.
+          </Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false })}
+            style={{ marginTop: 24, backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)' }}
+          >
+            <Text style={{ color: '#a78bfa', fontWeight: '700', fontSize: 13 }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ─── Section header ──────────────────────────────────────────────────────────
 function SectionHeader({
@@ -125,7 +159,12 @@ function WallpaperPicker() {
   };
 
   const activeBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
+  // Guard: BG_META may not contain activeBgKey if it's a stale/unknown key.
+  // Fall back to 'morning' metadata to prevent a null-dereference crash.
   const activeMeta  = BG_META[activeBgKey as BgKey] ?? BG_META.morning;
+  // Guard: allBgUris may not yet contain the URI (loaded asynchronously).
+  // Pass undefined source rather than source={{ uri: undefined }} which crashes on Android.
+  const activeUri   = allBgUris[activeBgKey as BgKey] ?? null;
 
   return (
     <>
@@ -175,7 +214,7 @@ function WallpaperPicker() {
         style={[glass.card, { marginHorizontal: 16, marginTop: 10, overflow: 'hidden' }]}
       >
         <ImageBackground
-          source={allBgUris[activeBgKey as BgKey] ? { uri: allBgUris[activeBgKey as BgKey] } : undefined}
+          source={activeUri ? { uri: activeUri } : undefined}
           style={wp.previewImg}
           imageStyle={{ borderRadius: 20 }}
         >
@@ -339,15 +378,36 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
 
   const check = async () => {
     try {
-      const [ea, bo, fs] = await Promise.all([
-        checkAlarmPermission(),
-        (require('react-native').NativeModules.AlarmModule?.isBatteryOptimizationIgnored?.().catch(() => true)) ?? Promise.resolve(true),
-        (require('react-native').NativeModules.AlarmModule?.checkFullScreenIntentPermission?.().catch(() => true)) ?? Promise.resolve(true),
-      ]);
-      const { status } = await (require('expo-notifications') as typeof import('expo-notifications')).getPermissionsAsync();
-      setPerms({ notifications: status === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
-    } catch {}
+      setChecking(true);
+      // Each permission check is individually guarded so one failing native
+      // module cannot crash the entire check (e.g. isBatteryOptimizationIgnored
+      // may throw synchronously on some Android ROMs).
+      let ea = true, bo = true, fs = true;
+      try { ea = await checkAlarmPermission(); } catch { ea = true; }
+      try {
+        bo = await (
+          (require('react-native').NativeModules.AlarmModule?.isBatteryOptimizationIgnored?.() as Promise<boolean> | undefined)
+          ?? Promise.resolve(true)
+        );
+      } catch { bo = true; }
+      try {
+        fs = await (
+          (require('react-native').NativeModules.AlarmModule?.checkFullScreenIntentPermission?.() as Promise<boolean> | undefined)
+          ?? Promise.resolve(true)
+        );
+      } catch { fs = true; }
+      let notifStatus = 'granted';
+      try {
+        const result = await (require('expo-notifications') as typeof import('expo-notifications')).getPermissionsAsync();
+        notifStatus = result.status;
+      } catch { notifStatus = 'granted'; }
+      setPerms({ notifications: notifStatus === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
+    } catch { /* silent — permissions UI is non-critical */ } finally {
+      setChecking(false);
+    }
   };
+
+
 
   useEffect(() => { check(); }, []);
 
@@ -459,6 +519,7 @@ export default function SettingsTab() {
   ] as const;
 
   return (
+    <SettingsErrorBoundary>
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
       style={S.screen}
@@ -583,6 +644,7 @@ export default function SettingsTab() {
       </ScrollView>
 
     </ImageBackground>
+    </SettingsErrorBoundary>
   );
 }
 

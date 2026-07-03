@@ -368,6 +368,9 @@ function BodhiNotificationListener() {
   const habitAlarmRoutedRef = useRef(false);
   // Always-fresh segments ref — used inside async callbacks to avoid stale closure.
   const segmentsRef = useRef<string[]>([]);
+  // BUG 3 FIX: Holds the unsubscribe function returned by notifee.onForegroundEvent()
+  // so it can be properly called in the useEffect cleanup below.
+  const notifeeUnsubRef = useRef<(() => void) | null>(null);
   const navReady = !!navigationState?.key;
 
   // BUG 1 FIX: Reset the guard only when ALL alarm-related screens are gone.
@@ -848,7 +851,12 @@ function BodhiNotificationListener() {
       try {
         const notifee = require('@notifee/react-native').default;
         const { EventType } = require('@notifee/react-native');
-        notifee.onForegroundEvent(({ type, detail }: { type: any; detail: any }) => {
+        // BUG 3 FIX: Capture the unsubscribe function returned by onForegroundEvent.
+        // Previously this return value was silently discarded, so the handler was
+        // never removed in the useEffect cleanup. The handler is replaced (not stacked)
+        // by the Notifee API, but capturing the return and calling it is the correct
+        // pattern and guards against future Notifee API changes.
+        const unsubNotifee = notifee.onForegroundEvent(({ type, detail }: { type: any; detail: any }) => {
           const notifId = detail?.notification?.id as string | undefined;
           const data = detail?.notification?.data as Record<string, string> | undefined;
 
@@ -914,12 +922,19 @@ function BodhiNotificationListener() {
             if (slotId) router.push(`/notification-landing?slotId=${slotId}` as never);
           }
         });
+        // Stash on a ref so the cleanup below can call it.
+        if (typeof unsubNotifee === 'function') {
+          notifeeUnsubRef.current = unsubNotifee;
+        }
       } catch { /* ignore */ }
 
     } catch { /* Expo Go — notifications not supported, skip silently */ }
+    // BUG 3 FIX: Also unsubscribe notifee foreground event handler on cleanup.
+    const capturedNotifeeUnsub = notifeeUnsubRef.current;
     return () => {
       try { foregroundSub?.remove(); } catch { /* ignore */ }
       try { tapSub?.remove(); } catch { /* ignore */ }
+      try { if (capturedNotifeeUnsub) capturedNotifeeUnsub(); } catch { /* ignore */ }
     };
   }, []);
   return null;
@@ -996,17 +1011,36 @@ export default function RootLayout() {
         // can return exists:false even for files that ARE on disk, causing the
         // download screen to appear on every open. The AsyncStorage flag is set
         // once after the first successful download and survives app restarts.
-        const SETUP_DONE_KEY = 'arise_bg_setup_done_v2';
-        const setupFlagRaw = await AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null);
-        const setupDone    = !!setupFlagRaw;
-        const splashOnDisk = isSplashCached();
-        const isFirstInstall = !setupDone && !splashOnDisk;
+        //
+        // SETUP RESUMPTION FIX:
+        // If the user kills the app mid-setup, SETUP_DONE_KEY is never written.
+        // We use a separate INPROGRESS flag written at the START of download
+        // and cleared only on success. If it exists at next open, we force the
+        // download gate again — preventing permanently-missing reel images.
+        const SETUP_DONE_KEY      = 'arise_bg_setup_done_v2';
+        const SETUP_INPROGRESS_KEY = 'arise_bg_setup_inprogress_v1';
+        const [setupFlagRaw, inProgressRaw] = await Promise.all([
+          AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null),
+          AsyncStorage.getItem(SETUP_INPROGRESS_KEY).catch(() => null),
+        ]);
+        const setupDone      = !!setupFlagRaw;
+        const setupInProgress = !!inProgressRaw;   // killed mid-download last time
+        const splashOnDisk   = isSplashCached();
+        // Treat as first install if never completed OR if interrupted mid-download.
+        const isFirstInstall = (!setupDone && !splashOnDisk) || setupInProgress;
 
         if (isFirstInstall) {
-          // First install: gate on BG images + sound card images together.
-          // Both run in parallel with high concurrency so setup stays fast.
+          // First install (or interrupted resume): gate on BG images + sound
+          // card images together. Both run with high concurrency for speed.
           // After this, every sound card and every reel has its image ready.
           if (cancelled) return;
+
+          // ── Mark setup as IN-PROGRESS before any downloads begin ──────
+          // This flag survives app-kill. On next open, if it still exists
+          // (i.e. we never reached the success block below), the download
+          // gate will re-run instead of silently skipping.
+          await AsyncStorage.setItem(SETUP_INPROGRESS_KEY, '1').catch(() => {});
+
           setPhase('downloading');
 
           const bgCount   = Object.keys(BG_URLS).length;
@@ -1032,8 +1066,12 @@ export default function RootLayout() {
             // Brief pause so ring fills to 100% before disappearing.
             await new Promise(r => setTimeout(r, 400));
           }
-          // Mark setup complete — download gate will never show again.
-          AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {});
+
+          // ── Both phases done — mark setup complete and clear in-progress ──
+          await Promise.all([
+            AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {}),
+            AsyncStorage.removeItem(SETUP_INPROGRESS_KEY).catch(() => {}),
+          ]);
 
           if (cancelled) return;
           // After first-install setup, open the app immediately — skip splash.

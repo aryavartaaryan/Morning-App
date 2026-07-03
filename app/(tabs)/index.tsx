@@ -2740,9 +2740,9 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 0, marginTop: 4, marginBottom: 6,
-    borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden',
+    marginHorizontal: 16, marginTop: 4, marginBottom: 12,
+    borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14,
   },
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 12 },
@@ -5864,7 +5864,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
   return (
     <TouchableOpacity
-      style={{ marginHorizontal: 0, marginBottom: 8, borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14 }}
+      style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14 }}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
       activeOpacity={0.82}>
 
@@ -6101,20 +6101,12 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
   return (
     <>
     <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={close}>
-      <Animated.View style={{ flex: 1, backgroundColor: '#04081C', transform: [{ translateY }] }}>
+      <Animated.View style={{ flex: 1, backgroundColor: '#000', transform: [{ translateY }] }}>
         <ImageBackground
           source={bgUri ? { uri: bgUri } : undefined}
           style={StyleSheet.absoluteFillObject}
-          imageStyle={{ opacity: isNight ? 1 : 0.38, resizeMode: 'cover' }}
+          imageStyle={{ opacity: 1, resizeMode: 'cover' }}
         />
-        {!isNight && (
-          <LinearGradient
-            colors={['rgba(4,8,28,0.88)', 'rgba(4,8,28,0.50)', 'rgba(4,8,28,0.06)', 'rgba(4,8,28,0.40)', 'rgba(4,8,28,0.82)']}
-            locations={[0, 0.22, 0.46, 0.72, 1.0]}
-            style={StyleSheet.absoluteFillObject}
-            pointerEvents="none"
-          />
-        )}
 
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
 

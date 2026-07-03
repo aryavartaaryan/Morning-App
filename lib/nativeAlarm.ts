@@ -508,16 +508,22 @@ async function stepOverlayPermission(): Promise<void> {
 // (written to SharedPreferences before launching activity — fires even when
 // the app is killed and Notifee couldn't deliver a notification).
 export async function getInitialAlarmNotification(): Promise<boolean> {
+  // On Android, the native service maintains the single source of truth for the alarm state.
+  // We must return this directly, because notifee.getInitialNotification() caches the
+  // notification intent for the entire app session and will falsely return true even after
+  // the mission is completed and the alarm is stopped.
+  try {
+    if (AlarmNative?.wasAlarmFired) {
+      return await AlarmNative.wasAlarmFired();
+    }
+  } catch { /* ignore */ }
+
+  // Fallback for iOS or if native module is unavailable
   try {
     const initial = await notifee.getInitialNotification();
     if (initial?.notification?.id === ALARM_NOTIF_ID) return true;
   } catch { /* ignore */ }
-  try {
-    if (AlarmNative?.wasAlarmFired) {
-      const fired = await AlarmNative.wasAlarmFired();
-      if (fired) return true;
-    }
-  } catch { /* ignore */ }
+  
   return false;
 }
 

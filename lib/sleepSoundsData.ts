@@ -3,7 +3,7 @@ import type { PlayableSoundMeta } from './soundPlayerContext';
 export const SOUND_IMAGES: Record<string, string> = {
   // ── Rain ──────────────────────────────────────────────────────────────────
   light_rain:    'https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=400&q=80&auto=format&fit=crop',
-  heavy_rain:    'https://images.unsplash.com/photo-1428592953211-077101b2021b?w=400&q=80&auto=format&fit=crop',
+  heavy_rain:    'https://images.pexels.com/photos/20894424/pexels-photo-20894424.jpeg?auto=compress&cs=tinysrgb&w=400',
   rain_thunder:  'https://images.pexels.com/photos/10901515/pexels-photo-10901515.jpeg?auto=compress&cs=tinysrgb&w=400',
   jungle_rain:   'https://images.pexels.com/photos/11924697/pexels-photo-11924697.jpeg?auto=compress&cs=tinysrgb&w=400',
   jungle_storm:  'https://images.pexels.com/photos/18154964/pexels-photo-18154964.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -51,6 +51,8 @@ export const SOUND_IMAGES: Record<string, string> = {
   indian_sitar_raga:   'https://images.pexels.com/photos/6507792/pexels-photo-6507792.jpeg?auto=compress&cs=tinysrgb&w=400',
   sitar_summer_raga:   'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=400',
   sitar_radiance:      'https://images.pexels.com/photos/3768263/pexels-photo-3768263.jpeg?auto=compress&cs=tinysrgb&w=400',
+  sitar_radiance_med:  'https://images.pexels.com/photos/3768263/pexels-photo-3768263.jpeg?auto=compress&cs=tinysrgb&w=400',
+  sitar_radiance_sleep:'https://images.pexels.com/photos/3768263/pexels-photo-3768263.jpeg?auto=compress&cs=tinysrgb&w=400',
   sitar_tanpura_sarangi:'https://images.pexels.com/photos/32858785/pexels-photo-32858785.jpeg?auto=compress&cs=tinysrgb&w=400',
   sitar_tanpura_bgm:   'https://images.pexels.com/photos/35736419/pexels-photo-35736419.jpeg?auto=compress&cs=tinysrgb&w=400',
   veena_classical:     'https://images.pexels.com/photos/10491565/pexels-photo-10491565.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -96,7 +98,9 @@ export const SOUND_IMAGES: Record<string, string> = {
   nada_sitar_tabla_flute:      'https://images.pexels.com/photos/1105666/pexels-photo-1105666.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_short_classical_sitar:  'https://images.pexels.com/photos/358457/pexels-photo-358457.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_sitar_moonlight:        'https://images.pexels.com/photos/31747665/pexels-photo-31747665.jpeg?auto=compress&cs=tinysrgb&w=400',
-  nada_sitar_holistic:         'https://images.pexels.com/photos/1671324/pexels-photo-1671324.jpeg?auto=compress&cs=tinysrgb&w=400',
+  nada_sitar_holistic:         'https://images.pexels.com/photos/34207921/pexels-photo-34207921.jpeg?auto=compress&cs=tinysrgb&w=400',
+  nada_sitar_holistic_med:     'https://images.pexels.com/photos/34207921/pexels-photo-34207921.jpeg?auto=compress&cs=tinysrgb&w=400',
+  nada_sitar_holistic_sleep:   'https://images.pexels.com/photos/34207921/pexels-photo-34207921.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_raga_sparkle:           'https://images.pexels.com/photos/16824892/pexels-photo-16824892.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_sitar_temple:           'https://images.pexels.com/photos/462162/pexels-photo-462162.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_indian_sitar_tune:      'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -129,7 +133,7 @@ export const SOUND_IMAGES: Record<string, string> = {
   nada_tabla_flute_iii:        'https://images.pexels.com/photos/3244513/pexels-photo-3244513.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_tabla_flute_strings_i:  'https://images.pexels.com/photos/247599/pexels-photo-247599.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_tabla_flute_strings_ii: 'https://images.pexels.com/photos/547114/pexels-photo-547114.jpeg?auto=compress&cs=tinysrgb&w=400',
-  nada_calming_tabla_flute:    'https://images.pexels.com/photos/1287145/pexels-photo-1287145.jpeg?auto=compress&cs=tinysrgb&w=400',
+  nada_calming_tabla_flute:    'https://images.pexels.com/photos/12105111/pexels-photo-12105111.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_rhythm_riot:            'https://images.pexels.com/photos/29099693/pexels-photo-29099693.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_tabla_dance:            'https://images.pexels.com/photos/3225517/pexels-photo-3225517.jpeg?auto=compress&cs=tinysrgb&w=400',
   nada_old_gold_tabla:         'https://images.pexels.com/photos/14262986/pexels-photo-14262986.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -386,7 +390,7 @@ export const SOUND_IMAGES: Record<string, string> = {
 
 export const ALL_SLEEP_SOUNDS: PlayableSoundMeta[] = [
   { id: 'light_rain',    label: 'Light Rain',       emoji: '🌦️', cat: 'Nature',    color: '#60a5fa', top: '#0D2440', bot: '#050F1E', desc: 'Soft pitter-patter on leaves',        src: require('../assets/sounds/mixkit-light-rain-loop-2393.m4a'),                   imageUri: 'https://images.pexels.com/photos/15286/pexels-photo-15286.jpeg?auto=compress&cs=tinysrgb&w=400' },
-  { id: 'heavy_rain',    label: 'Heavy Rain',       emoji: '🌧️', cat: 'Nature',    color: '#3b82f6', top: '#0A1A30', bot: '#040A15', desc: 'Deep rhythmic downpour',              src: require('../assets/sounds/mixkit-heavy-rain-drops-2399.m4a'),                  imageUri: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=400' },
+  { id: 'heavy_rain',    label: 'Heavy Rain',       emoji: '🌧️', cat: 'Nature',    color: '#3b82f6', top: '#0A1A30', bot: '#040A15', desc: 'Deep rhythmic downpour',              src: require('../assets/sounds/mixkit-heavy-rain-drops-2399.m4a'),                  imageUri: 'https://images.pexels.com/photos/20894424/pexels-photo-20894424.jpeg?auto=compress&cs=tinysrgb&w=400' },
   { id: 'rain_thunder',  label: 'Rain & Thunder',   emoji: '⛈️', cat: 'Nature',    color: '#818cf8', top: '#18103A', bot: '#0C0820', desc: 'Storm rumbling in the distance',      src: require('../assets/sounds/mixkit-rain-and-thunder-storm-2390.m4a'),            imageUri: 'https://images.pexels.com/photos/10901515/pexels-photo-10901515.jpeg?auto=compress&cs=tinysrgb&w=400' },
   { id: 'jungle_rain',   label: 'Jungle Rain',      emoji: '🦜', cat: 'Nature',    color: '#34d399', top: '#0A2418', bot: '#05100A', desc: 'Rain with tropical birds',            src: require('../assets/sounds/mixkit-jungle-rain-and-birds-2392.m4a'),             imageUri: 'https://images.pexels.com/photos/11924697/pexels-photo-11924697.jpeg?auto=compress&cs=tinysrgb&w=400' },
   { id: 'jungle_storm',  label: 'Jungle Storm',     emoji: '🌿', cat: 'Nature',    color: '#6ee7b7', top: '#0A201A', bot: '#050F0D', desc: 'Calm forest thunderstorm',            src: require('../assets/sounds/mixkit-calm-thunderstorm-in-the-jungle-2415.m4a'),   imageUri: 'https://images.pexels.com/photos/18154964/pexels-photo-18154964.jpeg?auto=compress&cs=tinysrgb&w=400' },

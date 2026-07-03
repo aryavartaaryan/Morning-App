@@ -66,6 +66,22 @@ abstract class AlarmSoundServiceBase : Service() {
     private var windowManager: WindowManager? = null
 
     /**
+     * BUG 1 FIX: Guard flag that prevents the lifecycle watchdog and the
+     * 200 ms bring-to-front runnable from being registered more than ONCE
+     * per service instance lifetime.
+     *
+     * Without this guard, every onStartCommand() call (fresh alarm, START_STICKY
+     * null-intent restart, or any action-intent delivery) re-registered both
+     * watchdogs on top of the ones from the previous call. The bringToFrontRunnable
+     * is a self-re-posting Runnable (fires every 200 ms) — with N accumulated
+     * registrations it runs at N × frequency, all on the main/JS thread.
+     * This caused the cumulative typing lag and timer stutter on 2nd+ alarms.
+     *
+     * Reset to false in onDestroy() so the next service instance starts clean.
+     */
+    @Volatile private var watchdogsRegistered = false
+
+    /**
      * Large title shown on the native overlay, e.g. "⏰  Arise Wake Alarm" or "🌿  Yoga".
      * Called after onLoadParams() so habit params are already populated.
      */
@@ -698,8 +714,19 @@ abstract class AlarmSoundServiceBase : Service() {
         // requires the Activity to already be visible. For an alarm service that
         // must wake a sleeping device, FULL_WAKE_LOCK is still the correct tool
         // and is what Google Clock and every production alarm app uses.
+        //
+        // BUG 2 FIX: Release the existing WakeLock BEFORE acquiring a new one.
+        // Previously, the old wakeLock reference was silently overwritten on every
+        // onStartCommand() call, leaving the PowerManager holding an unreleased
+        // FULL_WAKE_LOCK with no Kotlin reference to release it. The 10-minute
+        // safety-cap timeout was the only way it ever got released. After alarm #N,
+        // there were N orphaned FULL_WAKE_LOCK instances draining CPU throughout
+        // the mission — directly degrading the JS thread's share.
         @Suppress("DEPRECATION")
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        // Release any previously held WakeLock before creating a new one.
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
         @Suppress("DEPRECATION")
         wakeLock = pm.newWakeLock(
             PowerManager.FULL_WAKE_LOCK or
@@ -711,16 +738,9 @@ abstract class AlarmSoundServiceBase : Service() {
         markAlarmActive()
         startForeground(getNotifId(), buildNotification())
 
-        // BUG 1 FIX: Distinguish fresh alarm start from START_STICKY mid-alarm restart.
+        // Distinguish fresh alarm start from START_STICKY mid-alarm restart.
         //
-        // OLD CODE: alarmScreenLaunched was unconditionally reset to false here,
-        // then launchApp() was always called — even on START_STICKY null-intent
-        // restarts where the user is already on the mission screen. This caused:
-        //   • alarmScreenLaunched = false  →  launchApp() fires the deep-link URI
-        //   • Deep-link re-navigates to wake-alarm-ringing OVER the mission screen
-        //   • Mission screen frozen/stuck on every 2nd alarm test.
-        //
-        // FIX: Only do the full startup sequence (reset flag + deep-link launch)
+        // Only do the full startup sequence (reset flag + deep-link launch)
         // when intent is non-null (genuine AlarmBroadcastReceiver trigger).
         // For null-intent START_STICKY restarts (mid-alarm), just restore audio
         // and watchdogs without touching navigation.
@@ -743,10 +763,19 @@ abstract class AlarmSoundServiceBase : Service() {
             // is genuinely not in the foreground.
         }
 
-        // Register primary watchdog (lifecycle-based, fires on actual pause).
-        (application as Application).registerActivityLifecycleCallbacks(lifecycleWatchdog)
-        // Register secondary watchdog (200ms polling — Layer 2).
-        bringToFrontHandler.postDelayed(bringToFrontRunnable, 200)
+        // BUG 1 FIX: Register watchdogs only ONCE per service instance.
+        // Without this guard, every onStartCommand() call stacked another
+        // bringToFrontRunnable (self-re-posting every 200 ms) and another
+        // lifecycleWatchdog on top — multiplying main-thread CPU usage with
+        // each successive alarm and causing the cumulative JS-thread starvation
+        // that manifested as typing lag and timer stutter on 2nd+ alarms.
+        if (!watchdogsRegistered) {
+            watchdogsRegistered = true
+            // Primary watchdog (lifecycle-based, fires on actual Activity pause).
+            (application as Application).registerActivityLifecycleCallbacks(lifecycleWatchdog)
+            // Secondary watchdog (200ms polling — belt-and-suspenders Layer 2).
+            bringToFrontHandler.postDelayed(bringToFrontRunnable, 200)
+        }
 
         return START_STICKY
     }
@@ -782,6 +811,9 @@ abstract class AlarmSoundServiceBase : Service() {
         (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
         bringToFrontHandler.removeCallbacks(bringToFrontRunnable)
         bringToFrontHandler.removeCallbacks(unmuteRunnable)
+        // BUG 1 FIX: Reset the watchdogs guard so if the OS restarts this service
+        // via START_STICKY the watchdogs will be re-registered exactly once.
+        watchdogsRegistered = false
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay
         mediaPlayer?.stop()

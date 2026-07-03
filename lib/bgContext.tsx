@@ -10,7 +10,7 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
   'brahma', 'predawn', 'predawn_mid', 'predawn_late', 'sunrise', 'sunrise_late', 'morning_early', 'morning', 'morning_late',
-  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_late', 'night',
+  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_mid', 'night_early_late', 'night', 'night_late',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
 
@@ -40,14 +40,15 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   twilight_late: { label: 'Twilight (Late)', sub: 'Deepening dusk glow', emoji: '🌇', time: '7:12–7:24 PM' },
   twilight_deep: { label: 'Twilight (Deep)', sub: 'Stars beginning to rise', emoji: '🌌', time: '7:24–7:35 PM' },
   evening:   { label: 'Evening',        sub: 'Cool night energy',        emoji: '🌃', time: '7:30–9 PM' },
-  night_early: { label: 'Night (Early)', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–10:45 PM' },
+  night_early: { label: 'Night (Early)', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–9:52 PM' },
+  night_early_mid: { label: 'Night (Early-Mid)', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:45 PM' },
   night_early_late: { label: 'Night (Early-Late)', sub: 'Stillness deepens', emoji: '🌌', time: '10:45 PM–12:30 AM' },
-  night:     { label: 'Night (Late)',   sub: 'Deep Vata stillness',      emoji: '🌙', time: '12:30 AM–4 AM' },
+  night:     { label: 'Night (Late)',   sub: 'Deep Vata stillness',      emoji: '🌙', time: '12:30 AM–2:15 AM' },
+  night_late: { label: 'Night (Deep)',   sub: 'Darkest hours of rest',    emoji: '🌑', time: '2:15 AM–4 AM' },
 };
 
 // ── Calm-style warm accent colours per solar period ───────────────────────────
 export const BG_ACCENT_COLORS: Record<string, string> = {
-  night:     '#06091A',
   brahma:    '#0C0820',
   predawn:   '#091228',
   predawn_mid: '#0A142C',
@@ -74,11 +75,13 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   twilight_deep: '#100818',
   evening:   '#090614',
   night_early: '#08051A',
+  night_early_mid: '#070416',
   night_early_late: '#060312',
+  night: '#04020C',
+  night_late: '#020108',
 };
 
 export const BG_GRADIENT_START: Record<string, string> = {
-  night:     '#0C1430',
   brahma:    '#180D3C',
   predawn:   '#101E40',
   predawn_mid: '#122244',
@@ -105,7 +108,10 @@ export const BG_GRADIENT_START: Record<string, string> = {
   twilight_deep: '#1B0B28',
   evening:   '#0E0A24',
   night_early: '#0A0620',
+  night_early_mid: '#09051B',
   night_early_late: '#080415',
+  night: '#060310',
+  night_late: '#04020A',
 };
 
 function getTimedBgKey(
@@ -126,7 +132,11 @@ function getTimedBgKey(
       const q2 = nStart + (nDur * 2) / 4;
       const q3 = nStart + (nDur * 3) / 4;
       const hAdj = hour < brahmaMuhurtaStart ? hour + 24 : hour;
-      if (hAdj < q1) return 'night_early';
+      if (hAdj < q1) {
+        const q1Half = nStart + (q1 - nStart) / 2;
+        if (hAdj < q1Half) return 'night_early';
+        return 'night_early_mid';
+      }
       if (hAdj < q2) return 'night_early_late';
       if (hAdj < q3) return 'night';
       return 'night_late';
@@ -182,7 +192,7 @@ function getTimedBgKey(
     if (h < sunset + 2)    return 'evening';
     return getNightPhase(h);
   }
-  if (h >= 2   && h < 5)    return 'brahma';
+  if (h >= 4   && h < 5)    return 'brahma';
   if (h >= 5   && h < 5 + 10/60) return 'predawn';
   if (h >= 5 + 10/60 && h < 5 + 20/60) return 'predawn_mid';
   if (h >= 5 + 20/60 && h < 5.5) return 'predawn_late';
@@ -207,10 +217,14 @@ function getTimedBgKey(
   if (h >= 19 + 35 / 180 && h < 19 + 70 / 180) return 'twilight_late';
   if (h >= 19 + 70 / 180 && h < 19 + 35 / 60) return 'twilight_deep';
   if (h >= 19 + 35 / 60 && h < 21)  return 'evening';
-  if (h >= 21 && h < 22.25) return 'night_early';
-  if (h >= 22.25 && h < 23.5) return 'night_early_late';
-  if (h >= 23.5 || h < 0.75) return 'night';
-  if (h >= 0.75 && h < 2) return 'night_late';
+  if (h >= 21 && h < 22.75) {
+    if (h < 21.875) return 'night_early';
+    return 'night_early_mid';
+  }
+  if (h >= 22.75 || h < 0.5) return 'night_early_late';
+  if (h >= 0.5 && h < 2.25) return 'night';
+  if (h >= 2.25 && h < 4) return 'night_late';
+  return 'night';
 }
 
 export type WallpaperMode = 'solar' | 'manual';
@@ -276,23 +290,29 @@ export function BgProvider({ children }: { children: ReactNode }) {
   // ── Pre-load all BG image URIs for picker thumbnails ─────────────────────
   useEffect(() => {
     (async () => {
-      await bgWarmup;
-      // Immediately populate from in-memory map — no I/O, instant after warmup.
-      // This ensures the wallpaper picker renders all thumbnails right away
-      // instead of showing a loading state while waiting for async file checks.
-      const syncUris: Partial<Record<BgKey, string>> = {};
-      for (const k of BG_KEYS) {
-        syncUris[k] = getBgSourceSync(k);
-      }
-      setAllBgUris(syncUris);
-      // Then update each key individually as getBgSource resolves —
-      // covers remote-URL fallbacks and verifies on-disk file existence.
-      await Promise.allSettled(
-        BG_KEYS.map(async (k) => {
-          const uri = await getBgSource(k);
-          setAllBgUris(prev => ({ ...prev, [k]: uri }));
-        })
-      );
+      try {
+        await bgWarmup;
+        // Immediately populate from in-memory map — no I/O, instant after warmup.
+        // This ensures the wallpaper picker renders all thumbnails right away
+        // instead of showing a loading state while waiting for async file checks.
+        const syncUris: Partial<Record<BgKey, string>> = {};
+        for (const k of BG_KEYS) {
+          // Guard: getBgSourceSync can return null/undefined for uncached keys.
+          // Use empty string fallback so ImageBackground never gets source={{ uri: undefined }}.
+          syncUris[k] = getBgSourceSync(k) || '';
+        }
+        setAllBgUris(syncUris);
+        // Then update each key individually as getBgSource resolves —
+        // covers remote-URL fallbacks and verifies on-disk file existence.
+        await Promise.allSettled(
+          BG_KEYS.map(async (k) => {
+            try {
+              const uri = await getBgSource(k);
+              setAllBgUris(prev => ({ ...prev, [k]: uri || '' }));
+            } catch { /* ignore — thumbnail missing is non-fatal */ }
+          })
+        );
+      } catch { /* silent — picker thumbnails failing is non-fatal */ }
     })();
   }, []);
 

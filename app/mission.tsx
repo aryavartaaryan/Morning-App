@@ -637,17 +637,26 @@ const AffirmationsMission = React.memo(function AffirmationsMission({ color, onC
   useEffect(() => {
     setCanTap(false); setCountdown(5);
     countStartRef.current = Date.now();
-    timerRef.current = setInterval(() => {
+    // BUG 4 FIX: Capture interval ID in a local const so the cleanup closure
+    // always clears THIS effect's interval, not whatever timerRef.current holds
+    // at the time the cleanup runs. The previous code stored the ID into the ref
+    // and then called clearInterval(timerRef.current!) in cleanup — but React may
+    // run the NEW effect (assigning a new ID to timerRef.current) BEFORE calling
+    // the OLD cleanup, meaning the old cleanup cleared the new interval and the
+    // old interval continued running indefinitely. This manifested as the
+    // Affirmations countdown button becoming active earlier than 5 s on 2nd+ alarms.
+    const id = setInterval(() => {
       const elapsed = (Date.now() - countStartRef.current) / 1000;
       const remaining = Math.max(0, Math.ceil(5 - elapsed));
       setCountdown(remaining);
       if (remaining <= 0) {
-        clearInterval(timerRef.current!);
+        clearInterval(id);
         timerRef.current = null;
         setCanTap(true);
       }
     }, 200);
-    return () => clearInterval(timerRef.current!);
+    timerRef.current = id; // keep ref updated for any external reads
+    return () => clearInterval(id); // closes over local const — always the right interval
   }, [current]);
 
   const next = () => {
@@ -977,12 +986,10 @@ export default function MissionScreen() {
     // stopNativeLockTask() is idempotent — safe to call even if not in lock task.
     stopNativeLockTask().catch(() => {});
 
-    // STALE STATE FIX: If the phone was restarted without completing a previous
-    // mission (e.g., keyboard was stuck so user couldn't finish), the
-    // onesutra_alarm_handled_v1 guard may be set from the old cycle.
-    // Clearing it here ensures the next alarm rings correctly without being
-    // suppressed by the routing guard in _layout.tsx.
-    AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
+    // STALE STATE FIX: The 5-minute onesutra_alarm_handled_v1 guard (set by
+    // wake-alarm-ringing) is intentionally kept in AsyncStorage to prevent
+    // _layout.tsx from accidentally routing back to the alarm screen if the user
+    // backgrounds/foregrounds the app immediately after completing this mission.
 
     store.getJSON<MissionSettings>(KEYS.missionSettings).then(ms => {
       setStreak(ms?.streak ?? 0);
@@ -1172,7 +1179,6 @@ export default function MissionScreen() {
     // We must re-schedule AFTER the cancel so tomorrow's alarm is not permanently lost.
     // This is safe: scheduleNativeAlarm() internally calls cancelNativeAlarm() first,
     // so there is exactly ONE alarm set when this block completes.
-    await AsyncStorage.removeItem('onesutra_alarm_handled_v1').catch(() => {});
     const alarmCfg = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
     if (alarmCfg?.wakeAlarm?.enabled) {
       scheduleNativeAlarm(
