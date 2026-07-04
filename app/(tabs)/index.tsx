@@ -490,7 +490,7 @@ const RASHI_TO_VEDIC_MONTH = [
   { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Mesha',     en: 'Mar–Apr' },
   { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Vrishabha', en: 'Apr–May' },
   { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Mithuna',   en: 'May–Jun' },
-  { name: 'Ashadha',      sanskrit: 'आषाढ़',       rashi: 'Karka',     en: 'Jun–Jul' },
+  { name: 'Asadh',        sanskrit: 'आषाढ़',       rashi: 'Karka',     en: 'Jun–Jul' },
   { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Simha',     en: 'Jul–Aug' },
   { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Kanya',     en: 'Aug–Sep' },
   { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Tula',      en: 'Sep–Oct' },
@@ -2659,7 +2659,7 @@ function WeatherSection({
   const rainMm  = weather.rain ?? weather.precipitation ?? 0;
 
   return (
-    <View style={WSEC.container}>
+    <View style={[WSEC.container, { backgroundColor: 'rgba(10, 10, 15, 0.85)' }]}>
       <LinearGradient
         colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
@@ -2740,9 +2740,9 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 16, marginTop: 4, marginBottom: 12,
-    borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden',
+    marginHorizontal: 0, marginTop: 4, marginBottom: 12,
+    borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.25)', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14,
   },
   heroRow:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 12 },
@@ -5840,6 +5840,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
   const yoga      = YOGAS[p.yogaIdx];
   const vMonth    = getVedicMonth();
   const now       = new Date();
+  const { bgKey: cosmicBgKey } = useBgContext();
 
   const nextEvent = lunar.daysToFull <= lunar.daysToNew
     ? { label: lunar.daysToFull === 0 ? 'Full Moon Today!' : `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24', icon: '🌕' }
@@ -5864,7 +5865,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
   return (
     <TouchableOpacity
-      style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 32, elevation: 14 }}
+      style={{ marginHorizontal: 0, marginBottom: 16, borderRadius: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(10, 10, 15, 0.85)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.8, shadowRadius: 32, elevation: 18 }}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
       activeOpacity={0.82}>
 
@@ -5886,7 +5887,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.1)' }}>
                 <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#FFF', letterSpacing: 1.3 }}>
-                  🪐  {vMonth?.name?.toUpperCase() ?? 'VEDIC MONTH'}
+                  VEDIC MONTH — {vMonth?.en?.toUpperCase() ?? 'UNKNOWN'} ({vMonth?.name?.toUpperCase() ?? 'UNKNOWN'})
                 </Text>
               </View>
             </View>
@@ -5914,12 +5915,11 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           {/* Tithi + energy + next event */}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4, flexWrap: 'wrap' }}>
-              <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.1 }}>{p.tithiName}</Text>
-              <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.52)', fontWeight: '700' }}>{lunarDayStr}</Text>
+              <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.1 }}>{lunarDayStr} <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '700' }}>({p.tithiName})</Text></Text>
             </View>
             <Text style={{ fontSize: 11.5, color: '#FFFFFFCC', fontWeight: '700', lineHeight: 17, marginBottom: 7 }} numberOfLines={2}>{tithiEnergyText}</Text>
             <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', fontWeight: '600', marginBottom: 8 }}>
-              {p.paksha === 'Shukla' ? '🌒 Shukla Paksha · Bright Fortnight' : '🌘 Krishna Paksha · Dark Fortnight'}
+              {p.paksha === 'Shukla' ? '🌒 Bright Fortnight (Shukla Paksha)' : '🌘 Dark Fortnight (Krishna Paksha)'}
             </Text>
             {/* Next lunar event pill */}
             <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.25)', alignSelf: 'flex-start' }}>
@@ -5933,9 +5933,9 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
         {/* ── DATA CHIPS: NAKSHATRA + YOGA + VAAR ── */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
           {[
-            { label: 'NAKSHATRA', val: nakshatra.name, sub: nakshatra.constellation, emoji: '⭐' },
-            { label: 'YOGA',      val: yoga.name,      sub: yoga.en,                 emoji: '🔮' },
-            { label: 'VAAR',      val: ENGLISH_DAYS[p.vaarIdx], sub: vaar.planet,    emoji: vaar.emoji },
+            { label: 'STAR',   val: nakshatra.constellation, sub: `(${nakshatra.name})`, emoji: '⭐' },
+            { label: 'ENERGY', val: yoga.en,                 sub: `(${yoga.name})`,      emoji: '🔮' },
+            { label: 'DAY',    val: ENGLISH_DAYS[p.vaarIdx], sub: `(${vaar.vedicName || 'Vaar'})`, emoji: vaar.emoji },
           ].map((item, i) => (
             <View key={i} style={{ flex: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', gap: 4 }}>
               <Text style={{ fontSize: 6, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.3, marginBottom: 1 }}>{item.label}</Text>

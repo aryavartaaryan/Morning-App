@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
-const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
+const LALITHA_IMG = { uri: 'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=400' };
 
 const CAT_COLORS: Record<string, string> = {
   Rain: '#60a5fa', Ocean: '#38bdf8', Nature: '#34d399', Sacred: '#a78bfa',

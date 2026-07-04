@@ -113,10 +113,11 @@ const ALARM_SOUNDS = [
   { id: 'bansuri_forest',          label: 'Bansuri Forest',         emoji: '🌿', cat: 'Sitar & Flute', color: '#34d399', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' as string | null },
   { id: 'bansuri_melody',          label: 'Bansuri Melody',         emoji: '🎵', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'bansuri_tarana',          label: 'Bansuri Tarana',         emoji: '🎶', cat: 'Sitar & Flute', color: '#86efac', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a' as string | null },
+  { id: 'cdn_ultra_rise_krishna',  label: 'Rise with Krishna',      emoji: '🪈', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Rise%20with%20Krishna_%20Uplifting%20Indian%20Morning%20Music%20%20Yoga%20%26%20Meditation%20Instrumentals.m4a' as string | null },
 ];
 
 
-const LALITHA_IMG = require('../../assets/images/mata-lalitha.jpg');
+const LALITHA_IMG = { uri: 'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=400' };
 
 const ALARM_BUNDLED: Record<string, any> = {
   // Only truly bundled sounds (require() module IDs = numbers), not CDN URI objects

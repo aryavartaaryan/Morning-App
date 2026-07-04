@@ -24,6 +24,7 @@ import { getLocalSoundImageUri, isSoundImageCached, isWarmDone, warmSoundImageMa
 import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
+import SoundLibraryModal from '@/components/SoundLibraryModal';
 
 const { width: W, height: H } = Dimensions.get('screen');
 let _pageScrollRef: ScrollView | null = null;
@@ -157,7 +158,7 @@ function shuffleSoundsForDay<T>(arr: T[], cat: string): T[] {
   return a;
 }
 
-const LALITHA_IMG  = require('../../assets/images/mata-lalitha.jpg');
+const LALITHA_IMG  = { uri: 'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=400' };
 const HANUMAN_IMG  = require('../../assets/images/hanumanji.png');
 
 const SOUND_BUNDLED_IMAGES: Record<string, any> = {
@@ -1281,33 +1282,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           })}
         </View>
 
-        {/* ── Settings button — right-aligned inside strip ── */}
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onSettingsPress();
-          }}
-          activeOpacity={0.70}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{
-            width: 34,
-            height: 34,
-            marginRight: 10,
-            borderRadius: 17,
-            backgroundColor: 'rgba(255,255,255,0.10)',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.20)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.30,
-            shadowRadius: 4,
-            elevation: 4,
-          }}
-        >
-          <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.80)" />
-        </TouchableOpacity>
+
 
         {/* ── Glowing underline ── */}
         <Animated.View
@@ -3029,6 +3004,7 @@ export default function SleepTab() {
   const { openReel } = useLocalSearchParams<{ openReel?: string }>();
   const { bgUri, accentColor, gradientStart } = useBgContext();
   const [now, setNow] = useState(new Date());
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   // ── Global sound player (context) ──────────────────────────
   const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels } = useSoundPlayer();
@@ -3563,6 +3539,7 @@ export default function SleepTab() {
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
+
       {/* Settings button is now inside CategoryTabStrip — no longer a separate floating button */}
 
       {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
@@ -3588,6 +3565,71 @@ export default function SleepTab() {
           style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
           onLayout={(e) => setHeroH(e.nativeEvent.layout.height)}
         >
+          {/* Top Header Bar (Premium Square Edge-to-Edge) */}
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 200,
+            flexDirection: 'row',
+            alignItems: 'stretch',
+            height: 48,
+            backgroundColor: 'rgba(15, 15, 20, 0.65)',
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(255,255,255,0.08)',
+          }}>
+            {/* Search Bar (Opens Library) */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                borderRightWidth: 1,
+                borderRightColor: 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', marginLeft: 8 }}>Search sounds...</Text>
+            </TouchableOpacity>
+
+            {/* Nada Library Button */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+              activeOpacity={0.8}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                borderRightWidth: 1,
+                borderRightColor: 'rgba(255,255,255,0.08)',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <Ionicons name="library" size={14} color="#FFF" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3, marginLeft: 6 }}>Nada Library</Text>
+            </TouchableOpacity>
+
+            {/* Settings Button */}
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(tabs)/settings' as never);
+              }}
+              activeOpacity={0.70}
+              style={{
+                width: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+          </View>
+
           <View style={{
             width: '100%',
             backgroundColor: 'rgba(0,0,0,0.16)',
@@ -3596,7 +3638,7 @@ export default function SleepTab() {
             borderColor: 'rgba(255,255,255,0.14)',
             borderRadius: 0,
             paddingHorizontal: 20,
-            paddingTop: 18,
+            paddingTop: 64,
             paddingBottom: 16,
             alignItems: 'center',
             overflow: 'hidden',
@@ -3876,6 +3918,17 @@ export default function SleepTab() {
         onChangeTimer={changeStopTimer}
       />
 
+      {/* ── Sound Library Modal ── */}
+      <SoundLibraryModal
+        visible={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        sounds={ALL_SOUNDS_LIST}
+        playingId={playingId}
+        onPlaySound={(id) => {
+          setLibraryOpen(false);
+          handleSoundCardTap(id);
+        }}
+      />
 
   </ImageBackground>
   );
