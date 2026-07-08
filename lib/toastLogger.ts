@@ -50,48 +50,79 @@ export const ToastLogger = {
 /**
  * Install at app startup (module-level) to catch crashes before any component
  * renders. Errors are queued until <CrashToast /> registers its listener.
+ *
+ * NOTE: The global JS error handler + promise rejection handler is now owned
+ * by lib/crashShield.ts (installCrashShield). This function is kept for
+ * backwards compatibility and only sets up the console.error override.
+ * If crashShield is not installed, this also sets the ErrorUtils handler as
+ * a fallback.
  */
 export function installCrashToast() {
-  // 1. Global JS exception handler
+  // Fallback: set the global error handler ONLY if crashShield hasn't already.
+  // crashShield.ts's installCrashShield() is the preferred owner.
   try {
     const prev = ErrorUtils.getGlobalHandler();
-    ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
-      const tag = isFatal ? '💥 FATAL' : '❌ JS ERROR';
-      const msg = error?.message ?? String(error);
-      ToastLogger.push(`${tag}: ${msg}`, 'crash');
-      prev?.(error, isFatal);
-    });
+    // Check if crashShield already installed its handler (it sets a custom one).
+    // We detect this by name — if it's already 'CrashShieldHandler', skip.
+    const handlerSrc = String(prev);
+    if (!handlerSrc.includes('CrashShield') && !handlerSrc.includes('shielded')) {
+      ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+        try {
+          const tag = isFatal ? '💥 FATAL (shielded)' : '❌ JS ERROR';
+          const msg = error?.message ?? String(error);
+          ToastLogger.push(`${tag}: ${msg}`, 'crash');
+          // DO NOT forward fatal errors to the previous handler in production —
+          // doing so calls ExceptionsManager.reportFatalException() which kills the process.
+          if (__DEV__ && !isFatal) prev?.(error, isFatal);
+        } catch { /* silent */ }
+      });
+    }
   } catch (_) {
     // ErrorUtils unavailable (web / test env) — ignore
   }
 
-  // 1.5. Global Promise Rejection handler
+  // Promise rejection handler (polyfill path)
   try {
     const tracking = require('promise/setimmediate/rejection-tracking');
     tracking.enable({
       allRejections: true,
-      onUnhandled: (id: string, error: Error | any) => {
-        const msg = error instanceof Error ? error.message : String(error);
-        ToastLogger.push(`⚠️ UNHANDLED PROMISE: ${msg}`, 'error');
+      onUnhandled: (_id: string, error: Error | any) => {
+        try {
+          const msg = error instanceof Error ? error.message : String(error);
+          ToastLogger.push(`⚠️ UNHANDLED PROMISE: ${msg}`, 'error');
+        } catch { /* silent */ }
       },
       onHandled: () => {},
     });
   } catch (_) {}
 
-  // 2. console.error override
-  const _origError = console.error.bind(console);
-  console.error = (...args: unknown[]) => {
-    const first = String(args[0] ?? '');
-    const isReactNoise =
-      first.startsWith('Warning:') ||
-      first.includes('Each child in a list') ||
-      first.includes('key prop');
-    if (!isReactNoise) {
-      const msg = args
-        .map(a => (a instanceof Error ? a.message : typeof a === 'object' ? JSON.stringify(a) : String(a)))
-        .join(' ');
-      ToastLogger.push(`⚠️ ${msg}`, 'error');
-    }
-    _origError(...args);
-  };
+  // console.error override — catches errors from third-party libs
+  try {
+    const _origError = console.error.bind(console);
+    console.error = (...args: unknown[]) => {
+      try {
+        const first = String(args[0] ?? '');
+        const isReactNoise =
+          first.startsWith('Warning:') ||
+          first.includes('Each child in a list') ||
+          first.includes('key prop') ||
+          first.includes('VirtualizedList') ||
+          first.includes('componentWillReceiveProps') ||
+          first.includes('componentWillMount');
+        if (!isReactNoise) {
+          const msg = args
+            .map(a => {
+              if (a instanceof Error) return a.message;
+              if (typeof a === 'object' && a !== null) {
+                try { return JSON.stringify(a); } catch { return String(a); }
+              }
+              return String(a);
+            })
+            .join(' ');
+          if (msg.length > 3) ToastLogger.push(`⚠️ ${msg}`, 'error');
+        }
+      } catch { /* silent */ }
+      _origError(...args);
+    };
+  } catch { /* silent */ }
 }

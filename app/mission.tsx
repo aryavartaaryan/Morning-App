@@ -907,7 +907,7 @@ const mv = StyleSheet.create({
 
 // ── COMPLETE screen ────────────────────────────────────────────────────────────
 function MissionComplete({ mission, elapsed, streak, onDismiss }: {
-  mission: ReturnType<typeof MISSIONS[0]['id']>; elapsed: number; streak: number; onDismiss: () => void;
+  mission: string; elapsed: number; streak: number; onDismiss: () => void;
 }) {
   const m = MISSIONS.find(x => x.id === mission)!;
   const [countdown, setCountdown] = useState(3);
@@ -1222,7 +1222,7 @@ export default function MissionScreen() {
         {missionId === 'move_it' && (
           <MoveItMission color={mission.color} onComplete={handleComplete} />
         )}
-        {missionId === 'sky_check' && (
+        {missionId as string === 'sky_check' && (
           <CameraMission
             missionId="sky_check"
             color={mission.color}
@@ -1231,7 +1231,7 @@ export default function MissionScreen() {
             suppressBttf={pickerActiveRef}
           />
         )}
-        {missionId === 'make_bed' && (
+        {missionId as string === 'make_bed' && (
           <CameraMission
             missionId="make_bed"
             color={mission.color}
@@ -1246,7 +1246,7 @@ export default function MissionScreen() {
         {missionId === 'gratitude_drop' && (
           <GratitudeMission color={mission.color} onComplete={handleComplete} />
         )}
-        {missionId === 'hydrate' && (
+        {missionId as string === 'hydrate' && (
           <CameraMission
             missionId="hydrate"
             color={mission.color}

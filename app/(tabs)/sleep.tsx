@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Pressable,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
-  ActivityIndicator, StatusBar,
+  ActivityIndicator, StatusBar, TextInput, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -125,9 +126,12 @@ const SLEEP_SOUNDS = [
   // ── Flute additions ────────────────────────────────────────────────────────
   { id: 'bansuri_forest',      label: 'Bansuri Forest',        emoji: '🌿',  cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Bansuri flute echoing through a forest', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' } },
   { id: 'bansuri_melody',      label: 'Bansuri Melody',        emoji: '🎵',  cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081810' as const, bot: '#040C08' as const, desc: 'Serene Indian bansuri flute melody',     src: require('../../assets/sounds/bansuri-melody.m4a') },
+  { id: 'bansuri_melody_sleep',label: 'Bansuri Melody',        emoji: '🎵',  cat: 'Sleep'   as const, color: '#6ee7b7', top: '#081810' as const, bot: '#040C08' as const, desc: 'Serene Indian bansuri flute melody',     src: require('../../assets/sounds/bansuri-melody.m4a') },
   { id: 'bansuri_tarana',      label: 'Bansuri Tarana',        emoji: '🎶',  cat: 'Ragas'   as const, color: '#86efac', top: '#0A1A10' as const, bot: '#050D08' as const, desc: 'Classical tarana raga on bansuri',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a' } },
+  { id: 'bansuri_tarana_sleep',      label: 'Bansuri Tarana',        emoji: '🎶',  cat: 'Sleep'   as const, color: '#86efac', top: '#0A1A10' as const, bot: '#050D08' as const, desc: 'Classical tarana raga on bansuri',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-tarana.m4a' } },
   // ── Tanpura additions ──────────────────────────────────────────────────────
   { id: 'tanpura_mystic',      label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Ragas'   as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
+  { id: 'tanpura_mystic_sleep',      label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Sleep'   as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
   { id: 'tanpura_serene',      label: 'Serene Tanpura',        emoji: '🧘',  cat: 'Ragas'   as const, color: '#a78bfa', top: '#100828' as const, bot: '#080414' as const, desc: 'Calm serene tanpura meditation',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-serene.m4a' } },
   // ── Sacred mantra addition ─────────────────────────────────────────────────
   { id: 'om_shanti',           label: 'Om Shanti',             emoji: '🕉️',  cat: 'Meditations' as const, color: '#c084fc', top: '#140A28' as const, bot: '#0A0516' as const, desc: 'Vedic peace chant — Om Shanti Shanti Shanti', src: require('../../assets/sounds/om-shanti.m4a') },
@@ -185,6 +189,7 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_sitar_holistic_med',     label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Meditations', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
   { id: 'nada_sitar_holistic_sleep',   label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Sleep', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
   { id: 'nada_raga_sparkle',           label: 'Raga Sparkle',           emoji: '✨', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NADA_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
+  { id: 'nada_raga_sparkle_sleep',     label: 'Raga Sparkle',           emoji: '✨', cat: 'Sleep', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NADA_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
   { id: 'nada_sitar_temple',           label: 'Sitar in the Temple',    emoji: '🛕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Sacred sitar resonating in a temple',        src: { uri: NADA_BASE + 'playlistsons-sitar-in-the-temple-of-rats-430832.m4a' } },
   { id: 'nada_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🎸', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NADA_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
   { id: 'nada_sitar_bhagesri',         label: 'Sitar Bhagesri Raga',    emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Raga Bhagesri on sitar and guitar',           src: { uri: NADA_BASE + 'saseendran-sitar-amp-guitar-bhagesri-374594.m4a' } },
@@ -192,6 +197,7 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_sitar_type_beat',        label: 'Sitar Type Beat',        emoji: '🎶', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Smooth lo-fi sitar beat',                     src: { uri: NADA_BASE + 'u_67ccao27gv-sitar-type-beat-322065.m4a' } },
   // ── Flute ──────────────────────────────────────────────────────────────────
   { id: 'nada_zen_bamboo_flow',        label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
+  { id: 'nada_zen_bamboo_flow_sleep',  label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
   { id: 'nada_ancestors_flute',        label: 'Ancestors Flute',        emoji: '🪶', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Native American ancestral flute',              src: { uri: NADA_BASE + 'k3lix_music-last-breath-of-ancestors-native-american-flute-214341.m4a' } },
   { id: 'nada_indian_flute_tabla_mix', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
   { id: 'nada_indian_flute_tabla_mix_sleep', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
@@ -202,7 +208,9 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_krishna_flute_ii',       label: 'Krishna Flute II',       emoji: '🌀', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Second Krishna flute meditation',              src: { uri: NADA_BASE + 'krasnoshchok-krishna-flute-hindu-music-450217.m4a' } },
   { id: 'nada_muladhara_flute',        label: 'Muladhara Flute',        emoji: '🕉️', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Root chakra flute meditation',                 src: { uri: NADA_BASE + 'meditativetiger-lord-krishnax27s-mulhadara-flute-meditative-tiger-edit-410414.m4a' } },
   { id: 'nada_himalayan_village_flute',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NADA_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
+  { id: 'nada_himalayan_village_flute_sleep',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NADA_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
   { id: 'nada_relaxing_flute',         label: 'Relaxing Flute',         emoji: '🌸', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NADA_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
+  { id: 'nada_relaxing_flute_sleep',   label: 'Relaxing Flute',         emoji: '🌸', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NADA_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
   { id: 'nada_wind_mountain_raga',     label: 'Wind from the Mountain', emoji: '🌬️', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Raga Pahad — mountain winds on flute',         src: { uri: NADA_BASE + 'saseendran-wind-from-the-mountain-raga-pahad-364841.m4a' } },
   { id: 'nada_pure_flute_melody',      label: 'Pure Flute Melody',      emoji: '🎵', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Simple pure flute melody',                     src: { uri: NADA_BASE + 'trycja-flute-melody-494886.m4a' } },
   { id: 'nada_emotional_flute',        label: 'Emotional Flute',        emoji: '💫', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Deep emotional flute journey',                 src: { uri: NADA_BASE + 'u_iwe3yizfhb-emotional-sad-flute-478667.m4a' } },
@@ -220,7 +228,7 @@ const NADA_SOUNDS: NadaSound[] = [
   { id: 'nada_old_gold_tabla',         label: 'Old is Gold Tabla',      emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Timeless Indian tabla music',                  src: { uri: NADA_BASE + 'vfs_world-old-is-gold-indian-tabla-music-copyright-free-song-394347.m4a' } },
   // ── Meditations ─────────────────────────────────────────────────────────────
   { id: 'nada_hang_drum_tabla',        label: 'Hang Drum & Tabla',      emoji: '🥁', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Spiritually uplifting hang drum and tabla',  src: { uri: NADA_BASE + 'dreamsofserenity-spiritually-uplifting-music-hang-drum-tabla-flute-289790.m4a' } },
-  { id: 'nada_bhajan_flute_tabla',     label: 'Bhajan Flute & Tabla',   emoji: '🕉️', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Bhajan-style Indian flute and tabla',        src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-tabla-bhajan-style-452175.m4a' } },
+  { id: 'nada_bhajan_flute_tabla',     label: 'Bhajan Flute & Tabla',   emoji: '🕉️', cat: 'Sleep', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Bhajan-style Indian flute and tabla',        src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-tabla-bhajan-style-452175.m4a' } },
   { id: 'nada_shiva_nirvana_mantra',   label: 'Shiva Nirvana Mantra',   emoji: '🔱', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Shiva nirvana rupam mantra',                  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-nirvana-rupam-mantra-487340.m4a' } },
   { id: 'nada_shiva_panchakshara',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
   { id: 'nada_shiva_panchakshara_sleep',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Sleep', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
@@ -285,7 +293,7 @@ const MANTRA_LIBRARY = [
     color: '#34d399',
     icon: '🕉️',
     sounds: [
-      { id: 'stotra_bhagya',        label: 'Bhagya Suktam',        emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', desc: 'Vedic hymn for prosperity & fortune',      cat: 'Meditations', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' } },
+      { id: 'stotra_bhagya',        label: 'Hymn of Fortune (Bhagya Suktam)',        emoji: '🌟', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', desc: 'Vedic hymn for prosperity & fortune',      cat: 'Meditations', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' } },
       { id: 'stotra_shiv_sankalpa', label: 'Shiv Sankalpa Suktam', emoji: '🕉️', color: '#c4b5fd', top: '#140A1A', bot: '#0A050F', desc: 'Vedic prayer for pure mind & right will', cat: 'Meditations', src: { uri: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' } },
     ],
   },
@@ -901,7 +909,7 @@ const CAT_ICONS: Partial<Record<Category, string>> = {
   All:         'apps',
   Sleep:       'moon',
   Nature:      'leaf',
-  Meditations: 'flower',
+  Meditations: 'meditation',
   Birds:       'bird',      // MaterialCommunityIcons — realistic bird silhouette
   Ragas:       'musical-notes',
 };
@@ -1101,37 +1109,39 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       indicatorW.setValue(layout.width);
     } else {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
-        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
+        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 20, stiffness: 280, mass: 0.45 }),
+        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 20, stiffness: 280, mass: 0.45 }),
       ]).start();
     }
   };
 
   useEffect(() => { moveIndicator(selectedCat); }, [selectedCat]);
 
-  // PanResponder — light horizontal swipe changes category; taps pass through
+  // PanResponder — feather-light horizontal swipe for ultra-smooth category switching
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
-      // Claim on a very light horizontal flick — dx > 7 and clearly more horizontal than vertical
+      // Claim on a very light horizontal flick — dx > 4 and clearly more horizontal than vertical
       onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 7 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.8,
+        Math.abs(gs.dx) > 4 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.4,
       onMoveShouldSetPanResponderCapture: () => false,
-      // CRITICAL: false = once we claim the gesture, the ScrollView cannot steal it back
+      // CRITICAL: false = once we claim, the ScrollView cannot steal it back
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
-        const cur = selectedCatRef.current;
-        // Only swipe through TAB_CATEGORIES (no 'All' in strip)
-        const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
-        const velocity = Math.abs(gs.vx);
-        // Light flick (velocity > 0.3) needs only 18px; slow drag needs 36px
-        const threshold = velocity > 0.3 ? 18 : 36;
-        if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
-          onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
-        } else if (gs.dx > threshold && tabIdx > 0) {
-          onSelectRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
-        }
+        try {
+          const cur = selectedCatRef.current;
+          const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
+          if (tabIdx === -1) return;
+          const velocity = Math.abs(gs.vx);
+          // Ultra-light: fast flick needs only 10px; slow drag needs 22px
+          const threshold = velocity > 0.25 ? 10 : 22;
+          if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
+            onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
+          } else if (gs.dx > threshold && tabIdx > 0) {
+            onSelectRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
+          }
+        } catch (_e) { /* guard against any crash */ }
       },
     })
   ).current;
@@ -1144,18 +1154,18 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
   const shimmerOpacity = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.04, 0.11] });
 
   return (
-    <View
+    <BlurView
+      intensity={75}
+      tint="dark"
       style={{
-        // Deep, rich glass-black — fully opaque so cards NEVER bleed through
-        backgroundColor: 'rgba(6,8,28,0.96)',
+        backgroundColor: 'rgba(6, 9, 15, 0.65)',
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.08)',
-        // Crisp shadow so it lifts above the scrollable cards below
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.55,
-        shadowRadius: 8,
-        elevation: 16,
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 8,
         zIndex: 50,
         overflow: 'hidden',
       }}
@@ -1218,8 +1228,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
             top: 4,
             left: indicatorX,
             width: indicatorW,
-            height: 40,
-            borderRadius: 20,
+            height: 42,
+            borderRadius: 21,
             backgroundColor: activeColor + '22',
             borderWidth: 1,
             borderColor: activeColor + '50',
@@ -1245,37 +1255,50 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   onSelect(cat);
                 }}
                 activeOpacity={0.60}
-                style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 10, gap: 3 }}
+                style={{ flex: 1, alignItems: 'center', paddingTop: 6, paddingBottom: 8, gap: 4 }}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   tabLayouts.current[cat] = { x, width };
                   if (cat === selectedCat) moveIndicator(cat, true);
                 }}
               >
-                {cat === 'Birds' ? (
-                  <MaterialCommunityIcons
-                    name={catIcon}
-                    size={14}
-                    color={isActive ? catColor : 'rgba(255,255,255,0.25)'}
-                  />
-                ) : (
-                  <Ionicons
-                    name={catIcon}
-                    size={13}
-                    color={isActive ? catColor : 'rgba(255,255,255,0.25)'}
-                  />
-                )}
+                <View style={{
+                  width: 34, height: 34,
+                  borderRadius: 17,
+                  backgroundColor: isActive ? catColor + '20' : 'transparent',
+                  borderWidth: isActive ? 1 : 0,
+                  borderColor: isActive ? catColor + '50' : 'transparent',
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: isActive ? catColor : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: isActive ? 0.6 : 0,
+                  shadowRadius: 8,
+                }}>
+                  {cat === 'Birds' || cat === 'Meditations' ? (
+                    <MaterialCommunityIcons
+                      name={catIcon}
+                      size={18}
+                      color={isActive ? catColor : 'rgba(255,255,255,0.4)'}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={catIcon}
+                      size={18}
+                      color={isActive ? catColor : 'rgba(255,255,255,0.4)'}
+                    />
+                  )}
+                </View>
                 <Text
                   numberOfLines={1}
                   style={{
-                    fontSize: 9,
-                    fontWeight: isActive ? '700' : '400',
-                    fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular',
-                    color: isActive ? catColor : 'rgba(255,255,255,0.30)',
-                    letterSpacing: 0.2,
+                    fontSize: 9.5,
+                    fontWeight: isActive ? '800' : '500',
+                    fontFamily: isActive ? 'Nunito_800ExtraBold' : 'Nunito_500Medium',
+                    color: isActive ? catColor : 'rgba(255,255,255,0.45)',
+                    letterSpacing: 0.3,
                   }}
                 >
-                  {cat}
+                  {cat.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             );
@@ -1303,7 +1326,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           }}
         />
       </View>
-    </View>
+    </BlurView>
   );
 });
 
@@ -1744,7 +1767,7 @@ function ReelCard({
   onChangeTimer: (i: number) => void;
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
-  const { bgKey: reelBgKey } = useBgContext(); // kept for potential future use
+  const { accentColor } = useBgContext();
   const { playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
@@ -1756,6 +1779,7 @@ function ReelCard({
   const kbAnim = useRef(new Animated.Value(0)).current;
   const [positionMs, setPositionMs] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   // Safety net: force a re-render once warmSoundImageMap() finishes.
@@ -1787,6 +1811,13 @@ function ReelCard({
   useEffect(() => { setSelectedDurationId('night'); setDurationOpen(false); }, [sound.id]);
 
   // ── Instagram-style play/pause tap overlay ─────────────────────────────
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (playTapTimerRef.current) clearTimeout(playTapTimerRef.current);
+    };
+  }, []);
   const playTapAnim = useRef(new Animated.Value(0)).current;
   const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
   const playTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1794,16 +1825,20 @@ function ReelCard({
   // ── Glow breath animation (own dedicated value — avoids meteringAnim crash) ──
   const glowBreathAnim = useRef(new Animated.Value(0)).current;
 
+  // ── Premium multi-layer pulse animations — 5 independent rings ──
+  const pulse1 = useRef(new Animated.Value(0)).current;
+  const pulse2 = useRef(new Animated.Value(0)).current;
+  const pulse3 = useRef(new Animated.Value(0)).current;
+  const pulse4 = useRef(new Animated.Value(0)).current;
+  const pulse5 = useRef(new Animated.Value(0)).current;
+
   // Zoom in / zoom out — clean cinematic breathe effect (no pan, just scale)
-  const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.16] });
+  const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.12] });
   // Keep pan values zeroed — pure zoom only
   const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
   const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
 
-  // Zoom-in / Zoom-out cinematic breathe — 12 s in, 12 s out, seamless loop
-  // IMPORTANT: kbAnim must use useNativeDriver: true consistently.
-  // We stop any running animation BEFORE setValue to avoid the
-  // "JS animation on a native node" crash during rapid scrolling.
+  // Zoom-in / Zoom-out cinematic breathe — faster 5 s in, 5 s out, seamless loop
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
     kbAnim.stopAnimation(() => {
@@ -1815,12 +1850,12 @@ function ReelCard({
       loop = Animated.loop(
         Animated.sequence([
           Animated.timing(kbAnim, {
-            toValue: 1, duration: 12000,
+            toValue: 1, duration: 5000,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
           Animated.timing(kbAnim, {
-            toValue: 0, duration: 12000,
+            toValue: 0, duration: 5000,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
@@ -1831,12 +1866,57 @@ function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
+  // ── 5 staggered pulse loops — each ring has its own rhythm/speed ──
+  useEffect(() => {
+    const loops: Animated.CompositeAnimation[] = [];
+    if (!isActive || !isPlaying || isPaused) {
+      [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => { p.stopAnimation(); p.setValue(0); });
+      return;
+    }
+    // Ring 1 — slowest, outermost — deep breath
+    pulse1.setValue(0);
+    const l1 = Animated.loop(Animated.sequence([
+      Animated.timing(pulse1, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse1, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])); l1.start(); loops.push(l1);
+    // Ring 2 — slightly faster, offset with delay
+    pulse2.setValue(0);
+    const l2 = Animated.loop(Animated.sequence([
+      Animated.delay(320),
+      Animated.timing(pulse2, { toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse2, { toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])); l2.start(); loops.push(l2);
+    // Ring 3 — mid rhythm
+    pulse3.setValue(0);
+    const l3 = Animated.loop(Animated.sequence([
+      Animated.delay(640),
+      Animated.timing(pulse3, { toValue: 1, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse3, { toValue: 0, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])); l3.start(); loops.push(l3);
+    // Ring 4 — faster inner pulse
+    pulse4.setValue(0);
+    const l4 = Animated.loop(Animated.sequence([
+      Animated.delay(960),
+      Animated.timing(pulse4, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse4, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])); l4.start(); loops.push(l4);
+    // Ring 5 — fastest, innermost — heartbeat
+    pulse5.setValue(0);
+    const l5 = Animated.loop(Animated.sequence([
+      Animated.delay(1280),
+      Animated.timing(pulse5, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse5, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])); l5.start(); loops.push(l5);
+    return () => { loops.forEach(l => l.stop()); [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => p.stopAnimation()); };
+  }, [isActive, isPlaying, isPaused]);
+
   const controlsAnim = useRef(new Animated.Value(1)).current;
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintAnim = useRef(new Animated.Value(0)).current;
   const bumpControlsRef = useRef(() => {
     // Stop any in-flight animation before starting new one — prevents native driver crash
     controlsAnim.stopAnimation(() => {
+      if (!isMountedRef.current) return;
       Animated.timing(controlsAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
     });
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
@@ -1898,24 +1978,7 @@ function ReelCard({
     return () => { loop?.stop(); hintAnim.stopAnimation(); };
   }, [isActive, isLast]);
 
-  // ── Glow orb breathe effect — isolated native animation (no meteringAnim dependency) ──
-  useEffect(() => {
-    let loop: Animated.CompositeAnimation | null = null;
-    glowBreathAnim.stopAnimation(() => {
-      if (!isActive || !isPlaying || isPaused) {
-        glowBreathAnim.setValue(0);
-        return;
-      }
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowBreathAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(glowBreathAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ])
-      );
-      loop.start();
-    });
-    return () => { loop?.stop(); glowBreathAnim.stopAnimation(); };
-  }, [isActive, isPlaying, isPaused]);
+  // glowBreathAnim kept (declared above) but its solo effect is replaced by the 5-ring pulse system
 
   // Progress bar: track width = full reel width minus horizontal padding (24 each side)
   const TRACK_W = REEL_W - 48;
@@ -2081,24 +2144,67 @@ function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── Ambient glow orb — always rendered to avoid native node churn ── */}
+      {/* ── Premium multi-layer glowing pulsing visualizer — vibrant hero style ── */}
       {(() => {
-        const glowSize = REEL_W * 0.60;
+        const baseSize = REEL_W * 0.58;
+        const ringColor = accentColor || sound.color;
+        // Derive 3 harmonious colors from the accent for a multicolor layered feel
+        const c1 = ringColor;        // primary accent
+        const c2 = sound.color;      // sound's own tint
+        const c3 = '#ffffff';        // white glint
+
+        const rings = [
+          // [pulseAnim, sizeMult, baseOpacityMin, baseOpacityMax, colorHex, scaleMin, scaleMax, borderWidth]
+          { anim: pulse1, sm: 1.15, oMin: 0.05, oMax: 0.25, color: c1, sMin: 0.92, sMax: 1.08, bw: 1 },
+          { anim: pulse2, sm: 0.92, oMin: 0.10, oMax: 0.40, color: c2, sMin: 0.94, sMax: 1.06, bw: 1.5 },
+          { anim: pulse3, sm: 0.72, oMin: 0.25, oMax: 0.65, color: c1, sMin: 0.96, sMax: 1.04, bw: 2 },
+          { anim: pulse4, sm: 0.54, oMin: 0.45, oMax: 0.85, color: c2, sMin: 0.97, sMax: 1.03, bw: 3 },
+          { anim: pulse5, sm: 0.38, oMin: 0.60, oMax: 1.00, color: c3, sMin: 0.98, sMax: 1.02, bw: 4 },
+        ];
+
         return (
-          <Animated.View
+          <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: glowSize, height: glowSize,
-              borderRadius: glowSize / 2,
-              backgroundColor: sound.color + '18',
-              left: (REEL_W - glowSize) / 2,
-              top: (REEL_H - glowSize) / 2 - REEL_H * 0.06,
+              width: baseSize, height: baseSize,
+              left: (REEL_W - baseSize) / 2,
+              top: (REEL_H - baseSize) / 2 - REEL_H * 0.05,
               zIndex: 2,
-              opacity: glowBreathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.36] }),
-              transform: [{ scale: glowBreathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.08] }) }],
+              alignItems: 'center', justifyContent: 'center',
             }}
-          />
+          >
+            {rings.map((r, i) => {
+              const s = baseSize * r.sm;
+              return (
+                <Animated.View
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    width: s, height: s,
+                    borderRadius: s / 2,
+                    backgroundColor: 'transparent',
+                    borderWidth: r.bw,
+                    borderColor: r.color,
+                    shadowColor: r.color,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.8,
+                    shadowRadius: 15,
+                    opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
+                    transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
+                  }}
+                >
+                  {/* Subtle inner fill so it doesn't wash out the image but still has body */}
+                  <View style={{
+                    ...StyleSheet.absoluteFillObject,
+                    backgroundColor: r.color,
+                    opacity: 0.06,
+                    borderRadius: s / 2,
+                  }} />
+                </Animated.View>
+              );
+            })}
+          </View>
         );
       })()}
 
@@ -2225,9 +2331,18 @@ function ReelCard({
 
         {/* Title row + playing status badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.4, flex: 1, marginRight: 10 }} numberOfLines={1}>
-            {sound.label}
-          </Text>
+          <Pressable
+            // @ts-ignore - RN Web hover props
+            onHoverIn={() => setIsTitleExpanded(true)}
+            onHoverOut={() => setIsTitleExpanded(false)}
+            onPressIn={() => setIsTitleExpanded(true)}
+            onPressOut={() => setIsTitleExpanded(false)}
+            style={{ flex: 1, marginRight: 10 }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.4 }} numberOfLines={isTitleExpanded ? undefined : 1}>
+              {sound.label}
+            </Text>
+          </Pressable>
           {isPlaying && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color }} />
@@ -2624,6 +2739,7 @@ function SoundReelsModal({
       if (playDebounceRef.current) {
         clearTimeout(playDebounceRef.current);
         playDebounceRef.current = null;
+        onStopSilentRef.current();
       }
     }
   }, [visible, startIndex]);
@@ -2724,7 +2840,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible animationType="none" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -2766,10 +2882,10 @@ function SoundReelsModal({
           }}
           initialScrollIndex={startIndex > 0 ? startIndex : undefined}
           initialNumToRender={startIndex > 0 ? 1 : 3}
-          windowSize={5}
+          windowSize={7}
           maxToRenderPerBatch={2}
           updateCellsBatchingPeriod={50}
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
           renderItem={({ item, index }) => (
             <ReelCard
               sound={item}
@@ -2830,20 +2946,31 @@ function SoundReelsModal({
               {TAB_CATEGORIES.map(cat => {
                 const isActive = activeSound?.cat === cat;
                 const meta = REEL_CAT_META[cat] ?? { color: '#FFFFFF' };
+                const catIcon = (CAT_ICONS[cat] ?? 'apps') as any;
                 return (
                   <TouchableOpacity
                     key={cat}
                     onPress={() => scrollToCategory(cat)}
                     activeOpacity={0.70}
                     style={{
-                      paddingHorizontal: 12, paddingVertical: 6,
-                      borderRadius: 16,
+                      flexDirection: 'row', gap: 6,
+                      paddingHorizontal: 14, paddingVertical: 8,
+                      borderRadius: 20,
                       alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: isActive ? meta.color + '28' : 'transparent',
+                      backgroundColor: isActive ? meta.color + '28' : 'rgba(255,255,255,0.05)',
                       borderWidth: 1,
-                      borderColor: isActive ? meta.color + '55' : 'transparent',
+                      borderColor: isActive ? meta.color + '65' : 'rgba(255,255,255,0.1)',
+                      shadowColor: isActive ? meta.color : 'transparent',
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: isActive ? 0.4 : 0,
+                      shadowRadius: 8,
                     }}
                   >
+                    {cat === 'Birds' || cat === 'Meditations' ? (
+                      <MaterialCommunityIcons name={catIcon} size={12} color={isActive ? meta.color : 'rgba(255,255,255,0.45)'} />
+                    ) : (
+                      <Ionicons name={catIcon} size={12} color={isActive ? meta.color : 'rgba(255,255,255,0.45)'} />
+                    )}
                     <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.55)', fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular', letterSpacing: 0.2 }}>
                       {cat}
                     </Text>
@@ -3005,6 +3132,18 @@ export default function SleepTab() {
   const { bgUri, accentColor, gradientStart } = useBgContext();
   const [now, setNow] = useState(new Date());
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<TextInput>(null);
+
+  const filteredSearchSounds = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const lowerQ = searchQuery.toLowerCase();
+    return ALL_SLEEP_SOUNDS.filter(s => 
+      !SLEEP_HIDDEN_IDS.has(s.id) &&
+      ((s.label?.toLowerCase() || '').includes(lowerQ) || (s.cat?.toLowerCase() || '').includes(lowerQ))
+    ).sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  }, [searchQuery]);
 
   // ── Global sound player (context) ──────────────────────────
   const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels } = useSoundPlayer();
@@ -3036,6 +3175,8 @@ export default function SleepTab() {
     _pageScrollRef?.scrollTo({ y: 0, animated: false });
     setRowsResetKey(k => k + 1);
     hasRowResetRef.current = false;
+    setIsSearching(false);
+    setSearchQuery('');
   }, []));
 
   const onMainScroll = useCallback((e: any) => {
@@ -3053,13 +3194,21 @@ export default function SleepTab() {
 
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
+    // Ultra-smooth silky fade — barely perceptible dip then instant recovery
     Animated.sequence([
-      Animated.timing(contentFadeAnim,  { toValue: 0.60, duration: 55,  useNativeDriver: true }),
-      Animated.timing(contentFadeAnim,  { toValue: 1,    duration: 180, useNativeDriver: true }),
+      Animated.timing(contentFadeAnim,  { toValue: 0.75, duration: 40,  useNativeDriver: true }),
+      Animated.timing(contentFadeAnim,  { toValue: 1,    duration: 200, useNativeDriver: true, easing: (t) => 1 - Math.pow(1 - t, 3) }),
     ]).start();
     if (dir !== 0) {
-      contentSlideAnim.setValue(-dir * W * 0.08);
-      Animated.spring(contentSlideAnim, { toValue: 0, useNativeDriver: true, damping: 28, stiffness: 380, mass: 0.6 }).start();
+      // Smaller, snappier slide offset — feels like pages turning, not jerking
+      contentSlideAnim.setValue(-dir * W * 0.05);
+      Animated.spring(contentSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 22,
+        stiffness: 260,
+        mass: 0.4,
+      }).start();
     }
     setSelectedCat(cat);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3078,21 +3227,25 @@ export default function SleepTab() {
   const contentPan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
+      // Ultra-light: triggers on very gentle horizontal movement with low vertical noise
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 14 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.0,
+        Math.abs(gs.dx) > 6 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
       onPanResponderGrant: () => {},
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
-        const cur = selectedCatPanRef.current;
-        // Swipe within TAB_CATEGORIES (skipping 'All')
-        const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
-        const velocity = Math.abs(gs.vx);
-        const threshold = velocity > 0.4 ? 30 : 50;
-        if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
-          changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
-        } else if (gs.dx > threshold && tabIdx > 0) {
-          changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
-        }
+        try {
+          const cur = selectedCatPanRef.current;
+          const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
+          if (tabIdx === -1) return;
+          const velocity = Math.abs(gs.vx);
+          // Feather touch: fast flick = 20px; slow drag = 38px
+          const threshold = velocity > 0.3 ? 20 : 38;
+          if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
+            changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
+          } else if (gs.dx > threshold && tabIdx > 0) {
+            changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
+          }
+        } catch (_e) { /* guard against any crash */ }
       },
     })
   ).current;
@@ -3189,6 +3342,8 @@ export default function SleepTab() {
     if (reelIndex === -1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setReelsStartIdx(reelIndex);
+    setIsSearching(false);
+    setSearchQuery('');
     // Open the modal immediately — Instagram style, no waiting
     setShowReels(true);
     // Non-blocking: cache this reel's image + adjacent reels in background
@@ -3220,16 +3375,20 @@ export default function SleepTab() {
 
   // Reels: play a sound by id (used when swiping between reels — no mood re-ask)
   const handleReelPlaySound = useCallback((id: string) => {
-    const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
-    if (meta) {
-      // Reset loop mode on each new sound — user must explicitly choose Once/Loop per track
-      reelLoopModeRef.current = null;
-      const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
-      const trimSecs = getReelTrimSecs(meta.cat);
-      // Always default to 8-hour looping in reel mode — sound never stops unless the user
-      // explicitly picks a shorter duration or closes the reel. This matches the behaviour
-      // of Calm / Spotify ambient: keep playing until the user decides to stop.
-      playSound(metaFull, 28800, undefined, trimSecs, true);
+    try {
+      const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
+      if (meta) {
+        // Reset loop mode on each new sound — user must explicitly choose Once/Loop per track
+        reelLoopModeRef.current = null;
+        const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
+        const trimSecs = getReelTrimSecs(meta.cat);
+        // Always default to 8-hour looping in reel mode — sound never stops unless the user
+        // explicitly picks a shorter duration or closes the reel. This matches the behaviour
+        // of Calm / Spotify ambient: keep playing until the user decides to stop.
+        playSound(metaFull, 28800, undefined, trimSecs, true);
+      }
+    } catch (e) {
+      console.warn('Error in handleReelPlaySound:', e);
     }
   }, [playSound]);
 
@@ -3239,52 +3398,56 @@ export default function SleepTab() {
   }, []);
 
   const changeStopTimer = (idx: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (idx === -1) {
-      // Meditation "Once" mode — use real sound duration, cap at 60 min
-      reelLoopModeRef.current = false;
-      const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
-      changeTimer(actualSecs);
-      if (playingId) {
-        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-        if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-          playSound(mf, actualSecs, undefined, 0, false); // 0 trim — play fully to end
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (idx === -1) {
+        // Meditation "Once" mode — use real sound duration, cap at 60 min
+        reelLoopModeRef.current = false;
+        const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
+        changeTimer(actualSecs);
+        if (playingId) {
+          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+          if (meta) {
+            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+            playSound(mf, actualSecs, undefined, 0, false); // 0 trim — play fully to end
+          }
         }
-      }
-    } else if (idx === -2) {
-      // Meditation "Loop" mode — loop indefinitely (8 hr window)
-      reelLoopModeRef.current = true;
-      changeTimer(28800);
-      if (playingId) {
-        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-        if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-          const trimSecs = getReelTrimSecs(meta.cat);
-          playSound(mf, 28800, undefined, trimSecs, true);
+      } else if (idx === -2) {
+        // Meditation "Loop" mode — loop indefinitely (8 hr window)
+        reelLoopModeRef.current = true;
+        changeTimer(28800);
+        if (playingId) {
+          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+          if (meta) {
+            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+            const trimSecs = getReelTrimSecs(meta.cat);
+            playSound(mf, 28800, undefined, trimSecs, true);
+          }
         }
-      }
-    } else if (idx === -3) {
-      // Auto-detect: silently update timer to real track duration, no restart
-      const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
-      changeTimer(actualSecs);
-    } else if (idx > 200) {
-      // Loop x N mode — idx encodes total seconds directly (computed in ReelCard)
-      reelLoopModeRef.current = true;
-      const totalSecs = idx;
-      changeTimer(totalSecs);
-      if (playingId) {
-        const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-        if (meta) {
-          const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-          const trimSecs = getReelTrimSecs(meta.cat);
-          playSound(mf, totalSecs, undefined, trimSecs, true);
+      } else if (idx === -3) {
+        // Auto-detect: silently update timer to real track duration, no restart
+        const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
+        changeTimer(actualSecs);
+      } else if (idx > 200) {
+        // Loop x N mode — idx encodes total seconds directly (computed in ReelCard)
+        reelLoopModeRef.current = true;
+        const totalSecs = idx;
+        changeTimer(totalSecs);
+        if (playingId) {
+          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
+          if (meta) {
+            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
+            const trimSecs = getReelTrimSecs(meta.cat);
+            playSound(mf, totalSecs, undefined, trimSecs, true);
+          }
         }
+      } else {
+        reelLoopModeRef.current = null;
+        setStopIdx(idx);
+        changeTimer(STOP_TIMES[idx].secs);
       }
-    } else {
-      reelLoopModeRef.current = null;
-      setStopIdx(idx);
-      changeTimer(STOP_TIMES[idx].secs);
+    } catch (e) {
+      console.warn('Error in changeStopTimer:', e);
     }
   };
 
@@ -3488,6 +3651,7 @@ export default function SleepTab() {
   const featuredSnd = playingSrc ?? (recSounds[0] ?? SLEEP_SOUNDS[0]);
   const bottomPad   = getTabBarClearance(insets.bottom, !!playingId);
   const autoMeta    = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!
+  const safeTop = Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44);
 
   // ── Hero greeting: Calm-style serif font, color shifts with scene ────────
   const heroTextStyle = useMemo(() => {
@@ -3540,7 +3704,49 @@ export default function SleepTab() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
 
-      {/* Settings button is now inside CategoryTabStrip — no longer a separate floating button */}
+      {/* Premium Floating Settings Button */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
+          right: 12,
+          zIndex: 9999,
+          opacity: scrollY.interpolate({
+            inputRange: [0, 60],
+            outputRange: [1, 0],
+            extrapolate: 'clamp',
+          }),
+          transform: [{
+            translateY: scrollY.interpolate({
+              inputRange: [0, 60],
+              outputRange: [0, -100],
+              extrapolate: 'clamp',
+            }),
+          }],
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            borderWidth: 1.5,
+            borderColor: 'rgba(255,255,255,0.25)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            elevation: 5,
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>
@@ -3556,6 +3762,7 @@ export default function SleepTab() {
           overScrollMode="never"
           nestedScrollEnabled
           removeClippedSubviews
+          keyboardShouldPersistTaps="handled"
           // NO stickyHeaderIndices — we use a JS/Animated sticky instead to avoid
           // React Native's native reparenting which breaks touch events on Android.
         >
@@ -3566,71 +3773,85 @@ export default function SleepTab() {
           onLayout={(e) => setHeroH(e.nativeEvent.layout.height)}
         >
           {/* Top Header Bar (Premium Square Edge-to-Edge) */}
-          <View style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 200,
-            flexDirection: 'row',
-            alignItems: 'stretch',
-            height: 48,
-            backgroundColor: 'rgba(15, 15, 20, 0.65)',
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255,255,255,0.08)',
-          }}>
-            {/* Search Bar (Opens Library) */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                borderRightWidth: 1,
-                borderRightColor: 'rgba(255,255,255,0.08)',
-              }}
-            >
-              <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', marginLeft: 8 }}>Search sounds...</Text>
-            </TouchableOpacity>
+          <View style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}>
+            <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 12 }}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject} />
+              {/* Bottom shimmer line hinting expansion */}
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+              
+              {/* Main row */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4, paddingRight: 60, gap: 10 }}>
+                {/* Nada Library Icon */}
+                {!isSearching && (
+                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
+                    <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
+                  </TouchableOpacity>
+                )}
 
-            {/* Nada Library Button */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-              activeOpacity={0.8}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                borderRightWidth: 1,
-                borderRightColor: 'rgba(255,255,255,0.08)',
-                backgroundColor: 'rgba(255,255,255,0.03)',
-              }}
-            >
-              <Ionicons name="library" size={14} color="#FFF" />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3, marginLeft: 6 }}>Nada Library</Text>
-            </TouchableOpacity>
+                {/* Search Bar (Expands inline) */}
+                <TouchableOpacity
+                  onPress={() => { 
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsSearching(true); 
+                    setTimeout(() => searchInputRef.current?.focus(), 100);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: isSearching ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    borderRadius: 12,
+                    paddingHorizontal: isSearching ? 12 : 0,
+                    height: 38,
+                  }}
+                >
+                  <Ionicons name="search" size={isSearching ? 18 : 16} color="rgba(255,255,255,0.7)" />
+                  {isSearching ? (
+                    <TextInput
+                      ref={searchInputRef}
+                      style={{ flex: 1, fontSize: 15, color: '#FFF', fontFamily: 'Nunito_400Regular', marginLeft: 10 }}
+                      autoFocus
+                      placeholder="Search sounds, ragas..."
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      returnKeyType="search"
+                    />
+                  ) : (
+                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', marginLeft: 8 }}>Search sounds...</Text>
+                  )}
+                  {isSearching && searchQuery.length > 0 && (
+                     <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                       <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
+                     </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
 
-            {/* Settings Button */}
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/(tabs)/settings' as never);
-              }}
-              activeOpacity={0.70}
-              style={{
-                width: 48,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
+                {/* Cancel (only visible when searching) */}
+                {isSearching && (
+                  <TouchableOpacity 
+                     onPress={() => {
+                       Keyboard.dismiss();
+                       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                       setIsSearching(false);
+                       setSearchQuery('');
+                     }}
+                     style={{ paddingVertical: 8, paddingLeft: 4 }}
+                  >
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
 
-          <View style={{
+          {!isSearching && (
+            <View style={{
             width: '100%',
             backgroundColor: 'rgba(0,0,0,0.16)',
             borderTopWidth: 1,
@@ -3638,7 +3859,7 @@ export default function SleepTab() {
             borderColor: 'rgba(255,255,255,0.14)',
             borderRadius: 0,
             paddingHorizontal: 20,
-            paddingTop: 64,
+            paddingTop: 16, // reduced from 64 since top bar is no longer absolute
             paddingBottom: 16,
             alignItems: 'center',
             overflow: 'hidden',
@@ -3682,16 +3903,52 @@ export default function SleepTab() {
                 {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? dayHint.name : 'listen to heal as the day dawns up'}
               </Text>
             )}
-          </View>
+            </View>
+          )}
         </View>
 
         {/* ── Strip placeholder — reserves the strip's height in the scroll layout ── */}
         {/* The real strip is rendered outside the ScrollView as an absolute overlay. */}
-        <View style={{ height: 52 }} />
+        {!isSearching && <View style={{ height: 68 }} />}
 
         {/* ── Content container — transparent, swipe handler for category change ── */}
-        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...contentPan.panHandlers}>
+        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...(!isSearching ? contentPan.panHandlers : {})}>
 
+        {isSearching ? (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 100, minHeight: H }}>
+            {filteredSearchSounds.length > 0 ? (
+              filteredSearchSounds.map((sound, idx) => {
+                const isPlaying = playingId === sound.id;
+                return (
+                  <TouchableOpacity 
+                    key={sound.id} 
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSoundCardTap(sound.id); }} 
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' }}
+                  >
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} numberOfLines={1}>{sound.label}</Text>
+                      {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
+                    </View>
+                    {isPlaying ? (
+                      <Ionicons name="stats-chart" size={16} color={sound.color || '#FFF'} />
+                    ) : (
+                      <Ionicons name="play" size={16} color="rgba(255,255,255,0.2)" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: 16 }} />
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, fontFamily: 'Nunito_400Regular' }}>No sounds found for "{searchQuery}"</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+        <>
         <CategoryRows
           playingId={playingId}
           isPaused={isPaused}
@@ -3804,6 +4061,8 @@ export default function SleepTab() {
         {sleepIntelOpen && <View style={S.scienceNote}>
           <Text style={S.scienceNoteTxt}>💡  Sleep cycles are ~90 min each. Waking between cycles — not mid-cycle — is what makes mornings effortless.</Text>
         </View>}
+        </>
+        )}
 
         </View>{/* end lifted container */}
 
@@ -3814,6 +4073,7 @@ export default function SleepTab() {
             view hierarchy is never reparented by stickyHeaderIndices.
             translateY starts at heroH (inline position) and clamps to 0 (top of container)
             as the user scrolls down past the hero. Taps and swipes always work. ── */}
+        {!isSearching && (
         <Animated.View
           style={{
             position: 'absolute',
@@ -3823,8 +4083,8 @@ export default function SleepTab() {
             zIndex: 100,
             transform: [{
               translateY: scrollY.interpolate({
-                inputRange: [0, heroH],
-                outputRange: [heroH, 0],
+                inputRange: [0, Math.max(0, heroH - safeTop)],
+                outputRange: [heroH, safeTop],
                 extrapolate: 'clamp',
               }),
             }],
@@ -3836,6 +4096,32 @@ export default function SleepTab() {
             activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
             onSettingsPress={() => { router.push('/(tabs)/settings' as never); }}
           />
+        </Animated.View>
+        )}
+
+        {/* ── Safe Area Background for Sticky Header ── */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: safeTop + 75,
+            zIndex: 99,
+            opacity: scrollY.interpolate({
+              inputRange: [Math.max(0, heroH - safeTop - 40), Math.max(0, heroH - safeTop)],
+              outputRange: [0, 1],
+              extrapolate: 'clamp',
+            }),
+          }}
+        >
+          <LinearGradient
+            colors={['rgba(6,9,15,1)', 'rgba(6,9,15,0.95)', 'rgba(6,9,15,0.6)', 'transparent']}
+            locations={[0, 0.45, 0.75, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{ position: 'absolute', bottom: 15, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         </Animated.View>
 
       </View>{/* end content area */}

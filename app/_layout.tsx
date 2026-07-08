@@ -31,12 +31,23 @@ import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
 import { BgProvider } from '@/lib/bgContext';
 import { MoodSheet } from '@/components/MoodSheet';
 import { CrashToast } from '@/components/CrashToast';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { installCrashToast, ToastLogger } from '@/lib/toastLogger';
+import { installCrashShield } from '@/lib/crashShield';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { MoodKey } from '@/components/MoodSheet';
 
-SplashScreen.preventAutoHideAsync();
+// Prevent the native splash from auto-hiding, then immediately dismiss it.
+// Our custom animated SplashOverlay (rendered below) is the ONLY splash the
+// user sees. The native splash background matches the overlay bg (#04030F)
+// so even the briefest frame is invisible.
+SplashScreen.preventAutoHideAsync().then(() => {
+  SplashScreen.hideAsync().catch(() => {});
+}).catch(() => {});
 
+// Install master crash shield as early as possible (belt-and-suspenders;
+// index.js already calls this first, but this ensures it even in Expo Go / web)
+installCrashShield();
 // Install global crash logger as early as possible (before any component mounts)
 installCrashToast();
 
@@ -56,10 +67,12 @@ class AppErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
     const stack = info?.componentStack?.slice(0, 300) ?? '';
-    ToastLogger.push(
-      `🔴 RENDER ERROR\n${error?.message ?? String(error)}\n${stack}`,
-      'crash'
-    );
+    try {
+      ToastLogger.push(
+        `🔴 RENDER ERROR\n${error?.message ?? String(error)}\n${stack}`,
+        'crash'
+      );
+    } catch { /* silent — logger itself must never throw */ }
   }
 
   resetError = () => {
@@ -94,17 +107,25 @@ class AppErrorBoundary extends Component<
 const { height: SH } = Dimensions.get('window');
 
 function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string }) {
+  const bgOp     = useRef(new Animated.Value(0)).current;
   const bgScale  = useRef(new Animated.Value(1.04)).current;
-  const titleOp  = useRef(new Animated.Value(0)).current;
-  const titleSc  = useRef(new Animated.Value(0.78)).current;
+  
+  // "Nada" text (starts visible to seamlessly match native splash, then fades out)
+  const titleOp  = useRef(new Animated.Value(1)).current;
+  const titleSc  = useRef(new Animated.Value(1)).current;
+  
+  // New Main Title (was subtitle)
   const subOp    = useRef(new Animated.Value(0)).current;
+  const subSc    = useRef(new Animated.Value(0.92)).current;
+  const shimmerOp = useRef(new Animated.Value(0)).current;
+  
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
   const [imageLoaded, setImageLoaded] = useState(false);
   const animStarted = useRef(false);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Ken Burns zoom starts immediately (background colour shows until image decodes)
+  // Ken Burns zoom starts immediately
   useEffect(() => {
     Animated.timing(bgScale, { toValue: 1.12, duration: 6800, useNativeDriver: true }).start();
     // Safety: if onLoad never fires (remote URL / edge case), start after 1.5 s
@@ -112,24 +133,35 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
     return () => { if (safetyTimer.current) clearTimeout(safetyTimer.current); };
   }, []);
 
-  // Logo + content animate only AFTER background image is confirmed rendered —
-  // this guarantees Nada text and background always appear together.
+  // Animation sequence
   useEffect(() => {
     if (!imageLoaded || animStarted.current) return;
     animStarted.current = true;
 
+    // Fade in mountain background (seamlessly taking over the black native splash)
+    Animated.timing(bgOp, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+
+    // Fade out "Nada" gracefully
     Animated.parallel([
-      Animated.timing(titleOp, { toValue: 1, duration: 320, useNativeDriver: true }),
-      Animated.spring(titleSc, { toValue: 1, tension: 55, friction: 9, useNativeDriver: true }),
+      Animated.timing(titleOp, { toValue: 0, duration: 800, delay: 600, useNativeDriver: true }),
+      Animated.timing(titleSc, { toValue: 1.08, duration: 800, delay: 600, useNativeDriver: true }),
     ]).start();
 
+    // Fade in new Main Title
     Animated.sequence([
-      Animated.delay(400),
-      Animated.timing(subOp, { toValue: 1, duration: 450, useNativeDriver: true }),
-      Animated.delay(5500),
+      Animated.delay(1100), // wait for Nada to start fading
       Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 650, useNativeDriver: true }),
-        Animated.timing(screenSc, { toValue: 0.95, duration: 650, useNativeDriver: true }),
+        Animated.timing(subOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.spring(subSc, { toValue: 1, tension: 35, friction: 8, useNativeDriver: true }),
+      ]),
+      // Golden Shimmer effect
+      Animated.timing(shimmerOp, { toValue: 1, duration: 1400, useNativeDriver: true }),
+      Animated.timing(shimmerOp, { toValue: 0, duration: 1400, useNativeDriver: true }),
+      Animated.delay(1200),
+      // Dismiss Splash
+      Animated.parallel([
+        Animated.timing(screenOp, { toValue: 0, duration: 700, useNativeDriver: true }),
+        Animated.timing(screenSc, { toValue: 0.96, duration: 700, useNativeDriver: true }),
       ]),
     ]).start(() => onDone());
   }, [imageLoaded]);
@@ -139,11 +171,11 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
       pointerEvents="none"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
-      {/* Background image with Ken Burns zoom */}
+      {/* Background image with Ken Burns zoom and fade-in */}
       {!!bgUri && (
         <Animated.Image
           source={{ uri: bgUri }}
-          style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]}
+          style={[StyleSheet.absoluteFillObject, { opacity: bgOp, transform: [{ scale: bgScale }] }]}
           resizeMode="cover"
           onLoad={() => {
             if (safetyTimer.current) clearTimeout(safetyTimer.current);
@@ -151,16 +183,27 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
           }}
         />
       )}
-      {/* Center */}
+      
+      {/* Center Content */}
       <View style={SS.center}>
-        <Animated.Text style={[SS.arise, { opacity: titleOp, transform: [{ scale: titleSc }] }]}>
-          Nada
-        </Animated.Text>
-        <Animated.View style={[SS.subBlock, { opacity: subOp }]}>
-          <Text style={SS.tagline}>YOUR DAY  ·  BY DESIGN</Text>
-          <View style={SS.accentLine} />
+        
+        {/* The Native-Matching "Nada" Text */}
+        <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+          <Text style={SS.arise}>Nada</Text>
         </Animated.View>
+
+        {/* The New Big Main Title (was subtitle) */}
+        <Animated.View style={[SS.subBlock, { opacity: subOp, transform: [{ scale: subSc }] }]}>
+          <View style={{ position: 'relative', alignItems: 'center' }}>
+            <Text style={SS.newMainTitle}>Align Your Rhythm with Nature.{'\n'}Your Day, by Design.</Text>
+            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: shimmerOp }]}>
+              Align Your Rhythm with Nature.{'\n'}Your Day, by Design.
+            </Animated.Text>
+          </View>
+        </Animated.View>
+        
       </View>
+      
       {/* Footer */}
       <Animated.Text style={[SS.version, { opacity: subOp }]}>NADA  ·  V 1.0</Animated.Text>
     </Animated.View>
@@ -172,9 +215,11 @@ const SS = StyleSheet.create({
   bgOverlay:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,3,15,0.42)' },
   glowOrb:    { position: 'absolute', top: SH * 0.22, alignSelf: 'center', width: 360, height: 360, borderRadius: 180, backgroundColor: '#F5820A' },
   center:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  arise:      { fontSize: 96, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 8 },
-  subBlock:   { alignItems: 'center', gap: 14 },
-  tagline:    { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', letterSpacing: 6 },
+  arise:      { fontSize: 72, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 6 },
+  subBlock:   { alignItems: 'center', gap: 14, width: '100%', paddingHorizontal: 20 },
+  newMainTitle: { fontSize: 36, fontFamily: 'DancingScript_600SemiBold', color: '#FFFFFF', textAlign: 'center', lineHeight: 46 },
+  tagline:    { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: 4, textAlign: 'center' },
+  taglineSub: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.25)', letterSpacing: 2, textAlign: 'center', marginTop: -6 },
   accentLine: { width: 64, height: 1.5, backgroundColor: '#F5820A', opacity: 0.70, borderRadius: 1 },
   version:    { fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: 5, fontWeight: '600', paddingBottom: 50 },
 });
@@ -221,7 +266,7 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
       <View style={DS.center}>
         {/* App name */}
         <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NADA</Animated.Text>
-        <Text style={DS.subTagline}>नाद · Your Morning Companion</Text>
+        <Text style={DS.subTagline}>नाद · Get transformed by NADA...</Text>
 
         {/* Ring */}
         <View style={DS.ringWrap}>
@@ -412,8 +457,10 @@ function BodhiNotificationListener() {
         // wasAlarmFired() can stay true on the native side after a completed alarm cycle
         // causing a crash loop where alarm-ringing remounts into a stopped native service.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        if (handled && Date.now() - Number(handled) < 300_000) {
-          // Handled within last 5 minutes = just completed this cycle. Prevent crash loop.
+        // 30-minute window (was 5 min) — prevents auto-reopen even if the native
+        // wasAlarmFired() flag is slow to clear after stopAlarmSound() or cancelAlarm().
+        if (handled && Date.now() - Number(handled) < 1_800_000) {
+          // Handled within last 30 minutes = just completed this cycle. Prevent crash loop.
           alarmRoutedRef.current = true; // suppress future routing this session
           return;
         }
@@ -445,8 +492,9 @@ function BodhiNotificationListener() {
           // Guard: skip routing if alarm was already handled — prevents crash loop
           // caused by wasAlarmFired() persisting after a completed alarm cycle.
           const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-          if (handled && Date.now() - Number(handled) < 300_000) {
-            // Handled within last 5 minutes = just completed. Prevent crash loop.
+          // 30-minute window — same as cold-start guard above.
+          if (handled && Date.now() - Number(handled) < 1_800_000) {
+            // Handled within last 30 minutes = just completed. Prevent crash loop.
             alarmRoutedRef.current = true;
             return;
           }
@@ -481,7 +529,8 @@ function BodhiNotificationListener() {
       if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
       (async () => {
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        if (handled && Date.now() - Number(handled) < 300_000) {
+        // 30-minute window — prevents deep-link from re-opening dismissed alarm
+        if (handled && Date.now() - Number(handled) < 1_800_000) {
           alarmRoutedRef.current = true; return;
         }
         const fired = await getInitialAlarmNotification().catch(() => false);
@@ -971,12 +1020,15 @@ export default function RootLayout() {
   const [phase,       setPhase]       = useState<AppPhase>('gate');
   const [dlProgress,  setDlProgress]  = useState(0);
   const [dlLabel,     setDlLabel]     = useState('Preparing...');
-  const [splashBgUri, setSplashBgUri] = useState('');
+  // Pre-resolve the splash bg URI synchronously so SplashOverlay can render
+  // immediately during the 'gate' phase — eliminating the blank gap between
+  // the native splash dismiss and the NADA animated screen appearing.
+  const [splashBgUri, setSplashBgUri] = useState<string>(() => {
+    try { return getBgSourceSync('splash'); } catch { return ''; }
+  });
 
-  // Hide native splash as soon as fonts + auth are ready
-  useEffect(() => {
-    if (fontsLoaded && authReady) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded, authReady]);
+  // Native splash is hidden immediately at module level (see top of file).
+  // No additional hide call needed here.
 
   // ── Download gate: runs once fonts are loaded ─────────────────────────────
   // STRATEGY:
@@ -1129,9 +1181,11 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <AuthGuard onAuthReady={() => setAuthReady(true)} />
         <BodhiNotificationListener />
-        {/* Dark cover while gate check runs (< 100 ms, prevents flash) */}
-        {phase === 'gate' && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: '#04030F' }} />
+        {/* NADA animated splash — shown immediately during 'gate' AND 'splash'
+             phases so there is zero blank gap after the native splash dismisses.
+             key="splash" is stable across gate→splash so React never remounts
+             the component (which would restart the animation from scratch). */}\n        {(phase === 'gate' || phase === 'splash') && (
+          <SplashOverlay key="nada-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
         )}
         {/* Elegant download progress screen — first install only */}
         {phase === 'downloading' && (
@@ -1141,12 +1195,7 @@ export default function RootLayout() {
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }} pointerEvents="box-only" />
           </>
         )}
-        {/* Splash overlay — NEVER renders without a confirmed bg image URI.
-             splashBgUri is always set before phase is switched to 'splash',
-             so the NADA logo is guaranteed to appear only with the background. */}
-        {phase === 'splash' && splashBgUri.length > 0 && (
-          <SplashOverlay onDone={() => setPhase('done')} bgUri={splashBgUri} />
-        )}
+        <ScreenErrorBoundary name="Navigation">
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
@@ -1161,6 +1210,7 @@ export default function RootLayout() {
           <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="step-analytics" options={{ animation: 'slide_from_right' }} />
         </Stack>
+        </ScreenErrorBoundary>
         </BgProvider>
       </SoundPlayerProvider>
       </AppErrorBoundary>

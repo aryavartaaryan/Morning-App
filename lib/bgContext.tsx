@@ -9,19 +9,21 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
-  'brahma', 'predawn', 'predawn_mid', 'predawn_late', 'sunrise', 'sunrise_late', 'morning_early', 'morning', 'morning_late',
-  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_mid', 'night_early_late', 'night', 'night_late',
+  'brahma', 'predawn', 'predawn_mid1', 'predawn_mid2', 'predawn_late', 'sunrise', 'sunrise_late', 'morning_early', 'morning_early_late', 'morning', 'morning_late',
+  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_late', 'night', 'night_late',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
 
 export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string; time: string }> = {
   brahma:    { label: 'Brahma Muhurta', sub: 'The sacred pre-dawn',      emoji: '🌌', time: '4–5 AM' },
   predawn:   { label: 'Pre-Dawn (Early)', sub: 'First glow of morning',    emoji: '🌄', time: '5–5:10 AM' },
-  predawn_mid: { label: 'Pre-Dawn (Mid)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:10–5:20 AM' },
+  predawn_mid1: { label: 'Pre-Dawn (Mid 1)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:10–5:15 AM' },
+  predawn_mid2: { label: 'Pre-Dawn (Mid 2)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:15–5:20 AM' },
   predawn_late: { label: 'Pre-Dawn (Late)',  sub: 'Brightening sky',          emoji: '🌅', time: '5:20–5:30 AM' },
   sunrise:   { label: 'Sunrise',        sub: 'Golden hour clarity',      emoji: '🌅', time: '5:30–6:45 AM' },
   sunrise_late: { label: 'Sunrise (Late)',  sub: 'Morning light settling',   emoji: '🌅', time: '6:45–8 AM' },
-  morning_early: { label: 'Morning (Early)', sub: 'Fresh Kapha sunrise glow', emoji: '🌱', time: '8–8:40 AM' },
+  morning_early: { label: 'Morning (Early)', sub: 'Fresh Kapha sunrise glow', emoji: '🌱', time: '8–8:20 AM' },
+  morning_early_late: { label: 'Morning (Early-Late)', sub: 'Fresh Kapha morning glow', emoji: '🌱', time: '8:20–8:40 AM' },
   morning:   { label: 'Morning',        sub: 'Kapha energy, lush green', emoji: '🌿', time: '8:40–9:20 AM' },
   morning_late: { label: 'Morning (Late)', sub: 'Bright Kapha clarity',   emoji: '🌳', time: '9:20–10 AM' },
   midday_early: { label: 'Midday (Early)', sub: 'Rising solar energy',   emoji: '☀️', time: '10–10:40 AM' },
@@ -30,9 +32,10 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   midday:    { label: 'Midday (First)', sub: 'Peak solar begins',      emoji: '🔥', time: '12–12:40 PM' },
   midday_mid: { label: 'Midday (Mid)',  sub: 'Solar intensity peaks',  emoji: '☀️', time: '12:40–1:20 PM' },
   midday_late: { label: 'Midday (Late)', sub: 'Peak solar wanes',       emoji: '🌤️', time: '1:20–2 PM' },
-  afternoon: { label: 'Afternoon (First)', sub: 'Warm Pitta fire begins',   emoji: '🌤️', time: '2–3 PM' },
+  afternoon: { label: 'Afternoon (First)', sub: 'Warm Pitta fire begins',   emoji: '🌤️', time: '2–2:30 PM' },
+  afternoon_first_late: { label: 'Afternoon (First-Late)', sub: 'Warm Pitta fire deepens', emoji: '🌤️', time: '2:30–3 PM' },
   afternoon_mid: { label: 'Afternoon (Mid)',  sub: 'Pitta warmth deepens',    emoji: '🔥', time: '3–4 PM' },
-  afternoon_late: { label: 'Afternoon (Late)', sub: 'Golden late light',       emoji: '�', time: '4–5 PM' },
+  afternoon_late: { label: 'Afternoon (Late)', sub: 'Golden late light',       emoji: '', time: '4–5 PM' },
   sandhya:   { label: 'Sandhya',        sub: 'Sacred golden sunset',     emoji: '🌇', time: '5:30–6:15 PM' },
   sandhya_late: { label: 'Sandhya (Late)', sub: 'Last golden light', emoji: '🌅', time: '6:15–6:37 PM' },
   sandhya_late_2: { label: 'Sandhya (Dusk)', sub: 'Final embers before twilight', emoji: '🌇', time: '6:37–7 PM' },
@@ -41,7 +44,8 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   twilight_deep: { label: 'Twilight (Deep)', sub: 'Stars beginning to rise', emoji: '🌌', time: '7:24–7:35 PM' },
   evening:   { label: 'Evening',        sub: 'Cool night energy',        emoji: '🌃', time: '7:30–9 PM' },
   night_early: { label: 'Night (Early)', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–9:52 PM' },
-  night_early_mid: { label: 'Night (Early-Mid)', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:45 PM' },
+  night_early_mid1: { label: 'Night (Early-Mid I)', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:18 PM' },
+  night_early_mid2: { label: 'Night (Early-Mid II)', sub: 'Quiet deepens', emoji: '🌌', time: '10:18 PM–10:45 PM' },
   night_early_late: { label: 'Night (Early-Late)', sub: 'Stillness deepens', emoji: '🌌', time: '10:45 PM–12:30 AM' },
   night:     { label: 'Night (Late)',   sub: 'Deep Vata stillness',      emoji: '🌙', time: '12:30 AM–2:15 AM' },
   night_late: { label: 'Night (Deep)',   sub: 'Darkest hours of rest',    emoji: '🌑', time: '2:15 AM–4 AM' },
@@ -51,11 +55,13 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
 export const BG_ACCENT_COLORS: Record<string, string> = {
   brahma:    '#0C0820',
   predawn:   '#091228',
-  predawn_mid: '#0A142C',
+  predawn_mid1: '#0A142C',
+  predawn_mid2: '#0A142C',
   predawn_late: '#0B1630',
   sunrise:   '#2A1200',
   sunrise_late: '#1A1800',
   morning_early: '#0A1602',
+  morning_early_late: '#0C1803',
   morning:   '#0E1A04',
   morning_late: '#121E04',
   midday_early: '#1E1200',
@@ -65,6 +71,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   midday_mid: '#201400',
   midday_late: '#241200',
   afternoon: '#1E1000',
+  afternoon_first_late: '#201200',
   afternoon_mid: '#221400',
   afternoon_late: '#261200',
   sandhya:   '#281000',
@@ -75,7 +82,8 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   twilight_deep: '#100818',
   evening:   '#090614',
   night_early: '#08051A',
-  night_early_mid: '#070416',
+  night_early_mid1: '#070416',
+  night_early_mid2: '#070416',
   night_early_late: '#060312',
   night: '#04020C',
   night_late: '#020108',
@@ -84,11 +92,13 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
 export const BG_GRADIENT_START: Record<string, string> = {
   brahma:    '#180D3C',
   predawn:   '#101E40',
-  predawn_mid: '#122244',
+  predawn_mid1: '#122244',
+  predawn_mid2: '#122244',
   predawn_late: '#142648',
   sunrise:   '#4A2200',
   sunrise_late: '#363200',
   morning_early: '#163006',
+  morning_early_late: '#193007',
   morning:   '#1C3008',
   morning_late: '#22380A',
   midday_early: '#3C2800',
@@ -98,6 +108,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   midday_mid: '#3E2800',
   midday_late: '#422A00',
   afternoon: '#361C00',
+  afternoon_first_late: '#381E00',
   afternoon_mid: '#3A2000',
   afternoon_late: '#3E2400',
   sandhya:   '#441800',
@@ -108,7 +119,8 @@ export const BG_GRADIENT_START: Record<string, string> = {
   twilight_deep: '#1B0B28',
   evening:   '#0E0A24',
   night_early: '#0A0620',
-  night_early_mid: '#09051B',
+  night_early_mid1: '#09051B',
+  night_early_mid2: '#09051B',
   night_early_late: '#080415',
   night: '#060310',
   night_late: '#04020A',
@@ -135,7 +147,9 @@ function getTimedBgKey(
       if (hAdj < q1) {
         const q1Half = nStart + (q1 - nStart) / 2;
         if (hAdj < q1Half) return 'night_early';
-        return 'night_early_mid';
+        const q1MidHalf = q1Half + (q1 - q1Half) / 2;
+        if (hAdj < q1MidHalf) return 'night_early_mid1';
+        return 'night_early_mid2';
       }
       if (hAdj < q2) return 'night_early_late';
       if (hAdj < q3) return 'night';
@@ -145,16 +159,19 @@ function getTimedBgKey(
     if (h < brahmaMuhurtaStart) return getNightPhase(h);
     if (h < sunrise - 0.3) return 'brahma';
     const predawnDuration = (sunrise + 0.5) - (sunrise - 0.3);
-    const predawnStep = predawnDuration / 3;
+    const predawnStep = predawnDuration / 4;
     if (h < sunrise - 0.3 + predawnStep) return 'predawn';
-    if (h < sunrise - 0.3 + predawnStep * 2) return 'predawn_mid';
+    if (h < sunrise - 0.3 + predawnStep * 2) return 'predawn_mid1';
+    if (h < sunrise - 0.3 + predawnStep * 3) return 'predawn_mid2';
     if (h < sunrise + 0.5) return 'predawn_late';
     if (h < sunrise + 1)   return 'sunrise';
     if (h < sunrise + 2)   return 'sunrise_late';
     const morningWindow = kaphaPeriodEnd - (sunrise + 2);
     const morningThird1 = sunrise + 2 + morningWindow / 3;
+    const morningEarlyMid = sunrise + 2 + (morningWindow / 3) / 2;
     const morningThird2 = sunrise + 2 + morningWindow * 2 / 3;
-    if (h < morningThird1)  return 'morning_early';
+    if (h < morningEarlyMid) return 'morning_early';
+    if (h < morningThird1) return 'morning_early_late';
     if (h < morningThird2)  return 'morning';
     if (h < kaphaPeriodEnd) return 'morning_late';
     const middayEarlyStart = kaphaPeriodEnd;
@@ -177,7 +194,9 @@ function getTimedBgKey(
     const afternoonEnd = sandhyaStart;
     const afternoonDuration = afternoonEnd - afternoonStart;
     const afternoonStep = afternoonDuration / 3;
-    if (h < afternoonStart + afternoonStep) return 'afternoon';
+    const afternoonFirstHalf = afternoonStart + afternoonStep / 2;
+    if (h < afternoonFirstHalf) return 'afternoon';
+    if (h < afternoonStart + afternoonStep) return 'afternoon_first_late';
     if (h < afternoonStart + afternoonStep * 2) return 'afternoon_mid';
     if (h < afternoonEnd) return 'afternoon_late';
     const sandhyaLateMid = sandhyaMid + (sunset - sandhyaMid) / 2;
@@ -193,12 +212,14 @@ function getTimedBgKey(
     return getNightPhase(h);
   }
   if (h >= 4   && h < 5)    return 'brahma';
-  if (h >= 5   && h < 5 + 10/60) return 'predawn';
-  if (h >= 5 + 10/60 && h < 5 + 20/60) return 'predawn_mid';
-  if (h >= 5 + 20/60 && h < 5.5) return 'predawn_late';
+  if (h >= 5   && h < 5 + 7.5/60) return 'predawn';
+  if (h >= 5 + 7.5/60 && h < 5 + 15/60) return 'predawn_mid1';
+  if (h >= 5 + 15/60 && h < 5 + 22.5/60) return 'predawn_mid2';
+  if (h >= 5 + 22.5/60 && h < 5.5) return 'predawn_late';
   if (h >= 5.5 && h < 6.75)    return 'sunrise';
   if (h >= 6.75 && h < 8)    return 'sunrise_late';
-  if (h >= 8   && h < 8 + 2/3) return 'morning_early';
+  if (h >= 8   && h < 8 + 1/3) return 'morning_early';
+  if (h >= 8 + 1/3 && h < 8 + 2/3) return 'morning_early_late';
   if (h >= 8 + 2/3 && h < 9 + 1/3) return 'morning';
   if (h >= 9 + 1/3 && h < 10)  return 'morning_late';
   if (h >= 10  && h < 10 + 40/60)   return 'midday_early';
@@ -207,7 +228,8 @@ function getTimedBgKey(
   if (h >= 12  && h < 12 + 40/60)   return 'midday';
   if (h >= 12 + 40/60 && h < 13 + 20/60) return 'midday_mid';
   if (h >= 13 + 20/60 && h < 14) return 'midday_late';
-  if (h >= 14  && h < 15)   return 'afternoon';
+  if (h >= 14  && h < 14.5) return 'afternoon';
+  if (h >= 14.5  && h < 15) return 'afternoon_first_late';
   if (h >= 15  && h < 16)   return 'afternoon_mid';
   if (h >= 16  && h < 17)   return 'afternoon_late';
   if (h >= 17  && h < 18)   return 'sandhya';
@@ -219,7 +241,8 @@ function getTimedBgKey(
   if (h >= 19 + 35 / 60 && h < 21)  return 'evening';
   if (h >= 21 && h < 22.75) {
     if (h < 21.875) return 'night_early';
-    return 'night_early_mid';
+    if (h < 22.3125) return 'night_early_mid1';
+    return 'night_early_mid2';
   }
   if (h >= 22.75 || h < 0.5) return 'night_early_late';
   if (h >= 0.5 && h < 2.25) return 'night';
@@ -288,6 +311,10 @@ export function BgProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Pre-load all BG image URIs for picker thumbnails ─────────────────────
+  // safeUri: empty string or very short strings crash Android's ImageBackground
+  const safeUri = (u: string | null | undefined): string | undefined =>
+    (u && u.length > 4) ? u : undefined;
+
   useEffect(() => {
     (async () => {
       try {
@@ -298,8 +325,9 @@ export function BgProvider({ children }: { children: ReactNode }) {
         const syncUris: Partial<Record<BgKey, string>> = {};
         for (const k of BG_KEYS) {
           // Guard: getBgSourceSync can return null/undefined for uncached keys.
-          // Use empty string fallback so ImageBackground never gets source={{ uri: undefined }}.
-          syncUris[k] = getBgSourceSync(k) || '';
+          // Use safeUri to filter empty strings that crash Android ImageBackground.
+          const u = safeUri(getBgSourceSync(k));
+          if (u) syncUris[k] = u;
         }
         setAllBgUris(syncUris);
         // Then update each key individually as getBgSource resolves —
@@ -307,8 +335,8 @@ export function BgProvider({ children }: { children: ReactNode }) {
         await Promise.allSettled(
           BG_KEYS.map(async (k) => {
             try {
-              const uri = await getBgSource(k);
-              setAllBgUris(prev => ({ ...prev, [k]: uri || '' }));
+              const uri = safeUri(await getBgSource(k));
+              if (uri) setAllBgUris(prev => ({ ...prev, [k]: uri }));
             } catch { /* ignore — thumbnail missing is non-fatal */ }
           })
         );
@@ -334,28 +362,31 @@ export function BgProvider({ children }: { children: ReactNode }) {
           bgKeyRef.current   = key;
           resolvedOnce.current = true;
           const syncUri = getBgSourceSync(key);
-          const localSyncUri = syncUri && !syncUri.startsWith('http') ? syncUri : null;
+          const localSyncUri = syncUri && !syncUri.startsWith('http') ? safeUri(syncUri) ?? null : null;
+          const safeSyncUri  = safeUri(syncUri) ?? null;
           
           if (!cancelled) {
-            // Preload URI for thumbnails
-            setAllBgUris(prev => ({ ...prev, [key]: localSyncUri ?? syncUri ?? undefined }));
+            // Preload URI for thumbnails — only store if safe (non-empty, valid)
+            const preloadUri = localSyncUri ?? safeSyncUri;
+            if (preloadUri) setAllBgUris(prev => ({ ...prev, [key]: preloadUri }));
             
             // Only apply solar UI state if in solar mode
             if (wpModeRef.current === 'solar') {
               setBgKey(key);
               setAccent(BG_ACCENT_COLORS[key] ?? BG_ACCENT_COLORS.night);
               setGradStart(BG_GRADIENT_START[key] ?? BG_GRADIENT_START.night);
-              if (localSyncUri || syncUri) {
-                setBgUri(localSyncUri ?? syncUri ?? null);
+              if (localSyncUri || safeSyncUri) {
+                setBgUri(localSyncUri ?? safeSyncUri);
               }
             }
           }
           
           const uri = await getBgSource(key);
           if (!cancelled) {
-            setAllBgUris(prev => ({ ...prev, [key]: uri }));
+            const safe = safeUri(uri);
+            if (safe) setAllBgUris(prev => ({ ...prev, [key]: safe }));
             if (wpModeRef.current === 'solar' && bgKeyRef.current === key) {
-              setBgUri(uri);
+              setBgUri(safe ?? null);
             }
           }
         }
@@ -371,24 +402,28 @@ export function BgProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     async function applyBg() {
-      if (wallpaperMode === 'manual') {
-        const uri = await getBgSource(manualBgKey);
-        if (!cancelled) {
-          setBgUri(uri);
-          setBgKey(manualBgKey);
-          setAccent(BG_ACCENT_COLORS[manualBgKey] ?? BG_ACCENT_COLORS.night);
-          setGradStart(BG_GRADIENT_START[manualBgKey] ?? BG_GRADIENT_START.night);
+      try {
+        if (wallpaperMode === 'manual') {
+          const uri = safeUri(await getBgSource(manualBgKey)) ?? null;
+          if (!cancelled) {
+            setBgUri(uri);
+            setBgKey(manualBgKey);
+            setAccent(BG_ACCENT_COLORS[manualBgKey] ?? BG_ACCENT_COLORS.night);
+            setGradStart(BG_GRADIENT_START[manualBgKey] ?? BG_GRADIENT_START.night);
+          }
+        } else {
+          // Solar mode — derive from current time
+          const key = bgKeyRef.current;
+          const uri = safeUri(await getBgSource(key)) ?? null;
+          if (!cancelled) {
+            setBgUri(uri);
+            setBgKey(key);
+            setAccent(BG_ACCENT_COLORS[key] ?? BG_ACCENT_COLORS.night);
+            setGradStart(BG_GRADIENT_START[key] ?? BG_GRADIENT_START.night);
+          }
         }
-      } else {
-        // Solar mode — derive from current time
-        const key = bgKeyRef.current;
-        const uri = await getBgSource(key);
-        if (!cancelled) {
-          setBgUri(uri);
-          setBgKey(key);
-          setAccent(BG_ACCENT_COLORS[key] ?? BG_ACCENT_COLORS.night);
-          setGradStart(BG_GRADIENT_START[key] ?? BG_GRADIENT_START.night);
-        }
+      } catch (error) {
+        console.warn('Error applying background wallpaper:', error);
       }
     }
     bgWarmup.then(() => { if (!cancelled) applyBg(); }).catch(() => {});

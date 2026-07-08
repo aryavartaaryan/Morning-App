@@ -59,10 +59,11 @@ const MANTRAS = [
   { id: 'gayatri',    label: 'Gayatri Mantra',      emoji: '🌞', color: '#fbbf24', hint: 'ॐ भूर्भुवः स्वः', pitch: 0.85, rate: 0.70, text: 'Om Bhur Bhuva Swaha, Tat Savitur Varenyam, Bhargo Devasya Dhimahi, Dhiyo Yo Nah Prachodayat. Om Shanti Shanti Shanti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
   { id: 'lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65, text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
   { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
-  { id: 'bhagya_suktam',        label: 'Bhagya Suktam',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' },
+  { id: 'bhagya_suktam',        label: 'Hymn of Fortune (Bhagya Suktam)',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' },
   { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' },
   { id: 'nada_govinda_mantra',      label: 'Govinda Mantra',         emoji: '💙', color: '#818cf8', hint: 'Govinda Hari', pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
   { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', color: '#f59e0b', hint: 'Indian Raga',   pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
+  { id: 'cdn_ultra_rise_krishna',   label: 'Rise with Krishna',      emoji: '🪈', color: '#fde68a', hint: 'Krishna Flute', pitch: 1.0, rate: 1.0, text: 'Rise with the divine flute of Krishna. May your morning be filled with clarity and peace.', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Rise%20with%20Krishna_%20Uplifting%20Indian%20Morning%20Music%20%20Yoga%20%26%20Meditation%20Instrumentals.m4a' },
 ];
 // ── Curated alarm sounds ───────────────────────────────────────────────────
 const NADA_BASE_ALARM = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
@@ -92,7 +93,7 @@ const ALARM_SOUNDS = [
   { id: 'med_govind_bolo',         label: 'Govind Bolo · Krishna',  emoji: '🪈', cat: 'Mantra', color: '#38bdf8', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' as string | null },
   { id: 'cdn_ultra_vedic_healing_chant', label: 'Vedic Healing Chanting', emoji: '🌿', cat: 'Mantra', color: '#86efac', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' as string | null },
   { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
-  { id: 'bhagya_suktam',           label: 'Bhagya Suktam',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
+  { id: 'bhagya_suktam',           label: 'Hymn of Fortune (Bhagya Suktam)',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
   // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
   { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'sitar_tabla_bells',       label: 'Sitar, Tabla & Bells',   emoji: '🎵', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
@@ -787,7 +788,7 @@ export default function AlarmsTab() {
         return;
       }
     }
-    updateMission({ selectedMission: missionId });
+    updateMission({ selectedMission: missionId as any });
   };
 
   const stopPreview = async () => {
@@ -1034,26 +1035,31 @@ export default function AlarmsTab() {
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ height: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : insets.top }} />
 
-      {/* Settings floating button — top-right */}
+      {/* Premium Floating Settings Button */}
       <TouchableOpacity
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
         style={{
           position: 'absolute',
-          top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 10,
-          right: 16,
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          backgroundColor: 'rgba(255,255,255,0.12)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.20)',
+          top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
+          right: 12,
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          borderWidth: 1.5,
+          borderColor: 'rgba(255,255,255,0.25)',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 20,
+          zIndex: 9999,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 5,
         }}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="settings-outline" size={15} color="rgba(255,255,255,0.80)" />
+        <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
       </TouchableOpacity>
 
       {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
@@ -1523,27 +1529,57 @@ export default function AlarmsTab() {
                 previewLoadingId={previewLoadingId}
               />
 
-              {/* ── Morning Mission + System (default alarm only) ── */}
-              {!isAddingExtraWake && (
-                <>
-                  <View style={{ paddingHorizontal: 20 }}>
-                    <Text style={[S.sheetSection, { marginHorizontal: 0 }]}>MORNING MISSION  (alarm won't stop until done)</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                      {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
-                        <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
-                          <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
-                          <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
-                          {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
-                        </TouchableOpacity>
-                      ); })}
-                    </View>
+              {/* ── Morning Mission + System (for all wake alarms) ── */}
+                  <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) });
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: (missionSettings.missionEnabled ?? false) ? '#FFFFFF05' : '#FFFFFF05',
+                        borderWidth: 1,
+                        borderColor: (missionSettings.missionEnabled ?? false) ? '#FFFFFF10' : '#FFFFFF15',
+                        borderStyle: (missionSettings.missionEnabled ?? false) ? 'solid' : 'dashed',
+                        borderRadius: 16,
+                        padding: 16,
+                      }}
+                    >
+                      <View>
+                        <Text style={[S.sheetSection, { marginHorizontal: 0, marginBottom: 2, color: (missionSettings.missionEnabled ?? false) ? '#FFFFFF' : '#FFFFFF90' }]}>
+                          MORNING MISSION
+                        </Text>
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+                          {(missionSettings.missionEnabled ?? false) ? 'Alarm won\'t stop until done' : 'Tap to add a morning mission'}
+                        </Text>
+                      </View>
+                      <Toggle value={missionSettings.missionEnabled ?? false} onToggle={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) });
+                      }} color="#f59e0b" />
+                    </TouchableOpacity>
+
+                    {(missionSettings.missionEnabled ?? false) && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                        {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
+                          <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
+                            <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
+                            {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
+                          </TouchableOpacity>
+                        ); })}
+                      </View>
+                    )}
                   </View>
                   <View style={{ paddingHorizontal: 20 }}>
                     <Text style={[S.sheetSection, { marginHorizontal: 0 }]}>SYSTEM</Text>
                     <View style={[S.settingsCard, { backgroundColor: ALARM_CARD_BG }]}>
                       {([
                         { emoji: '🔒', label: 'Lock In Mode',  sub: "Alarm won't stop until mission done",       val: missionSettings.lockInMode,        onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }),                 color: '#ef4444' },
-                        { emoji: '🤖', label: 'Morning Brief', sub: 'AI speaks your personalized morning brief', val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }), color: '#60a5fa' },
+                        // { emoji: '🤖', label: 'Morning Brief', sub: 'AI speaks your personalized morning brief', val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }), color: '#60a5fa' },
                         { emoji: '⏰', label: 'Dawn Alert',     sub: '15 min reminder before your wake alarm',   val: settings.brahmaReminder,           onToggle: toggleBrahma,                                                                    color: '#60a5fa' },
                       ] as const).map((row, i) => (
                         <View key={row.label} style={[S.settingsRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
@@ -1566,8 +1602,6 @@ export default function AlarmsTab() {
                       </LinearGradient>
                     )}
                   </View>
-                </>
-              )}
 
               {/* ── Save Button ── */}
               <TouchableOpacity

@@ -8,7 +8,9 @@
  * The pre-dawn Vata window contains Brahma Muhurta (~96–48 min before sunrise).
  */
 
-import type { SolarTimes } from './solar';
+import { getSolarTimes, type SolarTimes } from './solar';
+import notifee, { AndroidImportance, AndroidVisibility, TriggerType, RepeatFrequency } from '@notifee/react-native';
+import { Platform } from 'react-native';
 
 export type DoshaType = 'kapha' | 'pitta' | 'vata';
 
@@ -129,7 +131,7 @@ export const PERIOD_TEMPLATES = [
     sciEmoji: '🌙',
     sciTitle: 'Circadian Wind-Down Phase',
     sciDesc: 'Melatonin synthesis begins as ambient light fades. Core temperature drops ~0.5°C/hr. Cortisol declines, parasympathetic NS activates — body enters anabolic rest-preparation mode. Blue-light now disrupts sleep more than any other time.',
-    activities: ['Light early dinner (before 7 PM)', 'Family & social bonding', 'Gentle yoga / stretching', 'Journaling & self-reflection', 'Gratitude practice', 'Prepare / plan for next day'],
+    activities: ['Early light dinner', 'Family & social bonding', 'Gentle yoga / stretching', 'Journaling & self-reflection', 'Gratitude practice', 'Prepare / plan for next day'],
     avoidances: ['Heavy late dinner', 'Bright screen use after 8 PM', 'Stimulating intense exercise', 'Emotionally heated conversations'],
   },
   {
@@ -221,4 +223,147 @@ export function getDoshaPeriods(solar: SolarTimes, nowH: number): DoshaPeriod[] 
 
 export function getCurrentPeriod(solar: SolarTimes, nowH: number): DoshaPeriod | null {
   return getDoshaPeriods(solar, nowH).find(p => p.status === 'active') ?? null;
+}
+
+export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
+  subPill: string;
+  header: string;
+  sentence: string;
+  sciLabel: string;
+} {
+  if (brahmaActive) {
+    return {
+      subPill: 'BRAHMA MUHURTA · OPEN NOW',
+      header: 'Neuroplasticity Peak Hours',
+      sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
+      sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+    };
+  }
+  if (periodId === 'midday_pitta') {
+    return {
+      subPill: 'PEAK FOCUS PERIOD',
+      header: 'Peak Focus Period',
+      sentence: 'Your metabolic fire and mental sharpness peak together. Decide. Create. Execute.',
+      sciLabel: 'Peak Metabolic Fire · HCl + Pepsin + Bile at maximum · Thyroid apex',
+    };
+  }
+  if (periodId === 'midday_pitta_late') {
+    return {
+      subPill: 'ENERGY DIP PHASE',
+      header: 'Energy Dip Phase',
+      sentence: 'Your body enters a natural rest cycle. Digestion takes priority over focus.',
+      sciLabel: 'Post-Solar Cortisol Dip · Melatonin Micro-Pulse · Digestive Blood Flow peaks',
+    };
+  }
+  switch (periodId) {
+    case 'night_vata':
+      return {
+        subPill: 'BRAHMA MUHURTA WINDOW',
+        header: 'Neuroplasticity Peak Hours',
+        sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
+        sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+      };
+    case 'morning_kapha':
+      return {
+        subPill: 'MORNING KAPHA PERIOD',
+        header: 'Rise & Build Hours',
+        sentence: 'Your hormones are primed to build. Move now and it compounds all day.',
+        sciLabel: 'Anabolic Hormone Peak · Lymphatic Clearance · Cortisol Rising',
+      };
+    case 'afternoon_vata':
+      return {
+        subPill: 'AFTERNOON VATA PERIOD',
+        header: 'Creative Peak Hours',
+        sentence: 'Your body is built to move and create right now. Peak athletic window.',
+        sciLabel: 'Lung Capacity Peak · Reaction Time Fastest · Neuromuscular Coordination',
+      };
+    case 'evening_kapha':
+      return {
+        subPill: 'EVENING KAPHA PERIOD',
+        header: 'Evening Wind Down Hours',
+        sentence: 'Melatonin is rising. Your nervous system is ready to let go.',
+        sciLabel: 'Melatonin Synthesis Begins · Core Temp Drops · Parasympathetic NS Active',
+      };
+    case 'night_pitta':
+      return {
+        subPill: 'DEEP REPAIR PHASE',
+        header: 'Deep Repair Hours',
+        sentence: 'Your body is in complete detox mode. Take deep sleep.',
+        sciLabel: 'Liver Detox Phase I & II · Growth Hormone Surge · Cellular Autophagy Active',
+      };
+    default:
+      return {
+        subPill: 'AYURVEDIC CYCLE',
+        header: 'Circadian Rhythm',
+        sentence: 'Align with nature.',
+        sciLabel: 'Biological synchronization',
+      };
+  }
+}
+
+export const CIRCADIAN_CHANNEL = 'arise-circadian-cycle';
+
+export async function scheduleCircadianNotifs(lat: number, lon: number): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await notifee.createChannel({
+      id: CIRCADIAN_CHANNEL,
+      name: 'Circadian Cycle Alerts',
+      importance: AndroidImportance.DEFAULT,
+      vibration: false,
+      bypassDnd: false,
+      visibility: AndroidVisibility.PUBLIC,
+    } as any);
+
+    const solar = getSolarTimes(lat, lon);
+    const periods = getDoshaPeriods(solar, new Date().getHours());
+    const now = Date.now();
+
+    for (const period of periods) {
+      const content = getHeroRingContent(period.id, false);
+      const notifId = `circadian-${period.id}`;
+      
+      const fire = new Date();
+      const fireH = Math.floor(period.startH);
+      const fireM = Math.round((period.startH - fireH) * 60);
+      fire.setHours(fireH, fireM, 0, 0);
+
+      if (fire.getTime() <= now) fire.setDate(fire.getDate() + 1);
+
+      await notifee.cancelTriggerNotification(notifId).catch(() => {});
+
+      await notifee.createTriggerNotification(
+        {
+          id: notifId,
+          title: content.header,
+          body: content.sentence,
+          android: {
+            channelId: CIRCADIAN_CHANNEL,
+            importance: AndroidImportance.DEFAULT,
+            visibility: AndroidVisibility.PUBLIC,
+            pressAction: { id: 'default', launchActivity: 'default' },
+            color: '#38bdf8',
+            showTimestamp: false,
+            subText: content.subPill,
+          } as any,
+        },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: fire.getTime(),
+          repeatFrequency: RepeatFrequency.DAILY,
+          alarmManager: { allowWhileIdle: true },
+        } as any,
+      );
+    }
+  } catch (e) {
+    console.warn('[Circadian] schedule failed:', e);
+  }
+}
+
+export async function cancelCircadianNotifs(lat: number, lon: number): Promise<void> {
+  const solar = getSolarTimes(lat, lon);
+  const periods = getDoshaPeriods(solar, 12);
+  for (const period of periods) {
+    await notifee.cancelTriggerNotification(`circadian-${period.id}`).catch(() => {});
+  }
 }

@@ -8,6 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
+import { getSolarTimes, getSunElevation } from '@/lib/solar';
+import { checkAndRescheduleDaily } from '@/lib/nativeAlarm';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
@@ -94,8 +97,8 @@ const glass = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(5,10,30,0.70)',
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(5,10,30,0.55)',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -148,6 +151,12 @@ function WallpaperPicker() {
 
   const [showPicker, setShowPicker] = useState(false);
   const sheetY = useRef(new Animated.Value(height)).current;
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const openPicker = () => {
     setShowPicker(true);
@@ -155,7 +164,7 @@ function WallpaperPicker() {
   };
   const closePicker = () => {
     Animated.spring(sheetY, { toValue: height, useNativeDriver: true, speed: 18, bounciness: 0 })
-      .start(() => setShowPicker(false));
+      .start(() => { if (isMounted.current) setShowPicker(false); });
   };
 
   const activeBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
@@ -163,8 +172,9 @@ function WallpaperPicker() {
   // Fall back to 'morning' metadata to prevent a null-dereference crash.
   const activeMeta  = BG_META[activeBgKey as BgKey] ?? BG_META.morning;
   // Guard: allBgUris may not yet contain the URI (loaded asynchronously).
-  // Pass undefined source rather than source={{ uri: undefined }} which crashes on Android.
-  const activeUri   = allBgUris[activeBgKey as BgKey] ?? null;
+  // Empty string '' crashes Android ImageBackground — filter to null.
+  const rawActiveUri = allBgUris[activeBgKey as BgKey];
+  const activeUri   = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
 
   return (
     <>
@@ -286,7 +296,11 @@ function WallpaperPicker() {
                     ]}
                   >
                     <ImageBackground
-                      source={uri ? { uri } : undefined}
+                      source={(() => {
+                        // Empty string URI crashes Android — guard strictly
+                        if (!uri || uri.length <= 4) return undefined;
+                        return { uri };
+                      })()}
                       style={wp.bgCardImg}
                       imageStyle={{ borderRadius: 16 }}
                     >
@@ -460,10 +474,16 @@ const perm = StyleSheet.create({
 
 // ─── Main Settings Screen ────────────────────────────────────────────────────
 export default function SettingsTab() {
+  const scrollRef = useRef<ScrollView>(null);
   const [settings,  setSettings]  = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [mission,   setMission]   = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const { bgUri, bgKey, accentColor } = useBgContext();
 
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   useEffect(() => {
     (async () => {
@@ -477,6 +497,7 @@ export default function SettingsTab() {
   const saveSettings = async (updated: AlarmSettings) => {
     setSettings(updated); await store.setJSON(KEYS.alarmSettings, updated);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    checkAndRescheduleDaily(true).catch(() => {});
   };
   const saveMission = async (updated: MissionSettings) => {
     setMission(updated); await store.setJSON(KEYS.missionSettings, updated);
@@ -484,38 +505,13 @@ export default function SettingsTab() {
   };
 
 
-  const handleResetStreak = () => {
-    Alert.alert('Reset Streak?', 'This will reset your streak counter to 0. Cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset', style: 'destructive', onPress: async () => {
-        await saveMission({ ...mission, streak: 0, missionsCompleted: 0 });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }},
-    ]);
-  };
-
-  const handleResetAll = () => {
-    Alert.alert('Reset All Data?', 'This will clear all alarms, settings, and streak data. Cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset Everything', style: 'destructive', onPress: async () => {
-        await store.setJSON(KEYS.alarmSettings, DEFAULT_ALARM_SETTINGS);
-        await store.setJSON(KEYS.missionSettings, DEFAULT_MISSION_SETTINGS);
-        await store.setJSON(KEYS.multiAlarms, []);
-        setSettings(DEFAULT_ALARM_SETTINGS);
-        setMission(DEFAULT_MISSION_SETTINGS);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert('Done', 'All data has been reset.');
-      }},
-    ]);
-  };
-
 
   const TOGGLES = [
-    { emoji: '🔒', label: 'Lock In Mode',   sub: "Alarm won't stop until mission is completed", val: mission.lockInMode,            onToggle: () => saveMission({ ...mission, lockInMode: !mission.lockInMode }),                         color: '#ef4444' },
-    { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',   val: mission.bodhiMorningBrief,    onToggle: () => saveMission({ ...mission, bodhiMorningBrief: !mission.bodhiMorningBrief }),            color: PURPLE },
+    // { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',   val: mission.bodhiMorningBrief,    onToggle: () => saveMission({ ...mission, bodhiMorningBrief: !mission.bodhiMorningBrief }),            color: PURPLE },
     { emoji: '⏰', label: 'Dawn Alert',      sub: '15-min reminder before your wake alarm',      val: settings.brahmaReminder,      onToggle: () => saveSettings({ ...settings, brahmaReminder: !settings.brahmaReminder }),               color: '#c084fc' },
-    { emoji: '📅', label: 'Daily Check-in', sub: 'Evening prompt to log your day',               val: settings.checkinReminder,     onToggle: () => saveSettings({ ...settings, checkinReminder: !settings.checkinReminder }),            color: GREEN },
-    { emoji: '📈', label: 'Gradual Volume', sub: 'Alarm fades in over 60 seconds (Android)',     val: mission.gradualVolume ?? false, onToggle: () => saveMission({ ...mission, gradualVolume: !(mission.gradualVolume ?? false) }),       color: '#60a5fa' },
+    { emoji: '🌅', label: 'Sacred Hours',   sub: 'Push alerts exactly at sunrise and sunset',    val: settings.sacredHourNotifs ?? false, onToggle: () => saveSettings({ ...settings, sacredHourNotifs: !(settings.sacredHourNotifs ?? false) }), color: '#f97316' },
+    { emoji: '⏱️', label: 'Circadian Alerts', sub: 'Push alerts when your body rhythm phases shift', val: settings.circadianNotifs ?? false, onToggle: () => saveSettings({ ...settings, circadianNotifs: !(settings.circadianNotifs ?? false) }), color: '#38bdf8' },
+    // { emoji: '📈', label: 'Gradual Volume', sub: 'Alarm fades in over 60 seconds (Android)',     val: mission.gradualVolume ?? false, onToggle: () => saveMission({ ...mission, gradualVolume: !(mission.gradualVolume ?? false) }),       color: '#60a5fa' },
   ] as const;
 
   return (
@@ -527,7 +523,7 @@ export default function SettingsTab() {
     >
       {/* Glassmorphism overlays — iOS-style dark theme for settings */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.68)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.35)']}
+        colors={['rgba(0,0,0,0.92)', 'rgba(0,0,0,0.90)', 'rgba(0,0,0,0.85)']}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -559,6 +555,7 @@ export default function SettingsTab() {
       </SafeAreaView>
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}
@@ -570,7 +567,7 @@ export default function SettingsTab() {
 
 
         {/* ── 3. Behaviour Toggles ── */}
-        <SectionHeader emoji="⚡" label="ALARM BEHAVIOUR" color="#FFFFFF50" />
+        <SectionHeader emoji="⚡" label="APP BEHAVIOUR" color="#FFFFFF50" />
         <GlassCard>
           {TOGGLES.map((row, i) => (
             <ToggleRow
@@ -589,7 +586,7 @@ export default function SettingsTab() {
         {/* ── 4. Permissions (Android only) ── */}
         {Platform.OS === 'android' && (
           <>
-            <SectionHeader emoji="🔐" label="ALARM PERMISSIONS" color="#ef444468" />
+            <SectionHeader emoji="🔐" label="APP PERMISSIONS" color="#ef444468" />
             <PermissionsSection onRefresh={() => {}} />
           </>
         )}
@@ -598,12 +595,11 @@ export default function SettingsTab() {
         <SectionHeader emoji="ℹ️" label="ABOUT" color="#FFFFFF30" />
         <GlassCard>
           <View style={{ padding: 16, gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '900', color: '#fff', fontFamily: 'Nunito_900Black' }}>
-              🌅  Morning App
+            <Text style={{ fontSize: 18, fontWeight: '900', color: GOLD, letterSpacing: -0.5 }}>
+              Nada
             </Text>
-            <Text style={{ fontSize: 11, color: '#FFFFFF50', lineHeight: 18 }}>
-              Version 1.0  ·  Built with Ayurvedic wisdom{'\n'}
-              Smart solar alarms · Habit missions · Nāda sleep sounds · Step tracker · AI wellness guidance.
+            <Text style={{ fontSize: 12, color: '#FFFFFF80', lineHeight: 18, marginTop: 2 }}>
+              Rise with the sun · Ancient Wisdom · Modern Intelligence
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {['Solar Rhythms', 'Ayurveda', 'Vedic Panchang', 'Open-Meteo API', 'Android AlarmManager'].map(tag => (
@@ -614,33 +610,6 @@ export default function SettingsTab() {
             </View>
           </View>
         </GlassCard>
-
-        {/* ── 6. Danger Zone ── */}
-        <SectionHeader emoji="⚠️" label="DANGER ZONE" color="#ef444440" />
-        <GlassCard style={{ borderColor: 'rgba(239,68,68,0.20)' }}>
-          <TouchableOpacity onPress={handleResetStreak} activeOpacity={0.8} style={S.dangerBtn}>
-            <View style={[S.dangerIcon, { backgroundColor: '#f9731618' }]}>
-              <Text style={{ fontSize: 18 }}>🔄</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#f97316' }}>Reset Streak</Text>
-              <Text style={{ fontSize: 10, color: '#FFFFFF35', marginTop: 1 }}>Clear streak counter only</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#f9731650" />
-          </TouchableOpacity>
-          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.07)' }} />
-          <TouchableOpacity onPress={handleResetAll} activeOpacity={0.8} style={S.dangerBtn}>
-            <View style={[S.dangerIcon, { backgroundColor: '#ef444418' }]}>
-              <Text style={{ fontSize: 18 }}>🗑️</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#ef4444' }}>Reset All Data</Text>
-              <Text style={{ fontSize: 10, color: '#FFFFFF35', marginTop: 1 }}>Clear all alarms, settings & streak</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#ef444450" />
-          </TouchableOpacity>
-        </GlassCard>
-
       </ScrollView>
 
     </ImageBackground>
@@ -658,7 +627,4 @@ const S = StyleSheet.create({
 
   tagPill: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   tagTxt:  { fontSize: 9, fontWeight: '700', color: '#FFFFFF55', letterSpacing: 0.5 },
-
-  dangerBtn:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  dangerIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
 });

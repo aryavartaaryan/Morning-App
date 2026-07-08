@@ -220,7 +220,7 @@ const WELLNESS: Record<string, {
       { dot: '#E05C3A', text: 'Digestive fire low — avoid heavy meals after 7 PM' },
     ],
     doItems: [
-      { emoji: '🍛', text: 'Light early dinner before 7 PM' },
+      { emoji: '🍛', text: 'Early light dinner' },
       { emoji: '👨‍👩‍👧', text: 'Family and social bonding' },
       { emoji: '🧘', text: 'Gentle yoga or stretching' },
       { emoji: '📔', text: 'Journaling and self-reflection' },

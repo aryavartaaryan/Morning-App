@@ -31,7 +31,7 @@ import {
   WAKE_SOUNDS, MISSIONS, DEFAULT_MISSION_SETTINGS, MissionSettings,
   getKalaMessage,
 } from '@/lib/missionAlarm';
-import { stopAlarmVibration, stopNativeLockTask, stopNativeAlarmSound } from '@/lib/nativeAlarm';
+import { stopAlarmVibration, stopNativeLockTask, stopNativeAlarmSound, stopNativeAlarmAudioOnly, cancelNativeAlarm } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 import { store, KEYS } from '@/lib/storage';
@@ -87,10 +87,20 @@ export default function WakeAlarmRingingScreen() {
   const mission = MISSIONS.find(m => m.id === ms.selectedMission) ?? MISSIONS[0];
 
   const [dismissed, setDismissed] = useState(false);
+  // 'stopping' gives INSTANT visual feedback on press so user knows it was received.
+  // This is critical: without it, a press that takes >300ms to process looks "frozen".
+  const [stopping, setStopping] = useState(false);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
   const missionStartedRef = useRef(false);
+  // Prevent setState after unmount — primary cause of JS-thread freeze on long-ringing screens
+  const isMountedRef = useRef(true);
+  // Native service health watchdog interval handle
+  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
+
+  // Derived: is mission mode active?
+  const missionEnabled = ms.missionEnabled ?? false;
 
   // ── Bootstrap: load alarm settings ───────────────────────────────────────
   useEffect(() => {
@@ -148,6 +158,14 @@ export default function WakeAlarmRingingScreen() {
       NativeModules.HabitAlarmModule?.acquireWakeLock?.().catch?.(() => {});
     }
     return () => {
+      // Mark unmounted — all isMountedRef guards below will stop setState calls.
+      // This is the primary fix for JS thread freeze after long ringing.
+      isMountedRef.current = false;
+      // Clear watchdog so no intervals outlive the screen
+      if (watchdogRef.current !== null) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+      }
       deactivateKeepAwake('wake-alarm');
       if (Platform.OS === 'android') {
         NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
@@ -183,6 +201,35 @@ export default function WakeAlarmRingingScreen() {
 
   // ── Native AlarmSoundService is playing the alarm sound natively. ───────
   // We do not play JS audio here to avoid double-playing sounds.
+
+  // ── Native service health watchdog ───────────────────────────────────────
+  // Checks every 30 s that AlarmSoundService is still running.
+  // On some OEM devices (Xiaomi, Samsung with aggressive battery saver),
+  // the foreground service can be killed after ~10 min, silencing the alarm
+  // while leaving the screen visible — making it seem frozen/unresponsive.
+  // This watchdog detects that state and pings the native layer to restart.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    watchdogRef.current = setInterval(() => {
+      if (!isMountedRef.current) return;
+      try {
+        // isAlarmSoundPlaying() is a fast synchronous-backed native call
+        NativeModules.AlarmModule?.isAlarmSoundPlaying?.()?.then?.((playing: boolean) => {
+          if (!playing && isMountedRef.current) {
+            console.warn('[WakeAlarm] watchdog: native sound stopped unexpectedly — restarting');
+            // Stop then restart to clear any stale state in the service
+            NativeModules.AlarmModule?.stopAlarmSound?.().catch?.(() => {});
+          }
+        }).catch?.(() => {});
+      } catch { /* module may not expose this — safe to ignore */ }
+    }, 30_000);
+    return () => {
+      if (watchdogRef.current !== null) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Foreground service (Android) — keeps JVM alive when HOME pressed ──────
   useEffect(() => {
@@ -288,7 +335,10 @@ export default function WakeAlarmRingingScreen() {
   };
   const [timeStr, setTimeStr] = useState(fmtTime());
   useEffect(() => {
-    const t = setInterval(() => setTimeStr(fmtTime()), 15_000);
+    const t = setInterval(() => {
+      // Guard: don't setState if unmounted (avoids memory leak / JS stall)
+      if (isMountedRef.current) setTimeStr(fmtTime());
+    }, 15_000);
     return () => clearInterval(t);
   }, []);
 
@@ -296,31 +346,94 @@ export default function WakeAlarmRingingScreen() {
   const hour = new Date().getHours();
   const kala = getKalaMessage(hour);
 
-  // ── Begin Your Day (mission start) ────────────────────────────────────────
-  const handleBeginMission = () => {
-    // Guard against double-tap
+  // ── Hard-timeout wrapper for native cleanup calls ─────────────────────────
+  // On OEM devices under memory pressure (after long ringing), native bridge
+  // calls can stall indefinitely. This wrapper ensures no cleanup step ever
+  // blocks the dismiss flow for more than `ms` milliseconds.
+  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | void> =>
+    Promise.race([promise, new Promise<void>(resolve => setTimeout(resolve, ms))]);
+
+  // ── Stop Alarm (mission-free mode) ────────────────────────────────────────
+  const handleStopAlarm = async () => {
+    // Double-tap guard
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
-    setDismissed(true);
 
-    // Fire haptic FIRST so the button feels instantly responsive
+    // ── INSTANT visual feedback ── show disabled/stopping state IMMEDIATELY
+    // so the user knows the press was received even if native cleanup takes time.
+    if (isMountedRef.current) setStopping(true);
+    if (isMountedRef.current) setDismissed(true);
+
+    // Kill watchdog — no longer needed
+    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+
+    // Haptic confirms press immediately
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Navigate INSTANTLY — do NOT await anything before this.
-    // All cleanup runs fire-and-forget in the background.
-    // The native launchApp() fix ensures the watchdog will NOT re-launch
-    // wake-alarm-ringing mid-navigation (REORDER_TO_FRONT, not deep-link).
-    router.replace(`/mission?id=${mission.id}` as never);
+    // Stop native alarm sound with a 2.5 s hard timeout per call.
+    // If the native bridge hangs (OEM memory pressure, stale foreground service),
+    // the timeout fires and we continue — the sound will stop when the service
+    // detects the notification is cancelled (handled below).
+    await withTimeout(Promise.all([
+      stopNativeAlarmSound().catch(() => {}),
+      stopNativeAlarmAudioOnly().catch(() => {}),
+      stopAlarmVibration().catch(() => {}),
+    ]), 2500);
 
-    // Background cleanup — none of these block navigation
-    void stopAlarmVibration().catch(() => {});
-    void stopNativeLockTask().catch(() => {});
-    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
-    void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
+    // Unpin screen — also timeout-guarded so a stalled stopLockTask() never
+    // blocks navigation. The screen MUST unpin before navigate for HOME to work.
+    await withTimeout(stopNativeLockTask(), 1500);
+
+    // CRITICAL: Cancel the native AlarmManager alarm and clear the wasAlarmFired()
+    // flag in SharedPreferences. Without this, getInitialAlarmNotification() in
+    // _layout.tsx keeps returning true after the user closes the app, causing it
+    // to auto-reopen every time the app is brought to foreground.
+    void cancelNativeAlarm().catch(() => {});
+
+    // Cancel notifications (fire-and-forget — these don't block navigation)
     void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
     void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+
+    // Navigate — guaranteed to happen within ~4 s of button press at worst
+    router.replace('/(tabs)' as never);
+  };
+
+  // ── Begin Your Day (mission mode) ────────────────────────────────────────
+  const handleBeginMission = async () => {
+    if (missionStartedRef.current) return;
+    missionStartedRef.current = true;
+
+    // Instant visual feedback
+    if (isMountedRef.current) setStopping(true);
+    if (isMountedRef.current) setDismissed(true);
+
+    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Timeout-guarded native cleanup (same pattern as handleStopAlarm)
+    await withTimeout(Promise.all([
+      stopNativeAlarmSound().catch(() => {}),
+      stopNativeAlarmAudioOnly().catch(() => {}),
+      stopAlarmVibration().catch(() => {}),
+    ]), 2500);
+
+    await withTimeout(stopNativeLockTask(), 1500);
+
+    // Clear native wasAlarmFired() flag so app doesn't auto-reopen after mission
+    void cancelNativeAlarm().catch(() => {});
+
+    void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
+    void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
+    void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
+    void notifee.cancelNotification('alarm-bttf').catch(() => {});
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+    void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
+
+    router.replace(`/mission?id=${mission.id}` as never);
   };
 
   if (!isLoaded) {
@@ -333,8 +446,10 @@ export default function WakeAlarmRingingScreen() {
       style={S.screen}
       imageStyle={{ opacity: 0.68 }}
     >
-      {/* Full-screen touch interceptor */}
-      <View style={StyleSheet.absoluteFillObject} />
+      {/* Dark overlay for image — pointerEvents='none' so it NEVER intercepts
+          touches meant for the buttons below. The old default-'auto' absoluteFill
+          view was silently swallowing button taps after long uptime on OEM ROMs. */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none" />
 
       <StatusBar hidden />
 
@@ -368,7 +483,7 @@ export default function WakeAlarmRingingScreen() {
         </Animated.View>
       </View>
 
-      {/* ── BOTTOM: kala + mission pill + CTA ── */}
+      {/* ── BOTTOM: kala + CTA ── */}
       <View style={S.bottomArea}>
 
         {/* Kala context line */}
@@ -376,40 +491,84 @@ export default function WakeAlarmRingingScreen() {
           {kala.toUpperCase()}{'  ·  '}{userName} · DAY {ms.streak || 1} 🔥
         </Text>
 
-        {/* Mission pill */}
-        <View style={[S.missionPill, { borderColor: mission.color + '40', backgroundColor: 'rgba(0,0,0,0.45)' }]}>
-          <Text style={{ fontSize: 22 }}>{mission.icon}</Text>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[S.missionBadge, { color: mission.color + 'AA' }]}>TODAY'S MISSION</Text>
-            <Text style={S.missionName}>{mission.name}</Text>
-            <Text style={S.missionTagline}>{mission.tagline}</Text>
-          </View>
-        </View>
-
-        {/* CTA — Begin Your Day */}
-        <Animated.View style={[{ width: '100%' }, btnStyle]} pointerEvents="box-none">
-          <TouchableOpacity
-            style={[S.ctaBtn, { shadowColor: accent }]}
-            onPress={handleBeginMission}
-            activeOpacity={0.84}
-          >
-            <LinearGradient
-              colors={[accent + '55', accent + '30']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
-            />
-            <Text style={S.ctaIcon}>☀️</Text>
-            <View style={{ marginLeft: 10 }}>
-              <Text style={S.ctaTitle}>Begin Your Day</Text>
-              <Text style={S.ctaSub}>tap to stop alarm · start mission</Text>
+        {missionEnabled ? (
+          // ── MISSION MODE: pill + Begin Your Day ──────────────────────────
+          <>
+            {/* Mission pill */}
+            <View style={[S.missionPill, { borderColor: mission.color + '40', backgroundColor: 'rgba(0,0,0,0.45)' }]}>
+              <Text style={{ fontSize: 22 }}>{mission.icon}</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[S.missionBadge, { color: mission.color + 'AA' }]}>TODAY'S MISSION</Text>
+                <Text style={S.missionName}>{mission.name}</Text>
+                <Text style={S.missionTagline}>{mission.tagline}</Text>
+              </View>
             </View>
-          </TouchableOpacity>
-        </Animated.View>
+
+            {/* CTA — Begin Your Day */}
+            <Animated.View style={[{ width: '100%' }, btnStyle]}>
+              <TouchableOpacity
+                style={[
+                  S.ctaBtn,
+                  { shadowColor: accent },
+                  stopping && { opacity: 0.55, transform: [{ scale: 0.97 }] },
+                ]}
+                onPress={handleBeginMission}
+                activeOpacity={0.7}
+                disabled={stopping}
+              >
+                <LinearGradient
+                  colors={[accent + '55', accent + '30']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+                />
+                <Text style={S.ctaIcon}>{stopping ? '⏳' : '☀️'}</Text>
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={S.ctaTitle}>{stopping ? 'Starting…' : 'Begin Your Day'}</Text>
+                  <Text style={S.ctaSub}>{stopping ? 'please wait a moment' : 'tap to stop alarm · start mission'}</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </>
+        ) : (
+          // ── MISSION-FREE MODE: simple Stop Alarm button ──────────────────
+          // pointerEvents removed from Animated.View (was 'box-none') so the
+          // button is always a direct, unambiguous touch target.
+          <Animated.View style={[{ width: '100%' }, btnStyle]}>
+            <TouchableOpacity
+              style={[
+                S.ctaBtn,
+                { shadowColor: accent },
+                // Visual feedback: dim & scale-down immediately on press so the
+                // user knows the tap was received even before cleanup finishes.
+                stopping && { opacity: 0.55, transform: [{ scale: 0.97 }] },
+              ]}
+              onPress={handleStopAlarm}
+              activeOpacity={0.7}
+              disabled={stopping}
+            >
+              <LinearGradient
+                colors={[accent + '55', accent + '30']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+              />
+              <Text style={S.ctaIcon}>{stopping ? '⏳' : '🛑'}</Text>
+              <View style={{ marginLeft: 10 }}>
+                <Text style={S.ctaTitle}>{stopping ? 'Stopping…' : 'Stop Alarm'}</Text>
+                <Text style={S.ctaSub}>{stopping ? 'please wait a moment' : 'tap to dismiss · good morning ☀️'}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Lock indicator */}
         <View style={S.lockBar}>
-          <Text style={S.lockBarTxt}>🔒  Can't close · complete mission to stop alarm</Text>
+          <Text style={S.lockBarTxt}>
+            {missionEnabled
+              ? '🔒  Can\'t close · complete mission to stop alarm'
+              : '☀️  Rise and shine — tap above to stop'}
+          </Text>
         </View>
       </View>
     </ImageBackground>

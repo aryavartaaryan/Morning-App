@@ -145,6 +145,8 @@ export async function scheduleBrahmaMuhurtaNotif(
           visibility: AndroidVisibility.PUBLIC,
           pressAction: { id: 'default', launchActivity: 'default' },
           color: '#818cf8',
+          showTimestamp: false,
+          subText: 'Pre-Dawn Alert',
         } as any,
       },
       {
@@ -161,4 +163,100 @@ export async function scheduleBrahmaMuhurtaNotif(
 
 export async function cancelBrahmaMuhurtaNotif(): Promise<void> {
   await notifee.cancelTriggerNotification(BM_NOTIF_ID).catch(() => {});
+}
+
+export const SACRED_CHANNEL = 'arise-sacred-hour';
+export const SUNRISE_NOTIF_ID = 'arise-sunrise-daily';
+export const SUNSET_NOTIF_ID = 'arise-sunset-daily';
+
+export async function scheduleSacredHourNotifs(
+  lat: number,
+  lon: number,
+): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await notifee.createChannel({
+      id: SACRED_CHANNEL,
+      name: 'Sacred Hour Alerts',
+      importance: AndroidImportance.HIGH,
+      vibration: true,
+      bypassDnd: false,
+      visibility: AndroidVisibility.PUBLIC,
+    } as any);
+
+    const solar = getSolarTimes(lat, lon);
+    const now = Date.now();
+
+    // Schedule Sunrise Notification
+    const srH = Math.floor(solar.sunrise);
+    const srM = Math.round((solar.sunrise - srH) * 60);
+    const srFire = new Date();
+    srFire.setHours(srH, srM, 0, 0);
+    if (srFire.getTime() <= now) srFire.setDate(srFire.getDate() + 1);
+
+    await notifee.cancelTriggerNotification(SUNRISE_NOTIF_ID).catch(() => {});
+    await notifee.createTriggerNotification(
+      {
+        id: SUNRISE_NOTIF_ID,
+        title: '🌅 Sacred Hour of Sunrise',
+        body: 'It is sacred hour of sunrise. Meditate now and connect with the divinity.',
+        android: {
+          channelId: SACRED_CHANNEL,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.REMINDER,
+          visibility: AndroidVisibility.PUBLIC,
+          pressAction: { id: 'default', launchActivity: 'default' },
+          color: '#fbbf24',
+          showTimestamp: false,
+          subText: 'Sacred Hour',
+        } as any,
+      },
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: srFire.getTime(),
+        repeatFrequency: RepeatFrequency.DAILY,
+        alarmManager: { allowWhileIdle: true },
+      } as any,
+    );
+
+    // Schedule Sunset Notification
+    const ssH = Math.floor(solar.sunset);
+    const ssM = Math.round((solar.sunset - ssH) * 60);
+    const ssFire = new Date();
+    ssFire.setHours(ssH, ssM, 0, 0);
+    if (ssFire.getTime() <= now) ssFire.setDate(ssFire.getDate() + 1);
+
+    await notifee.cancelTriggerNotification(SUNSET_NOTIF_ID).catch(() => {});
+    await notifee.createTriggerNotification(
+      {
+        id: SUNSET_NOTIF_ID,
+        title: '🌇 Sacred Hour of Sunset',
+        body: 'It is sacred hour of sunset. Meditate now and connect with the divinity.',
+        android: {
+          channelId: SACRED_CHANNEL,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.REMINDER,
+          visibility: AndroidVisibility.PUBLIC,
+          pressAction: { id: 'default', launchActivity: 'default' },
+          color: '#f97316',
+          showTimestamp: false,
+          subText: 'Sacred Hour',
+        } as any,
+      },
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: ssFire.getTime(),
+        repeatFrequency: RepeatFrequency.DAILY,
+        alarmManager: { allowWhileIdle: true },
+      } as any,
+    );
+
+  } catch (e) {
+    console.warn('[SacredHour] schedule failed:', e);
+  }
+}
+
+export async function cancelSacredHourNotifs(): Promise<void> {
+  await notifee.cancelTriggerNotification(SUNRISE_NOTIF_ID).catch(() => {});
+  await notifee.cancelTriggerNotification(SUNSET_NOTIF_ID).catch(() => {});
 }

@@ -71,12 +71,25 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopAlarmSound(promise: Promise) {
         try {
-            // Use .commit() (synchronous) not .apply() (async) so that isAlarmActive()
-            // in MainActivity reads false IMMEDIATELY — before onWindowFocusChanged or
-            // any watchdog fires. .apply() was causing a race where the flag was still
-            // true after the alarm was dismissed, making the app re-open itself.
+            // Write alarm_stopping=true FIRST (synchronous .commit()) so that:
+            // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
+            // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
+            //    stops re-posting itself — preventing it from fighting router navigation.
+            //
+            // CRITICAL: We do NOT clear alarm_stopping=false here any more.
+            // Previously this flag was cleared immediately after stopService(), but
+            // stopService() is ASYNCHRONOUS — onDestroy() runs later. This created a
+            // race window where the bringToFrontRunnable saw alarm_stopping=false and
+            // called launchApp() right in the middle of router.replace() navigation,
+            // making the alarm screen appear frozen/unresponsive after long ringing.
+            //
+            // alarm_stopping is now cleared in AlarmSoundServiceBase.onDestroy() which
+            // is the authoritative moment the service actually stops.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("alarm_fired_pending", false).commit()
+                .edit()
+                .putBoolean("alarm_stopping", true)
+                .putBoolean("alarm_fired_pending", false)
+                .commit()
             (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState()
             reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
             promise.resolve("Sound stopped")

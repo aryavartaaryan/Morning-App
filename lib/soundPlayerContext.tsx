@@ -118,6 +118,12 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   // Epoch guard: incremented on every playSound call so that any in-flight
   // createAsync from a previous call can detect it is stale and self-discard.
   const playEpochRef = useRef(0);
+  // Per-sound unload guard: set to true when stopAllRefs() nulls the callback.
+  // Prevents replayAsync() / setPositionAsync() being called on an already-
+  // unloaded sound from the native playback-status callback, which is the
+  // most common cause of intermittent cloud-stream crashes.
+  const unloadedIdsRef = useRef<Set<string>>(new Set());
+
   // Trim: ms to cut from the end of each sound loop (set by reel playback)
   const reelTrimMsRef = useRef(0);
   // Once-play mode: when true, stop instead of looping when track finishes
@@ -131,36 +137,54 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
   }, []);
 
-  // Create and start a single Audio.Sound, storing it in mixRefs.
-  // epoch: when provided, the sound is discarded if a newer playSound call
-  // has already started (prevents stale createAsync from bleeding audio).
   const loadAndPlay = useCallback(async (meta: PlayableSoundMeta, epoch?: number, trimLastMs: number = 0): Promise<Audio.Sound | null> => {
     try {
-      // Resolve remote URI → local cached file if available;
-      // otherwise stream from remote and download to cache in background.
-      // Stream from remote URL — use cached local file only if one already exists
-      // (user-initiated download from a previous session). Never download in background.
       let resolvedSrc = meta.src;
-      if (resolvedSrc && typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
+      if (!resolvedSrc) {
+        console.warn('[SoundPlayer] loadAndPlay: meta.src is null/undefined for', meta.id);
+        return null;
+      }
+      if (typeof resolvedSrc === 'object' && typeof resolvedSrc.uri === 'string') {
+        if (!resolvedSrc.uri.trim()) {
+          console.warn('[SoundPlayer] loadAndPlay: empty URI for', meta.id);
+          return null;
+        }
         const localUri = resolveAudioUri(meta.id, resolvedSrc.uri);
         if (localUri !== resolvedSrc.uri) {
-          // A locally cached file exists from a prior user-initiated download — use it
           resolvedSrc = { uri: localUri };
         }
-        // Otherwise: stream directly from remoteUri — no background download
       }
-      // ── Pre-buffer hit: instant play — no createAsync latency ───────────────
+
+      unloadedIdsRef.current.delete(meta.id);
+
       let sound: Audio.Sound;
       const preBuffered = preBufferRef.current.get(meta.id);
       if (preBuffered) {
         preBufferRef.current.delete(meta.id);
+        let preBufferValid = false;
         try {
-          await preBuffered.setStatusAsync({
-            isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
-            volume: 1.0, progressUpdateIntervalMillis: 500,
-          } as any);
-          sound = preBuffered;
-        } catch {
+          const preStatus = await preBuffered.getStatusAsync();
+          preBufferValid = preStatus.isLoaded;
+        } catch { }
+
+        if (preBufferValid) {
+          if (epoch !== undefined && epoch !== playEpochRef.current) {
+            try { preBuffered.setOnPlaybackStatusUpdate(null); } catch {}
+            try { await preBuffered.stopAsync(); await preBuffered.unloadAsync(); } catch {}
+            return null;
+          }
+          try {
+            await preBuffered.setStatusAsync({
+              isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
+              volume: 1.0, progressUpdateIntervalMillis: 500,
+            } as any);
+            sound = preBuffered;
+          } catch {
+            try { await preBuffered.unloadAsync(); } catch {}
+            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+            sound = r.sound;
+          }
+        } else {
           try { await preBuffered.unloadAsync(); } catch {}
           const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
           sound = r.sound;
@@ -169,74 +193,60 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
         sound = r.sound;
       }
-      // Stale-epoch check: if a newer playSound displaced this one, discard.
       if (epoch !== undefined && epoch !== playEpochRef.current) {
         try { sound.setOnPlaybackStatusUpdate(null); } catch {}
         try { await sound.stopAsync(); await sound.unloadAsync(); } catch {}
         return null;
       }
-      // Watchdog: expo-av isLooping can silently fail on M4A/certain codecs.
-      // If the sound finishes instead of looping, restart it automatically.
       sound.setOnPlaybackStatusUpdate((status) => {
-        // ── Outer try/catch is CRITICAL ─────────────────────────────────────────
-        // This callback is invoked from native code. Any unhandled synchronous
-        // throw (Android MediaPlayer IllegalStateException, metering math, etc.)
-        // propagates to native and crashes the entire app. Swallow everything.
         try {
           if (!status.isLoaded) return;
-          // Capture actual track duration once (first time it's available from decoder)
+          if (unloadedIdsRef.current.has(meta.id)) return;
           if (status.durationMillis != null) {
             const durSecs = Math.round(status.durationMillis / 1000);
-            // Persist to session cache so next play of this track shows real duration instantly
             _durationCache.set(meta.id, durSecs);
             setPlayingDurSecs(prev => prev ?? durSecs);
           }
           if (status.positionMillis != null) positionMsRef.current = status.positionMillis;
-          // Audio-reactive metering: normalize dB to 0-1 with exponential smoothing
           if ((status as any).metering != null && !isPausedRef.current) {
             const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
             const smoothed = meteringRef.current * 0.38 + raw * 0.62;
             meteringRef.current = smoothed;
             Animated.timing(meteringAnimRef.current, { toValue: smoothed, duration: 80, useNativeDriver: true }).start();
           }
-          // Trim: seek to start when within last trimLastMs of the track.
-          // Skip in once-play mode — let the track play through fully.
           if (
             trimLastMs > 0 &&
             !isPausedRef.current &&
             !noLoopRef.current &&
             !restartingIdsRef.current.has(meta.id) &&
             mixRefs.current.has(meta.id) &&
+            !unloadedIdsRef.current.has(meta.id) &&
             status.durationMillis != null &&
             status.durationMillis > 20000 &&
             status.positionMillis >= status.durationMillis - trimLastMs
           ) {
             restartingIdsRef.current.add(meta.id);
-            // Use setPositionAsync(0) instead of replayAsync() for seamless trimming 
-            // of an already playing sound to avoid expo-av state machine hangs.
             sound.setPositionAsync(0)
               .catch(() => {})
               .finally(() => { 
-                // Debounce removing from restartingIdsRef to ignore stale native status updates 
-                // that still have the old positionMillis before the seek takes effect.
                 setTimeout(() => restartingIdsRef.current.delete(meta.id), 1500); 
               });
             return;
           }
-          // Only restart when the file explicitly finished (isLooping silently failed).
-          // Guard with restartingIdsRef to prevent concurrent replayAsync storms
-          // (heartbeat + this callback firing at the same loop boundary).
           if (!isPausedRef.current && status.didJustFinish) {
             if (noLoopRef.current) {
-              // Once-play mode: stop cleanly when track ends naturally
               setTimeout(() => stopFnRef.current?.(true), 0);
               return;
             }
-            if (!restartingIdsRef.current.has(meta.id) && mixRefs.current.has(meta.id)) {
+            if (
+              !restartingIdsRef.current.has(meta.id) &&
+              mixRefs.current.has(meta.id) &&
+              !unloadedIdsRef.current.has(meta.id)
+            ) {
               restartingIdsRef.current.add(meta.id);
               sound.replayAsync()
                 .catch(() => {
-                  if (!mixRefs.current.has(meta.id)) return;
+                  if (!mixRefs.current.has(meta.id) || unloadedIdsRef.current.has(meta.id)) return;
                   return sound.setPositionAsync(0).then(() => sound.playAsync()).catch(() => {});
                 })
                 .finally(() => { 
@@ -245,10 +255,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (cbErr) {
-          console.warn('[SoundPlayer] playback status callback error (non-fatal):', cbErr);
+          try { console.warn('[SoundPlayer] playback status callback error (non-fatal):', cbErr); } catch {}
         }
       });
-      // Enable metering + ensure frequent updates for trim detection
       sound.setStatusAsync({ isMeteringEnabled: true } as any).catch(() => {});
       if (trimLastMs > 0) {
         sound.setStatusAsync({ progressUpdateIntervalMillis: 200 }).catch(() => {});
@@ -262,11 +271,12 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         msg.includes('nsurlsession') || msg.includes('connection') ||
         msg.includes('could not connect') || msg.includes('timeout') ||
         msg.includes('no route to host') || msg.includes('econnrefused') ||
-        msg.includes('failed to fetch') || msg.includes('name or service')
+        msg.includes('failed to fetch') || msg.includes('name or service') ||
+        msg.includes('socket') || msg.includes('ssl') || msg.includes('tls')
       ) {
         networkErrorRef.current = true;
       }
-      console.warn('[SoundPlayer] Failed to load sound:', meta.id, e);
+      try { console.warn('[SoundPlayer] Failed to load sound:', meta.id, e); } catch {}
       return null;
     }
   }, []);
@@ -412,7 +422,11 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     // events cannot fire between the restartingIdsRef.current.clear() above and the
     // async Promise.all below. Without this, a didJustFinish event could call
     // replayAsync() on a sound whose stop is already in-flight, crashing the audio engine.
-    for (const [, snd] of entries) {
+    for (const [id, snd] of entries) {
+      // Mark as unloaded BEFORE nulling callback so the callback's own guard
+      // (unloadedIdsRef.current.has) sees the flag if it fires between the
+      // setOnPlaybackStatusUpdate(null) call and the actual native nulling.
+      unloadedIdsRef.current.add(id);
       try { snd.setOnPlaybackStatusUpdate(null); } catch {}
     }
     await Promise.all(entries.map(async ([, snd]) => {
@@ -424,6 +438,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     clearTimer();
     clearHeartbeat();
     await stopAllRefs();
+    // Clear unloaded-ids set after full teardown so the next play session starts clean
+    unloadedIdsRef.current.clear();
     setPlayingId(null);
     setPlayingMeta(null);
     setMixedSounds([]);
@@ -474,6 +490,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     networkErrorRef.current = false;
     // Bump epoch FIRST so any in-flight loadAndPlay from previous call detects it is stale.
     const epoch = ++playEpochRef.current;
+    // Clear unloaded-ID guard so stale IDs from previous sessions never
+    // silently block playback-status callbacks for the incoming sound.
+    unloadedIdsRef.current.clear();
 
     // ── INSTANT UI update — happens synchronously, zero delay ──
     clearTimer();
@@ -751,6 +770,28 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
 
 export function useSoundPlayer(): SoundPlayerCtx {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useSoundPlayer must be within SoundPlayerProvider');
+  if (!ctx) {
+    // Return a safe no-op context instead of throwing — prevents crashes when the hook
+    // is called in a component that outlives the SoundPlayerProvider (e.g. after a
+    // navigation race unmounts the provider but the component re-renders one more time).
+    if (__DEV__) console.warn('useSoundPlayer: called outside SoundPlayerProvider — returning noop context');
+    return {
+      playingId: null, isPaused: false, sessionSecs: 21 * 60,
+      playingDurationSecs: null, playingMeta: null, mixedSounds: [],
+      playSound: async () => {}, addToMix: async () => {}, removeFromMix: async () => {},
+      togglePause: async () => {}, stopSound: async () => {}, changeTimer: () => {},
+      setLoopConfig: () => {}, meteringAnim: new Animated.Value(0),
+      getMeteringLevel: () => 0, isAudioLoading: false, audioNetworkError: false,
+      preBufferSound: async () => {}, cleanPreBuffer: async () => {},
+      moodPhase: null, preMood: null,
+      requestPlay: () => {}, confirmMood: async () => {}, skipMood: async () => {},
+      dismissMoodSheet: () => {},
+      showFullPlayer: false, openFullPlayer: () => {}, closeFullPlayer: () => {},
+      openReelsOrPlayer: () => {}, registerReelsOpener: () => {},
+      unregisterReelsOpener: () => {},
+      pendingOpenReels: 0, clearPendingOpenReels: () => {},
+      getPositionMs: () => 0, seekTo: async () => {},
+    };
+  }
   return ctx;
 }

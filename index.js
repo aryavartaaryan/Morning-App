@@ -12,6 +12,14 @@ import notifee, { EventType } from '@notifee/react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as TaskManager from 'expo-task-manager';
+import { installCrashShield } from './lib/crashShield';
+
+// ─── MASTER CRASH SHIELD ─────────────────────────────────────────────────────
+// Must be the very first thing that runs — before expo-router/entry, before
+// any component mounts, before any async work begins.
+// Intercepts ALL JS crashes (fatal + non-fatal + unhandled rejections) and
+// converts them into visible toast overlays instead of process terminations.
+installCrashShield();
 
 // ─── Walk Background Task ────────────────────────────────────────────────────
 // Defined here (before React renders) so the OS can wake the headless JS
@@ -95,6 +103,8 @@ notifee.registerForegroundService(notification => {
     }
 
     // Resolve (end service) once the watched notification is cancelled.
+    // Polling at 5 s (not 1.5 s) keeps the JS thread light during long alarm
+    // ringing — 1.5 s over 30 min creates 1200 async calls; 5 s creates only 360.
     const interval = setInterval(async () => {
       try {
         const visible = await notifee.getDisplayedNotifications();
@@ -104,7 +114,7 @@ notifee.registerForegroundService(notification => {
           resolve();
         }
       } catch { /* ignore polling error */ }
-    }, 1500);
+    }, 5000);
   });
 });
 

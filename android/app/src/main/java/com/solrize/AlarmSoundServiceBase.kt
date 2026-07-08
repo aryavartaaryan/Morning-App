@@ -181,22 +181,37 @@ abstract class AlarmSoundServiceBase : Service() {
         override fun onActivityPaused(activity: Activity) {
             if (activity is MainActivity) {
                 mainActivityResumed = false
+                // ROOT CAUSE FIX: Return immediately when alarm is stopping.
+                // Navigation transitions (router.replace) cause onActivityPaused
+                // to fire. Without this early return, this watchdog races the
+                // bringToFrontRunnable — both try to call launchApp() — making
+                // the alarm screen appear frozen/unresponsive after long ringing.
+                if (isAlarmStopping()) return
+                // Guard: never bring-to-front if the alarm is being stopped —
+                // this is the teardown window between stopAlarmSound() and onDestroy().
                 if (isAlarmActive() && !isPickerActive()) {
-                    try {
-                        // FLAG_ACTIVITY_NEW_TASK is mandatory: by the time onActivityPaused
-                        // fires the Activity is mid-transition to background; without NEW_TASK
-                        // Android 10+ will silently drop startActivity().
-                        activity.startActivity(
-                            Intent(activity, MainActivity::class.java).apply {
-                                addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                                    Intent.FLAG_ACTIVITY_NO_ANIMATION
-                                )
-                            }
-                        )
-                    } catch (_: Exception) {}
+                    val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+                    val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
+                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    val isScreenOn = try { pm.isInteractive } catch (_: Exception) { true }
+
+                    if (!isLocked && isScreenOn) {
+                        try {
+                            // FLAG_ACTIVITY_NEW_TASK is mandatory: by the time onActivityPaused
+                            // fires the Activity is mid-transition to background; without NEW_TASK
+                            // Android 10+ will silently drop startActivity().
+                            activity.startActivity(
+                                Intent(activity, MainActivity::class.java).apply {
+                                    addFlags(
+                                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                        Intent.FLAG_ACTIVITY_NO_ANIMATION
+                                    )
+                                }
+                            )
+                        } catch (_: Exception) {}
+                    }
                 }
             }
         }
@@ -207,6 +222,7 @@ abstract class AlarmSoundServiceBase : Service() {
         override fun onActivityDestroyed(a: Activity) {}
     }
 
+
     // ── Secondary watchdog: 500 ms polling (belt-and-suspenders) ─────────────
     //
     // Guards against edge cases the lifecycle watchdog may miss (process
@@ -215,10 +231,31 @@ abstract class AlarmSoundServiceBase : Service() {
     private val bringToFrontHandler = Handler(Looper.getMainLooper())
     private val bringToFrontRunnable = object : Runnable {
         override fun run() {
-            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
-                launchApp()
+            // ROOT CAUSE FIX: When the alarm is being stopped, do NOT re-post this
+            // runnable. Previously the runnable always re-posted itself every 200ms
+            // unconditionally, meaning it kept running DURING the entire async
+            // teardown window between stopService() and onDestroy(). During that
+            // window it would call launchApp() which fights router.replace() navigation
+            // — making the alarm screen appear frozen/unresponsive after long ringing.
+            //
+            // By NOT re-posting when isAlarmStopping(), the runnable fully dies the
+            // moment the user taps Stop. onDestroy() also calls removeCallbacks() as
+            // its first action as a belt-and-suspenders guarantee.
+            if (isAlarmStopping()) {
+                return // stop re-posting — runnable dies here
             }
-            // Layer 2: 200ms polling — shrinks escape window below human perception threshold
+
+            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
+                val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+                val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
+                val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                val isScreenOn = try { pm.isInteractive } catch (_: Exception) { true }
+
+                if (!isLocked && isScreenOn) {
+                    launchApp()
+                }
+            }
+            // Re-post only when alarm is genuinely active and NOT stopping
             bringToFrontHandler.postDelayed(this, 200)
         }
     }
@@ -249,6 +286,30 @@ abstract class AlarmSoundServiceBase : Service() {
                 .getBoolean("picker_active", false)
         } catch (_: Exception) { false }
         return wakeActive || habitActive
+    }
+
+    /**
+     * Returns true if stopAlarmSound() / stopHabitAlarm() has been called but the
+     * service teardown (onDestroy) has not yet completed.
+     *
+     * AlarmModule.stopAlarmSound() writes alarm_stopping=true BEFORE it calls
+     * stopService() so this flag is visible to every watchdog — including
+     * onTaskRemoved — for the entire duration of the teardown window.
+     *
+     * This prevents the onTaskRemoved AlarmManager restart from firing when
+     * the user closes the app immediately after tapping "Stop Alarm", which
+     * was the root cause of the app auto-opening after alarm dismissal.
+     */
+    protected fun isAlarmStopping(): Boolean {
+        val wakeStopping = try {
+            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("alarm_stopping", false)
+        } catch (_: Exception) { false }
+        val habitStopping = try {
+            getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("alarm_stopping", false)
+        } catch (_: Exception) { false }
+        return wakeStopping || habitStopping
     }
 
     // ── Audio ─────────────────────────────────────────────────────────────────
@@ -781,8 +842,20 @@ abstract class AlarmSoundServiceBase : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (isAlarmActive()) {
-            // User swiped the app from recents while alarm is active.
+        // CRITICAL FIX: Only schedule the restart PendingIntent when the alarm is
+        // genuinely active AND is NOT in the process of being stopped.
+        //
+        // The bug: stopAlarmSound() calls stopService() which triggers onTaskRemoved
+        // if the user swipes the app from recents during the teardown window. At that
+        // point isAlarmActive() could still return true for a few milliseconds before
+        // the write fully propagates — causing a 1-second AlarmManager restart that
+        // re-opened the app even though the alarm had already been dismissed.
+        //
+        // The fix: AlarmModule.stopAlarmSound() writes alarm_stopping=true BEFORE
+        // clearing alarm_fired_pending. isAlarmStopping() reads that flag here so
+        // we never schedule a restart during normal alarm dismissal.
+        if (isAlarmActive() && !isAlarmStopping()) {
+            // User swiped the app from recents while alarm is GENUINELY active.
             // START_STICKY alone is ignored by many OEM ROMs (MIUI, ColorOS, OneUI).
             // Belt-and-suspenders: schedule an AlarmManager restart in 1 s so audio
             // comes back even when the OS refuses to honour START_STICKY.
@@ -808,12 +881,19 @@ abstract class AlarmSoundServiceBase : Service() {
     }
 
     override fun onDestroy() {
-        (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
+        // ROOT CAUSE FIX: Remove ALL pending callbacks as the ABSOLUTE FIRST action.
+        // This is critical — any further delay risks a queued bringToFrontRunnable
+        // tick firing during the rest of teardown and calling launchApp(), which
+        // would fight router navigation and make the alarm appear frozen.
         bringToFrontHandler.removeCallbacks(bringToFrontRunnable)
         bringToFrontHandler.removeCallbacks(unmuteRunnable)
-        // BUG 1 FIX: Reset the watchdogs guard so if the OS restarts this service
-        // via START_STICKY the watchdogs will be re-registered exactly once.
+
+        (application as Application).unregisterActivityLifecycleCallbacks(lifecycleWatchdog)
+
+        // Reset the watchdogs guard so if the OS restarts this service via
+        // START_STICKY the watchdogs will be re-registered exactly once.
         watchdogsRegistered = false
+
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay
         mediaPlayer?.stop()
@@ -821,6 +901,20 @@ abstract class AlarmSoundServiceBase : Service() {
         mediaPlayer = null
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
+
+        // Clear the alarm_stopping flag now that the service has fully stopped.
+        // This must happen in onDestroy() — NOT in AlarmModule.stopAlarmSound() —
+        // because stopService() is asynchronous: clearing it there left a window
+        // where watchdogs could fire before onDestroy() ran, causing the freeze.
+        try {
+            getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("alarm_stopping", false).apply()
+        } catch (_: Exception) {}
+        try {
+            getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("alarm_stopping", false).apply()
+        } catch (_: Exception) {}
+
         super.onDestroy()
     }
 

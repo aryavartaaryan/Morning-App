@@ -52,6 +52,10 @@ export default function HabitAlarmRingingScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
+  // Prevent setState after unmount — avoids JS thread stall on long-ringing screens
+  const isMountedRef = useRef(true);
+  // JS audio health watchdog interval handle
+  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // Animations
@@ -75,6 +79,8 @@ export default function HabitAlarmRingingScreen() {
     // Vibration will start AFTER audio is confirmed playing (see audio useEffect)
     // This prevents the vibration-only gap when audio loads async
     return () => {
+      isMountedRef.current = false; // block setState after unmount
+      if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
       deactivateKeepAwake('habit-alarm');
       if (Platform.OS === 'android') {
         NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
@@ -172,6 +178,33 @@ export default function HabitAlarmRingingScreen() {
     return () => {
       cancelled = true;
       stopAlarmAudio(soundRef);
+    };
+  }, []);
+
+  // ── JS audio health watchdog ──────────────────────────────────────────────
+  // Checks every 30 s that expo-av is still playing. Audio focus can be lost
+  // after phone calls or other audio apps. Without recovery, the screen stays
+  // visible but silent — making it feel frozen/unresponsive.
+  useEffect(() => {
+    watchdogRef.current = setInterval(async () => {
+      if (!isMountedRef.current || !soundRef.current) return;
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if ((status as any)?.isLoaded && !(status as any)?.isPlaying) {
+          console.warn('[HabitAlarm] watchdog: audio stopped — resuming');
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 1,
+            interruptionModeAndroid: 1,
+          });
+          await soundRef.current.playAsync().catch(() => {});
+        }
+      } catch { /* sound may have been unloaded — safe to ignore */ }
+    }, 30_000);
+    return () => {
+      if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     };
   }, []);
 
@@ -384,6 +417,8 @@ export default function HabitAlarmRingingScreen() {
 
   const handleComplete = async () => {
     setStopped(true);
+    // Kill watchdog first so no interference during cleanup
+    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     // 1. Stop ALL alarm signals immediately — audio, vibration, native service
     await stopAudio();
     // 2. Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService
@@ -421,6 +456,8 @@ export default function HabitAlarmRingingScreen() {
 
   const handleQuit = async () => {
     setStopped(true);
+    // Kill watchdog first so no interference during cleanup
+    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     // Stop ALL alarm signals immediately
     await stopAudio();
     // Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService

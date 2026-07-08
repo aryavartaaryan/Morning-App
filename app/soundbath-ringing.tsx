@@ -46,6 +46,10 @@ export default function SoundBathRingingScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const bttfNotifIdRef = useRef<string | null>(null);
+  // Prevent setState after unmount — avoids JS thread stall on long-ringing screens
+  const isMountedRef = useRef(true);
+  // JS audio health watchdog interval handle
+  const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // ── Animations ────────────────────────────────────────────────────────────
@@ -84,13 +88,20 @@ export default function SoundBathRingingScreen() {
     startNativeLockTask().catch(() => {});
   }, []);
 
-  // ── Keep awake + native wake lock ──────────────────────────────────────────────
+  // ── Keep awake + native wake lock ──────────────────────────────────────────
   useEffect(() => {
     activateKeepAwakeAsync('soundbath');
     if (Platform.OS === 'android') {
       NativeModules.HabitAlarmModule?.acquireWakeLock?.().catch?.(() => {});
     }
     return () => {
+      // Mark unmounted so all future async callbacks skip setState
+      isMountedRef.current = false;
+      // Cancel watchdog to prevent zombie interval
+      if (watchdogRef.current !== null) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+      }
       deactivateKeepAwake('soundbath');
       if (Platform.OS === 'android') {
         NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
@@ -135,6 +146,38 @@ export default function SoundBathRingingScreen() {
       } catch (e) { console.warn('[SoundBath] audio:', e); }
     })();
     return () => { cancelled = true; stopAlarmAudio(soundRef); };
+  }, [soundId]);
+
+  // ── JS audio health watchdog ────────────────────────────────────────────
+  // expo-av can lose audio focus after a phone call, another app claiming
+  // AUDIOFOCUS_GAIN, or an OS audio session interruption. Without this,
+  // the screen stays visible but goes silent — appearing frozen/broken.
+  // This runs every 30 s (lightweight) and resumes playback if needed.
+  useEffect(() => {
+    watchdogRef.current = setInterval(async () => {
+      if (!isMountedRef.current || !soundRef.current) return;
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if ((status as any)?.isLoaded && !(status as any)?.isPlaying) {
+          console.warn('[SoundBath] watchdog: audio stopped — resuming');
+          // Re-claim audio focus then resume
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 1,
+            interruptionModeAndroid: 1,
+          });
+          await soundRef.current.playAsync().catch(() => {});
+        }
+      } catch { /* sound may have been unloaded — ignore */ }
+    }, 30_000);
+    return () => {
+      if (watchdogRef.current !== null) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+      }
+    };
   }, [soundId]);
 
   // ── Foreground service (Android) ─────────────────────────────────────────────
@@ -225,6 +268,8 @@ export default function SoundBathRingingScreen() {
 
   const handleDismiss = async () => {
     setDismissed(true);
+    // Stop watchdog immediately before cleanup to prevent interference
+    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     await stopAlarmAudio(soundRef);
     // Await stopHabitAlarmSound so isAlarmActive() = false BEFORE stopNativeLockTask
     // and BEFORE the 350 ms onWindowFocusChanged watchdog can fire.
@@ -250,7 +295,10 @@ export default function SoundBathRingingScreen() {
   };
   const [timeStr, setTimeStr] = useState(fmtTime());
   useEffect(() => {
-    const t = setInterval(() => setTimeStr(fmtTime()), 15_000);
+    const t = setInterval(() => {
+      // Guard: don't setState if unmounted
+      if (isMountedRef.current) setTimeStr(fmtTime());
+    }, 15_000);
     return () => clearInterval(t);
   }, []);
 

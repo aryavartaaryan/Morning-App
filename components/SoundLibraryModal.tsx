@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, SafeAreaView, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Platform, SafeAreaView, LayoutAnimation, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+
+const { width: W } = Dimensions.get('window');
 
 export default function SoundLibraryModal({
   visible,
@@ -16,12 +20,10 @@ export default function SoundLibraryModal({
   playingId: string | null;
   onPlaySound: (id: string) => void;
 }) {
-  const [searchQuery, setSearchQuery] = useState('');
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setSearchQuery('');
       setExpandedCat(null);
     }
   }, [visible]);
@@ -34,14 +36,6 @@ export default function SoundLibraryModal({
     return Array.from(cats).sort();
   }, [sounds]);
 
-  const filteredSounds = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const lowerQ = searchQuery.toLowerCase();
-    return sounds
-      .filter(s => (s.label?.toLowerCase() || '').includes(lowerQ) || (s.cat?.toLowerCase() || '').includes(lowerQ))
-      .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
-  }, [searchQuery, sounds]);
-
   const toggleCat = (cat: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -49,27 +43,34 @@ export default function SoundLibraryModal({
   };
 
   const renderCategoriesAccordion = () => (
-    <View style={{ marginTop: 4 }}>
-      {categories.map(cat => {
+    <View style={{ marginTop: 10, paddingHorizontal: 20, paddingBottom: 40 }}>
+      {categories.map((cat, idx) => {
         const catSounds = sounds
           .filter(s => s.cat === cat)
           .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
         const isExpanded = expandedCat === cat;
         
         return (
-          <View key={cat} style={S.catSection}>
-            <TouchableOpacity onPress={() => toggleCat(cat)} activeOpacity={0.7} style={S.catHeader}>
-              <Text style={[S.catHeaderText, isExpanded && { color: '#FFF' }]}>{cat}</Text>
+          <View key={cat} style={[S.catSection, isExpanded && S.catSectionExpanded]}>
+            <TouchableOpacity onPress={() => toggleCat(cat)} activeOpacity={0.7} style={[S.catHeader, isExpanded && S.catHeaderExpanded]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={S.catCount}>{catSounds.length}</Text>
-                <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.3)" style={{ marginLeft: 6 }} />
+                <View style={[S.catIconWrapper, isExpanded && S.catIconWrapperExpanded]}>
+                  <Ionicons name={isExpanded ? "folder-open" : "folder-outline"} size={18} color={isExpanded ? "#FFFFFF" : "rgba(255,255,255,0.7)"} />
+                </View>
+                <Text style={[S.catHeaderText, isExpanded && S.catHeaderTextExpanded]}>{cat}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[S.catBadge, isExpanded && S.catBadgeExpanded]}>
+                  <Text style={[S.catCount, isExpanded && S.catCountExpanded]}>{catSounds.length}</Text>
+                </View>
+                <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={isExpanded ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)"} style={{ marginLeft: 12 }} />
               </View>
             </TouchableOpacity>
             
             {isExpanded && (
               <View style={S.catContent}>
-                {catSounds.map((sound, idx) => {
-                  const isLast = idx === catSounds.length - 1;
+                {catSounds.map((sound, sIdx) => {
+                  const isLast = sIdx === catSounds.length - 1;
                   return (
                     <SoundRow 
                       key={sound.id} 
@@ -90,81 +91,65 @@ export default function SoundLibraryModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={S.overlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={S.sheet}>
-              {/* Header */}
-              <View style={S.header}>
+      <BlurView intensity={40} tint="dark" style={S.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        <SafeAreaView style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
+          <View style={S.sheet}>
+            <LinearGradient colors={['#242426', '#050505']} style={StyleSheet.absoluteFillObject} />
+            
+            {/* Subtle light edge at the top */}
+            <View style={S.sheetBorderTop} />
+            
+            {/* Top Highlight line for 3D effect */}
+            <View style={S.sheetTopHighlight} />
+
+            {/* Header */}
+            <View style={S.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={S.subtitle}>CURATED COLLECTION</Text>
                 <Text style={S.title}>Nada Library</Text>
-                <TouchableOpacity onPress={onClose} style={S.closeBtn}>
-                  <Ionicons name="close" size={20} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
               </View>
-
-              {/* Search Bar */}
-              <View style={S.searchContainer}>
-                <Ionicons name="search" size={16} color="rgba(255,255,255,0.4)" style={S.searchIcon} />
-                <TextInput
-                  style={S.searchInput}
-                  placeholder="Search sounds, ragas..."
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoCorrect={false}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')} style={S.clearBtn}>
-                    <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.5)" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* List */}
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scrollContent}>
-                {searchQuery.trim() ? (
-                  <View style={S.catSection}>
-                    {filteredSounds.length > 0 ? (
-                      filteredSounds.map((sound, idx) => (
-                        <SoundRow 
-                          key={sound.id} 
-                          sound={sound} 
-                          isPlaying={playingId === sound.id} 
-                          onPress={() => onPlaySound(sound.id)} 
-                          isLast={idx === filteredSounds.length - 1}
-                        />
-                      ))
-                    ) : (
-                      <Text style={S.emptyText}>No sounds found for "{searchQuery}"</Text>
-                    )}
-                  </View>
-                ) : (
-                  renderCategoriesAccordion()
-                )}
-              </ScrollView>
+              <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
             </View>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </View>
+
+            {/* List */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scrollContent}>
+              {renderCategoriesAccordion()}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
+      </BlurView>
     </Modal>
   );
 }
 
 function SoundRow({ sound, isPlaying, onPress, isLast }: { sound: any, isPlaying: boolean, onPress: () => void, isLast?: boolean }) {
   return (
-    <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }} style={[S.row, isPlaying && S.rowActive]}>
-      <View style={[S.iconBox, { backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)' }]}>
-        <Text style={{ fontSize: 13 }}>{sound.emoji || '🎵'}</Text>
+    <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }} style={[S.row, isPlaying && S.rowActive]} activeOpacity={0.7}>
+      {isPlaying && (
+        <LinearGradient
+          colors={[(sound.color || '#FFFFFF') + '15', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+      <View style={[S.iconBox, { backgroundColor: sound.color ? sound.color + '15' : 'rgba(255,255,255,0.05)' }, isPlaying && { backgroundColor: sound.color ? sound.color + '30' : 'rgba(255,255,255,0.1)' }]}>
+        <Text style={{ fontSize: 20 }}>{sound.emoji || '🎵'}</Text>
       </View>
-      <View style={[S.rowBody, !isLast && S.rowBorder]}>
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={[S.rowTitle, isPlaying && { color: sound.color || '#FFF' }]} numberOfLines={1}>{sound.label}</Text>
-          {sound.desc ? <Text style={S.rowDesc} numberOfLines={1}>{sound.desc}</Text> : null}
+      <View style={[S.rowBody, !isLast && S.rowBorder, isPlaying && { borderBottomColor: 'transparent' }]}>
+        <View style={{ flex: 1, paddingRight: 16 }}>
+          <Text style={[S.rowTitle, isPlaying && { color: sound.color || '#FFFFFF', fontWeight: '600' }]} numberOfLines={1}>{sound.label}</Text>
+          {sound.desc ? <Text style={[S.rowDesc, isPlaying && { color: 'rgba(255,255,255,0.6)' }]} numberOfLines={1}>{sound.desc}</Text> : null}
         </View>
         {isPlaying ? (
-          <Ionicons name="stats-chart" size={12} color={sound.color || '#FFF'} />
+          <View style={S.playingIndicatorBadge}>
+            <Ionicons name="cellular" size={14} color={sound.color || '#FFFFFF'} />
+          </View>
         ) : (
-          <Ionicons name="play" size={12} color="rgba(255,255,255,0.2)" />
+          <Ionicons name="play" size={18} color="rgba(255,255,255,0.2)" style={{ marginRight: 20 }} />
         )}
       </View>
     </TouchableOpacity>
@@ -172,37 +157,124 @@ function SoundRow({ sound, isPlaying, onPress, isLast }: { sound: any, isPlaying
 }
 
 const S = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { 
-    flex: 1, 
-    backgroundColor: '#000000', 
-    borderTopLeftRadius: 24, 
-    borderTopRightRadius: 24, 
-    marginTop: 50, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.06)' 
+    flex: 0.9, 
+    borderTopLeftRadius: 40, 
+    borderTopRightRadius: 40, 
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    shadowColor: '#000',
+    shadowOpacity: 0.8,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: -10 },
   },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16 },
-  title: { fontSize: 18, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 },
-  closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E', marginHorizontal: 20, borderRadius: 10, paddingHorizontal: 12, height: 38, marginBottom: 16 },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, color: '#FFF', fontSize: 14, fontFamily: 'Nunito_400Regular', height: '100%' },
-  clearBtn: { padding: 4 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 60 },
+  sheetBorderTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  sheetTopHighlight: {
+    position: 'absolute',
+    top: 14,
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 3,
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 28, 
+    paddingTop: 50, 
+    paddingBottom: 32,
+  },
+  title: { fontSize: 34, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5, marginTop: 6 },
+  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2.5 },
+  closeBtn: { 
+    width: 42, 
+    height: 42, 
+    borderRadius: 21, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  scrollContent: { paddingBottom: 60 },
   
-  catSection: { marginBottom: 16, backgroundColor: '#101012', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
-  catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 },
-  catHeaderText: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 },
-  catCount: { fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'Nunito_400Regular' },
-  catContent: { paddingBottom: 4 },
+  catSection: { 
+    marginBottom: 16, 
+    backgroundColor: 'rgba(255,255,255,0.03)', 
+    borderRadius: 28, 
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    overflow: 'hidden'
+  },
+  catSectionExpanded: {
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  catHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 22, 
+    paddingHorizontal: 22,
+  },
+  catHeaderExpanded: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingBottom: 18,
+  },
+  catIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  catIconWrapperExpanded: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  catHeaderText: { fontSize: 19, fontWeight: '500', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.3 },
+  catHeaderTextExpanded: { color: '#FFFFFF', fontWeight: '600' },
+  catBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  catBadgeExpanded: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  catCount: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '700' },
+  catCountExpanded: { color: '#FFFFFF' },
+  catContent: { paddingTop: 6, paddingBottom: 10 },
 
-  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
-  rowActive: { backgroundColor: 'rgba(255,255,255,0.03)' },
-  iconBox: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 12, paddingVertical: 10, paddingRight: 16 },
-  rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  rowTitle: { fontSize: 14, fontWeight: '500', color: '#E5E5E5', marginBottom: 2, fontFamily: 'Nunito_500Medium' },
-  rowDesc: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'Nunito_400Regular' },
-  emptyText: { color: 'rgba(255,255,255,0.4)', textAlign: 'center', paddingVertical: 30, fontSize: 13, fontFamily: 'Nunito_400Regular' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 22, position: 'relative', overflow: 'hidden' },
+  rowActive: { },
+  iconBox: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 18, paddingVertical: 18 },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  rowTitle: { fontSize: 17, fontWeight: '500', color: 'rgba(255,255,255,0.9)', marginBottom: 5, letterSpacing: 0.2 },
+  rowDesc: { fontSize: 14, color: 'rgba(255,255,255,0.45)' },
+  
+  playingIndicatorBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 20,
+  }
 });
+

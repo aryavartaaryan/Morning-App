@@ -80,31 +80,6 @@ const SLOT_REMINDERS = [
     body: 'Light dinner, evening walk, screen-free time. Protect your Ojas. Log habits now. 🪔',
     hour: 18, minute: 0,
   },
-  {
-    id: 'checkin-reminder',
-    title: '💭 Daily Check-In — Bodhi Awaits',
-    body: "Bodhi has your Ayurvedic wisdom for today. Tap to begin your morning check-in. ✦",
-    hour: 8, minute: 0,
-  },
-  // ── 5 minutes before period EXPIRY ─────────────────────────────────────────
-  {
-    id: 'morning-expiry',
-    title: '⏰ Morning Window Closing in 5 min',
-    body: 'Last chance! Log your morning habits before the Kapha window ends at 10 AM.',
-    hour: 9, minute: 55,
-  },
-  {
-    id: 'afternoon-expiry',
-    title: '⏰ Afternoon Window Closing in 5 min',
-    body: 'Pitta noon ends soon. Log your afternoon habits before 2 PM!',
-    hour: 13, minute: 55,
-  },
-  {
-    id: 'evening-expiry',
-    title: '⏰ Evening Window Closing in 5 min',
-    body: 'Evening wind-down ends at 10 PM. Log your habits now before the window closes.',
-    hour: 21, minute: 55,
-  },
 ];
 
 // ── Channel setup (call once at app startup) ─────────────────────────────────
@@ -188,6 +163,10 @@ export interface AlarmSettings {
   extraWakeAlarms?: ExtraWakeAlarm[];
   /** Rise at Brahma Muhurta — dynamic daily sunrise-relative alarm */
   brahmaMuhurtaAlarm?: { enabled: boolean; days: number[] };
+  /** Push notifications for the start of 6 circadian cycle periods */
+  circadianNotifs?: boolean;
+  /** Push notifications for the sacred hour of sunrise and sunset */
+  sacredHourNotifs?: boolean;
 }
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   wakeAlarm: { enabled: false, hour: 4, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] },
@@ -201,6 +180,8 @@ export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   rampMinutes: 5,
   extraWakeAlarms: [],
   brahmaMuhurtaAlarm: { enabled: false, days: [0, 1, 2, 3, 4, 5, 6] },
+  circadianNotifs: false,
+  sacredHourNotifs: false,
 };
 
 // ── Per-habit expiry window (minutes from midnight, alert 15 min before end) ─

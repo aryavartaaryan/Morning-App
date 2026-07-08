@@ -102,7 +102,7 @@ function normalizeOne<T extends string>(v: string | undefined, opts: T[], fallba
   return opts.find(o => s === o) ?? opts.find(o => s.includes(o)) ?? fallback;
 }
 function normalizeAnalysis(raw: Record<string, unknown>): Analysis {
-  const d = raw as Analysis;
+  const d = raw as unknown as Analysis;
   const no = normalizeOne;
   return {
     identified_items: Array.isArray(d.identified_items) ? d.identified_items.filter(Boolean) : [],

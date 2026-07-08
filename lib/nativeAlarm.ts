@@ -15,7 +15,11 @@ import notifee, {
 import { Platform, NativeModules, Alert, AppState } from 'react-native';
 import { getBrahmaMuhurtaResult, type LocationProfile } from './locationIntel';
 import { store, KEYS } from './storage';
+import { getSolarTimes } from './solar';
+import { scheduleSacredHourNotifs, cancelSacredHourNotifs } from './brahmaMuhurta';
+import { scheduleCircadianNotifs, cancelCircadianNotifs } from './ayurvedicPeriods';
 import { resolveNativeWakeAlarmSoundPath } from './wakeAlarmNativeSound';
+import { type AlarmSettings } from './notifications';
 
 // Native bridge — AlarmModule.kt (AlarmManager + AlarmSoundService)
 const AlarmNative: {
@@ -389,7 +393,7 @@ async function stepExactAlarm(): Promise<void> {
           '⏰ Exact Alarm Permission',
           'OneSutra needs this to ring your Brahma Muhurta alarm at the precise moment — even when your phone is fully asleep.',
           [
-            { text: 'Skip', style: 'cancel', onPress: resolve },
+            { text: 'Skip', style: 'cancel', onPress: () => resolve() },
             {
               text: 'Open Settings', onPress: () => {
                 AlarmNative.openExactAlarmSettings().catch(() => {});
@@ -414,7 +418,7 @@ async function stepBatteryOpt(): Promise<void> {
           '🔋 Background Battery Access',
           'OneSutra must run without battery restrictions to play your alarm sound. Without this, Android may silence the alarm mid-ring.',
           [
-            { text: 'Skip', style: 'cancel', onPress: resolve },
+            { text: 'Skip', style: 'cancel', onPress: () => resolve() },
             {
               text: 'Allow', onPress: () => {
                 AlarmNative.requestBatteryOptimizationExemption().catch(() => {});
@@ -439,7 +443,7 @@ async function stepFullScreenIntent(): Promise<void> {
           '📱 Full-Screen Alarm Display',
           'To show the alarm screen over your lock screen when the phone is sleeping, OneSutra needs Full-Screen Intent permission.',
           [
-            { text: 'Skip', style: 'cancel', onPress: resolve },
+            { text: 'Skip', style: 'cancel', onPress: () => resolve() },
             {
               text: 'Open Settings', onPress: () => {
                 AlarmNative.openFullScreenIntentSettings().catch(() => {});
@@ -488,7 +492,7 @@ async function stepOverlayPermission(): Promise<void> {
           '📱 Appear on Top of Other Apps',
           'OneSutra needs this to keep the alarm screen visible even when the Home button is pressed — exactly like Alarmy. Without it, the alarm can be bypassed by pressing Home.',
           [
-            { text: 'Skip', style: 'cancel', onPress: resolve },
+            { text: 'Skip', style: 'cancel', onPress: () => resolve() },
             {
               text: 'Allow', onPress: () => {
                 AlarmNative.requestOverlayPermission().catch(() => {});
@@ -586,16 +590,30 @@ export async function stopAlarmVibration(): Promise<void> {
  * Call this from app/_layout.tsx on every app open.
  * If location data exists and we haven't scheduled today, reschedule.
  */
-export async function checkAndRescheduleDaily(): Promise<void> {
+export async function checkAndRescheduleDaily(force = false): Promise<void> {
   try {
     const today = new Date().toISOString().split('T')[0];
     const lastDate = await store.get(KEYS.lastAlarmDate);
-    if (lastDate === today) return; // already scheduled today
+    if (!force && lastDate === today) return; // already scheduled today
 
     const location = await store.getJSON<LocationProfile>(KEYS.location);
     if (!location?.lat || !location?.lon) return; // no GPS data yet
 
+    const settings = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
+
     await scheduleBrahmaMuhurtaAlarm(location.lat, location.lon);
+
+    if (settings?.sacredHourNotifs) {
+      await scheduleSacredHourNotifs(location.lat, location.lon);
+    } else {
+      await cancelSacredHourNotifs();
+    }
+
+    if (settings?.circadianNotifs) {
+      await scheduleCircadianNotifs(location.lat, location.lon);
+    } else {
+      await cancelCircadianNotifs(location.lat, location.lon);
+    }
   } catch (e) {
     console.warn('[BrahmaMuhurta] Daily reschedule failed:', e);
   }

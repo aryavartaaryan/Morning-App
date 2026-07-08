@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.KeyEvent
 import android.view.WindowManager
 
@@ -149,23 +150,46 @@ class MainActivity : ReactActivity() {
       val r = Runnable {
         // Re-check AFTER the debounce — by now .commit() has settled and
         // isAlarmActive() correctly reflects the real alarm state.
-        if (isAlarmActive()) {
-          try {
-            startActivity(Intent(this, MainActivity::class.java).apply {
-              addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_NO_ANIMATION
-              )
-            })
-          } catch (_: Exception) {}
+        //
+        // ROOT CAUSE FIX: Also check alarm_stopping. When the user taps Stop,
+        // React Navigation's transition causes onWindowFocusChanged(false) to
+        // fire immediately. Without this guard, the 350ms debounce could fire
+        // startActivity() right in the middle of router.replace() navigation
+        // (especially under memory pressure after long ringing), making the
+        // screen appear frozen. alarm_stopping=true is set synchronously in
+        // AlarmModule.stopAlarmSound() before any navigation happens.
+        val alarmStopping = try {
+          getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean("alarm_stopping", false) ||
+          getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean("alarm_stopping", false)
+        } catch (_: Exception) { false }
+
+        if (!alarmStopping && isAlarmActive()) {
+          val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+          val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
+          val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+          val isScreenOn = try { pm.isInteractive } catch (_: Exception) { true }
+
+          if (!isLocked && isScreenOn) {
+            try {
+              startActivity(Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                  Intent.FLAG_ACTIVITY_NEW_TASK or
+                  Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                  Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                  Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+              })
+            } catch (_: Exception) {}
+          }
         }
       }
       focusLossRunnable = r
       focusLossHandler.postDelayed(r, 350)
     }
   }
+
 
   /**
    * Returns the name of the main component registered from JavaScript. This is used to schedule

@@ -154,8 +154,8 @@ export const WAKE_SOUNDS: WakeSound[] = [
   },
   {
     id: 'bhagya_suktam',
-    label: 'Bhagya Suktam',
-    icon: '🌟',
+    label: 'Hymn of Fortune (Bhagya Suktam)',
+    icon: '🪔',
     audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a',
     category: 'mantra',
   },
@@ -492,6 +492,8 @@ export interface MissionSettings {
   skipsResetDate: string;
   streak: number;
   lastCompletedDate: string;
+  /** When false the wake alarm rings without any mission — just a Stop button */
+  missionEnabled: boolean;
 }
 
 export const DEFAULT_MISSION_SETTINGS: MissionSettings = {
@@ -503,6 +505,7 @@ export const DEFAULT_MISSION_SETTINGS: MissionSettings = {
   skipsResetDate: '',
   streak: 0,
   lastCompletedDate: '',
+  missionEnabled: false,
 };
 
 export const GRATITUDE_PROMPTS = [

@@ -134,18 +134,27 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopHabitAlarmSound(promise: Promise) {
         try {
-            // Use .commit() (synchronous) not .apply() (async) so that isAlarmActive()
-            // in MainActivity reads false IMMEDIATELY — before onWindowFocusChanged or
-            // any watchdog fires. .apply() was causing a race where the flag was still
-            // true when the alarm screen navigated away, making the app re-open itself.
+            // Write alarm_stopping=true FIRST (synchronous .commit()) so that:
+            // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
+            // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
+            //    stops re-posting itself — preventing it from fighting router navigation.
+            //
+            // CRITICAL: We do NOT clear alarm_stopping=false here any more.
+            // stopService() is ASYNCHRONOUS — clearing it here left a window where
+            // watchdogs could fire before onDestroy() ran, causing the freeze.
+            // alarm_stopping is cleared in AlarmSoundServiceBase.onDestroy().
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_ACTIVE, false).commit()
+                .edit()
+                .putBoolean("alarm_stopping", true)
+                .putBoolean(KEY_ACTIVE, false)
+                .commit()
             reactContext.stopService(Intent(reactContext, HabitAlarmSoundService::class.java))
             promise.resolve("Habit alarm sound stopped")
         } catch (e: Exception) {
             promise.reject("STOP_ERROR", e.message, e)
         }
     }
+
 
     /**
      * Stop the vibration running inside HabitAlarmSoundService without stopping

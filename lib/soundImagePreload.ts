@@ -96,10 +96,10 @@ async function cacheOne(url: string): Promise<void> {
 // Night-theme editorial cards defined in sleep.tsx (not in data file)
 const NIGHT_THEME_URLS: readonly string[] = [
   'https://images.pexels.com/photos/6022435/pexels-photo-6022435.jpeg',
-  'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/1295138/pexels-photo-1295138.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/1448055/pexels-photo-1448055.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=400',
+  'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/1295138/pexels-photo-1295138.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/1448055/pexels-photo-1448055.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=600',
 ];
 
 const SLEEP_SOUNDS_IMAGE_URLS: readonly string[] = ALL_SLEEP_SOUNDS
