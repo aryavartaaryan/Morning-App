@@ -9,18 +9,16 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
-  'brahma', 'predawn', 'predawn_mid1', 'predawn_mid2', 'predawn_late', 'sunrise', 'sunrise_late', 'morning_early', 'morning_early_late', 'morning', 'morning_late',
-  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_late', 'night', 'night_late',
+  'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_late', 'morning_early', 'morning_early_late', 'morning', 'morning_late',
+  'midday_early', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_late', 'sandhya_late_2', 'sandhya_late_3', 'twilight', 'twilight_late', 'twilight_deep', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_late', 'night', 'night_late',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
 
 export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string; time: string }> = {
   brahma:    { label: 'Brahma Muhurta', sub: 'The sacred pre-dawn',      emoji: '🌌', time: '4–5 AM' },
   predawn:   { label: 'Pre-Dawn (Early)', sub: 'First glow of morning',    emoji: '🌄', time: '5–5:10 AM' },
-  predawn_mid1: { label: 'Pre-Dawn (Mid 1)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:10–5:15 AM' },
-  predawn_mid2: { label: 'Pre-Dawn (Mid 2)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:15–5:20 AM' },
-  predawn_late: { label: 'Pre-Dawn (Late)',  sub: 'Brightening sky',          emoji: '🌅', time: '5:20–5:30 AM' },
-  sunrise:   { label: 'Sunrise',        sub: 'Golden hour clarity',      emoji: '🌅', time: '5:30–6:45 AM' },
+  predawn_mid: { label: 'Pre-Dawn (Mid)',   sub: 'Soft light on horizon',    emoji: '🌅', time: '5:10–5:20 AM' },
+  sunrise:   { label: 'Sunrise',        sub: 'Golden hour clarity',      emoji: '🌅', time: '5:20–6:45 AM' },
   sunrise_late: { label: 'Sunrise (Late)',  sub: 'Morning light settling',   emoji: '🌅', time: '6:45–8 AM' },
   morning_early: { label: 'Morning (Early)', sub: 'Fresh Kapha sunrise glow', emoji: '🌱', time: '8–8:20 AM' },
   morning_early_late: { label: 'Morning (Early-Late)', sub: 'Fresh Kapha morning glow', emoji: '🌱', time: '8:20–8:40 AM' },
@@ -38,10 +36,11 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   afternoon_late: { label: 'Afternoon (Late)', sub: 'Golden late light',       emoji: '', time: '4–5 PM' },
   sandhya:   { label: 'Sandhya',        sub: 'Sacred golden sunset',     emoji: '🌇', time: '5:30–6:15 PM' },
   sandhya_late: { label: 'Sandhya (Late)', sub: 'Last golden light', emoji: '🌅', time: '6:15–6:37 PM' },
-  sandhya_late_2: { label: 'Sandhya (Dusk)', sub: 'Final embers before twilight', emoji: '🌇', time: '6:37–7 PM' },
-  twilight:  { label: 'Twilight',       sub: 'Dusk — Vata meets Kapha',  emoji: '🌆', time: '7–7:12 PM' },
-  twilight_late: { label: 'Twilight (Late)', sub: 'Deepening dusk glow', emoji: '🌇', time: '7:12–7:24 PM' },
-  twilight_deep: { label: 'Twilight (Deep)', sub: 'Stars beginning to rise', emoji: '🌌', time: '7:24–7:35 PM' },
+  sandhya_late_2: { label: 'Sandhya (Dusk I)', sub: 'Final embers before twilight', emoji: '🌇', time: '6:37–6:51 PM' },
+  sandhya_late_3: { label: 'Sandhya (Dusk II)', sub: 'Deepening final embers', emoji: '🌇', time: '6:51–7:05 PM' },
+  twilight:  { label: 'Twilight',       sub: 'Dusk — Vata meets Kapha',  emoji: '🌆', time: '7:05–7:15 PM' },
+  twilight_late: { label: 'Twilight (Late)', sub: 'Deepening dusk glow', emoji: '🌇', time: '7:15–7:25 PM' },
+  twilight_deep: { label: 'Twilight (Deep)', sub: 'Stars beginning to rise', emoji: '🌌', time: '7:25–7:35 PM' },
   evening:   { label: 'Evening',        sub: 'Cool night energy',        emoji: '🌃', time: '7:30–9 PM' },
   night_early: { label: 'Night (Early)', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–9:52 PM' },
   night_early_mid1: { label: 'Night (Early-Mid I)', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:18 PM' },
@@ -55,9 +54,7 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
 export const BG_ACCENT_COLORS: Record<string, string> = {
   brahma:    '#0C0820',
   predawn:   '#091228',
-  predawn_mid1: '#0A142C',
-  predawn_mid2: '#0A142C',
-  predawn_late: '#0B1630',
+  predawn_mid: '#0A142C',
   sunrise:   '#2A1200',
   sunrise_late: '#1A1800',
   morning_early: '#0A1602',
@@ -77,6 +74,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   sandhya:   '#281000',
   sandhya_late: '#2A1200',
   sandhya_late_2: '#2C1400',
+  sandhya_late_3: '#2D1600',
   twilight:  '#150A20',
   twilight_late: '#1A0B26',
   twilight_deep: '#100818',
@@ -92,9 +90,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
 export const BG_GRADIENT_START: Record<string, string> = {
   brahma:    '#180D3C',
   predawn:   '#101E40',
-  predawn_mid1: '#122244',
-  predawn_mid2: '#122244',
-  predawn_late: '#142648',
+  predawn_mid: '#122244',
   sunrise:   '#4A2200',
   sunrise_late: '#363200',
   morning_early: '#163006',
@@ -114,6 +110,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   sandhya:   '#441800',
   sandhya_late: '#4A2200',
   sandhya_late_2: '#4E2600',
+  sandhya_late_3: '#502800',
   twilight:  '#260D38',
   twilight_late: '#2C0E40',
   twilight_deep: '#1B0B28',
@@ -159,11 +156,9 @@ function getTimedBgKey(
     if (h < brahmaMuhurtaStart) return getNightPhase(h);
     if (h < sunrise - 0.3) return 'brahma';
     const predawnDuration = (sunrise + 0.5) - (sunrise - 0.3);
-    const predawnStep = predawnDuration / 4;
-    if (h < sunrise - 0.3 + predawnStep) return 'predawn';
-    if (h < sunrise - 0.3 + predawnStep * 2) return 'predawn_mid1';
-    if (h < sunrise - 0.3 + predawnStep * 3) return 'predawn_mid2';
-    if (h < sunrise + 0.5) return 'predawn_late';
+    const predawnStep = 0.5 / 4;
+    if (h < sunrise - 0.3 + predawnStep * 1) return 'predawn';
+    if (h < sunrise - 0.3 + predawnStep * 3) return 'predawn_mid';
     if (h < sunrise + 1)   return 'sunrise';
     if (h < sunrise + 2)   return 'sunrise_late';
     const morningWindow = kaphaPeriodEnd - (sunrise + 2);
@@ -200,23 +195,25 @@ function getTimedBgKey(
     if (h < afternoonStart + afternoonStep * 2) return 'afternoon_mid';
     if (h < afternoonEnd) return 'afternoon_late';
     const sandhyaLateMid = sandhyaMid + (sunset - sandhyaMid) / 2;
+    const duskEnd = sunset + (10 / 60);
+    const duskMid = sandhyaLateMid + (duskEnd - sandhyaLateMid) / 2;
     if (h < sandhyaMid)        return 'sandhya';
     if (h < sandhyaLateMid)    return 'sandhya_late';
-    if (h < sunset)            return 'sandhya_late_2';
-    const twilightDuration = 35 / 60;
-    const twilightStep = twilightDuration / 3;
-    if (h < sunset + twilightStep) return 'twilight';
-    if (h < sunset + twilightStep * 2) return 'twilight_late';
-    if (h < sunset + twilightDuration) return 'twilight_deep';
+    if (h < duskMid)           return 'sandhya_late_2';
+    if (h < duskEnd)           return 'sandhya_late_3';
+    const twilightStart = duskEnd;
+    const twilightEnd = twilightStart + (35 / 60);
+    const twilightStep = (twilightEnd - twilightStart) / 3;
+    if (h < twilightStart + twilightStep) return 'twilight';
+    if (h < twilightStart + twilightStep * 2) return 'twilight_late';
+    if (h < twilightEnd) return 'twilight_deep';
     if (h < sunset + 2)    return 'evening';
     return getNightPhase(h);
   }
   if (h >= 4   && h < 5)    return 'brahma';
-  if (h >= 5   && h < 5 + 7.5/60) return 'predawn';
-  if (h >= 5 + 7.5/60 && h < 5 + 15/60) return 'predawn_mid1';
-  if (h >= 5 + 15/60 && h < 5 + 22.5/60) return 'predawn_mid2';
-  if (h >= 5 + 22.5/60 && h < 5.5) return 'predawn_late';
-  if (h >= 5.5 && h < 6.75)    return 'sunrise';
+  if (h >= 5 && h < 5 + 10/60) return 'predawn';
+  if (h >= 5 + 10/60 && h < 5 + 20/60) return 'predawn_mid';
+  if (h >= 5 + 20/60 && h < 6.75) return 'sunrise';
   if (h >= 6.75 && h < 8)    return 'sunrise_late';
   if (h >= 8   && h < 8 + 1/3) return 'morning_early';
   if (h >= 8 + 1/3 && h < 8 + 2/3) return 'morning_early_late';
@@ -234,11 +231,13 @@ function getTimedBgKey(
   if (h >= 16  && h < 17)   return 'afternoon_late';
   if (h >= 17  && h < 18)   return 'sandhya';
   if (h >= 18    && h < 18.5)  return 'sandhya_late';
-  if (h >= 18.5  && h < 19)    return 'sandhya_late_2';
-  if (h >= 19   && h < 19 + 35 / 180) return 'twilight';
-  if (h >= 19 + 35 / 180 && h < 19 + 70 / 180) return 'twilight_late';
-  if (h >= 19 + 70 / 180 && h < 19 + 35 / 60) return 'twilight_deep';
-  if (h >= 19 + 35 / 60 && h < 21)  return 'evening';
+  if (h >= 18.5  && h < 18 + 51 / 60)    return 'sandhya_late_2';
+  if (h >= 18 + 51 / 60  && h < 19 + 10 / 60)    return 'sandhya_late_3';
+  const twiStartStatic = 19 + 10 / 60;
+  if (h >= twiStartStatic   && h < twiStartStatic + 35 / 180) return 'twilight';
+  if (h >= twiStartStatic + 35 / 180 && h < twiStartStatic + 70 / 180) return 'twilight_late';
+  if (h >= twiStartStatic + 70 / 180 && h < twiStartStatic + 35 / 60) return 'twilight_deep';
+  if (h >= twiStartStatic + 35 / 60 && h < 21)  return 'evening';
   if (h >= 21 && h < 22.75) {
     if (h < 21.875) return 'night_early';
     if (h < 22.3125) return 'night_early_mid1';

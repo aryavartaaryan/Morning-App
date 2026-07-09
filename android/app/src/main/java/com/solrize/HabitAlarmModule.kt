@@ -134,20 +134,22 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopHabitAlarmSound(promise: Promise) {
         try {
-            // Write alarm_stopping=true FIRST (synchronous .commit()) so that:
+            // Write alarm_stopping=true FIRST so that:
             // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
             // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
             //    stops re-posting itself — preventing it from fighting router navigation.
             //
-            // CRITICAL: We do NOT clear alarm_stopping=false here any more.
-            // stopService() is ASYNCHRONOUS — clearing it here left a window where
-            // watchdogs could fire before onDestroy() ran, causing the freeze.
+            // CRITICAL FIX: Changed from .commit() to .apply().
+            // .commit() blocks the React Native bridge thread with synchronous disk I/O.
+            // After long ringing, this made the bridge freeze for seconds, causing the
+            // stop button to appear completely unresponsive. See AlarmModule.stopAlarmSound()
+            // for the full explanation. Same fix applies here.
             // alarm_stopping is cleared in AlarmSoundServiceBase.onDestroy().
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("alarm_stopping", true)
                 .putBoolean(KEY_ACTIVE, false)
-                .commit()
+                .apply()  // was .commit() — see comment above
             reactContext.stopService(Intent(reactContext, HabitAlarmSoundService::class.java))
             promise.resolve("Habit alarm sound stopped")
         } catch (e: Exception) {

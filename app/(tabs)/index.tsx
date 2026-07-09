@@ -9,6 +9,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { store, KEYS } from '@/lib/storage';
 import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
 import { getSolarTimes, getSunElevation, type SolarTimes } from '@/lib/solar';
@@ -2690,7 +2691,7 @@ function WeatherSection({
   const rainMm  = weather.rain ?? weather.precipitation ?? 0;
 
   return (
-    <View style={WSEC.container}>
+    <BlurView intensity={35} tint="dark" style={WSEC.container}>
       <LinearGradient
         colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -2763,17 +2764,15 @@ function WeatherSection({
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
-    </View>
+    </BlurView>
   );
 }
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 12, marginTop: 12, marginBottom: 8,
-    borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(12,14,24,0.6)',
+    marginHorizontal: 0, marginTop: 0, marginBottom: 0,
+    borderRadius: 0, borderWidth: 0,
     overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 10,
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
   heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
@@ -5068,8 +5067,8 @@ function getSacredHourInfo(nowH: number, solar?: SolarTimes | null): {
   return { type: null, progress: 0 };
 }
 
-// ── Cooling Blue Palette (Cyan/Sky colors, no purple) ─────────────────────
-const COOLING_BLUE_PALETTE: AyurvedicPalette = { ring: '#0EA5E9', halo: '#38BDF8', accent: '#BAE6FD' };
+// ── Cooling Blue Palette (Cyan/Sky colors, highly vibrant) ─────────────────────
+const COOLING_BLUE_PALETTE: AyurvedicPalette = { ring: '#00BFFF', halo: '#00E5FF', accent: '#80FFFF' };
 
 function blendPalette(a: AyurvedicPalette, b: AyurvedicPalette, t: number): AyurvedicPalette {
   return {
@@ -5188,8 +5187,7 @@ function getSolarRingPalette(
 
   // ── 5. Temperature Override (Cooling Effect) ────────
   if (temp != null && temp > 20) {
-    // 20°C = 0 blend, 40°C = 1 blend
-    const blendFactor = Math.min(1, Math.max(0, (temp - 20) / 20));
+    const blendFactor = Math.min(1, Math.max(0, (temp - 20) / 15));
     return blendPalette(basePalette, COOLING_BLUE_PALETTE, blendFactor);
   }
 
@@ -5212,6 +5210,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const coolingGlow   = useRef(new Animated.Value(0.3)).current;
   const rippleAnims   = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   const lunarBreath   = useRef(new Animated.Value(0)).current;
+  const fluidRot1     = useRef(new Animated.Value(0)).current;
+  const fluidRot2     = useRef(new Animated.Value(0)).current;
 
   // ── Inner content cycling state — premium appearance/disappearance ─────────
   const [slideIdx, setSlideIdx] = useState(0);
@@ -5228,6 +5228,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
       Animated.timing(bounce, { toValue: 0,  duration: 650, useNativeDriver: true }),
       Animated.delay(1400),
     ])).start();
+    Animated.loop(Animated.timing(fluidRot1, { toValue: 1, duration: 18000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(fluidRot2, { toValue: 1, duration: 24000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.sequence([
       Animated.timing(tapPulse, { toValue: 1.22, duration: 700, useNativeDriver: true }),
       Animated.timing(tapPulse, { toValue: 1,    duration: 700, useNativeDriver: true }),
@@ -5372,6 +5374,24 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               colors={[`${accentHex}18`, `${ringHex}0C`, 'transparent', `${ringHex}08`]}
               start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
+
+            {/* ── Fluid Effect ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: HERO_RS * 1.6, height: HERO_RS * 1.6,
+              top: -HERO_RS * 0.3, left: -HERO_RS * 0.3,
+              opacity: 0.35,
+              transform: [{ rotate: fluidRot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+            }}>
+               <LinearGradient colors={[`${accentHex}00`, `${accentHex}60`, `${ringHex}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: HERO_RS }} />
+            </Animated.View>
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: HERO_RS * 1.6, height: HERO_RS * 1.6,
+              top: -HERO_RS * 0.3, left: -HERO_RS * 0.3,
+              opacity: 0.3,
+              transform: [{ rotate: fluidRot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }, { translateX: HERO_RS * 0.1 }],
+            }}>
+               <LinearGradient colors={[`${ringHex}00`, `${haloHex}50`, `${accentHex}00`]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={{ flex: 1, borderRadius: HERO_RS }} />
+            </Animated.View>
             {/* ── Lunar breathing — gentle silver glow inhaling & exhaling every 8s ── */}
             {nightMode && (
               <Animated.View pointerEvents="none" style={{
@@ -5849,10 +5869,10 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
   return (
     <>
       <TouchableOpacity
-        style={{ marginHorizontal: 12, marginBottom: 16, borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(12, 14, 24, 0.7)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 }}
+        style={{ marginHorizontal: 0, marginBottom: 0, borderRadius: 0, borderWidth: 0, overflow: 'hidden' }}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
         activeOpacity={0.9}>
-
+        <BlurView intensity={45} tint="dark" style={{ flex: 1 }}>
         <LinearGradient
           colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)', 'transparent']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -5863,38 +5883,28 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 }}>
           
           {/* HEADER */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
-                onPress={(e) => { e.stopPropagation(); Haptics.selectionAsync(); setActiveExp({ title: 'Vedic Month', sanskrit: vMonth.name, icon: '🗓️', description: `The Vedic calendar tracks the sun's passage through the 12 rashis (zodiac signs). You are currently in the month of ${vMonth.name} (${vMonth.en}), associated with the ${(vMonth as any).season} season.` }); }}
-                style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.1)', marginBottom: 10 }}>
-                <Text style={{ fontSize: 9, fontWeight: '900', color: '#FCD34D', letterSpacing: 1.5 }}>
-                  {vMonth?.en?.toUpperCase()} <Text style={{ color: '#FDE68A' }}>({vMonth?.name?.toUpperCase()})</Text>
-                </Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.2 }}>
-                {now.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </Text>
-            </View>
-            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)' }}>›</Text>
-            </View>
+          <View style={{ marginBottom: 18 }}>
+            <Text style={{ fontSize: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 }}>
+              {now.toLocaleDateString('en-IN', { weekday: 'long' })}
+            </Text>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.2 }}>
+              {now.toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </Text>
           </View>
 
           {/* MOON SECTION */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 18, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 24, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
             <View style={{ alignItems: 'center' }}>
-              <MoonSVG tithiNum={moon.tithiNum} size={72} />
+              <MoonSVG tithiNum={moon.tithiNum} size={76} />
               <View style={{ position: 'absolute', bottom: -8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.8)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
                 <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 }}>{moon.illumination}% lit</Text>
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0, marginBottom: 2 }}>
-                {lunarDayStr} <Text style={{ fontSize: 14, color: '#A78BFA', fontWeight: '800' }}>({p.tithiName})</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0, marginBottom: 2 }}>
+                {lunarDayStr} <Text style={{ fontSize: 13, color: '#A78BFA', fontWeight: '800' }}>({p.tithiName})</Text>
               </Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', lineHeight: 18, marginBottom: 8 }}>{tithiEnergyText}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', lineHeight: 16, marginBottom: 8 }}>{tithiEnergyText}</Text>
               <View style={{ flexDirection: 'row', gap: 6 }}>
                 <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.1)' }}>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)' }}>{p.paksha === 'Shukla' ? '🌒 WAXING' : '🌘 WANING'}</Text>
@@ -5906,22 +5916,23 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
             </View>
           </View>
 
-          {/* DATA CHIPS */}
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
+          {/* DATA SENTENCES */}
+          <View style={{ marginBottom: 26, gap: 14 }}>
             {[
-              { label: 'NAKSHATRA', val: nakshatra.constellation, sk: nakshatra.name, emoji: '⭐', desc: `The Moon is currently transiting ${nakshatra.name} (${nakshatra.constellation}), ruled by ${(nakshatra as any).planet}. Energy today: ${nakshatra.energy}` },
-              { label: 'YOGA',      val: yoga.en,                 sk: yoga.name,      emoji: '🔮', desc: `The sun-moon angle forms ${yoga.name} yoga. ${yoga.meaning}. This is considered an ${yoga.auspicious ? 'auspicious' : 'inauspicious'} alignment for new beginnings.` },
-              { label: 'VAAR',      val: ENGLISH_DAYS[p.vaarIdx], sk: vaar.vedicName, emoji: vaarEmoji, desc: `Today is ruled by ${vaar.planet}. ${vaar.energy}` },
+              { label: 'Month',     val: vMonth.name, sk: vMonth.en, emoji: '', desc: `The Vedic calendar tracks the sun's passage through the 12 rashis (zodiac signs). You are currently in the month of ${vMonth.name} (${vMonth.en}), associated with the ${(vMonth as any).season} season.` },
+              { label: 'Tithi',     val: p.tithiName, sk: `${p.paksha} Paksha`, emoji: '', desc: tithiEnergyText },
+              { label: 'Nakshatra', val: nakshatra.name, sk: nakshatra.en, emoji: '', desc: `The Moon is currently transiting ${nakshatra.name} (${nakshatra.constellation}), ruled by ${(nakshatra as any).planet}. Energy today: ${nakshatra.energy}` },
+              { label: 'Yoga',      val: yoga.name,      sk: yoga.en,      emoji: '', desc: `The sun-moon angle forms ${yoga.name} yoga. ${yoga.meaning}. This is considered an ${yoga.auspicious ? 'auspicious' : 'inauspicious'} alignment for new beginnings.` },
+              { label: 'Vaar',      val: `${vaar.vedicName} (${ENGLISH_DAYS[p.vaarIdx]})`, sk: vaar.vedicName, emoji: vaarEmoji, desc: `Today is ruled by ${vaar.planet}. ${vaar.energy}` },
             ].map((item, i) => (
               <TouchableOpacity 
                 key={i} 
-                activeOpacity={0.7}
-                onPress={(e) => { e.stopPropagation(); Haptics.selectionAsync(); setActiveExp({ title: item.val, sanskrit: item.sk || '', icon: item.emoji, description: item.desc }); }}
-                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center' }}>
-                <Text style={{ fontSize: 18, marginBottom: 6 }}>{item.emoji}</Text>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 2 }}>{item.label}</Text>
-                <Text style={{ fontSize: 11, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 2 }}>{item.val}</Text>
-                <Text style={{ fontSize: 9, fontWeight: '800', color: '#00D4B8', textAlign: 'center' }}>({item.sk})</Text>
+                activeOpacity={0.6}
+                onPress={(e) => { e.stopPropagation(); Haptics.selectionAsync(); setActiveExp({ title: item.label.toUpperCase(), sanskrit: item.sk || '', icon: item.emoji || '✨', description: item.desc }); }}
+                style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
+                  Today {item.label}: <Text style={{ fontWeight: '800', color: '#FFF' }}>{item.val}</Text>{item.emoji ? ` ${item.emoji}` : ''}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -5967,6 +5978,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           )}
 
         </View>
+        </BlurView>
       </TouchableOpacity>
 
       {/* EXPLANATION MODAL */}
@@ -6108,7 +6120,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
           imageStyle={{ opacity: 1, resizeMode: 'cover' }}
         />
 
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
           {/* Drag handle */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>

@@ -51,32 +51,11 @@ const CARD     = 'rgba(255,255,255,0.06)';
 const BORDER   = 'rgba(255,255,255,0.10)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = Math.min(W - 64, 240);
+const RING_SIZE   = Math.min(W - 32, 280);
 const RING_STROKE = 4;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
-// ── Session config ────────────────────────────────────────────────────────────
-function getDynamicSessions() {
-  const hour = new Date().getHours();
-  
-  let mainWalk;
-  if (hour >= 4 && hour < 12) {
-    // 4 AM to 12 PM (Brahma Muhurta to Midday)
-    mainWalk = { type: 'morning' as const, emoji: '🌅', label: 'Morning Walk', btnLabel: 'Start Morning Walk', sub: '3,000 step target', color: GREEN, goal: 3000 };
-  } else if (hour >= 12 && hour < 17) {
-    // 12 PM to 5 PM
-    mainWalk = { type: 'morning' as const, emoji: '☀️', label: 'Walk', btnLabel: 'Start Walk', sub: '3,000 step target', color: GREEN, goal: 3000 };
-  } else {
-    // 5 PM onwards or before 4 AM
-    mainWalk = { type: 'evening' as const, emoji: '🌆', label: 'Evening Walk', btnLabel: 'Start Evening Walk', sub: '3,000 step target', color: PINK, goal: 3000 };
-  }
-
-  return [
-    mainWalk,
-    { type: 'postmeal' as const, emoji: '🍽️', label: 'Post-meal Walk', btnLabel: 'Start Post-meal Walk', sub: '100 step target', color: ORANGE, goal: 100 },
-  ];
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtK(n: number): string { return n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n); }
@@ -436,18 +415,30 @@ export default function WalkTab() {
               <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
               <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
               <View style={st.ringDivider} />
-              <View style={st.ringBreakRow}>
-                <View style={st.ringBreakItem}>
-                  <Text style={st.ringBreakNum}>{fmtK(stats.autoSteps)}</Text>
-                  <Text style={st.ringBreakLbl}>Ambient</Text>
+              
+              <View style={{ flexDirection: 'row', gap: 14, marginTop: 4, alignItems: 'center' }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>km</Text>
                 </View>
-                <Text style={st.ringPlus}>+</Text>
-                <View style={st.ringBreakItem}>
-                  <Text style={st.ringBreakNum}>{fmtK(stats.manualSteps)}</Text>
-                  <Text style={st.ringBreakLbl}>🏃 Sessions</Text>
+                <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.calories}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>kcal</Text>
+                </View>
+                <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.activeMinutes}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>min</Text>
+                </View>
+                <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{streak}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>days</Text>
                 </View>
               </View>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '55', marginTop: 4 }}>
+              
+              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '55', marginTop: 12 }}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: ACCENT, letterSpacing: 0.3 }}>{stats.goalPercent}% complete</Text>
               </View>
             </View>
@@ -455,44 +446,44 @@ export default function WalkTab() {
           </View>
         </Animated.View>
 
-        {/* ── METRIC CHIPS ─────────────────────────────────────────────────── */}
-        <Animated.View
-          style={[st.chipsRow, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
-        >
-          {[
-            { icon: '🏃', label: 'Distance', val: `${stats.distanceKm.toFixed(1)} km`, color: TEAL   },
-            { icon: '🔥', label: 'Calories',  val: `${stats.calories} kcal`,           color: ORANGE  },
-            { icon: '⏱',  label: 'Active',    val: `${stats.activeMinutes} min`,        color: GREEN   },
-            { icon: '🔥', label: 'Streak',    val: `${streak} days`,                    color: GOLD    },
-          ].map((chip, i) => (
-            <View key={i} style={[st.chip, { borderColor: chip.color + '30' }]}>
+        {/* ── NADA SOUNDS BUTTON ───────────────────────────────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 24, marginTop: 24, marginBottom: 8, height: 56 }}>
+          <TouchableOpacity
+            onPress={() => launchSession('morning')}
+            activeOpacity={0.80}
+            style={{ height: '100%' }}
+          >
+            <View style={{
+              height: '100%', minHeight: 56,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              paddingHorizontal: 22,
+              borderRadius: 28, overflow: 'hidden',
+              backgroundColor: 'rgba(6,15,40,0.44)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
+              shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.20, shadowRadius: 22,
+              elevation: 8,
+            }}>
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+                borderRadius: 28,
+                backgroundColor: 'rgba(0,212,184,0.26)',
+                opacity: glowOpacity,
+              }} />
               <LinearGradient
-                colors={[chip.color + '12', 'transparent']}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Text style={st.chipIcon}>{chip.icon}</Text>
-              <Text style={[st.chipVal, { color: chip.color }]}>{chip.val}</Text>
-              <Text style={st.chipLabel}>{chip.label}</Text>
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject} />
+              <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8 }}>
+                <Path d="M4 12v0.01" stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M7 10v4"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M10 7v10"  stroke="#4FD1C5" strokeWidth="2.2" strokeLinecap="round" />
+                <Path d="M13 9v6"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
+              </Svg>
+              <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.35 }}>Listen Nada Sound and have a morning walk...</Text>
             </View>
-          ))}
-        </Animated.View>
-
-        {/* ── SESSION CARDS ─────────────────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }] }}>
-          <View style={st.sectionHeader}>
-            <Text style={st.sectionTitle}>Walk Sessions</Text>
-            <Text style={st.sectionSub}>Tap to start a tracked session</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}>
-            {getDynamicSessions().map(s => (
-              <SessionCard
-                key={s.type + s.label}
-                emoji={s.emoji} label={s.label} sub={s.sub}
-                color={s.color} goal={s.goal}
-                btnLabel={s.btnLabel}
-                onStart={() => launchSession(s.type)}
-              />
-            ))}</ScrollView>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* ── 7-DAY BAR CHART ──────────────────────────────────────────────── */}
@@ -564,77 +555,6 @@ export default function WalkTab() {
 
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SessionCard component
-// ─────────────────────────────────────────────────────────────────────────────
-function SessionCard({
-  emoji, label, sub, color, goal, btnLabel, onStart,
-}: {
-  emoji: string; label: string; sub: string; color: string; goal: number; btnLabel: string;
-  onStart: () => void;
-}) {
-  const pressAnim = useRef(new Animated.Value(1)).current;
-  const onPressIn  = () => Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true }).start();
-  const onPressOut = () => Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true }).start();
-
-  return (
-    <Animated.View style={[sCard.wrapper, { transform: [{ scale: pressAnim }] }]}>
-      <TouchableOpacity
-        onPress={onStart}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={1}
-        style={sCard.inner}
-      >
-        <LinearGradient
-          colors={[color + '18', color + '06', 'transparent']}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
-        />
-        {/* Top border glow */}
-        <View style={[sCard.topBorder, { backgroundColor: color }]} />
-
-        <Text style={sCard.emoji}>{emoji}</Text>
-        <Text style={[sCard.label, { color }]}>{label}</Text>
-        <Text style={sCard.sub}>{sub}</Text>
-
-        {/* Goal pill */}
-        <View style={[sCard.goalPill, { backgroundColor: color + '18', borderColor: color + '30' }]}>
-          <Text style={[sCard.goalTxt, { color }]}>🎯 {goal.toLocaleString()} steps</Text>
-        </View>
-
-        {/* Start button */}
-        <TouchableOpacity
-          onPress={onStart}
-          style={[sCard.startBtn, { backgroundColor: color }]}
-        >
-          <Text style={sCard.startTxt}>▶  {btnLabel.toUpperCase()}</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
-const sCard = StyleSheet.create({
-  wrapper: { width: 160, borderRadius: 20, overflow: 'hidden' },
-  inner: {
-    backgroundColor: CARD,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 16,
-    alignItems: 'center',
-    gap: 6,
-    overflow: 'hidden',
-  },
-  topBorder: { position: 'absolute', top: 0, left: 16, right: 16, height: 2, borderRadius: 1, opacity: 0.8 },
-  emoji:    { fontSize: 32, marginTop: 8 },
-  label:    { fontSize: 13, fontWeight: '800', textAlign: 'center', letterSpacing: 0.2 },
-  sub:      { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontWeight: '500' },
-  goalPill: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, marginTop: 4 },
-  goalTxt:  { fontSize: 10, fontWeight: '700' },
-  startBtn: { borderRadius: 12, paddingVertical: 10, paddingHorizontal: 20, marginTop: 8, alignSelf: 'stretch', alignItems: 'center' },
-  startTxt: { color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 1.5 },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 7-Day Bar Chart (SVG — no WebView, no MPAndroidChart)

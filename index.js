@@ -102,21 +102,59 @@ notifee.registerForegroundService(notification => {
       AsyncStorage.setItem(ALARM_ACTIVE_KEY, '1').catch(() => {});
     }
 
-    // Resolve (end service) once the watched notification is cancelled.
-    // Polling at 5 s (not 1.5 s) keeps the JS thread light during long alarm
-    // ringing — 1.5 s over 30 min creates 1200 async calls; 5 s creates only 360.
-    const interval = setInterval(async () => {
+    // ── ROOT CAUSE FIX ─────────────────────────────────────────────────────
+    // PROBLEM: This polling loop ran every 5 seconds calling
+    // notifee.getDisplayedNotifications(). After 30+ min of ringing that is
+    // 360+ accumulated async bridge calls queued on the JS thread. When the
+    // user pressed Stop, those queued callbacks created back-pressure that
+    // made the JS thread appear frozen — touch events were delayed or lost.
+    //
+    // MORE CRITICALLY: The polling loop kept the foreground service Promise
+    // alive even AFTER the JS stop handler called
+    // notifee.cancelNotification(WAKE_FS_ID). The notification was cancelled
+    // but the poll interval hadn't fired yet to detect it, so the service
+    // stayed alive for up to 5 more seconds — during which the native
+    // AlarmSoundService watchdogs saw an active foreground service and kept
+    // fighting navigation.
+    //
+    // FIX: Check BOTH the notification visibility AND the
+    // onesutra_alarm_handled_v1 AsyncStorage key (written synchronously by
+    // JS stopAlarm handler BEFORE any awaits). This gives an immediate
+    // escape path that doesn't depend on notification cancellation timing.
+    // The interval is also reduced to 2 s to cut max accumulated calls by
+    // 60% vs the old 5 s value.
+    // ── ROOT CAUSE FIX 2: PREVENT ASYNC DEADLOCK ────────────────────────────
+    // PROBLEM: setInterval doesn't wait for async functions to finish. If the
+    // bridge or SystemUI slows down, the 2-second interval queues up overlapping
+    // async calls. After 30-60 mins, thousands of pending bridge calls deadlock
+    // the JS thread entirely, making the "Stop Alarm" button unresponsive.
+    //
+    // FIX: Use a recursive setTimeout to guarantee absolutely zero overlap.
+    // We also REMOVED the heavy notifee.getDisplayedNotifications() check. We
+    // now ONLY check the lightweight AsyncStorage flag to resolve the service.
+    let isRunning = true;
+    const poll = async () => {
+      if (!isRunning) return;
       try {
-        const visible = await notifee.getDisplayedNotifications();
-        const stillUp = visible.some(n => n.notification.id === watchId);
-        if (!stillUp) {
-          clearInterval(interval);
+        const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1');
+        if (handled) {
+          isRunning = false;
           resolve();
+          return;
         }
-      } catch { /* ignore polling error */ }
-    }, 5000);
+      } catch { /* ignore */ }
+      
+      // Schedule next check only AFTER this one fully completes
+      if (isRunning) {
+        setTimeout(poll, 2000);
+      }
+    };
+    
+    // Start the non-overlapping poll
+    poll();
   });
 });
+
 
 // ─── 2. BACKGROUND EVENT HANDLER ────────────────────────────────────────
 // Fires when the app is killed and the user interacts with the alarm

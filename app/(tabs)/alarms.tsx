@@ -420,7 +420,7 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
 export default function AlarmsTab() {
   const insets = useSafeAreaInsets();
   const router  = useRouter();
-  const { playingId } = useSoundPlayer();
+  const { playingId, stopSound } = useSoundPlayer();
   const [settings, setSettings]             = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [saving, setSaving]                 = useState(false);
   const [selectedMantraId, setSelectedMantraId] = useState('bhagya_suktam');
@@ -809,19 +809,36 @@ export default function AlarmsTab() {
   }, []);
 
   const togglePreview = async (snd: AlarmSoundItem) => {
+    if (playingId) {
+      try {
+        await stopSound();
+      } catch (e) {
+        console.warn('Failed to stop background sound:', e);
+      }
+    }
     if (previewingId === snd.id || previewLoadingId === snd.id) { await stopPreview(); return; }
     await stopPreview();
     // Show loading badge immediately so user knows tap was registered
     setPreviewLoadingId(snd.id);
     try {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false, shouldDuckAndroid: true });
-      const bundled = ALARM_BUNDLED[snd.id];
-      // Fallback: find the URI from ALL_SLEEP_SOUNDS if audioUrl is null and not bundled
-      const sleepSrc = ALL_SLEEP_SOUNDS.find(s => s.id === snd.id)?.src;
-      const fallbackUri = (!bundled && !snd.audioUrl && sleepSrc && typeof sleepSrc !== 'number')
-        ? (sleepSrc as { uri: string }).uri
-        : null;
-      const source = bundled ?? (snd.audioUrl ? { uri: snd.audioUrl } : (fallbackUri ? { uri: fallbackUri } : null));
+      
+      let source: any = null;
+      const lp = getLocalMantraPath(snd.id);
+      const info = await FileSystem.getInfoAsync(lp).catch(() => null);
+      
+      if (info?.exists) {
+        source = { uri: lp };
+      } else {
+        const bundled = ALARM_BUNDLED[snd.id];
+        // Fallback: find the URI from ALL_SLEEP_SOUNDS if audioUrl is null and not bundled
+        const sleepSrc = ALL_SLEEP_SOUNDS.find(s => s.id === snd.id)?.src;
+        const fallbackUri = (!bundled && !snd.audioUrl && sleepSrc && typeof sleepSrc !== 'number')
+          ? (sleepSrc as { uri: string }).uri
+          : null;
+        source = bundled ?? (snd.audioUrl ? { uri: snd.audioUrl } : (fallbackUri ? { uri: fallbackUri } : null));
+      }
+      
       if (!source) { setPreviewLoadingId(null); return; }
       const { sound } = await Audio.Sound.createAsync(source, { shouldPlay: true, isLooping: false, volume: 0.9 });
       previewSoundRef.current = sound;

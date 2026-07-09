@@ -185,9 +185,11 @@ export default function HabitAlarmRingingScreen() {
   // Checks every 30 s that expo-av is still playing. Audio focus can be lost
   // after phone calls or other audio apps. Without recovery, the screen stays
   // visible but silent — making it feel frozen/unresponsive.
+  // FIX: Using recursive setTimeout instead of setInterval to prevent async overlap.
   useEffect(() => {
-    watchdogRef.current = setInterval(async () => {
-      if (!isMountedRef.current || !soundRef.current) return;
+    let isRunning = true;
+    const poll = async () => {
+      if (!isRunning || !isMountedRef.current || !soundRef.current) return;
       try {
         const status = await soundRef.current.getStatusAsync();
         if ((status as any)?.isLoaded && !(status as any)?.isPlaying) {
@@ -202,9 +204,20 @@ export default function HabitAlarmRingingScreen() {
           await soundRef.current.playAsync().catch(() => {});
         }
       } catch { /* sound may have been unloaded — safe to ignore */ }
-    }, 30_000);
+      
+      if (isRunning) {
+        watchdogRef.current = setTimeout(poll, 30_000) as any;
+      }
+    };
+    
+    watchdogRef.current = setTimeout(poll, 30_000) as any;
+    
     return () => {
-      if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+      isRunning = false;
+      if (watchdogRef.current !== null) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+      }
     };
   }, []);
 
@@ -416,9 +429,12 @@ export default function HabitAlarmRingingScreen() {
   };
 
   const handleComplete = async () => {
+    // ── INSTANT escape hatch ── write this immediately before ANY await.
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+    
     setStopped(true);
     // Kill watchdog first so no interference during cleanup
-    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+    if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
     // 1. Stop ALL alarm signals immediately — audio, vibration, native service
     await stopAudio();
     // 2. Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService
@@ -455,9 +471,12 @@ export default function HabitAlarmRingingScreen() {
   };
 
   const handleQuit = async () => {
+    // ── INSTANT escape hatch ── write this immediately before ANY await.
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+    
     setStopped(true);
     // Kill watchdog first so no interference during cleanup
-    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+    if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
     // Stop ALL alarm signals immediately
     await stopAudio();
     // Stop habit alarm vibration DIRECTLY on HabitAlarmSoundService

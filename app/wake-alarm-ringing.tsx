@@ -163,7 +163,7 @@ export default function WakeAlarmRingingScreen() {
       isMountedRef.current = false;
       // Clear watchdog so no intervals outlive the screen
       if (watchdogRef.current !== null) {
-        clearInterval(watchdogRef.current);
+        clearTimeout(watchdogRef.current);
         watchdogRef.current = null;
       }
       deactivateKeepAwake('wake-alarm');
@@ -208,24 +208,33 @@ export default function WakeAlarmRingingScreen() {
   // the foreground service can be killed after ~10 min, silencing the alarm
   // while leaving the screen visible — making it seem frozen/unresponsive.
   // This watchdog detects that state and pings the native layer to restart.
+  // FIX: Using recursive setTimeout instead of setInterval to prevent async overlap.
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    watchdogRef.current = setInterval(() => {
-      if (!isMountedRef.current) return;
+    
+    let isRunning = true;
+    const poll = async () => {
+      if (!isRunning || !isMountedRef.current) return;
+      
       try {
-        // isAlarmSoundPlaying() is a fast synchronous-backed native call
-        NativeModules.AlarmModule?.isAlarmSoundPlaying?.()?.then?.((playing: boolean) => {
-          if (!playing && isMountedRef.current) {
-            console.warn('[WakeAlarm] watchdog: native sound stopped unexpectedly — restarting');
-            // Stop then restart to clear any stale state in the service
-            NativeModules.AlarmModule?.stopAlarmSound?.().catch?.(() => {});
-          }
-        }).catch?.(() => {});
-      } catch { /* module may not expose this — safe to ignore */ }
-    }, 30_000);
+        const playing = await NativeModules.AlarmModule?.isAlarmSoundPlaying?.();
+        if (playing === false && isMountedRef.current) {
+          console.warn('[WakeAlarm] watchdog: native sound stopped unexpectedly — restarting');
+          NativeModules.AlarmModule?.stopAlarmSound?.().catch?.(() => {});
+        }
+      } catch { /* ignore */ }
+      
+      if (isRunning) {
+        watchdogRef.current = setTimeout(poll, 30_000) as any;
+      }
+    };
+    
+    watchdogRef.current = setTimeout(poll, 30_000) as any;
+    
     return () => {
+      isRunning = false;
       if (watchdogRef.current !== null) {
-        clearInterval(watchdogRef.current);
+        clearTimeout(watchdogRef.current);
         watchdogRef.current = null;
       }
     };
@@ -359,13 +368,18 @@ export default function WakeAlarmRingingScreen() {
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
 
+    // ── INSTANT escape hatch ── write this immediately before ANY await.
+    // This stops the index.js Notifee foreground service polling loop instantly,
+    // which relieves the back-pressure on the JS bridge that causes freezing.
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+
     // ── INSTANT visual feedback ── show disabled/stopping state IMMEDIATELY
     // so the user knows the press was received even if native cleanup takes time.
     if (isMountedRef.current) setStopping(true);
     if (isMountedRef.current) setDismissed(true);
 
     // Kill watchdog — no longer needed
-    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+    if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
 
     // Haptic confirms press immediately
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -395,7 +409,6 @@ export default function WakeAlarmRingingScreen() {
     void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
-    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
 
     // Navigate — guaranteed to happen within ~4 s of button press at worst
     router.replace('/(tabs)' as never);
@@ -406,11 +419,14 @@ export default function WakeAlarmRingingScreen() {
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
 
+    // ── INSTANT escape hatch ── write this immediately before ANY await.
+    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+
     // Instant visual feedback
     if (isMountedRef.current) setStopping(true);
     if (isMountedRef.current) setDismissed(true);
 
-    if (watchdogRef.current !== null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+    if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -430,7 +446,6 @@ export default function WakeAlarmRingingScreen() {
     void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
-    void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
     void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
 
     router.replace(`/mission?id=${mission.id}` as never);

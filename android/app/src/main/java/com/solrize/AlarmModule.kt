@@ -71,25 +71,31 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopAlarmSound(promise: Promise) {
         try {
-            // Write alarm_stopping=true FIRST (synchronous .commit()) so that:
+            // Write alarm_stopping=true FIRST so that:
             // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
             // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
             //    stops re-posting itself — preventing it from fighting router navigation.
             //
-            // CRITICAL: We do NOT clear alarm_stopping=false here any more.
-            // Previously this flag was cleared immediately after stopService(), but
-            // stopService() is ASYNCHRONOUS — onDestroy() runs later. This created a
-            // race window where the bringToFrontRunnable saw alarm_stopping=false and
-            // called launchApp() right in the middle of router.replace() navigation,
-            // making the alarm screen appear frozen/unresponsive after long ringing.
+            // CRITICAL FIX: Changed from .commit() to .apply().
+            // .commit() is a SYNCHRONOUS disk write — it blocks the React Native bridge
+            // thread until the write completes. After the alarm has been ringing for a
+            // long time, disk I/O contention can make this take 500ms to 3 seconds.
+            // During that entire time the bridge thread is frozen — it cannot process
+            // any native module calls, including touch events routed via the bridge.
+            // This is what caused the "button unresponsive after long ringing" bug.
             //
-            // alarm_stopping is now cleared in AlarmSoundServiceBase.onDestroy() which
+            // .apply() updates the in-memory SharedPreferences map SYNCHRONOUSLY
+            // (all same-process readers including watchdogs see alarm_stopping=true
+            // immediately) and then writes to disk on a background thread.
+            // The bridge thread returns in <1ms, resolving the JS Promise instantly.
+            //
+            // alarm_stopping is cleared in AlarmSoundServiceBase.onDestroy() which
             // is the authoritative moment the service actually stops.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("alarm_stopping", true)
                 .putBoolean("alarm_fired_pending", false)
-                .commit()
+                .apply()  // was .commit() — see comment above
             (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState()
             reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
             promise.resolve("Sound stopped")

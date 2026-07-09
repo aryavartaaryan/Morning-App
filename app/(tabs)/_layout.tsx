@@ -93,56 +93,33 @@ function SonicSunriseIcon({
   filled?: boolean;
 }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {/* Sun Body */}
-      <Path
-        d="M 6.5 14 A 5.5 5.5 0 0 1 17.5 14 Z"
-        fill={filled ? color : "none"}
-        stroke={color}
-        strokeWidth={filled ? 0 : 1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Sun Rays */}
-      <Path
-        d="M 12 2 L 12 5"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M 5 4.5 L 7 6.5"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M 19 4.5 L 17 6.5"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M 2 10 L 4.5 10"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M 22 10 L 19.5 10"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-
-      {/* Soundwave Horizon */}
-      <Path
-        d="M 1 14 C 3 14, 5 17, 7.5 17 C 10 17, 10 11, 12 11 C 14 11, 14 17, 16.5 17 C 19 17, 21 14, 23 14"
-        fill="none"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {filled ? (
+        <>
+          {/* Sun Rays */}
+          <Path d="M12 2V4M18.5 4.5L17 6M5.5 4.5L7 6M22 11H20M2 11H4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+          {/* Sun */}
+          <Circle cx="12" cy="11" r="5" fill={color} />
+          {/* Mountains */}
+          <Path d="M2 21L9 11L16 21H2Z" fill={color} opacity="0.6" />
+          <Path d="M-1 21L6 12L13 21H-1Z" fill={color} />
+          <Path d="M11 21L18 12L25 21H11Z" fill={color} />
+        </>
+      ) : (
+        <>
+          {/* Sun Rays */}
+          <Path d="M12 2V4M18.5 4.5L17 6M5.5 4.5L7 6M22 11H20M2 11H4" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+          {/* Sun Half Circle */}
+          <Path d="M7 11.5A5 5 0 1 1 17 11.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+          {/* Background Mountain Peak */}
+          <Path d="M2 21L9 11L13 16.7" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Foreground Mountains */}
+          <Path d="M-1 21L6 12L13 21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M11 21L18 12L25 21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Horizon Base */}
+          <Path d="M-1 21H25" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        </>
+      )}
     </Svg>
   );
 }
@@ -826,9 +803,9 @@ function GlobalPlayerBar() {
     ? mixedSounds.map((s) => s.emoji).join(" ")
     : displayMeta.label;
   const subLine = isPaused
-    ? "Paused  ·  tap to expand"
-    : `${fmtTimer(sessionSecs)} left  ·  tap to expand`;
-  const accentColor = displayMeta.color;
+    ? "Paused"
+    : `${fmtTimer(sessionSecs)}`;
+  const accentColor = displayMeta.color || "#00e5ff"; // default electric blue
 
   return (
     <Animated.View
@@ -836,13 +813,17 @@ function GlobalPlayerBar() {
         GP.wrap,
         { 
           transform: [{ translateY: slideAnim }],
-          shadowColor: accentColor || "#000",
+          shadowColor: accentColor,
+          shadowOpacity: glowAnim,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 0 },
+          borderColor: accentColor,
         }
       ]}
     >
       <LinearGradient
-        colors={["rgba(35,38,45,0.75)", "rgba(15,17,20,0.85)"]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
+        start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
         style={GP.grad}
       >
         {/* Blur background for true glassmorphism on iOS/new Android */}
@@ -857,20 +838,9 @@ function GlobalPlayerBar() {
           }}
           activeOpacity={0.8}
         >
-          <Animated.View
-            style={[
-              GP.emojiBox,
-              {
-                backgroundColor: accentColor + "20",
-                shadowColor: accentColor,
-                shadowOpacity: glowAnim,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 0 },
-              },
-            ]}
-          >
+          <View style={GP.emojiBox}>
             <Text style={GP.emojiTxt}>{displayMeta.emoji}</Text>
-          </Animated.View>
+          </View>
 
           {/* Info */}
           <View style={GP.infoCol}>
@@ -924,17 +894,13 @@ function GlobalPlayerBar() {
 
 const GP = StyleSheet.create({
   wrap: {
-    marginHorizontal: 16,
-    marginBottom: 16, // floating above bottom tab bar
-    borderRadius: 32, // rounder, sleeker pill
+    marginHorizontal: 32, // slimmer width
+    marginBottom: 24, // floating a bit higher
+    borderRadius: 99, // fully round like a wire
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: 'rgba(10,12,16,0.85)',
-    elevation: 32,
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
+    borderWidth: 1.5, // strong electric wire border
+    backgroundColor: 'rgba(5,7,12,0.85)',
+    elevation: 20,
   },
   accentLine: {
     height: 0,
@@ -943,53 +909,52 @@ const GP = StyleSheet.create({
   grad: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8, // very slim
+    gap: 10,
   },
   bodyTap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   emojiBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 24,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  emojiTxt: { fontSize: 18 },
-  infoCol: { flex: 1, gap: 2 },
+  emojiTxt: { fontSize: 16 },
+  infoCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
     color: "#fff",
-    letterSpacing: -0.1,
+    letterSpacing: 0.2,
     fontFamily: "Nunito_700Bold",
   },
   sub: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
     fontFamily: "Nunito_500Medium",
     letterSpacing: 0,
   },
-  waveWrap: { marginRight: 4 },
+  waveWrap: { marginRight: 6 },
   circleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: "center",
     justifyContent: "center",
   },
   stopBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },

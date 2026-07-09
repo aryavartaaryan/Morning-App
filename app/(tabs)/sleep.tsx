@@ -28,7 +28,7 @@ import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import SoundLibraryModal from '@/components/SoundLibraryModal';
 
 const { width: W, height: H } = Dimensions.get('screen');
-let _pageScrollRef: ScrollView | null = null;
+let _pageScrollRef: any = null;
 let _pageScrollLocked = false;
 const _lockPageScroll   = () => { if (!_pageScrollLocked) { _pageScrollLocked = true;  _pageScrollRef?.setNativeProps({ scrollEnabled: false }); } };
 const _unlockPageScroll = () => { if (_pageScrollLocked)  { _pageScrollLocked = false; _pageScrollRef?.setNativeProps({ scrollEnabled: true });  } };
@@ -1109,8 +1109,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       indicatorW.setValue(layout.width);
     } else {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 20, stiffness: 280, mass: 0.45 }),
-        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 20, stiffness: 280, mass: 0.45 }),
+        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
+        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
       ]).start();
     }
   };
@@ -1122,9 +1122,9 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
-      // Claim on a very light horizontal flick — dx > 4 and clearly more horizontal than vertical
+      // Claim on a very light horizontal flick
       onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 4 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.4,
+        Math.abs(gs.dx) > 2 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.4,
       onMoveShouldSetPanResponderCapture: () => false,
       // CRITICAL: false = once we claim, the ScrollView cannot steal it back
       onPanResponderTerminationRequest: () => false,
@@ -1134,8 +1134,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
           if (tabIdx === -1) return;
           const velocity = Math.abs(gs.vx);
-          // Ultra-light: fast flick needs only 10px; slow drag needs 22px
-          const threshold = velocity > 0.25 ? 10 : 22;
+          // Ultra-light: fast flick needs only 5px; slow drag needs 12px
+          const threshold = velocity > 0.1 ? 5 : 12;
           if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
             onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
           } else if (gs.dx > threshold && tabIdx > 0) {
@@ -1218,28 +1218,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
 
       {/* ── Row: tabs + settings button ── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingTop: 2 }}>
-
-        {/* ── Glowing pill background ── */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 4,
-            left: indicatorX,
-            width: indicatorW,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: activeColor + '22',
-            borderWidth: 1,
-            borderColor: activeColor + '50',
-            shadowColor: activeColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.55,
-            shadowRadius: 14,
-            elevation: 6,
-          }}
-        />
+      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingTop: 0 }}>
 
         {/* ── Category tabs — no 'All' in strip ── */}
         <View style={{ flex: 1, flexDirection: 'row' }}>
@@ -1255,7 +1234,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   onSelect(cat);
                 }}
                 activeOpacity={0.60}
-                style={{ flex: 1, alignItems: 'center', paddingTop: 6, paddingBottom: 8, gap: 4 }}
+                style={{ flex: 1, alignItems: 'center', paddingTop: 6, paddingBottom: 6, gap: 4 }}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   tabLayouts.current[cat] = { x, width };
@@ -1263,16 +1242,16 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                 }}
               >
                 <View style={{
-                  width: 34, height: 34,
-                  borderRadius: 17,
-                  backgroundColor: isActive ? catColor + '20' : 'transparent',
-                  borderWidth: isActive ? 1 : 0,
-                  borderColor: isActive ? catColor + '50' : 'transparent',
+                  width: 36, height: 36,
+                  borderRadius: 18,
+                  backgroundColor: isActive ? catColor + '40' : 'transparent',
+                  borderWidth: isActive ? 1.5 : 0,
+                  borderColor: isActive ? catColor + '90' : 'transparent',
                   alignItems: 'center', justifyContent: 'center',
                   shadowColor: isActive ? catColor : 'transparent',
                   shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: isActive ? 0.6 : 0,
-                  shadowRadius: 8,
+                  shadowOpacity: isActive ? 0.8 : 0,
+                  shadowRadius: 10,
                 }}>
                   {cat === 'Birds' || cat === 'Meditations' ? (
                     <MaterialCommunityIcons
@@ -3179,18 +3158,21 @@ export default function SleepTab() {
     setSearchQuery('');
   }, []));
 
-  const onMainScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    // Drive the sticky strip translateY — clamp so it only moves between 0 and heroH
-    scrollY.setValue(y);
-    if (y > 250 && !hasRowResetRef.current) {
-      // Reset while rows are off-screen (scrolled above) — invisible to user
-      hasRowResetRef.current = true;
-      setRowsResetKey(k => k + 1);
-    } else if (y < 50) {
-      hasRowResetRef.current = false;
+  const onMainScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: true,
+      listener: (e: any) => {
+        const y = e.nativeEvent.contentOffset.y;
+        if (y > 250 && !hasRowResetRef.current) {
+          hasRowResetRef.current = true;
+          setRowsResetKey(k => k + 1);
+        } else if (y < 50) {
+          hasRowResetRef.current = false;
+        }
+      }
     }
-  }, [scrollY]);
+  ), [scrollY]);
 
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
@@ -3229,7 +3211,7 @@ export default function SleepTab() {
       onStartShouldSetPanResponder: () => false,
       // Ultra-light: triggers on very gentle horizontal movement with low vertical noise
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 6 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+        Math.abs(gs.dx) > 3 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
       onPanResponderGrant: () => {},
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
@@ -3238,8 +3220,8 @@ export default function SleepTab() {
           const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
           if (tabIdx === -1) return;
           const velocity = Math.abs(gs.vx);
-          // Feather touch: fast flick = 20px; slow drag = 38px
-          const threshold = velocity > 0.3 ? 20 : 38;
+          // Feather touch: fast flick = 10px; slow drag = 25px
+          const threshold = velocity > 0.2 ? 10 : 25;
           if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
             changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
           } else if (gs.dx > threshold && tabIdx > 0) {
@@ -3752,7 +3734,7 @@ export default function SleepTab() {
       <View style={{ flex: 1, zIndex: 1 }}>
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
-        <ScrollView
+        <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: bottomPad }}
@@ -4066,7 +4048,7 @@ export default function SleepTab() {
 
         </View>{/* end lifted container */}
 
-      </ScrollView>
+      </Animated.ScrollView>
         </Animated.View>
 
         {/* ── JS-sticky CategoryTabStrip — rendered OUTSIDE the ScrollView so its
