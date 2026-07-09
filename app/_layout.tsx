@@ -110,7 +110,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
   const bgOp     = useRef(new Animated.Value(0)).current;
   const bgScale  = useRef(new Animated.Value(1.04)).current;
   
-  // "Nada" text (starts visible to seamlessly match native splash, then fades out)
+  // "Naad" text (starts visible to seamlessly match native splash, then fades out)
   const titleOp  = useRef(new Animated.Value(1)).current;
   const titleSc  = useRef(new Animated.Value(1)).current;
   
@@ -141,7 +141,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
     // Fade in mountain background (seamlessly taking over the black native splash)
     Animated.timing(bgOp, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
 
-    // Fade out "Nada" gracefully
+    // Fade out "Naad" gracefully
     Animated.parallel([
       Animated.timing(titleOp, { toValue: 0, duration: 800, delay: 600, useNativeDriver: true }),
       Animated.timing(titleSc, { toValue: 1.08, duration: 800, delay: 600, useNativeDriver: true }),
@@ -149,7 +149,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
 
     // Fade in new Main Title
     Animated.sequence([
-      Animated.delay(1100), // wait for Nada to start fading
+      Animated.delay(1100), // wait for Naad to start fading
       Animated.parallel([
         Animated.timing(subOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
         Animated.spring(subSc, { toValue: 1, tension: 35, friction: 8, useNativeDriver: true }),
@@ -187,9 +187,9 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* The Native-Matching "Nada" Text */}
+        {/* The Native-Matching "Naad" Text */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <Text style={SS.arise}>Nada</Text>
+          <Text style={SS.arise}>Naad</Text>
         </Animated.View>
 
         {/* The New Big Main Title (was subtitle) */}
@@ -225,36 +225,80 @@ const SS = StyleSheet.create({
 });
 
 // ─── Download progress screen (first-install gate) ─────────────────────────
+
+const SETUP_SUBTITLES = [
+  'Your life in New Transformation journey is starting from Today',
+  'Just listen the Naad sounds...',
+  'नाद — The primordial sound of the universe',
+  'Align your rhythm with nature\'s wisdom',
+  'A new dawn of conscious living awaits you',
+];
+
 function DownloadScreen({ progress, label }: { progress: number; label: string }) {
-  const pulseAnim  = useRef(new Animated.Value(0.75)).current;
-  const glowAnim   = useRef(new Animated.Value(0.45)).current;
+  const pulseAnim   = useRef(new Animated.Value(0.75)).current;
+  const glowAnim    = useRef(new Animated.Value(0.45)).current;
   const shimmerAnim = useRef(new Animated.Value(0.5)).current;
+  const ringPulse   = useRef(new Animated.Value(1.0)).current;   // ring glow pulse
+  const arcGlow     = useRef(new Animated.Value(0.0)).current;   // arc outer glow
+
+  // Animated subtitle cycling
+  const subtitleOp  = useRef(new Animated.Value(1)).current;
+  const [subtitleIdx, setSubtitleIdx] = useState(0);
 
   useEffect(() => {
+    // Outer glow orb breathe
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim,  { toValue: 1.06, duration: 1700, useNativeDriver: true }),
-        Animated.timing(pulseAnim,  { toValue: 0.75, duration: 1700, useNativeDriver: true }),
+        Animated.timing(pulseAnim,  { toValue: 1.08, duration: 2200, useNativeDriver: true }),
+        Animated.timing(pulseAnim,  { toValue: 0.80, duration: 2200, useNativeDriver: true }),
       ])
     ).start();
+    // Inner glow breathe (offset)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim,   { toValue: 0.90, duration: 2000, useNativeDriver: true }),
-        Animated.timing(glowAnim,   { toValue: 0.45, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowAnim,   { toValue: 0.88, duration: 2600, useNativeDriver: true }),
+        Animated.timing(glowAnim,   { toValue: 0.38, duration: 2600, useNativeDriver: true }),
       ])
     ).start();
+    // App name shimmer
     Animated.loop(
       Animated.sequence([
         Animated.timing(shimmerAnim, { toValue: 1.0, duration: 2400, useNativeDriver: true }),
-        Animated.timing(shimmerAnim, { toValue: 0.5, duration: 2400, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.45, duration: 2400, useNativeDriver: true }),
       ])
     ).start();
+    // Ring elegant pulse scale
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(ringPulse, { toValue: 1.035, duration: 1800, useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 0.97,  duration: 1800, useNativeDriver: true }),
+      ])
+    ).start();
+    // Arc outer glow breath
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arcGlow, { toValue: 1.0, duration: 1500, useNativeDriver: true }),
+        Animated.timing(arcGlow, { toValue: 0.0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Subtitle fade-cycle
+    const cycleSubtitle = () => {
+      Animated.sequence([
+        Animated.timing(subtitleOp, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]).start(() => {
+        setSubtitleIdx(i => (i + 1) % SETUP_SUBTITLES.length);
+        Animated.timing(subtitleOp, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+      });
+    };
+    const interval = setInterval(cycleSubtitle, 3800);
+    return () => clearInterval(interval);
   }, []);
 
   const pct    = Math.round(Math.min(progress, 1) * 100);
-  const R      = 92;
-  const STRKW  = 11;
-  const svgSize = 228;
+  const R      = 106;
+  const STRKW  = 13;
+  const svgSize = 260;
   const cx     = svgSize / 2;
   const circ   = 2 * Math.PI * R;
   const offset = circ * (1 - Math.min(progress, 1));
@@ -263,16 +307,31 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
     <Animated.View pointerEvents="none" style={DS.screen}>
       <LinearGradient colors={['#06041A', '#0D0921', '#030210']} style={StyleSheet.absoluteFillObject} />
 
+      {/* Ambient radial glow behind ring */}
+      <Animated.View style={[
+        DS.ambientGlow,
+        { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.28] }) },
+      ]} />
+
       <View style={DS.center}>
         {/* App name */}
         <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NADA</Animated.Text>
-        <Text style={DS.subTagline}>नाद · Get transformed by NADA...</Text>
 
-        {/* Ring */}
-        <View style={DS.ringWrap}>
+        {/* Animated subtitle line */}
+        <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>
+          {SETUP_SUBTITLES[subtitleIdx]}
+        </Animated.Text>
+
+        {/* Ring — pulsing wrapper */}
+        <Animated.View style={[DS.ringWrap, { transform: [{ scale: ringPulse }] }]}>
           {/* Layered glow orbs */}
           <Animated.View style={[DS.glowOuter, { opacity: glowAnim, transform: [{ scale: pulseAnim }] }]} />
           <Animated.View style={[DS.glowInner, { opacity: shimmerAnim }]} />
+          {/* Pulsing arc halo ring */}
+          <Animated.View style={[
+            DS.arcHalo,
+            { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.22] }) },
+          ]} />
 
           <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
             <Defs>
@@ -283,9 +342,9 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
               </SvgLinearGradient>
             </Defs>
             {/* Outer decorative ring */}
-            <Circle cx={cx} cy={cx} r={R + 18} stroke="rgba(245,197,24,0.06)" strokeWidth={1} fill="none" />
+            <Circle cx={cx} cy={cx} r={R + 20} stroke="rgba(245,197,24,0.06)" strokeWidth={1} fill="none" />
             {/* Inner decorative ring */}
-            <Circle cx={cx} cy={cx} r={R - 18} stroke="rgba(245,130,10,0.09)" strokeWidth={1} fill="none" />
+            <Circle cx={cx} cy={cx} r={R - 20} stroke="rgba(245,130,10,0.08)" strokeWidth={1} fill="none" />
             {/* Track */}
             <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.07)" strokeWidth={STRKW} fill="none" />
             {/* Progress arc */}
@@ -307,11 +366,11 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
             <Text style={DS.pctNum}>{pct}</Text>
             <Text style={DS.pctSign}>%</Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Status */}
         <Text style={DS.statusLabel}>{label}</Text>
-        <Text style={DS.setupHint}>First-time setup · takes about 30 sec</Text>
+        <Text style={DS.setupHint}>First-time setup  ·  takes about 30 sec</Text>
       </View>
     </Animated.View>
   );
@@ -320,16 +379,18 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
 const DS = StyleSheet.create({
   screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName:     { fontSize: 40, fontFamily: 'Nunito_900Black', color: '#F5C518', letterSpacing: 10, marginBottom: 6 },
-  subTagline:  { fontSize: 11, color: 'rgba(245,197,24,0.45)', fontFamily: 'Nunito_400Regular', letterSpacing: 2, marginBottom: 36 },
-  ringWrap:    { width: 228, height: 228, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
-  glowOuter:   { position: 'absolute', width: 196, height: 196, borderRadius: 98, backgroundColor: '#F5820A', opacity: 0.07 },
-  glowInner:   { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: '#F5C518', opacity: 0.05 },
+  appName:     { fontSize: 42, fontFamily: 'Nunito_900Black', color: '#F5C518', letterSpacing: 10, marginBottom: 10 },
+  subTagline:  { fontSize: 13, color: 'rgba(245,197,24,0.70)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 32, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
+  ringWrap:    { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
+  glowOuter:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: '#F5820A', opacity: 0.07 },
+  glowInner:   { position: 'absolute', width: 148, height: 148, borderRadius: 74, backgroundColor: '#F5C518', opacity: 0.05 },
+  arcHalo:     { position: 'absolute', width: 240, height: 240, borderRadius: 120, borderWidth: 18, borderColor: '#F5820A', opacity: 0.0 },
+  ambientGlow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, backgroundColor: '#F5820A', top: '30%', alignSelf: 'center', opacity: 0.15 },
   pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
-  pctNum:      { fontSize: 54, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -1 },
-  pctSign:     { fontSize: 18, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 9, marginLeft: 2 },
-  statusLabel: { fontSize: 13, color: 'rgba(255,255,255,0.60)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 },
-  setupHint:   { fontSize: 10, color: 'rgba(255,255,255,0.22)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.3, marginTop: 8 },
+  pctNum:      { fontSize: 60, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -1 },
+  pctSign:     { fontSize: 20, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 10, marginLeft: 2 },
+  statusLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 },
+  setupHint:   { fontSize: 10, color: 'rgba(255,255,255,0.20)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5, marginTop: 8 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
@@ -1115,8 +1176,9 @@ export default function RootLayout() {
 
           if (!cancelled) {
             setDlProgress(1);
-            // Brief pause so ring fills to 100% before disappearing.
-            await new Promise(r => setTimeout(r, 400));
+            setDlLabel('Your transformation journey begins from now... Just listen Naad sounds.......✨');
+            // Pause so ring fills to 100% and user sees completion before app opens.
+            await new Promise(r => setTimeout(r, 1400));
           }
 
           // ── Both phases done — mark setup complete and clear in-progress ──
@@ -1179,12 +1241,18 @@ export default function RootLayout() {
         <BgProvider>
         <GlobalMoodLayer />
         <StatusBar style="light" />
-        <AuthGuard onAuthReady={() => setAuthReady(true)} />
+        {/* AuthGuard is only mounted AFTER downloading completes so the home page
+             never opens mid-setup. During 'downloading' phase the Stack renders
+             but navigation is blocked until AuthGuard fires. */}
+        {phase !== 'downloading' && (
+          <AuthGuard onAuthReady={() => setAuthReady(true)} />
+        )}
         <BodhiNotificationListener />
         {/* NADA animated splash — shown immediately during 'gate' AND 'splash'
              phases so there is zero blank gap after the native splash dismisses.
              key="splash" is stable across gate→splash so React never remounts
-             the component (which would restart the animation from scratch). */}\n        {(phase === 'gate' || phase === 'splash') && (
+             the component (which would restart the animation from scratch). */}
+        {(phase === 'gate' || phase === 'splash') && (
           <SplashOverlay key="nada-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
         )}
         {/* Elegant download progress screen — first install only */}

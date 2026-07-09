@@ -178,45 +178,6 @@ function WallpaperPicker() {
 
   return (
     <>
-      {/* ── Mode Switcher ── */}
-      <GlassCard>
-        {/* Solar Mode */}
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setWallpaperMode('solar'); }}
-          activeOpacity={0.85}
-          style={[wp.modeRow, { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }]}
-        >
-          <View style={[wp.modeIcon, wallpaperMode === 'solar' && { backgroundColor: GOLD + '25', borderColor: GOLD + '50' }]}>
-            <Text style={{ fontSize: 20 }}>☀️</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={wp.modeTitle}>Solar Time Mode</Text>
-            <Text style={wp.modeSub}>Background shifts automatically with sun — Brahma Muhurta to night sky</Text>
-          </View>
-          <View style={[wp.radio, wallpaperMode === 'solar' && { borderColor: GOLD, backgroundColor: GOLD + '30' }]}>
-            {wallpaperMode === 'solar' && <View style={[wp.radioDot, { backgroundColor: GOLD }]} />}
-          </View>
-        </TouchableOpacity>
-
-        {/* Manual Mode */}
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setWallpaperMode('manual'); }}
-          activeOpacity={0.85}
-          style={wp.modeRow}
-        >
-          <View style={[wp.modeIcon, wallpaperMode === 'manual' && { backgroundColor: PURPLE + '25', borderColor: PURPLE + '50' }]}>
-            <Text style={{ fontSize: 20 }}>🖼️</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={wp.modeTitle}>Fixed Wallpaper Mode</Text>
-            <Text style={wp.modeSub}>Pin a specific background for all pages — same vibe all day</Text>
-          </View>
-          <View style={[wp.radio, wallpaperMode === 'manual' && { borderColor: PURPLE, backgroundColor: PURPLE + '30' }]}>
-            {wallpaperMode === 'manual' && <View style={[wp.radioDot, { backgroundColor: PURPLE }]} />}
-          </View>
-        </TouchableOpacity>
-      </GlassCard>
-
       {/* ── Current Wallpaper Preview ── */}
       <TouchableOpacity
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openPicker(); }}
@@ -241,7 +202,7 @@ function WallpaperPicker() {
             <View style={wp.previewBtn}>
               <Ionicons name="images-outline" size={16} color="#fff" />
               <Text style={wp.previewBtnTxt}>
-                {wallpaperMode === 'manual' ? 'Change Wallpaper' : 'View All Scenes'}
+                Change Wallpaper
               </Text>
             </View>
           </View>
@@ -257,12 +218,10 @@ function WallpaperPicker() {
             <View style={wp.sheetHeader}>
               <View>
                 <Text style={wp.sheetTitle}>
-                  {wallpaperMode === 'manual' ? '🖼️  Choose Your Wallpaper' : '☀️  Solar Scenes'}
+                  🖼️  Change Wallpaper
                 </Text>
                 <Text style={wp.sheetSub}>
-                  {wallpaperMode === 'manual'
-                    ? 'Select a fixed background for all pages'
-                    : 'These images shift automatically with solar time'}
+                  Select your background preference
                 </Text>
               </View>
               <TouchableOpacity onPress={closePicker} style={wp.closeBtn}>
@@ -274,6 +233,48 @@ function WallpaperPicker() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48, gap: 10 }}
             >
+              {/* Auto Solar Time Mode Toggle */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setWallpaperMode(wallpaperMode === 'solar' ? 'manual' : 'solar');
+                }}
+                activeOpacity={0.8}
+                style={[
+                  wp.bgCard,
+                  { 
+                    padding: 16, 
+                    backgroundColor: 'rgba(255,255,255,0.05)', 
+                    borderWidth: 1, 
+                    borderColor: wallpaperMode === 'solar' ? GOLD : 'rgba(255,255,255,0.1)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 10
+                  }
+                ]}
+              >
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 4 }}>
+                    ☀️ Auto Solar Time Mode
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#FFFFFF80', lineHeight: 16 }}>
+                    Background shifts automatically with the sun.
+                  </Text>
+                  <Text style={{ fontSize: 11, color: GOLD, fontWeight: '800', marginTop: 6, letterSpacing: 0.3 }}>
+                    ✨ BEST OPTION
+                  </Text>
+                </View>
+                <Switch
+                  value={wallpaperMode === 'solar'}
+                  onValueChange={(val) => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setWallpaperMode(val ? 'solar' : 'manual');
+                  }}
+                  trackColor={{ false: '#222', true: GOLD + '80' }}
+                  thumbColor={wallpaperMode === 'solar' ? GOLD : '#555'}
+                />
+              </TouchableOpacity>
+
               {BG_KEYS.map((key) => {
                 const meta   = BG_META[key];
                 const uri    = allBgUris[key];
@@ -285,8 +286,9 @@ function WallpaperPicker() {
                     key={key}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      if (wallpaperMode === 'manual') {
-                        setManualBgKey(key as BgKey);
+                      setManualBgKey(key as BgKey);
+                      if (wallpaperMode !== 'manual') {
+                        setWallpaperMode('manual');
                       }
                     }}
                     activeOpacity={0.88}
@@ -334,7 +336,7 @@ function WallpaperPicker() {
                 <View style={wp.solarNote}>
                   <Text style={{ fontSize: 13, marginBottom: 6 }}>💡</Text>
                   <Text style={wp.solarNoteTxt}>
-                    Select a wallpaper to use it across all pages
+                    Select a wallpaper to pin it across all pages
                   </Text>
                 </View>
               )}

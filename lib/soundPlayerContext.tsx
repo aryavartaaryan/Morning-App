@@ -177,20 +177,21 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             await preBuffered.setStatusAsync({
               isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
               volume: 1.0, progressUpdateIntervalMillis: 500,
+              positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5000 : 0,
             } as any);
             sound = preBuffered;
           } catch {
             try { await preBuffered.unloadAsync(); } catch {}
-            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5000 : 0 });
             sound = r.sound;
           }
         } else {
           try { await preBuffered.unloadAsync(); } catch {}
-          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5000 : 0 });
           sound = r.sound;
         }
       } else {
-        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500 });
+        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5000 : 0 });
         sound = r.sound;
       }
       if (epoch !== undefined && epoch !== playEpochRef.current) {

@@ -5824,7 +5824,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Cosmic Compact Card — proper readable cosmos card for DayDetailSheet
+// Vedic Almanac Card — Redesigned premium glassy layout for DayDetailSheet
 // ══════════════════════════════════════════════════════════════════════════════
 function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTimes | null; onCosmicPress: () => void }) {
   const router    = useRouter();
@@ -5838,6 +5838,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
   const now       = new Date();
 
   const [activeExp, setActiveExp] = useState<{title: string; sanskrit: string; icon: string; description: string} | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   const nextEvent = lunar.daysToFull <= lunar.daysToNew
     ? { label: lunar.daysToFull === 0 ? 'Full Moon Today!' : `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24', icon: '🌕' }
@@ -5866,143 +5867,282 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
   };
   const vaarEmoji = planetEmojiMap[vaar.planet] || vaar.emoji;
 
+  const gregorianShort = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const panchangaRows = [
+    {
+      label: 'MAAS',
+      labelFull: 'Month',
+      value: vMonth.name,
+      sub: vMonth.en,
+      color: '#fbbf24',
+      emoji: '📅',
+      desc: `The Vedic calendar tracks the sun's passage through the 12 rashis. You are in the month of ${vMonth.name} (${vMonth.en}), associated with the ${(vMonth as any).season} season.`,
+    },
+    {
+      label: 'TITHI',
+      labelFull: 'Lunar Day',
+      value: p.tithiName,
+      sub: `${p.paksha} Paksha · Day ${p.tithiInPaksha}`,
+      color: '#A78BFA',
+      emoji: '🌙',
+      desc: tithiEnergyText,
+    },
+    {
+      label: 'NAKSHATRA',
+      labelFull: 'Star',
+      value: nakshatra.name,
+      sub: nakshatra.en,
+      color: '#60a5fa',
+      emoji: nakshatra.emoji || '⭐',
+      desc: `The Moon is transiting ${nakshatra.name} (${nakshatra.constellation}), ruled by ${(nakshatra as any).planet}. Energy: ${nakshatra.energy}`,
+    },
+    {
+      label: 'YOGA',
+      labelFull: 'Cosmic Alignment',
+      value: yoga.name,
+      sub: yoga.en,
+      color: yoga.auspicious ? '#10b981' : '#f87171',
+      emoji: yoga.auspicious ? '✨' : '⚠️',
+      desc: `The sun-moon angle forms ${yoga.name} yoga. ${yoga.meaning}. This is an ${yoga.auspicious ? 'auspicious' : 'inauspicious'} alignment.`,
+    },
+    {
+      label: 'VAAR',
+      labelFull: 'Day',
+      value: vaar.vedicName,
+      sub: `${ENGLISH_DAYS[p.vaarIdx]} · ${vaar.planet} Day`,
+      color: vaar.color,
+      emoji: vaarEmoji,
+      desc: `Today is ruled by ${vaar.planet}. ${vaar.energy}`,
+    },
+  ];
+
   return (
     <>
-      <TouchableOpacity
-        style={{ marginHorizontal: 0, marginBottom: 0, borderRadius: 0, borderWidth: 0, overflow: 'hidden' }}
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/cosmic-explore' as never); }}
-        activeOpacity={0.9}>
-        <BlurView intensity={45} tint="dark" style={{ flex: 1 }}>
+      {/* VEDIC ALMANAC CARD */}
+      <View style={{
+        marginHorizontal: 14,
+        marginTop: 8,
+        marginBottom: 4,
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.13)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.55,
+        shadowRadius: 28,
+        elevation: 18,
+      }}>
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
         <LinearGradient
-          colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)', 'transparent']}
+          colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
         />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+        <LinearGradient
+          colors={[vaar.color + '12', 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 }}>
-          
-          {/* HEADER */}
-          <View style={{ marginBottom: 18 }}>
-            <Text style={{ fontSize: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 }}>
-              {now.toLocaleDateString('en-IN', { weekday: 'long' })}
-            </Text>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.2 }}>
-              {now.toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </Text>
-          </View>
+        {/* TOP BOUNDARY */}
+        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.18)', width: '100%' }} />
 
-          {/* MOON SECTION */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 24, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
-            <View style={{ alignItems: 'center' }}>
-              <MoonSVG tithiNum={moon.tithiNum} size={76} />
-              <View style={{ position: 'absolute', bottom: -8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.8)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 }}>{moon.illumination}% lit</Text>
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0, marginBottom: 2 }}>
-                {lunarDayStr} <Text style={{ fontSize: 13, color: '#A78BFA', fontWeight: '800' }}>({p.tithiName})</Text>
+        <View style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 16 }}>
+
+          {/* TITLE + DATE HEADER */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5, marginBottom: 5 }}>
+                ✦  VEDIC ALMANAC
               </Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', lineHeight: 16, marginBottom: 8 }}>{tithiEnergyText}</Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)' }}>{p.paksha === 'Shukla' ? '🌒 WAXING' : '🌘 WANING'}</Text>
-                </View>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: nextEvent.color + '20' }}>
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: nextEvent.color }}>{nextEvent.icon} {nextEvent.label.toUpperCase()}</Text>
-                </View>
-              </View>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 26 }}>
+                {now.toLocaleDateString('en-IN', { weekday: 'long' })}
+              </Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.2, marginTop: 2 }}>
+                {gregorianShort}
+              </Text>
+              <Text style={{ fontSize: 9.5, fontWeight: '600', color: '#fbbf2470', letterSpacing: 0.4, marginTop: 4 }}>
+                {vMonth.name} Maas  ·  {p.paksha} Paksha
+              </Text>
+            </View>
+            <View style={{ alignItems: 'center', gap: 4, paddingTop: 4 }}>
+              <MoonSVG tithiNum={moon.tithiNum} size={50} />
+              <Text style={{ fontSize: 7.5, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }}>
+                {moon.illumination}% lit
+              </Text>
             </View>
           </View>
 
-          {/* DATA SENTENCES */}
-          <View style={{ marginBottom: 26, gap: 14 }}>
-            {[
-              { label: 'Month',     val: vMonth.name, sk: vMonth.en, emoji: '', desc: `The Vedic calendar tracks the sun's passage through the 12 rashis (zodiac signs). You are currently in the month of ${vMonth.name} (${vMonth.en}), associated with the ${(vMonth as any).season} season.` },
-              { label: 'Tithi',     val: p.tithiName, sk: `${p.paksha} Paksha`, emoji: '', desc: tithiEnergyText },
-              { label: 'Nakshatra', val: nakshatra.name, sk: nakshatra.en, emoji: '', desc: `The Moon is currently transiting ${nakshatra.name} (${nakshatra.constellation}), ruled by ${(nakshatra as any).planet}. Energy today: ${nakshatra.energy}` },
-              { label: 'Yoga',      val: yoga.name,      sk: yoga.en,      emoji: '', desc: `The sun-moon angle forms ${yoga.name} yoga. ${yoga.meaning}. This is considered an ${yoga.auspicious ? 'auspicious' : 'inauspicious'} alignment for new beginnings.` },
-              { label: 'Vaar',      val: `${vaar.vedicName} (${ENGLISH_DAYS[p.vaarIdx]})`, sk: vaar.vedicName, emoji: vaarEmoji, desc: `Today is ruled by ${vaar.planet}. ${vaar.energy}` },
-            ].map((item, i) => (
-              <TouchableOpacity 
-                key={i} 
-                activeOpacity={0.6}
-                onPress={(e) => { e.stopPropagation(); Haptics.selectionAsync(); setActiveExp({ title: item.label.toUpperCase(), sanskrit: item.sk || '', icon: item.emoji || '✨', description: item.desc }); }}
-                style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, fontWeight: '500', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
-                  Today {item.label}: <Text style={{ fontWeight: '800', color: '#FFF' }}>{item.val}</Text>{item.emoji ? ` ${item.emoji}` : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Moon event badges */}
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
+            <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)' }}>
+              <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(255,255,255,0.75)' }}>
+                {p.paksha === 'Shukla' ? '🌒 Waxing' : '🌘 Waning'}
+              </Text>
+            </View>
+            <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: nextEvent.color + '18', borderWidth: 1, borderColor: nextEvent.color + '35' }}>
+              <Text style={{ fontSize: 8.5, fontWeight: '800', color: nextEvent.color }}>
+                {nextEvent.icon}  {nextEvent.label}
+              </Text>
+            </View>
           </View>
 
-          {/* SOLAR BAR */}
-          {csr !== null && css !== null && (
-            <View style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 16 }}>
-              {dayPct !== null && (
-                <View style={{ marginBottom: 12 }}>
-                  <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                    <LinearGradient colors={['rgba(255,255,255,0.3)', '#FFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 4, width: `${Math.round(dayPct * 100)}%` as any }} />
+          {/* TOP DIVIDER */}
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginBottom: 0 }} />
+
+          {/* EXPANDABLE PANCHANGA ROWS */}
+          {panchangaRows.map((row, idx) => {
+            const isExpanded = expandedRow === idx;
+            return (
+              <View key={idx}>
+                <TouchableOpacity
+                  activeOpacity={0.72}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Haptics.selectionAsync();
+                    setExpandedRow(isExpanded ? null : idx);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, gap: 10 }}>
+                  <View style={{ width: 70 }}>
+                    <Text style={{ fontSize: 7, fontWeight: '900', color: row.color + 'BB', letterSpacing: 1.4 }}>
+                      {row.label}
+                    </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                    <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontWeight: '800', letterSpacing: 0.5 }}>🌅 SUNRISE</Text>
-                    <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', fontWeight: '900' }}>{Math.round(dayPct * 100)}% DAY</Text>
-                    <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontWeight: '800', letterSpacing: 0.5 }}>SUNSET 🌆</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 0.1 }} numberOfLines={1}>
+                      {row.value}
+                    </Text>
+                    <Text style={{ fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.4)', marginTop: 1 }} numberOfLines={1}>
+                      {row.sub}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 14, color: isExpanded ? row.color + 'CC' : 'rgba(255,255,255,0.25)', fontWeight: '600' }}>
+                    {isExpanded ? '↑' : '›'}
+                  </Text>
+                </TouchableOpacity>
+
+                {isExpanded && (
+                  <View style={{
+                    marginBottom: 10, marginTop: -4,
+                    paddingHorizontal: 14, paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: row.color + '0D',
+                    borderWidth: 1,
+                    borderColor: row.color + '2A',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '900', color: row.color, letterSpacing: 1.5 }}>
+                        {row.labelFull.toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.78)', lineHeight: 20 }}>
+                      {row.desc}
+                    </Text>
+                  </View>
+                )}
+
+                {idx < panchangaRows.length - 1 && (
+                  <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+                )}
+              </View>
+            );
+          })}
+
+          {/* BOTTOM DIVIDER */}
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginTop: 4, marginBottom: 14 }} />
+
+          {/* SOLAR ARC BAR */}
+          {csr !== null && css !== null && (
+            <View style={{ marginBottom: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 14 }}>
+              {dayPct !== null && (
+                <View style={{ marginBottom: 10 }}>
+                  <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                    <LinearGradient
+                      colors={['#F5820A80', '#fbbf24CC']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={{ height: 3, width: `${Math.round(dayPct * 100)}%` as any }}
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+                    <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', fontWeight: '800', letterSpacing: 0.5 }}>🌅 SUNRISE</Text>
+                    <Text style={{ fontSize: 7, color: '#fbbf2499', fontWeight: '900' }}>{Math.round(dayPct * 100)}% DAY</Text>
+                    <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', fontWeight: '800', letterSpacing: 0.5 }}>SUNSET 🌆</Text>
                   </View>
                 </View>
               )}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 }}>
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csr)}</Text>
-                  <Text style={{ fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: 0.5 }}>SUNRISE</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csr)}</Text>
+                  <Text style={{ fontSize: 6.5, fontWeight: '800', color: 'rgba(255,255,255,0.35)', marginTop: 2, letterSpacing: 0.5 }}>SUNRISE</Text>
                 </View>
                 {csn !== null && (
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csn)}</Text>
-                    <Text style={{ fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: 0.5 }}>SOLAR NOON</Text>
+                    <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFF' }}>{fmtSolar(csn)}</Text>
+                    <Text style={{ fontSize: 6.5, fontWeight: '800', color: 'rgba(255,255,255,0.35)', marginTop: 2, letterSpacing: 0.5 }}>SOLAR NOON</Text>
                   </View>
                 )}
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFF' }}>{fmtSolar(css)}</Text>
-                  <Text style={{ fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: 0.5 }}>SUNSET</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFF' }}>{fmtSolar(css)}</Text>
+                  <Text style={{ fontSize: 6.5, fontWeight: '800', color: 'rgba(255,255,255,0.35)', marginTop: 2, letterSpacing: 0.5 }}>SUNSET</Text>
                 </View>
                 {cdaylight && (
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFF' }}>{cdaylight}</Text>
-                    <Text style={{ fontSize: 7, fontWeight: '800', color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: 0.5 }}>DAYLIGHT</Text>
+                    <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFF' }}>{cdaylight}</Text>
+                    <Text style={{ fontSize: 6.5, fontWeight: '800', color: 'rgba(255,255,255,0.35)', marginTop: 2, letterSpacing: 0.5 }}>DAYLIGHT</Text>
                   </View>
                 )}
               </View>
             </View>
           )}
 
+          {/* EXPLORE VEDIC ALMANAC BUTTON */}
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/cosmic-explore' as never); }}
+            style={{ borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.38)' }}>
+            <LinearGradient
+              colors={['rgba(167,139,250,0.16)', 'rgba(96,165,250,0.09)', 'rgba(167,139,250,0.06)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 14 }}>🪐</Text>
+              <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.3 }}>
+                EXPLORE VEDIC ALMANAC
+              </Text>
+              <Text style={{ fontSize: 14, color: '#A78BFA', fontWeight: '900' }}>→</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
         </View>
-        </BlurView>
-      </TouchableOpacity>
+
+        {/* BOTTOM BOUNDARY */}
+        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.10)', width: '100%' }} />
+      </View>
 
       {/* EXPLANATION MODAL */}
       <Modal visible={!!activeExp} transparent animationType="fade" onRequestClose={() => setActiveExp(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setActiveExp(null)} activeOpacity={1} />
           {activeExp && (
             <View style={{
-              width: '100%', maxWidth: 340, backgroundColor: 'rgba(18,20,32,0.98)',
-              borderRadius: 28, padding: 28, alignItems: 'center',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-              shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.6, shadowRadius: 40, elevation: 24
+              width: '100%', maxWidth: 340, backgroundColor: 'rgba(14,16,30,0.98)',
+              borderRadius: 26, padding: 28, alignItems: 'center',
+              borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)',
+              shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.38, shadowRadius: 36, elevation: 22,
             }}>
-              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 36 }}>{activeExp.icon}</Text>
+              <View style={{ width: 66, height: 66, borderRadius: 33, backgroundColor: 'rgba(167,139,250,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 18, borderWidth: 1, borderColor: 'rgba(167,139,250,0.2)' }}>
+                <Text style={{ fontSize: 30 }}>{activeExp.icon}</Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '900', color: '#00D4B8', letterSpacing: 2.5, marginBottom: 6 }}>{activeExp.sanskrit.toUpperCase()}</Text>
-              <Text style={{ fontSize: 26, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 16 }}>{activeExp.title}</Text>
-              <View style={{ width: 32, height: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 18 }} />
-              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 24, fontWeight: '500' }}>
+              <Text style={{ fontSize: 9, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5, marginBottom: 6 }}>{activeExp.sanskrit.toUpperCase()}</Text>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 12 }}>{activeExp.title}</Text>
+              <View style={{ width: 26, height: 1.5, backgroundColor: 'rgba(167,139,250,0.4)', marginBottom: 14 }} />
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.76)', textAlign: 'center', lineHeight: 22, fontWeight: '500' }}>
                 {activeExp.description}
               </Text>
-              <TouchableOpacity onPress={() => setActiveExp(null)} style={{ marginTop: 28, paddingVertical: 14, paddingHorizontal: 36, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12, letterSpacing: 1.5 }}>DISMISS</Text>
+              <TouchableOpacity onPress={() => setActiveExp(null)} style={{ marginTop: 24, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 99, backgroundColor: 'rgba(167,139,250,0.14)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.28)' }}>
+                <Text style={{ color: '#C4B5FD', fontWeight: '900', fontSize: 11, letterSpacing: 1.5 }}>DISMISS</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -6011,6 +6151,9 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
     </>
   );
 }
+
+
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Cosmos Mini Card — compact half-width cosmos card for DayDetailSheet

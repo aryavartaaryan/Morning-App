@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nada",
+    "name": "Naad",
     "slug": "nada-arise",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,12 +23,12 @@
           "processing",
           "location"
         ],
-        "NSUserNotificationsUsageDescription": "Nada uses notifications to ring your wake alarm.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Nada tracks your walk distance in the background so your prana session continues even if you lock the screen.",
-        "NSLocationAlwaysUsageDescription": "Nada tracks your walk distance in the background so your prana session continues even if you lock the screen.",
-        "NSMotionUsageDescription": "Nada uses motion sensors to accurately count your walking steps.",
-        "NSHealthShareUsageDescription": "Nada tracks your steps and activity for walk sessions.",
-        "NSHealthUpdateUsageDescription": "Nada logs your walking activity and steps.",
+        "NSUserNotificationsUsageDescription": "Naad uses notifications to ring your wake alarm.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Naad tracks your walk distance in the background so your prana session continues even if you lock the screen.",
+        "NSLocationAlwaysUsageDescription": "Naad tracks your walk distance in the background so your prana session continues even if you lock the screen.",
+        "NSMotionUsageDescription": "Naad uses motion sensors to accurately count your walking steps.",
+        "NSHealthShareUsageDescription": "Naad tracks your steps and activity for walk sessions.",
+        "NSHealthUpdateUsageDescription": "Naad logs your walking activity and steps.",
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.solrize.alarm-reschedule"
         ]
@@ -108,28 +108,28 @@
             "./assets/sounds/mantra_alarm.m4a"
           ],
           "androidMode": "default",
-          "androidCollapsedTitle": "Nada",
+          "androidCollapsedTitle": "Naad",
           "iosDisplayInForeground": true
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Nada to access your camera for mission completion."
+          "cameraPermission": "Allow Naad to access your camera for mission completion."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Nada to access your photos for mission completion."
+          "photosPermission": "Allow Naad to access your photos for mission completion."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Nada to show local weather and track your walk.",
-          "locationAlwaysAndWhenInUsePermission": "Allow Nada to track your walk distance even when the screen is locked.",
-          "locationAlwaysPermission": "Allow Nada to track your walk in the background."
+          "locationWhenInUsePermission": "Allow Naad to show local weather and track your walk.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Naad to track your walk distance even when the screen is locked.",
+          "locationAlwaysPermission": "Allow Naad to track your walk in the background."
         }
       ],
       [
@@ -157,9 +157,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8ee3bedf-1e27-41c3-8860-aaa66a408ccc"
+        "projectId": "977a4d30-3c2e-4188-b6c1-8f254c014878"
       }
     },
-    "owner": "nadaultra"
+    "owner": "praanaone"
   }
 }

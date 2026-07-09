@@ -40,8 +40,12 @@ import Svg, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 import StepCounter, { type SessionType } from '@/src/modules/StepCounter';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import SoundLibraryModal from '@/components/SoundLibraryModal';
+import { ALL_SOUNDS_LIST } from '@/app/(tabs)/sleep';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -49,7 +53,7 @@ const { width: W, height: H } = Dimensions.get('window');
 const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SZ = Math.min(W - 80, 260);
+const RING_SZ = 210;
 const STROKE  = 14;
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
@@ -103,6 +107,10 @@ export default function StepSessionScreen() {
   // Drives SVG strokeDashoffset without createAnimatedComponent (avoids stopTracking crash)
   const [progressDashOffset, setProgressDashOffset] = useState(CIRCUM);
 
+  // Sound Integration
+  const { playingId, isPaused, togglePause, stopSound, playSound } = useSoundPlayer();
+  const [isSoundModalVisible, setIsSoundModalVisible] = useState(false);
+
   // ── Refs ───────────────────────────────────────────────────────────────────
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const pausedRef    = useRef(false);
@@ -113,6 +121,7 @@ export default function StepSessionScreen() {
 
   // ── Animations ─────────────────────────────────────────────────────────────
   const stepBounce   = useRef(new Animated.Value(1)).current;
+  const pulseAnim    = useRef(new Animated.Value(1)).current;
   const rippleScale  = useRef(new Animated.Value(0)).current;
   const rippleOp     = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -133,6 +142,13 @@ export default function StepSessionScreen() {
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+
     (async () => {
       await StepCounter.startSession(type);
       startMsRef.current = Date.now();
@@ -361,10 +377,42 @@ export default function StepSessionScreen() {
       {/* ── BODY ────────────────────────────────────────────────────────────── */}
       <Animated.View style={[s.body, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
 
+        {/* Elegant Premium Prompt */}
+        <View style={{ alignItems: 'center', marginBottom: 40, paddingHorizontal: 32 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, opacity: 0.7 }}>
+            <Ionicons name="headset-outline" size={16} color="#38bdf8" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 2, color: '#38bdf8', textTransform: 'uppercase' }}>
+              Deep Immersion
+            </Text>
+          </View>
+          <Text style={{
+            fontSize: 24,
+            color: 'rgba(255,255,255,0.9)',
+            fontFamily: 'DancingScript_600SemiBold',
+            textAlign: 'center',
+            lineHeight: 32
+          }}>
+            Connect headphones & listen to Naad sounds while you walk...
+          </Text>
+        </View>
+
         {/* Ring */}
         <View style={s.ringWrapper}>
-          {/* Glow border */}
-          <View style={[s.ringGlow, { borderColor: C + '22' }]} />
+          {/* === 5-layer pulsing aura (sky blue theme) === */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 32, height: RING_SZ + 32, borderRadius: (RING_SZ + 32) / 2, backgroundColor: 'rgba(56,189,248,0.04)', transform: [{ scale: pulseAnim }], top: -16, left: -16 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 22, height: RING_SZ + 22, borderRadius: (RING_SZ + 22) / 2, backgroundColor: 'rgba(56,189,248,0.08)', transform: [{ scale: pulseAnim }], top: -11, left: -11 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 14, height: RING_SZ + 14, borderRadius: (RING_SZ + 14) / 2, backgroundColor: 'rgba(56,189,248,0.14)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 7, height: RING_SZ + 7, borderRadius: (RING_SZ + 7) / 2, backgroundColor: 'rgba(56,189,248,0.22)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 2, height: RING_SZ + 2, borderRadius: (RING_SZ + 2) / 2, backgroundColor: 'rgba(56,189,248,0.30)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
+
+          {/* Inner glassy disk */}
+          <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SZ, height: RING_SZ, borderRadius: RING_SZ / 2, backgroundColor: 'rgba(56,189,248,0.07)', overflow: 'hidden' }}>
+            <LinearGradient
+              colors={['rgba(56,189,248,0.18)', 'rgba(56,189,248,0.02)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+          </View>
 
           <Svg
             width={RING_SZ}
@@ -373,41 +421,90 @@ export default function StepSessionScreen() {
           >
             <Defs>
               <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor={C} stopOpacity="1" />
-                <Stop offset="1" stopColor={C + 'AA'} stopOpacity="1" />
+                <Stop offset="0" stopColor="#38bdf8" stopOpacity="1" />
+                <Stop offset="0.5" stopColor="#7dd3fc" stopOpacity="1" />
+                <Stop offset="1" stopColor="#38bdf8" stopOpacity="1" />
               </SvgGrad>
             </Defs>
 
             {/* Track */}
-            <Circle
-              cx={RING_SZ / 2} cy={RING_SZ / 2} r={R}
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth={STROKE}
-              fill="none"
-            />
-
-            {/* Progress arc — driven by progressDashOffset state */}
-            <Circle
-              cx={RING_SZ/2} cy={RING_SZ/2} r={R}
-              stroke="url(#sessGrad)"
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={CIRCUM}
-              strokeDashoffset={progressDashOffset}
-            />
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={STROKE} />
+            {/* Wide outer glow */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#0ea5e9" strokeWidth={STROKE + 16} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.20} />
+            {/* Mid halo */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#7dd3fc" strokeWidth={STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.40} />
+            {/* Main crisp arc */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
+            {/* Inner sliver highlight */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#bae6fd" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.60} />
           </Svg>
 
           {/* Centre content */}
-          <View style={s.centreBox}>
-            <Animated.Text style={[s.bigSteps, { color: C, transform: [{ scale: stepBounce }] }]}>
-              {steps.toLocaleString()}
-            </Animated.Text>
-            <Text style={s.bigStepsUnit}>steps</Text>
-            <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '35' }]}>
-              <Text style={[s.goalChipTxt, { color: C }]}>
-                {Math.min(100, Math.round(pct * 100))}% · {meta.goal.toLocaleString()} goal
-              </Text>
+          <View style={[s.centreBox, { gap: 2 }]}>
+            <View style={{ alignItems: 'center' }}>
+              <Animated.Text style={[s.bigSteps, { fontSize: playingId ? 46 : 56, lineHeight: playingId ? 52 : 62, color: C, transform: [{ scale: stepBounce }] }]}>
+                {steps.toLocaleString()}
+              </Animated.Text>
+              <Text style={[s.bigStepsUnit, playingId && { fontSize: 11 }]}>STEPS</Text>
+            </View>
+            
+            {!playingId && (
+              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '35' }]}>
+                <Text style={[s.goalChipTxt, { color: C }]}>
+                  {Math.min(100, Math.round(pct * 100))}% · {meta.goal.toLocaleString()} goal
+                </Text>
+              </View>
+            )}
+
+            {/* Ultra-Smart Sound Controls */}
+            <View style={{ marginTop: playingId ? 4 : 8 }}>
+              {!playingId ? (
+                <TouchableOpacity 
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }}
+                  activeOpacity={0.8}
+                >
+                  <View style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                    paddingHorizontal: 16, paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(56,189,248,0.12)',
+                    borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)',
+                  }}>
+                    <Ionicons name="musical-notes" size={14} color="#38bdf8" style={{ marginRight: 6 }} />
+                    <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>SELECT SOUND</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  backgroundColor: 'rgba(0,0,0,0.45)',
+                  borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)',
+                  paddingHorizontal: 12, paddingVertical: 6,
+                  borderRadius: 24, gap: 14,
+                  shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10,
+                  elevation: 5,
+                }}>
+                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 4 }}>
+                    <Ionicons name="stop" size={14} color="rgba(255,255,255,0.45)" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
+                    style={{ 
+                      width: 38, height: 38, borderRadius: 19, 
+                      backgroundColor: 'rgba(56,189,248,0.2)', 
+                      borderWidth: 1, borderColor: 'rgba(56,189,248,0.5)',
+                      alignItems: 'center', justifyContent: 'center' 
+                    }}
+                  >
+                    <Ionicons name={isPaused ? "play" : "pause"} size={18} color="#FFF" style={isPaused ? { marginLeft: 2 } : {}} />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 4 }}>
+                    <Ionicons name="list" size={16} color="rgba(255,255,255,0.8)" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -511,6 +608,17 @@ export default function StepSessionScreen() {
           </View>
         </Animated.View>
       )}
+      {/* Sound Library Modal */}
+      <SoundLibraryModal
+        visible={isSoundModalVisible}
+        onClose={() => setIsSoundModalVisible(false)}
+        sounds={ALL_SOUNDS_LIST}
+        playingId={playingId}
+        onPlaySound={(id) => {
+          playSound(id);
+          setIsSoundModalVisible(false);
+        }}
+      />
     </View>
   );
 }

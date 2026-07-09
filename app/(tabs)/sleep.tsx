@@ -437,7 +437,7 @@ const AUTOMODE_TO_PERIOD: Record<string, string> = {
   sleep:   'night_pitta',
 };
 
-const ALL_SOUNDS_LIST: any[] = [
+export const ALL_SOUNDS_LIST: any[] = [
   ...(SLEEP_SOUNDS as readonly any[]).filter(s => !SLEEP_HIDDEN_IDS.has(s.id)),
   ...NADA_SOUNDS,
   ...MANTRA_LIBRARY.flatMap(g => g.sounds),
@@ -3686,49 +3686,6 @@ export default function SleepTab() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
 
 
-      {/* Premium Floating Settings Button */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
-          right: 12,
-          zIndex: 9999,
-          opacity: scrollY.interpolate({
-            inputRange: [0, 60],
-            outputRange: [1, 0],
-            extrapolate: 'clamp',
-          }),
-          transform: [{
-            translateY: scrollY.interpolate({
-              inputRange: [0, 60],
-              outputRange: [0, -100],
-              extrapolate: 'clamp',
-            }),
-          }],
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            borderWidth: 1.5,
-            borderColor: 'rgba(255,255,255,0.25)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4,
-            shadowRadius: 8,
-            elevation: 5,
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
-        </TouchableOpacity>
-      </Animated.View>
 
       {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>

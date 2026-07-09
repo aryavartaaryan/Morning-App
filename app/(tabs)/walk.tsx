@@ -36,6 +36,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBgContext } from '@/lib/bgContext';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
+import { getSolarTimes } from '@/lib/solar';
+import { store, KEYS } from '@/lib/storage';
 
 const { width: W } = Dimensions.get('window');
 
@@ -86,6 +88,8 @@ export default function WalkTab() {
   const [goalInput,    setGoalInput]    = useState('8000');
   const [streak,       setStreak]       = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sessionTitle, setSessionTitle] = useState('Start Morning walk with Naad sounds......');
+  const [sessionType, setSessionType]   = useState<'morning' | 'evening'>('morning');
   // Drives SVG strokeDashoffset via listener (avoids createAnimatedComponent crash)
   const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
 
@@ -99,11 +103,29 @@ export default function WalkTab() {
 
   useFocusEffect(useCallback(() => {
     walkScrollRef.current?.scrollTo({ y: 0, animated: false });
+    refreshStats();
   }, []));
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      const loc = await store.getObj<{lat: number, lon: number}>(KEYS.LOCATION);
+      if (loc) {
+        const solar = getSolarTimes(loc.lat, loc.lon);
+        const hour = new Date().getHours() + new Date().getMinutes() / 60;
+        
+        if (hour >= solar.sunrise && hour < solar.solarNoon + 1) {
+          setSessionTitle('Start Morning walk with Naad sounds......');
+          setSessionType('morning');
+        } else if (hour >= solar.solarNoon + 1 && hour < solar.sunset + 1) {
+          setSessionTitle('Start Evening walk with Naad sounds......');
+          setSessionType('evening');
+        } else {
+          setSessionTitle('Have a walk with Naad sounds......');
+          setSessionType('evening');
+        }
+      }
+
       const avail = await StepCounter.isAvailable();
       setIsAvailable(avail);
       if (avail) {
@@ -447,14 +469,14 @@ export default function WalkTab() {
         </Animated.View>
 
         {/* ── NADA SOUNDS BUTTON ───────────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 24, marginTop: 24, marginBottom: 8, height: 56 }}>
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 24, marginTop: 24, marginBottom: 8, height: 50 }}>
           <TouchableOpacity
-            onPress={() => launchSession('morning')}
+            onPress={() => launchSession(sessionType)}
             activeOpacity={0.80}
             style={{ height: '100%' }}
           >
             <View style={{
-              height: '100%', minHeight: 56,
+              height: '100%', minHeight: 50,
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
               paddingHorizontal: 22,
               borderRadius: 28, overflow: 'hidden',
@@ -481,7 +503,7 @@ export default function WalkTab() {
                 <Path d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
                 <Path d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
               </Svg>
-              <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.35 }}>Listen Nada Sound and have a morning walk...</Text>
+              <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.35 }}>{sessionTitle}</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>

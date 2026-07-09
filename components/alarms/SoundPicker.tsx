@@ -112,7 +112,13 @@ export default function SoundPicker({
                 return (
                   <TouchableOpacity
                     key={snd.id}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(snd.id); }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onSelect(snd.id);
+                      if (previewingId !== snd.id) {
+                        onTogglePreview(snd);
+                      }
+                    }}
                     activeOpacity={0.82}
                     style={{
                       width: CARD_W, height: CARD_H, borderRadius: 16, overflow: 'hidden',
