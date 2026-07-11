@@ -228,7 +228,7 @@ export function getPanchangData(date: Date = new Date()) {
   return { tithiName, tithiInPaksha, paksha, nakshatraIdx, yogaIdx, vaarIdx, moonAge, moonLong, sunLong };
 }
 
-export function getVedicMonth(date: Date = new Date()) {
+export function getVedicMonth(date: Date = new Date(), lat?: number) {
   const dJ2000 = (date.getTime() - 946728000000) / 86400000;
   const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
   const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
@@ -252,25 +252,101 @@ export function getVedicMonth(date: Date = new Date()) {
   const baseMonthIdx = isAdhik ? (rashiStart + 1) % 12 : rashiEnd;
   const baseMonth = RASHI_TO_VEDIC_MONTH[baseMonthIdx]!;
 
+  // Shift season by 6 months if in Southern Hemisphere
+  const isSouthern = typeof lat === 'number' && lat < 0;
+  const seasonIdx = isSouthern ? (baseMonthIdx + 6) % 12 : baseMonthIdx;
+  const season = RASHI_TO_VEDIC_MONTH[seasonIdx]!.season;
+
   if (isAdhik) {
     return {
       ...baseMonth,
       name: `Adhik ${baseMonth.name}`,
+      season,
     };
   }
-  return baseMonth;
+  return { ...baseMonth, season };
 }
 
-export function getNextLunarEvents(): { daysToFull: number; daysToNew: number } {
-  const KNOWN_NEW_MOON = new Date('2000-01-06T18:14:00Z').getTime();
+// ── Binary Search Timings ──────────────────────────────────────────────────
+function findBoundary(baseDate: Date, getVal: (d: Date) => number, stepHours: number, condition: (v1: number, v2: number) => boolean) {
+  let d1 = new Date(baseDate.getTime());
+  let d2 = new Date(baseDate.getTime() + stepHours * 3600000);
+  let v1 = getVal(d1);
+  let v2 = getVal(d2);
+  
+  let steps = 0;
+  while (!condition(v1, v2) && steps < 150) {
+    d1 = d2;
+    v1 = v2;
+    d2 = new Date(d1.getTime() + stepHours * 3600000);
+    v2 = getVal(d2);
+    steps++;
+  }
+  
+  if (steps >= 150) return null;
+  
+  for (let i = 0; i < 15; i++) {
+    const mid = new Date((d1.getTime() + d2.getTime()) / 2);
+    const vMid = getVal(mid);
+    if (condition(v1, vMid)) {
+      d2 = mid;
+      v2 = vMid;
+    } else {
+      d1 = mid;
+      v1 = vMid;
+    }
+  }
+  return d1;
+}
+
+export function getExactTimings(date: Date = new Date()) {
+  const getTithiIdx = (d: Date) => Math.floor(getPanchangData(d).moonAge / (29.53058867 / 30));
+  const tithiStart = findBoundary(date, getTithiIdx, -3, (v1, v2) => v1 !== v2);
+  const tithiEnd = findBoundary(date, getTithiIdx, 3, (v1, v2) => v1 !== v2);
+
+  const getNakshatraIdx = (d: Date) => getPanchangData(d).nakshatraIdx;
+  const nakshatraStart = findBoundary(date, getNakshatraIdx, -3, (v1, v2) => v1 !== v2);
+  const nakshatraEnd = findBoundary(date, getNakshatraIdx, 3, (v1, v2) => v1 !== v2);
+
+  const getYogaIdx = (d: Date) => getPanchangData(d).yogaIdx;
+  const yogaStart = findBoundary(date, getYogaIdx, -3, (v1, v2) => v1 !== v2);
+  const yogaEnd = findBoundary(date, getYogaIdx, 3, (v1, v2) => v1 !== v2);
+
+  const getRashiIdx = (d: Date) => Math.floor(getPanchangData(d).sunLong / 30);
+  const maasStart = findBoundary(date, getRashiIdx, -24, (v1, v2) => v1 !== v2);
+  const maasEnd = findBoundary(date, getRashiIdx, 24, (v1, v2) => v1 !== v2);
+
+  return { tithiStart, tithiEnd, nakshatraStart, nakshatraEnd, yogaStart, yogaEnd, maasStart, maasEnd };
+}
+
+export function getNextLunarEvents() {
+  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
   const CYCLE = 29.53058867;
-  const now = new Date();
-  const ageRaw = (now.getTime() - KNOWN_NEW_MOON) / (1000 * 60 * 60 * 24);
-  const age = ((ageRaw % CYCLE) + CYCLE) % CYCLE;
-  const half = CYCLE / 2;
-  const daysToFull = age < half ? Math.round(half - age) : Math.round(CYCLE - age + half);
-  const daysToNew  = Math.round(CYCLE - age);
-  return { daysToFull, daysToNew };
+  const HALF  = CYCLE / 2;
+  const now   = new Date();
+  const age   = (((now.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE + CYCLE) % CYCLE;
+  const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
+  const isFullToday = illum >= 97;
+  const isNewToday  = illum <= 3;
+  let daysToFull = HALF - age;
+  if (daysToFull <= 0) daysToFull += CYCLE;
+  if (isFullToday) daysToFull = 0;
+  let daysToNew = CYCLE - age;
+  if (daysToNew >= CYCLE) daysToNew = 0;
+  if (isNewToday) daysToNew = 0;
+  const fmtS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const fmtL: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+  const fullDate = new Date(now.getTime() + daysToFull * 86400000);
+  const newDate  = new Date(now.getTime() + daysToNew  * 86400000);
+  return {
+    daysToFull: Math.round(daysToFull),
+    daysToNew:  Math.round(daysToNew),
+    fullDateStr:  fullDate.toLocaleDateString('en-US', fmtS),
+    newDateStr:   newDate.toLocaleDateString('en-US', fmtS),
+    fullDateLong: fullDate.toLocaleDateString('en-US', fmtL),
+    newDateLong:  newDate.toLocaleDateString('en-US', fmtL),
+    isFullToday, isNewToday,
+  };
 }
 
 export function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithiName: string): number {

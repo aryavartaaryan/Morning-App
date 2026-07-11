@@ -118,6 +118,8 @@ export default function StepSessionScreen() {
   const pausedMsRef  = useRef(0);
   const pausedAtRef  = useRef(0);
   const doneRef      = useRef(false);
+  const lastUpdateRef = useRef(0);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Animations ─────────────────────────────────────────────────────────────
   const stepBounce   = useRef(new Animated.Value(1)).current;
@@ -195,15 +197,12 @@ export default function StepSessionScreen() {
     const sub = StepCounter.onStep((total) => {
       if (pausedRef.current || doneRef.current) return;
 
-      setSteps(total);
-
-      // Spring bounce
+      // 1. Run ultra-cheap native animations immediately (zero JS lag)
       Animated.sequence([
         Animated.spring(stepBounce, { toValue: 1.16, useNativeDriver: true, speed: 60, bounciness: 14 }),
         Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 40, bounciness: 4  }),
       ]).start();
 
-      // Ripple
       rippleScale.setValue(0);
       rippleOp.setValue(0.55);
       Animated.parallel([
@@ -211,31 +210,34 @@ export default function StepSessionScreen() {
         Animated.timing(rippleOp,   { toValue: 0, duration: 750, useNativeDriver: true }),
       ]).start();
 
-      // Haptic every 10 steps
-      if (total % 10 === 0) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      if (total % 10 === 0) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Progress ring
-      Animated.timing(progressAnim, {
-        toValue: Math.min(1, total / meta.goal),
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
-      // Sync to state (listener-based, avoids createAnimatedComponent crash)
-      const listener = progressAnim.addListener(({ value }) => {
-        setProgressDashOffset(CIRCUM - value * CIRCUM);
-      });
-
-      // Post-meal 100-step celebration
       if (type === 'postmeal' && total >= 100 && !doneRef.current) {
         doneRef.current = true;
         launchConfetti();
       }
-      
-      return () => progressAnim.removeListener(listener);
+
+      // 2. Throttle the heavy React re-render (setSteps / setProgressDashOffset)
+      const now = Date.now();
+      const syncState = () => {
+        setSteps(total);
+        setProgressDashOffset(CIRCUM - Math.min(1, total / meta.goal) * CIRCUM);
+        lastUpdateRef.current = Date.now();
+      };
+
+      if (now - lastUpdateRef.current > 1000) {
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        syncState();
+      } else {
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = setTimeout(syncState, 1000 - (now - lastUpdateRef.current));
+      }
     });
-    return () => sub.remove();
+
+    return () => {
+      sub.remove();
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
   }, []);
 
   // ── Hardware back button ───────────────────────────────────────────────────
@@ -276,7 +278,7 @@ export default function StepSessionScreen() {
   }, []);
 
   // ── Pause / Resume ─────────────────────────────────────────────────────────
-  const togglePause = () => {
+  const toggleSessionPause = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.spring(pauseScale, { toValue: 0.94, useNativeDriver: true, speed: 60 }).start(() => {
       Animated.spring(pauseScale, { toValue: 1.00, useNativeDriver: true, speed: 40 }).start();
@@ -386,13 +388,15 @@ export default function StepSessionScreen() {
             </Text>
           </View>
           <Text style={{
-            fontSize: 24,
-            color: 'rgba(255,255,255,0.9)',
+            fontSize: 20,
+            color: 'rgba(255,255,255,0.95)',
             fontFamily: 'DancingScript_600SemiBold',
             textAlign: 'center',
-            lineHeight: 32
+            lineHeight: 28,
+            paddingHorizontal: 8
           }}>
-            Connect headphones & listen to Naad sounds while you walk...
+            Connect headphones & immerse in Naad sounds.{'\n'}
+            For profound grounding, walk barefoot on clean, natural earth when the weather is optimum.
           </Text>
         </View>
 
@@ -519,7 +523,6 @@ export default function StepSessionScreen() {
           {[
             { icon: '🏃', val: `${distKm.toFixed(2)}`, unit: 'km'  },
             { icon: '⚡',  val: pace,                    unit: 'pace' },
-            { icon: '🔥', val: `${calories}`,            unit: 'kcal' },
           ].map((m, i) => (
             <View
               key={i}
@@ -555,7 +558,7 @@ export default function StepSessionScreen() {
                 s.pauseBtn,
                 paused && { borderColor: C, backgroundColor: C + '18' },
               ]}
-              onPress={togglePause}
+              onPress={toggleSessionPause}
             >
               <Text style={[s.pauseTxt, paused && { color: C }]}>
                 {paused ? '▶  RESUME' : '⏸  PAUSE'}
@@ -615,7 +618,11 @@ export default function StepSessionScreen() {
         sounds={ALL_SOUNDS_LIST}
         playingId={playingId}
         onPlaySound={(id) => {
-          playSound(id);
+          const meta = ALL_SOUNDS_LIST.find(s => s.id === id);
+          if (meta) {
+            // Play sound for an indefinite looping walk session (12 hrs)
+            playSound(meta, 43200, undefined, 0, true);
+          }
           setIsSoundModalVisible(false);
         }}
       />

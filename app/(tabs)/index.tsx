@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
+import { 
+  getPanchangData, getVedicMonth, getCosmicScore, getExactTimings,
+  NAKSHATRAS, YOGAS, VAARS, TITHI_NAMES, MOON_RITUALS, VAAR_ACTIONS, SCORE_META,
+  TITHI_ORDINALS, ENGLISH_DAYS, TITHI_ENERGY
+} from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform,
@@ -348,235 +353,7 @@ function SettingSunSVG({ size = 26 }: { size?: number }) {
   );
 }
 
-// ── Panchang data ─────────────────────────────────────────────────────────
-const NAKSHATRAS = [
-  { name: 'Ashwini',           constellation: 'Aries',       en: 'The Healer',         emoji: '🐴', energy: 'Swift starts & healing energy' },
-  { name: 'Bharani',           constellation: 'Aries',       en: 'The Carrier',        emoji: '⚖️', energy: 'Transformation & endurance' },
-  { name: 'Krittika',          constellation: 'Taurus',      en: 'The Flame',          emoji: '🔥', energy: 'Courage, clarity & purification' },
-  { name: 'Rohini',            constellation: 'Taurus',      en: 'The Abundant',       emoji: '🌹', energy: 'Growth, beauty & abundance' },
-  { name: 'Mrigashira',        constellation: 'Orion',       en: 'The Seeker',         emoji: '🦌', energy: 'Curiosity & gentle searching' },
-  { name: 'Ardra',             constellation: 'Orion',       en: 'The Storm',          emoji: '⛈️', energy: 'Renewal through intensity' },
-  { name: 'Punarvasu',         constellation: 'Gemini',      en: 'Return of Light',    emoji: '🏠', energy: 'Restoration & nourishment' },
-  { name: 'Pushya',            constellation: 'Cancer',      en: 'The Nourisher',      emoji: '🌸', energy: 'Most auspicious — nourish & give' },
-  { name: 'Ashlesha',          constellation: 'Hydra',       en: 'The Entwiner',       emoji: '🐍', energy: 'Deep insight & hidden wisdom' },
-  { name: 'Magha',             constellation: 'Leo',         en: 'The Throne',         emoji: '👑', energy: 'Ancestral power & authority' },
-  { name: 'Purva Phalguni',    constellation: 'Leo',         en: 'The Resting Star',   emoji: '🌺', energy: 'Rest, pleasure & creative flow' },
-  { name: 'Uttara Phalguni',   constellation: 'Virgo',       en: 'The Covenant',       emoji: '🤝', energy: 'Unions, loyalty & commitment' },
-  { name: 'Hasta',             constellation: 'Corvus',      en: 'The Skilled Hand',   emoji: '✋', energy: 'Craft, healing touch & skill' },
-  { name: 'Chitra',            constellation: 'Virgo',       en: 'The Brilliant',      emoji: '💎', energy: 'Radiant creativity & achievement' },
-  { name: 'Swati',             constellation: 'Boötes',      en: 'The Independent',    emoji: '🌬️', energy: 'Freedom, flexibility & movement' },
-  { name: 'Vishakha',          constellation: 'Libra',       en: 'The Forked Branch',  emoji: '⚡', energy: 'Ambition, purpose & breakthrough' },
-  { name: 'Anuradha',          constellation: 'Scorpius',    en: 'The Devoted Star',   emoji: '💫', energy: 'Friendship, devotion & success' },
-  { name: 'Jyeshtha',          constellation: 'Scorpius',    en: 'The Eldest',         emoji: '🛡️', energy: 'Power, protection & seniority' },
-  { name: 'Mula',              constellation: 'Sagittarius', en: 'The Root',           emoji: '🌱', energy: 'Core truth & deep foundations' },
-  { name: 'Purva Ashadha',     constellation: 'Sagittarius', en: 'The Undefeated',     emoji: '🌊', energy: 'Strength, purification & victory' },
-  { name: 'Uttara Ashadha',    constellation: 'Sagittarius', en: 'The Universal',      emoji: '🌟', energy: 'Universal truth & final success' },
-  { name: 'Shravana',          constellation: 'Aquila',      en: 'The Listener',       emoji: '👂', energy: 'Learning, listening & connection' },
-  { name: 'Dhanishtha',        constellation: 'Delphinus',   en: 'The Richest',        emoji: '🥁', energy: 'Wealth, music & cosmic rhythm' },
-  { name: 'Shatabhisha',       constellation: 'Aquarius',    en: 'Hundred Healers',    emoji: '💊', energy: 'Healing, mystery & deep knowing' },
-  { name: 'Purva Bhadrapada',  constellation: 'Pegasus',     en: 'Fierce Feet',        emoji: '🔱', energy: 'Transformation & spiritual fire' },
-  { name: 'Uttara Bhadrapada', constellation: 'Andromeda',   en: 'Gentle Feet',        emoji: '🐉', energy: 'Depth, wisdom & universal love' },
-  { name: 'Revati',            constellation: 'Pisces',      en: 'The Wealthy',        emoji: '🐟', energy: 'Completion, nourishment & safe journey' },
-];
-
-const YOGAS = [
-  { name: 'Vishkambha', en: 'Supportive',    auspicious: true,  meaning: 'Strong support available today' },
-  { name: 'Priti',      en: 'Affection',     auspicious: true,  meaning: 'Day of love, connection & harmony' },
-  { name: 'Ayushman',   en: 'Vitality',      auspicious: true,  meaning: 'Health & longevity energy amplified' },
-  { name: 'Saubhagya',  en: 'Good Fortune',  auspicious: true,  meaning: 'Auspicious for all new beginnings' },
-  { name: 'Shobhana',   en: 'Radiance',      auspicious: true,  meaning: 'Your ideas shine brightest today' },
-  { name: 'Atiganda',   en: 'Caution',       auspicious: false, meaning: 'Pause before major decisions today' },
-  { name: 'Sukarman',   en: 'Right Action',  auspicious: true,  meaning: 'Aligned actions yield great results' },
-  { name: 'Dhriti',     en: 'Resolve',       auspicious: true,  meaning: 'Steady determination — keep going' },
-  { name: 'Shula',      en: 'Challenge',     auspicious: false, meaning: 'Navigate obstacles with patience' },
-  { name: 'Ganda',      en: 'Knot',          auspicious: false, meaning: 'Simplify & clear blockages today' },
-  { name: 'Vriddhi',    en: 'Growth',        auspicious: true,  meaning: 'Expansion — ideal to plant seeds' },
-  { name: 'Dhruva',     en: 'Constant',      auspicious: true,  meaning: 'Stability & permanence favored' },
-  { name: 'Vyaghata',   en: 'Striking',      auspicious: false, meaning: 'Bold moves can break old patterns' },
-  { name: 'Harshana',   en: 'Delight',       auspicious: true,  meaning: 'Joy & celebration in the air' },
-  { name: 'Vajra',      en: 'Diamond',       auspicious: true,  meaning: 'Unbreakable clarity & strength' },
-  { name: 'Siddhi',     en: 'Mastery',       auspicious: true,  meaning: 'Completion energy — finish what you start' },
-  { name: 'Vyatipata',  en: 'Rest',          auspicious: false, meaning: 'Inner work over outer action today' },
-  { name: 'Variyan',    en: 'Superior',      auspicious: true,  meaning: 'Your unique talents are most visible' },
-  { name: 'Parigha',    en: 'Barrier',       auspicious: false, meaning: 'Steady approach, avoid shortcuts' },
-  { name: 'Shiva',      en: 'Auspicious',    auspicious: true,  meaning: 'Highly favored — begin anything today' },
-  { name: 'Siddha',     en: 'Accomplished',  auspicious: true,  meaning: 'Skills sharp — take inspired action' },
-  { name: 'Sadhya',     en: 'Workable',      auspicious: true,  meaning: 'Step-by-step progress yields results' },
-  { name: 'Shubha',     en: 'Blessed',       auspicious: true,  meaning: 'Beautiful energy for love & art' },
-  { name: 'Shukla',     en: 'Pure',          auspicious: true,  meaning: 'Clear intentions manifest quickly' },
-  { name: 'Brahma',     en: 'Creator',       auspicious: true,  meaning: 'Creation energy — ideal for new projects' },
-  { name: 'Mahendra',   en: 'Great Power',   auspicious: true,  meaning: 'Peak power — lead, act & create' },
-  { name: 'Vaidhriti',  en: 'Ill-carried',   auspicious: false, meaning: 'Rest & reflect — avoid major launches' },
-];
-
-const VAARS = [
-  { vedicName: 'Surya Vaar',  planet: 'Sun',     emoji: '☀️', color: '#fbbf24', energy: 'Leadership, clarity & self-expression' },
-  { vedicName: 'Soma Vaar',   planet: 'Moon',    emoji: '🌙', color: '#93c5fd', energy: 'Intuition, emotion & inner wisdom' },
-  { vedicName: 'Mangal Vaar', planet: 'Mars',    emoji: '🔴', color: '#f87171', energy: 'Courage, strength & decisive action' },
-  { vedicName: 'Budha Vaar',  planet: 'Mercury', emoji: '💚', color: '#6ee7b7', energy: 'Communication, learning & agility' },
-  { vedicName: 'Guru Vaar',   planet: 'Jupiter', emoji: '🌟', color: '#fde68a', energy: 'Wisdom, expansion & dharmic action' },
-  { vedicName: 'Shukra Vaar', planet: 'Venus',   emoji: '💗', color: '#f9a8d4', energy: 'Beauty, creativity & abundance' },
-  { vedicName: 'Shani Vaar',  planet: 'Saturn',  emoji: '🪐', color: '#a5b4fc', energy: 'Discipline, karma & enduring effort' },
-];
-
-const ENGLISH_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const TITHI_ORDINALS = ['','First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth','Ninth','Tenth','Eleventh','Twelfth','Thirteenth','Fourteenth','Full Moon'];
-const TITHI_NAMES = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima'];
-const TITHI_ENERGY: Record<string, string> = {
-  Pratipada: 'New beginnings & fresh intentions', Dwitiya: 'Building on new foundations',
-  Tritiya: 'Growth & creative momentum', Chaturthi: 'Remove obstacles — pray to Ganesha',
-  Panchami: 'Knowledge, learning & intellect', Shashthi: 'Health & vitality rituals',
-  Saptami: 'Sun worship & action', Ashtami: 'Durga energy — courage & transformation',
-  Navami: 'Ancestral blessings & devotion', Dashami: 'Dharmic deeds & charity',
-  Ekadashi: 'Fasting, spiritual detox & clarity', Dwadashi: 'Vishnu worship & service',
-  Trayodashi: 'Kama — desire, joy & prosperity', Chaturdashi: 'Shiva energy — release & dissolve',
-  Purnima: 'Full Moon — gratitude & celebration',
-};
-
-function getPanchangData(date: Date = new Date()) {
-  const CYCLE = 29.53058867;
-  const r = (x: number) => x * Math.PI / 180;
-  const dJ2000 = (date.getTime() - 946728000000) / 86400000;
-
-  // Sun tropical longitude (Jean Meeus low-precision, ~1°)
-  const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
-  const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
-  const sunTropical = ((Ldeg + 1.915 * Math.sin(r(gdeg)) + 0.020 * Math.sin(r(2 * gdeg))) % 360 + 360) % 360;
-
-  // Moon tropical longitude (Jean Meeus Ch.47 simplified, ~1°)
-  const L0 = 218.3165 + 13.1763966 * dJ2000;
-  const M  = 357.5291 + 0.9856003  * dJ2000;
-  const Mp = 134.9634 + 13.0649930 * dJ2000;
-  const D  = 297.8502 + 12.1907180 * dJ2000;
-  const F  = 93.2721  + 13.2293705 * dJ2000;
-  const moonTropical = ((
-    L0
-    + 6.2886 * Math.sin(r(Mp))
-    + 1.2740 * Math.sin(r(2 * D - Mp))
-    + 0.6583 * Math.sin(r(2 * D))
-    + 0.2136 * Math.sin(r(2 * Mp))
-    - 0.1851 * Math.sin(r(M))
-    - 0.1143 * Math.sin(r(2 * F))
-    + 0.0588 * Math.sin(r(2 * D - 2 * Mp))
-    + 0.0572 * Math.sin(r(2 * D - M - Mp))
-    + 0.0533 * Math.sin(r(2 * D + Mp))
-  ) % 360 + 360) % 360;
-
-  // Lahiri ayanamsha — converts tropical → sidereal (nirayana)
-  const ayanamsha = 23.8526 + 0.013972 * (dJ2000 / 365.25);
-  const moonLong = ((moonTropical - ayanamsha) % 360 + 360) % 360;
-  const sunLong  = ((sunTropical  - ayanamsha) % 360 + 360) % 360;
-
-  // Tithi — from elongation (ayanamsha cancels, no conversion needed)
-  const elongation = ((moonTropical - sunTropical) % 360 + 360) % 360;
-  const moonAge    = (elongation / 360) * CYCLE;
-  const tithiNum   = Math.min(30, Math.floor(elongation / 12) + 1);
-  const paksha     = tithiNum <= 15 ? 'Shukla' : 'Krishna';
-  const tithiInPaksha = tithiNum <= 15 ? tithiNum : tithiNum - 15;
-  const tithiName  = tithiInPaksha === 15 ? (paksha === 'Shukla' ? 'Purnima' : 'Amavasya') : (TITHI_NAMES[tithiInPaksha] ?? String(tithiInPaksha));
-
-  // Nakshatra — sidereal Moon longitude / 13.333°
-  const nakshatraIdx = Math.min(26, Math.floor(moonLong / (360 / 27)));
-
-  // Yoga — sum of sidereal Sun + Moon longitudes / 13.333°
-  const yogaLong = ((sunLong + moonLong) % 360 + 360) % 360;
-  const yogaIdx  = Math.min(26, Math.floor(yogaLong / (360 / 27)));
-
-  const vaarIdx = date.getDay();
-  return { tithiName, tithiInPaksha, paksha, nakshatraIdx, yogaIdx, vaarIdx, moonAge };
-}
-
-// Rashi (sidereal sign) → Vedic Saura Maasa (solar month)
-// Order: Mesha=0 … Meena=11
-const RASHI_TO_VEDIC_MONTH = [
-  { name: 'Chaitra',      sanskrit: 'चैत्र',       rashi: 'Mesha',     en: 'Mar–Apr' },
-  { name: 'Vaishakha',    sanskrit: 'वैशाख',       rashi: 'Vrishabha', en: 'Apr–May' },
-  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',     rashi: 'Mithuna',   en: 'May–Jun' },
-  { name: 'Asadh',        sanskrit: 'आषाढ़',       rashi: 'Karka',     en: 'Jun–Jul' },
-  { name: 'Shravana',     sanskrit: 'श्रावण',      rashi: 'Simha',     en: 'Jul–Aug' },
-  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',     rashi: 'Kanya',     en: 'Aug–Sep' },
-  { name: 'Ashwin',       sanskrit: 'आश्विन',      rashi: 'Tula',      en: 'Sep–Oct' },
-  { name: 'Kartik',       sanskrit: 'कार्तिक',     rashi: 'Vrischika', en: 'Oct–Nov' },
-  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष',  rashi: 'Dhanu',     en: 'Nov–Dec' },
-  { name: 'Pausha',       sanskrit: 'पौष',          rashi: 'Makara',    en: 'Dec–Jan' },
-  { name: 'Magha',        sanskrit: 'माघ',          rashi: 'Kumbha',    en: 'Jan–Feb' },
-  { name: 'Phalguna',     sanskrit: 'फाल्गुन',     rashi: 'Meena',     en: 'Feb–Mar' },
-];
-function getVedicMonth(date: Date = new Date()) {
-  const dJ2000 = (date.getTime() - 946728000000) / 86400000;
-
-  // ── Sun: tropical → sidereal (Lahiri ayanamsha) ──
-  const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
-  const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
-  const gRad = gdeg * Math.PI / 180;
-  const sunTropical = ((Ldeg + 1.915 * Math.sin(gRad) + 0.020 * Math.sin(2 * gRad)) % 360 + 360) % 360;
-  const ayanamsha   = 23.85 + 0.0136 * (dJ2000 / 365.25);
-  const siderealSun = ((sunTropical - ayanamsha) % 360 + 360) % 360;
-
-  // ── Moon age in current lunation (0 = Amavasya, ~14.77 = Purnima) ──
-  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
-  const CYCLE    = 29.53058867;
-  const moonAge  = ((((date.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE) + CYCLE) % CYCLE;
-
-  // ── Purnimanta Chandra Maasa (North India) ──
-  // Month starts right after Purnima; named by Sun's rashi at the CLOSING Purnima.
-  // Shukla paksha (moonAge < halfCycle): closing Purnima is THIS lunation's Purnima.
-  // Krishna paksha (moonAge >= halfCycle): month just changed; closing Purnima is NEXT lunation's.
-  const halfCycle           = CYCLE / 2;
-  const daysToClosingPurnima = moonAge < halfCycle
-    ? halfCycle - moonAge           // Purnima still ahead in this lunation
-    : CYCLE - moonAge + halfCycle;  // next Purnima closes the new month
-  const sunAtClosingPurnima = ((siderealSun + daysToClosingPurnima * 0.9856) % 360 + 360) % 360;
-
-  const rashiIdx = Math.floor(sunAtClosingPurnima / 30) % 12;
-  return RASHI_TO_VEDIC_MONTH[rashiIdx];
-}
-
-// ── Moon rituals, Vaar actions, Cosmic Score ─────────────────────────────
-const MOON_RITUALS: Record<string, { prompt: string; action: string }> = {
-  '🌑': { prompt: 'New Moon energy',         action: 'Write one clear intention. Plant your seed of desire today.' },
-  '🌒': { prompt: 'Waxing Crescent energy',  action: 'Take the very first small step. Start before you feel ready.' },
-  '🌓': { prompt: 'First Quarter energy',    action: 'Push through resistance. Decide and commit — no more hesitation.' },
-  '🌔': { prompt: 'Waxing Gibbous energy',   action: 'Refine your effort. You\'re close — adjust and keep momentum.' },
-  '🌕': { prompt: 'Full Moon energy',        action: 'Express gratitude out loud. Journal what you\'re releasing.' },
-  '🌖': { prompt: 'Waning Gibbous energy',   action: 'Share what you\'ve learned. Give generously to someone today.' },
-  '🌗': { prompt: 'Last Quarter energy',     action: 'Forgive one thing. Clear mental clutter — delete, unfollow, let go.' },
-  '🌘': { prompt: 'Waning Crescent energy',  action: 'Rest deeply. Recharge. The next cycle begins very soon.' },
-};
-
-const VAAR_ACTIONS: string[] = [
-  'Spend 10 min in sunlight. Set one bold, visible goal today.',
-  'Journal your feelings. Trust your first instinct on a decision.',
-  'Do the one hard thing you\'ve been avoiding. Start it now.',
-  'Write, call, or send that message. Communicate something important.',
-  'Read something that challenges you. Teach or mentor someone today.',
-  'Create something — cook, paint, write, arrange. Connect with beauty.',
-  'Tackle your most disciplined, long-term task. No shortcuts today.',
-];
-
-function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithiName: string): number {
-  let score = 5;
-  if (yogaAuspicious) score += 2; else score -= 1;
-  if (moonEmoji === '🌕' || moonEmoji === '🌑') score += 2;
-  else if (moonEmoji === '🌓' || moonEmoji === '🌗') score += 1;
-  else score += 1;
-  if (tithiName === 'Ekadashi' || tithiName === 'Purnima') score += 1;
-  if (tithiName === 'Ashtami' || tithiName === 'Chaturdashi') score -= 1;
-  return Math.max(1, Math.min(10, score));
-}
-
-const SCORE_META: Record<number, { label: string; color: string; emoji: string }> = {
-  1:  { label: 'Challenging',   color: '#f43f5e', emoji: '🌧️' },
-  2:  { label: 'Challenging',   color: '#f43f5e', emoji: '🌧️' },
-  3:  { label: 'Mixed',         color: '#fb923c', emoji: '⛅' },
-  4:  { label: 'Mixed',         color: '#fb923c', emoji: '⛅' },
-  5:  { label: 'Steady',        color: '#fbbf24', emoji: '🌤️' },
-  6:  { label: 'Favorable',     color: '#34d399', emoji: '✨' },
-  7:  { label: 'Favorable',     color: '#34d399', emoji: '✨' },
-  8:  { label: 'Excellent',     color: '#10b981', emoji: '🌟' },
-  9:  { label: 'Excellent',     color: '#10b981', emoji: '🌟' },
-  10: { label: 'Cosmic Peak',   color: '#60a5fa', emoji: '⚡' },
-};
+// ── Imported Panchang Data ───────────────────────────────────────────────
 
 // ── Panchang Card ─────────────────────────────────────────────────────────
 function PanchangCard({ onExplore }: { onExplore: () => void }) {
@@ -1551,7 +1328,7 @@ function TodayHeroCard({
   const vaar        = VAARS[p.vaarIdx];
   const nakshatra   = NAKSHATRAS[p.nakshatraIdx];
   const yoga        = YOGAS[p.yogaIdx];
-  const vMonth      = getVedicMonth();
+  const vMonth      = getVedicMonth(new Date(), weather?.lat);
   const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Sacred lunar energy';
   const moonRitual  = MOON_RITUALS[moon.emoji] ?? { prompt: 'Lunar energy', action: 'Connect with the moon tonight.' };
   const vaarAction  = VAAR_ACTIONS[p.vaarIdx] ?? '';
@@ -2738,7 +2515,7 @@ function WeatherSection({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 }}
+          contentContainerStyle={{ gap: 6, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8 }}
         >
           {weather.hourly?.map((pt, i) => {
             const isNow = i === 0;
@@ -2775,7 +2552,7 @@ const WSEC = StyleSheet.create({
     overflow: 'hidden',
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
-  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, gap: 10 },
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bigEmoji: { fontSize: 32 },
@@ -2790,7 +2567,7 @@ const WSEC = StyleSheet.create({
   chevronWrap: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', marginLeft: 4 },
   chevron: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '900', lineHeight: 14 },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
-  hourCard: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 54, gap: 2 },
+  hourCard: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 54, gap: 2 },
   hourCardNow: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' },
   hourTime: { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 },
   hourEmoji: { fontSize: 20, marginVertical: 2 },
@@ -4530,7 +4307,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
   );
   const { bgKey } = useBgContext();
   const cardBg = getCardBg(bgKey);
-  const isNightBg = ['night', 'brahma', 'predawn', 'twilight', 'evening'].includes(bgKey);
+  const isNightBg = ['night', 'brahma', 'predawn', 'twilight', 'evening_early', 'evening'].includes(bgKey);
   const signalCardBg = isNightBg ? 'rgba(6,15,40,0.18)' : cardBg;
 
   const rawCards: HESCard[] = React.useMemo(() => {
@@ -4866,7 +4643,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
 // Sleep Sounds pulsing entry button — home screen shortcut to Sleep tab
 // ══════════════════════════════════════════════════════════════════════════════
 function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaMuhurtaInfo['status'] | null): string {
-  if (!period) return 'Listen Nada Sounds & Heal';
+  if (!period) return 'Listen Naad Sounds & Heal';
 
   const getDurationMinutes = () => {
     const deltaH = (period.endH - period.startH + 24) % 24;
@@ -4876,7 +4653,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
 
   switch (period.id) {
     case 'night_vata':
-      if (brahmaStatus === 'active') return 'Listen Nada Sounds & Meditate';
+      if (brahmaStatus === 'active') return 'Listen Naad Sounds & Meditate';
       return 'Listen & Drift Toward Dawn';
     case 'morning_kapha':
       return 'Listen & Recharge for the Day';
@@ -4895,7 +4672,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
     case 'night_pitta':
       return 'Listen to Sounds & Sleep Deep';
     default:
-      return 'Listen Nada Sounds & Heal';
+      return 'Listen Naad Sounds & Heal';
   }
 }
 
@@ -5779,40 +5556,40 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
         )}
       </Animated.View>
 
-      {/* ── NADA SOUNDS SUGGESTION — contextual nudge for every phase ── */}
+      {/* ── NAAD SOUNDS SUGGESTION — contextual nudge for every phase ── */}
       {(() => {
-        const NADA_MAP: Record<string, { badge: string; title: string; sub: string }> = {
-          night_vata:     { badge: '✦  SACRED DAWN · NADA SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Nada frequencies deepen stillness without effort. Just press play and breathe.' },
-          morning_kapha:  { badge: '✦  MORNING RITUAL · NADA SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
-          midday_pitta:   { badge: '✦  DEEP FOCUS · NADA SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
-          afternoon_vata: { badge: '✦  CREATIVE PEAK · NADA SOUNDS',  title: 'Try Nada Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
-          evening_kapha:  { badge: '✦  WIND-DOWN · NADA SOUNDS',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
-          night_pitta:    { badge: '✦  DEEP SLEEP · NADA SOUNDS',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
+        const NAAD_MAP: Record<string, { badge: string; title: string; sub: string }> = {
+          night_vata:     { badge: '✦  SACRED DAWN · NAAD SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Naad frequencies deepen stillness without effort. Just press play and breathe.' },
+          morning_kapha:  { badge: '✦  MORNING RITUAL · NAAD SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
+          midday_pitta:   { badge: '✦  DEEP FOCUS · NAAD SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
+          afternoon_vata: { badge: '✦  CREATIVE PEAK · NAAD SOUNDS',  title: 'Try Naad Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
+          evening_kapha:  { badge: '✦  WIND-DOWN · NAAD SOUNDS',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
+          night_pitta:    { badge: '✦  DEEP SLEEP · NAAD SOUNDS',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
         };
-        const nada = NADA_MAP[period.id];
-        if (!nada) return null;
-        const nadaColor = accentColor;
+        const naad = NAAD_MAP[period.id];
+        if (!naad) return null;
+        const naadColor = accentColor;
         return (
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.navigate('/(tabs)/sleep' as never); }}
             activeOpacity={0.84}
-            style={{ borderRadius: 16, backgroundColor: nadaColor + '12', overflow: 'hidden', marginBottom: 8 }}>
+            style={{ borderRadius: 16, backgroundColor: naadColor + '12', overflow: 'hidden', marginBottom: 8 }}>
             <LinearGradient
-              colors={[nadaColor + '20', nadaColor + '06', 'transparent']}
+              colors={[naadColor + '20', naadColor + '06', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 13, gap: 12 }}>
-              <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: nadaColor + '22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: naadColor + '22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Text style={{ fontSize: 22 }}>〰️</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 6.5, fontWeight: '900', color: nadaColor + 'CC', letterSpacing: 1.6, marginBottom: 4 }}>{nada.badge}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFEE', lineHeight: 16 }}>{nada.title}</Text>
-                <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.50)', lineHeight: 14, marginTop: 3 }}>{nada.sub}</Text>
+                <Text style={{ fontSize: 6.5, fontWeight: '900', color: naadColor + 'CC', letterSpacing: 1.6, marginBottom: 4 }}>{naad.badge}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFEE', lineHeight: 16 }}>{naad.title}</Text>
+                <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.50)', lineHeight: 14, marginTop: 3 }}>{naad.sub}</Text>
               </View>
               <View style={{ alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                <Text style={{ fontSize: 9, fontWeight: '900', color: nadaColor + 'EE', letterSpacing: 0.4 }}>Explore</Text>
-                <Text style={{ fontSize: 16, color: nadaColor + 'EE', fontWeight: '900' }}>→</Text>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: naadColor + 'EE', letterSpacing: 0.4 }}>Explore</Text>
+                <Text style={{ fontSize: 16, color: naadColor + 'EE', fontWeight: '900' }}>→</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -5826,7 +5603,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
 // ══════════════════════════════════════════════════════════════════════════════
 // Vedic Almanac Card — Redesigned premium glassy layout for DayDetailSheet
 // ══════════════════════════════════════════════════════════════════════════════
-function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTimes | null; onCosmicPress: () => void }) {
+function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes: SolarTimes | null; weather?: WeatherData | null; onCosmicPress: () => void }) {
   const router    = useRouter();
   const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
   const p         = React.useMemo(() => getPanchangData(), []);
@@ -5834,7 +5611,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
   const vaar      = VAARS[p.vaarIdx];
   const nakshatra = NAKSHATRAS[p.nakshatraIdx];
   const yoga      = YOGAS[p.yogaIdx];
-  const vMonth    = getVedicMonth();
+  const vMonth    = getVedicMonth(new Date(), weather?.lat);
   const now       = new Date();
 
   const [activeExp, setActiveExp] = useState<{title: string; sanskrit: string; icon: string; description: string} | null>(null);
@@ -5869,12 +5646,16 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
 
   const gregorianShort = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
+  const timings = React.useMemo(() => getExactTimings(now), [now]);
+  const tFmt = (d: Date | null) => d ? d.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
   const panchangaRows = [
     {
       label: 'MAAS',
       labelFull: 'Month',
       value: vMonth.name,
       sub: vMonth.en,
+      timing: `${tFmt(timings.maasStart)} - ${tFmt(timings.maasEnd)}`,
       color: '#fbbf24',
       emoji: '📅',
       desc: `The Vedic calendar tracks the sun's passage through the 12 rashis. You are in the month of ${vMonth.name} (${vMonth.en}), associated with the ${(vMonth as any).season} season.`,
@@ -5884,15 +5665,17 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
       labelFull: 'Lunar Day',
       value: p.tithiName,
       sub: `${p.paksha} Paksha · Day ${p.tithiInPaksha}`,
+      timing: `${tFmt(timings.tithiStart)} - ${tFmt(timings.tithiEnd)}`,
       color: '#A78BFA',
       emoji: '🌙',
-      desc: tithiEnergyText,
+      desc: `${tithiEnergyText}`,
     },
     {
       label: 'NAKSHATRA',
       labelFull: 'Star',
       value: nakshatra.name,
       sub: nakshatra.en,
+      timing: `${tFmt(timings.nakshatraStart)} - ${tFmt(timings.nakshatraEnd)}`,
       color: '#60a5fa',
       emoji: nakshatra.emoji || '⭐',
       desc: `The Moon is transiting ${nakshatra.name} (${nakshatra.constellation}), ruled by ${(nakshatra as any).planet}. Energy: ${nakshatra.energy}`,
@@ -5902,6 +5685,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
       labelFull: 'Cosmic Alignment',
       value: yoga.name,
       sub: yoga.en,
+      timing: `${tFmt(timings.yogaStart)} - ${tFmt(timings.yogaEnd)}`,
       color: yoga.auspicious ? '#10b981' : '#f87171',
       emoji: yoga.auspicious ? '✨' : '⚠️',
       desc: `The sun-moon angle forms ${yoga.name} yoga. ${yoga.meaning}. This is an ${yoga.auspicious ? 'auspicious' : 'inauspicious'} alignment.`,
@@ -5911,6 +5695,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
       labelFull: 'Day',
       value: vaar.vedicName,
       sub: `${ENGLISH_DAYS[p.vaarIdx]} · ${vaar.planet} Day`,
+      timing: null,
       color: vaar.color,
       emoji: vaarEmoji,
       desc: `Today is ruled by ${vaar.planet}. ${vaar.energy}`,
@@ -5922,7 +5707,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
       {/* VEDIC ALMANAC CARD */}
       <View style={{
         marginHorizontal: 14,
-        marginTop: 8,
+        marginTop: 4,
         marginBottom: 4,
         borderRadius: 20,
         overflow: 'hidden',
@@ -5949,10 +5734,10 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
         {/* TOP BOUNDARY */}
         <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.18)', width: '100%' }} />
 
-        <View style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
 
           {/* TITLE + DATE HEADER */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5, marginBottom: 5 }}>
                 ✦  VEDIC ALMANAC
@@ -5976,7 +5761,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           </View>
 
           {/* Moon event badges */}
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
             <View style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)' }}>
               <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(255,255,255,0.75)' }}>
                 {p.paksha === 'Shukla' ? '🌒 Waxing' : '🌘 Waning'}
@@ -6004,7 +5789,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
                     Haptics.selectionAsync();
                     setExpandedRow(isExpanded ? null : idx);
                   }}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, gap: 10 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 10 }}>
                   <View style={{ width: 70 }}>
                     <Text style={{ fontSize: 7, fontWeight: '900', color: row.color + 'BB', letterSpacing: 1.4 }}>
                       {row.label}
@@ -6017,6 +5802,13 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
                     <Text style={{ fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.4)', marginTop: 1 }} numberOfLines={1}>
                       {row.sub}
                     </Text>
+                    {row.timing && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 }}>
+                        <Text style={{ fontSize: 8.5, fontWeight: '800', color: row.color + 'A0', letterSpacing: 0.3 }} numberOfLines={1}>
+                          {row.timing.replace(' - ', '  →  ').toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={{ fontSize: 14, color: isExpanded ? row.color + 'CC' : 'rgba(255,255,255,0.25)', fontWeight: '600' }}>
                     {isExpanded ? '↑' : '›'}
@@ -6052,11 +5844,11 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           })}
 
           {/* BOTTOM DIVIDER */}
-          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginTop: 4, marginBottom: 14 }} />
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.09)', marginTop: 4, marginBottom: 10 }} />
 
           {/* SOLAR ARC BAR */}
           {csr !== null && css !== null && (
-            <View style={{ marginBottom: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 14 }}>
+            <View style={{ marginBottom: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12 }}>
               {dayPct !== null && (
                 <View style={{ marginBottom: 10 }}>
                   <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
@@ -6101,7 +5893,7 @@ function CosmicCompactCard({ solarTimes, onCosmicPress }: { solarTimes: SolarTim
           {/* EXPLORE VEDIC ALMANAC BUTTON */}
           <TouchableOpacity
             activeOpacity={0.82}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/cosmic-explore' as never); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
             style={{ borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.38)' }}>
             <LinearGradient
               colors={['rgba(167,139,250,0.16)', 'rgba(96,165,250,0.09)', 'rgba(167,139,250,0.06)']}
@@ -6240,8 +6032,9 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
   onClose: () => void;
   onShowShareCard: () => void;
 }) {
+  const router = useRouter();
   const { bgUri, bgKey } = useBgContext();
-  const isNight = ['night', 'brahma', 'predawn', 'twilight', 'evening'].includes(bgKey);
+  const isNight = ['night', 'brahma', 'predawn', 'twilight', 'evening_early', 'evening'].includes(bgKey);
   const slideAnim   = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, friction: 11, tension: 60 }).start();
@@ -6306,7 +6099,12 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
             {/* ── COSMOS card ── */}
             <CosmicCompactCard
               solarTimes={solarTimes}
-              onCosmicPress={() => {}}
+              weather={weather}
+              onCosmicPress={() => {
+                onClose();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any);
+              }}
             />
 
 

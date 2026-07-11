@@ -26,7 +26,6 @@ let _installed = false;
 let _fatalCount = 0;
 
 export function installCrashShield() {
-  if (_installed) return;
   _installed = true;
 
   // ── 1. Global JS exception handler ─────────────────────────────────────────

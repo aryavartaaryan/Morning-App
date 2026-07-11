@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const WALK_BG_TASK   = 'nada-background-walk-tracker';
-export const WALK_STATE_KEY = 'nada_active_walk_v2';
+export const WALK_BG_TASK   = 'naad-background-walk-tracker';
+export const WALK_STATE_KEY = 'naad_active_walk_v2';
 
 export type WalkMode = 'barefoot' | 'regular';
 

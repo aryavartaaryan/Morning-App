@@ -45,8 +45,11 @@ export function getSolarTimes(lat: number, lon: number, date?: Date): SolarTimes
     + 0.001480 * Math.sin(3 * gamma);
 
   // Sunrise/sunset hour angle (radians → convert to hours)
+  // Standard altitude for sunrise/sunset is -0.833 degrees (-50 arcminutes) 
+  // due to atmospheric refraction (34') and sun's radius (16')
+  const hRad = -0.833 * Math.PI / 180;
   const latRad = (lat * Math.PI) / 180;
-  const cosHA = -Math.tan(latRad) * Math.tan(decl);
+  const cosHA = (Math.sin(hRad) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
 
   // Edge cases: polar day / polar night
   if (cosHA <= -1) return { sunrise: 0, sunset: 24, solarNoon: 12 };

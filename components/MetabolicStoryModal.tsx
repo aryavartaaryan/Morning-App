@@ -619,19 +619,19 @@ function Card7bAvoidNow({ period, accent }: { period: DoshaPeriod; accent: strin
 }
 
 // ── CARD 8: Nāda + Wellness Portal ────────────────────────────────────────────
-function Card8Nada({ period, accent, onNada, onDeepDive, onWellness }: {
+function Card8Naad({ period, accent, onNaad, onDeepDive, onWellness }: {
   period: DoshaPeriod; accent: string;
-  onNada: () => void; onDeepDive: () => void; onWellness: () => void;
+  onNaad: () => void; onDeepDive: () => void; onWellness: () => void;
 }) {
   const w = WELLNESS[period.id];
-  const NADA_ICONS: Record<string, string> = {
+  const NAAD_ICONS: Record<string, string> = {
     morning_birds: '🐦', spring_birds: '🌸', forest_breeze: '🌳', morning_flute: '🎶',
     sitar: '🎸', hz_432: '🔔', singing_bowl: '🔮', indian_beats: '🥁',
     sitar_tabla_bells: '🎵', flowing_water: '💧', gentle_wind: '🌬️', sea_waves: '🌊',
     wanderlust: '🌬️', spiritual_journey: '🌌', tibetan_bowl: '🫙', tibetan_dreams: '🧘',
     night_forest: '🦗', reincarnation_tones: '♾️', night_jungle_chiangmai: '🦟',
   };
-  const NADA_NAMES: Record<string, string> = {
+  const NAAD_NAMES: Record<string, string> = {
     morning_birds: 'Morning Birds', spring_birds: 'Spring Birds', forest_breeze: 'Forest Breeze',
     morning_flute: 'Meditation Tone', sitar: 'Calm Raga', hz_432: '432 Hz Bells',
     singing_bowl: 'Singing Bowl', indian_beats: 'Indian Beats',
@@ -655,15 +655,15 @@ function Card8Nada({ period, accent, onNada, onDeepDive, onWellness }: {
           Sound as medicine — frequencies aligned to {period.dosha.charAt(0).toUpperCase() + period.dosha.slice(1)}.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, justifyContent: 'center', marginBottom: 10 }}>
-          {(w?.nadaSounds ?? []).slice(0, 4).map((id, i) => (
-            <TouchableOpacity key={i} onPress={onNada} activeOpacity={0.70}
+          {(w?.naadSounds ?? []).slice(0, 4).map((id, i) => (
+            <TouchableOpacity key={i} onPress={onNaad} activeOpacity={0.70}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: accent + '45', backgroundColor: accent + '14' }}>
-              <Text style={{ fontSize: 14 }}>{NADA_ICONS[id] ?? '🎵'}</Text>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: accent }}>{NADA_NAMES[id] ?? id}</Text>
+              <Text style={{ fontSize: 14 }}>{NAAD_ICONS[id] ?? '🎵'}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: accent }}>{NAAD_NAMES[id] ?? id}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity onPress={onNada} activeOpacity={0.82}
+        <TouchableOpacity onPress={onNaad} activeOpacity={0.82}
           style={{ borderRadius: 14, paddingVertical: 13, paddingHorizontal: 24, alignItems: 'center', backgroundColor: accent }}>
           <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF' }}>🎵  Open Nāda Sounds</Text>
         </TouchableOpacity>
@@ -722,7 +722,7 @@ export default function MetabolicStoryModal({
     if (card > 0) setCard(c => c - 1);
   }, [card]);
 
-  const handleNada = useCallback(() => {
+  const handleNaad = useCallback(() => {
     onClose();
     setTimeout(() => router.push('/(tabs)/sleep' as never), 100);
   }, [router, onClose]);
@@ -799,7 +799,7 @@ export default function MetabolicStoryModal({
           {card === 7  && <Card6Elements     period={period} accent={accent} />}
           {card === 8  && <Card7DoNow        period={period} accent={accent} />}
           {card === 9  && <Card7bAvoidNow    period={period} accent={accent} />}
-          {card === 10 && <Card8Nada period={period} accent={accent} onNada={handleNada} onDeepDive={handleDeepDive} onWellness={handleWellness} />}
+          {card === 10 && <Card8Naad period={period} accent={accent} onNaad={handleNaad} onDeepDive={handleDeepDive} onWellness={handleWellness} />}
         </View>
 
         {/* Tap zones — left = back, right = forward */}

@@ -24,8 +24,7 @@
           "location"
         ],
         "NSUserNotificationsUsageDescription": "Naad uses notifications to ring your wake alarm.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Naad tracks your walk distance in the background so your prana session continues even if you lock the screen.",
-        "NSLocationAlwaysUsageDescription": "Naad tracks your walk distance in the background so your prana session continues even if you lock the screen.",
+        "NSLocationWhenInUseUsageDescription": "Naad tracks your walk distance during your sessions.",
         "NSMotionUsageDescription": "Naad uses motion sensors to accurately count your walking steps.",
         "NSHealthShareUsageDescription": "Naad tracks your steps and activity for walk sessions.",
         "NSHealthUpdateUsageDescription": "Naad logs your walking activity and steps.",
@@ -89,7 +88,6 @@
         "android.permission.DISABLE_KEYGUARD",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "android.permission.READ_MEDIA_IMAGES",
@@ -127,9 +125,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Naad to show local weather and track your walk.",
-          "locationAlwaysAndWhenInUsePermission": "Allow Naad to track your walk distance even when the screen is locked.",
-          "locationAlwaysPermission": "Allow Naad to track your walk in the background."
+          "locationWhenInUsePermission": "Allow Naad to show local weather and track your walk."
         }
       ],
       [

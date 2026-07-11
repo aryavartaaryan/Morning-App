@@ -61,12 +61,12 @@ const MANTRAS = [
   { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
   { id: 'bhagya_suktam',        label: 'Hymn of Fortune (Bhagya Suktam)',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' },
   { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' },
-  { id: 'nada_govinda_mantra',      label: 'Govinda Mantra',         emoji: '💙', color: '#818cf8', hint: 'Govinda Hari', pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
-  { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', color: '#f59e0b', hint: 'Indian Raga',   pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
+  { id: 'naad_govinda_mantra',      label: 'Govinda Mantra',         emoji: '💙', color: '#818cf8', hint: 'Govinda Hari', pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' },
+  { id: 'naad_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', color: '#f59e0b', hint: 'Indian Raga',   pitch: 1.0, rate: 1.0, text: '', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/aar_music-indian-classical-music-sitar-296790.m4a' },
   { id: 'cdn_ultra_rise_krishna',   label: 'Rise with Krishna',      emoji: '🪈', color: '#fde68a', hint: 'Krishna Flute', pitch: 1.0, rate: 1.0, text: 'Rise with the divine flute of Krishna. May your morning be filled with clarity and peace.', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Rise%20with%20Krishna_%20Uplifting%20Indian%20Morning%20Music%20%20Yoga%20%26%20Meditation%20Instrumentals.m4a' },
 ];
 // ── Curated alarm sounds ───────────────────────────────────────────────────
-const NADA_BASE_ALARM = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
+const NAAD_BASE_ALARM = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
 const ALARM_SOUNDS = [
   { id: 'morning_birds',           label: 'Morning Birds',          emoji: '🐦', cat: 'Birds',  color: '#fde68a', audioUrl: null as string | null },
   { id: 'spring_birds',            label: 'Spring Birds',           emoji: '🌸', cat: 'Birds',  color: '#f9a8d4', audioUrl: null as string | null },
@@ -86,10 +86,10 @@ const ALARM_SOUNDS = [
   { id: 'jungle_storm',            label: 'Jungle Storm',           emoji: '🌿', cat: 'Nature', color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'spiritual_journey',       label: 'Spiritual Journey',      emoji: '🌌', cat: 'Sacred', color: '#c084fc', audioUrl: 'https://audio.onesutralabs.com/sounds-large/spiritual-journey.m4a' as string | null },
   { id: 'om_shanti',               label: 'Om Shanti',              emoji: '🕉️', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
-  { id: 'nada_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NADA_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
+  { id: 'naad_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NAAD_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
   { id: 'gayatri',                 label: 'Gayatri Mantra',         emoji: '🌞', cat: 'Mantra', color: '#fbbf24', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' as string | null },
   { id: 'lalitha',                 label: 'Lalitha Sahasranama',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
-  { id: 'nada_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NADA_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
+  { id: 'naad_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NAAD_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
   { id: 'med_govind_bolo',         label: 'Govind Bolo · Krishna',  emoji: '🪈', cat: 'Mantra', color: '#38bdf8', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' as string | null },
   { id: 'cdn_ultra_vedic_healing_chant', label: 'Vedic Healing Chanting', emoji: '🌿', cat: 'Mantra', color: '#86efac', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' as string | null },
   { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
@@ -104,7 +104,7 @@ const ALARM_SOUNDS = [
   { id: 'sitar_tanpura_bgm',       label: 'Sitar & Tanpura',        emoji: '🎼', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
   { id: 'veena_classical',         label: 'Classical Veena',        emoji: '🪗', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a' as string | null },
   { id: 'sitar_calm',              label: 'Calm Sitar',             emoji: '🎸', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
-  { id: 'veena_raga',              label: 'Veena Raga Kanada',      emoji: '🪗', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
+  { id: 'veena_raga',              label: 'Veena Raga Kanaad',      emoji: '🪗', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'andean_flute',            label: 'Andean Flute',           emoji: '🏔️', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'quena_flute',             label: 'Canyon Quena',           emoji: '🏜️', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },
   { id: 'native_flute',            label: 'Native American Flute',  emoji: '🪶', cat: 'Sitar & Flute', color: '#a3e635', audioUrl: null as string | null },
@@ -427,7 +427,7 @@ export default function AlarmsTab() {
   const saveAnim                            = useRef(new Animated.Value(0)).current;
   const alarmActiveRef                      = useRef(false);
   const fabActionsRef                        = useRef<FabAction[]>([]);
-  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', nada_govinda_mantra:'idle', nada_aar_sitar_classical:'idle', spiritual_journey:'idle', sitar_summer_raga:'idle', sitar_radiance:'idle', veena_classical:'idle', bansuri_forest:'idle', bansuri_tarana:'idle', med_govind_bolo:'idle', cdn_ultra_vedic_healing_chant:'idle', med_ganesha_pancharatnam:'idle' });
+  const [dlStatus, setDlStatus]             = useState<Record<string,'idle'|'downloading'|'downloaded'>>({ gayatri:'idle', lalitha:'idle', shivtandav:'idle', bhagya_suktam:'idle', shiv_sankalpa_suktam:'idle', naad_govinda_mantra:'idle', naad_aar_sitar_classical:'idle', spiritual_journey:'idle', sitar_summer_raga:'idle', sitar_radiance:'idle', veena_classical:'idle', bansuri_forest:'idle', bansuri_tarana:'idle', med_govind_bolo:'idle', cdn_ultra_vedic_healing_chant:'idle', med_ganesha_pancharatnam:'idle' });
   const [dlProgress, setDlProgress]         = useState<Record<string, number>>({});
   const [alarmEntries, setAlarmEntries]     = useState<AlarmEntry[]>([]);
   const [menuOpenId, setMenuOpenId]         = useState<string|null>(null);
@@ -773,7 +773,7 @@ export default function AlarmsTab() {
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Required',
-            'This mission uses the camera. Please enable Camera permission for Nada in your device Settings.',
+            'This mission uses the camera. Please enable Camera permission for Naad in your device Settings.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -964,7 +964,7 @@ export default function AlarmsTab() {
         } catch (e) { console.warn('[HabitAlarm] Native schedule failed, trying notifee:', e); }
       }
       try {
-        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
         await notifee.createTriggerNotification(
           { id: `habit-${entry.id}`, title, body: entry.type === 'habit' ? 'Time for your habit! Tap to confirm. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵 Tap to listen.' : 'Your alarm is ringing! Tap to dismiss. ⏰', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' }, asForegroundService: true, ongoing: true, autoCancel: false, loopSound: true, foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK] } as any, data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : entry.type === 'soundbath' ? '🎵' : '🎯'), label: entry.label, alarmType: entry.type, soundId: entry.soundId ?? 'morning_birds' } },
           { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { type: AlarmType.SET_ALARM_CLOCK, allowWhileIdle: true } } as any,

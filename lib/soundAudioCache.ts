@@ -6,7 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { store } from './storage';
 
 const AUDIO_CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-audio-cache/';
-const CACHE_INDEX_KEY = '@nada_audio_cache_v1';
+const CACHE_INDEX_KEY = '@naad_audio_cache_v1';
 
 // In-memory index: soundId → local file URI
 const CACHED_MAP: Record<string, string> = {};

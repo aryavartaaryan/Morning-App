@@ -10,7 +10,7 @@ import { store } from '@/lib/storage';
 import { stepsToDistanceKm } from '@/lib/dailyStepTracker';
 import type { WalkMode } from '@/lib/walkStore';
 
-const WALK_HISTORY_KEY = 'nada_walk_history_v1';
+const WALK_HISTORY_KEY = 'naad_walk_history_v1';
 const MAX_SESSIONS = 60;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────

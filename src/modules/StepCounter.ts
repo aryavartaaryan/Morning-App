@@ -216,7 +216,8 @@ export const StepCounter = {
     } catch { /* */ }
 
     const goalSteps   = await StepCounter.getDailyGoal();
-    const totalSteps  = Math.max(autoSteps, manualSteps);
+    // Only use steps accumulated during active Naad walk sessions
+    const totalSteps  = manualSteps;
     const distanceKm  = parseFloat((totalSteps * STRIDE_KM).toFixed(2));
     const calories    = Math.round(totalSteps * CAL_PER_STEP);
     const activeMin   = parseInt(await asGet('sc_active_minutes_today') ?? '0', 10) || 0;

@@ -150,6 +150,7 @@ function WallpaperPicker() {
   } = useBgContext();
 
   const [showPicker, setShowPicker] = useState(false);
+  const [customAlert, setCustomAlert] = useState<{ visible: boolean; title: string; message: string; type: 'warning' | 'info' }>({ visible: false, title: '', message: '', type: 'info' });
   const sheetY = useRef(new Animated.Value(height)).current;
   const isMounted = useRef(true);
 
@@ -285,11 +286,26 @@ function WallpaperPicker() {
                   <TouchableOpacity
                     key={key}
                     onPress={() => {
+                      if (wallpaperMode === 'solar') {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        setCustomAlert({
+                          visible: true,
+                          title: 'Disable Auto Solar Time',
+                          message: 'Please turn off Auto Solar Time Mode first to manually select a wallpaper.',
+                          type: 'warning'
+                        });
+                        return;
+                      }
+
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setManualBgKey(key as BgKey);
-                      if (wallpaperMode !== 'manual') {
-                        setWallpaperMode('manual');
-                      }
+                      
+                      setCustomAlert({
+                        visible: true,
+                        title: 'Recommendation',
+                        message: 'For best experience just change and see the wallpaper but then again set the auto solar mode to change the wallpaper in rhythm with the time of Day',
+                        type: 'info'
+                      });
                     }}
                     activeOpacity={0.88}
                     style={[
@@ -342,6 +358,59 @@ function WallpaperPicker() {
               )}
             </ScrollView>
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* ── Premium Custom Alert ── */}
+      <Modal visible={customAlert.visible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{
+            width: '100%',
+            backgroundColor: '#0A0F24',
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: customAlert.type === 'warning' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(167, 139, 250, 0.3)',
+            padding: 24,
+            alignItems: 'center',
+            shadowColor: customAlert.type === 'warning' ? '#fbbf24' : '#a78bfa',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.15,
+            shadowRadius: 30,
+            elevation: 10,
+          }}>
+            <View style={{
+              width: 56, height: 56, borderRadius: 28,
+              backgroundColor: customAlert.type === 'warning' ? 'rgba(251, 191, 36, 0.15)' : 'rgba(167, 139, 250, 0.15)',
+              justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+              borderWidth: 1,
+              borderColor: customAlert.type === 'warning' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(167, 139, 250, 0.4)'
+            }}>
+              <Text style={{ fontSize: 24 }}>{customAlert.type === 'warning' ? '☀️' : '✨'}</Text>
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', fontFamily: 'Nunito_900Black', marginBottom: 10, textAlign: 'center' }}>
+              {customAlert.title}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#FFFFFF90', textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+              {customAlert.message}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setCustomAlert({ ...customAlert, visible: false })}
+              activeOpacity={0.8}
+              style={{
+                width: '100%',
+                backgroundColor: customAlert.type === 'warning' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(167, 139, 250, 0.2)',
+                borderRadius: 16,
+                paddingVertical: 14,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: customAlert.type === 'warning' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(167, 139, 250, 0.4)'
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '800', color: customAlert.type === 'warning' ? '#fbbf24' : '#a78bfa', letterSpacing: 0.5 }}>
+                Okay, got it
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </>
@@ -598,7 +667,7 @@ export default function SettingsTab() {
         <GlassCard>
           <View style={{ padding: 16, gap: 8 }}>
             <Text style={{ fontSize: 18, fontWeight: '900', color: GOLD, letterSpacing: -0.5 }}>
-              Nada
+              Naad
             </Text>
             <Text style={{ fontSize: 12, color: '#FFFFFF80', lineHeight: 18, marginTop: 2 }}>
               Rise with the sun · Ancient Wisdom · Modern Intelligence

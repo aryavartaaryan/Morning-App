@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Pressable,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
-  ActivityIndicator, StatusBar, TextInput, Keyboard,
+  ActivityIndicator, StatusBar, TextInput, Keyboard, BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -26,6 +26,7 @@ import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import SoundLibraryModal from '@/components/SoundLibraryModal';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const { width: W, height: H } = Dimensions.get('screen');
 let _pageScrollRef: any = null;
@@ -122,7 +123,7 @@ const SLEEP_SOUNDS = [
   { id: 'heaven_tune',         label: 'Heaven Tune',           emoji: '✨',  cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Traditional heavenly melody',            src: { uri: 'https://audio.onesutralabs.com/sounds-large/heaven-tune.m4a' } },
   // ── Sitar additions ────────────────────────────────────────────────────────
   { id: 'sitar_calm',          label: 'Calm Sitar',            emoji: '🎸',  cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Soft sitar for deep relaxation',         src: require('../../assets/sounds/sitar-calm.m4a') },
-  { id: 'veena_raga',          label: 'Veena Raga Kanada',     emoji: '🪗',  cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Raga Kanada on veena with mridangam',   src: require('../../assets/sounds/veena-raga.m4a') },
+  { id: 'veena_raga',          label: 'Veena Raga Kanaad',     emoji: '🪗',  cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Raga Kanaad on veena with mridangam',   src: require('../../assets/sounds/veena-raga.m4a') },
   // ── Flute additions ────────────────────────────────────────────────────────
   { id: 'bansuri_forest',      label: 'Bansuri Forest',        emoji: '🌿',  cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Bansuri flute echoing through a forest', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' } },
   { id: 'bansuri_melody',      label: 'Bansuri Melody',        emoji: '🎵',  cat: 'Ragas'   as const, color: '#6ee7b7', top: '#081810' as const, bot: '#040C08' as const, desc: 'Serene Indian bansuri flute melody',     src: require('../../assets/sounds/bansuri-melody.m4a') },
@@ -172,76 +173,76 @@ const SOUND_BUNDLED_IMAGES: Record<string, any> = {
 
 const SOUND_IMAGES = SOUND_IMAGES_LIB;
 
-// ─── NADA remote sounds — streamed from CDN, not bundled in APK ─────────────
-const NADA_BASE = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
-type NadaSound = { id: string; label: string; emoji: string; cat: string; color: string; top: string; bot: string; desc: string; src: { uri: string } };
-const NADA_SOUNDS: NadaSound[] = [
+// ─── NAAD remote sounds — streamed from CDN, not bundled in APK ─────────────
+const NAAD_BASE = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
+type NaadSound = { id: string; label: string; emoji: string; cat: string; color: string; top: string; bot: string; desc: string; src: { uri: string } };
+const NAAD_SOUNDS: NaadSound[] = [
   // ── Sitar ──────────────────────────────────────────────────────────────────
-  { id: 'nada_aar_sitar_classical',    label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Classical Indian sitar melody',              src: { uri: NADA_BASE + 'aar_music-indian-classical-music-sitar-296790.m4a' } },
-  { id: 'nada_aar_sitar_flute',        label: 'Sitar & Flute',          emoji: '🎵', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sitar and bansuri flute interplay',          src: { uri: NADA_BASE + 'aar_music-indian-classical-music-sitar-flute-298975.m4a' } },
-  { id: 'nada_sitar_vibes_i',          label: 'Sitar Vibes I',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NADA_BASE + 'gskvibes-sitar-2-361895.m4a' } },
-  { id: 'nada_sitar_vibes_ii',         label: 'Sitar Vibes II',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NADA_BASE + 'gskvibes-sitar-4-361900.m4a' } },
-  { id: 'nada_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
-  { id: 'nada_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
-  { id: 'nada_short_classical_sitar',  label: 'Classical Sitar Short',  emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Short Indian classical sitar',                src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-short-sitar-music-classical-indian-404177.m4a' } },
-  { id: 'nada_sitar_moonlight',        label: 'Sitar in Moonlight',     emoji: '🌙', cat: 'Ragas', color: '#fcd34d', top: '#1A1400', bot: '#0A0A00', desc: 'Sitar resonating in the moonlit night',      src: { uri: NADA_BASE + 'nourishedbymusic-sitar-in-the-moonlight-115602.m4a' } },
-  { id: 'nada_sitar_holistic',         label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
-  { id: 'nada_sitar_holistic_med',     label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Meditations', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
-  { id: 'nada_sitar_holistic_sleep',   label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Sleep', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NADA_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
-  { id: 'nada_raga_sparkle',           label: 'Raga Sparkle',           emoji: '✨', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NADA_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
-  { id: 'nada_raga_sparkle_sleep',     label: 'Raga Sparkle',           emoji: '✨', cat: 'Sleep', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NADA_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
-  { id: 'nada_sitar_temple',           label: 'Sitar in the Temple',    emoji: '🛕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Sacred sitar resonating in a temple',        src: { uri: NADA_BASE + 'playlistsons-sitar-in-the-temple-of-rats-430832.m4a' } },
-  { id: 'nada_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🎸', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NADA_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
-  { id: 'nada_sitar_bhagesri',         label: 'Sitar Bhagesri Raga',    emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Raga Bhagesri on sitar and guitar',           src: { uri: NADA_BASE + 'saseendran-sitar-amp-guitar-bhagesri-374594.m4a' } },
-  { id: 'nada_sitar_raga_jog',         label: 'Sitar Raga Jog',         emoji: '🎵', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Classical Raga Jog on sitar',                 src: { uri: NADA_BASE + 'saseendran-sitar-melody-raga-jog-364969.m4a' } },
-  { id: 'nada_sitar_type_beat',        label: 'Sitar Type Beat',        emoji: '🎶', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Smooth lo-fi sitar beat',                     src: { uri: NADA_BASE + 'u_67ccao27gv-sitar-type-beat-322065.m4a' } },
+  { id: 'naad_aar_sitar_classical',    label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Classical Indian sitar melody',              src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-296790.m4a' } },
+  { id: 'naad_aar_sitar_flute',        label: 'Sitar & Flute',          emoji: '🎵', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sitar and bansuri flute interplay',          src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-flute-298975.m4a' } },
+  { id: 'naad_sitar_vibes_i',          label: 'Sitar Vibes I',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NAAD_BASE + 'gskvibes-sitar-2-361895.m4a' } },
+  { id: 'naad_sitar_vibes_ii',         label: 'Sitar Vibes II',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NAAD_BASE + 'gskvibes-sitar-4-361900.m4a' } },
+  { id: 'naad_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
+  { id: 'naad_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
+  { id: 'naad_short_classical_sitar',  label: 'Classical Sitar Short',  emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Short Indian classical sitar',                src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-short-sitar-music-classical-indian-404177.m4a' } },
+  { id: 'naad_sitar_moonlight',        label: 'Sitar in Moonlight',     emoji: '🌙', cat: 'Ragas', color: '#fcd34d', top: '#1A1400', bot: '#0A0A00', desc: 'Sitar resonating in the moonlit night',      src: { uri: NAAD_BASE + 'nourishedbymusic-sitar-in-the-moonlight-115602.m4a' } },
+  { id: 'naad_sitar_holistic',         label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NAAD_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
+  { id: 'naad_sitar_holistic_med',     label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Meditations', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NAAD_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
+  { id: 'naad_sitar_holistic_sleep',   label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Sleep', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NAAD_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
+  { id: 'naad_raga_sparkle',           label: 'Raga Sparkle',           emoji: '✨', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NAAD_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
+  { id: 'naad_raga_sparkle_sleep',     label: 'Raga Sparkle',           emoji: '✨', cat: 'Sleep', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NAAD_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
+  { id: 'naad_sitar_temple',           label: 'Sitar in the Temple',    emoji: '🛕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Sacred sitar resonating in a temple',        src: { uri: NAAD_BASE + 'playlistsons-sitar-in-the-temple-of-rats-430832.m4a' } },
+  { id: 'naad_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🎸', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NAAD_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
+  { id: 'naad_sitar_bhagesri',         label: 'Sitar Bhagesri Raga',    emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Raga Bhagesri on sitar and guitar',           src: { uri: NAAD_BASE + 'saseendran-sitar-amp-guitar-bhagesri-374594.m4a' } },
+  { id: 'naad_sitar_raga_jog',         label: 'Sitar Raga Jog',         emoji: '🎵', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Classical Raga Jog on sitar',                 src: { uri: NAAD_BASE + 'saseendran-sitar-melody-raga-jog-364969.m4a' } },
+  { id: 'naad_sitar_type_beat',        label: 'Sitar Type Beat',        emoji: '🎶', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Smooth lo-fi sitar beat',                     src: { uri: NAAD_BASE + 'u_67ccao27gv-sitar-type-beat-322065.m4a' } },
   // ── Flute ──────────────────────────────────────────────────────────────────
-  { id: 'nada_zen_bamboo_flow',        label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
-  { id: 'nada_zen_bamboo_flow_sleep',  label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NADA_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
-  { id: 'nada_ancestors_flute',        label: 'Ancestors Flute',        emoji: '🪶', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Native American ancestral flute',              src: { uri: NADA_BASE + 'k3lix_music-last-breath-of-ancestors-native-american-flute-214341.m4a' } },
-  { id: 'nada_indian_flute_tabla_mix', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
-  { id: 'nada_indian_flute_tabla_mix_sleep', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
-  { id: 'nada_bansuri_tabla_fusion',   label: 'Bansuri Tabla Fusion',   emoji: '🎶', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Indian bansuri tabla fusion',                  src: { uri: NADA_BASE + 'kalsstockmedia-indian-bansuri-tabla-fusion-short-music-25-seconds-track-269954.m4a' } },
-  { id: 'nada_flute_tabla_remastered', label: 'Flute Tabla Remastered', emoji: '🌟', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Remastered flute and tabla melody',            src: { uri: NADA_BASE + 'kalsstockmedia-indian-flute-and-tabla-new-tune-remastered-277266.m4a' } },
-  { id: 'nada_summer_flute_tabla',     label: 'Summer Flute Tabla',     emoji: '☀️', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Warm summer flute & tabla blend',              src: { uri: NADA_BASE + 'kalsstockmedia-indian-summer-tabla-flute-calm-background-music-track-280183.m4a' } },
-  { id: 'nada_krishna_flute_i',        label: 'Krishna Flute I',        emoji: '💙', cat: 'Ragas', color: '#38bdf8', top: '#0A1E28', bot: '#050F14', desc: 'Lord Krishna\'s divine flute melody',           src: { uri: NADA_BASE + 'krasnoshchok-hindu-krishna-flute-music-499585.m4a' } },
-  { id: 'nada_krishna_flute_ii',       label: 'Krishna Flute II',       emoji: '🌀', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Second Krishna flute meditation',              src: { uri: NADA_BASE + 'krasnoshchok-krishna-flute-hindu-music-450217.m4a' } },
-  { id: 'nada_muladhara_flute',        label: 'Muladhara Flute',        emoji: '🕉️', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Root chakra flute meditation',                 src: { uri: NADA_BASE + 'meditativetiger-lord-krishnax27s-mulhadara-flute-meditative-tiger-edit-410414.m4a' } },
-  { id: 'nada_himalayan_village_flute',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NADA_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
-  { id: 'nada_himalayan_village_flute_sleep',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NADA_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
-  { id: 'nada_relaxing_flute',         label: 'Relaxing Flute',         emoji: '🌸', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NADA_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
-  { id: 'nada_relaxing_flute_sleep',   label: 'Relaxing Flute',         emoji: '🌸', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NADA_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
-  { id: 'nada_wind_mountain_raga',     label: 'Wind from the Mountain', emoji: '🌬️', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Raga Pahad — mountain winds on flute',         src: { uri: NADA_BASE + 'saseendran-wind-from-the-mountain-raga-pahad-364841.m4a' } },
-  { id: 'nada_pure_flute_melody',      label: 'Pure Flute Melody',      emoji: '🎵', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Simple pure flute melody',                     src: { uri: NADA_BASE + 'trycja-flute-melody-494886.m4a' } },
-  { id: 'nada_emotional_flute',        label: 'Emotional Flute',        emoji: '💫', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Deep emotional flute journey',                 src: { uri: NADA_BASE + 'u_iwe3yizfhb-emotional-sad-flute-478667.m4a' } },
-  { id: 'nada_flute_rain_ambiance',    label: 'Flute & Rain',           emoji: '🌧️', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Flute music with soothing rain ambiance',      src: { uri: NADA_BASE + 'wr_ambiance-flute-music-with-rain-ambiance-370521.m4a' } },
+  { id: 'naad_zen_bamboo_flow',        label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NAAD_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
+  { id: 'naad_zen_bamboo_flow_sleep',  label: 'Zen Bamboo Flow',        emoji: '🌿', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flowing bamboo Zen melody',                    src: { uri: NAAD_BASE + 'djovan-zen-bamboo-flow-497102.m4a' } },
+  { id: 'naad_ancestors_flute',        label: 'Ancestors Flute',        emoji: '🪶', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Native American ancestral flute',              src: { uri: NAAD_BASE + 'k3lix_music-last-breath-of-ancestors-native-american-flute-214341.m4a' } },
+  { id: 'naad_indian_flute_tabla_mix', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
+  { id: 'naad_indian_flute_tabla_mix_sleep', label: 'Indian Flute & Tabla',   emoji: '🎵', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Indian flute and tabla mix',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-flute-amp-tabla-mix-452176.m4a' } },
+  { id: 'naad_bansuri_tabla_fusion',   label: 'Bansuri Tabla Fusion',   emoji: '🎶', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Indian bansuri tabla fusion',                  src: { uri: NAAD_BASE + 'kalsstockmedia-indian-bansuri-tabla-fusion-short-music-25-seconds-track-269954.m4a' } },
+  { id: 'naad_flute_tabla_remastered', label: 'Flute Tabla Remastered', emoji: '🌟', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Remastered flute and tabla melody',            src: { uri: NAAD_BASE + 'kalsstockmedia-indian-flute-and-tabla-new-tune-remastered-277266.m4a' } },
+  { id: 'naad_summer_flute_tabla',     label: 'Summer Flute Tabla',     emoji: '☀️', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Warm summer flute & tabla blend',              src: { uri: NAAD_BASE + 'kalsstockmedia-indian-summer-tabla-flute-calm-background-music-track-280183.m4a' } },
+  { id: 'naad_krishna_flute_i',        label: 'Krishna Flute I',        emoji: '💙', cat: 'Ragas', color: '#38bdf8', top: '#0A1E28', bot: '#050F14', desc: 'Lord Krishna\'s divine flute melody',           src: { uri: NAAD_BASE + 'krasnoshchok-hindu-krishna-flute-music-499585.m4a' } },
+  { id: 'naad_krishna_flute_ii',       label: 'Krishna Flute II',       emoji: '🌀', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Second Krishna flute meditation',              src: { uri: NAAD_BASE + 'krasnoshchok-krishna-flute-hindu-music-450217.m4a' } },
+  { id: 'naad_muladhara_flute',        label: 'Muladhara Flute',        emoji: '🕉️', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Root chakra flute meditation',                 src: { uri: NAAD_BASE + 'meditativetiger-lord-krishnax27s-mulhadara-flute-meditative-tiger-edit-410414.m4a' } },
+  { id: 'naad_himalayan_village_flute',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NAAD_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
+  { id: 'naad_himalayan_village_flute_sleep',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NAAD_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
+  { id: 'naad_relaxing_flute',         label: 'Relaxing Flute',         emoji: '🌸', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NAAD_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
+  { id: 'naad_relaxing_flute_sleep',   label: 'Relaxing Flute',         emoji: '🌸', cat: 'Sleep', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Soothing relaxing flute reverie',              src: { uri: NAAD_BASE + 'pojeng-sad-relaxing-flute-406638.m4a' } },
+  { id: 'naad_wind_mountain_raga',     label: 'Wind from the Mountain', emoji: '🌬️', cat: 'Ragas', color: '#a3e635', top: '#121400', bot: '#090A00', desc: 'Raga Pahad — mountain winds on flute',         src: { uri: NAAD_BASE + 'saseendran-wind-from-the-mountain-raga-pahad-364841.m4a' } },
+  { id: 'naad_pure_flute_melody',      label: 'Pure Flute Melody',      emoji: '🎵', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Simple pure flute melody',                     src: { uri: NAAD_BASE + 'trycja-flute-melody-494886.m4a' } },
+  { id: 'naad_emotional_flute',        label: 'Emotional Flute',        emoji: '💫', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Deep emotional flute journey',                 src: { uri: NAAD_BASE + 'u_iwe3yizfhb-emotional-sad-flute-478667.m4a' } },
+  { id: 'naad_flute_rain_ambiance',    label: 'Flute & Rain',           emoji: '🌧️', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Flute music with soothing rain ambiance',      src: { uri: NAAD_BASE + 'wr_ambiance-flute-music-with-rain-ambiance-370521.m4a' } },
   // ── Tabla ──────────────────────────────────────────────────────────────────
-  { id: 'nada_tabla_110',              label: 'Tabla 110',              emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Crisp tabla at 110 BPM',                       src: { uri: NADA_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
-  { id: 'nada_tabla_flute_i',          label: 'Tabla & Flute I',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NADA_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
-  { id: 'nada_tabla_flute_ii',         label: 'Tabla & Flute II',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NADA_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
-  { id: 'nada_tabla_flute_iii',        label: 'Tabla & Flute III',      emoji: '🎶', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Tabla and flute melody III',                  src: { uri: NADA_BASE + 'jeremiah7-tabla-flute-105-262271.m4a' } },
-  { id: 'nada_tabla_flute_strings_i',  label: 'Tabla Flute Strings I',  emoji: '🪗', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla, flute and strings blend I',            src: { uri: NADA_BASE + 'jeremiah7-tabla-flute-strings-105-262265.m4a' } },
-  { id: 'nada_tabla_flute_strings_ii', label: 'Tabla Flute Strings II', emoji: '🎼', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Tabla, flute and strings blend II',           src: { uri: NADA_BASE + 'jeremiah7-tabla-flute-strings-107-262266.m4a' } },
-  { id: 'nada_calming_tabla_flute',    label: 'Calming Tabla Flute',    emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Calming Indian background tabla and flute',   src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-calming-indian-background-music-tabla-flute-385106.m4a' } },
-  { id: 'nada_rhythm_riot',            label: 'Rhythm Riot',            emoji: '⚡', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Energetic tabla rhythm',                       src: { uri: NADA_BASE + 'nra-lab-stomps-riser-rhythm-riot-246396.m4a' } },
-  { id: 'nada_tabla_dance',            label: 'Tabla Dance Groove',     emoji: '🕺', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Joyful tabla dance rhythm',                    src: { uri: NADA_BASE + 'one_nug-dont-worry-be-happy-tabla-dance-340952.m4a' } },
-  { id: 'nada_old_gold_tabla',         label: 'Old is Gold Tabla',      emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Timeless Indian tabla music',                  src: { uri: NADA_BASE + 'vfs_world-old-is-gold-indian-tabla-music-copyright-free-song-394347.m4a' } },
+  { id: 'naad_tabla_110',              label: 'Tabla 110',              emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Crisp tabla at 110 BPM',                       src: { uri: NAAD_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
+  { id: 'naad_tabla_flute_i',          label: 'Tabla & Flute I',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
+  { id: 'naad_tabla_flute_ii',         label: 'Tabla & Flute II',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
+  { id: 'naad_tabla_flute_iii',        label: 'Tabla & Flute III',      emoji: '🎶', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Tabla and flute melody III',                  src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-105-262271.m4a' } },
+  { id: 'naad_tabla_flute_strings_i',  label: 'Tabla Flute Strings I',  emoji: '🪗', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla, flute and strings blend I',            src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-105-262265.m4a' } },
+  { id: 'naad_tabla_flute_strings_ii', label: 'Tabla Flute Strings II', emoji: '🎼', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Tabla, flute and strings blend II',           src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-107-262266.m4a' } },
+  { id: 'naad_calming_tabla_flute',    label: 'Calming Tabla Flute',    emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Calming Indian background tabla and flute',   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-calming-indian-background-music-tabla-flute-385106.m4a' } },
+  { id: 'naad_rhythm_riot',            label: 'Rhythm Riot',            emoji: '⚡', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Energetic tabla rhythm',                       src: { uri: NAAD_BASE + 'nra-lab-stomps-riser-rhythm-riot-246396.m4a' } },
+  { id: 'naad_tabla_dance',            label: 'Tabla Dance Groove',     emoji: '🕺', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Joyful tabla dance rhythm',                    src: { uri: NAAD_BASE + 'one_nug-dont-worry-be-happy-tabla-dance-340952.m4a' } },
+  { id: 'naad_old_gold_tabla',         label: 'Old is Gold Tabla',      emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Timeless Indian tabla music',                  src: { uri: NAAD_BASE + 'vfs_world-old-is-gold-indian-tabla-music-copyright-free-song-394347.m4a' } },
   // ── Meditations ─────────────────────────────────────────────────────────────
-  { id: 'nada_hang_drum_tabla',        label: 'Hang Drum & Tabla',      emoji: '🥁', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Spiritually uplifting hang drum and tabla',  src: { uri: NADA_BASE + 'dreamsofserenity-spiritually-uplifting-music-hang-drum-tabla-flute-289790.m4a' } },
-  { id: 'nada_bhajan_flute_tabla',     label: 'Bhajan Flute & Tabla',   emoji: '🕉️', cat: 'Sleep', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Bhajan-style Indian flute and tabla',        src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-indian-flute-tabla-bhajan-style-452175.m4a' } },
-  { id: 'nada_shiva_nirvana_mantra',   label: 'Shiva Nirvana Mantra',   emoji: '🔱', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Shiva nirvana rupam mantra',                  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-nirvana-rupam-mantra-487340.m4a' } },
-  { id: 'nada_shiva_panchakshara',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
-  { id: 'nada_shiva_panchakshara_sleep',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Sleep', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
-  { id: 'nada_om_namah_shivaya',       label: 'Om Namah Shivaya',       emoji: '🌺', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Om Namah Shivaya devotional song',            src: { uri: NADA_BASE + 'kalsstockmedia-om-namah-shivaya-song-229613.m4a' } },
-  { id: 'nada_govinda_mantra',         label: 'Govinda Mantra',         emoji: '💙', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Govinda mantra with female voice, tanpura and sitar', src: { uri: NADA_BASE + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' } },
-  { id: 'nada_shiv_swarnamala',        label: 'Shiv Swarnamala',        emoji: '🔱', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiv Swarnamala Samb Sadashiv',               src: { uri: NADA_BASE + 'shiv-swarnamala-samb-sadashiv-version1-410249.m4a' } },
-  { id: 'nada_hang_flute_meditation',  label: 'Hang & Flute Meditation',emoji: '🎵', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Soothing hang drum and flute meditation',    src: { uri: NADA_BASE + 'silentvoice-soothing-hang-and-flute-meditation-music-229157.m4a' } },
-  { id: 'nada_gayatri_mantra_long',    label: 'Gayatri Mantra 10 Min',  emoji: '🌞', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Extended Gayatri mantra meditation',          src: { uri: NADA_BASE + 'sounovamusic-gayatri-mantra-10-min-407517.m4a' } },
-  { id: 'nada_om_shivaya_meditation',  label: 'Om Shivaya Meditation',  emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Om Namah Shivaya music mantra meditation',   src: { uri: NADA_BASE + 'sounovamusic-om-namah-shivaya-music-mantra-meditation-402775.m4a' } },
+  { id: 'naad_hang_drum_tabla',        label: 'Hang Drum & Tabla',      emoji: '🥁', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Spiritually uplifting hang drum and tabla',  src: { uri: NAAD_BASE + 'dreamsofserenity-spiritually-uplifting-music-hang-drum-tabla-flute-289790.m4a' } },
+  { id: 'naad_bhajan_flute_tabla',     label: 'Bhajan Flute & Tabla',   emoji: '🕉️', cat: 'Sleep', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Bhajan-style Indian flute and tabla',        src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-flute-tabla-bhajan-style-452175.m4a' } },
+  { id: 'naad_shiva_nirvana_mantra',   label: 'Shiva Nirvana Mantra',   emoji: '🔱', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Shiva nirvana rupam mantra',                  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-shiva-nirvana-rupam-mantra-487340.m4a' } },
+  { id: 'naad_shiva_panchakshara',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
+  { id: 'naad_shiva_panchakshara_sleep',     label: 'Shiva Panchakshara',     emoji: '🕉️', cat: 'Sleep', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiva Panchakshara mantra v1',               src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-shiva-panchakshara-mantra-v1-374359.m4a' } },
+  { id: 'naad_om_namah_shivaya',       label: 'Om Namah Shivaya',       emoji: '🌺', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Om Namah Shivaya devotional song',            src: { uri: NAAD_BASE + 'kalsstockmedia-om-namah-shivaya-song-229613.m4a' } },
+  { id: 'naad_govinda_mantra',         label: 'Govinda Mantra',         emoji: '💙', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Govinda mantra with female voice, tanpura and sitar', src: { uri: NAAD_BASE + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' } },
+  { id: 'naad_shiv_swarnamala',        label: 'Shiv Swarnamala',        emoji: '🔱', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Shiv Swarnamala Samb Sadashiv',               src: { uri: NAAD_BASE + 'shiv-swarnamala-samb-sadashiv-version1-410249.m4a' } },
+  { id: 'naad_hang_flute_meditation',  label: 'Hang & Flute Meditation',emoji: '🎵', cat: 'Meditations', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Soothing hang drum and flute meditation',    src: { uri: NAAD_BASE + 'silentvoice-soothing-hang-and-flute-meditation-music-229157.m4a' } },
+  { id: 'naad_gayatri_mantra_long',    label: 'Gayatri Mantra 10 Min',  emoji: '🌞', cat: 'Meditations', color: '#818cf8', top: '#0C0822', bot: '#060411', desc: 'Extended Gayatri mantra meditation',          src: { uri: NAAD_BASE + 'sounovamusic-gayatri-mantra-10-min-407517.m4a' } },
+  { id: 'naad_om_shivaya_meditation',  label: 'Om Shivaya Meditation',  emoji: '🕉️', cat: 'Meditations', color: '#c084fc', top: '#14082A', bot: '#0A0516', desc: 'Om Namah Shivaya music mantra meditation',   src: { uri: NAAD_BASE + 'sounovamusic-om-namah-shivaya-music-mantra-meditation-402775.m4a' } },
   // ── World (merged into Ragas) ──────────────────────────────────────────────
-  { id: 'nada_festive_dholak_dance',   label: 'Festive Dholak Dance',   emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Happy Indian festive flute, tabla & dholak',  src: { uri: NADA_BASE + 'kalsstockmedia-free-soul-happy-indian-festive-flute-tabla-and-dholak-dance-music-463138.m4a' } },
-  { id: 'nada_traditional_koto',       label: 'Traditional Koto',       emoji: '🎌', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Traditional Japanese koto music',              src: { uri: NADA_BASE + 'prettysleepy-koto-traditional-japanese-music-264711.m4a' } },
-  { id: 'nada_indian_fusion',          label: 'Indian Fusion',          emoji: '🌍', cat: 'Ragas', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Indian fusion blend',                          src: { uri: NADA_BASE + 'shubsmusik-fusion-228214.m4a' } },
+  { id: 'naad_festive_dholak_dance',   label: 'Festive Dholak Dance',   emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Happy Indian festive flute, tabla & dholak',  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-happy-indian-festive-flute-tabla-and-dholak-dance-music-463138.m4a' } },
+  { id: 'naad_traditional_koto',       label: 'Traditional Koto',       emoji: '🎌', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Traditional Japanese koto music',              src: { uri: NAAD_BASE + 'prettysleepy-koto-traditional-japanese-music-264711.m4a' } },
+  { id: 'naad_indian_fusion',          label: 'Indian Fusion',          emoji: '🌍', cat: 'Ragas', color: '#a78bfa', top: '#100830', bot: '#080418', desc: 'Indian fusion blend',                          src: { uri: NAAD_BASE + 'shubsmusik-fusion-228214.m4a' } },
 ];
 
 // ─── Time-based sound mode system ───────────────────────────────────────────
@@ -254,7 +255,7 @@ type SoundMode = {
 const SOUND_MODES: Record<string, SoundMode> = {
   morning: { key: 'morning', icon: '🌅', label: 'Morning Nāda',    subtitle: 'Meditate, move or simply listen',        headerGrad: ['#061826', '#081E30', '#0A1628'], recommended: ['hz_432', 'morning_flute', 'spring_birds', 'forest_breeze', 'tibetan_bowl'] },
   focus:   { key: 'focus',   icon: '💼', label: 'Listen & Work',      subtitle: 'Tune in, block out, go deep',             headerGrad: ['#061420', '#091A2C', '#0A1628'], recommended: ['light_rain', 'flowing_water', 'forest_breeze', 'gentle_wind', 'sea_waves'] },
-  restore: { key: 'restore', icon: '🌿', label: 'Afternoon Restore',  subtitle: 'Try Nada Sounds — see what sparks',       headerGrad: ['#061520', '#0A1628', '#0A1628'], recommended: ['flowing_water', 'forest_breeze', 'singing_bowl', 'hz_432', 'morning_birds'] },
+  restore: { key: 'restore', icon: '🌿', label: 'Afternoon Restore',  subtitle: 'Try Naad Sounds — see what sparks',       headerGrad: ['#061520', '#0A1628', '#0A1628'], recommended: ['flowing_water', 'forest_breeze', 'singing_bowl', 'hz_432', 'morning_birds'] },
   evening: { key: 'evening', icon: '🌙', label: 'Evening Wind Down',  subtitle: 'Signal your body: the day is done',       headerGrad: ['#06102A', '#090F28', '#0A1628'], recommended: ['tibetan_bowl', 'singing_bowl', 'night_forest', 'campfire', 'harbor_waves'] },
   sleep:   { key: 'sleep',   icon: '🌌', label: 'Good Night',         subtitle: 'Set a timer, press play, close your eyes', headerGrad: ['#030C20', '#061226', '#0A1628'], recommended: ['light_rain', 'night_forest', 'harbor_waves', 'tibetan_bowl', 'flowing_water', 'sea_waves', 'heavy_rain', 'campfire', 'singing_bowl', 'rain_thunder', 'jungle_rain'] },
 };
@@ -439,7 +440,7 @@ const AUTOMODE_TO_PERIOD: Record<string, string> = {
 
 export const ALL_SOUNDS_LIST: any[] = [
   ...(SLEEP_SOUNDS as readonly any[]).filter(s => !SLEEP_HIDDEN_IDS.has(s.id)),
-  ...NADA_SOUNDS,
+  ...NAAD_SOUNDS,
   ...MANTRA_LIBRARY.flatMap(g => g.sounds),
   // CDN / remote long-form tracks (streamed, not downloaded)
   ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')),
@@ -569,7 +570,7 @@ const NightThemeCard = memo(function NightThemeCard({
 const CalmSoundCard = memo(function CalmSoundCard({
   sound, isPlaying, isPaused, onPress, width,
 }: {
-  sound: SoundItem | NadaSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
+  sound: SoundItem | NaadSound; isPlaying: boolean; isPaused: boolean; onPress: () => void; width?: number;
 }) {
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   // Safety net: force a re-render once warmSoundImageMap() finishes.
@@ -1042,7 +1043,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
               const color = meta.color;
               const cardW = (W - 40 - 12) / 2;
               const effectiveCatForCount = cat === 'Sleep' ? 'Nature' : cat;
-              const soundCount = [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NADA_SOUNDS.filter((s: any) => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id)), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCatForCount || s.cat === cat))].length;
+              const soundCount = [...(SLEEP_SOUNDS as readonly any[]).filter((s: any) => s.cat === effectiveCatForCount && !SLEEP_HIDDEN_IDS.has(s.id)), ...NAAD_SOUNDS.filter((s: any) => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id)), ...MANTRA_LIBRARY.flatMap(g => g.sounds).filter((s: any) => s.cat === cat), ...ALL_SLEEP_SOUNDS.filter((s: any) => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCatForCount || s.cat === cat))].length;
               return (
                 <TouchableOpacity
                   key={cat}
@@ -1374,10 +1375,10 @@ const CategoryRows = memo(function CategoryRows({
         // 'Sleep' category mirrors all Nature sounds
         const effectiveCat = cat === 'Sleep' ? 'Nature' : cat;
         const localSounds = (SLEEP_SOUNDS as readonly SoundItem[]).filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id));
-        const nadaSounds = NADA_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
+        const naadSounds = NAAD_SOUNDS.filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id));
         const mantraSounds = MANTRA_LIBRARY.flatMap(g => g.sounds).filter(s => s.cat === cat);
         const cdnSounds = ALL_SLEEP_SOUNDS.filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCat || s.cat === cat));
-        const sounds: any[] = shuffleSoundsForDay([...localSounds, ...nadaSounds, ...mantraSounds, ...cdnSounds], cat);
+        const sounds: any[] = shuffleSoundsForDay([...localSounds, ...naadSounds, ...mantraSounds, ...cdnSounds], cat);
         if (!sounds.length) return null;
         const meta = getCategoryMeta(cat, activePeriodId);
         const subtags = CATEGORY_SUBTAGS[cat];
@@ -1621,7 +1622,7 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
     const local = (SLEEP_SOUNDS as readonly any[])
       .filter(s => s.cat === effectiveCat && !SLEEP_HIDDEN_IDS.has(s.id))
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? s.imageUri }));
-    const nada = NADA_SOUNDS
+    const naad = NAAD_SOUNDS
       .filter(s => s.cat === cat && !SLEEP_HIDDEN_IDS.has(s.id))
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri }));
     const mantra = MANTRA_LIBRARY.flatMap(g => g.sounds)
@@ -1629,7 +1630,7 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
       .map(s => ({ ...s, imageUri: SOUND_IMAGES[s.id] ?? (s as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[s.id] ?? undefined }));
     const cdn = ALL_SLEEP_SOUNDS
       .filter(s => (s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')) && (s.cat === effectiveCat || s.cat === cat));
-    result.push(...shuffleSoundsForDay([...local, ...nada, ...mantra, ...cdn], cat));
+    result.push(...shuffleSoundsForDay([...local, ...naad, ...mantra, ...cdn], cat));
   }
   return result;
 })();
@@ -2866,22 +2867,24 @@ function SoundReelsModal({
           updateCellsBatchingPeriod={50}
           removeClippedSubviews={true}
           renderItem={({ item, index }) => (
-            <ReelCard
-              sound={item}
-              isActive={activeIndex === index}
-              isPlaying={playingId === item.id}
-              isPaused={isPaused && playingId === item.id}
-              sessionSecs={playingId === item.id ? sessionSecs : 0}
-              stopIdx={stopIdx}
-              onPlay={() => onPlaySound(item.id)}
-              onToggle={onToggle}
-              onStop={onStop}
-              onChangeTimer={onChangeTimer}
-              isFirst={index === 0}
-              isLast={index === REELS_ALL_SOUNDS.length - 1}
-              onPrev={() => index > 0 && flatRef.current?.scrollToIndex({ index: index - 1, animated: true })}
-              onNext={() => index < REELS_ALL_SOUNDS.length - 1 && flatRef.current?.scrollToIndex({ index: index + 1, animated: true })}
-            />
+            <ScreenErrorBoundary name={`ReelCard-${item.id}`}>
+              <ReelCard
+                sound={item}
+                isActive={activeIndex === index}
+                isPlaying={playingId === item.id}
+                isPaused={isPaused && playingId === item.id}
+                sessionSecs={playingId === item.id ? sessionSecs : 0}
+                stopIdx={stopIdx}
+                onPlay={() => onPlaySound(item.id)}
+                onToggle={onToggle}
+                onStop={onStop}
+                onChangeTimer={onChangeTimer}
+                isFirst={index === 0}
+                isLast={index === REELS_ALL_SOUNDS.length - 1}
+                onPrev={() => index > 0 && flatRef.current?.scrollToIndex({ index: index - 1, animated: true })}
+                onNext={() => index < REELS_ALL_SOUNDS.length - 1 && flatRef.current?.scrollToIndex({ index: index + 1, animated: true })}
+              />
+            </ScreenErrorBoundary>
           )}
         />
 
@@ -3124,6 +3127,24 @@ export default function SleepTab() {
     ).sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery]);
 
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isSearching) {
+        setIsSearching(false);
+        setSearchQuery('');
+        return true;
+      }
+      if (libraryOpen) {
+        setLibraryOpen(false);
+        return true;
+      }
+      router.navigate('/');
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [isSearching, libraryOpen, router]);
+
   // ── Global sound player (context) ──────────────────────────
   const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels } = useSoundPlayer();
 
@@ -3176,23 +3197,29 @@ export default function SleepTab() {
 
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
-    // Ultra-smooth silky fade — barely perceptible dip then instant recovery
-    Animated.sequence([
-      Animated.timing(contentFadeAnim,  { toValue: 0.75, duration: 40,  useNativeDriver: true }),
-      Animated.timing(contentFadeAnim,  { toValue: 1,    duration: 200, useNativeDriver: true, easing: (t) => 1 - Math.pow(1 - t, 3) }),
-    ]).start();
+    // Instant opacity drop then smooth fade in
+    contentFadeAnim.setValue(0.4);
+    Animated.timing(contentFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+
     if (dir !== 0) {
-      // Smaller, snappier slide offset — feels like pages turning, not jerking
-      contentSlideAnim.setValue(-dir * W * 0.05);
+      // Wider slide offset for a more pronounced, page-like transition
+      contentSlideAnim.setValue(-dir * W * 0.15);
       Animated.spring(contentSlideAnim, {
         toValue: 0,
         useNativeDriver: true,
-        damping: 22,
-        stiffness: 260,
-        mass: 0.4,
+        damping: 24,
+        stiffness: 220,
+        mass: 0.5,
       }).start();
     }
-    setSelectedCat(cat);
+    startTransition(() => {
+      setSelectedCat(cat);
+    });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [contentFadeAnim, contentSlideAnim]);
 
@@ -3211,7 +3238,7 @@ export default function SleepTab() {
       onStartShouldSetPanResponder: () => false,
       // Ultra-light: triggers on very gentle horizontal movement with low vertical noise
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 3 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+        Math.abs(gs.dx) > 1.5 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2,
       onPanResponderGrant: () => {},
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
@@ -3220,8 +3247,8 @@ export default function SleepTab() {
           const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
           if (tabIdx === -1) return;
           const velocity = Math.abs(gs.vx);
-          // Feather touch: fast flick = 10px; slow drag = 25px
-          const threshold = velocity > 0.2 ? 10 : 25;
+          // Feather touch: fast flick = 4px; slow drag = 12px
+          const threshold = velocity > 0.15 ? 4 : 12;
           if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
             changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
           } else if (gs.dx > threshold && tabIdx > 0) {
@@ -3467,7 +3494,7 @@ export default function SleepTab() {
   // ── Evening mantra ─────────────────────────────────────────
   const scheduleEveningMantraNotif = async () => {
     try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
       const next = new Date(); next.setHours(21, 30, 0, 0);
       if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
       await notifee.createTriggerNotification(
@@ -3488,7 +3515,7 @@ export default function SleepTab() {
   // ── Auto-start scheduler ───────────────────────────────────
   const scheduleAutoStart = async () => {
     try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
       const next = new Date(); next.setHours(autoHour, autoMinute, 0, 0);
       if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
       const meta = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!;
@@ -3723,7 +3750,7 @@ export default function SleepTab() {
               
               {/* Main row */}
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4, paddingRight: 60, gap: 10 }}>
-                {/* Nada Library Icon */}
+                {/* Naad Library Icon */}
                 {!isSearching && (
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
                     <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
@@ -3888,17 +3915,19 @@ export default function SleepTab() {
           </View>
         ) : (
         <>
-        <CategoryRows
-          playingId={playingId}
-          isPaused={isPaused}
-          sessionSecs={sessionSecs}
-          onPress={handleSoundCardTap}
-          selectedCat={selectedCat}
-          onSelectCat={changeCategory}
-          resetKey={rowsResetKey}
-          natureLabel={natureCategoryLabel}
-          activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
-        />
+        <ScreenErrorBoundary name="CategoryRows">
+          <CategoryRows
+            playingId={playingId}
+            isPaused={isPaused}
+            sessionSecs={sessionSecs}
+            onPress={handleSoundCardTap}
+            selectedCat={selectedCat}
+            onSelectCat={changeCategory}
+            resetKey={rowsResetKey}
+            natureLabel={natureCategoryLabel}
+            activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
+          />
+        </ScreenErrorBoundary>
 
 
         {/* ── Sleep Cycles ── */}

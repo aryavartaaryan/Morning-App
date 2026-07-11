@@ -990,7 +990,7 @@ const TABS = [
     route: "/(tabs)/walk",
     iconOn: "footsteps" as const,
     icon: "footsteps-outline" as const,
-    label: "Walk Track",
+    label: "Naad Steps",
     color: "#34d399",
   },
 ];
@@ -1214,7 +1214,7 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    Step
+                    Naad
                   </Text>
                   <Text
                     style={[
@@ -1228,7 +1228,7 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    Track
+                    Steps
                   </Text>
                 </View>
               ) : (

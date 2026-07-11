@@ -162,7 +162,7 @@ const CameraMission = React.memo(function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Blocked',
-            'Camera access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Camera.',
+            'Camera access is blocked. Please go to Settings → Apps → Naad → Permissions and enable Camera.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -196,7 +196,7 @@ const CameraMission = React.memo(function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Gallery Permission Blocked',
-            'Photo library access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Storage / Photos.',
+            'Photo library access is blocked. Please go to Settings → Apps → Naad → Permissions and enable Storage / Photos.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },

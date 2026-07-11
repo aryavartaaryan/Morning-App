@@ -1,15 +1,13 @@
 /**
- * step-analytics.tsx — 30-Day Step Analytics Screen
+ * step-analytics.tsx — Premium Mindful Journey Analytics
  * ─────────────────────────────────────────────────────────────────────────────
- * - 30-day SVG line chart (CubicBezier smooth) with goal line
- * - 8-stat summary cards in 2×4 grid
- * - 30-day calendar heatmap (custom grid, cells coloured by goal %)
- * - Tap any heatmap cell → BottomSheet with that day's breakdown
- * - Date range toggle: 7 / 30 / 90 days
- * - All charts native SVG — NO WebView
+ * - Weekly Hero Progress Ring
+ * - 7-Day Apple-Fitness style Bar Chart with rounded caps
+ * - 4-card 2x2 Oura-style Glassmorphism grid
+ * - 30-day consistency mosaic (heatmap)
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,8 +22,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
-  Path, Circle, Defs, LinearGradient as SvgGrad, Stop,
-  G, Rect, Text as SvgText, Line,
+  Circle, Defs, LinearGradient as SvgGrad, Stop,
+  Line, Text as SvgText,
 } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -36,18 +34,15 @@ import StepCounter, { type DailyData, type AnalyticsSummary } from '@/src/module
 const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const BG     = '#0A0A0F';
-const CARD   = 'rgba(255,255,255,0.055)';
-const BORDER = 'rgba(255,255,255,0.09)';
-const ACCENT = '#A78BFA';
+const BG     = '#060A14';
+const CARD   = 'rgba(255,255,255,0.04)';
+const BORDER = 'rgba(255,255,255,0.08)';
+const ACCENT = '#38bdf8'; // Sky Blue
 const GREEN  = '#34D399';
-const ORANGE = '#FB923C';
-const PINK   = '#F472B6';
 const GOLD   = '#FCD34D';
 const TEAL   = '#2DD4BF';
-const MUTED  = 'rgba(255,255,255,0.35)';
-
-type Range = 7 | 30 | 90;
+const ORANGE = '#FB923C';
+const MUTED  = 'rgba(255,255,255,0.4)';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtK(n: number): string {
@@ -63,29 +58,12 @@ function weekdayChar(dateStr: string): string {
   return ['S','M','T','W','T','F','S'][new Date(dateStr + 'T12:00:00').getDay()];
 }
 
-// ── Cubic Bezier smooth path builder ─────────────────────────────────────────
-function smoothPath(points: { x: number; y: number }[]): string {
-  if (points.length < 2) return '';
-  let d = `M ${points[0].x},${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1];
-    const p1 = points[i];
-    const cp1x = p0.x + (p1.x - p0.x) * 0.4;
-    const cp1y = p0.y;
-    const cp2x = p0.x + (p1.x - p0.x) * 0.6;
-    const cp2y = p1.y;
-    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p1.x},${p1.y}`;
-  }
-  return d;
-}
-
 // ── Heatmap colour by goal % ──────────────────────────────────────────────────
-function heatColour(pct: number, accent: string): string {
-  if (pct <= 0) return 'rgba(255,255,255,0.04)';
-  if (pct >= 1) return accent;
-  // Interpolate from dim accent to full accent
-  const alpha = 0.15 + pct * 0.85;
-  return accent + Math.round(alpha * 255).toString(16).padStart(2,'0');
+function heatColour(pct: number): string {
+  if (pct <= 0) return 'rgba(255,255,255,0.03)';
+  if (pct >= 1) return TEAL;
+  const alpha = 0.2 + pct * 0.8;
+  return `rgba(45,212,191,${alpha})`; // Teal with varying opacity
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -94,7 +72,6 @@ export default function StepAnalyticsScreen() {
   const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [range,       setRange]       = useState<Range>(30);
   const [allData,     setAllData]     = useState<DailyData[]>([]);
   const [summary,     setSummary]     = useState<AnalyticsSummary | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -132,66 +109,51 @@ export default function StepAnalyticsScreen() {
     Animated.timing(sheetAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => setShowSheet(false));
   };
 
-  // ── Derived data by range ───────────────────────────────────────────────────
-  const rangeData = allData.slice(-range);
-  const goal      = rangeData[0]?.goal ?? 8000;
-  const maxSteps  = Math.max(goal, ...rangeData.map(d => d.steps), 1);
+  // ── Derived data ───────────────────────────────────────────────────────────
+  const realLast7 = allData.slice(-7);
+  const emptyDays = Array(Math.max(0, 7 - realLast7.length)).fill(null).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (7 - i));
+    return {
+      date: d.toISOString().split('T')[0], steps: 0, goal: 8000, distanceKm: 0, calories: 0, activeMinutes: 0, goalMet: false, goalPercent: 0
+    } as DailyData;
+  });
+  const last7Days = [...emptyDays, ...realLast7];
+  const goal      = last7Days[0]?.goal ?? 8000;
+  
+  // Hero Ring Math
+  const weeklySteps = last7Days.reduce((sum, d) => sum + d.steps, 0);
+  const weeklyGoal  = goal * 7;
+  const weeklyPct   = Math.min(1, weeklySteps / (weeklyGoal || 1));
+  
+  // Ring Geometry
+  const RING_SZ = 180;
+  const STROKE  = 14;
+  const R       = (RING_SZ - STROKE) / 2;
+  const CIRCUM  = 2 * Math.PI * R;
+  const dashOffset = CIRCUM - weeklyPct * CIRCUM;
 
-  // ── Chart dimensions ────────────────────────────────────────────────────────
+  // Bar Chart Math
   const chartW = W - 48;
-  const chartH = 140;
+  const chartH = 150;
+  const maxBarSteps = Math.max(goal, ...last7Days.map(d => d.steps), 1);
+  const barSpacing = chartW / 7;
 
-  // ── Build smooth line path ──────────────────────────────────────────────────
-  const pts = rangeData.map((d, i) => ({
-    x: rangeData.length > 1 ? (i / (rangeData.length - 1)) * chartW : chartW / 2,
-    y: chartH - (d.steps / maxSteps) * chartH,
-  }));
-  const linePath  = smoothPath(pts);
-  const areaPath  = linePath
-    ? `${linePath} L${chartW},${chartH} L0,${chartH} Z`
-    : '';
-  const goalY = chartH - (goal / maxSteps) * chartH;
-
-  // ── X-axis labels (show every nth) ─────────────────────────────────────────
-  const labelStep = range <= 7 ? 1 : range <= 30 ? 5 : 10;
-  const xLabels   = rangeData
-    .map((d, i) => ({ d, i }))
-    .filter(({ i }) => i % labelStep === 0 || i === rangeData.length - 1);
-
-  // ── Heatmap: group into weeks ───────────────────────────────────────────────
-  const heatData = allData.slice(-30);
-  // Pad start so first day aligns to correct weekday column
-  const firstWD = heatData.length > 0 ? new Date(heatData[0].date + 'T12:00:00').getDay() : 0;
-  const padded  = [...Array(firstWD).fill(null), ...heatData];
-  const weeks: (DailyData | null)[][] = [];
-  for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7));
-
+  // ── Heatmap ───────────────────────────────────────────────────────────────
   const CELL = Math.floor((W - 48 - 20) / 7);
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient colors={['#130A2A', BG, BG]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['#0A1224', BG, BG]} style={StyleSheet.absoluteFillObject} />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <View style={[st.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn}>
-          <Text style={st.backTxt}>←</Text>
+        <TouchableOpacity onPress={() => router.navigate('/(tabs)/walk')} style={st.backBtn}>
+          <Text style={st.backTxt}>✕</Text>
         </TouchableOpacity>
-        <Text style={st.title}>Analytics</Text>
-        {/* Date range toggle */}
-        <View style={st.rangeRow}>
-          {([7, 30, 90] as Range[]).map(r => (
-            <TouchableOpacity
-              key={r}
-              onPress={() => { Haptics.selectionAsync(); setRange(r); }}
-              style={[st.rangePill, range === r && { backgroundColor: ACCENT + '28', borderColor: ACCENT }]}
-            >
-              <Text style={[st.rangeTxt, range === r && { color: ACCENT }]}>{r}d</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Text style={st.title}>Your Journey</Text>
       </View>
 
       <ScrollView
@@ -200,84 +162,110 @@ export default function StepAnalyticsScreen() {
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-          {/* ── LINE CHART ───────────────────────────────────────────────────── */}
+          {/* ── WEEKLY HERO RING ──────────────────────────────────────────────── */}
+          <View style={st.heroCard}>
+            <LinearGradient colors={['rgba(56,189,248,0.06)', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={st.heroTitle}>This Week's Immersion</Text>
+            
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
+                <Defs>
+                  <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor={ACCENT} stopOpacity="1" />
+                    <Stop offset="1" stopColor={TEAL} stopOpacity="1" />
+                  </SvgGrad>
+                </Defs>
+                {/* Track */}
+                <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={STROKE} />
+                {/* Progress */}
+                <Circle 
+                  cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" 
+                  stroke="url(#ringGrad)" strokeWidth={STROKE} strokeLinecap="round" 
+                  strokeDasharray={CIRCUM} strokeDashoffset={dashOffset} 
+                />
+              </Svg>
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={st.heroSteps}>{fmtK(weeklySteps)}</Text>
+                <Text style={st.heroStepsLbl}>STEPS</Text>
+              </View>
+            </View>
+            
+            <Text style={st.heroSubtitle}>
+              {weeklyPct >= 1 
+                ? 'Incredible dedication. You reached your weekly cosmic goal.' 
+                : `You are ${Math.round(weeklyPct * 100)}% to your weekly grounding goal.`}
+            </Text>
+          </View>
+
+          {/* ── 7-DAY BAR CHART ──────────────────────────────────────────────── */}
           <View style={st.chartCard}>
-            <LinearGradient colors={[ACCENT + '10', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFillObject} />
             <View style={st.chartTop}>
-              <Text style={st.chartTitle}>{range}-Day Steps</Text>
+              <Text style={st.chartTitle}>Past 7 Days</Text>
               <View style={[st.goalBadge, { borderColor: GOLD + '40' }]}>
-                <Text style={[st.goalBadgeTxt, { color: GOLD }]}>— goal {fmtK(goal)}</Text>
+                <Text style={[st.goalBadgeTxt, { color: GOLD }]}>Daily Goal {fmtK(goal)}</Text>
               </View>
             </View>
 
-            <Svg width={chartW} height={chartH + 24} style={{ marginTop: 4 }}>
-              <Defs>
-                <SvgGrad id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0"   stopColor={ACCENT} stopOpacity="1" />
-                  <Stop offset="0.5" stopColor={PINK}   stopOpacity="1" />
-                  <Stop offset="1"   stopColor={TEAL}   stopOpacity="1" />
-                </SvgGrad>
-                <SvgGrad id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={ACCENT} stopOpacity="0.25" />
-                  <Stop offset="1" stopColor={ACCENT} stopOpacity="0"    />
-                </SvgGrad>
-              </Defs>
+            <View style={{ height: chartH + 30, marginTop: 10 }}>
+              <Svg width={chartW} height={chartH + 30}>
+                <Defs>
+                  <SvgGrad id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={TEAL} stopOpacity="1" />
+                    <Stop offset="1" stopColor={ACCENT} stopOpacity="1" />
+                  </SvgGrad>
+                </Defs>
+                
+                {/* Goal dashed line */}
+                <Line
+                  x1={0} y1={chartH - (goal / maxBarSteps) * chartH} x2={chartW} y2={chartH - (goal / maxBarSteps) * chartH}
+                  stroke={GOLD} strokeWidth={1} strokeDasharray="4 4" opacity={0.3}
+                />
 
-              {/* Goal dashed line */}
-              <Line
-                x1={0} y1={goalY} x2={chartW} y2={goalY}
-                stroke={GOLD} strokeWidth={1} strokeDasharray="5 4" opacity={0.5}
-              />
-
-              {/* Area fill */}
-              {areaPath ? <Path d={areaPath} fill="url(#areaGrad)" opacity={0.6} /> : null}
-
-              {/* Smooth line */}
-              {linePath ? (
-                <Path d={linePath} stroke="url(#lineGrad)" strokeWidth={2.5} fill="none" strokeLinecap="round" />
-              ) : null}
-
-              {/* Data dots on goal-met days */}
-              {rangeData.map((d, i) => {
-                if (!d.goalMet) return null;
-                const x = rangeData.length > 1 ? (i / (rangeData.length - 1)) * chartW : chartW / 2;
-                const y = chartH - (d.steps / maxSteps) * chartH;
-                return (
-                  <Circle key={d.date} cx={x} cy={y} r={3} fill={GREEN} opacity={0.9} />
-                );
-              })}
-
-              {/* X-axis labels */}
-              {xLabels.map(({ d, i }) => {
-                const x = rangeData.length > 1 ? (i / (rangeData.length - 1)) * chartW : chartW / 2;
-                return (
-                  <SvgText
-                    key={d.date} x={x} y={chartH + 16}
-                    fontSize={8} fill={MUTED} textAnchor="middle" fontWeight="500"
-                  >
-                    {shortDate(d.date)}
-                  </SvgText>
-                );
-              })}
-            </Svg>
+                {last7Days.map((d, i) => {
+                  const x = (i + 0.5) * barSpacing;
+                  const barH = Math.max(10, (d.steps / maxBarSteps) * chartH);
+                  const y = chartH - barH;
+                  const isMet = d.goalMet;
+                  
+                  return (
+                    <React.Fragment key={d.date}>
+                      {/* Bar Track Background */}
+                      <Line x1={x} y1={0} x2={x} y2={chartH} stroke="rgba(255,255,255,0.04)" strokeWidth={14} strokeLinecap="round" />
+                      {/* Actual Bar */}
+                      <Line 
+                        x1={x} y1={chartH} x2={x} y2={y} 
+                        stroke={isMet ? "url(#barGrad)" : "rgba(255,255,255,0.15)"} 
+                        strokeWidth={14} strokeLinecap="round" 
+                      />
+                      {/* Label */}
+                      <SvgText
+                        x={x} y={chartH + 20}
+                        fontSize={10} fill={MUTED} textAnchor="middle" fontWeight="600"
+                      >
+                        {weekdayChar(d.date)}
+                      </SvgText>
+                    </React.Fragment>
+                  );
+                })}
+              </Svg>
+            </View>
           </View>
 
-          {/* ── 8 SUMMARY STAT CARDS (2×4) ──────────────────────────────────── */}
+          {/* ── 4 INSIGHT CARDS (2x2) ───────────────────────────────────────── */}
           {summary && (
             <View style={st.statsGrid}>
               {[
-                { label: 'Total Steps',    val: fmtK(summary.totalSteps),                    icon: '👣', color: ACCENT  },
-                { label: 'Best Day',       val: fmtK(summary.bestDay),                        icon: '🏆', color: GOLD   },
-                { label: 'Avg / Day',      val: fmtK(summary.avgPerDay),                      icon: '📊', color: TEAL   },
-                { label: 'Goal Rate',      val: `${summary.goalRate}%`,                       icon: '🎯', color: GREEN  },
-                { label: 'Total Distance', val: `${StepCounter.stepsToKm(summary.totalSteps)} km`, icon: '🗺️', color: PINK   },
-                { label: 'Total Calories', val: `${fmtK(StepCounter.stepsToCal(summary.totalSteps))} kcal`, icon: '🔥', color: ORANGE },
-                { label: 'Cur. Streak',    val: `${summary.currentStreak}d`,                  icon: '⚡', color: ACCENT  },
-                { label: 'Best Streak',    val: `${summary.longestStreak}d`,                  icon: '🌟', color: GOLD   },
+                { label: 'Current Streak', val: `${summary.currentStreak} Days`, icon: '🔥', color: ORANGE },
+                { label: 'Longest Streak', val: `${summary.longestStreak} Days`, icon: '👑', color: GOLD },
+                { label: 'Best Day',       val: fmtK(summary.bestDay),           icon: '☀️', color: ACCENT },
+                { label: 'Daily Average',  val: fmtK(summary.avgPerDay),         icon: '👟', color: TEAL },
               ].map((s, i) => (
                 <View key={i} style={[st.statCard, { borderColor: s.color + '25' }]}>
                   <LinearGradient colors={[s.color + '10', 'transparent']} style={StyleSheet.absoluteFillObject} />
-                  <Text style={st.statIcon}>{s.icon}</Text>
+                  <View style={st.statIconBox}>
+                    <Text style={st.statIcon}>{s.icon}</Text>
+                  </View>
                   <Text style={[st.statVal, { color: s.color }]}>{s.val}</Text>
                   <Text style={st.statLabel}>{s.label}</Text>
                 </View>
@@ -285,86 +273,45 @@ export default function StepAnalyticsScreen() {
             </View>
           )}
 
-          {/* ── CALENDAR HEATMAP ─────────────────────────────────────────────── */}
+          {/* ── CONSISTENCY MOSAIC (Heatmap) ─────────────────────────────────── */}
           <View style={st.heatCard}>
-            <LinearGradient colors={['rgba(167,139,250,0.08)', 'transparent']} style={StyleSheet.absoluteFillObject} />
-            <Text style={st.heatTitle}>30-Day Heatmap</Text>
+            <LinearGradient colors={['rgba(45,212,191,0.05)', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            <Text style={st.heatTitle}>7-Day Consistency</Text>
 
-            {/* Day-of-week headers */}
-            <View style={st.heatHeader}>
-              {['S','M','T','W','T','F','S'].map((d, i) => (
-                <View key={i} style={[st.heatCell, { width: CELL, height: 18 }]}>
-                  <Text style={st.heatHeaderTxt}>{d}</Text>
-                </View>
-              ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              {last7Days.map((cell, di) => {
+                const pct  = Math.min(1, cell.steps / goal);
+                const bg   = heatColour(pct);
+                return (
+                  <View key={di} style={{ alignItems: 'center', gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => cell.steps > 0 && openSheet(cell)}
+                      disabled={cell.steps === 0}
+                      style={[{ width: CELL, height: CELL, backgroundColor: bg, borderRadius: 6, borderWidth: 1, borderColor: cell.steps > 0 ? 'rgba(255,255,255,0.05)' : 'transparent' }]}
+                    />
+                    <Text style={st.heatHeaderTxt}>{weekdayChar(cell.date)}</Text>
+                  </View>
+                );
+              })}
             </View>
 
-            {/* Weeks */}
-            {weeks.map((week, wi) => (
-              <View key={wi} style={st.heatRow}>
-                {Array.from({ length: 7 }, (_, di) => {
-                  const cell = week[di] ?? null;
-                  const pct  = cell ? Math.min(1, cell.steps / goal) : 0;
-                  const bg   = heatColour(pct, ACCENT);
-                  return (
-                    <TouchableOpacity
-                      key={di}
-                      onPress={() => cell && openSheet(cell)}
-                      disabled={!cell}
-                      style={[st.heatCell, { width: CELL, height: CELL, backgroundColor: bg, borderRadius: 4 }]}
-                    />
-                  );
-                })}
-              </View>
-            ))}
-
-            {/* Legend */}
             <View style={st.heatLegend}>
-              <Text style={st.heatLegendTxt}>Less</Text>
+              <Text style={st.heatLegendTxt}>Rest</Text>
               {[0, 0.25, 0.5, 0.75, 1].map(p => (
-                <View key={p} style={[st.heatLegendCell, { backgroundColor: heatColour(p, ACCENT), borderRadius: 3 }]} />
+                <View key={p} style={[st.heatLegendCell, { backgroundColor: heatColour(p), borderRadius: 3 }]} />
               ))}
-              <Text style={st.heatLegendTxt}>More</Text>
+              <Text style={st.heatLegendTxt}>Grounded</Text>
             </View>
           </View>
-
-          {/* ── PER-DAY LIST (last 7 days) ───────────────────────────────────── */}
-          <Text style={[st.sectionTitle, { marginBottom: 12 }]}>Recent Days</Text>
-          {allData.slice(-7).reverse().map(d => (
-            <TouchableOpacity
-              key={d.date}
-              style={st.dayRow}
-              onPress={() => openSheet(d)}
-            >
-              <LinearGradient
-                colors={d.goalMet ? [GREEN + '0A', 'transparent'] : ['transparent', 'transparent']}
-                style={StyleSheet.absoluteFillObject}
-              />
-              {/* Colour bar */}
-              <View style={[st.dayBar, { backgroundColor: d.goalMet ? GREEN : ACCENT + '50', height: `${Math.max(4, Math.min(100, (d.steps / goal) * 100))}%` as any }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={st.dayDate}>{shortDate(d.date)} · {weekdayChar(d.date)}</Text>
-                <Text style={[st.daySteps, { color: d.goalMet ? GREEN : 'rgba(255,255,255,0.7)' }]}>
-                  {fmtK(d.steps)} steps
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={[st.dayPct, { color: d.goalMet ? GREEN : MUTED }]}>
-                  {d.goalMet ? '✅' : `${Math.round((d.steps / goal) * 100)}%`}
-                </Text>
-                <Text style={st.dayDist}>{d.distanceKm.toFixed(1)} km · {fmtK(d.calories)} kcal</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
 
         </Animated.View>
       </ScrollView>
 
       {/* ── DAY DETAIL BOTTOM SHEET ──────────────────────────────────────────── */}
       {showSheet && selectedDay && (
-        <Modal transparent animationType="none" onRequestClose={closeSheet}>
+        <Modal transparent animationType="fade" onRequestClose={closeSheet}>
           <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }}
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}
             onPress={closeSheet}
             activeOpacity={1}
           />
@@ -373,36 +320,36 @@ export default function StepAnalyticsScreen() {
               st.sheet,
               {
                 transform: [{
-                  translateY: sheetAnim.interpolate({ inputRange: [0,1], outputRange: [300, 0] }),
+                  translateY: sheetAnim.interpolate({ inputRange: [0,1], outputRange: [400, 0] }),
                 }],
               },
             ]}
           >
-            <LinearGradient colors={['#1A0A3A', '#0A0A0F']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['#0A1224', BG]} style={StyleSheet.absoluteFillObject} />
             <View style={st.sheetHandle} />
             <Text style={st.sheetDate}>{shortDate(selectedDay.date)}</Text>
-            <Text style={[st.sheetSteps, { color: selectedDay.goalMet ? GREEN : ACCENT }]}>
-              {selectedDay.steps.toLocaleString()} steps
+            <Text style={[st.sheetSteps, { color: selectedDay.goalMet ? TEAL : ACCENT }]}>
+              {selectedDay.steps.toLocaleString()}
             </Text>
-            <Text style={[st.sheetGoalTag, { color: selectedDay.goalMet ? GREEN : MUTED }]}>
-              {selectedDay.goalMet ? '🏆 Goal Achieved' : `${Math.round((selectedDay.steps / goal) * 100)}% of goal`}
+            <Text style={st.sheetStepsLbl}>STEPS</Text>
+            
+            <Text style={[st.sheetGoalTag, { color: selectedDay.goalMet ? GOLD : MUTED }]}>
+              {selectedDay.goalMet ? '✨ Cosmic Goal Achieved' : `${Math.round((selectedDay.steps / goal) * 100)}% of daily intention`}
             </Text>
+            
             <View style={st.sheetGrid}>
               {[
                 { label: 'Distance',  val: `${selectedDay.distanceKm.toFixed(2)} km`,       color: TEAL   },
-                { label: 'Calories',  val: `${selectedDay.calories} kcal`,                  color: ORANGE },
-                { label: 'Goal',      val: `${selectedDay.goal.toLocaleString()} steps`,     color: GOLD   },
-                { label: 'Status',    val: selectedDay.goalMet ? 'Goal Met ✅' : 'Partial',  color: selectedDay.goalMet ? GREEN : PINK },
               ].map((item, i) => (
                 <View key={i} style={[st.sheetStat, { borderColor: item.color + '25' }]}>
-                  <LinearGradient colors={[item.color + '10', 'transparent']} style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={[item.color + '0A', 'transparent']} style={StyleSheet.absoluteFillObject} />
                   <Text style={[st.sheetStatVal, { color: item.color }]}>{item.val}</Text>
                   <Text style={st.sheetStatLabel}>{item.label}</Text>
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={[st.sheetClose, { backgroundColor: ACCENT }]} onPress={closeSheet}>
-              <Text style={st.sheetCloseTxt}>Close</Text>
+            <TouchableOpacity style={st.sheetClose} onPress={closeSheet} activeOpacity={0.8}>
+              <Text style={st.sheetCloseTxt}>Return to Journey</Text>
             </TouchableOpacity>
           </Animated.View>
         </Modal>
@@ -416,89 +363,83 @@ export default function StepAnalyticsScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 16,
-    gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: CARD, borderWidth: 1, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'flex-start',
   },
-  backTxt:  { fontSize: 20, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
-  title:    { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
-  rangeRow: { flexDirection: 'row', gap: 8 },
-  rangePill:{
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1, borderColor: BORDER, backgroundColor: CARD,
+  backTxt:  { fontSize: 16, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+  title:    { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5, fontFamily: 'DancingScript_600SemiBold' },
+
+  heroCard: {
+    borderRadius: 24, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 24, marginBottom: 16, overflow: 'hidden', alignItems: 'center'
   },
-  rangeTxt: { fontSize: 12, fontWeight: '700', color: MUTED },
+  heroTitle: { fontSize: 13, fontWeight: '700', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase' },
+  heroSteps: { fontSize: 44, fontWeight: '900', color: '#fff', letterSpacing: -1 },
+  heroStepsLbl: { fontSize: 10, fontWeight: '800', color: ACCENT, letterSpacing: 2 },
+  heroSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 20, fontWeight: '500' },
 
   chartCard: {
-    borderRadius: 20, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: CARD, padding: 16, marginBottom: 16, overflow: 'hidden',
+    borderRadius: 24, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 20, marginBottom: 16, overflow: 'hidden',
   },
-  chartTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  chartTitle: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  chartTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  chartTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
   goalBadge:  { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   goalBadgeTxt: { fontSize: 10, fontWeight: '700' },
 
   statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16,
   },
   statCard: {
-    width: '47.5%', borderRadius: 16, borderWidth: 1,
-    backgroundColor: CARD, padding: 16, alignItems: 'center', gap: 4, overflow: 'hidden',
+    width: '47.5%', borderRadius: 20, borderWidth: 1,
+    backgroundColor: CARD, padding: 16, gap: 6, overflow: 'hidden',
   },
-  statIcon:  { fontSize: 22 },
-  statVal:   { fontSize: 20, fontWeight: '900' },
-  statLabel: { fontSize: 10, color: MUTED, fontWeight: '600' },
+  statIconBox: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statIcon:  { fontSize: 16 },
+  statVal:   { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: MUTED, fontWeight: '700' },
 
   heatCard: {
-    borderRadius: 20, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: CARD, padding: 16, marginBottom: 16, overflow: 'hidden',
+    borderRadius: 24, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 20, marginBottom: 32, overflow: 'hidden',
   },
-  heatTitle:  { fontSize: 14, fontWeight: '800', color: '#fff', marginBottom: 12 },
-  heatHeader: { flexDirection: 'row', gap: 2, marginBottom: 4 },
-  heatHeaderTxt: { fontSize: 9, color: MUTED, fontWeight: '600', textAlign: 'center', flex: 1 },
+  heatTitle:  { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 16 },
+  heatHeader: { flexDirection: 'row', gap: 2, marginBottom: 6 },
+  heatHeaderTxt: { fontSize: 9, color: MUTED, fontWeight: '700', textAlign: 'center', flex: 1 },
   heatRow:  { flexDirection: 'row', gap: 2, marginBottom: 2 },
   heatCell: { gap: 2, alignItems: 'center', justifyContent: 'center' },
   heatLegend: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, alignSelf: 'flex-end',
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, alignSelf: 'flex-end',
   },
-  heatLegendTxt:  { fontSize: 9, color: MUTED },
+  heatLegendTxt:  { fontSize: 10, color: MUTED, fontWeight: '600' },
   heatLegendCell: { width: 12, height: 12 },
-
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  dayRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER,
-    padding: 14, marginBottom: 8, overflow: 'hidden',
-  },
-  dayBar: { width: 3, borderRadius: 2, position: 'absolute', left: 0, bottom: 0, top: 0 },
-  dayDate:  { fontSize: 11, color: MUTED, fontWeight: '600' },
-  daySteps: { fontSize: 16, fontWeight: '800', marginTop: 2 },
-  dayPct:   { fontSize: 13, fontWeight: '800' },
-  dayDist:  { fontSize: 10, color: MUTED, fontWeight: '500' },
 
   // ── Bottom Sheet ─────────────────────────────────────────────────────────
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: BG, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24, paddingBottom: 40, overflow: 'hidden',
+    backgroundColor: BG, borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    padding: 24, paddingBottom: 40, overflow: 'hidden', borderWidth: 1, borderColor: BORDER
   },
-  sheetHandle: { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetDate:   { fontSize: 14, color: MUTED, fontWeight: '600', textAlign: 'center' },
-  sheetSteps:  { fontSize: 40, fontWeight: '900', textAlign: 'center', letterSpacing: -1, marginTop: 4 },
-  sheetGoalTag:{ fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 6, marginBottom: 20 },
-  sheetGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  sheetHandle: { width: 40, height: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
+  sheetDate:   { fontSize: 13, color: MUTED, fontWeight: '700', textAlign: 'center', letterSpacing: 1, textTransform: 'uppercase' },
+  sheetSteps:  { fontSize: 48, fontWeight: '900', textAlign: 'center', letterSpacing: -1.5, marginTop: 4 },
+  sheetStepsLbl: { fontSize: 10, color: ACCENT, fontWeight: '800', textAlign: 'center', letterSpacing: 2, marginTop: -4 },
+  sheetGoalTag:{ fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: 12, marginBottom: 24 },
+  sheetGrid:   { flexDirection: 'row', gap: 12, marginBottom: 24 },
   sheetStat: {
-    width: '47.5%', borderRadius: 14, borderWidth: 1,
-    backgroundColor: CARD, padding: 14, alignItems: 'center', gap: 4, overflow: 'hidden',
+    flex: 1, borderRadius: 16, borderWidth: 1,
+    backgroundColor: CARD, padding: 16, alignItems: 'center', gap: 4, overflow: 'hidden',
   },
-  sheetStatVal:  { fontSize: 16, fontWeight: '800' },
-  sheetStatLabel:{ fontSize: 11, color: MUTED, fontWeight: '600' },
-  sheetClose:    { borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
-  sheetCloseTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  sheetStatVal:  { fontSize: 18, fontWeight: '800' },
+  sheetStatLabel:{ fontSize: 11, color: MUTED, fontWeight: '700' },
+  sheetClose:    { borderRadius: 20, paddingVertical: 18, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: BORDER },
+  sheetCloseTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

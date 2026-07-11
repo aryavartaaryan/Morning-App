@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -10,244 +10,16 @@ import Svg, { Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
 
 const SCREEN_W = Dimensions.get('window').width;
 
+import { 
+  getPanchangData, getVedicMonth, getCosmicScore, getExactTimings,
+  getMoonPhase, getNextLunarEvents,
+  NAKSHATRAS, YOGAS, VAARS, TITHI_NAMES, MOON_RITUALS, VAAR_ACTIONS, SCORE_META,
+  TITHI_ORDINALS, ENGLISH_DAYS, TITHI_ENERGY
+} from '@/lib/cosmicData';
+
 // ── Data ────────────────────────────────────────────────────────────────────
 
-const NAKSHATRAS = [
-  { name: 'Ashwini',           en: 'The Healer',         emoji: '🐴', energy: 'Swift starts & healing energy. Rules the head and upper brain — a day for quick decisions, initiating new treatments, and physical starts. The Ashwini Kumars (twin divine physicians) govern this asterism, lending it restorative electromagnetic frequencies.' },
-  { name: 'Bharani',           en: 'The Carrier',        emoji: '⚖️', energy: 'Transformation & endurance. Associated with Yama, the lord of dharma — this nakshatra carries intense creative and destructive force. High sexual vitality, deep karmic processing, and the courage to hold contradictions.' },
-  { name: 'Krittika',          en: 'The Flame',          emoji: '🔥', energy: 'Courage, clarity & purification. Ruled by the Sun, aligned with the Pleiades star cluster — one of the most energetically powerful positions. Its fire energy (Agni) cuts through illusion. Best for sharp decisions, truth-telling, and purification.' },
-  { name: 'Rohini',            en: 'The Abundant',       emoji: '🌹', energy: 'Growth, beauty & abundance. The most beloved nakshatra — the Moon is exalted here. Aligned with Aldebaran (α Tauri), one of the four royal stars. Maximum lunar fertility and creative magnetism. Ideal for beauty, art, and planting.' },
-  { name: 'Mrigashira',        en: 'The Seeker',         emoji: '🦌', energy: 'Curiosity & gentle searching. Aligned with λ Orionis in Orion\'s head — this nakshatra governs the seeking impulse of consciousness. Best for exploration, research, travel, and following your nose toward truth.' },
-  { name: 'Ardra',             en: 'The Storm',          emoji: '⛈️', energy: 'Renewal through intensity. Aligned with Betelgeuse (α Orionis), one of the largest stars in our galaxy. Ruled by Rudra (cosmic storm). Disruption that clears — best for deep emotional processing and structural change.' },
-  { name: 'Punarvasu',         en: 'Return of Light',    emoji: '🏠', energy: 'Restoration & nourishment. Aligned with Pollux and Castor (Gemini twins). Aditi, the mother of gods, rules this nakshatra of endless renewal. Best for returning home, rebuilding, and receiving nourishment.' },
-  { name: 'Pushya',            en: 'The Nourisher',      emoji: '🌸', energy: 'Most auspicious nakshatra — nourish & give. Aligned with δ, γ, θ Cancri. Brihaspati (Jupiter) governs this expansive, generous energy. The cow\'s udder is its symbol — it gives without depletion. Begin anything important today.' },
-  { name: 'Ashlesha',          en: 'The Entwiner',       emoji: '🐍', energy: 'Deep insight & hidden wisdom. Aligned with ε, δ, σ, η Hydrae — the serpent constellation. Naga serpent energy governs kundalini, deep psychology, and occult knowledge. Penetrating intelligence, hypnotic presence.' },
-  { name: 'Magha',             en: 'The Throne',         emoji: '👑', energy: 'Ancestral power & authority. Aligned with Regulus (α Leonis) — the heart of Leo, one of the four royal stars of ancient astronomy. Pitru (ancestor) energy is at peak. Connect with lineage, exercise authority, and honor your roots.' },
-  { name: 'Purva Phalguni',    en: 'The Resting Star',   emoji: '🌺', energy: 'Rest, pleasure & creative flow. Aligned with δ and θ Leonis. Ruled by Bhaga, the god of delight. The hammock is its symbol — rest in abundance, enjoy creativity, sensuality, and artistic expression.' },
-  { name: 'Uttara Phalguni',   en: 'The Covenant',       emoji: '🤝', energy: 'Unions, loyalty & commitment. Aligned with Denebola (β Leonis). Aryaman, the god of contracts and patronage, rules this nakshatra. Best for marriage, agreements, partnerships, and long-term commitments.' },
-  { name: 'Hasta',             en: 'The Skilled Hand',   emoji: '✋', energy: 'Craft, healing touch & skill. Aligned with the Corvus constellation. The hand is its symbol — manual skill, healing arts, precise work, and craftsmanship reach their peak. Best for surgery, art, and detailed work.' },
-  { name: 'Chitra',            en: 'The Brilliant',      emoji: '💎', energy: 'Radiant creativity & achievement. Aligned with Spica (α Virginis) — one of the brightest stars in the sky, used for navigation since antiquity. Vishwakarma, the cosmic architect, rules this nakshatra of brilliant creative achievement.' },
-  { name: 'Swati',             en: 'The Independent',    emoji: '🌬️', energy: 'Freedom, flexibility & movement. Aligned with Arcturus (α Boötis) — a fast-moving star. Wind (Vayu) rules this nakshatra of maximum independence, flexibility, and trade. The coral and sword grass are its symbols — bending without breaking.' },
-  { name: 'Vishakha',          en: 'The Forked Branch',  emoji: '⚡', energy: 'Ambition, purpose & breakthrough. Aligned with α, β, γ, ι Librae. Indra and Agni jointly rule this nakshatra — peak ambition and breakthrough energy. The gateway or triumphal arch is its symbol — push through obstacles today.' },
-  { name: 'Anuradha',          en: 'The Devoted Star',   emoji: '💫', energy: 'Friendship, devotion & success. Aligned with β, δ, π Scorpii. Mitra, the god of friendship and cooperation, rules this nakshatra. Lotus flower is its symbol — bloom through devotion. Best for forging alliances and dedicated effort.' },
-  { name: 'Jyeshtha',          en: 'The Eldest',         emoji: '🛡️', energy: 'Power, protection & seniority. Aligned with Antares (α Scorpii) — a massive red supergiant. Indra at his most sovereign rules here. Circular talisman (raksha) is its symbol — protection, authority, and senior leadership.' },
-  { name: 'Mula',              en: 'The Root',           emoji: '🌱', energy: 'Core truth & deep foundations. Aligned with the Galactic Center (Sagittarius A*) — the supermassive black hole at the center of our galaxy. Maximum dissolution energy. Go to the root, eliminate what is false, discover the foundation.' },
-  { name: 'Purva Ashadha',     en: 'The Undefeated',     emoji: '🌊', energy: 'Strength, purification & victory. Aligned with δ and ε Sagittarii. Apas, the water goddess, rules this nakshatra of purification and invincibility. Fan and winnowing basket are its symbols — separate the essential from the non-essential.' },
-  { name: 'Uttara Ashadha',    en: 'The Universal',      emoji: '🌟', energy: 'Universal truth & final success. Aligned with σ and ζ Sagittarii. The Vishvadevas (universal gods) rule this nakshatra of lasting victory and cosmic truth. The elephant\'s tusk is its symbol — penetrating, unstoppable wisdom.' },
-  { name: 'Shravana',          en: 'The Listener',       emoji: '👂', energy: 'Learning, listening & connection. Aligned with Altair (α Aquilae). Vishnu in his all-pervading aspect rules this nakshatra of deep listening. Three footsteps are its symbol (Trivikrama) — encompassing all dimensions through listening.' },
-  { name: 'Dhanishtha',        en: 'The Richest',        emoji: '🥁', energy: 'Wealth, music & cosmic rhythm. Aligned with α, β, γ, δ Delphini. The Eight Vasus (elemental deities) rule this nakshatra of abundance and rhythm. The drum is its symbol — align with the cosmic pulse, and prosperity follows.' },
-  { name: 'Shatabhisha',       en: 'Hundred Healers',    emoji: '💊', energy: 'Healing, mystery & deep knowing. Aligned with Sadachbia (γ Aquarii). Varuna, the cosmic ocean and law, rules this nakshatra of a hundred healing stars. Empty circle is its symbol — healing through emptiness and deep mystical knowledge.' },
-  { name: 'Purva Bhadrapada',  en: 'Fierce Feet',        emoji: '🔱', energy: 'Transformation & spiritual fire. Aligned with α and β Pegasi. Aja Ekapada (one-footed goat), an ancient storm deity, rules this intense nakshatra of spiritual fire. Sword and two-faced man are its symbols — fierce, transformative energy.' },
-  { name: 'Uttara Bhadrapada', en: 'Gentle Feet',        emoji: '🐉', energy: 'Depth, wisdom & universal love. Aligned with γ Pegasi and α Andromedae. Ahir Budhnya (serpent of the deep), the cosmic serpent of the abyss, rules this profound nakshatra of universal compassion and wisdom.' },
-  { name: 'Revati',            en: 'The Wealthy',        emoji: '🐟', energy: 'Completion, nourishment & safe journey. Aligned with ζ Piscium — the very end of the zodiac. Pushan, the god of safe journeys, rules this nakshatra of completion and transition. Drum is its symbol — nourishment, abundance, and arriving home.' },
-];
-
-const YOGAS = [
-  { name: 'Vishkambha', en: 'Supportive',    auspicious: true,  meaning: 'Strong support available today' },
-  { name: 'Priti',      en: 'Affection',     auspicious: true,  meaning: 'Day of love, connection & harmony' },
-  { name: 'Ayushman',   en: 'Vitality',      auspicious: true,  meaning: 'Health & longevity energy amplified' },
-  { name: 'Saubhagya',  en: 'Good Fortune',  auspicious: true,  meaning: 'Auspicious for all new beginnings' },
-  { name: 'Shobhana',   en: 'Radiance',      auspicious: true,  meaning: 'Your ideas shine brightest today' },
-  { name: 'Atiganda',   en: 'Caution',       auspicious: false, meaning: 'Pause before major decisions today' },
-  { name: 'Sukarman',   en: 'Right Action',  auspicious: true,  meaning: 'Aligned actions yield great results' },
-  { name: 'Dhriti',     en: 'Resolve',       auspicious: true,  meaning: 'Steady determination — keep going' },
-  { name: 'Shula',      en: 'Challenge',     auspicious: false, meaning: 'Navigate obstacles with patience' },
-  { name: 'Ganda',      en: 'Knot',          auspicious: false, meaning: 'Simplify & clear blockages today' },
-  { name: 'Vriddhi',    en: 'Growth',        auspicious: true,  meaning: 'Expansion — ideal to plant seeds' },
-  { name: 'Dhruva',     en: 'Constant',      auspicious: true,  meaning: 'Stability & permanence favored' },
-  { name: 'Vyaghata',   en: 'Striking',      auspicious: false, meaning: 'Bold moves can break old patterns' },
-  { name: 'Harshana',   en: 'Delight',       auspicious: true,  meaning: 'Joy & celebration in the air' },
-  { name: 'Vajra',      en: 'Diamond',       auspicious: true,  meaning: 'Unbreakable clarity & strength' },
-  { name: 'Siddhi',     en: 'Mastery',       auspicious: true,  meaning: 'Completion energy — finish what you start' },
-  { name: 'Vyatipata',  en: 'Rest',          auspicious: false, meaning: 'Inner work over outer action today' },
-  { name: 'Variyan',    en: 'Superior',      auspicious: true,  meaning: 'Your unique talents are most visible' },
-  { name: 'Parigha',    en: 'Barrier',       auspicious: false, meaning: 'Steady approach, avoid shortcuts' },
-  { name: 'Shiva',      en: 'Auspicious',    auspicious: true,  meaning: 'Highly favored — begin anything today' },
-  { name: 'Siddha',     en: 'Accomplished',  auspicious: true,  meaning: 'Skills sharp — take inspired action' },
-  { name: 'Sadhya',     en: 'Workable',      auspicious: true,  meaning: 'Step-by-step progress yields results' },
-  { name: 'Shubha',     en: 'Blessed',       auspicious: true,  meaning: 'Beautiful energy for love & art' },
-  { name: 'Shukla',     en: 'Pure',          auspicious: true,  meaning: 'Clear intentions manifest quickly' },
-  { name: 'Brahma',     en: 'Creator',       auspicious: true,  meaning: 'Creation energy — ideal for new projects' },
-  { name: 'Mahendra',   en: 'Great Power',   auspicious: true,  meaning: 'Peak power — lead, act & create' },
-  { name: 'Vaidhriti',  en: 'Ill-carried',   auspicious: false, meaning: 'Rest & reflect — avoid major launches' },
-];
-
-const VAARS = [
-  { vedicName: 'Surya Vaar',  planet: 'Sun',     emoji: '☀️', color: '#fbbf24', energy: 'Leadership, clarity & self-expression', science: 'Solar UV-B radiation peaks in morning hours, triggering Vitamin D synthesis. Cortisol (your alertness hormone) follows a solar circadian rhythm — peaking 30 min after sunrise. The pineal gland responds to full-spectrum sunlight to regulate melatonin.' },
-  { vedicName: 'Soma Vaar',   planet: 'Moon',    emoji: '🌙', color: '#93c5fd', energy: 'Intuition, emotion & inner wisdom',     science: 'The Moon\'s gravitational field subtly modulates the cerebrospinal fluid pressure in your brain. On Moon Day, the hypothalamus — your emotional regulation hub — shows heightened sensitivity to lunar magnetic variation. Intuition is heightened.' },
-  { vedicName: 'Mangal Vaar', planet: 'Mars',    emoji: '🔴', color: '#f87171', energy: 'Courage, strength & decisive action',   science: 'Mars\'s ~2.01-year synodic cycle correlates with peak testosterone and adrenaline cycles in traditional medicine. Red-light frequencies (Mars spectrum) penetrate deeper tissue and stimulate mitochondrial ATP production — increasing physical drive.' },
-  { vedicName: 'Budha Vaar',  planet: 'Mercury', emoji: '💚', color: '#6ee7b7', energy: 'Communication, learning & agility',     science: 'Mercury, with its 88-day orbit, governs the fastest electromagnetic cycles in the solar system. Ayurvedic chronobiology correlates Wednesday with peak synaptic plasticity — the nervous system\'s capacity to form new neural connections is maximized.' },
-  { vedicName: 'Guru Vaar',   planet: 'Jupiter', emoji: '🌟', color: '#fde68a', energy: 'Wisdom, expansion & dharmic action',    science: 'Jupiter\'s enormous magnetic field is 20,000× Earth\'s — it acts as our solar system\'s gravitational protector, deflecting comets and asteroids. Vedic science correlates Jupiter Day with peak liver function (Pitta peak), memory consolidation, and wisdom integration.' },
-  { vedicName: 'Shukra Vaar', planet: 'Venus',   emoji: '💗', color: '#f9a8d4', energy: 'Beauty, creativity & abundance',        science: 'Venus\'s 584-day synodic cycle and its 13:8 orbital resonance with Earth creates the famous Venus pentagram when plotted — pure mathematical beauty. Endocrine research links Venus Day with peak estrogen/creative hormone cycles and heightened aesthetic sensitivity.' },
-  { vedicName: 'Shani Vaar',  planet: 'Saturn',  emoji: '🪐', color: '#a5b4fc', energy: 'Discipline, karma & enduring effort',   science: 'Saturn\'s 29.5-year orbit mirrors the human biological "Saturn Return" — documented in endocrinology as periods of hormonal restructuring at ages 28-30 and 58-60. Its ringed electromagnetic field creates measurable VLF radio emissions that affect Earth\'s ionosphere.' },
-];
-
-const TITHI_NAMES    = ['','Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima'];
-const ENGLISH_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const TITHI_ORDINALS = ['','First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth','Ninth','Tenth','Eleventh','Twelfth','Thirteenth','Fourteenth','Full Moon'];
-const TITHI_ENERGY: Record<string, string> = {
-  Pratipada: 'New beginnings & fresh intentions', Dwitiya: 'Building on new foundations',
-  Tritiya: 'Growth & creative momentum', Chaturthi: 'Remove obstacles — pray to Ganesha',
-  Panchami: 'Knowledge, learning & intellect', Shashthi: 'Health & vitality rituals',
-  Saptami: 'Sun worship & action', Ashtami: 'Durga energy — courage & transformation',
-  Navami: 'Ancestral blessings & devotion', Dashami: 'Dharmic deeds & charity',
-  Ekadashi: 'Fasting, spiritual detox & clarity', Dwadashi: 'Vishnu worship & service',
-  Trayodashi: 'Kama — desire, joy & prosperity', Chaturdashi: 'Shiva energy — release & dissolve',
-  Purnima: 'Full Moon — gratitude & celebration',
-};
-
-const MOON_RITUALS: Record<string, { prompt: string; action: string }> = {
-  '🌑': { prompt: 'New Moon energy',         action: 'Write one clear intention. Plant your seed of desire today.' },
-  '🌒': { prompt: 'Waxing Crescent energy',  action: 'Take the very first small step. Start before you feel ready.' },
-  '🌓': { prompt: 'First Quarter energy',    action: 'Push through resistance. Decide and commit — no more hesitation.' },
-  '🌔': { prompt: 'Waxing Gibbous energy',   action: 'Refine your effort. You\'re close — adjust and keep momentum.' },
-  '🌕': { prompt: 'Full Moon energy',        action: 'Express gratitude out loud. Journal what you\'re releasing.' },
-  '🌖': { prompt: 'Waning Gibbous energy',   action: 'Share what you\'ve learned. Give generously to someone today.' },
-  '🌗': { prompt: 'Last Quarter energy',     action: 'Forgive one thing. Clear mental clutter — delete, unfollow, let go.' },
-  '🌘': { prompt: 'Waning Crescent energy',  action: 'Rest deeply. Recharge. The next cycle begins very soon.' },
-};
-
-const VAAR_ACTIONS: string[] = [
-  'Spend 10 min in sunlight. Set one bold, visible goal today.',
-  'Journal your feelings. Trust your first instinct on a decision.',
-  'Do the one hard thing you\'ve been avoiding. Start it now.',
-  'Write, call, or send that message. Communicate something important.',
-  'Read something that challenges you. Teach or mentor someone today.',
-  'Create something — cook, paint, write, arrange. Connect with beauty.',
-  'Tackle your most disciplined, long-term task. No shortcuts today.',
-];
-
-const SCORE_META: Record<number, { label: string; color: string; emoji: string; desc: string }> = {
-  1:  { label: 'Challenging',  color: '#f43f5e', emoji: '🌧️', desc: 'Rest, retreat inward, avoid major launches' },
-  2:  { label: 'Challenging',  color: '#f43f5e', emoji: '🌧️', desc: 'Caution and patience are your best tools today' },
-  3:  { label: 'Mixed',        color: '#fb923c', emoji: '⛅',  desc: 'Proceed carefully — some friction present' },
-  4:  { label: 'Mixed',        color: '#fb923c', emoji: '⛅',  desc: 'Mixed cosmic signals — stay grounded' },
-  5:  { label: 'Steady',       color: '#fbbf24', emoji: '🌤️', desc: 'A neutral, workable day — steady effort rewarded' },
-  6:  { label: 'Favorable',    color: '#34d399', emoji: '✨',  desc: 'Good alignment — move on things that matter' },
-  7:  { label: 'Favorable',    color: '#34d399', emoji: '✨',  desc: 'Strong cosmic backing — act with confidence' },
-  8:  { label: 'Excellent',    color: '#10b981', emoji: '🌟',  desc: 'Excellent energy — begin what you\'ve been planning' },
-  9:  { label: 'Excellent',    color: '#10b981', emoji: '🌟',  desc: 'Peak conditions — rare and powerful alignment' },
-  10: { label: 'Cosmic Peak',  color: '#a78bfa', emoji: '⚡',  desc: 'Maximum cosmic resonance — once-in-weeks alignment' },
-};
-
-// ── Math Functions ──────────────────────────────────────────────────────────
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-function getMoonPhase(date: Date = new Date()): {
-  emoji: string; name: string; illumination: number; paksha: string; tithiNum: number;
-} {
-  const KNOWN_NEW_MOON = new Date('2000-01-06T18:14:00Z').getTime();
-  const CYCLE = 29.53058867;
-  const ageRaw = (date.getTime() - KNOWN_NEW_MOON) / (1000 * 60 * 60 * 24);
-  const age = ((ageRaw % CYCLE) + CYCLE) % CYCLE;
-  const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
-  const waxing = age < CYCLE / 2;
-  const tithiNum = Math.min(30, Math.floor((age / CYCLE) * 30) + 1);
-  const paksha = tithiNum <= 15 ? 'Shukla' : 'Krishna';
-  if (illum >= 98) return { emoji: '🌕', name: 'Full Moon',         illumination: illum, paksha, tithiNum };
-  if (illum <= 2)  return { emoji: '🌑', name: 'New Moon',          illumination: illum, paksha, tithiNum };
-  if (illum < 45)  return { emoji: waxing ? '🌒' : '🌘', name: waxing ? 'Waxing Crescent' : 'Waning Crescent', illumination: illum, paksha, tithiNum };
-  if (illum < 55)  return { emoji: waxing ? '🌓' : '🌗', name: waxing ? 'First Quarter'   : 'Last Quarter',    illumination: illum, paksha, tithiNum };
-  return              { emoji: waxing ? '🌔' : '🌖', name: waxing ? 'Waxing Gibbous'  : 'Waning Gibbous',  illumination: illum, paksha, tithiNum };
-}
-
-function getPanchangData(date: Date = new Date()) {
-  const CYCLE = 29.53058867;
-  const r = (x: number) => x * Math.PI / 180;
-  const dJ2000 = (date.getTime() - 946728000000) / 86400000;
-
-  // Sun tropical longitude (Jean Meeus low-precision, ~1°)
-  const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
-  const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
-  const sunTropical = ((Ldeg + 1.915 * Math.sin(r(gdeg)) + 0.020 * Math.sin(r(2 * gdeg))) % 360 + 360) % 360;
-
-  // Moon tropical longitude (Jean Meeus Ch.47 simplified, ~1°)
-  const L0 = 218.3165 + 13.1763966 * dJ2000;
-  const M  = 357.5291 + 0.9856003  * dJ2000;
-  const Mp = 134.9634 + 13.0649930 * dJ2000;
-  const D  = 297.8502 + 12.1907180 * dJ2000;
-  const F  = 93.2721  + 13.2293705 * dJ2000;
-  const moonTropical = ((
-    L0
-    + 6.2886 * Math.sin(r(Mp))
-    + 1.2740 * Math.sin(r(2 * D - Mp))
-    + 0.6583 * Math.sin(r(2 * D))
-    + 0.2136 * Math.sin(r(2 * Mp))
-    - 0.1851 * Math.sin(r(M))
-    - 0.1143 * Math.sin(r(2 * F))
-    + 0.0588 * Math.sin(r(2 * D - 2 * Mp))
-    + 0.0572 * Math.sin(r(2 * D - M - Mp))
-    + 0.0533 * Math.sin(r(2 * D + Mp))
-  ) % 360 + 360) % 360;
-
-  // Lahiri ayanamsha — converts tropical → sidereal (nirayana)
-  const ayanamsha = 23.8526 + 0.013972 * (dJ2000 / 365.25);
-  const moonLong = ((moonTropical - ayanamsha) % 360 + 360) % 360;
-  const sunLong  = ((sunTropical  - ayanamsha) % 360 + 360) % 360;
-
-  // Tithi — from elongation (ayanamsha cancels, no conversion needed)
-  const elongation = ((moonTropical - sunTropical) % 360 + 360) % 360;
-  const moonAge    = (elongation / 360) * CYCLE;
-  const tithiNum   = Math.min(30, Math.floor(elongation / 12) + 1);
-  const paksha     = tithiNum <= 15 ? 'Shukla' : 'Krishna';
-  const tithiInPaksha = tithiNum <= 15 ? tithiNum : tithiNum - 15;
-  const tithiName  = tithiInPaksha === 15 ? (paksha === 'Shukla' ? 'Purnima' : 'Amavasya') : (TITHI_NAMES[tithiInPaksha] ?? String(tithiInPaksha));
-
-  // Nakshatra — sidereal Moon longitude / 13.333°
-  const nakshatraIdx = Math.min(26, Math.floor(moonLong / (360 / 27)));
-
-  // Yoga — sum of sidereal Sun + Moon longitudes / 13.333°
-  const yogaLong = ((sunLong + moonLong) % 360 + 360) % 360;
-  const yogaIdx  = Math.min(26, Math.floor(yogaLong / (360 / 27)));
-
-  const vaarIdx = date.getDay();
-  return { tithiName, tithiInPaksha, paksha, nakshatraIdx, yogaIdx, vaarIdx, moonAge };
-}
-
-function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithiName: string): number {
-  let score = 5;
-  if (yogaAuspicious) score += 2; else score -= 1;
-  if (moonEmoji === '🌕' || moonEmoji === '🌑') score += 2;
-  else if (moonEmoji === '🌓' || moonEmoji === '🌗') score += 1;
-  else score += 1;
-  if (tithiName === 'Ekadashi' || tithiName === 'Purnima') score += 1;
-  if (tithiName === 'Ashtami' || tithiName === 'Chaturdashi') score -= 1;
-  return Math.max(1, Math.min(10, score));
-}
-
-// Rashi → Vedic Saura Maasa (solar month)
-const RASHI_TO_VEDIC_MONTH = [
-  { name: 'Vaishakha',    sanskrit: 'वैशाख',      rashi: 'Mesha',     en: 'Apr–May' },
-  { name: 'Jyeshtha',     sanskrit: 'ज्येष्ठ',    rashi: 'Vrishabha', en: 'May–Jun' },
-  { name: 'Ashadha',      sanskrit: 'आषाढ़',      rashi: 'Mithuna',   en: 'Jun–Jul' },
-  { name: 'Shravana',     sanskrit: 'श्रावण',     rashi: 'Karka',     en: 'Jul–Aug' },
-  { name: 'Bhadrapada',   sanskrit: 'भाद्रपद',    rashi: 'Simha',     en: 'Aug–Sep' },
-  { name: 'Ashwin',       sanskrit: 'आश्विन',     rashi: 'Kanya',     en: 'Sep–Oct' },
-  { name: 'Kartik',       sanskrit: 'कार्तिक',    rashi: 'Tula',      en: 'Oct–Nov' },
-  { name: 'Margashirsha', sanskrit: 'मार्गशीर्ष', rashi: 'Vrischika', en: 'Nov–Dec' },
-  { name: 'Pausha',       sanskrit: 'पौष',         rashi: 'Dhanu',     en: 'Dec–Jan' },
-  { name: 'Magha',        sanskrit: 'माघ',         rashi: 'Makara',    en: 'Jan–Feb' },
-  { name: 'Phalguna',     sanskrit: 'फाल्गुन',    rashi: 'Kumbha',    en: 'Feb–Mar' },
-  { name: 'Chaitra',      sanskrit: 'चैत्र',      rashi: 'Meena',     en: 'Mar–Apr' },
-];
-function getVedicMonth(date: Date = new Date()) {
-  const dJ2000 = (date.getTime() - 946728000000) / 86400000;
-  const Ldeg = (280.460 + 0.9856474 * dJ2000) % 360;
-  const gdeg = (357.528 + 0.9856003 * dJ2000) % 360;
-  const gRad = gdeg * Math.PI / 180;
-  const sunTropical = ((Ldeg + 1.915 * Math.sin(gRad) + 0.020 * Math.sin(2 * gRad)) % 360 + 360) % 360;
-  const ayanamsha   = 23.85 + 0.0136 * (dJ2000 / 365.25);
-  const siderealSun = ((sunTropical - ayanamsha) % 360 + 360) % 360;
-  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
-  const CYCLE    = 29.53058867;
-  const moonAge  = ((((date.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE) + CYCLE) % CYCLE;
-  const halfCycle = CYCLE / 2;
-  const daysToClosingPurnima = moonAge < halfCycle ? halfCycle - moonAge : CYCLE - moonAge + halfCycle;
-  const sunAtClosingPurnima = ((siderealSun + daysToClosingPurnima * 0.9856) % 360 + 360) % 360;
-  const rashiIdx = Math.floor(sunAtClosingPurnima / 30) % 12;
-  return RASHI_TO_VEDIC_MONTH[rashiIdx];
-}
+// Imported Panchang Data
 
 // ── Moon SVG ────────────────────────────────────────────────────────────────
 
@@ -286,36 +58,7 @@ function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
   );
 }
 
-// ── Next Purnima / Amavasya countdown ──────────────────────────────────
-function getNextLunarEvents() {
-  const KNOWN_NEW_MOON_MS = new Date('2000-01-06T18:14:00Z').getTime();
-  const CYCLE = 29.53058867;
-  const HALF  = CYCLE / 2;
-  const now   = new Date();
-  const age   = (((now.getTime() - KNOWN_NEW_MOON_MS) / 86400000) % CYCLE + CYCLE) % CYCLE;
-  const illum = Math.round((1 - Math.cos((age / CYCLE) * 2 * Math.PI)) / 2 * 100);
-  const isFullToday = illum >= 97;
-  const isNewToday  = illum <= 3;
-  let daysToFull = HALF - age;
-  if (daysToFull <= 0) daysToFull += CYCLE;
-  if (isFullToday) daysToFull = 0;
-  let daysToNew = CYCLE - age;
-  if (daysToNew >= CYCLE) daysToNew = 0;
-  if (isNewToday) daysToNew = 0;
-  const fmtS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  const fmtL: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-  const fullDate = new Date(now.getTime() + daysToFull * 86400000);
-  const newDate  = new Date(now.getTime() + daysToNew  * 86400000);
-  return {
-    daysToFull: Math.round(daysToFull),
-    daysToNew:  Math.round(daysToNew),
-    fullDateStr:  fullDate.toLocaleDateString('en-US', fmtS),
-    newDateStr:   newDate.toLocaleDateString('en-US', fmtS),
-    fullDateLong: fullDate.toLocaleDateString('en-US', fmtL),
-    newDateLong:  newDate.toLocaleDateString('en-US', fmtL),
-    isFullToday, isNewToday,
-  };
-}
+
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -354,13 +97,18 @@ export default function CosmicExploreScreen() {
   const tithiEnergy = TITHI_ENERGY[p.tithiName] ?? 'Sacred lunar energy';
   const moonRitual  = MOON_RITUALS[moon.emoji] ?? { prompt: 'Lunar energy', action: 'Connect with the moon tonight.' };
   const vaarAction  = VAAR_ACTIONS[p.vaarIdx] ?? '';
-  const vMonth      = getVedicMonth();
+  const params      = useLocalSearchParams();
+  const lat         = params.lat ? parseFloat(params.lat as string) : undefined;
+  const vMonth      = getVedicMonth(new Date(), lat);
   const isSpecialMoon = moon.emoji === '🌕' || moon.emoji === '🌑';
   const lunar       = getNextLunarEvents();
 
   const today = new Date();
   const dayOpts: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
   const dateLabel = today.toLocaleDateString('en-US', dayOpts);
+
+  const timings = React.useMemo(() => getExactTimings(today), [today]);
+  const tFmt = (d: Date | null) => d ? d.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
   return (
     <View style={S.screen}>
@@ -658,6 +406,11 @@ export default function CosmicExploreScreen() {
               <Text style={S.triSub}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon</Text>
               <Text style={S.triSub}>{p.paksha} Paksha  ·  {TITHI_ORDINALS[p.tithiInPaksha]} ({p.tithiInPaksha}) day</Text>
               <Text style={S.triEn}>{tithiEnergy}</Text>
+              <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: '#a78bfa15' }}>
+                <Text style={{ fontSize: 9.5, color: '#a78bfaAA', fontWeight: '700', marginBottom: 2 }}>Exact Timing</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Starts: {tFmt(timings.tithiStart)}</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Ends: {tFmt(timings.tithiEnd)}</Text>
+              </View>
             </View>
             <View style={[S.triCell, { borderColor: '#fbbf2422' }]}>
               <Text style={S.triEmoji}>{nakshatra.emoji}</Text>
@@ -666,6 +419,11 @@ export default function CosmicExploreScreen() {
               <Text style={S.triSub}>{nakshatra.en}</Text>
               <Text style={S.triSub}>Moon Mansion {p.nakshatraIdx + 1} of 27</Text>
               <Text style={S.triEn}>{nakshatra.energy.split('.')[0]}</Text>
+              <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: '#fbbf2415' }}>
+                <Text style={{ fontSize: 9.5, color: '#fbbf24AA', fontWeight: '700', marginBottom: 2 }}>Exact Timing</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Starts: {tFmt(timings.nakshatraStart)}</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Ends: {tFmt(timings.nakshatraEnd)}</Text>
+              </View>
             </View>
             <View style={[S.triCell, { borderColor: yoga.auspicious ? '#10b98122' : '#f8717122' }]}>
               <Text style={S.triEmoji}>{yoga.auspicious ? '✨' : '🌀'}</Text>
@@ -673,6 +431,11 @@ export default function CosmicExploreScreen() {
               <Text style={S.triSub}>{yoga.en}</Text>
               <Text style={S.triSub}>Cosmic Alignment</Text>
               <Text style={S.triEn}>{yoga.meaning}</Text>
+              <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: yoga.auspicious ? '#10b98115' : '#f8717115' }}>
+                <Text style={{ fontSize: 9.5, color: (yoga.auspicious ? '#10b981' : '#f87171') + 'AA', fontWeight: '700', marginBottom: 2 }}>Exact Timing</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Starts: {tFmt(timings.yogaStart)}</Text>
+                <Text style={{ fontSize: 9.5, color: '#FFFFFF77' }}>Ends: {tFmt(timings.yogaEnd)}</Text>
+              </View>
             </View>
           </View>
         )}
@@ -792,6 +555,11 @@ export default function CosmicExploreScreen() {
               {'  ·  '}
               <Text style={{ color: '#FFFFFF55' }}>{vMonth.en}  ·  {p.paksha} Paksha</Text>
             </Text>
+            <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: '#60a5fa20' }}>
+              <Text style={{ fontSize: 10, color: '#60a5faAA', fontWeight: '700', marginBottom: 2 }}>Exact Timing for {vMonth.name}</Text>
+              <Text style={{ fontSize: 10, color: '#FFFFFF99' }}>Starts: {tFmt(timings.maasStart)}</Text>
+              <Text style={{ fontSize: 10, color: '#FFFFFF99' }}>Ends: {tFmt(timings.maasEnd)}</Text>
+            </View>
           </View>
         </View>
 

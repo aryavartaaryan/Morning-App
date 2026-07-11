@@ -1,7 +1,7 @@
 /**
  * walk.tsx — Step Counter Home Tab
  * ─────────────────────────────────────────────────────────────────────────────
- * Beautiful main hub for the Nada step-counter feature.
+ * Beautiful main hub for the Naad step-counter feature.
  * Displays: circular progress ring, 4 metric chips, 3 session cards,
  * 7-day bar chart, and deep-link buttons to Analytics.
  *
@@ -30,6 +30,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop, Path, G, Text as Sv
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/StepCounter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -82,12 +83,10 @@ export default function WalkTab() {
   const [stats,        setStats]        = useState<TodayStats>(DEFAULT_STATS);
   const [weekData,     setWeekData]     = useState<DailyData[]>([]);
   const [isAvailable,  setIsAvailable]  = useState(true);
-  const [trackEnabled, setTrackEnabled] = useState(false);
   const [loading,      setLoading]      = useState(true);
   const [showGoalModal,setShowGoalModal]= useState(false);
   const [goalInput,    setGoalInput]    = useState('8000');
   const [streak,       setStreak]       = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [sessionTitle, setSessionTitle] = useState('Start Morning walk with Naad sounds......');
   const [sessionType, setSessionType]   = useState<'morning' | 'evening'>('morning');
   // Drives SVG strokeDashoffset via listener (avoids createAnimatedComponent crash)
@@ -101,15 +100,31 @@ export default function WalkTab() {
   const cardSlide   = useRef(new Animated.Value(30)).current;
   const walkScrollRef = useRef<ScrollView | null>(null);
 
+  // ── Data refresh ────────────────────────────────────────────────────────────
+  const refreshStats = useCallback(async () => {
+    try {
+      const [s, analytics] = await Promise.all([
+        StepCounter.getTodayStats(),
+        StepCounter.getThirtyDayAnalytics(),
+      ]);
+      setStats(s);
+      setWeekData(analytics.dailyData.slice(-7));
+      setStreak(analytics.summary.currentStreak);
+    } catch (err) {
+      console.warn("Failed to fetch step stats:", err);
+    }
+  }, []);
+
   useFocusEffect(useCallback(() => {
     walkScrollRef.current?.scrollTo({ y: 0, animated: false });
     refreshStats();
-  }, []));
+  }, [refreshStats]));
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const loc = await store.getObj<{lat: number, lon: number}>(KEYS.LOCATION);
+      try {
+        const loc = await store.getJSON<{lat: number, lon: number}>(KEYS.location);
       if (loc) {
         const solar = getSolarTimes(loc.lat, loc.lon);
         const hour = new Date().getHours() + new Date().getMinutes() / 60;
@@ -129,25 +144,21 @@ export default function WalkTab() {
       const avail = await StepCounter.isAvailable();
       setIsAvailable(avail);
       if (avail) {
-        const enabled = await StepCounter.isTrackingEnabled();
-        setTrackEnabled(enabled);
         await refreshStats();
       }
-      setLoading(false);
 
-      // First-visit onboarding
-      if (avail) {
-        const onboarded = await AsyncStorage.getItem('step_onboarding_done');
-        const isTracking = await StepCounter.isTrackingEnabled();
-        if (!onboarded && !isTracking) setShowOnboarding(true);
+      } catch (err) {
+        console.warn("Boot error in walk.tsx:", err);
+      } finally {
+        setLoading(false);
       }
-
-      // Entrance animation
-      Animated.parallel([
-        Animated.timing(cardFade,  { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(cardSlide, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
-      ]).start();
     })();
+
+    // Entrance animation (always run, synchronously outside async)
+    Animated.parallel([
+      Animated.timing(cardFade,  { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(cardSlide, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+    ]).start();
 
     // Pulse loop
     Animated.loop(
@@ -206,44 +217,8 @@ export default function WalkTab() {
     return () => ringAnim.removeListener(id);
   }, [stats.goalPercent]);
 
-  // ── Data refresh ────────────────────────────────────────────────────────────
-  const refreshStats = useCallback(async () => {
-    const [s, analytics] = await Promise.all([
-      StepCounter.getTodayStats(),
-      StepCounter.getThirtyDayAnalytics(),
-    ]);
-    setStats(s);
-    setWeekData(analytics.dailyData.slice(-7));
-    setStreak(analytics.summary.currentStreak);
-  }, []);
+  // ── Data refresh defined above ──────────────────────────────────────────────
 
-  // ── Enable/disable background tracking ─────────────────────────────────────
-  const toggleTracking = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (trackEnabled) {
-      await StepCounter.stopBackgroundTracking();
-      setTrackEnabled(false);
-    } else {
-      await StepCounter.startBackgroundTracking();
-      setTrackEnabled(true);
-      await refreshStats();
-    }
-  };
-
-  // ── Onboarding handlers ──────────────────────────────────────────────────────
-  const handleOnboardingEnable = async () => {
-    await AsyncStorage.setItem('step_onboarding_done', '1');
-    setShowOnboarding(false);
-    await StepCounter.startBackgroundTracking();
-    setTrackEnabled(true);
-    await refreshStats();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const handleOnboardingSkip = async () => {
-    await AsyncStorage.setItem('step_onboarding_done', '1');
-    setShowOnboarding(false);
-  };
 
   // ── Launch session ──────────────────────────────────────────────────────────
   const launchSession = (type: 'morning' | 'evening' | 'postmeal') => {
@@ -318,16 +293,12 @@ export default function WalkTab() {
             {/* Action buttons — top right */}
             <View style={{ position: 'absolute', top: 14, right: 16, flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                onPress={toggleTracking}
-                style={[st.headerBtn, trackEnabled && { backgroundColor: ACCENT + '22', borderColor: ACCENT + '50' }]}
-              >
-                <Text style={{ fontSize: 13 }}>{trackEnabled ? '🏃' : '⏸'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
                 style={st.headerBtn}
+                activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 13 }}>📊</Text>
+                <Ionicons name="sparkles" size={14} color="#38bdf8" />
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#38bdf8', letterSpacing: 0.5 }}>Journey</Text>
               </TouchableOpacity>
             </View>
             {/* Main title — DancingScript matching sleep/alarm hero font exactly */}
@@ -367,24 +338,7 @@ export default function WalkTab() {
           </View>
         )}
 
-        {/* ── TRACKING PILL ─────────────────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, alignItems: 'center', marginBottom: 0 }}>
-          <TouchableOpacity
-            onPress={toggleTracking}
-            style={[st.trackPill, trackEnabled && st.trackPillOn]}
-            activeOpacity={0.75}
-          >
-            <LinearGradient
-              colors={trackEnabled ? [GREEN + '20', 'transparent'] : ['rgba(255,255,255,0.05)', 'transparent']}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
-            />
-            <View style={[st.trackDot, { backgroundColor: trackEnabled ? GREEN : 'rgba(255,255,255,0.22)' }]} />
-            <Text style={[st.trackPillTxt, { color: trackEnabled ? GREEN : 'rgba(255,255,255,0.45)' }]}>
-              {trackEnabled ? '👣 All-Day Tracking  ·  Active' : '👣 All-Day Tracking  ·  Tap to Enable'}
-            </Text>
-            <Text style={{ fontSize: 11, color: trackEnabled ? GREEN + 'bb' : 'rgba(255,255,255,0.18)' }}>›</Text>
-          </TouchableOpacity>
-        </Animated.View>
+
 
         {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
         <Animated.View style={[st.ringWrapper, { opacity: cardFade }]}>
@@ -432,7 +386,7 @@ export default function WalkTab() {
             <View style={st.ringCentre}>
               {/* Sub-pill badge */}
               <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 0.8, borderColor: 'rgba(167,139,250,0.60)', marginBottom: 8 }}>
-                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fff', letterSpacing: 1.4 }}>👣  STEPS TODAY  ·  {trackEnabled ? 'ACTIVE' : 'ENABLE'}</Text>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#fff', letterSpacing: 1.4 }}>👣  STEPS TODAY</Text>
               </View>
               <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
               <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
@@ -468,7 +422,7 @@ export default function WalkTab() {
           </View>
         </Animated.View>
 
-        {/* ── NADA SOUNDS BUTTON ───────────────────────────────────────────── */}
+        {/* ── NAAD SOUNDS BUTTON ───────────────────────────────────────────── */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 24, marginTop: 24, marginBottom: 8, height: 50 }}>
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
@@ -566,11 +520,6 @@ export default function WalkTab() {
           await refreshStats();
         }}
       />
-      <StepOnboardingModal
-        visible={showOnboarding}
-        onEnable={handleOnboardingEnable}
-        onSkip={handleOnboardingSkip}
-      />
     </ImageBackground>
   );
 }
@@ -632,88 +581,6 @@ function WeekBarChart({ data, goal, accentColor }: { data: DailyData[]; goal: nu
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Step Onboarding Modal
-// ─────────────────────────────────────────────────────────────────────────────
-function StepOnboardingModal({
-  visible, onEnable, onSkip,
-}: {
-  visible: boolean; onEnable: () => void; onSkip: () => void;
-}) {
-  const scaleAnim = useRef(new Animated.Value(0.88)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, tension: 80, friction: 8, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 1, duration: 260, useNativeDriver: true }),
-      ]).start();
-    } else {
-      scaleAnim.setValue(0.88);
-      fadeAnim.setValue(0);
-    }
-  }, [visible]);
-
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onSkip}>
-      <View style={ob.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onSkip} />
-        <Animated.View style={[ob.card, { transform: [{ scale: scaleAnim }], opacity: fadeAnim }]}>
-          <LinearGradient colors={['#1A0A3A', '#060D1F']} style={StyleSheet.absoluteFillObject} />
-          <LinearGradient
-            colors={[ACCENT + '28', 'transparent']}
-            style={{ position: 'absolute', top: -50, left: -50, width: 220, height: 220, borderRadius: 110 }}
-          />
-          <Text style={ob.emoji}>👣</Text>
-          <Text style={ob.title}>Track Your Steps,{'\n'}Every Single Day</Text>
-          <Text style={ob.sub}>
-            Enable background tracking to count your steps all day — even when the app is closed.
-          </Text>
-          <View style={ob.benefitsRow}>
-            {[
-              { icon: '🌅', txt: 'Dawn to dusk' },
-              { icon: '🔋', txt: 'Battery-friendly' },
-              { icon: '📊', txt: '30-day history' },
-            ].map((b, i) => (
-              <View key={i} style={ob.benefitItem}>
-                <Text style={ob.benefitIcon}>{b.icon}</Text>
-                <Text style={ob.benefitTxt}>{b.txt}</Text>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity style={ob.enableBtn} onPress={onEnable} activeOpacity={0.85}>
-            <LinearGradient
-              colors={[ACCENT, '#EC4899']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
-            />
-            <Text style={ob.enableTxt}>Start Tracking Now  👣</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onSkip} style={{ paddingVertical: 14 }}>
-            <Text style={ob.skipTxt}>Maybe later</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
-
-const ob = StyleSheet.create({
-  overlay:     { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.78)', padding: 24 },
-  card:        { width: '100%', maxWidth: 360, borderRadius: 28, padding: 28, alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  emoji:       { fontSize: 56, marginBottom: 16 },
-  title:       { fontSize: 26, fontWeight: '900', color: '#fff', textAlign: 'center', letterSpacing: -0.5, lineHeight: 32, marginBottom: 12 },
-  sub:         { fontSize: 14, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 21, marginBottom: 24 },
-  benefitsRow: { flexDirection: 'row', gap: 10, marginBottom: 28, width: '100%' },
-  benefitItem: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
-  benefitIcon: { fontSize: 22 },
-  benefitTxt:  { fontSize: 10, color: 'rgba(255,255,255,0.50)', fontWeight: '600', textAlign: 'center' },
-  enableBtn:   { width: '100%', borderRadius: 16, paddingVertical: 17, alignItems: 'center', overflow: 'hidden', marginBottom: 4 },
-  enableTxt:   { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.3 },
-  skipTxt:     { color: 'rgba(255,255,255,0.22)', fontSize: 13, fontWeight: '500' },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Goal modal
@@ -788,9 +655,9 @@ const st = StyleSheet.create({
   headerTitle: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
   headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2, fontWeight: '500' },
   headerBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+    backgroundColor: 'rgba(56,189,248,0.12)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
 
   noSensorCard: {

@@ -187,7 +187,7 @@ export default function SoundBathRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'Nada Sound Bath',
+          id: 'arise-soundbath', name: 'Naad Sound Bath',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);

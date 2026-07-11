@@ -247,7 +247,7 @@ export default function WakeAlarmRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'Nada Wake Alarm',
+          id: 'arise-soundbath', name: 'Naad Wake Alarm',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);

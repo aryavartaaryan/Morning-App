@@ -259,7 +259,7 @@ export default function HabitAlarmRingingScreen() {
         }
         // No native service — start notifee FGS as fallback
         await notifee.createChannel({
-          id: 'arise-habit-alarms', name: 'Nada Habit Alarms',
+          id: 'arise-habit-alarms', name: 'Naad Habit Alarms',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);

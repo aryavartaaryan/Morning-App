@@ -40,8 +40,8 @@ import java.util.*
 class StepCounterService : Service(), SensorEventListener {
 
     companion object {
-        private const val TAG           = "NadaStepService"
-        const val CHANNEL_ID            = "nada_step_counter"
+        private const val TAG           = "NaadStepService"
+        const val CHANNEL_ID            = "naad_step_counter"
         const val NOTIFICATION_ID       = 4242
 
         // Walk session actions
@@ -53,7 +53,7 @@ class StepCounterService : Service(), SensorEventListener {
         const val ACTION_STOP_DAILY     = "com.solrize.DAILY_STOP"
 
         // SharedPreferences keys for daily tracking persistence
-        const val PREFS_NAME            = "nada_step_prefs"
+        const val PREFS_NAME            = "naad_step_prefs"
         private const val KEY_DATE      = "daily_date"
         private const val KEY_STEPS     = "daily_steps"
         private const val KEY_BASELINE  = "daily_counter_baseline"
@@ -335,8 +335,8 @@ class StepCounterService : Service(), SensorEventListener {
         val title = when {
             isWalkRunning && isDailyRunning -> "🚶 Walking · $sessionSteps steps"
             isWalkRunning                  -> "🚶 Walk in progress · $sessionSteps steps"
-            isDailyRunning                 -> "👟 Nada step tracker active"
-            else                           -> "Nada"
+            isDailyRunning                 -> "👟 Naad step tracker active"
+            else                           -> "Naad"
         }
         val body = when {
             isWalkRunning && isDailyRunning -> "Today: $todaySteps steps total"

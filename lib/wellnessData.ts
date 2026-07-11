@@ -14,7 +14,7 @@ export type WellnessEntry = {
   bodyBullets: { dot: string; text: string }[];
   doItems: { emoji: string; text: string }[];
   avoidItems: { emoji: string; text: string }[];
-  nadaSounds: string[];
+  naadSounds: string[];
 };
 
 export const WELLNESS: Record<string, WellnessEntry> = {
@@ -49,7 +49,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '📱', text: 'Immediately checking phone' },
       { emoji: '☕', text: 'Excessive caffeine' },
     ],
-    nadaSounds: ['morning_birds', 'spring_birds', 'forest_breeze', 'morning_flute', 'sitar'],
+    naadSounds: ['morning_birds', 'spring_birds', 'forest_breeze', 'morning_flute', 'sitar'],
   },
   midday_pitta: {
     displayName: 'Pitta time',
@@ -82,7 +82,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '😤', text: 'Anger, conflict and arguments' },
       { emoji: '💻', text: 'Overworking without breaks' },
     ],
-    nadaSounds: ['hz_432', 'singing_bowl', 'indian_beats', 'sitar_tabla_bells', 'flowing_water'],
+    naadSounds: ['hz_432', 'singing_bowl', 'indian_beats', 'sitar_tabla_bells', 'flowing_water'],
   },
   afternoon_vata: {
     displayName: 'Vata time',
@@ -115,7 +115,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '😰', text: 'High-stress decisions — mind is restless' },
       { emoji: '😴', text: 'Long naps — disrupts night sleep' },
     ],
-    nadaSounds: ['gentle_wind', 'forest_breeze', 'sea_waves', 'wanderlust', 'spiritual_journey'],
+    naadSounds: ['gentle_wind', 'forest_breeze', 'sea_waves', 'wanderlust', 'spiritual_journey'],
   },
   evening_kapha: {
     displayName: 'Kapha time',
@@ -148,7 +148,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '🏃', text: 'Stimulating intense exercise' },
       { emoji: '💢', text: 'Emotionally heated conversations' },
     ],
-    nadaSounds: ['tibetan_bowl', 'singing_bowl', 'tibetan_dreams', 'night_forest', 'reincarnation_tones'],
+    naadSounds: ['tibetan_bowl', 'singing_bowl', 'tibetan_dreams', 'night_forest', 'reincarnation_tones'],
   },
   night_pitta: {
     displayName: 'Pitta time',
@@ -180,7 +180,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '☕', text: 'Stimulants — caffeine, sugar' },
       { emoji: '💭', text: 'Overthinking or emotional rumination' },
     ],
-    nadaSounds: ['tibetan_dreams', 'singing_bowl', 'reincarnation_tones', 'night_forest', 'night_jungle_chiangmai'],
+    naadSounds: ['tibetan_dreams', 'singing_bowl', 'reincarnation_tones', 'night_forest', 'night_jungle_chiangmai'],
   },
   night_vata: {
     displayName: 'Vata time',
@@ -213,7 +213,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
       { emoji: '🏋️', text: 'Intense physical exertion' },
       { emoji: '📢', text: 'Loud conversation or noise' },
     ],
-    nadaSounds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'morning_flute', 'spiritual_journey'],
+    naadSounds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'morning_flute', 'spiritual_journey'],
   },
 };
 
@@ -375,7 +375,7 @@ export const MIDDAY_PITTA_LATE_WELLNESS: WellnessEntry = {
     { emoji: '☕', text: 'Excessive caffeine to fight the dip' },
     { emoji: '💻', text: 'Deep focused cognitive work' },
   ],
-  nadaSounds: ['hz_432', 'flowing_water', 'gentle_wind', 'singing_bowl'],
+  naadSounds: ['hz_432', 'flowing_water', 'gentle_wind', 'singing_bowl'],
 };
 
 export const MIDDAY_PITTA_LATE_SANSKRIT = { sanskrit: 'Madhyāhna Pariṇāma', meaning: 'The phase of internal transformation and digestion' };

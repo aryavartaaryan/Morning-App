@@ -364,7 +364,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'sitar_tanpura_bgm',    label: 'Sitar & Tanpura',         icon: '🎼', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura.m4a') },
   { id: 'veena_classical',      label: 'Classical Veena',         icon: '🪗', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a', category: 'sitar',   isGentle: true },
   { id: 'sitar_calm',            label: 'Calm Sitar',              icon: '🎸', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-calm.m4a') },
-  { id: 'veena_raga',            label: 'Veena Raga Kanada',       icon: '🪗', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/veena-raga.m4a') },
+  { id: 'veena_raga',            label: 'Veena Raga Kanaad',       icon: '🪗', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/veena-raga.m4a') },
   // ── Flute ──────────────────────────────────────────────────────────────────────
   { id: 'andean_flute',         label: 'Andean Flute',            icon: '🏔️', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/andean-flute.m4a') },
   { id: 'native_flute',         label: 'Native American Flute',   icon: '🪶', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/native-flute.m4a') },

@@ -401,7 +401,7 @@ export default function MetabolicPeriodScreen() {
   const rem = period.minutesRemaining;
   const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m` : `${rem}m`;
 
-  const handleNada = () => {
+  const handleNaad = () => {
     router.push('/(tabs)/sleep' as never);
   };
 
@@ -425,13 +425,13 @@ export default function MetabolicPeriodScreen() {
       {/* Top accent line */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: SKY + '90', zIndex: 99 }} />
 
-      {/* Sticky Nada bar at bottom */}
+      {/* Sticky Naad bar at bottom */}
       <TouchableOpacity
-        onPress={handleNada}
+        onPress={handleNaad}
         activeOpacity={0.86}
-        style={[S.nadaBar, { backgroundColor: accent }]}>
-        <Text style={S.nadaBarTxt}>🎵  Open Nada Sounds</Text>
-        <Text style={S.nadaBarSub}>Sounds recommended for {period.label}</Text>
+        style={[S.naadBar, { backgroundColor: accent }]}>
+        <Text style={S.naadBarTxt}>🎵  Open Naad Sounds</Text>
+        <Text style={S.naadBarSub}>Sounds recommended for {period.label}</Text>
       </TouchableOpacity>
 
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -976,7 +976,7 @@ const S = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
   },
-  nadaBar: {
+  naadBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -992,13 +992,13 @@ const S = StyleSheet.create({
     shadowRadius: 20,
     elevation: 20,
   },
-  nadaBarTxt: {
+  naadBarTxt: {
     fontSize: 16,
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
-  nadaBarSub: {
+  naadBarSub: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.65)',
     marginTop: 2,

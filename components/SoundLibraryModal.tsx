@@ -58,10 +58,10 @@ export default function SoundLibraryModal({
 
   const isExpandedView = expandedCat !== null || searchQuery.length > 0;
   
-  const drawerDynamicStyle = {
-    width: isExpandedView ? '100%' : Math.min(W * 0.75, 300),
-    borderTopRightRadius: isExpandedView ? 0 : 24,
-    borderBottomRightRadius: isExpandedView ? 0 : 24,
+  const drawerDynamicStyle: any = {
+    width: '100%',
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
   };
 
   const renderCategoriesAccordion = () => (
@@ -130,7 +130,7 @@ export default function SoundLibraryModal({
               <View style={S.headerTopRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="musical-notes-outline" size={18} color="rgba(255,255,255,0.8)" style={{ marginRight: 8 }} />
-                  <Text style={S.title}>Nada Library</Text>
+                  <Text style={S.title}>Naad Library</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); router.push('/(tabs)/settings' as never); }} style={[S.closeBtn, { marginRight: 8 }]} activeOpacity={0.7}>
@@ -164,7 +164,7 @@ export default function SoundLibraryModal({
             </View>
 
             {/* List */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scrollContent}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.scrollContent} keyboardShouldPersistTaps="handled">
               {renderCategoriesAccordion()}
             </ScrollView>
           </View>

@@ -3,14 +3,14 @@ const path = '/Users/hotelnamastebharatinn/Desktop/Morning-App/lib/sleepSoundsDa
 let code = fs.readFileSync(path, 'utf8');
 
 const targets = [
-  'nada_raga_sparkle',
-  'nada_relaxing_flute',
-  'nada_himalayan_village_flute',
+  'naad_raga_sparkle',
+  'naad_relaxing_flute',
+  'naad_himalayan_village_flute',
   'bansuri_melody',
   'nc_sitar_overthinking_heal',
   'nc_raga_deepam_veena_flute_1',
   'nc_raga_deepam_veena_flute_2',
-  'nada_zen_bamboo_flow',
+  'naad_zen_bamboo_flow',
   'cdn_bhimpalasi',
   'cdn_ultra_raag_bahar_528',
   'cdn_new_12',

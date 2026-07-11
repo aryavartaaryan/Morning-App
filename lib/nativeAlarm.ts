@@ -58,7 +58,7 @@ export async function setupAlarmChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await notifee.createChannel({
     id: ALARM_CHANNEL_ID,
-    name: 'Nada Wake Alarm',
+    name: 'Naad Wake Alarm',
     description: 'Mission alarm — fires even when phone is sleeping',
     importance: AndroidImportance.HIGH,  // HIGH required for fullScreenIntent
     sound: 'mantra_alarm',

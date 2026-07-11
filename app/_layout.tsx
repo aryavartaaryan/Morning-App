@@ -106,83 +106,88 @@ class AppErrorBoundary extends Component<
 
 const { height: SH } = Dimensions.get('window');
 
-function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string }) {
-  const bgOp     = useRef(new Animated.Value(0)).current;
-  const bgScale  = useRef(new Animated.Value(1.04)).current;
-  
+function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }) {
   // "Naad" text (starts visible to seamlessly match native splash, then fades out)
   const titleOp  = useRef(new Animated.Value(1)).current;
   const titleSc  = useRef(new Animated.Value(1)).current;
   
-  // New Main Title (was subtitle)
-  const subOp    = useRef(new Animated.Value(0)).current;
-  const subSc    = useRef(new Animated.Value(0.92)).current;
-  const shimmerOp = useRef(new Animated.Value(0)).current;
+  // First Sequence Title
+  const title1Op    = useRef(new Animated.Value(0)).current;
+  const title1Sc    = useRef(new Animated.Value(0.92)).current;
+  const title1ShimmerOp = useRef(new Animated.Value(0)).current;
+  
+  // Second Sequence Title (Sunrise)
+  const title2Op    = useRef(new Animated.Value(0)).current;
+  const title2Sc    = useRef(new Animated.Value(0.92)).current;
+  const title2Ty    = useRef(new Animated.Value(20)).current;
+  const title2ShimmerOp = useRef(new Animated.Value(0)).current;
+
+  const footerOp = useRef(new Animated.Value(0)).current;
   
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const animStarted = useRef(false);
-  const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Ken Burns zoom starts immediately
+  // Animation sequence starts after component mounts
   useEffect(() => {
-    Animated.timing(bgScale, { toValue: 1.12, duration: 6800, useNativeDriver: true }).start();
-    // Safety: if onLoad never fires (remote URL / edge case), start after 1.5 s
-    safetyTimer.current = setTimeout(() => setImageLoaded(true), 1500);
-    return () => { if (safetyTimer.current) clearTimeout(safetyTimer.current); };
+    // Initial delay to let the app settle
+    const initialDelay = setTimeout(() => {
+      // Fade out "Naad" gracefully
+      Animated.parallel([
+        Animated.timing(titleOp, { toValue: 0, duration: 1000, delay: 600, useNativeDriver: true }),
+        Animated.timing(titleSc, { toValue: 1.08, duration: 1000, delay: 600, useNativeDriver: true }),
+      ]).start();
+
+      // Fade in Sequence 1 & 2
+      Animated.sequence([
+        Animated.delay(1300), // wait for Naad to start fading
+        
+        // 1. Show "Align Your Rhythm with the Universe"
+        Animated.parallel([
+          Animated.timing(title1Op, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.spring(title1Sc, { toValue: 1, tension: 35, friction: 8, useNativeDriver: true }),
+          Animated.timing(footerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        ]),
+        // Golden Shimmer effect
+        Animated.timing(title1ShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        
+        // 2. Fade out first title
+        Animated.parallel([
+          Animated.timing(title1Op, { toValue: 0, duration: 1000, useNativeDriver: true }),
+          Animated.timing(title1ShimmerOp, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ]),
+        
+        Animated.delay(300),
+        
+        // 3. Sunrise premium animation for "Resonate..."
+        Animated.parallel([
+          Animated.timing(title2Op, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(title2Ty, { toValue: 0, duration: 1200, useNativeDriver: true }), // Rise up
+          Animated.spring(title2Sc, { toValue: 1, tension: 30, friction: 10, useNativeDriver: true }),
+        ]),
+        
+        // Golden Shimmer effect
+        Animated.timing(title2ShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        
+        Animated.delay(600),
+        
+        // 4. Dismiss Splash
+        Animated.parallel([
+          Animated.timing(screenOp, { toValue: 0, duration: 900, useNativeDriver: true }),
+          Animated.timing(screenSc, { toValue: 0.94, duration: 900, useNativeDriver: true }),
+        ]),
+      ]).start(() => onDone());
+    }, 150);
+
+    return () => clearTimeout(initialDelay);
   }, []);
-
-  // Animation sequence
-  useEffect(() => {
-    if (!imageLoaded || animStarted.current) return;
-    animStarted.current = true;
-
-    // Fade in mountain background (seamlessly taking over the black native splash)
-    Animated.timing(bgOp, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
-
-    // Fade out "Naad" gracefully
-    Animated.parallel([
-      Animated.timing(titleOp, { toValue: 0, duration: 800, delay: 600, useNativeDriver: true }),
-      Animated.timing(titleSc, { toValue: 1.08, duration: 800, delay: 600, useNativeDriver: true }),
-    ]).start();
-
-    // Fade in new Main Title
-    Animated.sequence([
-      Animated.delay(1100), // wait for Naad to start fading
-      Animated.parallel([
-        Animated.timing(subOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.spring(subSc, { toValue: 1, tension: 35, friction: 8, useNativeDriver: true }),
-      ]),
-      // Golden Shimmer effect
-      Animated.timing(shimmerOp, { toValue: 1, duration: 1400, useNativeDriver: true }),
-      Animated.timing(shimmerOp, { toValue: 0, duration: 1400, useNativeDriver: true }),
-      Animated.delay(1200),
-      // Dismiss Splash
-      Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 700, useNativeDriver: true }),
-        Animated.timing(screenSc, { toValue: 0.96, duration: 700, useNativeDriver: true }),
-      ]),
-    ]).start(() => onDone());
-  }, [imageLoaded]);
 
   return (
     <Animated.View
       pointerEvents="none"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
-      {/* Background image with Ken Burns zoom and fade-in */}
-      {!!bgUri && (
-        <Animated.Image
-          source={{ uri: bgUri }}
-          style={[StyleSheet.absoluteFillObject, { opacity: bgOp, transform: [{ scale: bgScale }] }]}
-          resizeMode="cover"
-          onLoad={() => {
-            if (safetyTimer.current) clearTimeout(safetyTimer.current);
-            setImageLoaded(true);
-          }}
-        />
-      )}
+      {/* Absolute Black Background for elegant premium look */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#04030F' }]} />
       
       {/* Center Content */}
       <View style={SS.center}>
@@ -190,14 +195,25 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
         {/* The Native-Matching "Naad" Text */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
           <Text style={SS.arise}>Naad</Text>
+          <Text style={[SS.tagline, { marginTop: 4, letterSpacing: 4 }]}>THE RESONANCE</Text>
         </Animated.View>
 
-        {/* The New Big Main Title (was subtitle) */}
-        <Animated.View style={[SS.subBlock, { opacity: subOp, transform: [{ scale: subSc }] }]}>
+        {/* Sequence 1 */}
+        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: title1Op, transform: [{ scale: title1Sc }] }]}>
           <View style={{ position: 'relative', alignItems: 'center' }}>
-            <Text style={SS.newMainTitle}>Align Your Rhythm with Nature.{'\n'}Your Day, by Design.</Text>
-            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: shimmerOp }]}>
-              Align Your Rhythm with Nature.{'\n'}Your Day, by Design.
+            <Text style={SS.newMainTitle}>Align Your Rhythm{'\n'}with the Universe.</Text>
+            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: title1ShimmerOp }]}>
+              Align Your Rhythm{'\n'}with the Universe.
+            </Animated.Text>
+          </View>
+        </Animated.View>
+
+        {/* Sequence 2: Sunrise */}
+        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: title2Op, transform: [{ scale: title2Sc }, { translateY: title2Ty }] }]}>
+          <View style={{ position: 'relative', alignItems: 'center' }}>
+            <Text style={SS.newMainTitle}>Resonate & Transform{'\n'}through the Naad.</Text>
+            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: title2ShimmerOp }]}>
+              Resonate & Transform{'\n'}through the Naad.
             </Animated.Text>
           </View>
         </Animated.View>
@@ -205,7 +221,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri: string })
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: subOp }]}>NADA  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp }]}>NAAD  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -230,7 +246,7 @@ const SETUP_SUBTITLES = [
   'Your life in New Transformation journey is starting from Today',
   'Just listen the Naad sounds...',
   'नाद — The primordial sound of the universe',
-  'Align your rhythm with nature\'s wisdom',
+  'Align your rhythm with the universe\'s wisdom',
   'A new dawn of conscious living awaits you',
 ];
 
@@ -249,36 +265,36 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
     // Outer glow orb breathe
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim,  { toValue: 1.08, duration: 2200, useNativeDriver: true }),
-        Animated.timing(pulseAnim,  { toValue: 0.80, duration: 2200, useNativeDriver: true }),
+        Animated.timing(pulseAnim,  { toValue: 1.4, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim,  { toValue: 0.7, duration: 1200, useNativeDriver: true }),
       ])
     ).start();
     // Inner glow breathe (offset)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim,   { toValue: 0.88, duration: 2600, useNativeDriver: true }),
-        Animated.timing(glowAnim,   { toValue: 0.38, duration: 2600, useNativeDriver: true }),
+        Animated.timing(glowAnim,   { toValue: 1.0, duration: 1400, useNativeDriver: true }),
+        Animated.timing(glowAnim,   { toValue: 0.2, duration: 1400, useNativeDriver: true }),
       ])
     ).start();
     // App name shimmer
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmerAnim, { toValue: 1.0, duration: 2400, useNativeDriver: true }),
-        Animated.timing(shimmerAnim, { toValue: 0.45, duration: 2400, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 1.0, duration: 1500, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.45, duration: 1500, useNativeDriver: true }),
       ])
     ).start();
     // Ring elegant pulse scale
     Animated.loop(
       Animated.sequence([
-        Animated.timing(ringPulse, { toValue: 1.035, duration: 1800, useNativeDriver: true }),
-        Animated.timing(ringPulse, { toValue: 0.97,  duration: 1800, useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 0.85,  duration: 1000, useNativeDriver: true }),
       ])
     ).start();
-    // Arc outer glow breath
+    // Arc outer glow breath - elegant medium speed
     Animated.loop(
       Animated.sequence([
-        Animated.timing(arcGlow, { toValue: 1.0, duration: 1500, useNativeDriver: true }),
-        Animated.timing(arcGlow, { toValue: 0.0, duration: 1500, useNativeDriver: true }),
+        Animated.timing(arcGlow, { toValue: 1.0, duration: 2500, useNativeDriver: true }),
+        Animated.timing(arcGlow, { toValue: 0.0, duration: 2500, useNativeDriver: true }),
       ])
     ).start();
 
@@ -310,12 +326,12 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
       {/* Ambient radial glow behind ring */}
       <Animated.View style={[
         DS.ambientGlow,
-        { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.28] }) },
+        { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] }) },
       ]} />
 
       <View style={DS.center}>
         {/* App name */}
-        <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NADA</Animated.Text>
+        <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NAAD</Animated.Text>
 
         {/* Animated subtitle line */}
         <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>
@@ -324,29 +340,22 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
 
         {/* Ring — pulsing wrapper */}
         <Animated.View style={[DS.ringWrap, { transform: [{ scale: ringPulse }] }]}>
-          {/* Layered glow orbs */}
-          <Animated.View style={[DS.glowOuter, { opacity: glowAnim, transform: [{ scale: pulseAnim }] }]} />
-          <Animated.View style={[DS.glowInner, { opacity: shimmerAnim }]} />
-          {/* Pulsing arc halo ring */}
+          {/* Pulsing arc halo ring (elegant aura) */}
           <Animated.View style={[
             DS.arcHalo,
-            { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.22] }) },
+            { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.4] }) },
           ]} />
 
           <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
             <Defs>
               <SvgLinearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%"   stopColor="#F5C518" stopOpacity="1" />
-                <Stop offset="55%"  stopColor="#F5820A" stopOpacity="1" />
-                <Stop offset="100%" stopColor="#FF4D0D" stopOpacity="1" />
+                <Stop offset="0%"   stopColor="#0284C7" stopOpacity="1" />
+                <Stop offset="50%"  stopColor="#0369A1" stopOpacity="1" />
+                <Stop offset="100%" stopColor="#075985" stopOpacity="1" />
               </SvgLinearGradient>
             </Defs>
-            {/* Outer decorative ring */}
-            <Circle cx={cx} cy={cx} r={R + 20} stroke="rgba(245,197,24,0.06)" strokeWidth={1} fill="none" />
-            {/* Inner decorative ring */}
-            <Circle cx={cx} cy={cx} r={R - 20} stroke="rgba(245,130,10,0.08)" strokeWidth={1} fill="none" />
-            {/* Track */}
-            <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.07)" strokeWidth={STRKW} fill="none" />
+            {/* Track with navy sky inner fill theme */}
+            <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.05)" strokeWidth={STRKW} fill="rgba(2, 132, 199, 0.08)" />
             {/* Progress arc */}
             <Circle
               cx={cx} cy={cx} r={R}
@@ -379,13 +388,11 @@ function DownloadScreen({ progress, label }: { progress: number; label: string }
 const DS = StyleSheet.create({
   screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName:     { fontSize: 42, fontFamily: 'Nunito_900Black', color: '#F5C518', letterSpacing: 10, marginBottom: 10 },
-  subTagline:  { fontSize: 13, color: 'rgba(245,197,24,0.70)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 32, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
+  appName:     { fontSize: 42, fontFamily: 'Nunito_900Black', color: '#38BDF8', letterSpacing: 10, marginBottom: 10 },
+  subTagline:  { fontSize: 13, color: 'rgba(56,189,248,0.70)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 32, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
   ringWrap:    { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
-  glowOuter:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: '#F5820A', opacity: 0.07 },
-  glowInner:   { position: 'absolute', width: 148, height: 148, borderRadius: 74, backgroundColor: '#F5C518', opacity: 0.05 },
-  arcHalo:     { position: 'absolute', width: 240, height: 240, borderRadius: 120, borderWidth: 18, borderColor: '#F5820A', opacity: 0.0 },
-  ambientGlow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, backgroundColor: '#F5820A', top: '30%', alignSelf: 'center', opacity: 0.15 },
+  arcHalo:     { position: 'absolute', width: 250, height: 250, borderRadius: 125, borderWidth: 14, borderColor: '#0284C7', opacity: 0.0 },
+  ambientGlow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, backgroundColor: '#0284C7', top: '30%', alignSelf: 'center', opacity: 0.10 },
   pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
   pctNum:      { fontSize: 60, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -1 },
   pctSign:     { fontSize: 20, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 10, marginLeft: 2 },
@@ -614,6 +621,7 @@ function BodhiNotificationListener() {
   // immediate read races and loses — poll every 350 ms for up to 2.1 s so
   // we catch the key regardless of OEM scheduling jitter.
   useEffect(() => {
+    if (!navReady) return;
     const PENDING_HABIT_KEY = 'onesutra_pending_habit_v1';
     let cancelled = false;
 
@@ -663,7 +671,7 @@ function BodhiNotificationListener() {
       cancelled = true;
       appStateSub.remove();
     };
-  }, []);
+  }, [navReady]);
 
   // ── When app is LAUNCHED by a soundbath alarm fullScreenAction (app was killed) ──
   // RACE-CONDITION FIX: onBackgroundEvent writes onesutra_pending_soundbath_v1
@@ -671,6 +679,7 @@ function BodhiNotificationListener() {
   // loses on OEM devices — poll every 350 ms for up to 2.1 s (same pattern as
   // PENDING_HABIT_KEY above) so we catch the key regardless of scheduling jitter.
   useEffect(() => {
+    if (!navReady) return;
     const PENDING_SB_KEY = 'onesutra_pending_soundbath_v1';
     let cancelled = false;
 
@@ -708,7 +717,7 @@ function BodhiNotificationListener() {
       cancelled = true;
       appStateSub.remove();
     };
-  }, []);
+  }, [navReady]);
 
   // ── SOUNDBATH DEEP-LINK RACE FIX: native SharedPrefs fallback ────────────────
   // Problem: HabitAlarmSoundService fires the deep-link solrize://soundbath-ringing
@@ -775,6 +784,7 @@ function BodhiNotificationListener() {
   // ── When app is LAUNCHED by a sleep auto-start fullScreenAction (app was killed) ──
   // RACE-CONDITION FIX: same polling pattern as soundbath and PENDING_HABIT_KEY.
   useEffect(() => {
+    if (!navReady) return;
     const PENDING_SLEEP_KEY = 'onesutra_pending_sleep_v1';
     let cancelled = false;
 
@@ -812,7 +822,7 @@ function BodhiNotificationListener() {
       cancelled = true;
       appStateSub.remove();
     };
-  }, []);
+  }, [navReady]);
 
   // ── When app is LAUNCHED by a notifee notification (habit alarm / evening mantra) ──
   useEffect(() => {
@@ -870,7 +880,7 @@ function BodhiNotificationListener() {
       // ── Android: ensure notification channel is ready on every app open ──
       if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync('arise-alarms', {
-          name: 'Nada Alarms',
+          name: 'Naad Alarms',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'mantra_alarm.m4a',
           vibrationPattern: [0, 250, 250, 250],
@@ -1083,7 +1093,7 @@ export default function RootLayout() {
   const [dlLabel,     setDlLabel]     = useState('Preparing...');
   // Pre-resolve the splash bg URI synchronously so SplashOverlay can render
   // immediately during the 'gate' phase — eliminating the blank gap between
-  // the native splash dismiss and the NADA animated screen appearing.
+  // the native splash dismiss and the NAAD animated screen appearing.
   const [splashBgUri, setSplashBgUri] = useState<string>(() => {
     try { return getBgSourceSync('splash'); } catch { return ''; }
   });
@@ -1130,17 +1140,19 @@ export default function RootLayout() {
         // We use a separate INPROGRESS flag written at the START of download
         // and cleared only on success. If it exists at next open, we force the
         // download gate again — preventing permanently-missing reel images.
-        const SETUP_DONE_KEY      = 'arise_bg_setup_done_v2';
+        const SETUP_DONE_KEY       = 'arise_bg_setup_done_v2';
         const SETUP_INPROGRESS_KEY = 'arise_bg_setup_inprogress_v1';
-        const [setupFlagRaw, inProgressRaw] = await Promise.all([
+        const SETUP_PROGRESS_KEY   = 'arise_bg_setup_progress_val';
+        const [setupFlagRaw, inProgressRaw, savedProgressRaw] = await Promise.all([
           AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null),
           AsyncStorage.getItem(SETUP_INPROGRESS_KEY).catch(() => null),
+          AsyncStorage.getItem(SETUP_PROGRESS_KEY).catch(() => null),
         ]);
-        const setupDone      = !!setupFlagRaw;
+        const setupDone       = !!setupFlagRaw;
         const setupInProgress = !!inProgressRaw;   // killed mid-download last time
-        const splashOnDisk   = isSplashCached();
+        const splashOnDisk    = isSplashCached();
         // Treat as first install if never completed OR if interrupted mid-download.
-        const isFirstInstall = (!setupDone && !splashOnDisk) || setupInProgress;
+        const isFirstInstall  = (!setupDone && !splashOnDisk) || setupInProgress;
 
         if (isFirstInstall) {
           // First install (or interrupted resume): gate on BG images + sound
@@ -1154,6 +1166,10 @@ export default function RootLayout() {
           // gate will re-run instead of silently skipping.
           await AsyncStorage.setItem(SETUP_INPROGRESS_KEY, '1').catch(() => {});
 
+          if (savedProgressRaw) {
+            setDlProgress(parseFloat(savedProgressRaw) || 0);
+          }
+
           setPhase('downloading');
 
           const bgCount   = Object.keys(BG_URLS).length;
@@ -1163,7 +1179,17 @@ export default function RootLayout() {
 
           const tick = () => {
             completedFiles++;
-            if (!cancelled) setDlProgress(completedFiles / totalFiles);
+            const p = Math.min(completedFiles / totalFiles, 1);
+            
+            // Only update the UI progress if it surpasses the visually restored progress
+            // so we don't jump backwards to 0 while re-scanning cached files on startup
+            if (p > (parseFloat(savedProgressRaw || '0') || 0) || completedFiles === totalFiles) {
+              if (!cancelled) setDlProgress(p);
+              // Save progress periodically to resume seamlessly
+              if (completedFiles % 3 === 0 || completedFiles === totalFiles) {
+                AsyncStorage.setItem(SETUP_PROGRESS_KEY, p.toString()).catch(() => {});
+              }
+            }
           };
 
           setDlLabel('Setting up...');
@@ -1185,6 +1211,7 @@ export default function RootLayout() {
           await Promise.all([
             AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {}),
             AsyncStorage.removeItem(SETUP_INPROGRESS_KEY).catch(() => {}),
+            AsyncStorage.removeItem(SETUP_PROGRESS_KEY).catch(() => {}),
           ]);
 
           if (cancelled) return;
@@ -1248,12 +1275,12 @@ export default function RootLayout() {
           <AuthGuard onAuthReady={() => setAuthReady(true)} />
         )}
         <BodhiNotificationListener />
-        {/* NADA animated splash — shown immediately during 'gate' AND 'splash'
+        {/* NAAD animated splash — shown immediately during 'gate' AND 'splash'
              phases so there is zero blank gap after the native splash dismisses.
              key="splash" is stable across gate→splash so React never remounts
              the component (which would restart the animation from scratch). */}
         {(phase === 'gate' || phase === 'splash') && (
-          <SplashOverlay key="nada-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
+          <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
         )}
         {/* Elegant download progress screen — first install only */}
         {phase === 'downloading' && (

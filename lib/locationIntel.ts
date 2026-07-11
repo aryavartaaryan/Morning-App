@@ -30,7 +30,7 @@ export type RituSeason =
 export type CulturalRegion =
     | 'India'
     | 'WesternEurope'
-    | 'USA_Canada'
+    | 'USA_Canaad'
     | 'EastAsia'
     | 'MiddleEast'
     | 'LatinAmerica'
@@ -115,7 +115,7 @@ export function getClimateZone(lat: number, lon: number, month: number): Climate
     if (absLat > 45 && absLat <= 60) {
         // Nordic/Northern Europe
         if (lat > 45 && lon > -10 && lon < 35) return 'continental';
-        // Siberia, central Canada, Mongolia
+        // Siberia, central Canaad, Mongolia
         if (lon > 60 && lon < 145 && lat > 50) return 'continental';
         if (lon < -90 && lat > 50) return 'continental';
     }
@@ -191,8 +191,8 @@ export function getCulturalRegion(lat: number, lon: number): CulturalRegion {
     if (lat >= 15 && lat <= 40 && lon >= 25 && lon <= 65) return 'MiddleEast';
     // Sub-Saharan Africa
     if (lat >= -35 && lat <= 15 && lon >= -20 && lon <= 50) return 'SubSaharan';
-    // USA / Canada
-    if (lat >= 24 && lat <= 72 && lon >= -170 && lon <= -52) return 'USA_Canada';
+    // USA / Canaad
+    if (lat >= 24 && lat <= 72 && lon >= -170 && lon <= -52) return 'USA_Canaad';
     // Latin America
     if (lat >= -55 && lat <= 32 && lon >= -120 && lon <= -34) return 'LatinAmerica';
 
@@ -307,7 +307,7 @@ export function getFoodRecommendations(
     const isKapha = pk.includes('kapha');
 
     const vegLabel = region === 'MiddleEast' ? 'Plant-rich option'
-        : region === 'USA_Canada' ? 'Sattvic (light, clear, energising)'
+        : region === 'USA_Canaad' ? 'Sattvic (light, clear, energising)'
             : region === 'WesternEurope' ? 'Plant-forward'
                 : 'Vegetarian (recommended)';
 
@@ -316,7 +316,7 @@ export function getFoodRecommendations(
         const baseVeg: Record<CulturalRegion, string[]> = {
             India: ['Moong dal khichdi', 'Rice kanji (congee)', 'Steamed idli with sambar', 'Warm oats with ghee and dates'],
             WesternEurope: ['Warm oat porridge with ginger and cinnamon', 'Spelt toast with avocado', 'Warm lentil soup'],
-            USA_Canada: ['Warm oatmeal with cinnamon and honey', 'Scrambled eggs with turmeric', 'Quinoa porridge with ghee'],
+            USA_Canaad: ['Warm oatmeal with cinnamon and honey', 'Scrambled eggs with turmeric', 'Quinoa porridge with ghee'],
             EastAsia: ['Warm rice congee (kayu)', 'Miso soup with tofu', 'Steamed bao with vegetables'],
             MiddleEast: ['Za\'atar flatbread with olive oil', 'Lentil soup', 'Warm hummus with herbs'],
             LatinAmerica: ['Warm corn tortillas with black beans', 'Plantain with ghee', 'Oat atole'],
@@ -328,7 +328,7 @@ export function getFoodRecommendations(
         const nonVeg: Record<CulturalRegion, string[]> = {
             India: ['Boiled egg dosa', 'Chicken rasam (light broth)'],
             WesternEurope: ['Soft-boiled egg with rye bread', 'Smoked salmon (light non-veg)'],
-            USA_Canada: ['Turkey sausage with oats', 'Egg white omelette with turmeric'],
+            USA_Canaad: ['Turkey sausage with oats', 'Egg white omelette with turmeric'],
             EastAsia: ['Steamed egg custard', 'Warm chicken congee'],
             MiddleEast: ['Eggs with za\'atar (halal)', 'Labneh with warm bread'],
             LatinAmerica: ['Egg scramble with corn tortilla', 'Chicken tamale (light)'],
@@ -357,7 +357,7 @@ export function getFoodRecommendations(
         const baseVeg: Record<CulturalRegion, string[]> = {
             India: ['Dal + rice + sabzi + ghee + salad', 'Rajma chawal', 'Sambar rice with papad', 'Lauki (bottle gourd) curry'],
             WesternEurope: ['Lentil stew with root vegetables', 'Chickpea and spinach curry', 'Barley soup with herbs'],
-            USA_Canada: ['Black bean bowl with quinoa', 'Sweet potato curry', 'Lentil soup with avocado'],
+            USA_Canaad: ['Black bean bowl with quinoa', 'Sweet potato curry', 'Lentil soup with avocado'],
             EastAsia: ['Miso tofu rice bowl', 'Vegetable noodle broth', 'Daikon and seaweed salad with warm rice'],
             MiddleEast: ['Lentil with rice (Mujaddara)', 'Chickpea stew with za\'atar', 'Hummus with flatbread and vegetables'],
             LatinAmerica: ['Black beans with rice and plantain', 'Corn and vegetable soup', 'Avocado salad with quinoa'],
@@ -369,7 +369,7 @@ export function getFoodRecommendations(
         const nonVeg: Record<CulturalRegion, string[]> = {
             India: ['Chicken curry (light gravy)', 'Fish curry with rice'],
             WesternEurope: ['Grilled chicken salad', 'Baked salmon with root vegetables'],
-            USA_Canada: ['Grilled turkey breast with quinoa', 'Salmon with sweet potato'],
+            USA_Canaad: ['Grilled turkey breast with quinoa', 'Salmon with sweet potato'],
             EastAsia: ['Steamed fish with rice', 'Chicken and vegetable broth'],
             MiddleEast: ['Grilled halal chicken with rice', 'Lamb with lentils (light)'],
             LatinAmerica: ['Grilled chicken with rice and beans', 'Fish with plantain'],
@@ -391,7 +391,7 @@ export function getFoodRecommendations(
     const baseVeg: Record<CulturalRegion, string[]> = {
         India: ['Khichdi with ghee', 'Moong dal soup', 'Vegetable soup + chapati', 'Light dalia'],
         WesternEurope: ['Vegetable soup with rye bread', 'Lentil broth', 'Steamed vegetables with olive oil'],
-        USA_Canada: ['Warm lentil soup', 'Vegetable broth with quinoa', 'Sweet potato and bean soup'],
+        USA_Canaad: ['Warm lentil soup', 'Vegetable broth with quinoa', 'Sweet potato and bean soup'],
         EastAsia: ['Warm miso soup with tofu and rice', 'Light vegetable broth', 'Steamed greens with sesame'],
         MiddleEast: ['Lentil soup with lemon', 'Vegetable broth with herbs', 'Warm flatbread with za\'atar'],
         LatinAmerica: ['Black bean soup', 'Corn tortilla with avocado', 'Warm vegetable stew'],
@@ -403,7 +403,7 @@ export function getFoodRecommendations(
     const nonVeg: Record<CulturalRegion, string[]> = {
         India: ['Light chicken broth', 'Egg curry (half portion)'],
         WesternEurope: ['Light chicken soup', 'Small portion of baked fish'],
-        USA_Canada: ['Light turkey soup', 'Small salmon fillet'],
+        USA_Canaad: ['Light turkey soup', 'Small salmon fillet'],
         EastAsia: ['Clear fish broth', 'Steamed chicken with ginger'],
         MiddleEast: ['Light lamb broth', 'Grilled chicken (small, halal)'],
         LatinAmerica: ['Light fish stew', 'Chicken broth with vegetables'],
