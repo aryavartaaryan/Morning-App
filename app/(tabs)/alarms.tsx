@@ -1039,7 +1039,7 @@ export default function AlarmsTab() {
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
   fabActionsRef.current = [
-    { label: '🌄  Rise at Brahma Muhurta', color: '#f59e0b', onPress: () => openBMModal() },
+    { label: '🌄  Rise at sacred neuroplasticity hour', color: '#f59e0b', onPress: () => openBMModal() },
     { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
     { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => openAddModal('habit') },
     { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => openAddModal('quick') },
@@ -1544,25 +1544,17 @@ export default function AlarmsTab() {
                   }}
                   activeOpacity={0.8}
                   style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: 'rgba(0,5,15,0.4)',
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: 'rgba(14,165,233,0.15)',
                     borderRadius: 16,
-                    padding: 14, paddingHorizontal: 16,
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)',
+                    paddingVertical: 16,
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.4)',
+                    shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10
                   }}
                 >
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3 }}>Select Premium Alarm Sound</Text>
-                    <Text style={{ fontSize: 15, fontFamily: 'Nunito_700Bold', color: '#E0F2FE' }} numberOfLines={1}>{ALARM_SOUNDS.find(s => s.id === selectedMantraId)?.label ?? 'Select Sound'}</Text>
-                  </View>
-                  <View style={{
-                    width: 36, height: 36, borderRadius: 18, 
-                    backgroundColor: 'rgba(14,165,233,0.1)', 
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)'
-                  }}>
-                    <Text style={{ fontSize: 18 }}>{ALARM_SOUNDS.find(s => s.id === selectedMantraId)?.emoji ?? '🎵'}</Text>
-                  </View>
+                  <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf8', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    Select Premium Alarm Sound
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -1795,19 +1787,21 @@ export default function AlarmsTab() {
               <TouchableOpacity
                 onPress={saveBMAlarm}
                 disabled={bmHour === null}
-                style={{ marginHorizontal: 20, marginTop: 20, marginBottom: 10, borderRadius: 20, overflow: 'hidden', opacity: bmHour === null ? 0.4 : 1 }}
+                style={{
+                  marginHorizontal: 20, marginTop: 20, marginBottom: 10,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(217,119,6,0.15)',
+                  borderRadius: 16,
+                  paddingVertical: 18,
+                  borderWidth: 1, borderColor: 'rgba(217,119,6,0.4)',
+                  shadowColor: '#d97706', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10,
+                  opacity: bmHour === null ? 0.4 : 1
+                }}
                 activeOpacity={0.85}
               >
-                <LinearGradient
-                  colors={['#d97706', '#b45309', '#92400e']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={{ paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
-                >
-                  <Text style={{ fontSize: 20 }}>🌄</Text>
-                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.5 }}>
-                    {bmHour !== null ? `Set Sacred Dawn Alarm  ·  ${fmt12(bmHour, bmMinute)}` : 'Set Sacred Dawn Alarm'}
-                  </Text>
-                </LinearGradient>
+                <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#fbbf24', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                  SET SACRED DAWN ALARM
+                </Text>
               </TouchableOpacity>
               <View style={{ height: 24 }} />
             </ScrollView>
@@ -1876,25 +1870,17 @@ export default function AlarmsTab() {
                   }}
                   activeOpacity={0.8}
                   style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: 'rgba(0,5,15,0.4)',
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: 'rgba(14,165,233,0.15)',
                     borderRadius: 16,
-                    padding: 14, paddingHorizontal: 16,
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)',
+                    paddingVertical: 16,
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.4)',
+                    shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10
                   }}
                 >
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3 }}>Select Premium Alarm Sound</Text>
-                    <Text style={{ fontSize: 15, fontFamily: 'Nunito_700Bold', color: '#E0F2FE' }} numberOfLines={1}>{ALARM_SOUNDS.find(s => s.id === formSoundId)?.label ?? 'Select Sound'}</Text>
-                  </View>
-                  <View style={{
-                    width: 36, height: 36, borderRadius: 18, 
-                    backgroundColor: 'rgba(14,165,233,0.1)', 
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)'
-                  }}>
-                    <Text style={{ fontSize: 18 }}>{ALARM_SOUNDS.find(s => s.id === formSoundId)?.emoji ?? '🎵'}</Text>
-                  </View>
+                  <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf8', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    Select Premium Alarm Sound
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -1913,12 +1899,19 @@ export default function AlarmsTab() {
               {/* Save button */}
               <TouchableOpacity
                 onPress={() => { stopPreview(); saveNewEntry(); }}
-                style={{ marginHorizontal: 20, marginBottom: 10, backgroundColor: '#a78bfa', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10, shadowColor: '#a78bfa', shadowOpacity: 0.5, shadowRadius: 18, elevation: 8 }}
+                style={{
+                  marginHorizontal: 20, marginBottom: 10,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: 'rgba(167,139,250,0.15)',
+                  borderRadius: 16,
+                  paddingVertical: 18,
+                  borderWidth: 1, borderColor: 'rgba(167,139,250,0.4)',
+                  shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10,
+                }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="musical-notes" size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 }}>
-                  {editEntry ? `Update  ·  ${fmt12(formHour, formMinute)}` : `Set Sound Bath  ·  ${fmt12(formHour, formMinute)}`}
+                <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#c4b5fd', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                  {editEntry ? 'UPDATE SOUND BATH' : 'SET SOUND BATH'}
                 </Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
@@ -2067,8 +2060,22 @@ export default function AlarmsTab() {
             <DaySelector days={formDays} onChange={setFormDays} />
             <Text style={S.sheetSection}>LABEL (optional)</Text>
             <TextInput style={S.customInput} placeholder="e.g. Medicine, Meeting, Workout..." placeholderTextColor={Colors.textDim} value={formLabel} onChangeText={setFormLabel} />
-            <TouchableOpacity onPress={saveNewEntry} style={[S.saveBtn, { marginTop: 16 }]}>
-              <Text style={S.saveBtnTxt}>{editEntry ? '✓ Update Quick Alarm' : '✓ Save Quick Alarm'}</Text>
+            <TouchableOpacity
+              onPress={saveNewEntry}
+              style={{
+                marginHorizontal: 16, marginTop: 16,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'rgba(16,185,129,0.15)',
+                borderRadius: 16,
+                paddingVertical: 18,
+                borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)',
+                shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10,
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#34d399', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                {editEntry ? 'UPDATE ALARM' : 'SAVE ALARM'}
+              </Text>
             </TouchableOpacity>
             <View style={{ height: 48 }} />
           </View>
@@ -2168,6 +2175,8 @@ export default function AlarmsTab() {
         onSelectSound={(id) => {
           if (libraryModalTarget === 'wake') handleMantraSelect(id);
           else setFormSoundId(id);
+          setLibraryModalVisible(false);
+          stopPreview().catch(() => {});
         }}
         onTogglePreview={togglePreview}
       />

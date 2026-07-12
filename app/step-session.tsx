@@ -29,6 +29,7 @@ import {
   Alert,
   ToastAndroid,
   Platform,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
@@ -46,6 +47,7 @@ import StepCounter, { type SessionType } from '@/src/modules/StepCounter';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import SoundLibraryModal from '@/components/SoundLibraryModal';
 import { ALL_SOUNDS_LIST } from '@/app/(tabs)/sleep';
+import { useBgContext } from '@/lib/bgContext';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -151,8 +153,8 @@ export default function StepSessionScreen() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 3000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 3000, useNativeDriver: true }),
       ])
     ).start();
 
@@ -218,8 +220,6 @@ export default function StepSessionScreen() {
         Animated.timing(rippleScale, { toValue: 1, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(rippleOp,   { toValue: 0, duration: 750, useNativeDriver: true }),
       ]).start();
-
-      if (total % 10 === 0) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       if (type === 'postmeal' && total >= 100 && !doneRef.current) {
         doneRef.current = true;
@@ -347,27 +347,36 @@ export default function StepSessionScreen() {
     : '--';
 
   // ─────────────────────────────────────────────────────────────────────────────
+  const { bgUri, accentColor } = useBgContext();
+
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <ImageBackground
+      source={bgUri ? { uri: bgUri } : undefined}
+      style={[{ flex: 1, backgroundColor: accentColor || BG }]}
+      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Background */}
-      <LinearGradient colors={[meta.bgTop, BG, BG]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFillObject} />
-
-      {/* Ripple ring */}
-      <Animated.View
-        style={[
-          s.ripple,
-          {
-            borderColor: C + '55',
-            opacity:     rippleOp,
-            transform:   [{
-              scale: rippleScale.interpolate({ inputRange: [0,1], outputRange: [0.4, 3.2] }),
-            }],
-          },
-        ]}
+      {/* Background Gradient overlay */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
+        locations={[0, 0.40, 1]}
+        style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
+
+      {/* Violet aura top-left (Sky blue theme) */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { opacity: 1, pointerEvents: 'none' },
+        ]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={['rgba(56,189,248,0.1)', 'transparent']}
+          style={{ position: 'absolute', top: -60, left: -60, width: 320, height: 320, borderRadius: 160 }}
+        />
+      </Animated.View>
 
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <Animated.View
@@ -403,70 +412,96 @@ export default function StepSessionScreen() {
         </TouchableOpacity>
 
         {/* Premium Quick Hints Column (Zero clutter, ultra smart) */}
-        <View style={{ alignItems: 'center', gap: 8, marginBottom: 20, paddingHorizontal: 16 }}>
+        <View style={{ alignItems: 'center', gap: 10, marginBottom: 20, paddingHorizontal: 16 }}>
           {/* Headphone Hint */}
           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(56,189,248,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)' }}>
             <Ionicons name="headset" size={12} color="#38bdf8" style={{ marginRight: 6 }} />
             <Text style={{ fontSize: 10, fontWeight: '700', color: '#bae6fd', letterSpacing: 0.2 }}>Use headphones for Naad Audio</Text>
           </View>
-          {/* Barefoot Hint */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(52,211,153,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(52,211,153,0.2)' }}>
-            <Ionicons name="footsteps" size={12} color="#34d399" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#a7f3d0', letterSpacing: 0.2 }}>Barefoot only in good weather on clean, natural earth</Text>
+          
+          {/* Elegant Barefoot Wisdom Card */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.45)', // Premium dark glass
+            paddingHorizontal: 14, paddingVertical: 12,
+            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.3)',
+            shadowColor: '#34d399', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 3,
+            width: '95%', alignSelf: 'center',
+          }}>
+            <View style={{
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: 'rgba(52, 211, 153, 0.15)',
+              alignItems: 'center', justifyContent: 'center',
+              marginRight: 12, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.35)'
+            }}>
+              <Ionicons name="planet-outline" size={18} color="#34d399" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10, fontWeight: '900', color: '#34d399', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
+                Earth Connection
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.75)', lineHeight: 16 }}>
+                Walk barefoot on a natural, clean earth surface only in pleasant weather.
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* ── ULTRA-PREMIUM SCI-FI RING ────────────────────────────────────────────── */}
         <View style={s.ringWrapper}>
-          {/* Outer glowing pulsing base */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 60, height: RING_SZ + 60, borderRadius: (RING_SZ + 60) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.03, 0.08] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 30, height: RING_SZ + 30, borderRadius: (RING_SZ + 30) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.06, 0.12] }), transform: [{ scale: pulseAnim }], top: -15, left: -15 }} />
+          {/* === 5-layer pulsing aura (breathing glow around ring) === */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 60, height: RING_SZ + 60, borderRadius: (RING_SZ + 60) / 2, backgroundColor: '#38bdf8', opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -14, left: -14 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 30, height: RING_SZ + 30, borderRadius: (RING_SZ + 30) / 2, backgroundColor: '#38bdf8', opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.04, 0.10] }), transform: [{ scale: pulseAnim }], top: 1, left: 1 }} />
 
-          {/* Core ring */}
-          <Svg
-            width={RING_SZ}
-            height={RING_SZ}
-            style={{ transform: [{ rotate: '-90deg' }] }}
-          >
+          {/* Inner zone — glassy violet moonlit disk */}
+          <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SZ, height: RING_SZ, borderRadius: RING_SZ / 2, backgroundColor: 'rgba(56,189,248,0.07)', overflow: 'hidden' }}>
+            <LinearGradient
+              colors={['rgba(56,189,248,0.14)', 'rgba(56,189,248,0.05)', 'transparent', 'rgba(56,189,248,0.04)']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+          </View>
+
+          {/* SVG ring — 4-layer glow stroke */}
+          <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
             <Defs>
               <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={C} stopOpacity="1" />
+                <Stop offset="0"   stopColor="#38bdf8" stopOpacity="1" />
                 <Stop offset="0.5" stopColor="#ffffff" stopOpacity="0.8" />
-                <Stop offset="1" stopColor={C} stopOpacity="1" />
+                <Stop offset="1"   stopColor="#0284c7" stopOpacity="1" />
               </SvgGrad>
             </Defs>
-
-            {/* Dark background track */}
+            {/* Dark track */}
             <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={STROKE} />
             
-            {/* Main neon arc */}
+            {/* Main sci-fi arc */}
             <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
             
-            {/* Core inner glow */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke={C} strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.3} />
+            {/* Core glow */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.3} />
           </Svg>
 
           {/* Rotating Outer Dashed HUD */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke={C} strokeWidth={1.5} fill="none" strokeDasharray="2 14" opacity={0.6} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#ffffff" strokeWidth={2} fill="none" strokeDasharray="1 40" opacity={0.8} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#38bdf8" strokeWidth={1.5} fill="none" strokeDasharray="3 15" opacity={0.5} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#bae6fd" strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.7} />
             </Svg>
           </Animated.View>
 
           {/* Rotating Inner HUD 1 (Opposite) */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke={C} strokeWidth={1.5} fill="none" strokeDasharray="10 20" opacity={0.4} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 45" opacity={0.9} strokeLinecap="round" />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#38bdf8" strokeWidth={1.5} fill="none" strokeDasharray="8 24" opacity={0.4} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 40" opacity={0.8} strokeLinecap="round" />
             </Svg>
           </Animated.View>
 
           {/* Rotating Inner HUD 2 (Fast scanning) */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke={C} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.25} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#ffffff" strokeWidth={1} fill="none" strokeDasharray="10 200" opacity={0.5} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#0ea5e9" strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.3} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#ffffff" strokeWidth={1} fill="none" strokeDasharray="10 180" opacity={0.6} />
             </Svg>
           </Animated.View>
 
@@ -653,7 +688,8 @@ export default function StepSessionScreen() {
           setIsSoundModalVisible(false);
         }}
       />
-    </View>
+  // Removed to avoid overlapping tags
+    </ImageBackground>
   );
 }
 

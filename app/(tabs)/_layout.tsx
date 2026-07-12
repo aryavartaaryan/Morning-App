@@ -1016,8 +1016,8 @@ function GlobalStepTracker() {
 
   // Animations
   useEffect(() => {
-    // Hide tracker if we are ON the walk screen (prevent duplicate UI)
-    const isOnWalkScreen = path.includes('/walk') || path.includes('/step-session');
+    // Hide tracker if we are ON the step-session screen (prevent duplicate UI)
+    const isOnWalkScreen = path.includes('/step-session');
     const shouldShow = active && !isOnWalkScreen;
 
     if (shouldShow && !rendered) {

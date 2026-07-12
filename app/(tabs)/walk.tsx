@@ -167,8 +167,8 @@ export default function WalkTab() {
     // Pulse loop
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 2000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 3000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 3000, useNativeDriver: true }),
       ])
     ).start();
 
@@ -354,8 +354,8 @@ export default function WalkTab() {
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
             {/* === 5-layer pulsing aura (breathing glow around ring) === */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 30, height: RING_SIZE + 30, borderRadius: (RING_SIZE + 30) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.04, 0.10] }), transform: [{ scale: pulseAnim }], top: -15, left: -15 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -10, left: -10 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 30, height: RING_SIZE + 30, borderRadius: (RING_SIZE + 30) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.04, 0.10] }), transform: [{ scale: pulseAnim }], top: 5, left: 5 }} />
 
             {/* Inner zone — glassy violet moonlit disk */}
             <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2, backgroundColor: 'rgba(167,139,250,0.07)', overflow: 'hidden' }}>

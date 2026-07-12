@@ -239,6 +239,8 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const subtitleOp  = useRef(new Animated.Value(1)).current;
   const [subtitleIdx, setSubtitleIdx] = useState(0);
 
+  const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+
   useEffect(() => {
     Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
@@ -251,6 +253,17 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
         Animated.timing(pulseAnim, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
+
+    // Moonwater ripples
+    rippleAnims.forEach((anim, i) => {
+      Animated.sequence([
+        Animated.delay(i * 1666),
+        Animated.loop(Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 5000, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+          Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
+        ])),
+      ]).start();
+    });
 
     // Subtitle fade-cycle
     const cycleSubtitle = () => {
@@ -300,13 +313,77 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
 
         <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
           
-          {/* Core Glow Pulse */}
-          <Animated.View style={{
-            position: 'absolute', width: rInner2*2, height: rInner2*2, borderRadius: rInner2,
-            backgroundColor: cyan,
-            opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.01, 0.05] }),
-            transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
-          }} />
+          {/* ── Layered aura — slim and elegant glow ── */}
+          <Animated.View style={{ position: 'absolute', width: SIZE + 24, height: SIZE + 24, borderRadius: (SIZE + 24) / 2, backgroundColor: `rgba(56,189,248,0.06)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 14, height: SIZE + 14, borderRadius: (SIZE + 14) / 2, backgroundColor: `rgba(56,189,248,0.14)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: `rgba(56,189,248,0.24)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
+          <View style={{ position: 'absolute', width: SIZE + 2, height: SIZE + 2, borderRadius: (SIZE + 2) / 2, backgroundColor: `rgba(56,189,248,0.14)` }} />
+
+          {/* ── Inner zone — fluid core ── */}
+          <View style={{
+            position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
+            backgroundColor: `rgba(2,132,199,0.10)`,
+            overflow: 'hidden',
+          }}>
+            {/* Inner fill gradient */}
+            <LinearGradient
+              colors={[`${cyan}18`, `${deepCyan}0C`, 'transparent', `${deepCyan}08`]}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject} />
+
+            {/* ── Fluid Effect ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: rInner2 * 3.2, height: rInner2 * 3.2,
+              top: -rInner2 * 0.6, left: -rInner2 * 0.6,
+              opacity: 0.35,
+              transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+            }}>
+               <LinearGradient colors={[`${brightCyan}00`, `${brightCyan}60`, `${deepCyan}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
+            </Animated.View>
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: rInner2 * 3.2, height: rInner2 * 3.2,
+              top: -rInner2 * 0.6, left: -rInner2 * 0.6,
+              opacity: 0.3,
+              transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }, { translateX: rInner2 * 0.2 }],
+            }}>
+               <LinearGradient colors={[`${deepCyan}00`, `${cyan}50`, `${brightCyan}00`]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
+            </Animated.View>
+            
+            {/* ── Lunar breathing — gentle silver glow inhaling & exhaling ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
+              backgroundColor: `${brightCyan}10`,
+              opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }),
+            }} />
+            
+            {/* ── Moonwater ripples — 3 rings expanding from center ── */}
+            {rippleAnims.map((anim, i) => {
+              const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.94] });
+              const opacity = anim.interpolate({ inputRange: [0, 0.14, 0.55, 1], outputRange: [0, 0.20, 0.08, 0] });
+              return (
+                <Animated.View key={i} pointerEvents="none" style={{
+                  position: 'absolute', width: rInner2 * 2, height: rInner2 * 2,
+                  borderRadius: rInner2,
+                  borderWidth: 1, borderColor: brightCyan,
+                  top: 0, left: 0,
+                  transform: [{ scale }], opacity,
+                }} />
+              );
+            })}
+            
+            {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
+            <View pointerEvents="none" style={{
+              position: 'absolute',
+              width: rInner2 * 0.76, height: rInner2 * 0.18,
+              borderRadius: rInner2 * 0.36,
+              backgroundColor: 'rgba(255,255,255,0.055)',
+              top: rInner2 * 0.04, left: rInner2 * 0.62,
+              shadowColor: '#fff', shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1, shadowRadius: 3,
+            }}>
+              <LinearGradient colors={['rgba(255,255,255,0.2)', 'transparent']} style={{ flex: 1, borderRadius: 20 }} />
+            </View>
+          </View>
 
           {/* SVG Elements */}
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
