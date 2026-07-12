@@ -131,6 +131,11 @@ export default function StepSessionScreen() {
   const fadeIn       = useRef(new Animated.Value(0)).current;
   const slideUp      = useRef(new Animated.Value(40)).current;
   const pauseScale   = useRef(new Animated.Value(1)).current;
+  
+  // Sci-fi ring rotations
+  const rot1 = useRef(new Animated.Value(0)).current;
+  const rot2 = useRef(new Animated.Value(0)).current;
+  const rot3 = useRef(new Animated.Value(0)).current;
 
   // Confetti particles (stable refs)
   const PARTICLE_COUNT = 32;
@@ -151,9 +156,13 @@ export default function StepSessionScreen() {
       ])
     ).start();
 
+    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 20000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
+
     (async () => {
-      await StepCounter.startSession(type);
-      startMsRef.current = Date.now();
+      const result = await StepCounter.startSession(type);
+      startMsRef.current = result.startTime;
 
       // ── Diagnostic Toast: which sensor is powering this session? ─────────────
       // Fires 1.5s after start so the native service has time to register sensors.
@@ -240,14 +249,20 @@ export default function StepSessionScreen() {
     };
   }, []);
 
+  // ── Minimize Session ───────────────────────────────────────────────────────
+  const minimizeSession = useCallback(() => {
+    Haptics.selectionAsync();
+    router.back();
+  }, []);
+
   // ── Hardware back button ───────────────────────────────────────────────────
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      confirmEnd();
+      minimizeSession();
       return true;
     });
     return () => handler.remove();
-  }, []);
+  }, [minimizeSession]);
 
   // ── Confetti ───────────────────────────────────────────────────────────────
   const launchConfetti = useCallback(() => {
@@ -379,69 +394,81 @@ export default function StepSessionScreen() {
       {/* ── BODY ────────────────────────────────────────────────────────────── */}
       <Animated.View style={[s.body, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
 
-        {/* Elegant Premium Prompt */}
-        <View style={{ alignItems: 'center', marginBottom: 40, paddingHorizontal: 32 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, opacity: 0.7 }}>
-            <Ionicons name="headset-outline" size={16} color="#38bdf8" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 2, color: '#38bdf8', textTransform: 'uppercase' }}>
-              Deep Immersion
-            </Text>
+        {/* Minimize Button */}
+        <TouchableOpacity 
+          style={{ position: 'absolute', top: insets.top + 16, left: 24, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}
+          onPress={minimizeSession}
+        >
+          <Ionicons name="chevron-down" size={24} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Premium Quick Hints Column (Zero clutter, ultra smart) */}
+        <View style={{ alignItems: 'center', gap: 8, marginBottom: 20, paddingHorizontal: 16 }}>
+          {/* Headphone Hint */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(56,189,248,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)' }}>
+            <Ionicons name="headset" size={12} color="#38bdf8" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#bae6fd', letterSpacing: 0.2 }}>Use headphones for Naad Audio</Text>
           </View>
-          <Text style={{
-            fontSize: 20,
-            color: 'rgba(255,255,255,0.95)',
-            fontFamily: 'DancingScript_600SemiBold',
-            textAlign: 'center',
-            lineHeight: 28,
-            paddingHorizontal: 8
-          }}>
-            Connect headphones & immerse in Naad sounds.{'\n'}
-            For profound grounding, walk barefoot on clean, natural earth when the weather is optimum.
-          </Text>
+          {/* Barefoot Hint */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(52,211,153,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(52,211,153,0.2)' }}>
+            <Ionicons name="footsteps" size={12} color="#34d399" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#a7f3d0', letterSpacing: 0.2 }}>Barefoot only in good weather on clean, natural earth</Text>
+          </View>
         </View>
 
-        {/* Ring */}
+        {/* ── ULTRA-PREMIUM SCI-FI RING ────────────────────────────────────────────── */}
         <View style={s.ringWrapper}>
-          {/* === 5-layer pulsing aura (sky blue theme) === */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 32, height: RING_SZ + 32, borderRadius: (RING_SZ + 32) / 2, backgroundColor: 'rgba(56,189,248,0.04)', transform: [{ scale: pulseAnim }], top: -16, left: -16 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 22, height: RING_SZ + 22, borderRadius: (RING_SZ + 22) / 2, backgroundColor: 'rgba(56,189,248,0.08)', transform: [{ scale: pulseAnim }], top: -11, left: -11 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 14, height: RING_SZ + 14, borderRadius: (RING_SZ + 14) / 2, backgroundColor: 'rgba(56,189,248,0.14)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 7, height: RING_SZ + 7, borderRadius: (RING_SZ + 7) / 2, backgroundColor: 'rgba(56,189,248,0.22)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 2, height: RING_SZ + 2, borderRadius: (RING_SZ + 2) / 2, backgroundColor: 'rgba(56,189,248,0.30)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
+          {/* Outer glowing pulsing base */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 60, height: RING_SZ + 60, borderRadius: (RING_SZ + 60) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.03, 0.08] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 30, height: RING_SZ + 30, borderRadius: (RING_SZ + 30) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.06, 0.12] }), transform: [{ scale: pulseAnim }], top: -15, left: -15 }} />
 
-          {/* Inner glassy disk */}
-          <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SZ, height: RING_SZ, borderRadius: RING_SZ / 2, backgroundColor: 'rgba(56,189,248,0.07)', overflow: 'hidden' }}>
-            <LinearGradient
-              colors={['rgba(56,189,248,0.18)', 'rgba(56,189,248,0.02)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-          </View>
-
+          {/* Core ring */}
           <Svg
             width={RING_SZ}
             height={RING_SZ}
             style={{ transform: [{ rotate: '-90deg' }] }}
           >
             <Defs>
-              <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor="#38bdf8" stopOpacity="1" />
-                <Stop offset="0.5" stopColor="#7dd3fc" stopOpacity="1" />
-                <Stop offset="1" stopColor="#38bdf8" stopOpacity="1" />
+              <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={C} stopOpacity="1" />
+                <Stop offset="0.5" stopColor="#ffffff" stopOpacity="0.8" />
+                <Stop offset="1" stopColor={C} stopOpacity="1" />
               </SvgGrad>
             </Defs>
 
-            {/* Track */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={STROKE} />
-            {/* Wide outer glow */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#0ea5e9" strokeWidth={STROKE + 16} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.20} />
-            {/* Mid halo */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#7dd3fc" strokeWidth={STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.40} />
-            {/* Main crisp arc */}
+            {/* Dark background track */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={STROKE} />
+            
+            {/* Main neon arc */}
             <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
-            {/* Inner sliver highlight */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#bae6fd" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.60} />
+            
+            {/* Core inner glow */}
+            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke={C} strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.3} />
           </Svg>
+
+          {/* Rotating Outer Dashed HUD */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke={C} strokeWidth={1.5} fill="none" strokeDasharray="2 14" opacity={0.6} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#ffffff" strokeWidth={2} fill="none" strokeDasharray="1 40" opacity={0.8} />
+            </Svg>
+          </Animated.View>
+
+          {/* Rotating Inner HUD 1 (Opposite) */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
+            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke={C} strokeWidth={1.5} fill="none" strokeDasharray="10 20" opacity={0.4} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 45" opacity={0.9} strokeLinecap="round" />
+            </Svg>
+          </Animated.View>
+
+          {/* Rotating Inner HUD 2 (Fast scanning) */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke={C} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.25} />
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#ffffff" strokeWidth={1} fill="none" strokeDasharray="10 200" opacity={0.5} />
+            </Svg>
+          </Animated.View>
 
           {/* Centre content */}
           <View style={[s.centreBox, { gap: 2 }]}>

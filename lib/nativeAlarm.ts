@@ -78,12 +78,10 @@ export async function setupAlarmChannel(): Promise<void> {
 export function getNextAlarmTimestamp(hour: number, minute: number, days?: number[]): number {
   const allowed = !days || days.length === 0 ? [0, 1, 2, 3, 4, 5, 6] : days;
   const now = Date.now();
-  // BUG 5 FIX: Require at least 60 seconds before the alarm fires.
-  // Without this buffer, calling scheduleNativeAlarm() within the same minute as
-  // the alarm time produced a timestamp in the past on some OEM ROMs, causing
-  // setAlarmClock() to fire immediately upon scheduling — making the alarm ring
-  // unexpectedly as soon as the user completes a mission and re-schedules.
-  const MIN_BUFFER_MS = 60_000;
+  // BUG 5 FIX: Require a small buffer before the alarm fires to prevent 
+  // scheduling in the past during IPC delay. Reduced from 60s to 5s so
+  // alarms set for 1-2 minutes from now aren't incorrectly skipped to tomorrow.
+  const MIN_BUFFER_MS = 5_000;
   for (let d = 0; d < 8; d++) {
     const t = new Date();
     t.setHours(hour, minute, 0, 0);

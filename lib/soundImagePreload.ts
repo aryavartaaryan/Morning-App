@@ -87,9 +87,10 @@ async function cacheOne(url: string): Promise<void> {
     LOCAL_URI_MAP[url] = path;
     _urlSubs.get(url)?.forEach(cb => cb());
     _urlSubs.delete(url);
-  } catch {
+  } catch (e) {
     // silent — remote URL remains as fallback on next render
     await FileSystem.deleteAsync(path + '.tmp', { idempotent: true }).catch(() => {});
+    throw e;
   }
 }
 
@@ -162,14 +163,21 @@ export async function prefetchAllSoundImagesWithProgress(
 ): Promise<void> {
   const total = ALL_URLS.length;
   let done = 0;
+  let hasError = false;
   for (let i = 0; i < ALL_URLS.length; i += concurrency) {
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       ALL_URLS.slice(i, i + concurrency).map(async (url) => {
         await cacheOne(url);
         done += 1;
         onProgress(done, total);
       }),
     );
+    if (results.some(r => r.status === 'rejected')) {
+      hasError = true;
+    }
+  }
+  if (hasError) {
+    throw new Error('Failed to download some sound images');
   }
 }
 

@@ -2820,7 +2820,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -3127,24 +3127,6 @@ export default function SleepTab() {
     ).sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery]);
 
-  useEffect(() => {
-    const onBackPress = () => {
-      if (isSearching) {
-        setIsSearching(false);
-        setSearchQuery('');
-        return true;
-      }
-      if (libraryOpen) {
-        setLibraryOpen(false);
-        return true;
-      }
-      router.navigate('/');
-      return true;
-    };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
-  }, [isSearching, libraryOpen, router]);
-
   // ── Global sound player (context) ──────────────────────────
   const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels } = useSoundPlayer();
 
@@ -3168,7 +3150,7 @@ export default function SleepTab() {
   const hasRowResetRef = useRef(false);
   // scrollY drives the JS-based sticky strip (replaces stickyHeaderIndices)
   const scrollY  = useRef(new Animated.Value(0)).current;
-  const [heroH, setHeroH] = useState(100); // measured via onLayout on hero View
+  const [searchBarH, setSearchBarH] = useState(60); // measured via onLayout on search bar
 
 
   useFocusEffect(useCallback(() => {
@@ -3277,6 +3259,34 @@ export default function SleepTab() {
   // ── Reels state ───────────────────────────────────────────
   const [showReels,      setShowReels]      = useState(false);
   const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (showReels) {
+          setShowReels(false);
+          return true;
+        }
+        if (catSheetOpen) {
+          setCatSheetOpen(false);
+          return true;
+        }
+        if (isSearching) {
+          setIsSearching(false);
+          setSearchQuery('');
+          return true;
+        }
+        if (libraryOpen) {
+          setLibraryOpen(false);
+          return true;
+        }
+        router.navigate('/(tabs)/index');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showReels, catSheetOpen, isSearching, libraryOpen, router])
+  );
   // null = use category default (Meditations → once, others → loop)
   const reelLoopModeRef = useRef<boolean | null>(null);
 
@@ -3733,13 +3743,15 @@ export default function SleepTab() {
           // React Native's native reparenting which breaks touch events on Android.
         >
 
-        {/* ── Hero area — measures its height so the strip knows where to stick ── */}
+        {/* ── Hero area ── */}
         <View
           style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
-          onLayout={(e) => setHeroH(e.nativeEvent.layout.height)}
         >
           {/* Top Header Bar (Premium Square Edge-to-Edge) */}
-          <View style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}>
+          <View 
+            style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
+            onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
+          >
             <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 12 }}>
               <LinearGradient
                 colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
@@ -3750,10 +3762,19 @@ export default function SleepTab() {
               
               {/* Main row */}
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4, paddingRight: 60, gap: 10 }}>
-                {/* Naad Library Icon */}
-                {!isSearching && (
+                {/* Back / Naad Library Icon */}
+                {!isSearching ? (
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
                     <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => {
+                    Keyboard.dismiss();
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsSearching(false);
+                    setSearchQuery('');
+                  }} activeOpacity={0.7} style={{ padding: 4, marginRight: 4 }}>
+                    <Ionicons name="arrow-back" size={28} color="rgba(255,255,255,0.95)" />
                   </TouchableOpacity>
                 )}
 
@@ -3816,6 +3837,9 @@ export default function SleepTab() {
             </View>
           </View>
 
+        {/* ── Strip placeholder — reserves the strip's height in the scroll layout ── */}
+        {!isSearching && <View style={{ height: 68 }} />}
+
           {!isSearching && (
             <View style={{
             width: '100%',
@@ -3873,9 +3897,7 @@ export default function SleepTab() {
           )}
         </View>
 
-        {/* ── Strip placeholder — reserves the strip's height in the scroll layout ── */}
-        {/* The real strip is rendered outside the ScrollView as an absolute overlay. */}
-        {!isSearching && <View style={{ height: 68 }} />}
+        {/* Strip moved inline above */}
 
         {/* ── Content container — transparent, swipe handler for category change ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...(!isSearching ? contentPan.panHandlers : {})}>
@@ -4037,10 +4059,7 @@ export default function SleepTab() {
       </Animated.ScrollView>
         </Animated.View>
 
-        {/* ── JS-sticky CategoryTabStrip — rendered OUTSIDE the ScrollView so its
-            view hierarchy is never reparented by stickyHeaderIndices.
-            translateY starts at heroH (inline position) and clamps to 0 (top of container)
-            as the user scrolls down past the hero. Taps and swipes always work. ── */}
+        {/* ── JS-sticky CategoryTabStrip ── */}
         {!isSearching && (
         <Animated.View
           style={{
@@ -4051,8 +4070,8 @@ export default function SleepTab() {
             zIndex: 100,
             transform: [{
               translateY: scrollY.interpolate({
-                inputRange: [0, Math.max(0, heroH - safeTop)],
-                outputRange: [heroH, safeTop],
+                inputRange: [0, Math.max(0, searchBarH)],
+                outputRange: [searchBarH, 0],
                 extrapolate: 'clamp',
               }),
             }],
@@ -4075,10 +4094,10 @@ export default function SleepTab() {
             top: 0,
             left: 0,
             right: 0,
-            height: safeTop + 75,
+            height: 85,
             zIndex: 99,
             opacity: scrollY.interpolate({
-              inputRange: [Math.max(0, heroH - safeTop - 40), Math.max(0, heroH - safeTop)],
+              inputRange: [0, Math.max(0, searchBarH)],
               outputRange: [0, 1],
               extrapolate: 'clamp',
             }),

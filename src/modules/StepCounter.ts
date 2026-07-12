@@ -232,15 +232,25 @@ export const StepCounter = {
    * Starts a manual walk session (foreground service with per-step events).
    * @param type 'morning' | 'evening' | 'postmeal'
    */
-  async startSession(type: SessionType): Promise<{ goalSteps: number }> {
-    if (Platform.OS !== 'android') return { goalSteps: SESSION_GOALS[type] };
+  async startSession(type: SessionType): Promise<{ goalSteps: number, startTime: number }> {
+    if (Platform.OS !== 'android') return { goalSteps: SESSION_GOALS[type], startTime: Date.now() };
     const hasPerms = await ensurePermissions();
-    if (!hasPerms) return { goalSteps: SESSION_GOALS[type] };
+    if (!hasPerms) return { goalSteps: SESSION_GOALS[type], startTime: Date.now() };
     
+    const isRunning = await (_native?.isRunning() ?? Promise.resolve(false));
+    if (isRunning) {
+      const existingStart = await asGet('sc_current_session_start');
+      return { 
+        goalSteps: SESSION_GOALS[type], 
+        startTime: existingStart ? parseInt(existingStart, 10) : Date.now() 
+      };
+    }
+
+    const now = Date.now();
     await asSet('sc_current_session_type', type);
-    await asSet('sc_current_session_start', String(Date.now()));
+    await asSet('sc_current_session_start', String(now));
     try { await _native?.startWalkSession(); } catch { /* */ }
-    return { goalSteps: SESSION_GOALS[type] };
+    return { goalSteps: SESSION_GOALS[type], startTime: now };
   },
 
   /**

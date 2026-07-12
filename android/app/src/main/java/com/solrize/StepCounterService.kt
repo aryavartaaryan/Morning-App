@@ -8,6 +8,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
+import android.os.SystemClock
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -83,6 +84,7 @@ class StepCounterService : Service(), SensorEventListener {
         @Volatile private var dailyCounterBaseline = -1L
         @Volatile private var dailyBaselineDate    = ""
         @Volatile private var dailyOffset          = 0   // steps saved before current session
+        @Volatile private var lastNotifTime        = 0L
 
         fun getToday(): String =
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -152,7 +154,7 @@ class StepCounterService : Service(), SensorEventListener {
             stopSelf()
         } else {
             // Keep service alive for daily tracking; just update notification
-            updateNotification()
+            updateNotification(force = true)
         }
         Log.d(TAG, "Walk session stopped")
     }
@@ -312,7 +314,13 @@ class StepCounterService : Service(), SensorEventListener {
 
     // ── Event emission ─────────────────────────────────────────────────────────
 
+    private var lastStepEmitTime = 0L
+
     private fun emitStepEvent(steps: Int) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastStepEmitTime < 500) return
+        lastStepEmitTime = now
+        
         reactContext?.takeIf { it.hasActiveReactInstance() }
             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             ?.emit("NativeStepUpdate", steps)
@@ -354,7 +362,10 @@ class StepCounterService : Service(), SensorEventListener {
             .build()
     }
 
-    private fun updateNotification() {
+    private fun updateNotification(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastNotifTime < 2000) return
+        lastNotifTime = now
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, buildNotification())
     }

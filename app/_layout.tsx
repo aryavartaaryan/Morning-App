@@ -2,7 +2,7 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -111,16 +111,11 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
   const titleOp  = useRef(new Animated.Value(1)).current;
   const titleSc  = useRef(new Animated.Value(1)).current;
   
-  // First Sequence Title
-  const title1Op    = useRef(new Animated.Value(0)).current;
-  const title1Sc    = useRef(new Animated.Value(0.92)).current;
-  const title1ShimmerOp = useRef(new Animated.Value(0)).current;
-  
-  // Second Sequence Title (Sunrise)
-  const title2Op    = useRef(new Animated.Value(0)).current;
-  const title2Sc    = useRef(new Animated.Value(0.92)).current;
-  const title2Ty    = useRef(new Animated.Value(20)).current;
-  const title2ShimmerOp = useRef(new Animated.Value(0)).current;
+  // Combined Sequence Title
+  const combinedOp    = useRef(new Animated.Value(0)).current;
+  const combinedSc    = useRef(new Animated.Value(0.92)).current;
+  const combinedTy    = useRef(new Animated.Value(15)).current;
+  const combinedShimmerOp = useRef(new Animated.Value(0)).current;
 
   const footerOp = useRef(new Animated.Value(0)).current;
   
@@ -133,44 +128,27 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
     const initialDelay = setTimeout(() => {
       // Fade out "Naad" gracefully
       Animated.parallel([
-        Animated.timing(titleOp, { toValue: 0, duration: 1000, delay: 600, useNativeDriver: true }),
-        Animated.timing(titleSc, { toValue: 1.08, duration: 1000, delay: 600, useNativeDriver: true }),
+        Animated.timing(titleOp, { toValue: 0, duration: 900, delay: 400, useNativeDriver: true }),
+        Animated.timing(titleSc, { toValue: 1.08, duration: 900, delay: 400, useNativeDriver: true }),
       ]).start();
 
-      // Fade in Sequence 1 & 2
+      // Fade in combined text
       Animated.sequence([
-        Animated.delay(1300), // wait for Naad to start fading
+        Animated.delay(1100), // wait for Naad to start fading
         
-        // 1. Show "Align Your Rhythm with the Universe"
         Animated.parallel([
-          Animated.timing(title1Op, { toValue: 1, duration: 1200, useNativeDriver: true }),
-          Animated.spring(title1Sc, { toValue: 1, tension: 35, friction: 8, useNativeDriver: true }),
+          Animated.timing(combinedOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+          Animated.timing(combinedTy, { toValue: 0, duration: 1200, useNativeDriver: true }), // Rise up
+          Animated.spring(combinedSc, { toValue: 1, tension: 30, friction: 10, useNativeDriver: true }),
           Animated.timing(footerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
         ]),
-        // Golden Shimmer effect
-        Animated.timing(title1ShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        
-        // 2. Fade out first title
-        Animated.parallel([
-          Animated.timing(title1Op, { toValue: 0, duration: 1000, useNativeDriver: true }),
-          Animated.timing(title1ShimmerOp, { toValue: 0, duration: 1000, useNativeDriver: true }),
-        ]),
-        
-        Animated.delay(300),
-        
-        // 3. Sunrise premium animation for "Resonate..."
-        Animated.parallel([
-          Animated.timing(title2Op, { toValue: 1, duration: 1200, useNativeDriver: true }),
-          Animated.timing(title2Ty, { toValue: 0, duration: 1200, useNativeDriver: true }), // Rise up
-          Animated.spring(title2Sc, { toValue: 1, tension: 30, friction: 10, useNativeDriver: true }),
-        ]),
         
         // Golden Shimmer effect
-        Animated.timing(title2ShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(combinedShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
         
-        Animated.delay(600),
+        Animated.delay(1800), // Hold the screen for a bit so user can read both
         
-        // 4. Dismiss Splash
+        // Dismiss Splash
         Animated.parallel([
           Animated.timing(screenOp, { toValue: 0, duration: 900, useNativeDriver: true }),
           Animated.timing(screenSc, { toValue: 0.94, duration: 900, useNativeDriver: true }),
@@ -198,23 +176,24 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           <Text style={[SS.tagline, { marginTop: 4, letterSpacing: 4 }]}>THE RESONANCE</Text>
         </Animated.View>
 
-        {/* Sequence 1 */}
-        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: title1Op, transform: [{ scale: title1Sc }] }]}>
-          <View style={{ position: 'relative', alignItems: 'center' }}>
-            <Text style={SS.newMainTitle}>Align Your Rhythm{'\n'}with the Universe.</Text>
-            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: title1ShimmerOp }]}>
-              Align Your Rhythm{'\n'}with the Universe.
-            </Animated.Text>
-          </View>
-        </Animated.View>
-
-        {/* Sequence 2: Sunrise */}
-        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: title2Op, transform: [{ scale: title2Sc }, { translateY: title2Ty }] }]}>
-          <View style={{ position: 'relative', alignItems: 'center' }}>
-            <Text style={SS.newMainTitle}>Resonate & Transform{'\n'}through the Naad.</Text>
-            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { color: '#fbbf24', opacity: title2ShimmerOp }]}>
-              Resonate & Transform{'\n'}through the Naad.
-            </Animated.Text>
+        {/* Combined Text Sequence */}
+        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: combinedOp, transform: [{ scale: combinedSc }, { translateY: combinedTy }] }]}>
+          <View style={{ gap: 28, alignItems: 'center' }}>
+            <View style={{ position: 'relative', alignItems: 'center' }}>
+              <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Align Your Rhythm{'\n'}with the Universe.</Text>
+              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#fbbf24', opacity: combinedShimmerOp }]}>
+                Align Your Rhythm{'\n'}with the Universe.
+              </Animated.Text>
+            </View>
+            
+            <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            
+            <View style={{ position: 'relative', alignItems: 'center' }}>
+              <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Resonate & Transform{'\n'}through the Naad.</Text>
+              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#fbbf24', opacity: combinedShimmerOp }]}>
+                Resonate & Transform{'\n'}through the Naad.
+              </Animated.Text>
+            </View>
           </View>
         </Animated.View>
         
@@ -250,154 +229,177 @@ const SETUP_SUBTITLES = [
   'A new dawn of conscious living awaits you',
 ];
 
-function DownloadScreen({ progress, label }: { progress: number; label: string }) {
-  const pulseAnim   = useRef(new Animated.Value(0.75)).current;
-  const glowAnim    = useRef(new Animated.Value(0.45)).current;
-  const shimmerAnim = useRef(new Animated.Value(0.5)).current;
-  const ringPulse   = useRef(new Animated.Value(1.0)).current;   // ring glow pulse
-  const arcGlow     = useRef(new Animated.Value(0.0)).current;   // arc outer glow
+function DownloadScreen({ progress, label, error, onRetry }: { progress: number; label: string; error?: boolean; onRetry?: () => void }) {
+  const pulseAnim   = useRef(new Animated.Value(0)).current;
+  const rot1        = useRef(new Animated.Value(0)).current;
+  const rot2        = useRef(new Animated.Value(0)).current;
+  const rot3        = useRef(new Animated.Value(0)).current;
 
   // Animated subtitle cycling
   const subtitleOp  = useRef(new Animated.Value(1)).current;
   const [subtitleIdx, setSubtitleIdx] = useState(0);
 
   useEffect(() => {
-    // Outer glow orb breathe
+    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 10000, easing: Easing.linear, useNativeDriver: true })).start();
+
+    // Pulse core glow
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim,  { toValue: 1.4, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim,  { toValue: 0.7, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
-    // Inner glow breathe (offset)
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim,   { toValue: 1.0, duration: 1400, useNativeDriver: true }),
-        Animated.timing(glowAnim,   { toValue: 0.2, duration: 1400, useNativeDriver: true }),
-      ])
-    ).start();
-    // App name shimmer
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, { toValue: 1.0, duration: 1500, useNativeDriver: true }),
-        Animated.timing(shimmerAnim, { toValue: 0.45, duration: 1500, useNativeDriver: true }),
-      ])
-    ).start();
-    // Ring elegant pulse scale
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(ringPulse, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
-        Animated.timing(ringPulse, { toValue: 0.85,  duration: 1000, useNativeDriver: true }),
-      ])
-    ).start();
-    // Arc outer glow breath - elegant medium speed
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(arcGlow, { toValue: 1.0, duration: 2500, useNativeDriver: true }),
-        Animated.timing(arcGlow, { toValue: 0.0, duration: 2500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
     // Subtitle fade-cycle
     const cycleSubtitle = () => {
       Animated.sequence([
-        Animated.timing(subtitleOp, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(subtitleOp, { toValue: 0, duration: 800, useNativeDriver: true }),
       ]).start(() => {
         setSubtitleIdx(i => (i + 1) % SETUP_SUBTITLES.length);
-        Animated.timing(subtitleOp, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+        Animated.timing(subtitleOp, { toValue: 1, duration: 800, useNativeDriver: true }).start();
       });
     };
-    const interval = setInterval(cycleSubtitle, 3800);
+    const interval = setInterval(cycleSubtitle, 4000);
     return () => clearInterval(interval);
   }, []);
 
-  const pct    = Math.round(Math.min(progress, 1) * 100);
-  const R      = 106;
-  const STRKW  = 13;
-  const svgSize = 260;
-  const cx     = svgSize / 2;
-  const circ   = 2 * Math.PI * R;
-  const offset = circ * (1 - Math.min(progress, 1));
+  const pct = Math.round(Math.min(progress, 1) * 100);
+  const SIZE = 280;
+  const cx = SIZE / 2;
+
+  // Radii
+  const rMain = 110;
+  const cMain = 2 * Math.PI * rMain;
+  const offsetMain = cMain * (1 - Math.min(progress, 1));
+
+  const rOuter = 125;
+  const rInner1 = 95;
+  const rInner2 = 85;
+
+  const cyan = '#38bdf8';
+  const deepCyan = '#0284c7';
+  const brightCyan = '#bae6fd';
 
   return (
-    <Animated.View pointerEvents="none" style={DS.screen}>
-      <LinearGradient colors={['#06041A', '#0D0921', '#030210']} style={StyleSheet.absoluteFillObject} />
+    <Animated.View pointerEvents="auto" style={DS.screen}>
+      <LinearGradient colors={['#020617', '#0f172a', '#020617']} style={StyleSheet.absoluteFillObject} />
 
-      {/* Ambient radial glow behind ring */}
-      <Animated.View style={[
-        DS.ambientGlow,
-        { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] }) },
-      ]} />
+      {/* Ambient background glow */}
+      <Animated.View style={{
+        position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: deepCyan, top: '25%', 
+        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] }), 
+        alignSelf: 'center', 
+        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
+      }} />
 
       <View style={DS.center}>
-        {/* App name */}
-        <Animated.Text style={[DS.appName, { opacity: shimmerAnim }]}>NAAD</Animated.Text>
+        <Text style={DS.appName}>NAAD</Text>
+        <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
 
-        {/* Animated subtitle line */}
-        <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>
-          {SETUP_SUBTITLES[subtitleIdx]}
-        </Animated.Text>
+        <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
+          
+          {/* Core Glow Pulse */}
+          <Animated.View style={{
+            position: 'absolute', width: rInner2*2, height: rInner2*2, borderRadius: rInner2,
+            backgroundColor: cyan,
+            opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.01, 0.05] }),
+            transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
+          }} />
 
-        {/* Ring — pulsing wrapper */}
-        <Animated.View style={[DS.ringWrap, { transform: [{ scale: ringPulse }] }]}>
-          {/* Pulsing arc halo ring (elegant aura) */}
-          <Animated.View style={[
-            DS.arcHalo,
-            { opacity: arcGlow.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.4] }) },
-          ]} />
-
-          <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+          {/* SVG Elements */}
+          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
             <Defs>
-              <SvgLinearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%"   stopColor="#0284C7" stopOpacity="1" />
-                <Stop offset="50%"  stopColor="#0369A1" stopOpacity="1" />
-                <Stop offset="100%" stopColor="#075985" stopOpacity="1" />
+              <SvgLinearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor={brightCyan} stopOpacity="1" />
+                <Stop offset="50%" stopColor={cyan} stopOpacity="1" />
+                <Stop offset="100%" stopColor={deepCyan} stopOpacity="1" />
               </SvgLinearGradient>
             </Defs>
-            {/* Track with navy sky inner fill theme */}
-            <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.05)" strokeWidth={STRKW} fill="rgba(2, 132, 199, 0.08)" />
-            {/* Progress arc */}
+
+            {/* Static thin track for main progress */}
+            <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(56,189,248,0.1)" strokeWidth={2} fill="none" />
+
+            {/* Main Progress Arc */}
             <Circle
-              cx={cx} cy={cx} r={R}
-              stroke="url(#arcGrad)"
-              strokeWidth={STRKW}
+              cx={cx} cy={cx} r={rMain}
+              stroke="url(#glow)"
+              strokeWidth={4}
               fill="none"
-              strokeDasharray={`${circ}`}
-              strokeDashoffset={`${offset}`}
+              strokeDasharray={`${cMain}`}
+              strokeDashoffset={`${offsetMain}`}
               strokeLinecap="round"
               rotation={-90}
               origin={`${cx}, ${cx}`}
             />
           </Svg>
 
-          {/* Pct overlay */}
-          <View style={DS.pctWrap}>
-            <Text style={DS.pctNum}>{pct}</Text>
-            <Text style={DS.pctSign}>%</Text>
+          {/* Rotating Outer Ring (Dashed) */}
+          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+              <Circle cx={cx} cy={cx} r={rOuter} stroke={deepCyan} strokeWidth={1} fill="none" strokeDasharray="4 8" opacity={0.6} />
+              <Circle cx={cx} cy={cx} r={rOuter} stroke={cyan} strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.8} />
+            </Svg>
+          </Animated.View>
+
+          {/* Rotating Inner Ring 1 (Dashed opposite) */}
+          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
+            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+              <Circle cx={cx} cy={cx} r={rInner1} stroke={cyan} strokeWidth={1.5} fill="none" strokeDasharray="15 15" opacity={0.3} />
+              <Circle cx={cx} cy={cx} r={rInner1} stroke={brightCyan} strokeWidth={3} fill="none" strokeDasharray="0.5 45" opacity={0.9} strokeLinecap="round" />
+            </Svg>
+          </Animated.View>
+
+          {/* Rotating Inner Ring 2 (Fast scanning ring) */}
+          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+              <Circle cx={cx} cy={cx} r={rInner2} stroke={deepCyan} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.4} />
+              {/* Scanning brackets */}
+              <Circle cx={cx} cy={cx} r={rInner2} stroke={brightCyan} strokeWidth={1.5} fill="none" strokeDasharray="20 200" opacity={0.7} />
+            </Svg>
+          </Animated.View>
+
+          {/* Percentage Text inside the ring */}
+          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <Text style={DS.pctNum}>{pct}</Text>
+              <Text style={DS.pctSign}>%</Text>
+            </View>
+            <Text style={{ color: 'rgba(56,189,248,0.5)', fontSize: 9, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginTop: 4 }}>SYNCHRONIZING</Text>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Status */}
-        <Text style={DS.statusLabel}>{label}</Text>
-        <Text style={DS.setupHint}>First-time setup  ·  takes about 30 sec</Text>
+        {error ? (
+          <View style={{ alignItems: 'center', height: 80 }}>
+            <Text style={[DS.statusLabel, { color: '#ef4444', textTransform: 'uppercase', letterSpacing: 2 }]}>CONNECTION INTERRUPTED</Text>
+            <TouchableOpacity onPress={onRetry} style={DS.retryBtn}>
+              <Text style={DS.retryTxt}>RETRY CONNECTION</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center', height: 80 }}>
+            <Text style={[DS.statusLabel, { textTransform: 'uppercase', letterSpacing: 1.5 }]}>{label}</Text>
+            <Text style={DS.setupHint}>First-time setup · Takes about 30 sec</Text>
+          </View>
+        )}
       </View>
     </Animated.View>
   );
 }
 
 const DS = StyleSheet.create({
-  screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#04030F' },
+  screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#020617' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName:     { fontSize: 42, fontFamily: 'Nunito_900Black', color: '#38BDF8', letterSpacing: 10, marginBottom: 10 },
-  subTagline:  { fontSize: 13, color: 'rgba(56,189,248,0.70)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 32, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
-  ringWrap:    { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
-  arcHalo:     { position: 'absolute', width: 250, height: 250, borderRadius: 125, borderWidth: 14, borderColor: '#0284C7', opacity: 0.0 },
-  ambientGlow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, backgroundColor: '#0284C7', top: '30%', alignSelf: 'center', opacity: 0.10 },
-  pctWrap:     { position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
-  pctNum:      { fontSize: 60, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -1 },
-  pctSign:     { fontSize: 20, color: 'rgba(255,255,255,0.40)', fontFamily: 'Nunito_400Regular', marginBottom: 10, marginLeft: 2 },
-  statusLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 },
-  setupHint:   { fontSize: 10, color: 'rgba(255,255,255,0.20)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.5, marginTop: 8 },
+  appName:     { fontSize: 32, fontFamily: 'Nunito_900Black', color: '#bae6fd', letterSpacing: 12, marginBottom: 12, opacity: 0.9 },
+  subTagline:  { fontSize: 13, color: 'rgba(56,189,248,0.7)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 48, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
+  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_300Light', letterSpacing: -1, textShadowColor: 'rgba(56,189,248,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
+  pctSign:     { fontSize: 18, color: '#38bdf8', fontFamily: 'Nunito_400Regular', marginTop: 8, marginLeft: 2 },
+  statusLabel: { fontSize: 11, color: '#38bdf8', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
+  setupHint:   { fontSize: 9, color: 'rgba(56,189,248,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1, marginTop: 10, textTransform: 'uppercase' },
+  retryBtn:    { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(2,132,199,0.2)', borderRadius: 4, borderWidth: 1, borderColor: '#0284c7' },
+  retryTxt:    { color: '#bae6fd', fontFamily: 'Nunito_700Bold', fontSize: 12, letterSpacing: 1 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
@@ -1091,6 +1093,8 @@ export default function RootLayout() {
   const [phase,       setPhase]       = useState<AppPhase>('gate');
   const [dlProgress,  setDlProgress]  = useState(0);
   const [dlLabel,     setDlLabel]     = useState('Preparing...');
+  const [dlError,     setDlError]     = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   // Pre-resolve the splash bg URI synchronously so SplashOverlay can render
   // immediately during the 'gate' phase — eliminating the blank gap between
   // the native splash dismiss and the NAAD animated screen appearing.
@@ -1170,6 +1174,7 @@ export default function RootLayout() {
             setDlProgress(parseFloat(savedProgressRaw) || 0);
           }
 
+          setDlError(false);
           setPhase('downloading');
 
           const bgCount   = Object.keys(BG_URLS).length;
@@ -1246,15 +1251,34 @@ export default function RootLayout() {
 
       } catch {
         if (!cancelled) {
-          setSplashBgUri(getBgSourceSync('splash'));
-          setPhase('splash');
-          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+          const SETUP_DONE_KEY = 'arise_bg_setup_done_v2';
+          const SETUP_INPROGRESS_KEY = 'arise_bg_setup_inprogress_v1';
+          
+          AsyncStorage.getItem(SETUP_DONE_KEY).then(setupDoneRaw => {
+            const setupDone = !!setupDoneRaw;
+            const splashOnDisk = isSplashCached();
+            
+            // Check inProgress again synchronously if possible, or just assume if it's not done and not splash, we need to fail
+            AsyncStorage.getItem(SETUP_INPROGRESS_KEY).then(inProgressRaw => {
+              const setupInProgress = !!inProgressRaw;
+              const isFirstInstall = (!setupDone && !splashOnDisk) || setupInProgress;
+              
+              if (isFirstInstall) {
+                setDlError(true);
+                setDlLabel('Connection interrupted');
+              } else {
+                setSplashBgUri(getBgSourceSync('splash'));
+                setPhase('splash');
+                prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+              }
+            });
+          });
         }
       }
     })();
 
     return () => { cancelled = true; };
-  }, [fontsLoaded]);
+  }, [fontsLoaded, retryTrigger]);
 
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
 
@@ -1271,7 +1295,7 @@ export default function RootLayout() {
         {/* AuthGuard is only mounted AFTER downloading completes so the home page
              never opens mid-setup. During 'downloading' phase the Stack renders
              but navigation is blocked until AuthGuard fires. */}
-        {phase !== 'downloading' && (
+        {(phase === 'splash' || phase === 'done') && (
           <AuthGuard onAuthReady={() => setAuthReady(true)} />
         )}
         <BodhiNotificationListener />
@@ -1285,7 +1309,7 @@ export default function RootLayout() {
         {/* Elegant download progress screen — first install only */}
         {phase === 'downloading' && (
           <>
-            <DownloadScreen progress={dlProgress} label={dlLabel} />
+            <DownloadScreen progress={dlProgress} label={dlLabel} error={dlError} onRetry={() => setRetryTrigger(prev => prev + 1)} />
             {/* Full-screen touch blocker: prevents user from tapping cards/reels during setup */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }} pointerEvents="box-only" />
           </>

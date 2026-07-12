@@ -12,6 +12,7 @@ import {
   ScrollView,
   Image,
   LayoutAnimation,
+  DeviceEventEmitter,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,7 @@ import { useSoundPlayer, MAX_MIX } from "@/lib/soundPlayerContext";
 import { ALL_SLEEP_SOUNDS } from "@/lib/sleepSoundsData";
 import { useBgContext } from "@/lib/bgContext";
 import { useRef, useEffect, useState, useCallback } from "react";
+import StepCounter from "@/src/modules/StepCounter";
 
 function VeenaIcon({
   size = 23,
@@ -741,6 +743,12 @@ function GlobalPlayerBar() {
   if (playingMeta) lastMetaRef.current = playingMeta;
   const displayMeta = playingMeta ?? lastMetaRef.current;
   const [rendered, setRendered] = useState(false);
+  const [stepActive, setStepActive] = useState(false);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('StepTracker.active', setStepActive);
+    return () => sub.remove();
+  }, []);
 
   const playingIdRef = useRef(playingId);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
@@ -796,7 +804,7 @@ function GlobalPlayerBar() {
     return () => glowAnim.stopAnimation();
   }, [playingId, isPaused]);
 
-  if (!rendered || !displayMeta) return null;
+  if (!rendered || !displayMeta || stepActive) return null;
 
   const isMix = mixedSounds.length > 1;
   const label = isMix
@@ -960,6 +968,162 @@ const GP = StyleSheet.create({
   },
 });
 
+// ── Global Step Tracker ──────────────────────────────────────────────────────
+function GlobalStepTracker() {
+  const router = useRouter();
+  const path = usePathname();
+  const { playingId, isPaused } = useSoundPlayer();
+  const [active, setActive] = useState(false);
+  const [rendered, setRendered] = useState(false);
+  const [steps, setSteps] = useState(0);
+  const [startMs, setStartMs] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const glowAnim = useRef(new Animated.Value(0.4)).current;
+
+  // Re-check state on mount or tab change
+  const checkState = useCallback(async () => {
+    const running = await StepCounter.isSessionRunning();
+    if (running) {
+      const liveSteps = await StepCounter.getCurrentSessionSteps();
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const storedStart = await AsyncStorage.getItem('sc_current_session_start');
+      if (storedStart) setStartMs(parseInt(storedStart, 10));
+      setSteps(liveSteps);
+      setActive(true);
+    } else {
+      setActive(false);
+    }
+  }, []);
+
+  useEffect(() => { checkState(); }, [path, checkState]);
+
+  // Live native listener
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('StepCounter.update', (data) => {
+      if (!active) setActive(true);
+      if (data.steps !== undefined) setSteps(data.steps);
+    });
+    return () => sub.remove();
+  }, [active]);
+
+  // Live timer tick
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+
+  // Animations
+  useEffect(() => {
+    // Hide tracker if we are ON the walk screen (prevent duplicate UI)
+    const isOnWalkScreen = path.includes('/walk') || path.includes('/step-session');
+    const shouldShow = active && !isOnWalkScreen;
+
+    if (shouldShow && !rendered) {
+      setRendered(true);
+    }
+
+    Animated.spring(slideAnim, {
+      toValue: shouldShow ? 0 : 100,
+      useNativeDriver: true,
+      friction: 9,
+      tension: 60,
+    }).start(({ finished }) => {
+      if (finished && !shouldShow) {
+        setRendered(false);
+      }
+    });
+
+    if (shouldShow) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, { toValue: 0.8, duration: 1400, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0.4, duration: 1400, useNativeDriver: true })
+        ])
+      ).start();
+    } else {
+      glowAnim.stopAnimation();
+    }
+  }, [active, path]);
+
+  const endSession = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setActive(false);
+    await StepCounter.endSession();
+  };
+
+  useEffect(() => {
+    DeviceEventEmitter.emit('StepTracker.active', rendered);
+  }, [rendered]);
+
+  if (!rendered) return null;
+
+  const durSecs = startMs ? Math.round((nowMs - startMs) / 1000) : 0;
+  const mm = Math.floor(durSecs / 60).toString().padStart(2, '0');
+  const ss = (durSecs % 60).toString().padStart(2, '0');
+  const accentColor = '#34d399'; // Mint green for steps
+
+  return (
+    <Animated.View
+      style={[
+        GP.wrap,
+        { 
+          transform: [{ translateY: slideAnim }],
+          shadowColor: accentColor,
+          shadowOpacity: glowAnim,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 0 },
+          borderColor: accentColor,
+          marginBottom: 12, // Stack nicely above audio player if both active
+        }
+      ]}
+    >
+      <LinearGradient
+        colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
+        start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+        style={GP.grad}
+      >
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+        <TouchableOpacity
+          style={GP.bodyTap}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.navigate("/(tabs)/walk");
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={GP.emojiBox}>
+            <Ionicons name="footsteps" size={16} color={accentColor} />
+          </View>
+
+          <View style={GP.infoCol}>
+            <Text style={GP.name} numberOfLines={1}>
+              {steps.toLocaleString()} steps
+            </Text>
+            <Text style={GP.sub} numberOfLines={1}>
+              {mm}:{ss}
+            </Text>
+          </View>
+
+          <View style={[GP.waveWrap, { flexDirection: 'row', alignItems: 'center' }]}>
+            {playingId && !isPaused && (
+              <Ionicons name="musical-notes" size={12} color={accentColor} style={{ marginRight: 6 }} />
+            )}
+            <Animated.Text style={{ color: accentColor, fontSize: 10, fontWeight: '800', opacity: glowAnim }}>
+              LIVE
+            </Animated.Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={endSession} style={GP.stopBtn}>
+          <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
 const TABS = [
   {
     name: "index",
@@ -1114,6 +1278,7 @@ function CustomTabBar() {
         pointerEvents="none"
       />
       <FullScreenPlayer />
+      <GlobalStepTracker />
       <GlobalPlayerBar />
       <View style={styles.pill}>
         {TABS.map((tab) => {

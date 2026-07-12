@@ -92,13 +92,17 @@ export default function WalkTab() {
   // Drives SVG strokeDashoffset via listener (avoids createAnimatedComponent crash)
   const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
 
-  // ── Animations ─────────────────────────────────────────────────────────────
   const ringAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
   const glowAnim    = useRef(new Animated.Value(0)).current;
   const cardFade    = useRef(new Animated.Value(0)).current;
   const cardSlide   = useRef(new Animated.Value(30)).current;
   const walkScrollRef = useRef<ScrollView | null>(null);
+
+  // Sci-fi ring rotations
+  const rot1 = useRef(new Animated.Value(0)).current;
+  const rot2 = useRef(new Animated.Value(0)).current;
+  const rot3 = useRef(new Animated.Value(0)).current;
 
   // ── Data refresh ────────────────────────────────────────────────────────────
   const refreshStats = useCallback(async () => {
@@ -175,6 +179,10 @@ export default function WalkTab() {
         Animated.timing(glowAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
+
+    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 32000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 16000, easing: Easing.linear, useNativeDriver: true })).start();
   }, []);
 
   // ── App foreground → refresh ────────────────────────────────────────────────
@@ -346,11 +354,8 @@ export default function WalkTab() {
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
             {/* === 5-layer pulsing aura (breathing glow around ring) === */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 32, height: RING_SIZE + 32, borderRadius: (RING_SIZE + 32) / 2, backgroundColor: 'rgba(167,139,250,0.025)', transform: [{ scale: pulseAnim }], top: -16, left: -16 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 22, height: RING_SIZE + 22, borderRadius: (RING_SIZE + 22) / 2, backgroundColor: 'rgba(167,139,250,0.05)', transform: [{ scale: pulseAnim }], top: -11, left: -11 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 14, height: RING_SIZE + 14, borderRadius: (RING_SIZE + 14) / 2, backgroundColor: 'rgba(167,139,250,0.10)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 7, height: RING_SIZE + 7, borderRadius: (RING_SIZE + 7) / 2, backgroundColor: 'rgba(167,139,250,0.17)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 2, height: RING_SIZE + 2, borderRadius: (RING_SIZE + 2) / 2, backgroundColor: 'rgba(167,139,250,0.22)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 30, height: RING_SIZE + 30, borderRadius: (RING_SIZE + 30) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.04, 0.10] }), transform: [{ scale: pulseAnim }], top: -15, left: -15 }} />
 
             {/* Inner zone — glassy violet moonlit disk */}
             <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2, backgroundColor: 'rgba(167,139,250,0.07)', overflow: 'hidden' }}>
@@ -364,23 +369,45 @@ export default function WalkTab() {
             {/* SVG ring — 4-layer glow stroke */}
             <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
               <Defs>
-                <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="0">
+                <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="1">
                   <Stop offset="0"   stopColor={ACCENT}  stopOpacity="1" />
-                  <Stop offset="0.5" stopColor="#EC4899" stopOpacity="1" />
+                  <Stop offset="0.5" stopColor="#ffffff" stopOpacity="0.8" />
                   <Stop offset="1"   stopColor={TEAL}    stopOpacity="1" />
                 </SvgGrad>
               </Defs>
-              {/* Track */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(167,139,250,0.13)" strokeWidth={RING_STROKE} />
-              {/* Wide outer glow */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ACCENT} strokeWidth={RING_STROKE + 14} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.16} />
-              {/* Mid halo */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#C4B5FD" strokeWidth={RING_STROKE + 7} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.32} />
-              {/* Main crisp arc */}
+              {/* Dark track */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={RING_STROKE} />
+              
+              {/* Main sci-fi arc */}
               <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#ringGrad)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={1} />
-              {/* Inner sliver highlight */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#E9D5FF" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.45} />
+              
+              {/* Core glow */}
+              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ACCENT} strokeWidth={RING_STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.3} />
             </Svg>
+
+            {/* Rotating Outer Dashed HUD */}
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 18} stroke={ACCENT} strokeWidth={1.5} fill="none" strokeDasharray="3 15" opacity={0.5} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 18} stroke={TEAL} strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.7} />
+              </Svg>
+            </Animated.View>
+
+            {/* Rotating Inner HUD 1 (Opposite) */}
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 16} stroke={ACCENT} strokeWidth={1.5} fill="none" strokeDasharray="8 24" opacity={0.4} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 16} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 40" opacity={0.8} strokeLinecap="round" />
+              </Svg>
+            </Animated.View>
+
+            {/* Rotating Inner HUD 2 (Fast scanning) */}
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 26} stroke={TEAL} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.3} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 26} stroke="#ffffff" strokeWidth={1} fill="none" strokeDasharray="10 180" opacity={0.6} />
+              </Svg>
+            </Animated.View>
 
             {/* Centre content */}
             <View style={st.ringCentre}>
@@ -396,11 +423,6 @@ export default function WalkTab() {
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
                   <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>km</Text>
-                </View>
-                <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.calories}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>kcal</Text>
                 </View>
                 <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.1)' }} />
                 <View style={{ alignItems: 'center' }}>
@@ -462,25 +484,6 @@ export default function WalkTab() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* ── 7-DAY BAR CHART ──────────────────────────────────────────────── */}
-        <Animated.View
-          style={[st.chartCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
-        >
-          <LinearGradient
-            colors={['rgba(124,58,237,0.08)', 'transparent']}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View style={st.chartHeader}>
-            <Text style={st.chartTitle}>7-Day Overview</Text>
-            <TouchableOpacity
-              onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
-              style={st.chartMoreBtn}
-            >
-              <Text style={[st.chartMoreTxt, { color: ACCENT }]}>30 days →</Text>
-            </TouchableOpacity>
-          </View>
-          <WeekBarChart data={weekData} goal={stats.goalSteps} accentColor={ACCENT} />
-        </Animated.View>
 
         {/* ── QUICK ACTIONS ────────────────────────────────────────────────── */}
         <Animated.View
@@ -527,60 +530,7 @@ export default function WalkTab() {
 
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 7-Day Bar Chart (SVG — no WebView, no MPAndroidChart)
-// ─────────────────────────────────────────────────────────────────────────────
-function WeekBarChart({ data, goal, accentColor }: { data: DailyData[]; goal: number; accentColor: string }) {
-  const chartW = W - 64;
-  const chartH = 100;
-  const barW   = (chartW - 48) / 7;
-  const maxVal = Math.max(goal, ...data.map(d => d.steps), 1);
 
-  // NOTE: barAnims removed — SVG Rects cannot be driven by Animated.Value directly
-  // (createAnimatedComponent crashes on RN 0.73 New Architecture). Bars render statically.
-  const goalY = chartH - (goal / maxVal) * chartH;
-
-  return (
-    <View style={{ height: chartH + 28 }}>
-      <Svg width={chartW} height={chartH + 24} style={{ marginTop: 4 }}>
-        {/* Goal dashed line */}
-        <Path
-          d={`M0,${goalY} L${chartW},${goalY}`}
-          stroke={GOLD}
-          strokeWidth={1}
-          strokeDasharray="4 4"
-          opacity={0.5}
-        />
-        <SvgText x={chartW - 2} y={goalY - 4} fontSize={8} fill={GOLD} opacity={0.7} textAnchor="end">
-          GOAL
-        </SvgText>
-
-        {/* Bars */}
-        {data.map((d, i) => {
-          const x    = i * (barW + 6) + 4;
-          const pct  = Math.min(d.steps / maxVal, 1);
-          const bH   = Math.max(2, pct * chartH);
-          const y    = chartH - bH;
-          const fill = d.goalMet ? GREEN : (d.steps > 0 ? accentColor : 'rgba(255,255,255,0.08)');
-          const label = dayLabel(d.date);
-
-          return (
-            <G key={d.date}>
-              {/* Bar bg */}
-              <Rect x={x} y={0} width={barW} height={chartH} rx={4} fill="rgba(255,255,255,0.03)" />
-              {/* Bar fill */}
-              <Rect x={x} y={y} width={barW} height={bH} rx={4} fill={fill} opacity={0.85} />
-              {/* Day label */}
-              <SvgText x={x + barW / 2} y={chartH + 14} fontSize={9} fill="rgba(255,255,255,0.4)" textAnchor="middle" fontWeight="600">
-                {label}
-              </SvgText>
-            </G>
-          );
-        })}
-      </Svg>
-    </View>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Goal modal

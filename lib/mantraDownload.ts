@@ -62,6 +62,12 @@ const MANTRA_CATALOG: { id: string; url: string }[] = [
   { id: 'spiritual_journey',     url: CDN_BASE + 'spiritual-journey.m4a' },
   { id: 'night_jungle_chiangmai',url: CDN_BASE + 'night-jungle-chiangmai.m4a' },
   { id: 'heaven_tune',           url: CDN_BASE + 'heaven-tune.m4a' },
+  { id: 'med_govind_bolo',       url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' },
+  { id: 'cdn_ultra_vedic_healing_chant', url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' },
+  { id: 'cdn_ultra_mahamrityunjaya',     url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/108%20Mahamrityunjaya%20Mantra%20Chant%20%20Tibetan%20Shiva%20Mantra%20for%20Protection%20%26%20Healing.m4a' },
+  { id: 'med_ganesha_pancharatnam',      url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' },
+  { id: 'med_shyamale_meenakshi',        url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Shyamale%20Meenakshi%20%20I%20Om%20Voices%20Junior%20I%20Praise%20Goddess%20Meenakshi%20with%20Dikshitar%27s%20Nottuswara.mp3' },
+  { id: 'cdn_ultra_rise_krishna',        url: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Rise%20with%20Krishna_%20Uplifting%20Indian%20Morning%20Music%20%20Yoga%20%26%20Meditation%20Instrumentals.m4a' },
 ];
 
 export async function ensureAllMantrasDownloaded(): Promise<void> {

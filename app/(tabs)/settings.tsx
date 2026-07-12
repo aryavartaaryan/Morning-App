@@ -142,7 +142,37 @@ const tog = StyleSheet.create({
   sub:    { fontSize: 10, color: '#FFFFFF40', marginTop: 2 },
 });
 
-// ─── Wallpaper Picker ─────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { id: 'all', label: 'All', emoji: '✨' },
+  { id: 'morning', label: 'Morning', emoji: '🌅' },
+  { id: 'day', label: 'Day', emoji: '☀️' },
+  { id: 'sunset', label: 'Sunset', emoji: '🌇' },
+  { id: 'night', label: 'Night', emoji: '🌌' },
+] as const;
+
+const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' => {
+  if ([
+    'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_late', 'sunrise_late_2',
+    'morning_early', 'morning_early_late', 'morning', 'morning_late', 'morning_late_2'
+  ].includes(key)) {
+    return 'morning';
+  }
+  if ([
+    'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late',
+    'midday', 'midday_mid', 'midday_late', 'midday_late_2',
+    'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late'
+  ].includes(key)) {
+    return 'day';
+  }
+  if ([
+    'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_mid', 'sandhya_late_mid_2',
+    'sandhya_late_2', 'sandhya_late_3', 'twilight', 'twilight_late', 'twilight_deep'
+  ].includes(key)) {
+    return 'sunset';
+  }
+  return 'night';
+};
+
 function WallpaperPicker() {
   const {
     wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey,
@@ -150,6 +180,8 @@ function WallpaperPicker() {
   } = useBgContext();
 
   const [showPicker, setShowPicker] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'info' }>({ visible: false, message: '', type: 'success' });
   const [customAlert, setCustomAlert] = useState<{ visible: boolean; title: string; message: string; type: 'warning' | 'info' }>({ visible: false, title: '', message: '', type: 'info' });
   const sheetY = useRef(new Animated.Value(height)).current;
   const isMounted = useRef(true);
@@ -158,6 +190,15 @@ function WallpaperPicker() {
     isMounted.current = true;
     return () => { isMounted.current = false; };
   }, []);
+
+  const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
+    setToast({ visible: true, message: msg, type });
+    setTimeout(() => {
+      if (isMounted.current) {
+        setToast(prev => ({ ...prev, visible: false }));
+      }
+    }, 2500);
+  };
 
   const openPicker = () => {
     setShowPicker(true);
@@ -169,13 +210,21 @@ function WallpaperPicker() {
   };
 
   const activeBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
-  // Guard: BG_META may not contain activeBgKey if it's a stale/unknown key.
-  // Fall back to 'morning' metadata to prevent a null-dereference crash.
   const activeMeta  = BG_META[activeBgKey as BgKey] ?? BG_META.morning;
-  // Guard: allBgUris may not yet contain the URI (loaded asynchronously).
-  // Empty string '' crashes Android ImageBackground — filter to null.
   const rawActiveUri = allBgUris[activeBgKey as BgKey];
   const activeUri   = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
+
+  // Filter keys based on current category selection
+  const filteredKeys = BG_KEYS.filter(key => {
+    if (activeCategory === 'all') return true;
+    return getCategoryOfKey(key) === activeCategory;
+  });
+
+  // Split filtered keys into rows of 2 for grid layout
+  const gridRows: BgKey[][] = [];
+  for (let i = 0; i < filteredKeys.length; i += 2) {
+    gridRows.push(filteredKeys.slice(i, i + 2) as BgKey[]);
+  }
 
   return (
     <>
@@ -230,132 +279,328 @@ function WallpaperPicker() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48, gap: 10 }}
-            >
-              {/* Auto Solar Time Mode Toggle */}
+            {/* Custom Toast Banner */}
+            {toast.visible && (
+              <View style={{
+                position: 'absolute',
+                top: 80,
+                left: 20,
+                right: 20,
+                backgroundColor: 'rgba(10, 15, 30, 0.95)',
+                borderRadius: 16,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderWidth: 1,
+                borderColor: toast.type === 'success' ? 'rgba(251, 191, 36, 0.5)' : 'rgba(167, 139, 250, 0.5)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                shadowColor: toast.type === 'success' ? GOLD : PURPLE,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
+                zIndex: 999,
+              }}>
+                <Text style={{ fontSize: 14 }}>{toast.type === 'success' ? '✨' : '📌'}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{toast.message}</Text>
+              </View>
+            )}
+
+            {/* Segmented Mode Selector */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 16,
+              padding: 4,
+              marginHorizontal: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.08)'
+            }}>
               <TouchableOpacity
+                activeOpacity={0.9}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setWallpaperMode(wallpaperMode === 'solar' ? 'manual' : 'solar');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setWallpaperMode('solar');
+                  showToast('☀️ Auto Solar Rhythm activated!', 'success');
                 }}
-                activeOpacity={0.8}
-                style={[
-                  wp.bgCard,
-                  { 
-                    padding: 16, 
-                    backgroundColor: 'rgba(255,255,255,0.05)', 
-                    borderWidth: 1, 
-                    borderColor: wallpaperMode === 'solar' ? GOLD : 'rgba(255,255,255,0.1)',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 10
-                  }
-                ]}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: wallpaperMode === 'solar' ? 'rgba(251, 191, 36, 0.15)' : 'transparent',
+                  borderWidth: 1,
+                  borderColor: wallpaperMode === 'solar' ? 'rgba(251, 191, 36, 0.3)' : 'transparent'
+                }}
               >
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 4 }}>
-                    ☀️ Auto Solar Time Mode
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#FFFFFF80', lineHeight: 16 }}>
-                    Background shifts automatically with the sun.
-                  </Text>
-                  <Text style={{ fontSize: 11, color: GOLD, fontWeight: '800', marginTop: 6, letterSpacing: 0.3 }}>
-                    ✨ BEST OPTION
-                  </Text>
-                </View>
-                <Switch
-                  value={wallpaperMode === 'solar'}
-                  onValueChange={(val) => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setWallpaperMode(val ? 'solar' : 'manual');
-                  }}
-                  trackColor={{ false: '#222', true: GOLD + '80' }}
-                  thumbColor={wallpaperMode === 'solar' ? GOLD : '#555'}
-                />
+                <Text style={{ fontSize: 16 }}>☀️</Text>
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '800',
+                  color: wallpaperMode === 'solar' ? GOLD : '#FFFFFF80',
+                  letterSpacing: 0.3
+                }}>
+                  Auto Solar
+                </Text>
               </TouchableOpacity>
 
-              {BG_KEYS.map((key) => {
-                const meta   = BG_META[key];
-                const uri    = allBgUris[key];
-                const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
-                const accent = BG_ACCENT_COLORS[key] ?? '#111';
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setWallpaperMode('manual');
+                  showToast('📌 Pinned Mode active. Select a wallpaper below.', 'info');
+                }}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: wallpaperMode === 'manual' ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
+                  borderWidth: 1,
+                  borderColor: wallpaperMode === 'manual' ? 'rgba(167, 139, 250, 0.3)' : 'transparent'
+                }}
+              >
+                <Text style={{ fontSize: 16 }}>📌</Text>
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '800',
+                  color: wallpaperMode === 'manual' ? PURPLE : '#FFFFFF80',
+                  letterSpacing: 0.3
+                }}>
+                  Pinned Mode
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => {
-                      if (wallpaperMode === 'solar') {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                        setCustomAlert({
-                          visible: true,
-                          title: 'Disable Auto Solar Time',
-                          message: 'Please turn off Auto Solar Time Mode first to manually select a wallpaper.',
-                          type: 'warning'
-                        });
-                        return;
-                      }
+            {/* Mode Description Banner */}
+            {wallpaperMode === 'solar' ? (
+              <View style={{
+                marginHorizontal: 16,
+                marginBottom: 16,
+                borderRadius: 20,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(251, 191, 36, 0.25)'
+              }}>
+                <LinearGradient
+                  colors={['rgba(251, 191, 36, 0.12)', 'rgba(10, 15, 30, 0.3)']}
+                  style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                >
+                  <View style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ fontSize: 20 }}>☀️</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: GOLD, marginBottom: 2 }}>
+                      Circadian Solar Sync
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#FFFFFFCC', lineHeight: 15 }}>
+                      Your wallpaper shifts dynamically through 40 solar states in sync with the sun's elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </View>
+            ) : (
+              <View style={{
+                marginHorizontal: 16,
+                marginBottom: 16,
+                borderRadius: 20,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(167, 139, 250, 0.25)'
+              }}>
+                <LinearGradient
+                  colors={['rgba(167, 139, 250, 0.12)', 'rgba(10, 15, 30, 0.3)']}
+                  style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                >
+                  <View style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ fontSize: 20 }}>📌</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: PURPLE, marginBottom: 2 }}>
+                      Pinned Wallpaper Active
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#FFFFFFCC', lineHeight: 15 }}>
+                      Select any theme below to pin it as your permanent background across all app screens. Tap Auto Solar anytime to re-enable dynamic transitions.
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
 
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setManualBgKey(key as BgKey);
-                      
-                      setCustomAlert({
-                        visible: true,
-                        title: 'Recommendation',
-                        message: 'For best experience just change and see the wallpaper but then again set the auto solar mode to change the wallpaper in rhythm with the time of Day',
-                        type: 'info'
-                      });
-                    }}
-                    activeOpacity={0.88}
-                    style={[
-                      wp.bgCard,
-                      { borderColor: active ? '#fff' : 'rgba(255,255,255,0.10)', borderWidth: active ? 2 : 1 },
-                    ]}
-                  >
-                    <ImageBackground
-                      source={(() => {
-                        // Empty string URI crashes Android — guard strictly
-                        if (!uri || uri.length <= 4) return undefined;
-                        return { uri };
-                      })()}
-                      style={wp.bgCardImg}
-                      imageStyle={{ borderRadius: 16 }}
+            {/* Category Filter Tabs */}
+            <View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 16 }}
+              >
+                {CATEGORIES.map(cat => {
+                  const isSelected = activeCategory === cat.id;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setActiveCategory(cat.id as any);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        borderWidth: 1,
+                        borderColor: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                      }}
                     >
-                      <LinearGradient
-                        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.70)']}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      {active && (
-                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16 }]} />
-                      )}
-                      <View style={wp.bgCardContent}>
-                        <View>
-                          <Text style={wp.bgCardTime}>{meta.time}</Text>
-                          <Text style={wp.bgCardLabel}>{meta.emoji}  {meta.label}</Text>
-                          <Text style={wp.bgCardSub}>{meta.sub}</Text>
-                        </View>
-                        {active && (
-                          <View style={wp.activePill}>
-                            <Text style={wp.activePillTxt}>
-                              {wallpaperMode === 'manual' ? '✓  PINNED' : '◉  NOW SHOWING'}
+                      <Text style={{ fontSize: 12 }}>{cat.emoji}</Text>
+                      <Text style={{
+                        fontSize: 12,
+                        fontWeight: '800',
+                        color: isSelected ? '#fff' : '#FFFFFF80'
+                      }}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 48 }}
+            >
+              {/* 2-Column Grid */}
+              {gridRows.map((rowKeys, rowIndex) => (
+                <View key={rowIndex} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: 12 }}>
+                  {rowKeys.map(key => {
+                    const meta = BG_META[key];
+                    const uri = allBgUris[key];
+                    const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
+                    const rawActiveUri = allBgUris[key];
+                    const imgUri = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
+
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          if (wallpaperMode === 'solar') {
+                            setWallpaperMode('manual');
+                            setManualBgKey(key as BgKey);
+                            showToast('📌 Pinned Mode activated!', 'success');
+                          } else {
+                            setManualBgKey(key as BgKey);
+                            showToast('📌 Pinned wallpaper updated!', 'success');
+                          }
+                        }}
+                        activeOpacity={0.88}
+                        style={{
+                          flex: 1,
+                          height: 150,
+                          borderRadius: 20,
+                          overflow: 'hidden',
+                          borderWidth: 2,
+                          borderColor: active ? (wallpaperMode === 'solar' ? GOLD : PURPLE) : 'rgba(255, 255, 255, 0.08)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        }}
+                      >
+                        <ImageBackground
+                          source={imgUri ? { uri: imgUri } : undefined}
+                          style={{ flex: 1 }}
+                          imageStyle={{ borderRadius: 18 }}
+                        >
+                          <LinearGradient
+                            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.75)']}
+                            style={StyleSheet.absoluteFillObject}
+                          />
+
+                          {/* Time Pill */}
+                          <View style={{
+                            position: 'absolute',
+                            top: 8,
+                            left: 8,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            borderRadius: 8,
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                          }}>
+                            <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.3 }}>
+                              {meta.time}
                             </Text>
                           </View>
-                        )}
-                      </View>
-                    </ImageBackground>
-                  </TouchableOpacity>
-                );
-              })}
 
-              {wallpaperMode === 'manual' && (
-                <View style={wp.solarNote}>
-                  <Text style={{ fontSize: 13, marginBottom: 6 }}>💡</Text>
-                  <Text style={wp.solarNoteTxt}>
-                    Select a wallpaper to pin it across all pages
-                  </Text>
+                          {/* Content Overlay */}
+                          <View style={{
+                            flex: 1,
+                            justifyContent: 'flex-end',
+                            padding: 12,
+                          }}>
+                            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '950', color: '#fff', marginBottom: 2 }}>
+                              {meta.emoji} {meta.label}
+                            </Text>
+                            <Text numberOfLines={1} style={{ fontSize: 9, color: '#FFFFFFCC', fontWeight: '500' }}>
+                              {meta.sub}
+                            </Text>
+                          </View>
+
+                          {/* Selection Status Overlay */}
+                          {active && (
+                            <View style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              backgroundColor: wallpaperMode === 'solar' ? GOLD : PURPLE,
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 2,
+                            }}>
+                              <Text style={{ fontSize: 8, fontWeight: '900', color: '#000', letterSpacing: 0.3 }}>
+                                {wallpaperMode === 'solar' ? 'ACTIVE' : 'PINNED'}
+                              </Text>
+                            </View>
+                          )}
+                        </ImageBackground>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {/* If row has only 1 element, add an empty placeholder View to keep flex layout consistent */}
+                  {rowKeys.length === 1 && <View style={{ flex: 1 }} />}
                 </View>
-              )}
+              ))}
             </ScrollView>
           </Animated.View>
         </View>

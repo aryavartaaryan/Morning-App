@@ -36,7 +36,7 @@ import { getLocalMantraPath, isMantraDownloaded, downloadMantra } from '@/lib/ma
 import { registerPreviewStopper } from '@/lib/alarmAudio';
 import { ALL_SLEEP_SOUNDS, SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri, ensureSoundImageCached } from '@/lib/soundImagePreload';
-import SoundPicker, { AlarmSoundItem } from '@/components/alarms/SoundPicker';
+import AlarmSoundLibraryModal, { AlarmSoundItem } from '@/components/alarms/AlarmSoundLibraryModal';
 import { getSolarTimes } from '@/lib/solar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
@@ -92,7 +92,9 @@ const ALARM_SOUNDS = [
   { id: 'naad_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NAAD_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
   { id: 'med_govind_bolo',         label: 'Govind Bolo · Krishna',  emoji: '🪈', cat: 'Mantra', color: '#38bdf8', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' as string | null },
   { id: 'cdn_ultra_vedic_healing_chant', label: 'Vedic Healing Chanting', emoji: '🌿', cat: 'Mantra', color: '#86efac', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' as string | null },
+  { id: 'cdn_ultra_mahamrityunjaya',      label: '108 Mahamrityunjaya Mantra',    emoji: '🕉️', cat: 'Mantra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/108%20Mahamrityunjaya%20Mantra%20Chant%20%20Tibetan%20Shiva%20Mantra%20for%20Protection%20%26%20Healing.m4a' as string | null },
   { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
+  { id: 'med_shyamale_meenakshi',  label: 'Feminine Universal Energy (Shyamale Meenakshi)', emoji: '🌺', cat: 'Stotra', color: '#f9a8d4', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Shyamale%20Meenakshi%20%20I%20Om%20Voices%20Junior%20I%20Praise%20Goddess%20Meenakshi%20with%20Dikshitar%27s%20Nottuswara.mp3' as string | null },
   { id: 'bhagya_suktam',           label: 'Hymn of Fortune (Bhagya Suktam)',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
   // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
   { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
@@ -464,6 +466,8 @@ export default function AlarmsTab() {
   const [permStatus, setPermStatus]         = useState({ notifications: true, exactAlarm: true, batteryOpt: true, fullScreen: true });
   const [liveClock, setLiveClock]           = useState(new Date());
   const [prakritiWake, setPrakritiWake]     = useState<{ label: string; hour: number; minute: number; color: string }|null>(null);
+  const [libraryModalVisible, setLibraryModalVisible] = useState(false);
+  const [libraryModalTarget, setLibraryModalTarget] = useState<'wake' | 'habit'>('wake');
   const [alarmModal, setAlarmModal]         = useState(false);
   const { bgUri, bgKey, accentColor }        = useBgContext();
   const cardBg                              = getCardBg(bgKey);
@@ -476,6 +480,9 @@ export default function AlarmsTab() {
 
   useFocusEffect(useCallback(() => {
     alarmScrollRef.current?.scrollTo({ y: 0, animated: false });
+    return () => {
+      stopPreview().catch(() => {});
+    };
   }, []));
 
   useEffect(() => {
@@ -554,6 +561,16 @@ export default function AlarmsTab() {
       if (hasPerm) await rescheduleAllFromSettings(updated);
       if (updated.wakeAlarm.enabled) {
         await syncNativeWakeAlarmSound(selectedMantraId);
+        
+        if (Platform.OS === 'android') {
+          try {
+            await requestAllAlarmPermissions();
+            const [ea, bo, fs] = await Promise.all([checkAlarmPermission(), NativeModules.AlarmModule?.isBatteryOptimizationIgnored?.().catch(() => true) ?? Promise.resolve(true), NativeModules.AlarmModule?.checkFullScreenIntentPermission?.().catch(() => true) ?? Promise.resolve(true)]);
+            const { status } = await (require('expo-notifications') as typeof import('expo-notifications')).getPermissionsAsync();
+            setPermStatus({ notifications: status === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
+          } catch {}
+        }
+
         const next = new Date(getNextAlarmTimestamp(updated.wakeAlarm.hour, updated.wakeAlarm.minute, updated.wakeAlarm.days));
         if (Platform.OS === 'android' && NativeModules.AlarmModule?.scheduleAlarm) {
           try { await NativeModules.AlarmModule.scheduleAlarm(next.getTime()); } catch (e: any) { console.warn('[AlarmModule] schedule failed:', e); }
@@ -565,16 +582,6 @@ export default function AlarmsTab() {
         const ampm = next.getHours() >= 12 ? 'PM' : 'AM';
         const mm = String(next.getMinutes()).padStart(2, '0');
         (ToastAndroid as any)?.show?.(`🔔 Alarm set for ${h12}:${mm} ${ampm}${next.getDate() !== new Date().getDate() ? ' (tomorrow)' : ''}`, (ToastAndroid as any).LONG);
-        if (Platform.OS === 'android') {
-          (async () => {
-            try {
-              await requestAllAlarmPermissions();
-              const [ea, bo, fs] = await Promise.all([checkAlarmPermission(), NativeModules.AlarmModule?.isBatteryOptimizationIgnored?.().catch(() => true) ?? Promise.resolve(true), NativeModules.AlarmModule?.checkFullScreenIntentPermission?.().catch(() => true) ?? Promise.resolve(true)]);
-              const { status } = await (require('expo-notifications') as typeof import('expo-notifications')).getPermissionsAsync();
-              setPermStatus({ notifications: status === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
-            } catch {}
-          })();
-        }
       } else {
         await cancelNativeAlarm();
         (ToastAndroid as any)?.show?.('🔕 Alarm cancelled', (ToastAndroid as any).SHORT);
@@ -1528,23 +1535,36 @@ export default function AlarmsTab() {
                 </View>
               )}
 
-              {/* ── Sound Picker ── */}
-              <SoundPicker
-                sounds={ALARM_SOUNDS}
-                cats={ALARM_SOUND_CATS}
-                activeCat={wakeFormSoundCat}
-                onCatChange={cat => setWakeFormSoundCat(cat as typeof ALARM_SOUND_CATS[number])}
-                selectedId={selectedMantraId}
-                onSelect={handleMantraSelect}
-                previewingId={previewingId}
-                onTogglePreview={togglePreview}
-                cardWidth={(width - 40 - 8) / 2}
-                catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
-                gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
-                dlStatus={dlStatus}
-                dlProgress={dlProgress}
-                previewLoadingId={previewLoadingId}
-              />
+              {/* ── Sound Picker Widget ── */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setLibraryModalTarget('wake');
+                    setLibraryModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    backgroundColor: 'rgba(0,5,15,0.4)',
+                    borderRadius: 16,
+                    padding: 14, paddingHorizontal: 16,
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)',
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3 }}>Select Premium Alarm Sound</Text>
+                    <Text style={{ fontSize: 15, fontFamily: 'Nunito_700Bold', color: '#E0F2FE' }} numberOfLines={1}>{ALARM_SOUNDS.find(s => s.id === selectedMantraId)?.label ?? 'Select Sound'}</Text>
+                  </View>
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18, 
+                    backgroundColor: 'rgba(14,165,233,0.1)', 
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)'
+                  }}>
+                    <Text style={{ fontSize: 18 }}>{ALARM_SOUNDS.find(s => s.id === selectedMantraId)?.emoji ?? '🎵'}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
 
               {/* ── Morning Mission + System (for all wake alarms) ── */}
                   <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
@@ -1847,21 +1867,36 @@ export default function AlarmsTab() {
                 <DaySelector days={formDays} onChange={setFormDays} />
               </View>
 
-              {/* Sound picker — category filter tabs + filtered grid */}
-              <SoundPicker
-                sounds={ALARM_SOUNDS}
-                cats={ALARM_SOUND_CATS}
-                activeCat={bathFormSoundCat}
-                onCatChange={cat => setBathFormSoundCat(cat as typeof ALARM_SOUND_CATS[number])}
-                selectedId={formSoundId}
-                onSelect={setFormSoundId}
-                previewingId={previewingId}
-                onTogglePreview={togglePreview}
-                cardWidth={(width - 40 - 8) / 2}
-                catScrollStyle={{ paddingHorizontal: 20, marginBottom: 12 }}
-                gridStyle={{ paddingHorizontal: 20, marginBottom: 14 }}
-                previewLoadingId={previewLoadingId}
-              />
+              {/* Sound picker widget */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setLibraryModalTarget('habit');
+                    setLibraryModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    backgroundColor: 'rgba(0,5,15,0.4)',
+                    borderRadius: 16,
+                    padding: 14, paddingHorizontal: 16,
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)',
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3 }}>Select Premium Alarm Sound</Text>
+                    <Text style={{ fontSize: 15, fontFamily: 'Nunito_700Bold', color: '#E0F2FE' }} numberOfLines={1}>{ALARM_SOUNDS.find(s => s.id === formSoundId)?.label ?? 'Select Sound'}</Text>
+                  </View>
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18, 
+                    backgroundColor: 'rgba(14,165,233,0.1)', 
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.2)'
+                  }}>
+                    <Text style={{ fontSize: 18 }}>{ALARM_SOUNDS.find(s => s.id === formSoundId)?.emoji ?? '🎵'}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
 
               {/* Optional label */}
               <View style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10 }}>
@@ -2117,6 +2152,25 @@ export default function AlarmsTab() {
           </TouchableOpacity>
         </Modal>
       )}
+
+      <AlarmSoundLibraryModal
+        visible={libraryModalVisible}
+        onClose={() => {
+          setLibraryModalVisible(false);
+          stopPreview().catch(() => {});
+        }}
+        sounds={ALARM_SOUNDS as any}
+        selectedId={libraryModalTarget === 'wake' ? selectedMantraId : formSoundId}
+        previewingId={previewingId}
+        previewLoadingId={previewLoadingId}
+        dlStatus={dlStatus}
+        dlProgress={dlProgress}
+        onSelectSound={(id) => {
+          if (libraryModalTarget === 'wake') handleMantraSelect(id);
+          else setFormSoundId(id);
+        }}
+        onTogglePreview={togglePreview}
+      />
 
     </ImageBackground>
   );

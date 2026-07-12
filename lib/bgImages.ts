@@ -11,7 +11,7 @@ export const BG_URLS: Record<string, string> = {
   predawn_mid: 'https://images.pexels.com/photos/12348207/pexels-photo-12348207.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise:    'https://images.pexels.com/photos/3952899/pexels-photo-3952899.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise_late: 'https://images.pexels.com/photos/6240658/pexels-photo-6240658.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sunrise_late_2: 'https://images.pexels.com/photos/4811133/pexels-photo-4811133.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sunrise_late_2: 'https://images.pexels.com/photos/9004241/pexels-photo-9004241.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_early: 'https://images.pexels.com/photos/2035066/pexels-photo-2035066.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_early_late: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning:     'https://images.pexels.com/photos/14469571/pexels-photo-14469571.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -28,24 +28,26 @@ export const BG_URLS: Record<string, string> = {
   afternoon:  'https://images.pexels.com/photos/16302236/pexels-photo-16302236.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon_first_late: 'https://images.pexels.com/photos/12280325/pexels-photo-12280325.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon_mid: 'https://images.pexels.com/photos/30510420/pexels-photo-30510420.jpeg',
-  afternoon_late: 'https://images.pexels.com/photos/15678073/pexels-photo-15678073.jpeg?auto=compress&cs=tinysrgb&w=600',
+  afternoon_late: 'https://images.pexels.com/photos/15279925/pexels-photo-15279925.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya:    'https://images.pexels.com/photos/2121062/pexels-photo-2121062.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_mid: 'https://images.pexels.com/photos/9380681/pexels-photo-9380681.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_late: 'https://images.pexels.com/photos/9179134/pexels-photo-9179134.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_mid: 'https://images.pexels.com/photos/9004268/pexels-photo-9004268.jpeg',
+  sandhya_late: 'https://images.pexels.com/photos/8964895/pexels-photo-8964895.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid: 'https://images.pexels.com/photos/11774422/pexels-photo-11774422.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_late_2: 'https://images.pexels.com/photos/36984232/pexels-photo-36984232.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_late_3: 'https://images.pexels.com/photos/14276463/pexels-photo-14276463.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late_mid_2: 'https://images.pexels.com/photos/9179134/pexels-photo-9179134.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late_2: 'https://images.pexels.com/photos/20737599/pexels-photo-20737599.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late_3: 'https://images.pexels.com/photos/34644590/pexels-photo-34644590.jpeg',
   twilight:   'https://images.pexels.com/photos/29727067/pexels-photo-29727067.jpeg?auto=compress&cs=tinysrgb&w=600',
   twilight_late: 'https://images.pexels.com/photos/8887270/pexels-photo-8887270.jpeg?auto=compress&cs=tinysrgb&w=600',
   twilight_deep: 'https://images.pexels.com/photos/34985075/pexels-photo-34985075.jpeg?auto=compress&cs=tinysrgb&w=600',
-  evening_early: 'https://images.pexels.com/photos/11422636/pexels-photo-11422636.jpeg',
+  evening_early: 'https://images.pexels.com/photos/15678073/pexels-photo-15678073.jpeg?auto=compress&cs=tinysrgb&w=600',
   evening:    'https://images.pexels.com/photos/7828546/pexels-photo-7828546.jpeg',
   night_early: 'https://images.pexels.com/photos/31104752/pexels-photo-31104752.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_mid1: 'https://images.pexels.com/photos/16903505/pexels-photo-16903505.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid2: 'https://images.pexels.com/photos/34461949/pexels-photo-34461949.jpeg',
-  night_early_late: 'https://images.pexels.com/photos/34644590/pexels-photo-34644590.jpeg',
-  night:      'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg',
-  night_late: 'https://images.pexels.com/photos/5959508/pexels-photo-5959508.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_mid2: 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg',
+  night_early_mid2_late: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg',
+  night_early_late: 'https://images.pexels.com/photos/5959508/pexels-photo-5959508.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night:      'https://images.pexels.com/photos/34461949/pexels-photo-34461949.jpeg',
+  night_late: 'https://images.pexels.com/photos/14276463/pexels-photo-14276463.jpeg?auto=compress&cs=tinysrgb&w=600',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg?auto=compress&cs=tinysrgb&w=600',
   splash:     'https://images.pexels.com/photos/26570345/pexels-photo-26570345.jpeg?auto=compress&cs=tinysrgb&w=600',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
@@ -232,8 +234,10 @@ export async function ensureAllBgsCachedWithProgress(
     const total   = entries.length;
     let done = 0;
 
+    let hasError = false;
+
     // Parallel: all images download concurrently — total time ≈ slowest image.
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       entries.map(async ([key, url]) => {
         const path      = cachePath(key);
         const urlHash   = djb2(url);
@@ -256,8 +260,9 @@ export async function ensureAllBgsCachedWithProgress(
             ]);
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
-          } catch {
+          } catch (e) {
             // Timed-out or failed — keep old cached file; hash not saved → retries next launch.
+            throw e;
           }
         } else {
           updatedHashes[key] = urlHash;
@@ -268,8 +273,18 @@ export async function ensureAllBgsCachedWithProgress(
       }),
     );
 
+    if (results.some(r => r.status === 'rejected')) {
+      hasError = true;
+    }
+
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
-  } catch { /* silent */ }
+    
+    if (hasError) {
+      throw new Error('Failed to download some background images');
+    }
+  } catch (err) { 
+    throw err; 
+  }
 }
 
 // Kick off disk-scan the moment this module loads so BG_LOCAL_MAP is populated
