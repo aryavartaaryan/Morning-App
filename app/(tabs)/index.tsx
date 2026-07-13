@@ -775,7 +775,7 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
               <MoonSVG tithiNum={moon.tithiNum} size={52} />
               <View style={{ flex: 1 }}>
                 <Text style={EX.cosmoTitle}>{moon.name}  ·  {moon.illumination}% lit</Text>
-                <Text style={EX.cosmoSub}>{p.tithiName}  ·  {p.paksha} Paksha  ·  Day {p.tithiInPaksha}</Text>
+                <Text style={EX.cosmoSub}>{p.tithiName}  ·  {p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon  ·  Day {p.tithiInPaksha}</Text>
                 <Text style={EX.cosmoSub2}>{nakshatra.emoji}  {nakshatra.name}  ·  {nakshatra.en}</Text>
               </View>
             </View>
@@ -807,7 +807,7 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
             {/* Tithi Science */}
             <View style={EX.exploreSection}>
               <Text style={EX.exploreSectionTitle}>📐  What is a Tithi? Orbital Mechanics</Text>
-              <Text style={EX.exploreSectionSub}>{p.tithiName}  ·  {p.paksha} Paksha  ·  Day {p.tithiInPaksha} of 15</Text>
+              <Text style={EX.exploreSectionSub}>{p.tithiName}  ·  {p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon  ·  Day {p.tithiInPaksha} of 15</Text>
               <View style={[EX.sciBlock, { borderColor: '#fbbf2425', marginTop: 10 }]}>
                 <Text style={[EX.sciBlockTitle, { color: '#fbbf24' }]}>The Mathematics</Text>
                 <Text style={EX.sciBlockBody}>
@@ -5664,7 +5664,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
       label: 'TITHI',
       labelFull: 'Lunar Day',
       value: p.tithiName,
-      sub: `${p.paksha} Paksha · Day ${p.tithiInPaksha}`,
+      sub: `${p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon · Day ${p.tithiInPaksha}`,
       timing: `${tFmt(timings.tithiStart)} - ${tFmt(timings.tithiEnd)}`,
       color: '#A78BFA',
       emoji: '🌙',

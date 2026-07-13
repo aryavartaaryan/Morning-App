@@ -39,6 +39,7 @@ import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
+import { getBgSourceSync } from '@/lib/bgImages';
 
 const { width: W } = Dimensions.get('window');
 
@@ -55,7 +56,7 @@ const BORDER   = 'rgba(255,255,255,0.10)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SIZE   = Math.min(W - 32, 280);
-const RING_STROKE = 4;
+const RING_STROKE = 16; // Thicker premium stroke
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
@@ -245,7 +246,7 @@ export default function WalkTab() {
   
   return (
     <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
+      source={{ uri: getBgSourceSync('naad_step') }}
       style={[{ flex: 1, backgroundColor: accentColor || BG_DARK }]}
       imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -274,21 +275,21 @@ export default function WalkTab() {
       <ScrollView
         ref={walkScrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
+        contentContainerStyle={{ paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
       >
         {/* ── HEADER — glassmorphism card matching sleep / alarm pages ──── */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 18 }}>
           <View style={{
             width: '100%',
             backgroundColor: 'rgba(0,0,0,0.26)',
-            borderTopWidth: 1,
+            borderTopWidth: 0,
             borderBottomWidth: 1,
             borderColor: 'rgba(255,255,255,0.14)',
             borderRadius: 0,
             overflow: 'hidden',
             paddingHorizontal: 20,
-            paddingTop: 18,
-            paddingBottom: 16,
+            paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 10,
+            paddingBottom: 22,
             alignItems: 'center',
           }}>
             {/* Subtle top shimmer — identical to sleep/alarm hero */}
@@ -298,17 +299,6 @@ export default function WalkTab() {
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
-            {/* Action buttons — top right */}
-            <View style={{ position: 'absolute', top: 14, right: 16, flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
-                style={st.headerBtn}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="sparkles" size={14} color="#38bdf8" />
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#38bdf8', letterSpacing: 0.5 }}>Journey</Text>
-              </TouchableOpacity>
-            </View>
             {/* Main title — DancingScript matching sleep/alarm hero font exactly */}
             <Text style={{
               fontSize: 20,
@@ -322,7 +312,7 @@ export default function WalkTab() {
               textAlign: 'center',
               marginBottom: 6,
             }}>
-              Step Counter
+              Naad Steps
             </Text>
             {/* Subtitle — date */}
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 2, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
@@ -331,9 +321,28 @@ export default function WalkTab() {
             {/* Divider */}
             <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 12 }} />
             {/* Tagline */}
-            <Text style={{ fontSize: 10, fontWeight: '300', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic' }}>
-              walk daily · track every step · stay active
+            <Text style={{ fontSize: 11, fontWeight: '300', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic', lineHeight: 18 }}>
+              Do not count calories.. just walk organically and{"\n"}Sync your body with nature by barefoot walking{"\n"}on natural clean surfaces...
             </Text>
+
+            {/* Elegant Inline Action Button */}
+            <View style={{ marginTop: 18 }}>
+              <TouchableOpacity
+                onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                  paddingHorizontal: 16, paddingVertical: 10,
+                  borderRadius: 24,
+                  shadowColor: '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="bar-chart" size={14} color="#f9fafb" />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#f9fafb', letterSpacing: 1.0, textTransform: 'uppercase' }}>View Analytics</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
 
@@ -366,24 +375,26 @@ export default function WalkTab() {
               />
             </View>
 
-            {/* SVG ring — 4-layer glow stroke */}
-            <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
-              <Defs>
-                <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0"   stopColor={ACCENT}  stopOpacity="1" />
-                  <Stop offset="0.5" stopColor="#ffffff" stopOpacity="0.8" />
-                  <Stop offset="1"   stopColor={TEAL}    stopOpacity="1" />
-                </SvgGrad>
-              </Defs>
-              {/* Dark track */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={RING_STROKE} />
-              
-              {/* Main sci-fi arc */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#ringGrad)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={1} />
-              
-              {/* Core glow */}
-              <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ACCENT} strokeWidth={RING_STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.3} />
-            </Svg>
+            {/* SVG ring — Premium thick Apple-style ring */}
+            <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
+                <Defs>
+                  <SvgGrad id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0"   stopColor="#34D399" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#38bdf8" stopOpacity="1" />
+                    <Stop offset="1"   stopColor="#818cf8" stopOpacity="1" />
+                  </SvgGrad>
+                </Defs>
+                {/* Dark track */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={RING_STROKE} />
+                
+                {/* Main premium arc */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#ringGrad)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={1} />
+                
+                {/* Core glow */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#38bdf8" strokeWidth={RING_STROKE + 6} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset} opacity={0.25} />
+              </Svg>
+            </View>
 
             {/* Rotating Outer Dashed HUD */}
             <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
@@ -490,23 +501,18 @@ export default function WalkTab() {
           style={[st.quickRow, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
         >
           <TouchableOpacity
-            style={[st.quickBtn, { borderColor: ACCENT + '40' }]}
-            onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
-          >
-            <LinearGradient colors={[ACCENT + '18', 'transparent']} style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 22 }}>📈</Text>
-            <Text style={[st.quickLabel, { color: ACCENT }]}>Analytics</Text>
-            <Text style={st.quickSub}>30-day history</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[st.quickBtn, { borderColor: GREEN + '40' }]}
+            style={[st.quickBtn, { borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(0,0,0,0.45)', shadowColor: '#34D399', shadowOpacity: 0.2, shadowRadius: 15 }]}
             onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
           >
-            <LinearGradient colors={[GREEN + '18', 'transparent']} style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 22 }}>🎯</Text>
-            <Text style={[st.quickLabel, { color: GREEN }]}>Set Goal</Text>
-            <Text style={st.quickSub}>{fmtK(stats.goalSteps)} steps/day</Text>
+            <LinearGradient colors={['rgba(52,211,153,0.15)', 'transparent']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(52,211,153,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' }}>
+              <Ionicons name="flag" size={20} color="#34D399" />
+            </View>
+            <View style={{ justifyContent: 'center', flex: 1, paddingLeft: 8 }}>
+              <Text style={[st.quickLabel, { color: GREEN, fontSize: 15, letterSpacing: 0.5 }]}>Set Daily Goal</Text>
+              <Text style={[st.quickSub, { fontSize: 11, color: 'rgba(255,255,255,0.6)' }]}>{fmtK(stats.goalSteps)} steps/day target</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" style={{ marginRight: 8 }} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -678,11 +684,12 @@ const st = StyleSheet.create({
 
   quickRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: 16 },
   quickBtn: {
-    flex: 1, borderRadius: 18, borderWidth: 1, backgroundColor: 'rgba(0,0,0,0.16)', borderColor: 'rgba(255,255,255,0.12)',
-    padding: 18, alignItems: 'center', gap: 6, overflow: 'hidden',
+    flex: 1, borderRadius: 24, borderWidth: 1, backgroundColor: 'rgba(0,0,0,0.35)', borderColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 14, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 5,
   },
-  quickLabel: { fontSize: 14, fontWeight: '800' },
-  quickSub:   { fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
+  quickLabel: { fontSize: 13, fontWeight: '800' },
+  quickSub:   { fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: '600', marginTop: 1 },
 
   trackCard: {
     marginHorizontal: 16, marginBottom: 24, borderRadius: 18, borderWidth: 1,

@@ -31,7 +31,7 @@ export const BG_URLS: Record<string, string> = {
   afternoon_late: 'https://images.pexels.com/photos/15279925/pexels-photo-15279925.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya:    'https://images.pexels.com/photos/2121062/pexels-photo-2121062.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_mid: 'https://images.pexels.com/photos/9004268/pexels-photo-9004268.jpeg',
-  sandhya_late: 'https://images.pexels.com/photos/8964895/pexels-photo-8964895.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late: 'https://images.pexels.com/photos/8964900/pexels-photo-8964900.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid: 'https://images.pexels.com/photos/11774422/pexels-photo-11774422.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid_2: 'https://images.pexels.com/photos/9179134/pexels-photo-9179134.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_2: 'https://images.pexels.com/photos/20737599/pexels-photo-20737599.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -51,6 +51,7 @@ export const BG_URLS: Record<string, string> = {
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg?auto=compress&cs=tinysrgb&w=600',
   splash:     'https://images.pexels.com/photos/26570345/pexels-photo-26570345.jpeg?auto=compress&cs=tinysrgb&w=600',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
+  naad_step:  'https://images.pexels.com/photos/8690653/pexels-photo-8690653.jpeg',
 };
 
 const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'bg-cache/';

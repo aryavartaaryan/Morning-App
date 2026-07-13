@@ -61,7 +61,19 @@ class BootReceiver : BroadcastReceiver() {
             .edit()
             .putBoolean("alarm_fired_pending", false)
             .apply()
-        Log.d("AriseAlarm", "BootReceiver: cleared stale alarm_fired_pending")
+            
+        // STALE STATE FIX 2: Also clear HabitAlarm active flags.
+        // Without this, if the phone is rebooted during a habit alarm or sound bath,
+        // KEY_ACTIVE remains true forever. On next launch, MainActivity enters
+        // LockTask mode (screen pinning) and aggressive bringToFront, which locks
+        // the app up and causes crashes/ANRs when the user tries to navigate normally.
+        context.getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(HabitAlarmModule.KEY_ACTIVE, false)
+            .putString("active_alarm_type", "")
+            .apply()
+            
+        Log.d("AriseAlarm", "BootReceiver: cleared all stale alarm states")
     }
 
     // ── Wake alarm ────────────────────────────────────────────────────────────

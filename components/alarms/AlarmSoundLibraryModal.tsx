@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, SectionList, Platform, SafeAreaView, Dimensions, TextInput, ScrollView, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 const { width: W, height: H } = Dimensions.get('window');
-const SKY_BLUE = '#0ea5e9'; // Sci-fi calming sky blue
+const PRIMARY = '#c4b5fd'; // Soft premium purple
 
 export type AlarmSoundItem = {
   id: string;
@@ -75,47 +75,43 @@ export default function AlarmSoundLibraryModal({
     } catch {}
   };
 
-  const renderSectionHeader = ({ section }: { section: { title: string } }) => (
+  const renderSectionHeader = ({ section }: { section: any }) => (
     <View style={S.sectionHeader}>
-      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
       <Text style={S.sectionHeaderTxt}>{section.title}</Text>
     </View>
   );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <BlurView intensity={70} tint="dark" style={S.overlay}>
+      <BlurView intensity={40} tint="dark" style={S.overlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         
         <SafeAreaView style={S.safeArea} pointerEvents="box-none">
           <View style={S.drawer}>
-            <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
-            {/* Deep Sky-Blue Sci-Fi Gradient */}
-            <LinearGradient colors={['rgba(4,16,35,0.85)', 'rgba(2,8,20,0.95)']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['rgba(12,12,16,0.98)', 'rgba(4,4,6,1)']} style={StyleSheet.absoluteFillObject} />
+            <View style={S.drawerBorderTop} />
             
             <View style={S.header}>
               <View style={S.headerTopRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={S.title}>Soundscapes</Text>
-                </View>
+                <Text style={S.title}>Premium Sound Library</Text>
                 <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
-                  <Ionicons name="close" size={20} color={SKY_BLUE} />
+                  <Feather name="x" size={18} color="rgba(255,255,255,0.6)" />
                 </TouchableOpacity>
               </View>
               
               <View style={S.searchContainer}>
-                <Ionicons name="search" size={18} color={SKY_BLUE + '80'} style={{ marginLeft: 16, marginRight: 8 }} />
+                <Feather name="search" size={16} color="rgba(255,255,255,0.4)" style={{ marginLeft: 16, marginRight: 8 }} />
                 <TextInput
                   style={S.searchInput}
                   placeholder="Search sounds, mantras..."
-                  placeholderTextColor="rgba(14,165,233,0.4)"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoCorrect={false}
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 8, marginRight: 4 }}>
-                    <Ionicons name="close-circle" size={18} color={SKY_BLUE + '80'} />
+                    <Feather name="x-circle" size={16} color="rgba(255,255,255,0.4)" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -165,7 +161,7 @@ export default function AlarmSoundLibraryModal({
               }}
               ListEmptyComponent={
                 <View style={{ paddingTop: 60, alignItems: 'center' }}>
-                  <Text style={{ color: SKY_BLUE + '80', fontSize: 15 }}>No sounds found matching "{searchQuery}"</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontFamily: 'Nunito_400Regular' }}>No sounds found matching "{searchQuery}"</Text>
                 </View>
               }
             />
@@ -181,69 +177,50 @@ function SoundRow({
 }: { 
   sound: AlarmSoundItem, isSelected: boolean, isPreviewing: boolean, isLoading?: boolean, status?: string, progress?: number, onSelect: () => void, onTogglePreview: () => void 
 }) {
-  const pulseAnim = useRef(new Animated.Value(0.1)).current;
-
-  useEffect(() => {
-    if (isSelected || isPreviewing) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 0.2, duration: 1500, useNativeDriver: true })
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(0);
-      pulseAnim.stopAnimation();
-    }
-  }, [isSelected, isPreviewing]);
+  const highlightColor = sound.color || PRIMARY;
 
   return (
-    <View style={[S.row, (isSelected || isPreviewing) && S.rowSelected]}>
-      {/* Sci-Fi Pulsing Glow */}
-      {(isSelected || isPreviewing) && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: pulseAnim }]}>
-          <LinearGradient
-            colors={[SKY_BLUE + '30', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-        </Animated.View>
+    <View style={[S.row, isSelected && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+      {isSelected && (
+        <LinearGradient
+          colors={[highlightColor + '15', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
       )}
       
-      {/* Tapping the main body selects the sound */}
       <TouchableOpacity 
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(); }} 
         style={S.rowSelectArea} 
         activeOpacity={0.7}
       >
-        <View style={[S.emojiContainer, (isSelected || isPreviewing) && { backgroundColor: SKY_BLUE + '20', borderWidth: 1, borderColor: SKY_BLUE + '40' }]}>
+        <View style={[S.emojiContainer, isSelected && { backgroundColor: highlightColor + '20', borderColor: highlightColor + '40' }]}>
           <Text style={{ fontSize: 18, textAlign: 'center' }}>{sound.emoji || '🎵'}</Text>
         </View>
-        <View style={{ flex: 1, paddingRight: 10, paddingLeft: 12 }}>
-          <Text style={[S.rowTitle, isSelected && { color: SKY_BLUE }]} numberOfLines={1}>{sound.label}</Text>
+        <View style={{ flex: 1, paddingRight: 10, paddingLeft: 14 }}>
+          <Text style={[S.rowTitle, isSelected && { color: highlightColor }]} numberOfLines={1}>{sound.label}</Text>
           {isSelected ? (
-            <Text style={{ fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: SKY_BLUE, marginTop: 1, letterSpacing: 1 }}>SELECTED</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: highlightColor, marginTop: 2, letterSpacing: 1.5 }}>SELECTED</Text>
           ) : sound.desc ? (
-            <Text style={{ fontSize: 11, fontFamily: 'Nunito_400Regular', color: 'rgba(14,165,233,0.5)', marginTop: 1 }} numberOfLines={1}>{sound.desc}</Text>
+            <Text style={{ fontSize: 11, fontFamily: 'Nunito_400Regular', color: 'rgba(255,255,255,0.4)', marginTop: 2 }} numberOfLines={1}>{sound.desc}</Text>
           ) : null}
         </View>
       </TouchableOpacity>
 
-      {/* Tapping the play/pause button specifically toggles preview */}
       <TouchableOpacity 
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onTogglePreview(); }}
-        style={[S.playBtn, isPreviewing && { backgroundColor: SKY_BLUE, borderWidth: 0 }]}
+        style={[S.playBtn, isPreviewing && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
         activeOpacity={0.8}
       >
         {isLoading ? (
-          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: isPreviewing ? '#020617' : SKY_BLUE }} />
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: highlightColor }} />
         ) : status === 'downloading' ? (
-          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: isPreviewing ? '#020617' : SKY_BLUE }}>{Math.round((progress ?? 0) * 100)}%</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: highlightColor }}>{Math.round((progress ?? 0) * 100)}%</Text>
         ) : isPreviewing ? (
-          <Ionicons name="pause" size={14} color="#041023" />
+          <Feather name="square" size={12} color={highlightColor} />
         ) : (
-          <Ionicons name="play" size={14} color={SKY_BLUE} style={{ marginLeft: 2 }} />
+          <Feather name="play" size={14} color="rgba(255,255,255,0.6)" style={{ marginLeft: 2 }} />
         )}
       </TouchableOpacity>
     </View>
@@ -255,99 +232,104 @@ const S = StyleSheet.create({
   safeArea: { flex: 1, justifyContent: 'flex-end' },
   drawer: { 
     width: '100%',
-    height: H * 0.85,
-    backgroundColor: 'transparent',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    height: H * 0.88,
+    backgroundColor: '#050505',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
   },
+  drawerBorderTop: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
   header: { 
-    paddingHorizontal: 20, 
-    paddingTop: 20, 
-    paddingBottom: 10,
+    paddingHorizontal: 24, 
+    paddingTop: 24, 
+    paddingBottom: 12,
   },
   headerTopRow: {
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  title: { fontSize: 22, fontFamily: 'Nunito_800ExtraBold', color: SKY_BLUE, letterSpacing: 0, textShadowColor: SKY_BLUE + '40', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+  title: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 0.5 },
   closeBtn: { 
-    width: 32, 
-    height: 32, 
-    borderRadius: 16, 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
     alignItems: 'center', 
     justifyContent: 'center',
-    backgroundColor: SKY_BLUE + '15',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,5,15,0.4)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 18,
     height: 36,
     borderWidth: 1,
-    borderColor: SKY_BLUE + '20',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Nunito_600SemiBold',
-    color: SKY_BLUE,
+    color: '#ffffff',
     paddingVertical: 8,
   },
   
   categoryPillsWrapper: {
     paddingVertical: 4,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   categoryPillsContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     gap: 8,
   },
   catPill: {
-    backgroundColor: SKY_BLUE + '10',
-    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: SKY_BLUE + '20',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   catPillTxt: {
-    color: SKY_BLUE,
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
     fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.5,
   },
 
-  listContent: { paddingBottom: 100, paddingHorizontal: 12 },
+  listContent: { paddingBottom: 120, paddingHorizontal: 16 },
   
   sectionHeader: {
     paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 10,
+    backgroundColor: 'transparent',
   },
   sectionHeaderTxt: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Nunito_800ExtraBold',
-    color: SKY_BLUE + 'AA',
-    letterSpacing: 1.5,
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
 
   row: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     marginVertical: 2,
-    borderRadius: 14, 
+    borderRadius: 16, 
     overflow: 'hidden',
-    height: 52,
-  },
-  rowSelected: { 
-    backgroundColor: 'rgba(14,165,233,0.05)',
+    height: 48,
     borderWidth: 1,
-    borderColor: 'rgba(14,165,233,0.15)',
+    borderColor: 'transparent',
   },
   rowSelectArea: {
     flex: 1,
@@ -356,17 +338,19 @@ const S = StyleSheet.create({
     height: '100%',
   },
   emojiContainer: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,5,15,0.4)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   rowTitle: { 
-    fontSize: 14, 
+    fontSize: 13, 
     fontFamily: 'Nunito_700Bold',
-    color: '#E0F2FE', 
+    color: '#ffffff', 
     letterSpacing: 0.2 
   },
   
@@ -374,10 +358,10 @@ const S = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,5,15,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: SKY_BLUE + '30',
+    borderColor: 'rgba(255,255,255,0.08)',
   }
 });

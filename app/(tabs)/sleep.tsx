@@ -1123,9 +1123,9 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
-      // Claim on a very light horizontal flick
+      // Claim on an ultra-light horizontal flick
       onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 2 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.4,
+        Math.abs(gs.dx) > 1 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.05,
       onMoveShouldSetPanResponderCapture: () => false,
       // CRITICAL: false = once we claim, the ScrollView cannot steal it back
       onPanResponderTerminationRequest: () => false,
@@ -1135,8 +1135,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
           if (tabIdx === -1) return;
           const velocity = Math.abs(gs.vx);
-          // Ultra-light: fast flick needs only 5px; slow drag needs 12px
-          const threshold = velocity > 0.1 ? 5 : 12;
+          // Ultra-frictionless: fast flick needs only 2px; slow drag needs 4px
+          const threshold = velocity > 0.1 ? 2 : 4;
           if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
             onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
           } else if (gs.dx > threshold && tabIdx > 0) {
@@ -1154,19 +1154,22 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
 
   const shimmerOpacity = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.04, 0.11] });
 
+  const isAndroid = Platform.OS === 'android';
+  const HeaderView = isAndroid ? View : BlurView;
+
   return (
-    <BlurView
-      intensity={75}
+    <HeaderView
+      intensity={90}
       tint="dark"
       style={{
-        backgroundColor: 'rgba(6, 9, 15, 0.65)',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.08)',
-        shadowColor: 'black',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 8,
+        backgroundColor: isAndroid ? 'rgba(10, 10, 15, 0.85)' : 'rgba(10, 10, 15, 0.45)',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(255,255,255,0.15)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 10,
         zIndex: 50,
         overflow: 'hidden',
       }}
@@ -1192,9 +1195,9 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
       {/* ── Layer 3: top-edge highlight (frosted rim) ── */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.12)', 'transparent']}
+        colors={['rgba(255,255,255,0.20)', 'transparent']}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.4 }}
-        style={[StyleSheet.absoluteFillObject, { height: 2 }]}
+        style={[StyleSheet.absoluteFillObject, { height: 1.5 }]}
         pointerEvents="none"
       />
 
@@ -1235,7 +1238,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   onSelect(cat);
                 }}
                 activeOpacity={0.60}
-                style={{ flex: 1, alignItems: 'center', paddingTop: 6, paddingBottom: 6, gap: 4 }}
+                style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 8, gap: 6 }}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   tabLayouts.current[cat] = { x, width };
@@ -1243,39 +1246,39 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                 }}
               >
                 <View style={{
-                  width: 36, height: 36,
-                  borderRadius: 18,
-                  backgroundColor: isActive ? catColor + '40' : 'transparent',
-                  borderWidth: isActive ? 1.5 : 0,
-                  borderColor: isActive ? catColor + '90' : 'transparent',
+                  width: 42, height: 42,
+                  borderRadius: 21,
+                  backgroundColor: isActive ? catColor + '25' : 'rgba(255,255,255,0.04)',
+                  borderWidth: isActive ? 1.5 : 1,
+                  borderColor: isActive ? catColor + '80' : 'rgba(255,255,255,0.1)',
                   alignItems: 'center', justifyContent: 'center',
                   shadowColor: isActive ? catColor : 'transparent',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: isActive ? 0.8 : 0,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isActive ? 0.4 : 0,
                   shadowRadius: 10,
                 }}>
                   {cat === 'Birds' || cat === 'Meditations' ? (
                     <MaterialCommunityIcons
                       name={catIcon}
-                      size={18}
-                      color={isActive ? catColor : 'rgba(255,255,255,0.4)'}
+                      size={20}
+                      color={isActive ? catColor : 'rgba(255,255,255,0.6)'}
                     />
                   ) : (
                     <Ionicons
                       name={catIcon}
-                      size={18}
-                      color={isActive ? catColor : 'rgba(255,255,255,0.4)'}
+                      size={20}
+                      color={isActive ? catColor : 'rgba(255,255,255,0.6)'}
                     />
                   )}
                 </View>
                 <Text
                   numberOfLines={1}
                   style={{
-                    fontSize: 9.5,
-                    fontWeight: isActive ? '800' : '500',
-                    fontFamily: isActive ? 'Nunito_800ExtraBold' : 'Nunito_500Medium',
-                    color: isActive ? catColor : 'rgba(255,255,255,0.45)',
-                    letterSpacing: 0.3,
+                    fontSize: 10,
+                    fontWeight: isActive ? '800' : '600',
+                    fontFamily: isActive ? 'Nunito_800ExtraBold' : 'Nunito_600SemiBold',
+                    color: isActive ? catColor : 'rgba(255,255,255,0.6)',
+                    letterSpacing: 0.4,
                   }}
                 >
                   {cat.toUpperCase()}
@@ -1306,7 +1309,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           }}
         />
       </View>
-    </BlurView>
+    </HeaderView>
   );
 });
 
@@ -1366,8 +1369,8 @@ const CategoryRows = memo(function CategoryRows({
     ? (CATEGORIES.slice(1) as readonly Category[])
     : ([selectedCat] as readonly Category[]);
   const isFiltered = selectedCat !== 'All';
-  // Slightly smaller cards with more gap — cleaner, airier layout like the reference design
-  const gridCardW = Math.floor((W - 60) / 2); // 22px pad each side + 16px gap
+  // Smaller cards with wider spacing for a lighter, premium look
+  const gridCardW = Math.floor((W - 74) / 2); // 26px pad each side + 22px gap
 
   return (
     <View style={{ paddingBottom: 8 }}>
@@ -1451,7 +1454,7 @@ const CategoryRows = memo(function CategoryRows({
               )}
 
               {/* ── 2-column vertical grid for both All and filtered views ── */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 22, gap: 16, paddingBottom: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 26, gap: 22, paddingBottom: 12 }}>
                 {sounds.map(s => (
                   <CalmSoundCard
                     key={s.id}
@@ -3121,10 +3124,19 @@ export default function SleepTab() {
   const filteredSearchSounds = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const lowerQ = searchQuery.toLowerCase();
-    return ALL_SLEEP_SOUNDS.filter(s => 
+    const matches = ALL_SLEEP_SOUNDS.filter(s => 
       !SLEEP_HIDDEN_IDS.has(s.id) &&
       ((s.label?.toLowerCase() || '').includes(lowerQ) || (s.cat?.toLowerCase() || '').includes(lowerQ))
-    ).sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+    );
+    const unique = [];
+    const seen = new Set();
+    for (const s of matches) {
+      if (!seen.has(s.label)) {
+        seen.add(s.label);
+        unique.push(s);
+      }
+    }
+    return unique.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery]);
 
   // ── Global sound player (context) ──────────────────────────
@@ -3220,7 +3232,7 @@ export default function SleepTab() {
       onStartShouldSetPanResponder: () => false,
       // Ultra-light: triggers on very gentle horizontal movement with low vertical noise
       onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 1.5 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2,
+        Math.abs(gs.dx) > 1 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.05,
       onPanResponderGrant: () => {},
       onPanResponderTerminationRequest: () => false,
       onPanResponderRelease: (_, gs) => {
@@ -3229,8 +3241,8 @@ export default function SleepTab() {
           const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
           if (tabIdx === -1) return;
           const velocity = Math.abs(gs.vx);
-          // Feather touch: fast flick = 4px; slow drag = 12px
-          const threshold = velocity > 0.15 ? 4 : 12;
+          // Ultra-frictionless: fast flick = 2px; slow drag = 4px
+          const threshold = velocity > 0.05 ? 2 : 4;
           if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
             changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
           } else if (gs.dx > threshold && tabIdx > 0) {
@@ -3280,7 +3292,7 @@ export default function SleepTab() {
           setLibraryOpen(false);
           return true;
         }
-        router.navigate('/(tabs)/index');
+        router.navigate('/(tabs)');
         return true;
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -3784,7 +3796,6 @@ export default function SleepTab() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                     setIsSearching(true); 
-                    setTimeout(() => searchInputRef.current?.focus(), 100);
                   }}
                   activeOpacity={0.8}
                   style={{
@@ -3842,57 +3853,51 @@ export default function SleepTab() {
 
           {!isSearching && (
             <View style={{
-            width: '100%',
-            backgroundColor: 'rgba(0,0,0,0.16)',
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: 'rgba(255,255,255,0.14)',
-            borderRadius: 0,
-            paddingHorizontal: 20,
-            paddingTop: 16, // reduced from 64 since top bar is no longer absolute
-            paddingBottom: 16,
-            alignItems: 'center',
-            overflow: 'hidden',
-          }}>
-            {/* Subtle top shimmer */}
-            <LinearGradient
-              colors={['rgba(255,255,255,0.06)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            {/* Main title */}
-            <Text style={heroTextStyle}>{displayMode.label}</Text>
-            {/* Subtitle */}
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 6, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
-              {displayMode.subtitle}
-            </Text>
-            {/* Divider */}
-            <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 12 }} />
-            {/* Bottom hint — compact inline */}
-            {showIdealSleepChip ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#10b981' }} />
-                <Text style={{ fontSize: 11, fontWeight: '600', color: '#10b981' }}>Ideal Sleep Time</Text>
-                <Text style={{ fontSize: 10, color: 'rgba(16,185,129,0.70)', fontWeight: '400' }}>
-                  · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
-                </Text>
-              </View>
-            ) : showApproachingChip ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 13 }}>🌙</Text>
-                <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(167,139,250,0.85)' }}>
-                  Sleep in {hrsToBed > 0 ? `${hrsToBed}h ${minsToBed}m` : `${minsToBed}m`}
-                </Text>
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: '400' }}>
-                  · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
-                </Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 10, fontWeight: '300', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic' }}>
-                {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? dayHint.name : 'listen to heal as the day dawns up'}
+              width: '100%',
+              paddingHorizontal: 24,
+              paddingTop: 32,
+              paddingBottom: 28,
+              alignItems: 'center',
+              backgroundColor: 'transparent',
+            }}>
+              {/* Main title */}
+              <Text style={[heroTextStyle, { fontSize: 26, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>{displayMode.label}</Text>
+              {/* Subtitle */}
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 10, letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center' }}>
+                {displayMode.subtitle}
               </Text>
-            )}
+
+              {/* Elegant Divider */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 }}>
+                <View style={{ width: 20, height: 1.5, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1 }} />
+              </View>
+
+              {/* Bottom hint — premium pills */}
+              {showIdealSleepChip ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', shadowColor: '#10b981', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } }} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10b981', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>Ideal Sleep Time</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
+                    · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
+                  </Text>
+                </View>
+              ) : showApproachingChip ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <Text style={{ fontSize: 14 }}>🌙</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#c4b5fd', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
+                    Sleep in {hrsToBed > 0 ? `${hrsToBed}h ${minsToBed}m` : `${minsToBed}m`}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
+                    · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5, textAlign: 'center', fontFamily: 'Nunito_500Medium' }}>
+                    {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? dayHint.name : 'listen to heal as the day dawns up'}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -4214,14 +4219,14 @@ const S = StyleSheet.create({
   soundImgBg: { width: '100%', flex: 1 } as any,
 
   // ── Header ────────────────────────────────────────────────
-  headerTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 6 },
+  headerTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 2 },
   appName:      { fontSize: 15, fontWeight: '600', color: '#FFFFFF90', letterSpacing: 0.8, fontFamily: 'Nunito_600SemiBold' },
-  wakeChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: SLEEP_COLOR + '14', borderWidth: 1, borderColor: SLEEP_COLOR + '30', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 },
-  wakeChipTxt:  { fontSize: 11, fontWeight: '800', color: SLEEP_COLOR + 'CC', fontFamily: 'Nunito_800ExtraBold' },
-  greeting:     { fontSize: 30, fontWeight: '100', color: '#fff', letterSpacing: -1.0, marginBottom: 4 },
-  greetingSub:  { fontSize: 12, color: '#FFFFFF85', letterSpacing: 0.1 },
-  bedtimePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: '#10b98110', borderWidth: 1, borderColor: '#10b98130', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-start' },
-  dot:          { width: 6, height: 6, borderRadius: 3 },
+  wakeChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: SLEEP_COLOR + '14', borderWidth: 1, borderColor: SLEEP_COLOR + '30', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
+  wakeChipTxt:  { fontSize: 10, fontWeight: '800', color: SLEEP_COLOR + 'CC', fontFamily: 'Nunito_800ExtraBold' },
+  greeting:     { fontSize: 26, fontWeight: '100', color: '#fff', letterSpacing: -1.0, marginBottom: 2 },
+  greetingSub:  { fontSize: 11, color: '#FFFFFF85', letterSpacing: 0.1 },
+  bedtimePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: '#10b98110', borderWidth: 1, borderColor: '#10b98130', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start' },
+  dot:          { width: 5, height: 5, borderRadius: 2.5 },
 
   // ── Section headers ────────────────────────────────────────
   secHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 26, paddingBottom: 14 },
@@ -4236,14 +4241,14 @@ const S = StyleSheet.create({
   windowTime:     { fontSize: 18, fontWeight: '700', letterSpacing: -0.5 },
 
   // ── Sleep Intelligence full card ──────────────────────────
-  windowCard:     { marginHorizontal: 16, borderRadius: 22, borderWidth: 1, borderColor: SLEEP_COLOR + '35', backgroundColor: 'rgba(4,12,28,0.78)', padding: 20 },
+  windowCard:     { marginHorizontal: 16, borderRadius: 24, borderWidth: 1.5, borderColor: SLEEP_COLOR + '35', backgroundColor: 'rgba(15,23,42,0.45)', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
   sleepBar:       { height: 5, backgroundColor: '#FFFFFF08', borderRadius: 3, overflow: 'visible', position: 'relative', marginTop: 4 },
   sleepBarFill:   { position: 'absolute', left: 0, top: 0, bottom: 0, right: 0, borderRadius: 3 },
   sleepBarDot:    { position: 'absolute', top: -5, width: 15, height: 15, borderRadius: 8, borderWidth: 2.5, borderColor: '#000000' },
   barLabel:       { fontSize: 9, color: '#FFFFFF25', fontWeight: '700', letterSpacing: 0.3 },
 
   // ── Featured Hero Card ─────────────────────────────────────
-  featuredCard:  { borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF18', padding: 18, height: 186, justifyContent: 'space-between' },
+  featuredCard:  { borderRadius: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', padding: 18, height: 186, justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
   featOrb1:      { position: 'absolute', top: -40, right: -30, width: 180, height: 180, borderRadius: 90 },
   featOrb2:      { position: 'absolute', bottom: -20, left: -10, width: 110, height: 110, borderRadius: 55 },
   featTopRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -4261,7 +4266,7 @@ const S = StyleSheet.create({
   featStopTxt:   { fontSize: 12, color: '#FFFFFF35', fontWeight: '600' },
 
   // ── Night Theme Cards ─────────────────────────────────────
-  themeCard:     { width: THEME_CARD_W, height: THEME_CARD_H, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', justifyContent: 'flex-end' },
+  themeCard:     { width: THEME_CARD_W, height: THEME_CARD_H, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', justifyContent: 'flex-end', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
   themeOrb1:     { position: 'absolute', top: -30, right: -20, width: 110, height: 110, borderRadius: 55, opacity: 0.7 },
   themeOrb2:     { position: 'absolute', bottom: 10, left: -15, width: 70, height: 70, borderRadius: 35, opacity: 0.5 },
   themeContent:  { padding: 14, gap: 4 },
@@ -4274,7 +4279,7 @@ const S = StyleSheet.create({
 
   // ── Sound grid ────────────────────────────────────────────
   grid:          { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 4 },
-  soundCard:     { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#FFFFFF08' },
+  soundCard:     { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
   soundGrad:     { padding: 14, flex: 1, justifyContent: 'space-between', position: 'relative', overflow: 'hidden' },
   soundOrb:      { position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: 45 },
   soundTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -4287,12 +4292,12 @@ const S = StyleSheet.create({
   liveDot:       { width: 5, height: 5, borderRadius: 3 },
 
   // ── Chips (category + timer) ──────────────────────────────
-  chip:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF05' },
-  chipTxt:     { fontSize: 12, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  chip:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08' },
+  chipTxt:     { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
   chipDivider: { width: 1, height: 22, backgroundColor: '#FFFFFF10', marginHorizontal: 4, alignSelf: 'center' },
 
   // ── Night Settings grouped card ────────────────────────────
-  groupCard:     { marginHorizontal: 16, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(6,15,40,0.50)', overflow: 'hidden' },
+  groupCard:     { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.45)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
   groupRow:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
   groupIcon:     { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   groupRowTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
@@ -4311,7 +4316,7 @@ const S = StyleSheet.create({
   cycleChipCycles:  { fontSize: 10, color: '#FFFFFF35', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   // ── Sleep Science ─────────────────────────────────────────
-  tipCard:    { marginHorizontal: 16, marginBottom: 8, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(6,15,40,0.50)', flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, overflow: 'hidden' },
+  tipCard:    { marginHorizontal: 16, marginBottom: 12, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
   tipIconBox: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   tipTitle:   { fontSize: 12, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   tipSub:     { fontSize: 10, color: '#FFFFFFBB', marginTop: 2, lineHeight: 15 },

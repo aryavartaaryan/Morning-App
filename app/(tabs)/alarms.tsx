@@ -909,7 +909,6 @@ export default function AlarmsTab() {
     store.setJSON(KEYS.alarmSettings, upd); syncNativeWakeAlarmSound(id).catch(() => {});
     if (SOUND_IMAGES[id]) ensureSoundImageCached(SOUND_IMAGES[id]).catch(() => {});
     const snd = ALARM_SOUNDS.find(s => s.id === id);
-    if (snd && previewingId !== id) togglePreview(snd);
     updateMission({ wakeSound: id });
     // Bundled nature/sacred/stotra sounds need no download
     if (ALARM_BUNDLED[id] != null) {
@@ -1039,7 +1038,7 @@ export default function AlarmsTab() {
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
   fabActionsRef.current = [
-    { label: '🌄  Rise at sacred neuroplasticity hour', color: '#f59e0b', onPress: () => openBMModal() },
+    { label: '🌄  Rise At The Divine Neuroplastic Hour', color: '#f59e0b', onPress: () => openBMModal() },
     { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
     { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => openAddModal('habit') },
     { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => openAddModal('quick') },
@@ -1057,8 +1056,6 @@ export default function AlarmsTab() {
         pointerEvents="none"
       />
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={{ height: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : insets.top }} />
-
       {/* Premium Floating Settings Button */}
       <TouchableOpacity
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
@@ -1087,17 +1084,17 @@ export default function AlarmsTab() {
       </TouchableOpacity>
 
       {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
-      <View style={{ marginTop: 8, marginBottom: 10 }}>
+      <View style={{ marginTop: 0, marginBottom: 10 }}>
         <View style={{
           width: '100%',
           backgroundColor: 'rgba(0,0,0,0.26)',
-          borderTopWidth: 1,
+          borderTopWidth: 0,
           borderBottomWidth: 1,
           borderColor: 'rgba(255,255,255,0.14)',
           borderRadius: 0,
           overflow: 'hidden',
           paddingHorizontal: 20,
-          paddingTop: 18,
+          paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 10,
           paddingBottom: 16,
           alignItems: 'center',
         }}>
@@ -1180,7 +1177,7 @@ export default function AlarmsTab() {
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
             <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }} activeOpacity={0.8}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }} activeOpacity={0.8}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
@@ -1200,7 +1197,7 @@ export default function AlarmsTab() {
                   </View>
                 </View>
                 <View style={{ marginBottom: 2 }}>
-                  <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
+                  <Text style={{ fontSize: 28, fontWeight: '200', letterSpacing: -1.0, color: settings.wakeAlarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 30 }}>
                     {fmt12(settings.wakeAlarm.hour, settings.wakeAlarm.minute)}
                   </Text>
                   <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1222,7 +1219,7 @@ export default function AlarmsTab() {
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>🌄 Sacred Rise</Text>
@@ -1240,7 +1237,7 @@ export default function AlarmsTab() {
                     </View>
                   </View>
                   <View style={{ marginBottom: 2 }}>
-                    <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: '#FFFFFF', lineHeight: 38 }}>
+                    <Text style={{ fontSize: 28, fontWeight: '200', letterSpacing: -1.0, color: '#FFFFFF', lineHeight: 30 }}>
                       {fmt12(bmHour, bmMinute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1263,9 +1260,9 @@ export default function AlarmsTab() {
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>
                       {alarm.label ? `🔔 ${alarm.label}` : '🔔 Wake Alarm'}
                     </Text>
@@ -1283,7 +1280,7 @@ export default function AlarmsTab() {
                     </View>
                   </View>
                   <View style={{ marginBottom: 2 }}>
-                    <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
+                    <Text style={{ fontSize: 28, fontWeight: '200', letterSpacing: -1.0, color: alarm.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 30 }}>
                       {fmt12(alarm.hour, alarm.minute)}
                     </Text>
                     <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1315,9 +1312,9 @@ export default function AlarmsTab() {
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
                 <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 12, paddingVertical: 10, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '500' }} numberOfLines={1}>{subLine}</Text>
                       <View style={{ flex: 1 }} />
                       <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' }}>
@@ -1333,7 +1330,7 @@ export default function AlarmsTab() {
                       </View>
                     </View>
                     <View style={{ marginBottom: 2 }}>
-                      <Text style={{ fontSize: 34, fontWeight: '200', letterSpacing: -1.5, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 38 }}>
+                      <Text style={{ fontSize: 28, fontWeight: '200', letterSpacing: -1.0, color: entry.enabled ? '#FFFFFF' : 'rgba(255,255,255,0.28)', lineHeight: 30 }}>
                         {fmt12(entry.hour, entry.minute)}
                       </Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '500', marginTop: 2 }}>
@@ -1379,301 +1376,171 @@ export default function AlarmsTab() {
       >
         <View style={{ flex: 1, backgroundColor: '#060610' }}>
           <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-            {/* Header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
-              <TouchableOpacity onPress={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }} style={{ padding: 4 }}>
-                <Feather name="x" size={22} color="rgba(255,255,255,0.35)" />
+            {/* Header with Save Button */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#FFFFFF08' }}>
+              <TouchableOpacity onPress={() => { stopPreview(); setIsAddingExtraWake(false); setEditingExtraWake(null); setExtraFormLabel(''); setShowWakeEdit(false); }} style={{ padding: 4, width: 70 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.45)' }}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2.5 }}>
-                {isAddingExtraWake ? (editingExtraWake ? 'EDIT WAKE ALARM' : 'NEW WAKE ALARM') : 'MORNING WAKE-UP'}
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 2.0 }}>
+                {isAddingExtraWake ? (editingExtraWake ? 'EDIT WAKE ALARM' : 'NEW WAKE ALARM') : 'WAKE ALARM'}
               </Text>
-              <View style={{ width: 32 }} />
+              <View style={{ width: 70 }} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* ── Current Time + Countdown Banner ── */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              
+              {/* ── Slim Sound Selection Banner (Top Visual Range) ── */}
+              {(() => {
+                const selSnd = ALARM_SOUNDS.find(s => s.id === selectedMantraId);
+                const selColor = selSnd?.color ?? '#0ea5e9';
+                const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[selectedMantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[selectedMantraId]) } : undefined);
+                return (
+                  <TouchableOpacity
+                    onPress={() => { setLibraryModalTarget('wake'); setLibraryModalVisible(true); }}
+                    activeOpacity={0.8}
+                    style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 12, height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '40', shadowColor: selColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}
+                  >
+                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.85 }}>
+                      <LinearGradient colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                      <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                          <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                        </View>
+                        <View style={{ flex: 1, justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>PREMIUM ALARM SOUND</Text>
+                          <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Select Sound'}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.4)" />
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                );
+              })()}
+
+              {/* ── Compact Time Picker & Countdown ── */}
               {(() => {
                 const now = liveClock;
                 const nowH = now.getHours(), nowM = now.getMinutes();
                 const alarmH = isAddingExtraWake ? extraFormHour : wakeFormHour;
                 const alarmM = isAddingExtraWake ? extraFormMinute : wakeFormMinute;
-                const totalNowMins  = nowH * 60 + nowM;
-                const totalAlarmMins = alarmH * 60 + alarmM;
-                let diff = totalAlarmMins - totalNowMins;
+                let diff = (alarmH * 60 + alarmM) - (nowH * 60 + nowM);
                 if (diff <= 0) diff += 24 * 60;
-                const diffH = Math.floor(diff / 60);
-                const diffM = diff % 60;
-                const countdownStr = diffH > 0
-                  ? `${diffH}h ${diffM}m until alarm`
-                  : `${diffM}m until alarm`;
-                const nowAmPm = nowH >= 12 ? 'PM' : 'AM';
-                const nowH12  = nowH % 12 === 0 ? 12 : nowH % 12;
-                const nowStr  = `${nowH12}:${String(nowM).padStart(2, '0')} ${nowAmPm}`;
+                const countdownStr = diff >= 60 ? `${Math.floor(diff / 60)}h ${diff % 60}m` : `${diff}m`;
                 return (
-                  <View style={{ marginHorizontal: 20, marginTop: 14, marginBottom: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF06', borderRadius: 14, borderWidth: 1, borderColor: '#FFFFFF0C', paddingHorizontal: 18, paddingVertical: 12 }}>
-                    <View>
-                      <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.8, marginBottom: 3 }}>NOW</Text>
-                      <Text style={{ fontSize: 26, fontWeight: '200', color: '#FFFFFF90', letterSpacing: 0.5 }}>{nowStr}</Text>
+                  <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ backgroundColor: '#a78bfa15', borderWidth: 1, borderColor: '#a78bfa30', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: -12, zIndex: 10 }}>
+                      <Text style={{ fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#c4b5fd' }}>Rings in {countdownStr}</Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.8, marginBottom: 3 }}>ALARM IN</Text>
-                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#a78bfa', letterSpacing: 0.2 }}>{countdownStr}</Text>
-                    </View>
+                    <TimeAdjuster
+                      hour={alarmH} minute={alarmM}
+                      onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : (h, m) => { setWakeFormHour(h); setWakeFormMinute(m); }}
+                    />
                   </View>
                 );
               })()}
-
-              {/* ── Selected Sound Hero Card ── */}
-              {(() => {
-                const selSnd = ALARM_SOUNDS.find(s => s.id === selectedMantraId);
-                const selColor = selSnd?.color ?? '#a78bfa';
-                const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[selectedMantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[selectedMantraId]) } : undefined);
-                return (
-                  <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 4, height: 136, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: selColor + '60' }}>
-                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 20, opacity: 0.75 }}>
-                      <LinearGradient colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.82)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]} />
-                      <View style={{ flex: 1, padding: 16, justifyContent: 'flex-end' }}>
-                        <Text style={{ fontSize: 9, fontWeight: '900', color: selColor, letterSpacing: 1.6, marginBottom: 4 }}>SELECTED SOUND</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                          <Text style={{ fontSize: 30 }}>{selSnd?.emoji ?? '🎵'}</Text>
-                          <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: -0.3 }}>{selSnd?.label ?? 'Wake Alarm'}</Text>
-                        </View>
-                        <Text style={{ fontSize: 10, color: '#FFFFFF45', marginTop: 3, fontWeight: '600' }}>
-                          {isAddingExtraWake ? 'Wake Alarm · Rings at set time' : 'Morning Wake · Mission Alarm'}
-                        </Text>
-                      </View>
-                    </ImageBackground>
-                  </View>
-                );
-              })()}
-
-              {/* ── Time Picker ── */}
-              <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 4 }}>
-                <TimeAdjuster
-                  hour={isAddingExtraWake ? extraFormHour : wakeFormHour}
-                  minute={isAddingExtraWake ? extraFormMinute : wakeFormMinute}
-                  onChange={isAddingExtraWake ? (h, m) => { setExtraFormHour(h); setExtraFormMinute(m); } : (h, m) => { setWakeFormHour(h); setWakeFormMinute(m); }}
-                />
-              </View>
-
-              {/* ── Quick Presets ── */}
-              <View style={{ paddingHorizontal: 20 }}>
-                <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 0, marginBottom: 10 }]}>QUICK PRESETS</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                  {PRESETS.map(p => {
-                    const active = isAddingExtraWake
-                      ? (extraFormHour === p.hour && extraFormMinute === p.minute)
-                      : (wakeFormHour === p.hour && wakeFormMinute === p.minute);
-                    return (
-                      <TouchableOpacity key={p.label} onPress={() => {
-                        if (isAddingExtraWake) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setExtraFormHour(p.hour); setExtraFormMinute(p.minute); }
-                        else { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWakeFormHour(p.hour); setWakeFormMinute(p.minute); }
-                      }} style={[S.presetChip, active && { borderColor: p.color, backgroundColor: p.color + '18' }]}>
-                        <Text style={[S.presetChipTime, { color: active ? p.color : Colors.textDim }]}>{p.sub}</Text>
-                        <Text style={S.presetChipLabel}>{p.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
 
               {/* ── Prakriti Row (default alarm only) ── */}
               {!isAddingExtraWake && prakritiWake && (
-                <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
-                  <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '50' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWakeFormHour(prakritiWake.hour); setWakeFormMinute(prakritiWake.minute); }}>
+                <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                  <TouchableOpacity style={[S.prakritiRow, { borderColor: prakritiWake.color + '40', padding: 12, marginBottom: 0, backgroundColor: prakritiWake.color + '0A' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWakeFormHour(prakritiWake.hour); setWakeFormMinute(prakritiWake.minute); }}>
                     <Text style={{ fontSize: 16 }}>🌿</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 9, fontWeight: '900', color: prakritiWake.color, letterSpacing: 1 }}>YOUR RHYTHM PLAN</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{prakritiWake.label}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{prakritiWake.label}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: prakritiWake.color }}>{wakeFormHour === prakritiWake.hour && wakeFormMinute === prakritiWake.minute ? '✓ SET' : 'Apply →'}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: prakritiWake.color }}>{wakeFormHour === prakritiWake.hour && wakeFormMinute === prakritiWake.minute ? '✓ SET' : 'APPLY'}</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* ── Repeat Days ── */}
-              <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
-                <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 4, marginBottom: 8 }]}>REPEAT DAYS</Text>
+              {/* ── Days & Label Row ── */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
                 {!isAddingExtraWake ? (
-                  <>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                      {([
-                        { label: 'Every Day', days: [0, 1, 2, 3, 4, 5, 6] },
-                        { label: 'Weekdays',  days: [1, 2, 3, 4, 5] },
-                        { label: 'Weekends',  days: [0, 6] },
-                      ] as const).map(p => {
-                        const isMatch = p.days.length === wakeRepeatDays.length && p.days.every(d => wakeRepeatDays.includes(d));
-                        return (
-                          <TouchableOpacity
-                            key={p.label}
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setWakeRepeatDays([...p.days]); }}
-                            style={{ flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: isMatch ? ACCENT + '80' : '#FFFFFF15', backgroundColor: isMatch ? ACCENT + '15' : 'transparent', alignItems: 'center' }}
-                          >
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: isMatch ? ACCENT : '#FFFFFF55' }}>{p.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    <DaySelector days={wakeRepeatDays} onChange={setWakeRepeatDays} />
-                  </>
+                  <DaySelector days={wakeRepeatDays} onChange={setWakeRepeatDays} />
                 ) : (
-                  <DaySelector days={extraFormRepeatDays} onChange={setExtraFormRepeatDays} />
+                  <>
+                    <DaySelector days={extraFormRepeatDays} onChange={setExtraFormRepeatDays} />
+                    <TextInput style={[S.customInput, { marginTop: 14, marginBottom: 0, paddingVertical: 12, fontSize: 14 }]} placeholder="Label: e.g. Backup alarm, Gym..." placeholderTextColor={Colors.textDim} value={extraFormLabel} onChangeText={setExtraFormLabel} />
+                  </>
                 )}
               </View>
 
-              {/* ── Label (extra wake alarms only) ── */}
-              {isAddingExtraWake && (
-                <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
-                  <Text style={[S.sheetSection, { marginHorizontal: 0, marginTop: 4 }]}>LABEL (optional)</Text>
-                  <TextInput
-                    style={S.customInput}
-                    placeholder="e.g. Backup alarm, Gym alarm..."
-                    placeholderTextColor={Colors.textDim}
-                    value={extraFormLabel}
-                    onChangeText={setExtraFormLabel}
-                  />
+              {/* ── System Toggles (Compact) ── */}
+              <View style={{ paddingHorizontal: 20 }}>
+                <View style={[S.settingsCard, { backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 0, borderColor: 'rgba(255,255,255,0.12)' }]}>
+                  {([
+                    { emoji: '🔒', label: 'Lock In Mode', val: missionSettings.lockInMode, onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }), color: '#ef4444' },
+                    { emoji: '⏰', label: 'Dawn Alert', val: settings.brahmaReminder, onToggle: toggleBrahma, color: '#60a5fa' },
+                  ] as const).map((row, i) => (
+                    <View key={row.label} style={[S.settingsRow, { paddingVertical: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
+                      <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontFamily: 'Nunito_700Bold', color: Colors.text }}>{row.label}</Text>
+                      </View>
+                      <Toggle value={row.val} onToggle={row.onToggle} color={row.color} />
+                    </View>
+                  ))}
                 </View>
-              )}
-
-              {/* ── Sound Picker Widget ── */}
-              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setLibraryModalTarget('wake');
-                    setLibraryModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: 'rgba(14,165,233,0.15)',
-                    borderRadius: 16,
-                    paddingVertical: 16,
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.4)',
-                    shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf8', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                    Select Premium Alarm Sound
-                  </Text>
-                </TouchableOpacity>
               </View>
 
-              {/* ── Morning Mission + System (for all wake alarms) ── */}
-                  <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) });
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        backgroundColor: (missionSettings.missionEnabled ?? false) ? '#FFFFFF05' : '#FFFFFF05',
-                        borderWidth: 1,
-                        borderColor: (missionSettings.missionEnabled ?? false) ? '#FFFFFF10' : '#FFFFFF15',
-                        borderStyle: (missionSettings.missionEnabled ?? false) ? 'solid' : 'dashed',
-                        borderRadius: 16,
-                        padding: 16,
-                      }}
-                    >
-                      <View>
-                        <Text style={[S.sheetSection, { marginHorizontal: 0, marginBottom: 2, color: (missionSettings.missionEnabled ?? false) ? '#FFFFFF' : '#FFFFFF90' }]}>
-                          MORNING MISSION
-                        </Text>
-                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>
-                          {(missionSettings.missionEnabled ?? false) ? 'Alarm won\'t stop until done' : 'Tap to add a morning mission'}
-                        </Text>
-                      </View>
-                      <Toggle value={missionSettings.missionEnabled ?? false} onToggle={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) });
-                      }} color="#f59e0b" />
-                    </TouchableOpacity>
-
-                    {(missionSettings.missionEnabled ?? false) && (
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                        {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
-                          <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[S.missionChip, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]}>
-                            <Text style={{ fontSize: 22 }}>{ms.icon}</Text>
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: active ? ms.color : Colors.textMuted, textAlign: 'center' }}>{ms.name}</Text>
-                            {active && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ms.color }} />}
-                          </TouchableOpacity>
-                        ); })}
-                      </View>
-                    )}
+              {/* ── Mission Setup (Compact) ── */}
+              <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+                <TouchableOpacity
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) }); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF03', borderWidth: 1, borderColor: (missionSettings.missionEnabled ?? false) ? '#f59e0b40' : '#FFFFFF10', borderRadius: 16, padding: 14 }}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ fontSize: 16 }}>🎯</Text>
+                    <Text style={{ fontSize: 14, fontFamily: 'Nunito_700Bold', color: (missionSettings.missionEnabled ?? false) ? '#fff' : '#FFFFFF90' }}>Morning Mission</Text>
                   </View>
-                  <View style={{ paddingHorizontal: 20 }}>
-                    <Text style={[S.sheetSection, { marginHorizontal: 0 }]}>SYSTEM</Text>
-                    <View style={[S.settingsCard, { backgroundColor: ALARM_CARD_BG }]}>
-                      {([
-                        { emoji: '🔒', label: 'Lock In Mode',  sub: "Alarm won't stop until mission done",       val: missionSettings.lockInMode,        onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }),                 color: '#ef4444' },
-                        // { emoji: '🤖', label: 'Morning Brief', sub: 'AI speaks your personalized morning brief', val: missionSettings.bodhiMorningBrief, onToggle: () => updateMission({ bodhiMorningBrief: !missionSettings.bodhiMorningBrief }), color: '#60a5fa' },
-                        { emoji: '⏰', label: 'Dawn Alert',     sub: '15 min reminder before your wake alarm',   val: settings.brahmaReminder,           onToggle: toggleBrahma,                                                                    color: '#60a5fa' },
-                      ] as const).map((row, i) => (
-                        <View key={row.label} style={[S.settingsRow, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
-                          <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>{row.label}</Text>
-                            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>{row.sub}</Text>
-                          </View>
-                          <Toggle value={row.val} onToggle={row.onToggle} color={row.color} />
-                        </View>
-                      ))}
-                    </View>
-                    {missionSettings.streak > 0 && (
-                      <LinearGradient colors={[ACCENT + '18', ACCENT + '08']} style={S.streakBanner}>
-                        <Text style={{ fontSize: 26 }}>🔥</Text>
-                        <View>
-                          <Text style={{ color: ACCENT, fontWeight: '900', fontSize: 15 }}>Day {missionSettings.streak} Streak</Text>
-                          <Text style={{ color: Colors.textMuted, fontSize: 11 }}>Every. Single. Day.</Text>
-                        </View>
-                      </LinearGradient>
-                    )}
-                  </View>
+                  <Toggle value={missionSettings.missionEnabled ?? false} onToggle={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) }); }} color="#f59e0b" />
+                </TouchableOpacity>
 
-              {/* ── Save Button ── */}
+                {(missionSettings.missionEnabled ?? false) && (
+                  <View style={{ gap: 4, marginTop: 10 }}>
+                    {MISSIONS.map(ms => { const active = missionSettings.selectedMission === ms.id; return (
+                      <TouchableOpacity key={ms.id} onPress={() => handleSelectMission(ms.id)} style={[{ flexDirection: 'row', alignItems: 'center', height: 48, borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, gap: 12 }, { borderColor: active ? ms.color : '#FFFFFF12', backgroundColor: active ? ms.color + '15' : '#FFFFFF05' }]} activeOpacity={0.8}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? ms.color + '20' : '#FFFFFF08', alignItems: 'center', justifyContent: 'center' }}>
+                           <Text style={{ fontSize: 16 }}>{ms.icon}</Text>
+                        </View>
+                        <Text style={{ flex: 1, fontSize: 14, fontFamily: 'Nunito_700Bold', color: active ? '#fff' : Colors.textMuted }}>{ms.name}</Text>
+                        {active && <Feather name="check-circle" size={18} color={ms.color} />}
+                      </TouchableOpacity>
+                    ); })}
+                  </View>
+                )}
+              </View>
+
+              {/* Wake Alarm Save button */}
               <TouchableOpacity
                 onPress={() => {
                   if (isAddingExtraWake) {
                     if (editingExtraWake) {
-                      setShowWakeEdit(false); setEditingExtraWake(null); setExtraFormLabel('');
-                      stopPreview();
-                      updateExtraWakeAlarm().catch(() => {});
+                      setShowWakeEdit(false); setEditingExtraWake(null); setExtraFormLabel(''); stopPreview(); updateExtraWakeAlarm().catch(() => {});
                     } else {
-                      setShowWakeEdit(false); setIsAddingExtraWake(false); setExtraFormLabel('');
-                      stopPreview();
-                      addExtraWakeAlarm().catch(() => {});
+                      setShowWakeEdit(false); setIsAddingExtraWake(false); setExtraFormLabel(''); stopPreview(); addExtraWakeAlarm().catch(() => {});
                     }
                   } else {
-                    const duplicate = extraWakeAlarms.some(
-                      a => a.hour === wakeFormHour && a.minute === wakeFormMinute
-                    );
+                    const duplicate = extraWakeAlarms.some(a => a.hour === wakeFormHour && a.minute === wakeFormMinute);
                     if (duplicate) {
-                      Alert.alert(
-                        '⚠️ Duplicate Time',
-                        `Another wake alarm is already set for ${fmt12(wakeFormHour, wakeFormMinute)}. Remove it first or choose a different time.`,
-                      );
+                      Alert.alert('⚠️ Duplicate Time', `Another wake alarm is already set for ${fmt12(wakeFormHour, wakeFormMinute)}.`);
                       return;
                     }
-                    setShowWakeEdit(false);
-                    stopPreview();
+                    setShowWakeEdit(false); stopPreview();
                     persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: wakeFormHour, minute: wakeFormMinute, days: wakeRepeatDays } }).catch(() => {});
                   }
                 }}
-                style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10, backgroundColor: '#a78bfa22', borderWidth: 1.5, borderColor: '#a78bfa55', borderRadius: 20, paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
+                style={{ marginHorizontal: 20, marginTop: 24, marginBottom: 12, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="alarm-outline" size={20} color="#a78bfa" />
-                <Text style={{ color: '#a78bfa', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 }}>
-                  {isAddingExtraWake
-                    ? (editingExtraWake
-                        ? `Update  ·  ${fmt12(extraFormHour, extraFormMinute)}`
-                        : `Set Alarm  ·  ${fmt12(extraFormHour, extraFormMinute)}`)
-                    : `Set Wake Alarm  ·  ${fmt12(wakeFormHour, wakeFormMinute)}`}
-                </Text>
+                <LinearGradient colors={['#0284c7', '#38bdf8']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
+                    {isAddingExtraWake ? (editingExtraWake ? 'Update Wake Alarm' : 'Set Wake Alarm') : 'Set Wake Alarm'}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
-              <View style={{ height: 24 }} />
+
             </ScrollView>
           </SafeAreaView>
         </View>
@@ -1834,19 +1701,25 @@ export default function AlarmsTab() {
                 const selColor = selSnd?.color ?? '#a78bfa';
                 const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[formSoundId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[formSoundId]) } : undefined);
                 return (
-                  <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 4, height: 136, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: selColor + '60' }}>
-                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 20, opacity: 0.75 }}>
-                      <LinearGradient colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.82)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]} />
-                      <View style={{ flex: 1, padding: 16, justifyContent: 'flex-end' }}>
-                        <Text style={{ fontSize: 9, fontWeight: '900', color: selColor, letterSpacing: 1.6, marginBottom: 4 }}>SELECTED SOUND</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                          <Text style={{ fontSize: 30 }}>{selSnd?.emoji ?? '🎵'}</Text>
-                          <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: -0.3 }}>{selSnd?.label ?? 'Sound Bath'}</Text>
+                  <TouchableOpacity
+                    onPress={() => { setLibraryModalTarget('habit'); setLibraryModalVisible(true); }}
+                    activeOpacity={0.8}
+                    style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8, height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '40', shadowColor: selColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}
+                  >
+                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.85 }}>
+                      <LinearGradient colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                      <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                          <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
                         </View>
-                        <Text style={{ fontSize: 10, color: '#FFFFFF45', marginTop: 3, fontWeight: '600' }}>No mission · No lock · Just sounds</Text>
+                        <View style={{ flex: 1, justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>SELECTED SOUND</Text>
+                          <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Sound Bath'}</Text>
+                        </View>
+                        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.4)" />
                       </View>
                     </ImageBackground>
-                  </View>
+                  </TouchableOpacity>
                 );
               })()}
 
@@ -1861,28 +1734,7 @@ export default function AlarmsTab() {
                 <DaySelector days={formDays} onChange={setFormDays} />
               </View>
 
-              {/* Sound picker widget */}
-              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setLibraryModalTarget('habit');
-                    setLibraryModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: 'rgba(14,165,233,0.15)',
-                    borderRadius: 16,
-                    paddingVertical: 16,
-                    borderWidth: 1, borderColor: 'rgba(14,165,233,0.4)',
-                    shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf8', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                    Select Premium Alarm Sound
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              {/* Sound picker widget (now integrated into the hero card) */}
 
               {/* Optional label */}
               <View style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10 }}>
@@ -1899,20 +1751,14 @@ export default function AlarmsTab() {
               {/* Save button */}
               <TouchableOpacity
                 onPress={() => { stopPreview(); saveNewEntry(); }}
-                style={{
-                  marginHorizontal: 20, marginBottom: 10,
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: 'rgba(167,139,250,0.15)',
-                  borderRadius: 16,
-                  paddingVertical: 18,
-                  borderWidth: 1, borderColor: 'rgba(167,139,250,0.4)',
-                  shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10,
-                }}
+                style={{ marginHorizontal: 20, marginBottom: 12, borderRadius: 99, overflow: 'hidden', shadowColor: '#c084fc', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 }}
                 activeOpacity={0.85}
               >
-                <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#c4b5fd', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  {editEntry ? 'UPDATE SOUND BATH' : 'SET SOUND BATH'}
-                </Text>
+                <LinearGradient colors={['#9333ea', '#c084fc']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
+                    {editEntry ? 'Update Sound Bath' : 'Set Sound Bath'}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -2187,21 +2033,21 @@ export default function AlarmsTab() {
 
 const S = StyleSheet.create({
   screen: { flex: 1, overflow: 'hidden' },
-  pageHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14 },
-  pageHeaderTitle: { fontSize: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
+  pageHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10 },
+  pageHeaderTitle: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
   pageHeaderEyebrow: { fontSize: 8, fontWeight: '800', color: 'rgba(167,139,250,0.85)', letterSpacing: 2.5 },
   pageHeaderClock: { fontSize: 13, fontWeight: '200', color: 'rgba(255,255,255,0.40)', letterSpacing: -0.3 },
   headerGrad: { paddingBottom: 2 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 4 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 2 },
   appName: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, fontFamily: 'Nunito_900Black' },
-  headerCountdownRow: { paddingHorizontal: 16, paddingBottom: 2, gap: 4 },
+  headerCountdownRow: { paddingHorizontal: 16, paddingBottom: 0, gap: 4 },
   headerDateSmall: { fontSize: 11, color: '#FFFFFF35', fontWeight: '500', paddingHorizontal: 4 },
-  countdownBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACCENT + '14', borderWidth: 1, borderColor: ACCENT + '35', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
-  countdownBannerOff: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF08', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
-  countdownDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: ACCENT },
-  countdownTxt: { fontSize: 13, fontWeight: '700', color: '#fdba74', fontFamily: 'Nunito_700Bold' },
-  countdownChevron: { fontSize: 18, color: ACCENT, fontWeight: '300', lineHeight: 20 },
-  countdownOffTxt: { fontSize: 12, color: '#FFFFFF25', fontWeight: '500' },
+  countdownBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ACCENT + '14', borderWidth: 1, borderColor: ACCENT + '35', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
+  countdownBannerOff: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF08', borderWidth: 1, borderColor: '#FFFFFF12', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
+  countdownDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
+  countdownTxt: { fontSize: 12, fontWeight: '700', color: '#fdba74', fontFamily: 'Nunito_700Bold' },
+  countdownChevron: { fontSize: 16, color: ACCENT, fontWeight: '300', lineHeight: 18 },
+  countdownOffTxt: { fontSize: 11, color: '#FFFFFF30', fontWeight: '500' },
   permsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9731610', borderBottomWidth: 1, borderBottomColor: '#f9731625', paddingHorizontal: 16, paddingVertical: 10 },
   permsText: { flex: 1, color: '#f97316', fontSize: 11, fontWeight: '700' },
   permsChevron: { color: '#f97316', fontSize: 14, fontWeight: '900' },
@@ -2262,9 +2108,9 @@ const S = StyleSheet.create({
   cardMenuTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#38bdf8BB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
-  listContainer: { marginHorizontal: 16, marginTop: 6, borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)' },
-  alarmCard2: { marginHorizontal: 'auto', width: '88%', borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9 },
+  listContainer: { marginHorizontal: 'auto', width: '90%', marginTop: 6, marginBottom: 14, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 12 },
+  alarmCard2: { marginHorizontal: 'auto', width: '90%', borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10, marginBottom: 14 },
+  alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
   alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },
   alarmRowTimeOff: { color: 'rgba(255,255,255,0.28)' },

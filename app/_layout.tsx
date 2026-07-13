@@ -181,7 +181,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           <View style={{ gap: 28, alignItems: 'center' }}>
             <View style={{ position: 'relative', alignItems: 'center' }}>
               <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Align Your Rhythm{'\n'}with the Universe.</Text>
-              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#fbbf24', opacity: combinedShimmerOp }]}>
+              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: combinedShimmerOp }]}>
                 Align Your Rhythm{'\n'}with the Universe.
               </Animated.Text>
             </View>
@@ -190,7 +190,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
             
             <View style={{ position: 'relative', alignItems: 'center' }}>
               <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Resonate & Transform{'\n'}through the Naad.</Text>
-              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#fbbf24', opacity: combinedShimmerOp }]}>
+              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: combinedShimmerOp }]}>
                 Resonate & Transform{'\n'}through the Naad.
               </Animated.Text>
             </View>
@@ -398,7 +398,21 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
             {/* Static thin track for main progress */}
             <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(56,189,248,0.1)" strokeWidth={2} fill="none" />
 
-            {/* Main Progress Arc */}
+            {/* Main Progress Arc Glow Bloom */}
+            <Circle
+              cx={cx} cy={cx} r={rMain}
+              stroke="url(#glow)"
+              strokeWidth={14}
+              fill="none"
+              strokeDasharray={`${cMain}`}
+              strokeDashoffset={`${offsetMain}`}
+              strokeLinecap="round"
+              rotation={-90}
+              origin={`${cx}, ${cx}`}
+              opacity={0.35}
+            />
+
+            {/* Main Progress Arc Core */}
             <Circle
               cx={cx} cy={cx} r={rMain}
               stroke="url(#glow)"
@@ -1231,9 +1245,8 @@ export default function RootLayout() {
         ]);
         const setupDone       = !!setupFlagRaw;
         const setupInProgress = !!inProgressRaw;   // killed mid-download last time
-        const splashOnDisk    = isSplashCached();
         // Treat as first install if never completed OR if interrupted mid-download.
-        const isFirstInstall  = (!setupDone && !splashOnDisk) || setupInProgress;
+        const isFirstInstall  = !setupDone || setupInProgress;
 
         if (isFirstInstall) {
           // First install (or interrupted resume): gate on BG images + sound
@@ -1359,6 +1372,39 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
 
+  // ── SETUP GATE: Prevent any routing until setup is 100% complete ──
+  // During both the initial async check ('gate') and first-install ('downloading'),
+  // we return early and DO NOT render the Stack navigator.
+  // This guarantees zero leakage: if the Stack is never mounted, there is no
+  // navigation container for Expo Router to accidentally route to the home page.
+  if (phase === 'gate' || phase === 'downloading') {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#020617' }}>
+        <SafeAreaProvider>
+          <CrashToast />
+          <StatusBar style="light" />
+          
+          {phase === 'gate' && (
+            <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
+          )}
+
+          {phase === 'downloading' && (
+            <>
+              <DownloadScreen
+                progress={dlProgress}
+                label={dlLabel}
+                error={dlError}
+                onRetry={() => setRetryTrigger(prev => prev + 1)}
+              />
+              {/* Absolute touch blocker — belt-and-suspenders */}
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-only" />
+            </>
+          )}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg }}>
       <SafeAreaProvider>
@@ -1369,30 +1415,20 @@ export default function RootLayout() {
         <BgProvider>
         <GlobalMoodLayer />
         <StatusBar style="light" />
-        {/* AuthGuard is only mounted AFTER downloading completes so the home page
-             never opens mid-setup. During 'downloading' phase the Stack renders
-             but navigation is blocked until AuthGuard fires. */}
+        {/* AuthGuard fires only after setup is done (phase='splash' or 'done').
+             At this point the Stack is already mounted and navigation is safe. */}
         {(phase === 'splash' || phase === 'done') && (
           <AuthGuard onAuthReady={() => setAuthReady(true)} />
         )}
         <BodhiNotificationListener />
-        {/* NAAD animated splash — shown immediately during 'gate' AND 'splash'
-             phases so there is zero blank gap after the native splash dismisses.
-             key="splash" is stable across gate→splash so React never remounts
-             the component (which would restart the animation from scratch). */}
-        {(phase === 'gate' || phase === 'splash') && (
+        {/* NAAD animated splash — shown during 'splash' phase only, 
+             since 'gate' is handled by the early return above. */}
+        {phase === 'splash' && (
           <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
-        )}
-        {/* Elegant download progress screen — first install only */}
-        {phase === 'downloading' && (
-          <>
-            <DownloadScreen progress={dlProgress} label={dlLabel} error={dlError} onRetry={() => setRetryTrigger(prev => prev + 1)} />
-            {/* Full-screen touch blocker: prevents user from tapping cards/reels during setup */}
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }} pointerEvents="box-only" />
-          </>
         )}
         <ScreenErrorBoundary name="Navigation">
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
+          <Stack.Screen name="index" options={{ animation: 'none' }} />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="habit-alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />

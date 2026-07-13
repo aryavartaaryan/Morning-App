@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Image } from 'react-native';
 import { getBgSource, getBgSourceSync, BG_URLS, bgWarmup } from '@/lib/bgImages';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
@@ -506,6 +507,8 @@ export function BgProvider({ children }: { children: ReactNode }) {
       allBgUris,
     }}>
       {children}
+      {/* Preload naad_step background into memory so it renders instantly in walk.tsx */}
+      <Image source={{ uri: getBgSourceSync('naad_step') }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} />
     </BgContext.Provider>
   );
 }

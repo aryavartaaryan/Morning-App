@@ -141,17 +141,15 @@ export default function StepAnalyticsScreen() {
   const weeklyGoal = goal * 7;
   const weeklyPct = Math.min(1, weeklySteps / (weeklyGoal || 1));
 
-  // Ultra-Premium Ring Geometry
-  const SIZE = Math.min(W - 48, 300);
+  // Ultra-Premium Apple-Style Ring Geometry
+  const SIZE = Math.min(W - 48, 260);
   const cx = SIZE / 2;
 
-  const rMain = SIZE * 0.38;
+  // Thick track geometry
+  const STROKE_WIDTH = 28;
+  const rMain = SIZE / 2 - STROKE_WIDTH / 2;
   const cMain = 2 * Math.PI * rMain;
   const offsetMain = cMain * (1 - Math.min(weeklyPct, 1));
-
-  const rOuter = SIZE * 0.44;
-  const rInner1 = SIZE * 0.32;
-  const rInner2 = SIZE * 0.28;
 
   // Bar Chart Math
   const chartW = W - 88;
@@ -195,33 +193,33 @@ export default function StepAnalyticsScreen() {
             <Text style={st.heroTitle}>This Week's Immersion</Text>
 
             <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginTop: 12, marginBottom: 12 }}>
-
-              {/* Core Glow Pulse */}
+              
+              {/* Core Glow Backing */}
               <Animated.View style={{
-                position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
+                position: 'absolute', width: rMain * 2 - 20, height: rMain * 2 - 20, borderRadius: rMain,
                 backgroundColor: CYAN,
-                opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.02, 0.08] }),
-                transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
+                opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.08] }),
+                transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.05] }) }]
               }} />
 
-              {/* SVG Elements */}
+              {/* Apple-Style Thick Progress Ring */}
               <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
                 <Defs>
-                  <SvgGrad id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <Stop offset="0%" stopColor={BRIGHT_CYAN} stopOpacity="1" />
-                    <Stop offset="50%" stopColor={CYAN} stopOpacity="1" />
-                    <Stop offset="100%" stopColor={DEEP_CYAN} stopOpacity="1" />
+                  <SvgGrad id="appleGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#34D399" stopOpacity="1" />
+                    <Stop offset="50%" stopColor="#38bdf8" stopOpacity="1" />
+                    <Stop offset="100%" stopColor="#818cf8" stopOpacity="1" />
                   </SvgGrad>
                 </Defs>
 
-                {/* Static thin track for main progress */}
-                <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(56,189,248,0.1)" strokeWidth={2} fill="none" />
+                {/* Dark Background Track */}
+                <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(56,189,248,0.12)" strokeWidth={STROKE_WIDTH} fill="none" />
 
-                {/* Main Progress Arc */}
+                {/* Vibrant Gradient Progress Arc */}
                 <Circle
                   cx={cx} cy={cx} r={rMain}
-                  stroke="url(#glow)"
-                  strokeWidth={5}
+                  stroke="url(#appleGlow)"
+                  strokeWidth={STROKE_WIDTH}
                   fill="none"
                   strokeDasharray={`${cMain}`}
                   strokeDashoffset={`${offsetMain}`}
@@ -231,36 +229,13 @@ export default function StepAnalyticsScreen() {
                 />
               </Svg>
 
-              {/* Rotating Outer Ring (Dashed) */}
-              <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                  <Circle cx={cx} cy={cx} r={rOuter} stroke={DEEP_CYAN} strokeWidth={1} fill="none" strokeDasharray="4 8" opacity={0.6} />
-                  <Circle cx={cx} cy={cx} r={rOuter} stroke={CYAN} strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.8} />
-                </Svg>
-              </Animated.View>
-
-              {/* Rotating Inner Ring 1 (Dashed opposite) */}
-              <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                  <Circle cx={cx} cy={cx} r={rInner1} stroke={CYAN} strokeWidth={1.5} fill="none" strokeDasharray="15 15" opacity={0.3} />
-                  <Circle cx={cx} cy={cx} r={rInner1} stroke={BRIGHT_CYAN} strokeWidth={3} fill="none" strokeDasharray="0.5 45" opacity={0.9} strokeLinecap="round" />
-                </Svg>
-              </Animated.View>
-
-              {/* Rotating Inner Ring 2 (Fast scanning ring) */}
-              <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                  <Circle cx={cx} cy={cx} r={rInner2} stroke={DEEP_CYAN} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.4} />
-                  <Circle cx={cx} cy={cx} r={rInner2} stroke={BRIGHT_CYAN} strokeWidth={1.5} fill="none" strokeDasharray="20 200" opacity={0.7} />
-                </Svg>
-              </Animated.View>
-
-              {/* Percentage Text inside the ring */}
+              {/* Clean Apple Watch Style Inner Typography */}
               <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <Text style={st.heroSteps}>{fmtK(weeklySteps)}</Text>
+                <Text style={[st.heroSteps, { fontSize: 52, fontWeight: '900', letterSpacing: -1.5, textShadowRadius: 0 }]}>{fmtK(weeklySteps)}</Text>
+                <Text style={[st.heroStepsLbl, { color: 'rgba(255,255,255,0.5)', marginTop: -2, letterSpacing: 2, fontSize: 11 }]}>STEPS</Text>
+                <View style={{ marginTop: 8, backgroundColor: 'rgba(56,189,248,0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: BRIGHT_CYAN }}>{Math.round(weeklyPct * 100)}%</Text>
                 </View>
-                <Text style={st.heroStepsLbl}>STEPS</Text>
               </View>
             </View>
 

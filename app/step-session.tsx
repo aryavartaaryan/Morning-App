@@ -48,6 +48,7 @@ import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import SoundLibraryModal from '@/components/SoundLibraryModal';
 import { ALL_SOUNDS_LIST } from '@/app/(tabs)/sleep';
 import { useBgContext } from '@/lib/bgContext';
+import { getBgSourceSync } from '@/lib/bgImages';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -55,8 +56,8 @@ const { width: W, height: H } = Dimensions.get('window');
 const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SZ = 210;
-const STROKE  = 14;
+const RING_SZ = 220; // Slightly larger for premium feel
+const STROKE  = 16;  // Thicker premium stroke
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
 
@@ -351,7 +352,7 @@ export default function StepSessionScreen() {
 
   return (
     <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
+      source={{ uri: getBgSourceSync('naad_step') }}
       style={[{ flex: 1, backgroundColor: accentColor || BG }]}
       imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -462,24 +463,26 @@ export default function StepSessionScreen() {
             />
           </View>
 
-          {/* SVG ring — 4-layer glow stroke */}
-          <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
-            <Defs>
-              <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0"   stopColor="#38bdf8" stopOpacity="1" />
-                <Stop offset="0.5" stopColor="#ffffff" stopOpacity="0.8" />
-                <Stop offset="1"   stopColor="#0284c7" stopOpacity="1" />
-              </SvgGrad>
-            </Defs>
-            {/* Dark track */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={STROKE} />
-            
-            {/* Main sci-fi arc */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
-            
-            {/* Core glow */}
-            <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE + 8} strokeLinecap="butt" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.3} />
-          </Svg>
+          {/* SVG ring — Premium thick Apple-style ring */}
+          <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }}>
+            <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
+              <Defs>
+                <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0"   stopColor="#34D399" stopOpacity="1" />
+                  <Stop offset="0.5" stopColor="#38bdf8" stopOpacity="1" />
+                  <Stop offset="1"   stopColor="#818cf8" stopOpacity="1" />
+                </SvgGrad>
+              </Defs>
+              {/* Dark track */}
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={STROKE} />
+              
+              {/* Main premium arc */}
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
+              
+              {/* Core glow */}
+              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE + 6} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.25} />
+            </Svg>
+          </View>
 
           {/* Rotating Outer Dashed HUD */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
@@ -618,18 +621,25 @@ export default function StepSessionScreen() {
             <TouchableOpacity
               style={[
                 s.pauseBtn,
-                paused && { borderColor: C, backgroundColor: C + '18' },
+                paused ? { borderColor: C, backgroundColor: C + '25', shadowColor: C } : { borderColor: 'rgba(255,255,255,0.3)' }
               ]}
               onPress={toggleSessionPause}
+              activeOpacity={0.8}
             >
-              <Text style={[s.pauseTxt, paused && { color: C }]}>
-                {paused ? '▶  RESUME' : '⏸  PAUSE'}
+              {!paused && <LinearGradient colors={['rgba(255,255,255,0.1)', 'transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />}
+              <Text style={[s.pauseTxt, paused ? { color: C } : { color: '#FFF' }]}>
+                {paused ? '▶   RESUME' : '⏸   PAUSE'}
               </Text>
             </TouchableOpacity>
           </Animated.View>
 
-          <TouchableOpacity style={[s.endBtn, { backgroundColor: C }]} onPress={confirmEnd}>
-            <Text style={s.endTxt}>■  END</Text>
+          <TouchableOpacity 
+            style={[s.endBtn, { backgroundColor: C, shadowColor: C, shadowOpacity: 0.5, shadowRadius: 15 }]} 
+            onPress={confirmEnd}
+            activeOpacity={0.8}
+          >
+            <LinearGradient colors={['rgba(255,255,255,0.3)', 'transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
+            <Text style={s.endTxt}>■   END</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -683,7 +693,7 @@ export default function StepSessionScreen() {
           const meta = ALL_SOUNDS_LIST.find(s => s.id === id);
           if (meta) {
             // Play sound for an indefinite looping walk session (12 hrs)
-            playSound(meta, 43200, undefined, 0, true);
+            playSound(meta, 43200, undefined, 0, false);
           }
           setIsSoundModalVisible(false);
         }}
@@ -772,15 +782,16 @@ const s = StyleSheet.create({
   shataTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' },
   shataFill:  { height: 6, borderRadius: 3 },
 
-  btnRow: { flexDirection: 'row', gap: 12, alignSelf: 'stretch' },
+  btnRow: { flexDirection: 'row', gap: 16, alignSelf: 'stretch', justifyContent: 'center', paddingHorizontal: 10 },
   pauseBtn: {
-    flex: 1, paddingVertical: 16, borderRadius: 18,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: CARD_BG, alignItems: 'center',
+    flex: 1, paddingVertical: 14, borderRadius: 30,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, overflow: 'hidden',
   },
-  pauseTxt: { fontSize: 13, fontWeight: '900', color: 'rgba(255,255,255,0.65)', letterSpacing: 1 },
-  endBtn:   { paddingVertical: 16, paddingHorizontal: 28, borderRadius: 18, alignItems: 'center' },
-  endTxt:   { fontSize: 13, fontWeight: '900', color: '#fff', letterSpacing: 1 },
+  pauseTxt: { fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 2 },
+  endBtn:   { paddingVertical: 14, paddingHorizontal: 36, borderRadius: 30, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
+  endTxt:   { fontSize: 13, fontWeight: '900', color: '#0A0A0F', letterSpacing: 2 },
 
   overlay:   { alignItems: 'center', justifyContent: 'center' },
   particle:  { position: 'absolute', width: 10, height: 10, borderRadius: 5, alignSelf: 'center', top: '50%' },

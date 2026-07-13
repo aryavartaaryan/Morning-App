@@ -43,7 +43,7 @@ class SettingsErrorBoundary extends Component<
       return (
         <View style={{ flex: 1, backgroundColor: '#060A18', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <Text style={{ fontSize: 28, marginBottom: 12 }}>⚙️</Text>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 8 }}>Settings couldn't load</Text>
+          <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff', marginBottom: 8 }}>Settings couldn't load</Text>
           <Text style={{ fontSize: 11, color: '#FFFFFF50', textAlign: 'center', lineHeight: 18 }}>
             An unexpected error occurred.{`\n`}Please restart the app.
           </Text>
@@ -565,7 +565,7 @@ function WallpaperPicker() {
                             justifyContent: 'flex-end',
                             padding: 12,
                           }}>
-                            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '950', color: '#fff', marginBottom: 2 }}>
+                            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '900', color: '#fff', marginBottom: 2 }}>
                               {meta.emoji} {meta.label}
                             </Text>
                             <Text numberOfLines={1} style={{ fontSize: 9, color: '#FFFFFFCC', fontWeight: '500' }}>

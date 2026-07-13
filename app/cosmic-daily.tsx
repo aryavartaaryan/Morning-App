@@ -211,7 +211,7 @@ export default function CosmicDailyPage() {
   const scoreMeta  = SCORE_META[score] ?? SCORE_META[5]!;
   const ritual     = MOON_RITUALS[moon.emoji] ?? { prompt: '', action: '' };
   const vaarAction = VAAR_ACTIONS[p.vaarIdx] ?? '';
-  const pakshaLabel = p.paksha === 'Shukla' ? 'Shukla Paksha · Bright Fortnight' : 'Krishna Paksha · Dark Fortnight';
+  const pakshaLabel = p.paksha === 'Shukla' ? 'Waxing Moon Phase (Shukla Paksha)' : 'Waning Moon Phase (Krishna Paksha)';
   const tithiDeity  = TITHI_DEITY[p.tithiName] ?? '';
   const nextEvent   = lunar.daysToFull <= lunar.daysToNew
     ? { label: `Full Moon in ${lunar.daysToFull} days`, color: '#fbbf24', icon: '🌕' }
@@ -311,12 +311,12 @@ export default function CosmicDailyPage() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 28, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 }}>{p.tithiName}</Text>
                 <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: '700', marginTop: 4 }}>
-                  {TITHI_ORDINALS[p.tithiInPaksha] ?? p.tithiInPaksha} lunar day of {p.paksha === 'Shukla' ? 'Shukla' : 'Krishna'} Paksha
+                  {TITHI_ORDINALS[p.tithiInPaksha] ?? p.tithiInPaksha} lunar day of the {p.paksha === 'Shukla' ? 'Waxing Moon' : 'Waning Moon'}
                 </Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 28 }}>{moon.emoji}</Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: '700', marginTop: 4 }}>Day {p.tithiInPaksha}</Text>
+              <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+                <MoonSVG tithiNum={moon.tithiNum} size={38} />
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: '700', marginTop: 8 }}>Day {p.tithiInPaksha}</Text>
               </View>
             </View>
             <View style={{ height: 0.5, backgroundColor: BORDER, marginBottom: 12 }} />
@@ -331,7 +331,7 @@ export default function CosmicDailyPage() {
               </View>
               <View style={{ borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 8, paddingHorizontal: 12, flex: 1 }}>
                 <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, marginBottom: 4 }}>PAKSHA</Text>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFDD' }}>{p.paksha === 'Shukla' ? 'Shukla (Bright)' : 'Krishna (Dark)'}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFDD' }}>{p.paksha === 'Shukla' ? 'Waxing Moon (Shukla)' : 'Waning Moon (Krishna)'}</Text>
               </View>
             </View>
           </View>

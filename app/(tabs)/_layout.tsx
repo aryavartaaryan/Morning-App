@@ -1089,7 +1089,7 @@ function GlobalStepTracker() {
           style={GP.bodyTap}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.navigate("/(tabs)/walk");
+            router.navigate("/step-session");
           }}
           activeOpacity={0.8}
         >

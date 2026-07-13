@@ -372,7 +372,9 @@ function Card1Hero({ p, moon, lunar, score, scoreMeta, vaar, onClose }: {
               {TITHI_ENERGY[p.tithiName] ?? 'Sacred lunar alignment'}
             </Text>
           </View>
-          <Text style={{ fontSize: 28, marginLeft: 8 }}>{moon.emoji}</Text>
+          <View style={{ marginLeft: 8, justifyContent: 'center' }}>
+            <MoonSVG tithiNum={moon.tithiNum} size={38} />
+          </View>
         </View>
       </View>
 

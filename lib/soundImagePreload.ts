@@ -69,29 +69,41 @@ function cacheFilename(url: string): string {
   return url.replace(/[^a-z0-9]/gi, '_').slice(-80) + '.jpg';
 }
 
+const IN_FLIGHT_DOWNLOADS: Record<string, Promise<void>> = {};
+
 async function cacheOne(url: string): Promise<void> {
   if (LOCAL_URI_MAP[url]) return;
-  const path = CACHE_DIR + cacheFilename(url);
-  try {
-    const info = await FileSystem.getInfoAsync(path);
-    if ((info as any).exists && (info as any).size > 100) {
+  if (IN_FLIGHT_DOWNLOADS[url]) return IN_FLIGHT_DOWNLOADS[url];
+
+  const downloadPromise = (async () => {
+    const path = CACHE_DIR + cacheFilename(url);
+    const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+    try {
+      const info = await FileSystem.getInfoAsync(path);
+      if ((info as any).exists && (info as any).size > 100) {
+        LOCAL_URI_MAP[url] = path;
+        _urlSubs.get(url)?.forEach(cb => cb());
+        _urlSubs.delete(url);
+        return;
+      }
+      await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
+      // Atomic write to prevent partial/corrupted files if app is killed mid-download
+      await FileSystem.downloadAsync(url, tmpPath);
+      await FileSystem.moveAsync({ from: tmpPath, to: path });
       LOCAL_URI_MAP[url] = path;
       _urlSubs.get(url)?.forEach(cb => cb());
       _urlSubs.delete(url);
-      return;
+    } catch (e) {
+      // silent — remote URL remains as fallback on next render
+      await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+      throw e;
+    } finally {
+      delete IN_FLIGHT_DOWNLOADS[url];
     }
-    await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
-    // Atomic write to prevent partial/corrupted files if app is killed mid-download
-    await FileSystem.downloadAsync(url, path + '.tmp');
-    await FileSystem.moveAsync({ from: path + '.tmp', to: path });
-    LOCAL_URI_MAP[url] = path;
-    _urlSubs.get(url)?.forEach(cb => cb());
-    _urlSubs.delete(url);
-  } catch (e) {
-    // silent — remote URL remains as fallback on next render
-    await FileSystem.deleteAsync(path + '.tmp', { idempotent: true }).catch(() => {});
-    throw e;
-  }
+  })();
+
+  IN_FLIGHT_DOWNLOADS[url] = downloadPromise;
+  return downloadPromise;
 }
 
 // Night-theme editorial cards defined in sleep.tsx (not in data file)
