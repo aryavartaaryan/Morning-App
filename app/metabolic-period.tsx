@@ -425,12 +425,12 @@ export default function MetabolicPeriodScreen() {
       {/* Top accent line */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: SKY + '90', zIndex: 99 }} />
 
-      {/* Sticky Naad bar at bottom */}
+      {/* Sticky Nada bar at bottom */}
       <TouchableOpacity
         onPress={handleNaad}
         activeOpacity={0.86}
         style={[S.naadBar, { backgroundColor: accent }]}>
-        <Text style={S.naadBarTxt}>🎵  Open Naad Sounds</Text>
+        <Text style={S.naadBarTxt}>🎵  Open Nada Sounds</Text>
         <Text style={S.naadBarSub}>Sounds recommended for {period.label}</Text>
       </TouchableOpacity>
 

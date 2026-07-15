@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, SectionList, Platform, SafeAreaView, Dimensions, TextInput, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Platform, SafeAreaView, Dimensions, TextInput, ScrollView, Animated, ImageBackground, Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 
 const { width: W, height: H } = Dimensions.get('window');
-const PRIMARY = '#c4b5fd'; // Soft premium purple
+const PRIMARY = '#c4b5fd';
 
 export type AlarmSoundItem = {
   id: string;
@@ -44,183 +45,297 @@ export default function AlarmSoundLibraryModal({
   dlProgress,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
-  const sectionListRef = useRef<SectionList>(null);
-
+  const [selectedCat, setSelectedCat] = useState<string>('All');
+  const [confirmSound, setConfirmSound] = useState<AlarmSoundItem | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
   useEffect(() => {
     if (visible) {
       setSearchQuery('');
+      setSelectedCat('All');
+      setConfirmSound(null);
     }
   }, [visible]);
 
-  const sections = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    const filtered = q 
-      ? sounds.filter(s => s.label?.toLowerCase().includes(q) || s.cat?.toLowerCase().includes(q))
-      : sounds;
+  useEffect(() => {
+    if (confirmSound) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [confirmSound]);
 
+  const categories = useMemo(() => {
     const cats = new Set<string>();
-    filtered.forEach(s => { if (s.cat) cats.add(s.cat); });
-    const catArray = Array.from(cats).sort();
+    sounds.forEach(s => { if (s.cat) cats.add(s.cat); });
+    return ['All', ...Array.from(cats).sort()];
+  }, [sounds]);
 
-    return catArray.map(cat => ({
-      title: cat,
-      data: filtered.filter(s => s.cat === cat)
-    }));
-  }, [sounds, searchQuery]);
+  const filteredSounds = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    let filtered = sounds;
+    if (q) {
+      filtered = filtered.filter(s => s.label?.toLowerCase().includes(q) || s.cat?.toLowerCase().includes(q));
+    } else if (selectedCat !== 'All') {
+      filtered = filtered.filter(s => s.cat === selectedCat);
+    }
+    return filtered;
+  }, [sounds, searchQuery, selectedCat]);
 
-  const jumpToCategory = (index: number) => {
+  const handleAttemptSelectSound = (item: AlarmSoundItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      sectionListRef.current?.scrollToLocation({ sectionIndex: index, itemIndex: 0, animated: true });
-    } catch {}
+    setConfirmSound(item);
   };
 
-  const renderSectionHeader = ({ section }: { section: any }) => (
-    <View style={S.sectionHeader}>
-      <Text style={S.sectionHeaderTxt}>{section.title}</Text>
-    </View>
-  );
+  const confirmSelection = () => {
+    if (confirmSound) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onSelectSound(confirmSound.id);
+      setConfirmSound(null);
+    }
+  };
+
+  const cancelSelection = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setConfirmSound(null);
+  };
+
+  const handleTogglePreview = (item: AlarmSoundItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onTogglePreview(item);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <BlurView intensity={40} tint="dark" style={S.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
+        <LinearGradient colors={['rgba(10,10,16,0.95)', 'rgba(2,2,4,1)']} style={StyleSheet.absoluteFillObject} />
         
-        <SafeAreaView style={S.safeArea} pointerEvents="box-none">
-          <View style={S.drawer}>
-            <LinearGradient colors={['rgba(12,12,16,0.98)', 'rgba(4,4,6,1)']} style={StyleSheet.absoluteFillObject} />
-            <View style={S.drawerBorderTop} />
+        <SafeAreaView style={S.safeArea}>
+          <View style={S.header}>
+            <View style={S.headerTopRow}>
+              <Text style={S.title}>Premium Sound Library</Text>
+              <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
+                <Feather name="x" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
             
-            <View style={S.header}>
-              <View style={S.headerTopRow}>
-                <Text style={S.title}>Premium Sound Library</Text>
-                <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
-                  <Feather name="x" size={18} color="rgba(255,255,255,0.6)" />
+            <View style={S.searchContainer}>
+              <Feather name="search" size={18} color="rgba(255,255,255,0.5)" style={{ marginLeft: 16, marginRight: 8 }} />
+              <TextInput
+                style={S.searchInput}
+                placeholder="Search sounds, mantras..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 10 }}>
+                  <Feather name="x-circle" size={16} color="rgba(255,255,255,0.6)" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {!searchQuery && (
+            <View style={S.categoryPillsWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={S.categoryPillsContent}>
+                {categories.map((cat) => {
+                  const isActive = selectedCat === cat;
+                  return (
+                    <TouchableOpacity 
+                      key={cat} 
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSelectedCat(cat);
+                      }} 
+                      style={[S.catPill, isActive && S.catPillActive]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[S.catPillTxt, isActive && S.catPillTxtActive]}>
+                        {cat === 'All' ? '✨ All' : cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          <ScrollView 
+            contentContainerStyle={S.gridContent} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {filteredSounds.length === 0 ? (
+              <View style={S.emptyState}>
+                <Text style={S.emptyStateTxt}>No sounds found matching "{searchQuery}"</Text>
+              </View>
+            ) : (
+              selectedCat === 'All' && !searchQuery ? (
+                // Group by category when 'All' is selected and no search
+                categories.filter(c => c !== 'All').map(cat => {
+                  const catSounds = filteredSounds.filter(s => s.cat === cat);
+                  if (catSounds.length === 0) return null;
+                  return (
+                    <View key={cat} style={{ marginBottom: 24 }}>
+                      <Text style={S.categoryHeader}>{cat}</Text>
+                      <View style={S.grid}>
+                        {catSounds.map(item => (
+                          <SoundGridCard 
+                            key={item.id}
+                            sound={item} 
+                            isSelected={selectedId === item.id}
+                            isPreviewing={previewingId === item.id}
+                            isLoading={previewLoadingId === item.id}
+                            status={dlStatus?.[item.id]}
+                            progress={dlProgress?.[item.id]}
+                            onSelect={() => handleAttemptSelectSound(item)}
+                            onTogglePreview={() => handleTogglePreview(item)} 
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={S.grid}>
+                  {filteredSounds.map(item => (
+                    <SoundGridCard 
+                      key={item.id}
+                      sound={item} 
+                      isSelected={selectedId === item.id}
+                      isPreviewing={previewingId === item.id}
+                      isLoading={previewLoadingId === item.id}
+                      status={dlStatus?.[item.id]}
+                      progress={dlProgress?.[item.id]}
+                      onSelect={() => handleAttemptSelectSound(item)}
+                      onTogglePreview={() => handleTogglePreview(item)} 
+                    />
+                  ))}
+                </View>
+              )
+            )}
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Confirmation Dialog Overlay */}
+        {confirmSound && (
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim, zIndex: 100, justifyContent: 'center', alignItems: 'center' }]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
+              <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={cancelSelection} />
+            </BlurView>
+            
+            <View style={S.confirmBox}>
+              <LinearGradient colors={['rgba(30,30,40,0.95)', 'rgba(15,15,22,0.98)']} style={StyleSheet.absoluteFillObject} />
+              <View style={S.confirmIconWrap}>
+                <Text style={{ fontSize: 28 }}>{confirmSound.emoji}</Text>
+              </View>
+              <Text style={S.confirmTitle}>Set Alarm Sound</Text>
+              <Text style={S.confirmSub}>Do you want to set <Text style={{ color: '#fff', fontFamily: 'Nunito_700Bold' }}>{confirmSound.label}</Text> as your alarm sound?</Text>
+              
+              <View style={S.confirmActions}>
+                <TouchableOpacity style={S.confirmBtnCancel} onPress={cancelSelection} activeOpacity={0.7}>
+                  <Text style={S.confirmBtnCancelTxt}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[S.confirmBtnConfirm, { backgroundColor: confirmSound.color || PRIMARY }]} onPress={confirmSelection} activeOpacity={0.8}>
+                  <Text style={S.confirmBtnConfirmTxt}>Yes, Set Sound</Text>
                 </TouchableOpacity>
               </View>
-              
-              <View style={S.searchContainer}>
-                <Feather name="search" size={16} color="rgba(255,255,255,0.4)" style={{ marginLeft: 16, marginRight: 8 }} />
-                <TextInput
-                  style={S.searchInput}
-                  placeholder="Search sounds, mantras..."
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoCorrect={false}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 8, marginRight: 4 }}>
-                    <Feather name="x-circle" size={16} color="rgba(255,255,255,0.4)" />
-                  </TouchableOpacity>
-                )}
-              </View>
             </View>
-
-            {/* Compact Category Pills */}
-            {!searchQuery && sections.length > 0 && (
-              <View style={S.categoryPillsWrapper}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={S.categoryPillsContent}>
-                  {sections.map((sec, idx) => (
-                    <TouchableOpacity key={sec.title} onPress={() => jumpToCategory(idx)} style={S.catPill}>
-                      <Text style={S.catPillTxt}>{sec.title}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <SectionList
-              ref={sectionListRef}
-              sections={sections}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={S.listContent}
-              renderSectionHeader={renderSectionHeader}
-              stickySectionHeadersEnabled={true}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item, index, section }) => {
-                const isSelected = selectedId === item.id;
-                const isPreviewing = previewingId === item.id;
-                const isLoading = previewLoadingId === item.id;
-                const status = dlStatus?.[item.id];
-                const progress = dlProgress?.[item.id];
-                
-                return (
-                  <SoundRow 
-                    sound={item} 
-                    isSelected={isSelected}
-                    isPreviewing={isPreviewing}
-                    isLoading={isLoading}
-                    status={status}
-                    progress={progress}
-                    onSelect={() => onSelectSound(item.id)}
-                    onTogglePreview={() => onTogglePreview(item)} 
-                  />
-                );
-              }}
-              ListEmptyComponent={
-                <View style={{ paddingTop: 60, alignItems: 'center' }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontFamily: 'Nunito_400Regular' }}>No sounds found matching "{searchQuery}"</Text>
-                </View>
-              }
-            />
-          </View>
-        </SafeAreaView>
+          </Animated.View>
+        )}
       </BlurView>
     </Modal>
   );
 }
 
-function SoundRow({ 
+const CARD_MARGIN = 6;
+// Calculate 3 items per row with margins
+const CARD_W = (W - 32 - (CARD_MARGIN * 4)) / 3;
+const CARD_H = CARD_W * 1.15; // Slightly taller than square
+
+function SoundGridCard({ 
   sound, isSelected, isPreviewing, isLoading, status, progress, onSelect, onTogglePreview 
 }: { 
   sound: AlarmSoundItem, isSelected: boolean, isPreviewing: boolean, isLoading?: boolean, status?: string, progress?: number, onSelect: () => void, onTogglePreview: () => void 
 }) {
   const highlightColor = sound.color || PRIMARY;
+  const imageUri = SOUND_IMAGES[sound.id];
 
   return (
-    <View style={[S.row, isSelected && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-      {isSelected && (
-        <LinearGradient
-          colors={[highlightColor + '15', 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-      )}
-      
+    <View style={[S.cardWrapper, isSelected && { borderColor: highlightColor, backgroundColor: highlightColor + '15' }]}>
       <TouchableOpacity 
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(); }} 
-        style={S.rowSelectArea} 
-        activeOpacity={0.7}
+        style={S.cardMainArea}
+        onPress={onSelect}
+        activeOpacity={0.8}
       >
-        <View style={[S.emojiContainer, isSelected && { backgroundColor: highlightColor + '20', borderColor: highlightColor + '40' }]}>
-          <Text style={{ fontSize: 18, textAlign: 'center' }}>{sound.emoji || '🎵'}</Text>
-        </View>
-        <View style={{ flex: 1, paddingRight: 10, paddingLeft: 14 }}>
-          <Text style={[S.rowTitle, isSelected && { color: highlightColor }]} numberOfLines={1}>{sound.label}</Text>
-          {isSelected ? (
-            <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: highlightColor, marginTop: 2, letterSpacing: 1.5 }}>SELECTED</Text>
-          ) : sound.desc ? (
-            <Text style={{ fontSize: 11, fontFamily: 'Nunito_400Regular', color: 'rgba(255,255,255,0.4)', marginTop: 2 }} numberOfLines={1}>{sound.desc}</Text>
-          ) : null}
+        <View style={S.cardInner}>
+          {imageUri ? (
+            <View style={StyleSheet.absoluteFill}>
+              <Image 
+                source={{ uri: imageUri }} 
+                style={StyleSheet.absoluteFill} 
+                resizeMode="cover"
+              />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </View>
+          ) : (
+            <LinearGradient
+              colors={[highlightColor + '30', 'rgba(0,0,0,0.8)']}
+              style={StyleSheet.absoluteFillObject}
+            />
+          )}
+
+          {isSelected && (
+            <View style={S.selectedBadge}>
+              <Feather name="check" size={10} color="#fff" />
+            </View>
+          )}
+
+          <View style={S.cardContent}>
+            <View style={S.emojiContainer}>
+              <Text style={{ fontSize: 16 }}>{sound.emoji || '🎵'}</Text>
+            </View>
+            <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 6 }}>
+              <Text style={[S.cardTitle, isSelected && { color: highlightColor }]} numberOfLines={2}>
+                {sound.label}
+              </Text>
+              {isSelected ? (
+                <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: highlightColor, marginTop: 2, letterSpacing: 1 }}>SELECTED</Text>
+              ) : null}
+            </View>
+          </View>
         </View>
       </TouchableOpacity>
 
+      {/* Play/Pause Button Area positioned at the top right inside the card */}
       <TouchableOpacity 
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onTogglePreview(); }}
-        style={[S.playBtn, isPreviewing && { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+        style={[S.playBtn, isPreviewing && { backgroundColor: highlightColor + '40', borderColor: highlightColor }]}
+        onPress={onTogglePreview}
         activeOpacity={0.8}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         {isLoading ? (
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: highlightColor }} />
         ) : status === 'downloading' ? (
-          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: highlightColor }}>{Math.round((progress ?? 0) * 100)}%</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: '#fff' }}>{Math.round((progress ?? 0) * 100)}%</Text>
         ) : isPreviewing ? (
-          <Feather name="square" size={12} color={highlightColor} />
+          <Feather name="square" size={10} color={highlightColor} />
         ) : (
-          <Feather name="play" size={14} color="rgba(255,255,255,0.6)" style={{ marginLeft: 2 }} />
+          <Feather name="play" size={12} color="rgba(255,255,255,0.9)" style={{ marginLeft: 2 }} />
         )}
       </TouchableOpacity>
     </View>
@@ -228,140 +343,236 @@ function SoundRow({
 }
 
 const S = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  safeArea: { flex: 1, justifyContent: 'flex-end' },
-  drawer: { 
-    width: '100%',
-    height: H * 0.88,
-    backgroundColor: '#050505',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    overflow: 'hidden',
-  },
-  drawerBorderTop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
+  safeArea: { flex: 1 },
   header: { 
     paddingHorizontal: 24, 
-    paddingTop: 24, 
-    paddingBottom: 12,
+    paddingTop: 16, 
+    paddingBottom: 16,
   },
   headerTopRow: {
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 14,
+    marginBottom: 20,
   },
-  title: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 0.5 },
+  title: { fontSize: 20, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 0.5 },
   closeBtn: { 
-    width: 28, 
-    height: 28, 
-    borderRadius: 14, 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
     alignItems: 'center', 
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 18,
-    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    height: 48,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 15,
     fontFamily: 'Nunito_600SemiBold',
     color: '#ffffff',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
-  
   categoryPillsWrapper: {
-    paddingVertical: 4,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
     marginBottom: 8,
   },
   categoryPillsContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     gap: 8,
   },
   catPill: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  catPillActive: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   catPillTxt: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
     fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.5,
   },
-
-  listContent: { paddingBottom: 120, paddingHorizontal: 16 },
-  
-  sectionHeader: {
-    paddingHorizontal: 12,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: 'transparent',
+  catPillTxtActive: {
+    color: '#fff',
   },
-  sectionHeaderTxt: {
-    fontSize: 10,
+  gridContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+    paddingTop: 16,
+  },
+  categoryHeader: {
+    fontSize: 18,
     fontFamily: 'Nunito_800ExtraBold',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+    color: '#fff',
+    marginBottom: 12,
+    marginLeft: CARD_MARGIN,
   },
-
-  row: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: 12,
-    marginVertical: 2,
-    borderRadius: 16, 
-    overflow: 'hidden',
-    height: 48,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  rowSelectArea: {
-    flex: 1,
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -CARD_MARGIN,
+  },
+  emptyState: {
+    paddingTop: 80,
     alignItems: 'center',
-    height: '100%',
+  },
+  emptyStateTxt: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 16,
+    fontFamily: 'Nunito_400Regular',
+  },
+  cardWrapper: {
+    width: CARD_W,
+    height: CARD_H,
+    margin: CARD_MARGIN,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  cardMainArea: {
+    flex: 1,
+  },
+  cardInner: {
+    flex: 1,
+  },
+  cardContent: {
+    flex: 1,
+    padding: 10,
   },
   emojiContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 4,
   },
-  rowTitle: { 
-    fontSize: 13, 
+  cardTitle: { 
+    fontSize: 12, 
     fontFamily: 'Nunito_700Bold',
     color: '#ffffff', 
-    letterSpacing: 0.2 
+    lineHeight: 16,
   },
-  
   playBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 10,
+  },
+  selectedBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+
+  // Confirmation Box Styles
+  confirmBox: {
+    width: W * 0.82,
+    borderRadius: 28,
+    overflow: 'hidden',
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#fff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmSub: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+    paddingHorizontal: 10,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  confirmBtnCancel: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  confirmBtnCancelTxt: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontFamily: 'Nunito_700Bold',
+  },
+  confirmBtnConfirm: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnConfirmTxt: {
+    color: '#000',
+    fontSize: 14,
+    fontFamily: 'Nunito_800ExtraBold',
   }
 });

@@ -21,57 +21,13 @@ import { Platform } from 'react-native';
 export const REMINDER_CHANNEL_ID = 'onesutra-reminders-v1';
 export const REMINDER_DATA_TYPE = 'slot-reminder';
 
-// ── Notification definitions ──────────────────────────────────────────────────
-export const SLOT_NOTIFICATIONS = [
-  {
-    id: 'morning-start',
-    title: '🌅 Morning Rituals — Window Open',
-    body: 'Kapha Kala is live. Move your body, drink warm water, greet the sun. 🙏',
-    hour: 6, minute: 0,
-  },
-  {
-    id: 'checkin-reminder',
-    title: '💭 Bodhi is Ready — Daily Check-In',
-    body: 'Your personalized Ayurvedic prescription for today is waiting. ✦',
-    hour: 8, minute: 0,
-  },
-  {
-    id: 'morning-expiry',
-    title: '⏰ Morning Window Closing in 5 min',
-    body: 'Log your morning habits before the Kapha window ends at 10 AM. 🌿',
-    hour: 9, minute: 55,
-  },
-  {
-    id: 'afternoon-start',
-    title: '🔥 Pitta Noon — Peak Agni is Here',
-    body: 'Your digestive fire is at its absolute peak. Main meal + bold decisions now. 🍛',
-    hour: 12, minute: 0,
-  },
-  {
-    id: 'afternoon-expiry',
-    title: '⏰ Pitta Window Closing in 5 min',
-    body: 'Log your afternoon habits before the Pitta hour ends. 🔥',
-    hour: 13, minute: 55,
-  },
-  {
-    id: 'evening-start',
-    title: '🪔 Evening Wind-Down Window Open',
-    body: 'Light dinner, gentle walk, screen-free time. Protect your Ojas tonight. 🌙',
-    hour: 18, minute: 0,
-  },
-  {
-    id: 'evening-expiry',
-    title: '⏰ Evening Window Closing in 5 min',
-    body: 'Last chance to log today\'s evening habits before 10 PM. 🌑',
-    hour: 21, minute: 55,
-  },
-  {
-    id: 'brahma-muhurta',
-    title: '🌑 Brahma Muhurta in 15 minutes',
-    body: 'The rarest Sattvic window opens at 5 AM. Rise, set your Sankalpa, meditate. 🙏',
-    hour: 4, minute: 45,
-  },
-];
+// ── Fixed-slot notifications removed ─────────────────────────────────────────
+// These fixed-clock notifications (6 AM morning, 12 PM pitta, 6 PM evening, etc.)
+// are removed. Users reported them feeling like unwanted "login notifications".
+// Sacred Solar Hours + Circadian Alerts now fire in real-time from the home
+// screen when the hero ring changes its solar/circadian phase — not on a
+// fixed schedule.
+export const SLOT_NOTIFICATIONS: Array<{ id: string; title: string; body: string; hour: number; minute: number }> = [];
 
 // ── Channel ───────────────────────────────────────────────────────────────────
 export async function setupReminderChannel(): Promise<void> {
@@ -89,58 +45,16 @@ export async function setupReminderChannel(): Promise<void> {
   });
 }
 
-// ── Schedule all slot reminders ───────────────────────────────────────────────
+// ── Schedule all slot reminders (no-op — real-time notifications replace these) ─
 export async function scheduleAllNativeReminders(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await setupReminderChannel();
-
-  for (const r of SLOT_NOTIFICATIONS) {
-    try {
-      await notifee.cancelTriggerNotification(`reminder-${r.id}`);
-    } catch { /* ignore */ }
-
-    const now = new Date();
-    const next = new Date();
-    next.setHours(r.hour, r.minute, 0, 0);
-    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
-
-    await notifee.createTriggerNotification(
-      {
-        id: `reminder-${r.id}`,
-        title: r.title,
-        body: r.body,
-        data: { type: REMINDER_DATA_TYPE, slotId: r.id },
-        android: {
-          channelId: REMINDER_CHANNEL_ID,
-          importance: AndroidImportance.HIGH,
-          category: AndroidCategory.ALARM,
-          visibility: AndroidVisibility.PUBLIC,
-          sound: 'mantra_alarm',
-          vibrationPattern: [0, 300, 200, 300],
-          // ── Full-screen intent: pops over all apps like an alarm ────────────
-          fullScreenAction: {
-            id: 'default',
-            launchActivity: 'default',
-          },
-          pressAction: { id: 'default', launchActivity: 'default' },
-          showTimestamp: true,
-          ongoing: false,
-        },
-      },
-      {
-        type: TriggerType.TIMESTAMP,
-        timestamp: next.getTime(),
-        alarmManager: { allowWhileIdle: true },
-        repeatFrequency: RepeatFrequency.DAILY,
-      },
-    );
-
-    console.log(
-      `[NativeReminders] ✅ Scheduled ${r.id} ` +
-      `at ${r.hour}:${String(r.minute).padStart(2, '0')}`,
-    );
-  }
+  // Sacred Solar Hours + Circadian Alerts now fire in real-time from the
+  // home screen (index.tsx) when the hero ring changes its solar/circadian
+  // phase. Fixed-clock slot reminders have been removed.
+  await setupReminderChannel(); // keep channel alive for other notification types
+  console.log('[NativeReminders] Fixed-slot reminders disabled — using real-time solar phase notifications');
 }
+
 
 // ── Cancel all reminders ──────────────────────────────────────────────────────
 export async function cancelAllNativeReminders(): Promise<void> {

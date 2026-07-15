@@ -187,7 +187,7 @@ export default function SoundBathRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'Naad Sound Bath',
+          id: 'arise-soundbath', name: 'Nada Sound Bath',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);
@@ -356,10 +356,10 @@ export default function SoundBathRingingScreen() {
             activeOpacity={0.84}
           >
             <LinearGradient
-              colors={[accent + '55', accent + '30']}
+              colors={[accent + '40', accent + '10']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+              style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]}
             />
             <Text style={S.dismissIcon}>✦</Text>
             <View style={{ marginLeft: 10 }}>
@@ -383,30 +383,30 @@ const S = StyleSheet.create({
   ambientGlow:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
   // Top
-  topArea:      { paddingTop: 54, alignItems: 'center', gap: 10 },
-  chip:         { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8 },
-  liveDot:      { width: 7, height: 7, borderRadius: 3.5 },
-  chipLabel:    { fontSize: 13, fontWeight: '800', letterSpacing: 0.4 },
-  clockText:    { fontSize: 64, fontWeight: '100', color: '#FFFFFF', letterSpacing: -2.5 },
+  topArea:      { paddingTop: 64, alignItems: 'center', gap: 14 },
+  chip:         { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 24, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.03)' },
+  liveDot:      { width: 8, height: 8, borderRadius: 4 },
+  chipLabel:    { fontSize: 12, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' },
+  clockText:    { fontSize: 72, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2 },
 
   // Center orb
   orbWrap:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  outerRing:    { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1.5 },
-  midRing:      { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1 },
-  innerCircle:  { width: 110, height: 110, borderRadius: 55, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  orbIcon:      { fontSize: 44 },
+  outerRing:    { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 1 },
+  midRing:      { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1 },
+  innerCircle:  { width: 140, height: 140, borderRadius: 70, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  orbIcon:      { fontSize: 54 },
 
   // Bottom
-  bottomArea:   { paddingHorizontal: 26, paddingBottom: 48, alignItems: 'center', gap: 14 },
-  categoryHint: { fontSize: 10, fontWeight: '800', letterSpacing: 1.8 },
+  bottomArea:   { paddingHorizontal: 32, paddingBottom: 56, alignItems: 'center', gap: 16 },
+  categoryHint: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' },
   dismissBtn:   {
     width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 24, paddingVertical: 22, overflow: 'hidden',
-    shadowOpacity: 0.45, shadowRadius: 24, elevation: 12, shadowOffset: { width: 0, height: 6 },
+    borderRadius: 28, paddingVertical: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
+    shadowOpacity: 0.6, shadowRadius: 32, elevation: 15, shadowOffset: { width: 0, height: 10 },
   },
-  dismissIcon:  { fontSize: 20, color: '#FFFFFFEE' },
-  dismissTxt:   { fontSize: 18, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 },
-  dismissSub:   { fontSize: 10, fontWeight: '600', color: '#FFFFFF70', letterSpacing: 0.5, marginTop: 2 },
-  lockBar:      { alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFFFFF04', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF08' },
-  lockBarTxt:   { fontSize: 9, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 0.5 },
+  dismissIcon:  { fontSize: 22, color: '#FFFFFF' },
+  dismissTxt:   { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
+  dismissSub:   { fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#FFFFFF80', letterSpacing: 0.8, marginTop: 4, textTransform: 'uppercase' },
+  lockBar:      { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  lockBarTxt:   { fontSize: 10, color: '#FFFFFF50', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' },
 });

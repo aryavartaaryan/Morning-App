@@ -19,6 +19,7 @@ import {
   useBgContext,
   BG_KEYS, BG_META, BG_ACCENT_COLORS, BG_GRADIENT_START,
   type WallpaperMode, type BgKey,
+  getTimedBgKey,
 } from '@/lib/bgContext';
 
 const PURPLE = '#a78bfa';
@@ -152,7 +153,7 @@ const CATEGORIES = [
 
 const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' => {
   if ([
-    'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_late', 'sunrise_late_2',
+    'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_2', 'sunrise_late', 'sunrise_late_2',
     'morning_early', 'morning_early_late', 'morning', 'morning_late', 'morning_late_2'
   ].includes(key)) {
     return 'morning';
@@ -176,8 +177,42 @@ const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' =
 function WallpaperPicker() {
   const {
     wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey,
-    bgKey, allBgUris,
+    bgKey, allBgUris, solarTimes
   } = useBgContext();
+
+  const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
+
+  useEffect(() => {
+    if (!solarTimes) return;
+    const map: Partial<Record<BgKey, {start: number, end: number}>> = {};
+    for (let m = 4 * 60; m < 28 * 60; m++) {
+      const h = (m / 60) % 24;
+      const key = getTimedBgKey(h, solarTimes) as BgKey;
+      if (!map[key]) {
+        map[key] = { start: (m/60), end: (m/60) };
+      } else {
+        map[key]!.end = (m/60);
+      }
+    }
+    const fmt = (hr: number) => {
+      let hh = Math.floor(hr);
+      let mm = Math.round((hr - hh) * 60);
+      if (mm === 60) { hh += 1; mm = 0; }
+      hh = hh % 24;
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      const dispH = hh % 12 === 0 ? 12 : hh % 12;
+      const dispM = mm.toString().padStart(2, '0');
+      if (dispM === '00') return `${dispH} ${ampm}`;
+      return `${dispH}:${dispM} ${ampm}`;
+    };
+    const res: Partial<Record<BgKey, string>> = {};
+    for (const k of BG_KEYS) {
+      if (map[k]) {
+        res[k] = `${fmt(map[k]!.start)}–${fmt(map[k]!.end)}`;
+      }
+    }
+    setDynamicTimes(res);
+  }, [solarTimes]);
 
   const [showPicker, setShowPicker] = useState(false);
   const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
@@ -245,7 +280,7 @@ function WallpaperPicker() {
           />
           <View style={wp.previewContent}>
             <View>
-              <Text style={wp.previewTime}>{activeMeta.time}</Text>
+              <Text style={wp.previewTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
               <Text style={wp.previewName}>{activeMeta.emoji}  {activeMeta.label}</Text>
               <Text style={wp.previewSub}>{activeMeta.sub}</Text>
             </View>
@@ -555,7 +590,7 @@ function WallpaperPicker() {
                             borderColor: 'rgba(255, 255, 255, 0.1)',
                           }}>
                             <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.3 }}>
-                              {meta.time}
+                              {dynamicTimes[key] || meta.time}
                             </Text>
                           </View>
 
@@ -824,9 +859,8 @@ export default function SettingsTab() {
 
   const TOGGLES = [
     // { emoji: '🤖', label: 'Morning Brief',  sub: 'AI speaks your personalized morning brief',   val: mission.bodhiMorningBrief,    onToggle: () => saveMission({ ...mission, bodhiMorningBrief: !mission.bodhiMorningBrief }),            color: PURPLE },
-    { emoji: '⏰', label: 'Dawn Alert',      sub: '15-min reminder before your wake alarm',      val: settings.brahmaReminder,      onToggle: () => saveSettings({ ...settings, brahmaReminder: !settings.brahmaReminder }),               color: '#c084fc' },
-    { emoji: '🌅', label: 'Sacred Hours',   sub: 'Push alerts exactly at sunrise and sunset',    val: settings.sacredHourNotifs ?? false, onToggle: () => saveSettings({ ...settings, sacredHourNotifs: !(settings.sacredHourNotifs ?? false) }), color: '#f97316' },
-    { emoji: '⏱️', label: 'Circadian Alerts', sub: 'Push alerts when your body rhythm phases shift', val: settings.circadianNotifs ?? false, onToggle: () => saveSettings({ ...settings, circadianNotifs: !(settings.circadianNotifs ?? false) }), color: '#38bdf8' },
+    { emoji: '🌅', label: 'Sacred Solar Hours', sub: 'Notify at Sunrise · Solar Zenith · Sunset', val: settings.sacredHourNotifs ?? false, onToggle: () => saveSettings({ ...settings, sacredHourNotifs: !(settings.sacredHourNotifs ?? false) }), color: '#f97316' },
+    { emoji: '🔬', label: 'Circadian Alerts', sub: 'Notify when your body rhythm phase shifts', val: settings.circadianNotifs ?? false, onToggle: () => saveSettings({ ...settings, circadianNotifs: !(settings.circadianNotifs ?? false) }), color: '#38bdf8' },
     // { emoji: '📈', label: 'Gradual Volume', sub: 'Alarm fades in over 60 seconds (Android)',     val: mission.gradualVolume ?? false, onToggle: () => saveMission({ ...mission, gradualVolume: !(mission.gradualVolume ?? false) }),       color: '#60a5fa' },
   ] as const;
 
@@ -912,7 +946,7 @@ export default function SettingsTab() {
         <GlassCard>
           <View style={{ padding: 16, gap: 8 }}>
             <Text style={{ fontSize: 18, fontWeight: '900', color: GOLD, letterSpacing: -0.5 }}>
-              Naad
+              Nada
             </Text>
             <Text style={{ fontSize: 12, color: '#FFFFFF80', lineHeight: 18, marginTop: 2 }}>
               Rise with the sun · Ancient Wisdom · Modern Intelligence

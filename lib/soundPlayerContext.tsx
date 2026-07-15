@@ -129,6 +129,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   // Once-play mode: when true, stop instead of looping when track finishes
   const noLoopRef = useRef(false);
 
+  // Track last automatic update time to avoid polling getStatusAsync
+  const lastStatusUpdateRef = useRef<Map<string, number>>(new Map());
+
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, []);
@@ -203,6 +206,9 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         try {
           if (!status.isLoaded) return;
           if (unloadedIdsRef.current.has(meta.id)) return;
+          
+          lastStatusUpdateRef.current.set(meta.id, Date.now());
+
           if (status.durationMillis != null) {
             const durSecs = Math.round(status.durationMillis / 1000);
             _durationCache.set(meta.id, durSecs);
@@ -293,24 +299,19 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
         if (heartbeatBusyRef.current) return;
         heartbeatBusyRef.current = true;
         try {
-          // LOCK-SCREEN FIX: Re-assert audio session on EVERY tick while
-          // sounds are playing, not just on restart. This prevents the OS
-          // from silently revoking the audio focus when the screen locks.
-          if (!isPausedRef.current) {
-            await Audio.setAudioModeAsync({
-              staysActiveInBackground: true,
-              playsInSilentModeIOS: true,
-              shouldDuckAndroid: false,
-              interruptionModeIOS: 1,
-              interruptionModeAndroid: 1,
-            }).catch(() => {});
-          }
+          // (Lock-screen audio focus is handled by the AppState listener below)
           // First pass: check if ANY sound stopped unexpectedly
           let anyNeedRestart = false;
           if (!isPausedRef.current) {
-            for (const snd of mixRefs.current.values()) {
+            for (const [id, snd] of Array.from(mixRefs.current.entries())) {
               try {
                 if (!snd) continue;
+                // If we received an automatic status update within the last 2.5 seconds,
+                // the audio engine is actively pushing frames. No need to query getStatusAsync.
+                const lastUpdate = lastStatusUpdateRef.current.get(id) || 0;
+                if (Date.now() - lastUpdate < 2500) {
+                  continue; // actively playing and pushing updates
+                }
                 const status = await snd.getStatusAsync();
                 if (status.isLoaded && !status.isPlaying) { anyNeedRestart = true; break; }
               } catch { anyNeedRestart = true; break; }
@@ -396,6 +397,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       );
       // Only store if slot is still free and not actively playing
       if (!mixRefs.current.has(meta.id) && !preBufferRef.current.has(meta.id)) {
+        while (preBufferRef.current.size >= 4) {
+          const oldestKey = preBufferRef.current.keys().next().value;
+          if (!oldestKey) break;
+          const oldestSound = preBufferRef.current.get(oldestKey);
+          preBufferRef.current.delete(oldestKey);
+          if (oldestSound) {
+            try { oldestSound.setOnPlaybackStatusUpdate(null); } catch {}
+            try { oldestSound.unloadAsync(); } catch {}
+          }
+        }
         preBufferRef.current.set(meta.id, sound);
       } else {
         try { sound.unloadAsync(); } catch {}
@@ -441,6 +452,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     await stopAllRefs();
     // Clear unloaded-ids set after full teardown so the next play session starts clean
     unloadedIdsRef.current.clear();
+    lastStatusUpdateRef.current.clear();
     setPlayingId(null);
     setPlayingMeta(null);
     setMixedSounds([]);
@@ -494,6 +506,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     // Clear unloaded-ID guard so stale IDs from previous sessions never
     // silently block playback-status callbacks for the incoming sound.
     unloadedIdsRef.current.clear();
+    lastStatusUpdateRef.current.clear();
 
     // ── INSTANT UI update — happens synchronously, zero delay ──
     clearTimer();
@@ -559,6 +572,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const removeFromMix = useCallback(async (id: string) => {
     const snd = mixRefs.current.get(id);
     if (snd) { try { snd.setOnPlaybackStatusUpdate(null); } catch {} try { await snd.stopAsync(); await snd.unloadAsync(); } catch {} mixRefs.current.delete(id); }
+    lastStatusUpdateRef.current.delete(id);
     setMixedSounds(prev => {
       const next = prev.filter(s => s.id !== id);
       if (next.length === 0) {

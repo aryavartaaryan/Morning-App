@@ -69,7 +69,7 @@ function cacheFilename(url: string): string {
   return url.replace(/[^a-z0-9]/gi, '_').slice(-80) + '.jpg';
 }
 
-const IN_FLIGHT_DOWNLOADS: Record<string, Promise<void>> = {};
+const IN_FLIGHT_DOWNLOADS: Record<string, Promise<void> | undefined> = {};
 
 async function cacheOne(url: string): Promise<void> {
   if (LOCAL_URI_MAP[url]) return;

@@ -314,6 +314,28 @@ abstract class AlarmSoundServiceBase : Service() {
 
     // ── Audio ─────────────────────────────────────────────────────────────────
 
+    private fun requestAudioFocus() {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(buildAudioAttrs())
+                    .setOnAudioFocusChangeListener { }
+                    .build()
+                audioManager.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_ALARM,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     protected fun buildAudioAttrs(): AudioAttributes =
         AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -332,6 +354,7 @@ abstract class AlarmSoundServiceBase : Service() {
      * Priority 3 — bundled mantra_alarm.wav raw resource (always present in APK).
      */
     protected fun playAlarm() {
+        requestAudioFocus()
         val soundPath = getSoundPath()
 
         // Priority 1: stored path (expo-asset or explicit download)
@@ -893,6 +916,18 @@ abstract class AlarmSoundServiceBase : Service() {
         // Reset the watchdogs guard so if the OS restarts this service via
         // START_STICKY the watchdogs will be re-registered exactly once.
         watchdogsRegistered = false
+
+        // ── Remove foreground notification ──
+        // On newer Android versions, stopping the service might leave the notification
+        // hanging. Explicitly remove it to prevent "ghost" reappearances.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.cancel(getNotifId())
 
         stopAlarmVibration()
         removeOverlay() // safety net: removes overlay if RN never called dismissAlarmOverlay

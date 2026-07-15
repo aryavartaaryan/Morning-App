@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
@@ -95,6 +96,7 @@ const ALARM_SOUNDS = [
   { id: 'cdn_ultra_mahamrityunjaya',      label: '108 Mahamrityunjaya Mantra',    emoji: '🕉️', cat: 'Mantra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/108%20Mahamrityunjaya%20Mantra%20Chant%20%20Tibetan%20Shiva%20Mantra%20for%20Protection%20%26%20Healing.m4a' as string | null },
   { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
   { id: 'med_shyamale_meenakshi',  label: 'Feminine Universal Energy (Shyamale Meenakshi)', emoji: '🌺', cat: 'Stotra', color: '#f9a8d4', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Shyamale%20Meenakshi%20%20I%20Om%20Voices%20Junior%20I%20Praise%20Goddess%20Meenakshi%20with%20Dikshitar%27s%20Nottuswara.mp3' as string | null },
+  { id: 'med_saraswati_shloka',    label: 'Wisdom Awakening (Saraswati Shloka)',          emoji: '📚', cat: 'Stotra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/%E0%A4%B8%E0%A4%B0%E0%A4%B8%E0%A4%B5%E0%A4%A4%20%E0%A4%B6%E0%A4%B2%E0%A4%95%20%20%20Rekha%20Bharadwaj%20%20Saraswati%20Shloka%20%20%E0%A4%A8%E0%A4%B5%E0%A4%B0%E0%A4%A4%E0%A4%B0%20%E0%A4%B8%E0%A4%AA%E0%A4%B6%E0%A4%B2%20%20Times%20Music%20Spiritual.mp3' as string | null },
   { id: 'bhagya_suktam',           label: 'Hymn of Fortune (Bhagya Suktam)',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
   // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
   { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
@@ -388,6 +390,15 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
   actionsRef: React.MutableRefObject<FabAction[]>;
 }) {
   const [open, setOpen] = React.useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setOpen(false);
+      };
+    }, [])
+  );
+
   return (
     <>
       {open && (
@@ -398,10 +409,12 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
           {actionsRef.current.map((item, i) => (
             <TouchableOpacity
               key={i}
-              style={[S.fabMenuItem, { borderColor: item.color + '70' }]}
+              style={[S.fabMenuItem, { borderColor: item.color + '50' }]}
               onPress={() => { setOpen(false); item.onPress(); }}
-              activeOpacity={0.85}
+              activeOpacity={0.8}
             >
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={['rgba(255,255,255,0.1)', 'transparent']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -780,7 +793,7 @@ export default function AlarmsTab() {
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Required',
-            'This mission uses the camera. Please enable Camera permission for Naad in your device Settings.',
+            'This mission uses the camera. Please enable Camera permission for Nada in your device Settings.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -970,7 +983,7 @@ export default function AlarmsTab() {
         } catch (e) { console.warn('[HabitAlarm] Native schedule failed, trying notifee:', e); }
       }
       try {
-        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+        await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, sound: 'mantra_alarm', vibration: true, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
         await notifee.createTriggerNotification(
           { id: `habit-${entry.id}`, title, body: entry.type === 'habit' ? 'Time for your habit! Tap to confirm. 🙏' : entry.type === 'soundbath' ? 'Your Sound Bath is ready 🎵 Tap to listen.' : 'Your alarm is ringing! Tap to dismiss. ⏰', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' }, asForegroundService: true, ongoing: true, autoCancel: false, loopSound: true, foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK] } as any, data: { type: entry.type === 'soundbath' ? 'soundbath-alarm' : 'habit-alarm', alarmId: entry.id, habitKey: entry.habitKey ?? entry.id, habitEmoji: entry.habitEmoji ?? (entry.type === 'quick' ? '⚡' : entry.type === 'soundbath' ? '🎵' : '🎯'), label: entry.label, alarmType: entry.type, soundId: entry.soundId ?? 'morning_birds' } },
           { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { type: AlarmType.SET_ALARM_CLOCK, allowWhileIdle: true } } as any,
@@ -1038,7 +1051,7 @@ export default function AlarmsTab() {
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
   fabActionsRef.current = [
-    { label: '🌄  Rise At The Divine Neuroplastic Hour', color: '#f59e0b', onPress: () => openBMModal() },
+    { label: 'Rise At The Divine Neuroplastic Hour', color: '#f59e0b', onPress: () => openBMModal() },
     { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
     { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => openAddModal('habit') },
     { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => openAddModal('quick') },
@@ -1387,7 +1400,7 @@ export default function AlarmsTab() {
               <View style={{ width: 70 }} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 160 }}>
               
               {/* ── Slim Sound Selection Banner (Top Visual Range) ── */}
               {(() => {
@@ -1395,25 +1408,35 @@ export default function AlarmsTab() {
                 const selColor = selSnd?.color ?? '#0ea5e9';
                 const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[selectedMantraId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[selectedMantraId]) } : undefined);
                 return (
-                  <TouchableOpacity
-                    onPress={() => { setLibraryModalTarget('wake'); setLibraryModalVisible(true); }}
-                    activeOpacity={0.8}
-                    style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 12, height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '40', shadowColor: selColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}
-                  >
-                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.85 }}>
-                      <LinearGradient colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
-                      <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                  <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 16 }}>
+                    {/* Selected Sound Banner */}
+                    <View style={{ height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '20', marginBottom: 12 }}>
+                      <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.7 }}>
+                        <LinearGradient colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                        <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                          </View>
+                          <View style={{ flex: 1, justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>CURRENTLY SELECTED</Text>
+                            <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Select Sound'}</Text>
+                          </View>
                         </View>
-                        <View style={{ flex: 1, justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>PREMIUM ALARM SOUND</Text>
-                          <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Select Sound'}</Text>
-                        </View>
-                        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.4)" />
-                      </View>
-                    </ImageBackground>
-                  </TouchableOpacity>
+                      </ImageBackground>
+                    </View>
+
+                    {/* Elegant Select Button */}
+                    <TouchableOpacity
+                      onPress={() => { setLibraryModalTarget('wake'); setLibraryModalVisible(true); }}
+                      activeOpacity={0.8}
+                      style={{ height: 50, borderRadius: 16, overflow: 'hidden' }}
+                    >
+                      <LinearGradient colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 16 }}>
+                        <Feather name="music" size={16} color="#fff" style={{ marginRight: 10, opacity: 0.9 }} />
+                        <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: 1.5 }}>CHOOSE SOUND</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
                 );
               })()}
 
@@ -1427,9 +1450,9 @@ export default function AlarmsTab() {
                 if (diff <= 0) diff += 24 * 60;
                 const countdownStr = diff >= 60 ? `${Math.floor(diff / 60)}h ${diff % 60}m` : `${diff}m`;
                 return (
-                  <View style={{ alignItems: 'center', marginBottom: 12 }}>
-                    <View style={{ backgroundColor: '#a78bfa15', borderWidth: 1, borderColor: '#a78bfa30', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: -12, zIndex: 10 }}>
-                      <Text style={{ fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#c4b5fd' }}>Rings in {countdownStr}</Text>
+                  <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                    <View style={{ backgroundColor: '#0284c715', borderWidth: 1, borderColor: '#0284c740', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: -12, zIndex: 10 }}>
+                      <Text style={{ fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#7dd3fc' }}>Rings in {countdownStr}</Text>
                     </View>
                     <TimeAdjuster
                       hour={alarmH} minute={alarmM}
@@ -1454,37 +1477,25 @@ export default function AlarmsTab() {
               )}
 
               {/* ── Days & Label Row ── */}
-              <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+              <View style={{ paddingHorizontal: 20, marginBottom: 16, marginTop: 16 }}>
+                <Text style={{ fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf880', letterSpacing: 1.5, marginBottom: 10, marginLeft: 4 }}>REPEAT DAYS</Text>
                 {!isAddingExtraWake ? (
                   <DaySelector days={wakeRepeatDays} onChange={setWakeRepeatDays} />
                 ) : (
                   <>
                     <DaySelector days={extraFormRepeatDays} onChange={setExtraFormRepeatDays} />
-                    <TextInput style={[S.customInput, { marginTop: 14, marginBottom: 0, paddingVertical: 12, fontSize: 14 }]} placeholder="Label: e.g. Backup alarm, Gym..." placeholderTextColor={Colors.textDim} value={extraFormLabel} onChangeText={setExtraFormLabel} />
+                    <View style={{ marginTop: 24, marginBottom: 0 }}>
+                      <Text style={{ fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: '#38bdf880', letterSpacing: 1.5, marginBottom: 10, marginLeft: 4 }}>LABEL (OPTIONAL)</Text>
+                      <TextInput style={{ backgroundColor: 'rgba(56, 189, 248, 0.05)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)', borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, color: '#fff', fontSize: 15, fontFamily: 'Nunito_600SemiBold' }} placeholder="e.g. Backup alarm, Gym..." placeholderTextColor="rgba(255,255,255,0.3)" value={extraFormLabel} onChangeText={setExtraFormLabel} />
+                    </View>
                   </>
                 )}
               </View>
 
-              {/* ── System Toggles (Compact) ── */}
-              <View style={{ paddingHorizontal: 20 }}>
-                <View style={[S.settingsCard, { backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 0, borderColor: 'rgba(255,255,255,0.12)' }]}>
-                  {([
-                    { emoji: '🔒', label: 'Lock In Mode', val: missionSettings.lockInMode, onToggle: () => updateMission({ lockInMode: !missionSettings.lockInMode }), color: '#ef4444' },
-                    { emoji: '⏰', label: 'Dawn Alert', val: settings.brahmaReminder, onToggle: toggleBrahma, color: '#60a5fa' },
-                  ] as const).map((row, i) => (
-                    <View key={row.label} style={[S.settingsRow, { paddingVertical: 12 }, i > 0 && { borderTopWidth: 1, borderTopColor: '#FFFFFF0C' }]}>
-                      <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontFamily: 'Nunito_700Bold', color: Colors.text }}>{row.label}</Text>
-                      </View>
-                      <Toggle value={row.val} onToggle={row.onToggle} color={row.color} />
-                    </View>
-                  ))}
-                </View>
-              </View>
+
 
               {/* ── Mission Setup (Compact) ── */}
-              <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+              <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
                 <TouchableOpacity
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateMission({ missionEnabled: !(missionSettings.missionEnabled ?? false) }); }}
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF03', borderWidth: 1, borderColor: (missionSettings.missionEnabled ?? false) ? '#f59e0b40' : '#FFFFFF10', borderRadius: 16, padding: 14 }}
@@ -1511,8 +1522,10 @@ export default function AlarmsTab() {
                   </View>
                 )}
               </View>
+            </ScrollView>
 
-              {/* Wake Alarm Save button */}
+            {/* Floating Wake Alarm Save button */}
+            <View style={{ position: 'absolute', bottom: 50, left: 20, right: 20 }}>
               <TouchableOpacity
                 onPress={() => {
                   if (isAddingExtraWake) {
@@ -1531,17 +1544,16 @@ export default function AlarmsTab() {
                     persistAndApply({ ...settings, wakeAlarm: { ...settings.wakeAlarm, enabled: true, hour: wakeFormHour, minute: wakeFormMinute, days: wakeRepeatDays } }).catch(() => {});
                   }
                 }}
-                style={{ marginHorizontal: 20, marginTop: 24, marginBottom: 12, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 }}
-                activeOpacity={0.85}
+                style={{ borderRadius: 999, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.45, shadowRadius: 25, elevation: 15 }}
+                activeOpacity={0.9}
               >
-                <LinearGradient colors={['#0284c7', '#38bdf8']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
+                <LinearGradient colors={['#0284c7', '#7dd3fc']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
                     {isAddingExtraWake ? (editingExtraWake ? 'Update Wake Alarm' : 'Set Wake Alarm') : 'Set Wake Alarm'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-
-            </ScrollView>
+            </View>
           </SafeAreaView>
         </View>
       </Modal>
@@ -1694,74 +1706,85 @@ export default function AlarmsTab() {
               <View style={{ width: 32 }} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 160 }}>
               {/* Selected sound hero card */}
               {(() => {
                 const selSnd = ALARM_SOUNDS.find(s => s.id === formSoundId);
                 const selColor = selSnd?.color ?? '#a78bfa';
                 const selImgSrc = selSnd?.id === 'lalitha' ? LALITHA_IMG : (SOUND_IMAGES[formSoundId] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[formSoundId]) } : undefined);
                 return (
-                  <TouchableOpacity
-                    onPress={() => { setLibraryModalTarget('habit'); setLibraryModalVisible(true); }}
-                    activeOpacity={0.8}
-                    style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8, height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '40', shadowColor: selColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}
-                  >
-                    <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.85 }}>
-                      <LinearGradient colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
-                      <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                  <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 16 }}>
+                    {/* Selected Sound Banner */}
+                    <View style={{ height: 64, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: selColor + '20', marginBottom: 12 }}>
+                      <ImageBackground source={selImgSrc} style={{ flex: 1 }} imageStyle={{ borderRadius: 14, opacity: 0.7 }}>
+                        <LinearGradient colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                        <View style={{ flex: 1, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <Text style={{ fontSize: 18 }}>{selSnd?.emoji ?? '🎵'}</Text>
+                          </View>
+                          <View style={{ flex: 1, justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>CURRENTLY SELECTED</Text>
+                            <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Sound Bath'}</Text>
+                          </View>
                         </View>
-                        <View style={{ flex: 1, justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: selColor, letterSpacing: 1.6, marginBottom: 1 }}>SELECTED SOUND</Text>
-                          <Text style={{ fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: -0.2 }} numberOfLines={1}>{selSnd?.label ?? 'Sound Bath'}</Text>
-                        </View>
-                        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.4)" />
-                      </View>
-                    </ImageBackground>
-                  </TouchableOpacity>
+                      </ImageBackground>
+                    </View>
+
+                    {/* Elegant Select Button */}
+                    <TouchableOpacity
+                      onPress={() => { setLibraryModalTarget('habit'); setLibraryModalVisible(true); }}
+                      activeOpacity={0.8}
+                      style={{ height: 50, borderRadius: 16, overflow: 'hidden' }}
+                    >
+                      <LinearGradient colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 16 }}>
+                        <Feather name="headphones" size={16} color="#fff" style={{ marginRight: 10, opacity: 0.9 }} />
+                        <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#fff', letterSpacing: 1.5 }}>CHOOSE SOUND BATH</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
                 );
               })()}
 
               {/* Time picker */}
-              <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 4 }}>
+              <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 }}>
                 <TimeAdjuster hour={formHour} minute={formMinute} onChange={(h, m) => { setFormHour(h); setFormMinute(m); }} />
               </View>
 
               {/* Repeat days */}
-              <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
-                <Text style={[S.sheetSection, { marginTop: 4, marginHorizontal: 0 }]}>REPEAT DAYS</Text>
+              <View style={{ paddingHorizontal: 20, marginBottom: 16, marginTop: 12 }}>
+                <Text style={{ fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: '#a78bfa80', letterSpacing: 1.5, marginBottom: 10, marginLeft: 4 }}>REPEAT DAYS</Text>
                 <DaySelector days={formDays} onChange={setFormDays} />
               </View>
 
               {/* Sound picker widget (now integrated into the hero card) */}
 
               {/* Optional label */}
-              <View style={{ marginHorizontal: 20, marginTop: 6, marginBottom: 10 }}>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF22', letterSpacing: 2, marginBottom: 8 }}>LABEL (optional)</Text>
+              <View style={{ marginHorizontal: 20, marginTop: 12, marginBottom: 20 }}>
+                <Text style={{ fontSize: 10, fontFamily: 'Nunito_800ExtraBold', color: '#a78bfa80', letterSpacing: 1.5, marginBottom: 10, marginLeft: 4 }}>LABEL (OPTIONAL)</Text>
                 <TextInput
-                  style={{ backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: '#fff', fontSize: 14 }}
+                  style={{ backgroundColor: 'rgba(167, 139, 250, 0.05)', borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.3)', borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, color: '#fff', fontSize: 15, fontFamily: 'Nunito_600SemiBold' }}
                   placeholder="e.g. Morning Meditation, Evening Rest..."
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                   value={formLabel}
                   onChangeText={setFormLabel}
                 />
               </View>
+            </ScrollView>
 
-              {/* Save button */}
+            {/* Floating Save button */}
+            <View style={{ position: 'absolute', bottom: 50, left: 20, right: 20 }}>
               <TouchableOpacity
                 onPress={() => { stopPreview(); saveNewEntry(); }}
-                style={{ marginHorizontal: 20, marginBottom: 12, borderRadius: 99, overflow: 'hidden', shadowColor: '#c084fc', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 }}
-                activeOpacity={0.85}
+                style={{ borderRadius: 999, overflow: 'hidden', shadowColor: '#c084fc', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.45, shadowRadius: 25, elevation: 15 }}
+                activeOpacity={0.9}
               >
-                <LinearGradient colors={['#9333ea', '#c084fc']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
+                <LinearGradient colors={['#9333ea', '#d8b4fe']} start={{x:0, y:0}} end={{x:1, y:1}} style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, fontFamily: 'Nunito_800ExtraBold', color: '#ffffff', letterSpacing: 2, textTransform: 'uppercase' }}>
                     {editEntry ? 'Update Sound Bath' : 'Set Sound Bath'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <View style={{ height: 20 }} />
-            </ScrollView>
+            </View>
           </SafeAreaView>
         </View>
       </Modal>
@@ -2077,9 +2100,9 @@ const S = StyleSheet.create({
   fabOpen: { backgroundColor: '#c05e00' },
   fabTxt: { fontSize: 26, color: '#fff', fontWeight: '200', lineHeight: 32, marginTop: 2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', bottom: 158, left: 0, right: 0, gap: 8, alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
-  fabMenuItem: { backgroundColor: 'rgba(12,8,38,0.94)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 14, elevation: 14, width: width - 80, alignItems: 'center' },
-  fabMenuItemTxt: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  fabMenu: { position: 'absolute', left: 0, right: 0, gap: 10, alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  fabMenuItem: { backgroundColor: 'rgba(20,15,35,0.65)', borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, elevation: 14, width: width - 70, alignItems: 'center', overflow: 'hidden' },
+  fabMenuItemTxt: { fontSize: 15, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.3 },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },

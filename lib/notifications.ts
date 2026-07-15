@@ -59,28 +59,13 @@ export const NOTIFICATION_SPEECHES: Record<string, Record<string, string>> = {
   },
 };
 
-// ── Scheduled notifications ───────────────────────────────────────────────────
-const SLOT_REMINDERS = [
-  // ── Period START notifications ──────────────────────────────────────────────
-  {
-    id: 'morning-start',
-    title: '🌅 Morning Rituals Window Open',
-    body: 'Kapha Kala is live. Move your body, warm water, Surya Namaskar. Log your habits now. 🙏',
-    hour: 6, minute: 0,
-  },
-  {
-    id: 'afternoon-start',
-    title: '🔥 Pitta Noon — Peak Agni Window',
-    body: 'Agni is strongest right now. Eat your main meal, make bold decisions. Log afternoon habits. 🍛',
-    hour: 12, minute: 0,
-  },
-  {
-    id: 'evening-start',
-    title: '🌆 Evening Wind-Down Window Open',
-    body: 'Light dinner, evening walk, screen-free time. Protect your Ojas. Log habits now. 🪔',
-    hour: 18, minute: 0,
-  },
-];
+// ── Fixed-clock slot reminders removed ───────────────────────────────────────
+// These notifications (morning 6 AM, pitta 12 PM, evening 6 PM) have been
+// removed. They felt like unwanted "login notifications" firing at fixed times
+// unrelated to the user's actual solar location.
+// Sacred Solar Hours + Circadian Alerts now fire in real-time from the home
+// screen when the hero ring phase changes.
+const SLOT_REMINDERS: Array<{ id: string; title: string; body: string; hour: number; minute: number }> = [];
 
 // ── Channel setup (call once at app startup) ─────────────────────────────────
 export async function setupNotificationChannel() {
@@ -107,32 +92,15 @@ export async function scheduleHabitReminders() {
   if (!granted) return;
 
   await setupNotificationChannel();
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  console.log('[Alarm] Scheduling habit reminders...');
-
-  for (const r of SLOT_REMINDERS) {
-    await Notifications.scheduleNotificationAsync({
-      identifier: r.id,
-      content: {
-        title: r.title,
-        body: r.body,
-        sound: 'mantra_alarm.m4a',
-        data: { speechId: r.id },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: r.hour,
-        minute: r.minute,
-        channelId: 'onesutra-alarms',
-      },
-    });
-    console.log(`[Alarm] Scheduled habit reminder: ${r.id} at ${r.hour}:${String(r.minute).padStart(2,'0')}`);
-  }
+  // Fixed-slot reminders removed — real-time solar phase notifications fire
+  // from index.tsx when the hero ring changes its sacred hour / circadian phase.
+  console.log('[Alarm] Fixed-slot habit reminders disabled — using real-time solar phase notifications');
 }
 
 export async function cancelAllReminders() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
+
 
 // ── Alarm Settings Type ───────────────────────────────────────────────────────
 export interface ExtraWakeAlarm {

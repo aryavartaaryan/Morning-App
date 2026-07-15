@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle, Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useSoundPlayer, MAX_MIX } from "@/lib/soundPlayerContext";
 import { ALL_SLEEP_SOUNDS } from "@/lib/sleepSoundsData";
@@ -744,6 +745,7 @@ function GlobalPlayerBar() {
   const displayMeta = playingMeta ?? lastMetaRef.current;
   const [rendered, setRendered] = useState(false);
   const [stepActive, setStepActive] = useState(false);
+  // removed showClosePrompt state
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('StepTracker.active', setStepActive);
@@ -896,6 +898,7 @@ function GlobalPlayerBar() {
           <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
       </LinearGradient>
+
     </Animated.View>
   );
 }
@@ -1154,7 +1157,7 @@ const TABS = [
     route: "/(tabs)/walk",
     iconOn: "footsteps" as const,
     icon: "footsteps-outline" as const,
-    label: "Naad Steps",
+    label: "Nada Walk",
     color: "#34d399",
   },
 ];
@@ -1349,7 +1352,7 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    Sounds
+                    Resonance
                   </Text>
                 </View>
               ) : tab.name === "alarms" ? (
@@ -1379,7 +1382,7 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    Naad
+                    Nada
                   </Text>
                   <Text
                     style={[

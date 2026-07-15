@@ -343,8 +343,8 @@ class StepCounterService : Service(), SensorEventListener {
         val title = when {
             isWalkRunning && isDailyRunning -> "🚶 Walking · $sessionSteps steps"
             isWalkRunning                  -> "🚶 Walk in progress · $sessionSteps steps"
-            isDailyRunning                 -> "👟 Naad step tracker active"
-            else                           -> "Naad"
+            isDailyRunning                 -> "👟 Nada step tracker active"
+            else                           -> "Nada"
         }
         val body = when {
             isWalkRunning && isDailyRunning -> "Today: $todaySteps steps total"
@@ -358,13 +358,15 @@ class StepCounterService : Service(), SensorEventListener {
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
             .setSilent(true)
+            .setOnlyAlertOnce(true) // Crucial to prevent audio ducking/stuttering on updates
             .setContentIntent(pi)
             .build()
     }
 
     private fun updateNotification(force: Boolean = false) {
         val now = System.currentTimeMillis()
-        if (!force && now - lastNotifTime < 2000) return
+        // Throttle to 10000ms (10s) instead of 2000ms to reduce system UI load and audio interrupts
+        if (!force && now - lastNotifTime < 10000) return
         lastNotifTime = now
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, buildNotification())

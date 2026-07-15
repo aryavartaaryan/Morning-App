@@ -130,7 +130,7 @@ export default function SoundLibraryModal({
               <View style={S.headerTopRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="musical-notes-outline" size={18} color="rgba(255,255,255,0.8)" style={{ marginRight: 8 }} />
-                  <Text style={S.title}>Naad Library</Text>
+                  <Text style={S.title}>Nada Library</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); router.push('/(tabs)/settings' as never); }} style={[S.closeBtn, { marginRight: 8 }]} activeOpacity={0.7}>

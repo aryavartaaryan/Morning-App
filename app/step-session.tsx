@@ -1,16 +1,14 @@
 /**
- * step-session.tsx — Active Walk Session Screen
+ * step-session.tsx — Live Walk Session Screen
  * ─────────────────────────────────────────────────────────────────────────────
- * Full-screen immersive session tracker.
- * - Giant live step count with spring animation on each step
- * - Circular progress arc (SVG, animated strokeDashoffset)
- * - Live distance / time / pace / calories row
- * - Pause and End buttons
- * - Back press → confirmation dialog
- * - Post-meal 100-step completion → canvas confetti celebration overlay
- *
- * All sensor work is inside StepCounterService.kt — this screen only
- * subscribes to 'NativeStepUpdate' events and displays the result.
+ * Ultra-premium frosted glass live activity tracker.
+ * - Full frosted glass design — feels like iOS Live Activity
+ * - Premium solid frosted ring disc (not transparent)
+ * - Live step count with spring animation
+ * - Circular progress arc (multi-layer premium SVG)
+ * - Live distance / time / pace metric cards (glassmorphic)
+ * - Pause and End buttons (premium frosted)
+ * - Exit modal and confetti celebration
  */
 
 import React, {
@@ -30,6 +28,7 @@ import {
   ToastAndroid,
   Platform,
   ImageBackground,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
@@ -49,6 +48,7 @@ import SoundLibraryModal from '@/components/SoundLibraryModal';
 import { ALL_SOUNDS_LIST } from '@/app/(tabs)/sleep';
 import { useBgContext } from '@/lib/bgContext';
 import { getBgSourceSync } from '@/lib/bgImages';
+import { DARK_BG_KEYS } from '@/lib/cardTheme';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -56,19 +56,19 @@ const { width: W, height: H } = Dimensions.get('window');
 const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SZ = 220; // Slightly larger for premium feel
-const STROKE  = 16;  // Thicker premium stroke
+const RING_SZ = 200; // Slightly larger for live activity feel
+const STROKE  = 14;
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
 
 // ── Session meta ──────────────────────────────────────────────────────────────
 const SESSION_META: Record<
   SessionType,
-  { label: string; emoji: string; color: string; goal: number; bgTop: string }
+  { label: string; emoji: string; color: string; goal: number; bgTop: string; gradA: string; gradB: string }
 > = {
-  morning:  { label: 'Morning Walk',   emoji: '🌅', color: '#34D399', goal: 3000, bgTop: '#0A1A12' },
-  evening:  { label: 'Evening Walk',   emoji: '🌆', color: '#F472B6', goal: 3000, bgTop: '#1A0A12' },
-  postmeal: { label: 'Post-meal Walk', emoji: '🍽️', color: '#FB923C', goal: 100,  bgTop: '#1A0E08' },
+  morning:  { label: 'Morning Walk',   emoji: '🌅', color: '#34D399', goal: 3000, bgTop: '#0A1A12', gradA: '#34D399', gradB: '#2DD4BF' },
+  evening:  { label: 'Evening Walk',   emoji: '🌆', color: '#F472B6', goal: 3000, bgTop: '#1A0A12', gradA: '#F472B6', gradB: '#A78BFA' },
+  postmeal: { label: 'Post-meal Walk', emoji: '🍽️', color: '#FB923C', goal: 100,  bgTop: '#1A0E08', gradA: '#FB923C', gradB: '#FCD34D' },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,6 +82,19 @@ function fmtTime(seconds: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
+// ── Glassy Overlay ────────────────────────────────────────────────────────────
+function GlassPulseOverlay() {
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.03)', 'transparent']}
+        start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+    </View>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function StepSessionScreen() {
   const insets = useSafeAreaInsets();
@@ -91,15 +104,19 @@ export default function StepSessionScreen() {
   const type = (sessionType as SessionType | undefined) ?? 'morning';
   let meta = SESSION_META[type] ?? SESSION_META.morning;
   
-  // Apply dynamic time-based label if it's the main walk during midday
   if (type === 'morning') {
     const hour = new Date().getHours();
     if (hour >= 12 && hour < 17) {
-      meta = { ...meta, label: 'Walk', emoji: '☀️' };
+      meta = { ...meta, emoji: '☀️' };
     }
   }
 
-  const C = meta.color;
+  // Always use "The Walk" as the title
+  meta = { ...meta, label: 'The Walk' };
+
+  const C  = meta.color;
+  const GA = meta.gradA;
+  const GB = meta.gradB;
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [steps,    setSteps]    = useState(0);
@@ -107,12 +124,12 @@ export default function StepSessionScreen() {
   const [paused,   setPaused]   = useState(false);
   const [done,     setDone]     = useState(false);
   const [confetti, setConfetti] = useState(false);
-  // Drives SVG strokeDashoffset without createAnimatedComponent (avoids stopTracking crash)
   const [progressDashOffset, setProgressDashOffset] = useState(CIRCUM);
 
   // Sound Integration
   const { playingId, isPaused, togglePause, stopSound, playSound } = useSoundPlayer();
   const [isSoundModalVisible, setIsSoundModalVisible] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -134,13 +151,14 @@ export default function StepSessionScreen() {
   const fadeIn       = useRef(new Animated.Value(0)).current;
   const slideUp      = useRef(new Animated.Value(40)).current;
   const pauseScale   = useRef(new Animated.Value(1)).current;
+  const glowAnim     = useRef(new Animated.Value(0)).current;
   
   // Sci-fi ring rotations
   const rot1 = useRef(new Animated.Value(0)).current;
   const rot2 = useRef(new Animated.Value(0)).current;
   const rot3 = useRef(new Animated.Value(0)).current;
 
-  // Confetti particles (stable refs)
+  // Confetti particles
   const PARTICLE_COUNT = 32;
   const particlesX   = useRef(Array.from({ length: PARTICLE_COUNT }, () => new Animated.Value(0))).current;
   const particlesY   = useRef(Array.from({ length: PARTICLE_COUNT }, () => new Animated.Value(0))).current;
@@ -154,21 +172,26 @@ export default function StepSessionScreen() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.12, duration: 3000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.10, duration: 3000, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1.00, duration: 3000, useNativeDriver: true }),
       ])
     ).start();
 
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+
     Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 20000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
     (async () => {
       const result = await StepCounter.startSession(type);
       startMsRef.current = result.startTime;
 
-      // ── Diagnostic Toast: which sensor is powering this session? ─────────────
-      // Fires 1.5s after start so the native service has time to register sensors.
       if (Platform.OS === 'android') {
         setTimeout(async () => {
           const src = await StepCounter.getSensorSource();
@@ -185,11 +208,10 @@ export default function StepSessionScreen() {
           );
         }, 1500);
       }
-      // ────────────────────────────────────────────────────────────────────────
 
       Animated.parallel([
-        Animated.timing(fadeIn,  { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.timing(slideUp, { toValue: 0, duration: 500, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+        Animated.timing(fadeIn,  { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(slideUp, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
       ]).start();
 
       timerRef.current = setInterval(() => {
@@ -209,7 +231,6 @@ export default function StepSessionScreen() {
     const sub = StepCounter.onStep((total) => {
       if (pausedRef.current || doneRef.current) return;
 
-      // 1. Run ultra-cheap native animations immediately (zero JS lag)
       Animated.sequence([
         Animated.spring(stepBounce, { toValue: 1.16, useNativeDriver: true, speed: 60, bounciness: 14 }),
         Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 40, bounciness: 4  }),
@@ -227,7 +248,6 @@ export default function StepSessionScreen() {
         launchConfetti();
       }
 
-      // 2. Throttle the heavy React re-render (setSteps / setProgressDashOffset)
       const now = Date.now();
       const syncState = () => {
         setSteps(total);
@@ -256,14 +276,19 @@ export default function StepSessionScreen() {
     router.back();
   }, []);
 
+  const promptExit = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowExitModal(true);
+  }, []);
+
   // ── Hardware back button ───────────────────────────────────────────────────
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      minimizeSession();
+      promptExit();
       return true;
     });
     return () => handler.remove();
-  }, [minimizeSession]);
+  }, [promptExit]);
 
   // ── Confetti ───────────────────────────────────────────────────────────────
   const launchConfetti = useCallback(() => {
@@ -347,230 +372,250 @@ export default function StepSessionScreen() {
       })()
     : '--';
 
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+
   // ─────────────────────────────────────────────────────────────────────────────
-  const { bgUri, accentColor } = useBgContext();
+  const { bgUri, accentColor, bgKey, solarTimes } = useBgContext();
+  const hour = new Date().getHours() + new Date().getMinutes() / 60;
+  const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
+  const sessionBgKey = isNightReal ? 'live_session_night' : 'live_session';
 
   return (
     <ImageBackground
-      source={{ uri: getBgSourceSync('naad_step') }}
+      source={{ uri: getBgSourceSync(sessionBgKey as any) }}
       style={[{ flex: 1, backgroundColor: accentColor || BG }]}
-      imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}>
+      imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
+      {!isNightReal && <GlassPulseOverlay />}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Background Gradient overlay */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
-        locations={[0, 0.40, 1]}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
-
-      {/* Violet aura top-left (Sky blue theme) */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { opacity: 1, pointerEvents: 'none' },
-        ]}
-        pointerEvents="none"
-      >
+      {/* Session-colour aurora aura */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity }]} pointerEvents="none">
         <LinearGradient
-          colors={['rgba(56,189,248,0.1)', 'transparent']}
-          style={{ position: 'absolute', top: -60, left: -60, width: 320, height: 320, borderRadius: 160 }}
+          colors={[GA + '22', 'transparent']}
+          style={{ position: 'absolute', top: -100, left: -100, width: 420, height: 420, borderRadius: 210 }}
+        />
+        <LinearGradient
+          colors={[GB + '14', 'transparent']}
+          style={{ position: 'absolute', top: 80, right: -80, width: 320, height: 320, borderRadius: 160 }}
+        />
+        {/* Bottom glow */}
+        <LinearGradient
+          colors={['transparent', GA + '14']}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 300 }}
         />
       </Animated.View>
 
-      {/* ── HEADER ──────────────────────────────────────────────────────────── */}
+      {/* ── HEADER — frosted glass live activity bar ──────────────────────────── */}
       <Animated.View
-        style={[s.header, { paddingTop: insets.top + 8, opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+        style={[{ opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
       >
-        <TouchableOpacity onPress={confirmEnd} style={s.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={s.closeTxt}>✕</Text>
-        </TouchableOpacity>
+        <View style={{
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          paddingTop: insets.top + 6,
+          paddingBottom: 14,
+          paddingHorizontal: 20,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+        }}>
+          {/* Top shine */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.09)', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          {/* Bottom border glow */}
+          <LinearGradient
+            colors={[C + '50', C + '20', 'transparent', C + '35']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1.5 }}
+            pointerEvents="none"
+          />
 
-        <View style={{ alignItems: 'center' }}>
-          <Text style={s.headerEmoji}>{meta.emoji}</Text>
-          <Text style={[s.headerLabel, { color: C }]}>{meta.label}</Text>
-        </View>
+          {/* Close / Exit */}
+          <TouchableOpacity
+            onPress={promptExit}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="close" size={18} color="rgba(255,255,255,0.65)" />
+          </TouchableOpacity>
 
-        <View style={s.statusPill}>
-          {paused ? (
-            <Text style={s.pausedBadge}>PAUSED</Text>
-          ) : (
-            <View style={[s.liveDot, { backgroundColor: C }]} />
-          )}
+          {/* Centre — session identity */}
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, marginBottom: 1 }}>{meta.emoji}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: C, letterSpacing: 0.6, textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
+              {meta.label}
+            </Text>
+          </View>
+
+          {/* Live / Paused status */}
+          <View style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}>
+            {paused ? (
+              <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(251,146,60,0.18)', borderWidth: 1, borderColor: 'rgba(251,146,60,0.4)' }}>
+                <Text style={{ fontSize: 7, fontWeight: '900', color: '#FB923C', letterSpacing: 1.2 }}>PAUSE</Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, backgroundColor: C + '20', borderWidth: 1, borderColor: C + '50' }}>
+                <Animated.View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.6, 1] }) }} />
+                <Text style={{ fontSize: 7, fontWeight: '900', color: C, letterSpacing: 1 }}>LIVE</Text>
+              </View>
+            )}
+          </View>
         </View>
       </Animated.View>
 
       {/* ── BODY ────────────────────────────────────────────────────────────── */}
       <Animated.View style={[s.body, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
 
-        {/* Minimize Button */}
-        <TouchableOpacity 
-          style={{ position: 'absolute', top: insets.top + 16, left: 24, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}
-          onPress={minimizeSession}
-        >
-          <Ionicons name="chevron-down" size={24} color="#fff" />
-        </TouchableOpacity>
+        {/* Headphone hint */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(12,24,42,0.72)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(56,189,248,0.22)', marginBottom: 6 }}>
+          <Ionicons name="headset" size={10} color="#38bdf8" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 9, fontWeight: '700', color: '#bae6fd', letterSpacing: 0.4 }}>Use headphone, listen Nada sound and just walk</Text>
+        </View>
 
-        {/* Premium Quick Hints Column (Zero clutter, ultra smart) */}
-        <View style={{ alignItems: 'center', gap: 10, marginBottom: 20, paddingHorizontal: 16 }}>
-          {/* Headphone Hint */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(56,189,248,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)' }}>
-            <Ionicons name="headset" size={12} color="#38bdf8" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#bae6fd', letterSpacing: 0.2 }}>Use headphones for Naad Audio</Text>
+        {/* Nature Wisdom card — frosted glass */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center',
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          paddingHorizontal: 12, paddingVertical: 8,
+          borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+          width: '96%', alignSelf: 'center', marginBottom: 6, overflow: 'hidden',
+        }}>
+          <LinearGradient
+            colors={['rgba(52,211,153,0.12)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <LinearGradient
+            colors={['rgba(255,255,255,0.07)', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}
+          />
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(52,211,153,0.18)', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)' }}>
+            <Ionicons name="earth" size={16} color="#34d399" />
           </View>
-          
-          {/* Elegant Barefoot Wisdom Card */}
-          <View style={{
-            flexDirection: 'row', alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.45)', // Premium dark glass
-            paddingHorizontal: 14, paddingVertical: 12,
-            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.3)',
-            shadowColor: '#34d399', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 3,
-            width: '95%', alignSelf: 'center',
-          }}>
-            <View style={{
-              width: 36, height: 36, borderRadius: 18,
-              backgroundColor: 'rgba(52, 211, 153, 0.15)',
-              alignItems: 'center', justifyContent: 'center',
-              marginRight: 12, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.35)'
-            }}>
-              <Ionicons name="planet-outline" size={18} color="#34d399" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, fontWeight: '900', color: '#34d399', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
-                Earth Connection
-              </Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.75)', lineHeight: 16 }}>
-                Walk barefoot on a natural, clean earth surface only in pleasant weather.
-              </Text>
-            </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 9, fontWeight: '900', color: '#34d399', letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 2 }}>
+              Nature Connection
+            </Text>
+            <Text style={{ fontSize: 10, fontWeight: '500', color: 'rgba(255,255,255,0.70)', lineHeight: 14 }}>
+              Walk barefoot if conditions permit, or simply wear shoes and take a mindful nature bath.
+            </Text>
           </View>
         </View>
 
-        {/* ── ULTRA-PREMIUM SCI-FI RING ────────────────────────────────────────────── */}
+        {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
         <View style={s.ringWrapper}>
-          {/* === 5-layer pulsing aura (breathing glow around ring) === */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 60, height: RING_SZ + 60, borderRadius: (RING_SZ + 60) / 2, backgroundColor: '#38bdf8', opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -14, left: -14 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 30, height: RING_SZ + 30, borderRadius: (RING_SZ + 30) / 2, backgroundColor: '#38bdf8', opacity: pulseAnim.interpolate({ inputRange: [1, 1.12], outputRange: [0.04, 0.10] }), transform: [{ scale: pulseAnim }], top: 1, left: 1 }} />
+          {/* Outer breathing aura layers */}
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.03, 0.10] }), transform: [{ scale: pulseAnim }], top: -35, left: -35 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, backgroundColor: GA, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.04, 0.12] }), transform: [{ scale: pulseAnim }], top: -18, left: -18 }} />
 
-          {/* Inner zone — glassy violet moonlit disk */}
-          <View style={{ position: 'absolute', top: 0, left: 0, width: RING_SZ, height: RING_SZ, borderRadius: RING_SZ / 2, backgroundColor: 'rgba(56,189,248,0.07)', overflow: 'hidden' }}>
-            <LinearGradient
-              colors={['rgba(56,189,248,0.14)', 'rgba(56,189,248,0.05)', 'transparent', 'rgba(56,189,248,0.04)']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-          </View>
+          {/* Inner disc removed for transparency */}
 
-          {/* SVG ring — Premium thick Apple-style ring */}
-          <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }}>
+          {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
+          <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 28, elevation: 12 }}>
             <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
               <Defs>
                 <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0"   stopColor="#34D399" stopOpacity="1" />
-                  <Stop offset="0.5" stopColor="#38bdf8" stopOpacity="1" />
-                  <Stop offset="1"   stopColor="#818cf8" stopOpacity="1" />
+                  <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
+                  <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
+                  <Stop offset="1"   stopColor={GB} stopOpacity="0.8" />
                 </SvgGrad>
               </Defs>
-              {/* Dark track */}
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={STROKE} />
               
-              {/* Main premium arc */}
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={1} />
+              {/* Outer razor-thin neon orbit */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 10} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 10} fill="none" stroke="url(#sessGrad)" strokeWidth={2} strokeDasharray={CIRCUM + 62.83} strokeDashoffset={(CIRCUM + 62.83) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
+
+              {/* Main thick segmented track */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth={STROKE} strokeDasharray="3 4" />
               
-              {/* Core glow */}
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R} fill="none" stroke="#38bdf8" strokeWidth={STROKE + 6} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.25} />
+              {/* Active solid glowing progress overlay */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} />
+              {/* Intense blur duplicate for inner core glow */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 6} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.75} />
+              
+              {/* Inner razor-thin neon orbit */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 10} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 10} fill="none" stroke="url(#sessGrad)" strokeWidth={2} strokeDasharray={CIRCUM - 62.83} strokeDashoffset={(CIRCUM - 62.83) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
             </Svg>
           </View>
 
-          {/* Rotating Outer Dashed HUD */}
+          {/* Rotating Outer Visualizer HUD */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#38bdf8" strokeWidth={1.5} fill="none" strokeDasharray="3 15" opacity={0.5} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R + 18} stroke="#bae6fd" strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.7} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
             </Svg>
           </Animated.View>
 
-          {/* Rotating Inner HUD 1 (Opposite) */}
+          {/* Rotating Inner HUD (Sine wave rapid feel) */}
           <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#38bdf8" strokeWidth={1.5} fill="none" strokeDasharray="8 24" opacity={0.4} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 16} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 40" opacity={0.8} strokeLinecap="round" />
-            </Svg>
-          </Animated.View>
-
-          {/* Rotating Inner HUD 2 (Fast scanning) */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#0ea5e9" strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.3} />
-              <Circle cx={RING_SZ / 2} cy={RING_SZ / 2} r={R - 26} stroke="#ffffff" strokeWidth={1} fill="none" strokeDasharray="10 180" opacity={0.6} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />
             </Svg>
           </Animated.View>
 
           {/* Centre content */}
-          <View style={[s.centreBox, { gap: 2 }]}>
+          <View style={[s.centreBox, { gap: 3 }]}>
+            {/* Badge */}
+            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: C + '20', borderWidth: 1, borderColor: C + '60', marginBottom: 4 }}>
+              <Text style={{ fontSize: 7, fontWeight: '900', color: C, letterSpacing: 1.4 }}>👣  LIVE STEPS</Text>
+            </View>
             <View style={{ alignItems: 'center' }}>
-              <Animated.Text style={[s.bigSteps, { fontSize: playingId ? 46 : 56, lineHeight: playingId ? 52 : 62, color: C, transform: [{ scale: stepBounce }] }]}>
+              <Animated.Text style={[s.bigSteps, { fontSize: playingId ? 44 : 54, lineHeight: playingId ? 50 : 60, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
                 {steps.toLocaleString()}
               </Animated.Text>
-              <Text style={[s.bigStepsUnit, playingId && { fontSize: 11 }]}>STEPS</Text>
+              <Text style={[s.bigStepsUnit, playingId && { fontSize: 10 }]}>STEPS</Text>
             </View>
             
             {!playingId && (
-              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '35' }]}>
+              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '40' }]}>
                 <Text style={[s.goalChipTxt, { color: C }]}>
                   {Math.min(100, Math.round(pct * 100))}% · {meta.goal.toLocaleString()} goal
                 </Text>
               </View>
             )}
 
-            {/* Ultra-Smart Sound Controls */}
+            {/* Sound Controls */}
             <View style={{ marginTop: playingId ? 4 : 8 }}>
               {!playingId ? (
                 <TouchableOpacity 
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }}
                   activeOpacity={0.8}
                 >
-                  <View style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                    paddingHorizontal: 16, paddingVertical: 8,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(56,189,248,0.12)',
-                    borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)',
-                  }}>
-                    <Ionicons name="musical-notes" size={14} color="#38bdf8" style={{ marginRight: 6 }} />
-                    <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>SELECT SOUND</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: 'rgba(14,28,48,0.80)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.35)', overflow: 'hidden' }}>
+                    <LinearGradient
+                      colors={['rgba(56,189,248,0.12)', 'transparent']}
+                      start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Ionicons name="musical-notes" size={12} color="#38bdf8" style={{ marginRight: 5 }} />
+                    <Text style={{ color: '#bae6fd', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>SELECT SOUND</Text>
                   </View>
                 </TouchableOpacity>
               ) : (
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                  backgroundColor: 'rgba(0,0,0,0.45)',
-                  borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)',
-                  paddingHorizontal: 12, paddingVertical: 6,
-                  borderRadius: 24, gap: 14,
-                  shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10,
-                  elevation: 5,
-                }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(8,18,36,0.85)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.40)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 22, gap: 12, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 5 }}>
+                  <LinearGradient
+                    colors={['rgba(56,189,248,0.08)', 'transparent']}
+                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 4 }}>
                     <Ionicons name="stop" size={14} color="rgba(255,255,255,0.45)" />
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
-                    style={{ 
-                      width: 38, height: 38, borderRadius: 19, 
-                      backgroundColor: 'rgba(56,189,248,0.2)', 
-                      borderWidth: 1, borderColor: 'rgba(56,189,248,0.5)',
-                      alignItems: 'center', justifyContent: 'center' 
-                    }}
+                    style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(56,189,248,0.22)', borderWidth: 1.5, borderColor: 'rgba(56,189,248,0.55)', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Ionicons name={isPaused ? "play" : "pause"} size={18} color="#FFF" style={isPaused ? { marginLeft: 2 } : {}} />
+                    <Ionicons name={isPaused ? "play" : "pause"} size={16} color="#FFF" style={isPaused ? { marginLeft: 2 } : {}} />
                   </TouchableOpacity>
                   
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 4 }}>
-                    <Ionicons name="list" size={16} color="rgba(255,255,255,0.8)" />
+                    <Ionicons name="list" size={16} color="rgba(255,255,255,0.75)" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -578,27 +623,34 @@ export default function StepSessionScreen() {
           </View>
         </View>
 
-        {/* Timer */}
-        <Text style={[s.timer, paused && { color: 'rgba(255,255,255,0.30)' }]}>
-          {fmtTime(elapsed)}
-        </Text>
+        {/* ── TIMER — frosted glass pill ──────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 10, overflow: 'hidden' }}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.07)', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <Text style={[s.timer, paused && { color: 'rgba(255,255,255,0.25)' }]}>
+            {fmtTime(elapsed)}
+          </Text>
+        </View>
 
-        {/* Metric row */}
+        {/* ── METRIC ROW — frosted glass cards ───────────────────────────── */}
         <View style={s.metricRow}>
           {[
-            { icon: '🏃', val: `${distKm.toFixed(2)}`, unit: 'km'  },
-            { icon: '⚡',  val: pace,                    unit: 'pace' },
+            { icon: '🏃', val: `${distKm.toFixed(2)}`, unit: 'km',  label: 'Distance' },
+            { icon: '⚡',  val: pace,                    unit: 'pace', label: 'Pace'     },
           ].map((m, i) => (
             <View
               key={i}
               style={[
                 s.metric,
-                i > 0 && { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.07)' },
+                i > 0 && { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.08)' },
               ]}
             >
               <Text style={s.metricIcon}>{m.icon}</Text>
               <Text style={[s.metricVal, { color: C }]}>{m.val}</Text>
-              <Text style={s.metricUnit}>{m.unit}</Text>
+              <Text style={s.metricUnit}>{m.label}</Text>
             </View>
           ))}
         </View>
@@ -615,33 +667,59 @@ export default function StepSessionScreen() {
           </View>
         )}
 
-        {/* Buttons */}
+        {/* ── ACTION BUTTONS — ultra smart frosted glass ─────────────────── */}
         <View style={s.btnRow}>
+          {/* PAUSE button */}
           <Animated.View style={{ flex: 1, transform: [{ scale: pauseScale }] }}>
             <TouchableOpacity
-              style={[
-                s.pauseBtn,
-                paused ? { borderColor: C, backgroundColor: C + '25', shadowColor: C } : { borderColor: 'rgba(255,255,255,0.3)' }
-              ]}
               onPress={toggleSessionPause}
-              activeOpacity={0.8}
+              activeOpacity={0.82}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: paused ? C : '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: paused ? 0.35 : 0.25, shadowRadius: 14, elevation: 5 }}
             >
-              {!paused && <LinearGradient colors={['rgba(255,255,255,0.1)', 'transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />}
-              <Text style={[s.pauseTxt, paused ? { color: C } : { color: '#FFF' }]}>
-                {paused ? '▶   RESUME' : '⏸   PAUSE'}
-              </Text>
+              <LinearGradient
+                colors={paused ? [GA + '30', GA + '18', GA + '25'] : ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1.5, borderColor: paused ? C + '60' : 'rgba(255,255,255,0.2)' }} />
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.10)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 22, borderTopLeftRadius: 22, borderTopRightRadius: 22 }}
+                />
+                <Ionicons name={paused ? 'play' : 'pause'} size={16} color={paused ? C : '#FFF'} />
+                <Text style={[s.pauseTxt, paused ? { color: C } : { color: '#FFF' }]}>
+                  {paused ? 'RESUME' : 'PAUSE'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
 
-          <TouchableOpacity 
-            style={[s.endBtn, { backgroundColor: C, shadowColor: C, shadowOpacity: 0.5, shadowRadius: 15 }]} 
-            onPress={confirmEnd}
-            activeOpacity={0.8}
-          >
-            <LinearGradient colors={['rgba(255,255,255,0.3)', 'transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-            <Text style={s.endTxt}>■   END</Text>
-          </TouchableOpacity>
+          {/* END button */}
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity 
+              onPress={promptExit}
+              activeOpacity={0.82}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 14, elevation: 5 }}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)' }} />
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.10)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 22, borderTopLeftRadius: 22, borderTopRightRadius: 22 }}
+                />
+                <Ionicons name="stop" size={15} color="#FFF" />
+                <Text style={[s.endTxt, { color: '#FFF' }]}>END</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
+
       </Animated.View>
 
       {/* ── CONFETTI / CELEBRATION OVERLAY ──────────────────────────────────── */}
@@ -651,10 +729,9 @@ export default function StepSessionScreen() {
           pointerEvents="none"
         >
           <LinearGradient
-            colors={['rgba(0,0,0,0.88)', 'rgba(5,20,12,0.94)']}
+            colors={['rgba(0,0,0,0.92)', 'rgba(5,20,12,0.96)']}
             style={StyleSheet.absoluteFillObject}
           />
-          {/* Particles */}
           {particlesX.map((px, i) => (
             <Animated.View
               key={i}
@@ -672,7 +749,6 @@ export default function StepSessionScreen() {
               ]}
             />
           ))}
-          {/* Message */}
           <View style={s.celebMsg}>
             <Text style={s.celebEmoji}>🎉</Text>
             <Text style={[s.celebTitle, { color: C }]}>Shatapavalli Complete!</Text>
@@ -683,6 +759,7 @@ export default function StepSessionScreen() {
           </View>
         </Animated.View>
       )}
+
       {/* Sound Library Modal */}
       <SoundLibraryModal
         visible={isSoundModalVisible}
@@ -692,106 +769,159 @@ export default function StepSessionScreen() {
         onPlaySound={(id) => {
           const meta = ALL_SOUNDS_LIST.find(s => s.id === id);
           if (meta) {
-            // Play sound for an indefinite looping walk session (12 hrs)
-            playSound(meta, 43200, undefined, 0, false);
+            playSound(meta, 43200, undefined, 0, true);
           }
           setIsSoundModalVisible(false);
         }}
       />
-  // Removed to avoid overlapping tags
+      <ExitModal 
+        visible={showExitModal} 
+        onClose={() => setShowExitModal(false)} 
+        onMinimize={() => { setShowExitModal(false); minimizeSession(); }} 
+        onEnd={() => { setShowExitModal(false); endSession(); }} 
+        color={C}
+        gradA={GA}
+        gradB={GB}
+      />
     </ImageBackground>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Exit Modal — frosted glass
+// ─────────────────────────────────────────────────────────────────────────────
+function ExitModal({
+  visible, onClose, onMinimize, onEnd, color, gradA, gradB
+}: {
+  visible: boolean; onClose: () => void; onMinimize: () => void; onEnd: () => void; color: string; gradA: string; gradB: string;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        
+        {/* Apple-style floating premium sheet */}
+        <View style={{ borderRadius: 24, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.4, shadowRadius: 36 }}>
+          <LinearGradient
+            colors={['rgba(25,25,35,0.85)', 'rgba(15,15,25,0.92)']}
+            style={{ padding: 28, paddingBottom: 20, alignItems: 'center' }}
+          >
+            {/* Top border shine */}
+            <LinearGradient
+              colors={['rgba(255,255,255,0.18)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.1 }}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            
+            {/* Elegant minimal icon */}
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+              <Ionicons name="walk" size={22} color="#fff" style={{ marginLeft: 2 }} />
+            </View>
+            
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 }}>
+              Session in Progress
+            </Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginBottom: 26, lineHeight: 20, paddingHorizontal: 10 }}>
+              Minimize the screen to keep walking with Nada Audio, or end the session to save your progress.
+            </Text>
+            
+            <View style={{ width: '100%', gap: 10 }}>
+              {/* Keep Walking (Primary Safe Action) — Translucent Glass */}
+              <TouchableOpacity
+                onPress={onMinimize}
+                style={{ borderRadius: 20, overflow: 'hidden' }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.06)']}
+                  style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }} />
+                  <Ionicons name="chevron-down" size={16} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, letterSpacing: 0.2 }}>Keep Walking in Background</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              {/* End Session (Destructive/Final Action) — Subtle Destructive Gradient */}
+              <TouchableOpacity
+                onPress={onEnd}
+                style={{ borderRadius: 20, overflow: 'hidden' }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(239,68,68,0.20)', 'rgba(220,38,38,0.10)']}
+                  style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                >
+                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }} />
+                  <Ionicons name="stop" size={14} color="#fca5a5" />
+                  <Text style={{ color: '#fca5a5', fontWeight: '700', fontSize: 14, letterSpacing: 0.3 }}>End Session</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 22, paddingVertical: 8, paddingHorizontal: 20 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
-const CARD_BG  = 'rgba(255,255,255,0.055)';
+const CARD_BG  = 'rgba(12,12,30,0.72)';
 const CARD_BDR = 'rgba(255,255,255,0.09)';
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingBottom: 8,
-  },
-  closeBtn: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: CARD_BG, borderWidth: 1, borderColor: CARD_BDR,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  closeTxt:     { fontSize: 16, color: 'rgba(255,255,255,0.55)', fontWeight: '700' },
-  headerEmoji:  { fontSize: 20 },
-  headerLabel:  { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  statusPill:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  pausedBadge:  { fontSize: 8, fontWeight: '900', color: '#FB923C', letterSpacing: 1 },
-  liveDot:      { width: 8, height: 8, borderRadius: 4 },
-
   body: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24,
+    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: -25,
   },
 
   ringWrapper: {
-    width: RING_SZ + 32, height: RING_SZ + 32,
+    width: RING_SZ + 40, height: RING_SZ + 40,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4,
-  },
-  ringGlow: {
-    position: 'absolute',
-    width: RING_SZ + 32, height: RING_SZ + 32,
-    borderRadius: (RING_SZ + 32) / 2,
-    borderWidth: 1,
+    marginBottom: 4, marginTop: 4,
   },
   centreBox: {
     position: 'absolute', alignItems: 'center', justifyContent: 'center',
   },
-  bigSteps:     { fontSize: 62, fontWeight: '900', letterSpacing: -2, lineHeight: 68 },
-  bigStepsUnit: { fontSize: 13, color: 'rgba(255,255,255,0.38)', fontWeight: '600', marginTop: -2 },
+  bigSteps:     { fontSize: 58, fontWeight: '900', letterSpacing: -2, lineHeight: 64 },
+  bigStepsUnit: { fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '600', marginTop: -2, letterSpacing: 2 },
   goalChip: {
-    borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, marginTop: 10,
+    borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8,
   },
-  goalChipTxt: { fontSize: 11, fontWeight: '700' },
-
-  ripple: {
-    position: 'absolute',
-    alignSelf: 'center',
-    top: H * 0.5 - RING_SZ * 0.5,
-    width: RING_SZ, height: RING_SZ,
-    borderRadius: RING_SZ / 2,
-    borderWidth: 2,
-  },
+  goalChipTxt: { fontSize: 10, fontWeight: '700' },
 
   timer: {
-    fontSize: 20, fontWeight: '700',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 2, marginBottom: 22,
+    fontSize: 22, fontWeight: '700',
+    color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 3,
   },
 
   metricRow: {
     flexDirection: 'row',
-    backgroundColor: CARD_BG, borderRadius: 20,
-    borderWidth: 1, borderColor: CARD_BDR,
-    marginBottom: 24, alignSelf: 'stretch', overflow: 'hidden',
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 10, alignSelf: 'stretch', overflow: 'hidden',
   },
-  metric:     { flex: 1, alignItems: 'center', paddingVertical: 16, gap: 2 },
-  metricIcon: { fontSize: 16 },
-  metricVal:  { fontSize: 17, fontWeight: '900' },
-  metricUnit: { fontSize: 10, color: 'rgba(255,255,255,0.33)', fontWeight: '600' },
+  metric:     { flex: 1, alignItems: 'center', paddingVertical: 8, gap: 2 },
+  metricIcon: { fontSize: 16, marginBottom: 2 },
+  metricVal:  { fontSize: 18, fontWeight: '900' },
+  metricUnit: { fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: '600' },
 
-  shataBar:   { alignSelf: 'stretch', gap: 8, marginBottom: 20 },
+  shataBar:   { alignSelf: 'stretch', gap: 8, marginBottom: 12 },
   shataLabel: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
   shataTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' },
   shataFill:  { height: 6, borderRadius: 3 },
 
-  btnRow: { flexDirection: 'row', gap: 16, alignSelf: 'stretch', justifyContent: 'center', paddingHorizontal: 10 },
-  pauseBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 30,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4, overflow: 'hidden',
-  },
-  pauseTxt: { fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 2 },
-  endBtn:   { paddingVertical: 14, paddingHorizontal: 36, borderRadius: 30, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
-  endTxt:   { fontSize: 13, fontWeight: '900', color: '#0A0A0F', letterSpacing: 2 },
+  btnRow: { flexDirection: 'row', gap: 14, alignSelf: 'stretch', justifyContent: 'center' },
+  pauseTxt: { fontSize: 13, fontWeight: '800', letterSpacing: 1 },
+  endTxt:   { fontSize: 13, fontWeight: '900', color: '#0A0A0F', letterSpacing: 1 },
 
   overlay:   { alignItems: 'center', justifyContent: 'center' },
   particle:  { position: 'absolute', width: 10, height: 10, borderRadius: 5, alignSelf: 'center', top: '50%' },

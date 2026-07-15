@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
+import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle } from 'react-native-svg';
@@ -173,7 +173,7 @@ const SOUND_BUNDLED_IMAGES: Record<string, any> = {
 
 const SOUND_IMAGES = SOUND_IMAGES_LIB;
 
-// ─── NAAD remote sounds — streamed from CDN, not bundled in APK ─────────────
+// ─── NADA remote sounds — streamed from CDN, not bundled in APK ─────────────
 const NAAD_BASE = 'https://audio.onesutralabs.com/All%20Nada%20Sounds/';
 type NaadSound = { id: string; label: string; emoji: string; cat: string; color: string; top: string; bot: string; desc: string; src: { uri: string } };
 const NAAD_SOUNDS: NaadSound[] = [
@@ -255,7 +255,7 @@ type SoundMode = {
 const SOUND_MODES: Record<string, SoundMode> = {
   morning: { key: 'morning', icon: '🌅', label: 'Morning Nāda',    subtitle: 'Meditate, move or simply listen',        headerGrad: ['#061826', '#081E30', '#0A1628'], recommended: ['hz_432', 'morning_flute', 'spring_birds', 'forest_breeze', 'tibetan_bowl'] },
   focus:   { key: 'focus',   icon: '💼', label: 'Listen & Work',      subtitle: 'Tune in, block out, go deep',             headerGrad: ['#061420', '#091A2C', '#0A1628'], recommended: ['light_rain', 'flowing_water', 'forest_breeze', 'gentle_wind', 'sea_waves'] },
-  restore: { key: 'restore', icon: '🌿', label: 'Afternoon Restore',  subtitle: 'Try Naad Sounds — see what sparks',       headerGrad: ['#061520', '#0A1628', '#0A1628'], recommended: ['flowing_water', 'forest_breeze', 'singing_bowl', 'hz_432', 'morning_birds'] },
+  restore: { key: 'restore', icon: '🌿', label: 'Afternoon Restore',  subtitle: 'Try Nada Sounds — see what sparks',       headerGrad: ['#061520', '#0A1628', '#0A1628'], recommended: ['flowing_water', 'forest_breeze', 'singing_bowl', 'hz_432', 'morning_birds'] },
   evening: { key: 'evening', icon: '🌙', label: 'Evening Wind Down',  subtitle: 'Signal your body: the day is done',       headerGrad: ['#06102A', '#090F28', '#0A1628'], recommended: ['tibetan_bowl', 'singing_bowl', 'night_forest', 'campfire', 'harbor_waves'] },
   sleep:   { key: 'sleep',   icon: '🌌', label: 'Good Night',         subtitle: 'Set a timer, press play, close your eyes', headerGrad: ['#030C20', '#061226', '#0A1628'], recommended: ['light_rain', 'night_forest', 'harbor_waves', 'tibetan_bowl', 'flowing_water', 'sea_waves', 'heavy_rain', 'campfire', 'singing_bowl', 'rain_thunder', 'jungle_rain'] },
 };
@@ -1137,10 +1137,18 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
           const velocity = Math.abs(gs.vx);
           // Ultra-frictionless: fast flick needs only 2px; slow drag needs 4px
           const threshold = velocity > 0.1 ? 2 : 4;
-          if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
-            onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
-          } else if (gs.dx > threshold && tabIdx > 0) {
-            onSelectRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
+          if (gs.dx < -threshold) {
+            if (tabIdx < TAB_CATEGORIES.length - 1) {
+              onSelectRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
+            } else {
+              onSelectRef.current(TAB_CATEGORIES[0] as Category, -1);
+            }
+          } else if (gs.dx > threshold) {
+            if (tabIdx > 0) {
+              onSelectRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
+            } else {
+              onSelectRef.current(TAB_CATEGORIES[TAB_CATEGORIES.length - 1] as Category, 1);
+            }
           }
         } catch (_e) { /* guard against any crash */ }
       },
@@ -1159,17 +1167,17 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
 
   return (
     <HeaderView
-      intensity={90}
+      intensity={0}
       tint="dark"
       style={{
-        backgroundColor: isAndroid ? 'rgba(10, 10, 15, 0.85)' : 'rgba(10, 10, 15, 0.45)',
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(255,255,255,0.15)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 10,
+        backgroundColor: 'transparent',
+        borderBottomWidth: 0,
+        borderBottomColor: 'transparent',
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
         zIndex: 50,
         overflow: 'hidden',
       }}
@@ -1201,30 +1209,30 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
         pointerEvents="none"
       />
 
-      {/* ── Glowing top accent bar under the active tab ── */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          height: 2,
-          position: 'absolute',
-          top: 0,
-          left: indicatorX,
-          width: indicatorW,
-          backgroundColor: activeColor,
-          opacity: 0.9,
-          shadowColor: activeColor,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 1,
-          shadowRadius: 8,
-          elevation: 3,
-          borderRadius: 1,
-        }}
-      />
+      {/* ── Row: tabs ── */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingVertical: 6, paddingHorizontal: 4 }}>
+        {/* ── Glowing sliding pill background ── */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 6,
+            bottom: 6,
+            left: indicatorX,
+            width: indicatorW,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.15)',
+            shadowColor: activeColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.5,
+            shadowRadius: 12,
+            elevation: 4,
+          }}
+        />
 
-      {/* ── Row: tabs + settings button ── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingTop: 0 }}>
-
-        {/* ── Category tabs — no 'All' in strip ── */}
+        {/* ── Category tabs ── */}
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {TAB_CATEGORIES.map(cat => {
             const isActive = selectedCat === cat;
@@ -1238,76 +1246,46 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   onSelect(cat);
                 }}
                 activeOpacity={0.60}
-                style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 8, gap: 6 }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 8, gap: 4 }}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   tabLayouts.current[cat] = { x, width };
                   if (cat === selectedCat) moveIndicator(cat, true);
                 }}
               >
-                <View style={{
-                  width: 42, height: 42,
-                  borderRadius: 21,
-                  backgroundColor: isActive ? catColor + '25' : 'rgba(255,255,255,0.04)',
-                  borderWidth: isActive ? 1.5 : 1,
-                  borderColor: isActive ? catColor + '80' : 'rgba(255,255,255,0.1)',
-                  alignItems: 'center', justifyContent: 'center',
-                  shadowColor: isActive ? catColor : 'transparent',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isActive ? 0.4 : 0,
-                  shadowRadius: 10,
-                }}>
-                  {cat === 'Birds' || cat === 'Meditations' ? (
-                    <MaterialCommunityIcons
-                      name={catIcon}
-                      size={20}
-                      color={isActive ? catColor : 'rgba(255,255,255,0.6)'}
-                    />
-                  ) : (
-                    <Ionicons
-                      name={catIcon}
-                      size={20}
-                      color={isActive ? catColor : 'rgba(255,255,255,0.6)'}
-                    />
-                  )}
-                </View>
+                {cat === 'Birds' || cat === 'Meditations' ? (
+                  <MaterialCommunityIcons
+                    name={catIcon}
+                    size={22}
+                    color={isActive ? catColor : 'rgba(255,255,255,0.5)'}
+                    style={isActive ? { textShadowColor: catColor, textShadowRadius: 8 } : {}}
+                  />
+                ) : (
+                  <Ionicons
+                    name={catIcon}
+                    size={22}
+                    color={isActive ? catColor : 'rgba(255,255,255,0.5)'}
+                    style={isActive ? { textShadowColor: catColor, textShadowRadius: 8 } : {}}
+                  />
+                )}
                 <Text
                   numberOfLines={1}
                   style={{
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: isActive ? '800' : '600',
                     fontFamily: isActive ? 'Nunito_800ExtraBold' : 'Nunito_600SemiBold',
-                    color: isActive ? catColor : 'rgba(255,255,255,0.6)',
-                    letterSpacing: 0.4,
+                    color: isActive ? catColor : 'rgba(255,255,255,0.5)',
+                    letterSpacing: 0.5,
+                    textShadowColor: isActive ? catColor : 'transparent',
+                    textShadowRadius: isActive ? 6 : 0,
                   }}
                 >
-                  {cat.toUpperCase()}
+                  {cat === 'Meditations' ? 'MEDITATE' : cat.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
-
-
-
-        {/* ── Glowing underline ── */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: indicatorX,
-            width: indicatorW,
-            height: 2,
-            borderRadius: 2,
-            backgroundColor: activeColor,
-            shadowColor: activeColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 10,
-            elevation: 4,
-          }}
-        />
       </View>
     </HeaderView>
   );
@@ -1740,6 +1718,14 @@ const REEL_DURATION_OPTIONS = [
 ] as const;
 type DurationId = typeof REEL_DURATION_OPTIONS[number]['id'];
 
+function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; sunset: number } | null): boolean {
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  if (solarTimes) {
+    return h >= solarTimes.sunset || h < solarTimes.sunrise;
+  }
+  return h >= 18 || h < 6;
+}
+
 function ReelCard({
   sound, isActive, isPlaying, isPaused, sessionSecs, stopIdx,
   onPlay, onToggle, onStop, onChangeTimer, onPrev, onNext, isFirst, isLast,
@@ -1750,7 +1736,9 @@ function ReelCard({
   onChangeTimer: (i: number) => void;
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
 }) {
-  const { accentColor } = useBgContext();
+  const { accentColor, solarTimes } = useBgContext();
+  const isNight = checkIsNightTime(solarTimes);
+  const activeDurationOptions = isNight ? REEL_DURATION_OPTIONS : REEL_DURATION_OPTIONS.filter(o => o.id !== 'night');
   const { playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
@@ -1789,9 +1777,9 @@ function ReelCard({
 
   // ── Duration picker state (Calm-style unified control) ──────────────────
   const [durationOpen, setDurationOpen] = useState(false);
-  const [selectedDurationId, setSelectedDurationId] = useState<DurationId>('night');
+  const [selectedDurationId, setSelectedDurationId] = useState<DurationId>(isNight ? 'night' : '1h');
   // Reset duration picker when sound changes
-  useEffect(() => { setSelectedDurationId('night'); setDurationOpen(false); }, [sound.id]);
+  useEffect(() => { setSelectedDurationId(isNight ? 'night' : '1h'); setDurationOpen(false); }, [sound.id, isNight]);
 
   // ── Instagram-style play/pause tap overlay ─────────────────────────────
   const isMountedRef = useRef(true);
@@ -2266,7 +2254,7 @@ function ReelCard({
               style={[StyleSheet.absoluteFillObject, { height: 60 }]}
             />
             <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.22)', letterSpacing: 2.8, textAlign: 'center', paddingTop: 16, paddingBottom: 10 }}>STOP AFTER</Text>
-            {REEL_DURATION_OPTIONS.map((opt, idx) => {
+            {activeDurationOptions.map((opt, idx) => {
               const isSelected = selectedDurationId === opt.id;
               const isFirst = idx === 0;
               return (
@@ -2429,7 +2417,7 @@ function ReelCard({
 
         {/* ── Single Duration Pill — Calm-style clean control ── */}
         {(() => {
-          const opt = REEL_DURATION_OPTIONS.find(o => o.id === selectedDurationId) ?? REEL_DURATION_OPTIONS[2];
+          const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
           return (
             <TouchableOpacity
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
@@ -2651,6 +2639,7 @@ function SoundReelsModal({
   const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const flatRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(startIndex);
+  const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [catBanner, setCatBanner] = useState<{ text: string; emoji: string; color: string } | null>(null);
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const swipeAnim = useRef(new Animated.Value(0)).current;
@@ -2823,7 +2812,7 @@ function SoundReelsModal({
   const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => onClose(false)}>
+    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => setShowClosePrompt(true)}>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -2907,7 +2896,7 @@ function SoundReelsModal({
           }}>
             {/* Left: chevron-down collapse */}
             <TouchableOpacity
-              onPress={() => onClose(isLast)}
+              onPress={() => setShowClosePrompt(true)}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.80)" />
@@ -3105,6 +3094,56 @@ function SoundReelsModal({
             </SafeAreaView>
           </View>
         )}
+
+        {/* iOS Style Action Popup */}
+        {showClosePrompt && (
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
+            
+            <View style={{ width: 300, backgroundColor: 'rgba(25,25,25,0.85)', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              
+              <View style={{ padding: 22, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold' }}>Keep Listening?</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>Would you like to minimize this reel and keep the audio playing, or stop playback entirely?</Text>
+              </View>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowClosePrompt(false);
+                  onClose(isLast);
+                }}
+                style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)' }}
+              >
+                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Minimize (Keep Playing)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowClosePrompt(false);
+                  onStop();
+                  onClose(isLast);
+                }}
+                style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,0,50,0.08)' }}
+              >
+                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Stop Audio & Close</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowClosePrompt(false);
+                }}
+                style={{ paddingVertical: 16, alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -3114,7 +3153,7 @@ export default function SleepTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { openReel } = useLocalSearchParams<{ openReel?: string }>();
-  const { bgUri, accentColor, gradientStart } = useBgContext();
+  const { bgUri, accentColor, gradientStart, solarTimes } = useBgContext();
   const [now, setNow] = useState(new Date());
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -3221,38 +3260,8 @@ export default function SleepTab() {
     _pageScrollRef?.scrollTo({ y: 0, animated: true });
   }, [selectedCat]);
 
-  // Refs for content PanResponder (avoids stale closures)
-  const selectedCatPanRef    = useRef<Category>(selectedCat);
-  const changeCategoryPanRef = useRef(changeCategory);
-  useEffect(() => { selectedCatPanRef.current    = selectedCat;    }, [selectedCat]);
-  useEffect(() => { changeCategoryPanRef.current = changeCategory; }, [changeCategory]);
-
-  const contentPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      // Ultra-light: triggers on very gentle horizontal movement with low vertical noise
-      onMoveShouldSetPanResponder:  (_, gs) =>
-        Math.abs(gs.dx) > 1 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.05,
-      onPanResponderGrant: () => {},
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderRelease: (_, gs) => {
-        try {
-          const cur = selectedCatPanRef.current;
-          const tabIdx = TAB_CATEGORIES.indexOf(cur as any);
-          if (tabIdx === -1) return;
-          const velocity = Math.abs(gs.vx);
-          // Ultra-frictionless: fast flick = 2px; slow drag = 4px
-          const threshold = velocity > 0.05 ? 2 : 4;
-          if (gs.dx < -threshold && tabIdx < TAB_CATEGORIES.length - 1) {
-            changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
-          } else if (gs.dx > threshold && tabIdx > 0) {
-            changeCategoryPanRef.current(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
-          }
-        } catch (_e) { /* guard against any crash */ }
-      },
-    })
-  ).current;
-  const [solarTimes, setSolarTimes]   = useState<SolarTimes | null>(null);
+  // Removed buggy contentPan logic in favor of FlingGestureHandler.
+  const [localSolarTimes, setLocalSolarTimes]   = useState<SolarTimes | null>(null);
   const [sleepIntelOpen, setSleepIntelOpen] = useState(false);
   const chevronAnim = useRef(new Animated.Value(0)).current;
   const [cyclesOpen, setCyclesOpen] = useState(false);
@@ -3357,7 +3366,7 @@ export default function SleepTab() {
       setEveningMantra(s?.eveningMantra ?? false);
     });
     store.getJSON<{ lat: number; lon: number }>(KEYS.location).then(loc => {
-      if (loc?.lat && loc?.lon) setSolarTimes(getSolarTimes(loc.lat, loc.lon));
+      if (loc?.lat && loc?.lon) setLocalSolarTimes(getSolarTimes(loc.lat, loc.lon));
     }).catch(() => {});
   }, []);
 
@@ -3393,15 +3402,8 @@ export default function SleepTab() {
     });
   }, []);
 
-  // Category-aware trim helper — cuts seamless-loop end before seeking back to 0
-  // Nature: 6 s (ambient loops often have a longer tail / fade)
-  // Birds:  4 s (bird calls end crisply — shorter trim avoids cutting chirps)
-  // Others: 5 s default
   const getReelTrimSecs = (cat: string): number => {
-    if (cat === 'Nature') return 6;
-    if (cat === 'Birds')  return 4;
-    if (cat === 'Ragas' || cat === 'Meditations') return 0;
-    return 5;
+    return 0;
   };
 
   // Reels: play a sound by id (used when swiping between reels — no mood re-ask)
@@ -3413,15 +3415,15 @@ export default function SleepTab() {
         reelLoopModeRef.current = null;
         const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
         const trimSecs = getReelTrimSecs(meta.cat);
-        // Always default to 8-hour looping in reel mode — sound never stops unless the user
-        // explicitly picks a shorter duration or closes the reel. This matches the behaviour
-        // of Calm / Spotify ambient: keep playing until the user decides to stop.
-        playSound(metaFull, 28800, undefined, trimSecs, true);
+        const isNightTab = checkIsNightTime(solarTimes);
+        const defaultDur = isNightTab ? 28800 : 3600;
+        
+        playSound(metaFull, defaultDur, undefined, trimSecs, true);
       }
     } catch (e) {
       console.warn('Error in handleReelPlaySound:', e);
     }
-  }, [playSound]);
+  }, [playSound, solarTimes]);
 
   // Reels: close handler — collapses reels to mini bar; sound keeps playing
   const handleReelClose = useCallback((_fromLastReel: boolean) => {
@@ -3516,7 +3518,7 @@ export default function SleepTab() {
   // ── Evening mantra ─────────────────────────────────────────
   const scheduleEveningMantraNotif = async () => {
     try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
       const next = new Date(); next.setHours(21, 30, 0, 0);
       if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
       await notifee.createTriggerNotification(
@@ -3537,7 +3539,7 @@ export default function SleepTab() {
   // ── Auto-start scheduler ───────────────────────────────────
   const scheduleAutoStart = async () => {
     try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Naad Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
+      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
       const next = new Date(); next.setHours(autoHour, autoMinute, 0, 0);
       if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
       const meta = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!;
@@ -3739,32 +3741,43 @@ export default function SleepTab() {
       {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>
 
-        <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
-        <Animated.ScrollView
-          ref={(r) => { _pageScrollRef = r; }}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: bottomPad }}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={8}
-          onScroll={onMainScroll}
-          overScrollMode="never"
-          nestedScrollEnabled
-          removeClippedSubviews
-          keyboardShouldPersistTaps="handled"
-          // NO stickyHeaderIndices — we use a JS/Animated sticky instead to avoid
-          // React Native's native reparenting which breaks touch events on Android.
-        >
-
-        {/* ── Hero area ── */}
-        <View
-          style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
-        >
-          {/* Top Header Bar (Premium Square Edge-to-Edge) */}
-          <View 
-            style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
-            onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
+        {/* Premium Floating Settings Button */}
+        {!isSearching && (
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.25)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 12 }}>
+            <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
+          </TouchableOpacity>
+        )}
+
+        <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
+        
+        {/* Top Header Bar (Premium Square Edge-to-Edge) - Now Sticky Outside ScrollView */}
+        <View 
+          style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
+          onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
+        >
+          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 6 }}>
               <LinearGradient
                 colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
@@ -3773,8 +3786,8 @@ export default function SleepTab() {
               <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
               
               {/* Main row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4, paddingRight: 60, gap: 10 }}>
-                {/* Back / Naad Library Icon */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 0, paddingRight: isSearching ? 14 : 60, gap: 10 }}>
+                {/* Back / Nada Library Icon */}
                 {!isSearching ? (
                   <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
                     <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
@@ -3798,18 +3811,23 @@ export default function SleepTab() {
                     setIsSearching(true); 
                   }}
                   activeOpacity={0.8}
-                  style={{
+                  style={isSearching ? {
                     flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: isSearching ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
                     borderRadius: 12,
-                    paddingHorizontal: isSearching ? 12 : 0,
-                    height: 38,
+                    paddingHorizontal: 12,
+                    height: 40,
+                  } : {
+                    marginLeft: 'auto',
+                    padding: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="search" size={isSearching ? 18 : 16} color="rgba(255,255,255,0.7)" />
-                  {isSearching ? (
+                  <Ionicons name="search" size={isSearching ? 16 : 24} color="rgba(255,255,255,0.95)" />
+                  {isSearching && (
                     <TextInput
                       ref={searchInputRef}
                       style={{ flex: 1, fontSize: 15, color: '#FFF', fontFamily: 'Nunito_400Regular', marginLeft: 10 }}
@@ -3820,8 +3838,6 @@ export default function SleepTab() {
                       onChangeText={setSearchQuery}
                       returnKeyType="search"
                     />
-                  ) : (
-                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', marginLeft: 8 }}>Search sounds...</Text>
                   )}
                   {isSearching && searchQuery.length > 0 && (
                      <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
@@ -3848,55 +3864,79 @@ export default function SleepTab() {
             </View>
           </View>
 
-        {/* ── Strip placeholder — reserves the strip's height in the scroll layout ── */}
-        {!isSearching && <View style={{ height: 68 }} />}
+        {/* Category Tab Strip - Now Sticky Outside ScrollView */}
+        {!isSearching && (
+          <View style={{ zIndex: 100 }}>
+            <CategoryTabStrip
+              selectedCat={selectedCat}
+              onSelect={changeCategory}
+              activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
+              onSettingsPress={() => { router.push('/(tabs)/settings' as never); }}
+            />
+          </View>
+        )}
 
+        <Animated.ScrollView
+          ref={(r) => { _pageScrollRef = r; }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={8}
+          onScroll={onMainScroll}
+          overScrollMode="never"
+          nestedScrollEnabled
+          removeClippedSubviews
+          keyboardShouldPersistTaps="handled"
+        >
+
+        {/* ── Hero area ── */}
+        <View
+          style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
+        >
           {!isSearching && (
             <View style={{
               width: '100%',
               paddingHorizontal: 24,
-              paddingTop: 32,
-              paddingBottom: 28,
+              paddingVertical: 36,
               alignItems: 'center',
+              justifyContent: 'center',
               backgroundColor: 'transparent',
+              gap: 16,
             }}>
               {/* Main title */}
-              <Text style={[heroTextStyle, { fontSize: 26, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>{displayMode.label}</Text>
+              <Text style={[heroTextStyle, { fontSize: 24, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>{displayMode.label}</Text>
+              
               {/* Subtitle */}
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 10, letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center' }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center' }}>
                 {displayMode.subtitle}
               </Text>
 
               {/* Elegant Divider */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 }}>
-                <View style={{ width: 20, height: 1.5, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1 }} />
-              </View>
+              <View style={{ width: 30, height: 1.5, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 1 }} />
 
               {/* Bottom hint — premium pills */}
               {showIdealSleepChip ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', shadowColor: '#10b981', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } }} />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10b981', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>Ideal Sleep Time</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#10b981', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>Ideal Sleep Time</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
                     · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
                   </Text>
                 </View>
               ) : showApproachingChip ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <Text style={{ fontSize: 14 }}>🌙</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#c4b5fd', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
+                  <Text style={{ fontSize: 15 }}>🌙</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#c4b5fd', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
                     Sleep in {hrsToBed > 0 ? `${hrsToBed}h ${minsToBed}m` : `${minsToBed}m`}
                   </Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
                     · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
                   </Text>
                 </View>
               ) : (
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5, textAlign: 'center', fontFamily: 'Nunito_500Medium' }}>
-                    {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? dayHint.name : 'listen to heal as the day dawns up'}
-                  </Text>
-                </View>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.95)', letterSpacing: 1.0, textAlign: 'center', fontFamily: 'Nunito_600SemiBold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
+                  {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? (dayHint.name === 'Morning Rise' ? 'Rise for a great Day' : dayHint.name === 'Creative Flow' ? 'Creative Flow Period' : dayHint.name) : 'listen to heal as the day dawns up'}
+                </Text>
               )}
             </View>
           )}
@@ -3905,7 +3945,37 @@ export default function SleepTab() {
         {/* Strip moved inline above */}
 
         {/* ── Content container — transparent, swipe handler for category change ── */}
-        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }} {...(!isSearching ? contentPan.panHandlers : {})}>
+        <FlingGestureHandler
+          direction={Directions.LEFT}
+          onHandlerStateChange={({ nativeEvent }) => {
+            if (nativeEvent.state === State.ACTIVE) {
+              const tabIdx = TAB_CATEGORIES.indexOf(selectedCat as any);
+              if (tabIdx !== -1) {
+                if (tabIdx < TAB_CATEGORIES.length - 1) {
+                  changeCategory(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
+                } else {
+                  changeCategory(TAB_CATEGORIES[0] as Category, -1);
+                }
+              }
+            }
+          }}
+        >
+          <FlingGestureHandler
+            direction={Directions.RIGHT}
+            onHandlerStateChange={({ nativeEvent }) => {
+              if (nativeEvent.state === State.ACTIVE) {
+                const tabIdx = TAB_CATEGORIES.indexOf(selectedCat as any);
+                if (tabIdx !== -1) {
+                  if (tabIdx > 0) {
+                    changeCategory(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
+                  } else {
+                    changeCategory(TAB_CATEGORIES[TAB_CATEGORIES.length - 1] as Category, 1);
+                  }
+                }
+              }
+            }}
+          >
+            <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
 
         {isSearching ? (
           <View style={{ paddingHorizontal: 16, paddingBottom: 100, minHeight: H }}>
@@ -4060,60 +4130,10 @@ export default function SleepTab() {
         )}
 
         </View>{/* end lifted container */}
+          </FlingGestureHandler>
+        </FlingGestureHandler>
 
       </Animated.ScrollView>
-        </Animated.View>
-
-        {/* ── JS-sticky CategoryTabStrip ── */}
-        {!isSearching && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            zIndex: 100,
-            transform: [{
-              translateY: scrollY.interpolate({
-                inputRange: [0, Math.max(0, searchBarH)],
-                outputRange: [searchBarH, 0],
-                extrapolate: 'clamp',
-              }),
-            }],
-          }}
-        >
-          <CategoryTabStrip
-            selectedCat={selectedCat}
-            onSelect={changeCategory}
-            activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
-            onSettingsPress={() => { router.push('/(tabs)/settings' as never); }}
-          />
-        </Animated.View>
-        )}
-
-        {/* ── Safe Area Background for Sticky Header ── */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 85,
-            zIndex: 99,
-            opacity: scrollY.interpolate({
-              inputRange: [0, Math.max(0, searchBarH)],
-              outputRange: [0, 1],
-              extrapolate: 'clamp',
-            }),
-          }}
-        >
-          <LinearGradient
-            colors={['rgba(6,9,15,1)', 'rgba(6,9,15,0.95)', 'rgba(6,9,15,0.6)', 'transparent']}
-            locations={[0, 0.45, 0.75, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View style={{ position: 'absolute', bottom: 15, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
         </Animated.View>
 
       </View>{/* end content area */}

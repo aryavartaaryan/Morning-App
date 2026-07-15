@@ -14,6 +14,7 @@ import {
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import * as SplashScreen from 'expo-splash-screen';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import { store, KEYS } from '@/lib/storage';
 
 import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
@@ -107,56 +108,44 @@ class AppErrorBoundary extends Component<
 const { height: SH } = Dimensions.get('window');
 
 function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }) {
-  // "Naad" text (starts visible to seamlessly match native splash, then fades out)
+  // "Nada" text (starts visible to seamlessly match native splash, then fades out)
   const titleOp  = useRef(new Animated.Value(1)).current;
   const titleSc  = useRef(new Animated.Value(1)).current;
   
-  // Combined Sequence Title
-  const combinedOp    = useRef(new Animated.Value(0)).current;
-  const combinedSc    = useRef(new Animated.Value(0.92)).current;
-  const combinedTy    = useRef(new Animated.Value(15)).current;
-  const combinedShimmerOp = useRef(new Animated.Value(0)).current;
-
   const footerOp = useRef(new Animated.Value(0)).current;
+  const shimmerOp = useRef(new Animated.Value(0)).current;
   
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
 
   // Animation sequence starts after component mounts
   useEffect(() => {
+    let mounted = true;
     // Initial delay to let the app settle
     const initialDelay = setTimeout(() => {
-      // Fade out "Naad" gracefully
-      Animated.parallel([
-        Animated.timing(titleOp, { toValue: 0, duration: 900, delay: 400, useNativeDriver: true }),
-        Animated.timing(titleSc, { toValue: 1.08, duration: 900, delay: 400, useNativeDriver: true }),
-      ]).start();
+      Animated.timing(footerOp, { toValue: 1, duration: 800, useNativeDriver: true }).start();
 
-      // Fade in combined text
       Animated.sequence([
-        Animated.delay(1100), // wait for Naad to start fading
-        
-        Animated.parallel([
-          Animated.timing(combinedOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-          Animated.timing(combinedTy, { toValue: 0, duration: 1200, useNativeDriver: true }), // Rise up
-          Animated.spring(combinedSc, { toValue: 1, tension: 30, friction: 10, useNativeDriver: true }),
-          Animated.timing(footerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        ]),
-        
-        // Golden Shimmer effect
-        Animated.timing(combinedShimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        
-        Animated.delay(1800), // Hold the screen for a bit so user can read both
+        Animated.delay(800),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.delay(1950), // Hold the screen for a bit so user can read everything (5s total)
         
         // Dismiss Splash
         Animated.parallel([
+          Animated.timing(titleOp, { toValue: 0, duration: 900, useNativeDriver: true }),
+          Animated.timing(titleSc, { toValue: 1.05, duration: 900, useNativeDriver: true }),
           Animated.timing(screenOp, { toValue: 0, duration: 900, useNativeDriver: true }),
           Animated.timing(screenSc, { toValue: 0.94, duration: 900, useNativeDriver: true }),
         ]),
-      ]).start(() => onDone());
+      ]).start(({ finished }) => {
+        if (mounted && finished) onDone();
+      });
     }, 150);
 
-    return () => clearTimeout(initialDelay);
+    return () => {
+      mounted = false;
+      clearTimeout(initialDelay);
+    };
   }, []);
 
   return (
@@ -170,37 +159,23 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* The Native-Matching "Naad" Text */}
+        {/* The Native-Matching "Nada" Text combined with message */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <Text style={SS.arise}>Naad</Text>
+          <Text style={SS.arise}>Nada</Text>
           <Text style={[SS.tagline, { marginTop: 4, letterSpacing: 4 }]}>THE RESONANCE</Text>
-        </Animated.View>
-
-        {/* Combined Text Sequence */}
-        <Animated.View style={[SS.subBlock, { position: 'absolute', opacity: combinedOp, transform: [{ scale: combinedSc }, { translateY: combinedTy }] }]}>
-          <View style={{ gap: 28, alignItems: 'center' }}>
-            <View style={{ position: 'relative', alignItems: 'center' }}>
-              <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Align Your Rhythm{'\n'}with the Universe.</Text>
-              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: combinedShimmerOp }]}>
-                Align Your Rhythm{'\n'}with the Universe.
-              </Animated.Text>
-            </View>
-            
-            <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            
-            <View style={{ position: 'relative', alignItems: 'center' }}>
-              <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Resonate & Transform{'\n'}through the Naad.</Text>
-              <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: combinedShimmerOp }]}>
-                Resonate & Transform{'\n'}through the Naad.
-              </Animated.Text>
-            </View>
+          
+          <View style={{ marginTop: 42, alignItems: 'center', position: 'relative' }}>
+            <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Resonate & Transform{'\n'}through the Nada.</Text>
+            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: shimmerOp }]}>
+              Resonate & Transform{'\n'}through the Nada.
+            </Animated.Text>
           </View>
         </Animated.View>
         
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: footerOp }]}>NAAD  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp }]}>NADA  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -223,7 +198,7 @@ const SS = StyleSheet.create({
 
 const SETUP_SUBTITLES = [
   'Your life in New Transformation journey is starting from Today',
-  'Just listen the Naad sounds...',
+  'Just listen the Nada sounds...',
   'नाद — The primordial sound of the universe',
   'Align your rhythm with the universe\'s wisdom',
   'A new dawn of conscious living awaits you',
@@ -242,39 +217,39 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
   useEffect(() => {
-    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 10000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 60000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })).start();
 
-    // Pulse core glow
+    // Pulse core glow (slow, deep breathing)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
-    // Moonwater ripples
+    // Moonwater ripples (slower expansion)
     rippleAnims.forEach((anim, i) => {
       Animated.sequence([
-        Animated.delay(i * 1666),
+        Animated.delay(i * 2500),
         Animated.loop(Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 5000, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+          Animated.timing(anim, { toValue: 1, duration: 8000, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
           Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
         ])),
       ]).start();
     });
 
-    // Subtitle fade-cycle
+    // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
       Animated.sequence([
-        Animated.timing(subtitleOp, { toValue: 0, duration: 800, useNativeDriver: true }),
+        Animated.timing(subtitleOp, { toValue: 0, duration: 1500, useNativeDriver: true }),
       ]).start(() => {
         setSubtitleIdx(i => (i + 1) % SETUP_SUBTITLES.length);
-        Animated.timing(subtitleOp, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+        Animated.timing(subtitleOp, { toValue: 1, duration: 1500, useNativeDriver: true }).start();
       });
     };
-    const interval = setInterval(cycleSubtitle, 4000);
+    const interval = setInterval(cycleSubtitle, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -291,183 +266,145 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const rInner1 = 95;
   const rInner2 = 85;
 
-  const cyan = '#38bdf8';
-  const deepCyan = '#0284c7';
-  const brightCyan = '#bae6fd';
+  // Premium Minimalist Magenta Colors
+  const magenta = '#d946ef';
+  const deepMagenta = '#86198f';
+  const softMagenta = '#fdf4ff';
+  const etherealWhite = 'rgba(255,255,255,0.7)';
 
   return (
     <Animated.View pointerEvents="auto" style={DS.screen}>
-      <LinearGradient colors={['#020617', '#0f172a', '#020617']} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['#050106', '#140518', '#050106']} style={StyleSheet.absoluteFillObject} />
 
-      {/* Ambient background glow */}
+      {/* Ambient background ethereal glow */}
       <Animated.View style={{
-        position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: deepCyan, top: '25%', 
-        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] }), 
+        position: 'absolute', width: 600, height: 600, borderRadius: 300, backgroundColor: magenta, top: '15%', 
+        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.01, 0.05] }), 
         alignSelf: 'center', 
-        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
+        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.1] }) }]
       }} />
 
       <View style={DS.center}>
-        <Text style={DS.appName}>NAAD</Text>
-        <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
+        <Text style={[DS.appName, { color: softMagenta, textShadowColor: magenta }]}>NADA</Text>
+        <View style={{ height: 60, justifyContent: 'center', marginBottom: 20 }}>
+          <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
+        </View>
 
         <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
           
-          {/* ── Layered aura — slim and elegant glow ── */}
-          <Animated.View style={{ position: 'absolute', width: SIZE + 24, height: SIZE + 24, borderRadius: (SIZE + 24) / 2, backgroundColor: `rgba(56,189,248,0.06)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 14, height: SIZE + 14, borderRadius: (SIZE + 14) / 2, backgroundColor: `rgba(56,189,248,0.14)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: `rgba(56,189,248,0.24)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }} />
-          <View style={{ position: 'absolute', width: SIZE + 2, height: SIZE + 2, borderRadius: (SIZE + 2) / 2, backgroundColor: `rgba(56,189,248,0.14)` }} />
+          {/* ── Ultra-Premium Layered Aura ── */}
+          <Animated.View style={{ position: 'absolute', width: SIZE + 50, height: SIZE + 50, borderRadius: (SIZE + 50) / 2, backgroundColor: deepMagenta, opacity: 0.08, shadowColor: magenta, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 50, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }] }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 10, height: SIZE + 10, borderRadius: (SIZE + 10) / 2, backgroundColor: `rgba(217,70,239,0.06)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] }) }] }} />
 
-          {/* ── Inner zone — fluid core ── */}
+          {/* ── Inner zone — premium glass core ── */}
           <View style={{
             position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
-            backgroundColor: `rgba(2,132,199,0.10)`,
+            backgroundColor: `rgba(217,70,239,0.04)`,
             overflow: 'hidden',
+            borderWidth: 0.5, borderColor: 'rgba(217,70,239,0.15)', // Subtle magenta rim
           }}>
-            {/* Inner fill gradient */}
+            {/* Inner fill fusion gradient */}
             <LinearGradient
-              colors={[`${cyan}18`, `${deepCyan}0C`, 'transparent', `${deepCyan}08`]}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              colors={[`${magenta}20`, 'transparent', `${deepMagenta}15`]}
+              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
 
-            {/* ── Fluid Effect ── */}
+            {/* ── Fluid Effect with Fusion Colors ── */}
             <Animated.View pointerEvents="none" style={{
               position: 'absolute', width: rInner2 * 3.2, height: rInner2 * 3.2,
               top: -rInner2 * 0.6, left: -rInner2 * 0.6,
-              opacity: 0.35,
+              opacity: 0.4,
               transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
             }}>
-               <LinearGradient colors={[`${brightCyan}00`, `${brightCyan}60`, `${deepCyan}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
-            </Animated.View>
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: rInner2 * 3.2, height: rInner2 * 3.2,
-              top: -rInner2 * 0.6, left: -rInner2 * 0.6,
-              opacity: 0.3,
-              transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }, { translateX: rInner2 * 0.2 }],
-            }}>
-               <LinearGradient colors={[`${deepCyan}00`, `${cyan}50`, `${brightCyan}00`]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
+               <LinearGradient colors={[`${magenta}00`, `${magenta}30`, `${deepMagenta}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
             </Animated.View>
             
-            {/* ── Lunar breathing — gentle silver glow inhaling & exhaling ── */}
+            {/* ── Lunar breathing — gentle warm glow inhaling & exhaling ── */}
             <Animated.View pointerEvents="none" style={{
               position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
-              backgroundColor: `${brightCyan}10`,
-              opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }),
+              backgroundColor: `${magenta}08`,
+              opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.8] }),
             }} />
             
-            {/* ── Moonwater ripples — 3 rings expanding from center ── */}
+            {/* ── Moonwater ripples — clean minimal expanding rings ── */}
             {rippleAnims.map((anim, i) => {
               const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.94] });
-              const opacity = anim.interpolate({ inputRange: [0, 0.14, 0.55, 1], outputRange: [0, 0.20, 0.08, 0] });
+              const opacity = anim.interpolate({ inputRange: [0, 0.14, 0.55, 1], outputRange: [0, 0.2, 0.05, 0] });
               return (
                 <Animated.View key={i} pointerEvents="none" style={{
                   position: 'absolute', width: rInner2 * 2, height: rInner2 * 2,
                   borderRadius: rInner2,
-                  borderWidth: 1, borderColor: brightCyan,
+                  borderWidth: 1, borderColor: magenta,
                   top: 0, left: 0,
                   transform: [{ scale }], opacity,
                 }} />
               );
             })}
             
-            {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
+            {/* ── Glass highlight — frosted arc at top simulating premium lens refraction ── */}
             <View pointerEvents="none" style={{
               position: 'absolute',
-              width: rInner2 * 0.76, height: rInner2 * 0.18,
-              borderRadius: rInner2 * 0.36,
-              backgroundColor: 'rgba(255,255,255,0.055)',
-              top: rInner2 * 0.04, left: rInner2 * 0.62,
-              shadowColor: '#fff', shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1, shadowRadius: 3,
+              width: rInner2 * 1.4, height: rInner2 * 1.4,
+              borderRadius: rInner2 * 0.7,
+              top: -rInner2 * 0.7, left: rInner2 * 0.3,
+              transform: [{ scaleX: 1.5 }],
             }}>
-              <LinearGradient colors={['rgba(255,255,255,0.2)', 'transparent']} style={{ flex: 1, borderRadius: 20 }} />
+              <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)', 'transparent']} style={{ flex: 1, borderRadius: rInner2 }} />
             </View>
           </View>
 
           {/* SVG Elements */}
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
             <Defs>
+              {/* Premium Minimal Gradient for Progress Arc */}
               <SvgLinearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor={brightCyan} stopOpacity="1" />
-                <Stop offset="50%" stopColor={cyan} stopOpacity="1" />
-                <Stop offset="100%" stopColor={deepCyan} stopOpacity="1" />
+                <Stop offset="0%" stopColor={softMagenta} stopOpacity="1" />
+                <Stop offset="50%" stopColor={magenta} stopOpacity="1" />
+                <Stop offset="100%" stopColor={deepMagenta} stopOpacity="1" />
               </SvgLinearGradient>
             </Defs>
 
-            {/* Static thin track for main progress */}
-            <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(56,189,248,0.1)" strokeWidth={2} fill="none" />
+            {/* Premium Track */}
+            <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(255,255,255,0.03)" strokeWidth={8} fill="none" />
 
-            {/* Main Progress Arc Glow Bloom */}
-            <Circle
-              cx={cx} cy={cx} r={rMain}
-              stroke="url(#glow)"
-              strokeWidth={14}
-              fill="none"
-              strokeDasharray={`${cMain}`}
-              strokeDashoffset={`${offsetMain}`}
-              strokeLinecap="round"
-              rotation={-90}
-              origin={`${cx}, ${cx}`}
-              opacity={0.35}
-            />
+            {/* Main Progress Arc Glow - Deep soft diffusion */}
+            <Circle cx={cx} cy={cx} r={rMain} stroke="url(#glow)" strokeWidth={24} fill="none" strokeDasharray={`${cMain}`} strokeDashoffset={`${offsetMain}`} strokeLinecap="round" rotation={-90} origin={`${cx}, ${cx}`} opacity={0.25} />
 
             {/* Main Progress Arc Core */}
-            <Circle
-              cx={cx} cy={cx} r={rMain}
-              stroke="url(#glow)"
-              strokeWidth={4}
-              fill="none"
-              strokeDasharray={`${cMain}`}
-              strokeDashoffset={`${offsetMain}`}
-              strokeLinecap="round"
-              rotation={-90}
-              origin={`${cx}, ${cx}`}
-            />
+            <Circle cx={cx} cy={cx} r={rMain} stroke="url(#glow)" strokeWidth={4} fill="none" strokeDasharray={`${cMain}`} strokeDashoffset={`${offsetMain}`} strokeLinecap="round" rotation={-90} origin={`${cx}, ${cx}`} />
           </Svg>
 
-          {/* Rotating Outer Ring (Dashed) */}
+          {/* Rotating Outer Ring (Clean Minimalist) */}
           <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
             <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-              <Circle cx={cx} cy={cx} r={rOuter} stroke={deepCyan} strokeWidth={1} fill="none" strokeDasharray="4 8" opacity={0.6} />
-              <Circle cx={cx} cy={cx} r={rOuter} stroke={cyan} strokeWidth={2} fill="none" strokeDasharray="1 30" opacity={0.8} />
+              <Circle cx={cx} cy={cx} r={rOuter} stroke={magenta} strokeWidth={2} fill="none" strokeDasharray="2 30" opacity={0.5} strokeLinecap="round" />
             </Svg>
           </Animated.View>
 
-          {/* Rotating Inner Ring 1 (Dashed opposite) */}
+          {/* Rotating Inner Ring (Smooth Counter-Rotation) */}
           <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
             <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-              <Circle cx={cx} cy={cx} r={rInner1} stroke={cyan} strokeWidth={1.5} fill="none" strokeDasharray="15 15" opacity={0.3} />
-              <Circle cx={cx} cy={cx} r={rInner1} stroke={brightCyan} strokeWidth={3} fill="none" strokeDasharray="0.5 45" opacity={0.9} strokeLinecap="round" />
+              <Circle cx={cx} cy={cx} r={rInner1} stroke={softMagenta} strokeWidth={1} fill="none" strokeDasharray="1 15" opacity={0.3} strokeLinecap="round" />
             </Svg>
           </Animated.View>
 
-          {/* Rotating Inner Ring 2 (Fast scanning ring) */}
-          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-              <Circle cx={cx} cy={cx} r={rInner2} stroke={deepCyan} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.4} />
-              {/* Scanning brackets */}
-              <Circle cx={cx} cy={cx} r={rInner2} stroke={brightCyan} strokeWidth={1.5} fill="none" strokeDasharray="20 200" opacity={0.7} />
-            </Svg>
-          </Animated.View>
-
-          {/* Percentage Text inside the ring */}
+          {/* Percentage Text inside the glass dome */}
           <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <Text style={DS.pctNum}>{pct}</Text>
-              <Text style={DS.pctSign}>%</Text>
+              <Text style={[DS.pctNum, { textShadowColor: 'rgba(217,70,239,0.5)' }]}>{pct}</Text>
+              <Text style={[DS.pctSign, { color: softMagenta }]}>%</Text>
             </View>
-            <Text style={{ color: 'rgba(56,189,248,0.5)', fontSize: 9, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginTop: 4 }}>SYNCHRONIZING</Text>
+            <Text style={{ color: magenta, fontSize: 10, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 5, marginTop: 4, opacity: 0.9 }}>SYNCHRONIZING</Text>
           </View>
         </View>
 
         {/* Status */}
         {error ? (
           <View style={{ alignItems: 'center', height: 80 }}>
-            <Text style={[DS.statusLabel, { color: '#ef4444', textTransform: 'uppercase', letterSpacing: 2 }]}>CONNECTION INTERRUPTED</Text>
-            <TouchableOpacity onPress={onRetry} style={DS.retryBtn}>
-              <Text style={DS.retryTxt}>RETRY CONNECTION</Text>
-            </TouchableOpacity>
+            <Text style={[DS.statusLabel, { color: magenta, textTransform: 'uppercase', letterSpacing: 2 }]}>AWAITING CONNECTION...</Text>
+            <View style={{ marginTop: 12 }}>
+              <Text style={{ color: etherealWhite, fontSize: 12, fontFamily: 'Nunito_400Regular' }}>Will auto-resume when online</Text>
+            </View>
           </View>
         ) : (
           <View style={{ alignItems: 'center', height: 80 }}>
@@ -485,8 +422,8 @@ const DS = StyleSheet.create({
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
   appName:     { fontSize: 32, fontFamily: 'Nunito_900Black', color: '#bae6fd', letterSpacing: 12, marginBottom: 12, opacity: 0.9 },
   subTagline:  { fontSize: 13, color: 'rgba(56,189,248,0.7)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 48, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
-  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_300Light', letterSpacing: -1, textShadowColor: 'rgba(56,189,248,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
-  pctSign:     { fontSize: 18, color: '#38bdf8', fontFamily: 'Nunito_400Regular', marginTop: 8, marginLeft: 2 },
+  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_400Regular', letterSpacing: -1, textShadowColor: 'rgba(56,189,248,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 },
+  pctSign:     { fontSize: 18, color: '#bae6fd', fontFamily: 'Nunito_600SemiBold', marginTop: 10, marginLeft: 2 },
   statusLabel: { fontSize: 11, color: '#38bdf8', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
   setupHint:   { fontSize: 9, color: 'rgba(56,189,248,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1, marginTop: 10, textTransform: 'uppercase' },
   retryBtn:    { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(2,132,199,0.2)', borderRadius: 4, borderWidth: 1, borderColor: '#0284c7' },
@@ -521,16 +458,6 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
         const soundId = cfg?.selectedMantraId;
         if (soundId) syncNativeWakeAlarmSound(soundId).catch(() => {});
       }).catch(() => {});
-      setTimeout(() => requestAllAlarmPermissions().catch(() => {}), 2500);
-      setTimeout(() => {
-        ImagePicker.requestCameraPermissionsAsync().catch(() => {});
-        ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => {});
-        // Request location permission for home page weather + walk distance tracking
-        Location.requestForegroundPermissionsAsync().catch(() => {});
-        // NOTE: Pedometer (Physical Activity) permission is NOT requested here.
-        // It is requested contextually in walk.tsx when the user taps "Start Walk",
-        // so the system dialog appears with clear user intent.
-      }, 3500);
     } catch { /* Expo Go */ }
     // Route straight to tabs unless already there or on alarm screens.
     // ALARM DEEP-LINK RACE FIX: On a cold start (app killed) via an alarm deep link,
@@ -646,30 +573,38 @@ function BodhiNotificationListener() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
-      if (alarmRoutedRef.current) return; // already routed this alarm cycle
+      // Do NOT early-return on alarmRoutedRef here — we first check wasAlarmFired()
+      // and the 30-minute window, THEN decide. A stale alarmRoutedRef=true from a
+      // previous testing cycle must NOT block a genuine new alarm from showing.
       if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing') || (segments as string[]).includes('mission')) return; // already on alarm/mission screen
       getInitialAlarmNotification().then(async (fired) => {
-        if (fired && !alarmRoutedRef.current && !(segments as string[]).includes('wake-alarm-ringing') && !(segments as string[]).includes('alarm-ringing') && !(segments as string[]).includes('mission')) {
-          // Guard: skip routing if alarm was already handled — prevents crash loop
-          // caused by wasAlarmFired() persisting after a completed alarm cycle.
-          const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-          // 30-minute window — same as cold-start guard above.
-          if (handled && Date.now() - Number(handled) < 1_800_000) {
-            // Handled within last 30 minutes = just completed. Prevent crash loop.
-            alarmRoutedRef.current = true;
-            return;
-          }
-          const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
+        if (!fired) return;
+        if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing') || (segments as string[]).includes('mission')) return;
+        // Guard: skip routing if alarm was already handled — prevents crash loop
+        // caused by wasAlarmFired() persisting after a completed alarm cycle.
+        const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
+        // 30-minute window — same as cold-start guard above.
+        if (handled && Date.now() - Number(handled) < 1_800_000) {
+          // Handled within last 30 minutes = just completed. Prevent crash loop.
           alarmRoutedRef.current = true;
-          if (missionId) {
-            if (!(segments as string[]).includes('mission')) {
-              console.log('[Layout] App foregrounded mid-mission → /mission');
-              router.push(`/mission?id=${missionId}` as never);
-            }
-          } else {
-            console.log('[Layout] App foregrounded from alarm (background path) → /wake-alarm-ringing');
-            router.push('/wake-alarm-ringing' as never);
+          return;
+        }
+        // Confirmed: genuine new alarm. Reset any stale ref so routing is never blocked.
+        if (alarmRoutedRef.current) {
+          console.log('[Layout] Resetting stale alarmRoutedRef for new alarm cycle (background path)');
+          alarmRoutedRef.current = false;
+        }
+        if (alarmRoutedRef.current) return; // double-guard (concurrent call safety)
+        const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
+        alarmRoutedRef.current = true;
+        if (missionId) {
+          if (!(segments as string[]).includes('mission')) {
+            console.log('[Layout] App foregrounded mid-mission → /mission');
+            router.push(`/mission?id=${missionId}` as never);
           }
+        } else {
+          console.log('[Layout] App foregrounded from alarm (background path) → /wake-alarm-ringing');
+          router.push('/wake-alarm-ringing' as never);
         }
       }).catch(() => { });
     });
@@ -686,7 +621,6 @@ function BodhiNotificationListener() {
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }: { url: string }) => {
       if (!url.includes('alarm-ringing') && !url.includes('wake-alarm-ringing')) return;
-      if (alarmRoutedRef.current) return;
       if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
       (async () => {
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
@@ -695,7 +629,15 @@ function BodhiNotificationListener() {
           alarmRoutedRef.current = true; return;
         }
         const fired = await getInitialAlarmNotification().catch(() => false);
-        if (!fired || alarmRoutedRef.current) return;
+        if (!fired) return;
+        // Confirmed genuine alarm deep-link — reset any stale ref and route.
+        // A stale alarmRoutedRef=true from a previous cycle must NOT block the
+        // alarm screen from appearing when the alarm is genuinely ringing.
+        if (alarmRoutedRef.current) {
+          console.log('[Layout] Resetting stale alarmRoutedRef for new alarm cycle (foreground deep-link)');
+          alarmRoutedRef.current = false;
+        }
+        if (alarmRoutedRef.current) return; // concurrent call safety
         alarmRoutedRef.current = true;
         router.replace('/wake-alarm-ringing' as never);
       })().catch(() => {});
@@ -973,7 +915,7 @@ function BodhiNotificationListener() {
       // ── Android: ensure notification channel is ready on every app open ──
       if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync('arise-alarms', {
-          name: 'Naad Alarms',
+          name: 'Nada Alarms',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'mantra_alarm.m4a',
           vibrationPattern: [0, 250, 250, 250],
@@ -1169,7 +1111,7 @@ function GlobalMoodLayer() {
 // Phase values:
 //   'gate'        → fonts loaded, running warm/cache checks (shows dark cover)
 //   'downloading' → images missing, showing download progress screen
-//   'splash'      → all images cached, showing 7-second splash with bg image
+//   'splash'      → all images cached, showing 5-second splash with bg image
 //   'done'        → splash finished, full app visible
 type AppPhase = 'gate' | 'downloading' | 'splash' | 'done';
 
@@ -1188,7 +1130,7 @@ export default function RootLayout() {
   const [retryTrigger, setRetryTrigger] = useState(0);
   // Pre-resolve the splash bg URI synchronously so SplashOverlay can render
   // immediately during the 'gate' phase — eliminating the blank gap between
-  // the native splash dismiss and the NAAD animated screen appearing.
+  // the native splash dismiss and the NADA animated screen appearing.
   const [splashBgUri, setSplashBgUri] = useState<string>(() => {
     try { return getBgSourceSync('splash'); } catch { return ''; }
   });
@@ -1203,6 +1145,16 @@ export default function RootLayout() {
   //     after the splash screen so the user never waits for them on first open.
   //   • Solar positions, Ayurvedic periods etc. are pure JS computation — instant.
   //   • On subsequent opens all BGs are already cached → gate resolves in <50 ms.
+  useEffect(() => {
+    if (!dlError) return;
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        setRetryTrigger(t => t + 1); // Auto-resume when connection returns
+      }
+    });
+    return () => unsubscribe();
+  }, [dlError]);
+
   useEffect(() => {
     if (!fontsLoaded) return;
     let cancelled = false;
@@ -1245,8 +1197,8 @@ export default function RootLayout() {
         ]);
         const setupDone       = !!setupFlagRaw;
         const setupInProgress = !!inProgressRaw;   // killed mid-download last time
-        // Treat as first install if never completed OR if interrupted mid-download.
-        const isFirstInstall  = !setupDone || setupInProgress;
+        // Treat as first install if never completed, interrupted mid-download, or missing required files.
+        const isFirstInstall  = !setupDone || setupInProgress || !isBgFullyCached();
 
         if (isFirstInstall) {
           // First install (or interrupted resume): gate on BG images + sound
@@ -1297,7 +1249,21 @@ export default function RootLayout() {
 
           if (!cancelled) {
             setDlProgress(1);
-            setDlLabel('Your transformation journey begins from now... Just listen Naad sounds.......✨');
+            setDlLabel('Requesting permissions...');
+            // Wait a beat so the UI updates
+            await new Promise(r => setTimeout(r, 400));
+            try {
+              await Location.requestForegroundPermissionsAsync();
+              await requestAllAlarmPermissions();
+              await ImagePicker.requestCameraPermissionsAsync();
+              await ImagePicker.requestMediaLibraryPermissionsAsync();
+            } catch (e) {
+              console.warn('[Setup] Error requesting permissions:', e);
+            }
+          }
+
+          if (!cancelled) {
+            setDlLabel('Your transformation journey begins from now... Just listen Nada sounds.......✨');
             // Pause so ring fills to 100% and user sees completion before app opens.
             await new Promise(r => setTimeout(r, 1400));
           }
@@ -1346,12 +1312,10 @@ export default function RootLayout() {
           
           AsyncStorage.getItem(SETUP_DONE_KEY).then(setupDoneRaw => {
             const setupDone = !!setupDoneRaw;
-            const splashOnDisk = isSplashCached();
-            
             // Check inProgress again synchronously if possible, or just assume if it's not done and not splash, we need to fail
             AsyncStorage.getItem(SETUP_INPROGRESS_KEY).then(inProgressRaw => {
               const setupInProgress = !!inProgressRaw;
-              const isFirstInstall = (!setupDone && !splashOnDisk) || setupInProgress;
+              const isFirstInstall = !setupDone || setupInProgress || !isBgFullyCached();
               
               if (isFirstInstall) {
                 setDlError(true);
@@ -1421,7 +1385,7 @@ export default function RootLayout() {
           <AuthGuard onAuthReady={() => setAuthReady(true)} />
         )}
         <BodhiNotificationListener />
-        {/* NAAD animated splash — shown during 'splash' phase only, 
+        {/* NADA animated splash — shown during 'splash' phase only, 
              since 'gate' is handled by the early return above. */}
         {phase === 'splash' && (
           <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />

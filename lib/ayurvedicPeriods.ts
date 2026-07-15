@@ -303,12 +303,58 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
 
 export const CIRCADIAN_CHANNEL = 'arise-circadian-cycle';
 
+// ── Elegant Western-science circadian notification copy per period ─────────────
+const CIRCADIAN_NOTIF_CONTENT: Record<string, { title: string; body: string; sub: string; color: string }> = {
+  night_vata: {
+    title:  '✨ Pre-Dawn Alpha State',
+    body:   'Theta-alpha brainwave dominance is peaking. The boundary between subconscious and conscious is at its thinnest. Ideal window for meditation, intention-setting and deep breathwork.',
+    sub:    'Circadian Cycle · Night Vata',
+    color:  '#c7d2e0',
+  },
+  morning_kapha: {
+    title:  '💪 Anabolic Window — Move Now',
+    body:   'Cortisol, growth hormone and lymphatic clearance are all peaking together. Your body is primed to build. Every minute of movement now compounds for the rest of the day.',
+    sub:    'Circadian Cycle · Morning Kapha',
+    color:  '#34d399',
+  },
+  midday_pitta: {
+    title:  '🔥 Metabolic Peak — Your Sharpest Hour',
+    body:   'HCl, pepsin and bile acid secretion are at maximum. Digestive fire is strongest. Eat your main meal. Make bold decisions. Your mind and metabolism are perfectly aligned right now.',
+    sub:    'Circadian Cycle · Solar Pitta',
+    color:  '#fb923c',
+  },
+  midday_pitta_late: {
+    title:  '🍃 Post-Solar Dip — Rest Phase',
+    body:   'Cortisol drops post-solar peak. A natural energy lull is normal and necessary. Light movement or a short rest will restore clarity for the Vata creative window ahead.',
+    sub:    'Circadian Cycle · Digestive Pitta',
+    color:  '#a3e635',
+  },
+  afternoon_vata: {
+    title:  '⚡ Neuromuscular Peak — Create or Move',
+    body:   'Reaction time, lung capacity and athletic performance are peaking. Your nervous system is at its most wired and creative. Use this window to move, create or solve complex problems.',
+    sub:    'Circadian Cycle · Afternoon Vata',
+    color:  '#a78bfa',
+  },
+  evening_kapha: {
+    title:  '🌙 Melatonin Rising — Wind Down',
+    body:   'Melatonin synthesis has begun. Your parasympathetic nervous system is activating. Lower your screen brightness. Eat light. Every choice you make now directly shapes your sleep architecture tonight.',
+    sub:    'Circadian Cycle · Evening Kapha',
+    color:  '#818cf8',
+  },
+  night_pitta: {
+    title:  '🔬 Cellular Repair — Protect Your Sleep',
+    body:   'Liver detox Phase I and II are active. Growth hormone is surging. Cellular autophagy is clearing damaged proteins. Deep, uninterrupted sleep is the only way to not disrupt this process.',
+    sub:    'Circadian Cycle · Night Pitta',
+    color:  '#60a5fa',
+  },
+};
+
 export async function scheduleCircadianNotifs(lat: number, lon: number): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
     await notifee.createChannel({
       id: CIRCADIAN_CHANNEL,
-      name: 'Circadian Cycle Alerts',
+      name: 'Circadian Rhythm Alerts',
       importance: AndroidImportance.DEFAULT,
       vibration: false,
       bypassDnd: false,
@@ -320,31 +366,34 @@ export async function scheduleCircadianNotifs(lat: number, lon: number): Promise
     const now = Date.now();
 
     for (const period of periods) {
-      const content = getHeroRingContent(period.id, false);
+      const content = CIRCADIAN_NOTIF_CONTENT[period.id] ?? {
+        title: '⏱ Circadian Phase Shift',
+        body:  'Your body rhythm has entered a new biological phase. Align your actions with your biology.',
+        sub:   'Circadian Cycle',
+        color: '#38bdf8',
+      };
       const notifId = `circadian-${period.id}`;
-      
+
       const fire = new Date();
       const fireH = Math.floor(period.startH);
       const fireM = Math.round((period.startH - fireH) * 60);
       fire.setHours(fireH, fireM, 0, 0);
-
       if (fire.getTime() <= now) fire.setDate(fire.getDate() + 1);
 
       await notifee.cancelTriggerNotification(notifId).catch(() => {});
-
       await notifee.createTriggerNotification(
         {
           id: notifId,
-          title: content.header,
-          body: content.sentence,
+          title: content.title,
+          body:  content.body,
           android: {
             channelId: CIRCADIAN_CHANNEL,
             importance: AndroidImportance.DEFAULT,
             visibility: AndroidVisibility.PUBLIC,
             pressAction: { id: 'default', launchActivity: 'default' },
-            color: '#38bdf8',
+            color: content.color,
             showTimestamp: false,
-            subText: content.subPill,
+            subText: content.sub,
           } as any,
         },
         {
@@ -367,3 +416,44 @@ export async function cancelCircadianNotifs(lat: number, lon: number): Promise<v
     await notifee.cancelTriggerNotification(`circadian-${period.id}`).catch(() => {});
   }
 }
+
+// ── Real-time circadian notification (fires when hero ring changes period) ──────
+// Call this from index.tsx when currentPeriod.id changes.
+export async function fireCircadianNotification(period: DoshaPeriod): Promise<void> {
+  try {
+    const content = CIRCADIAN_NOTIF_CONTENT[period.id] ?? {
+      title: '⏱ Circadian Phase Shift',
+      body:  'Your body rhythm has entered a new biological phase. Align your actions with your biology.',
+      sub:   'Circadian Cycle',
+      color: '#38bdf8',
+    };
+
+    await notifee.createChannel({
+      id: CIRCADIAN_CHANNEL,
+      name: 'Circadian Rhythm Alerts',
+      importance: AndroidImportance.DEFAULT,
+      vibration: false,
+      bypassDnd: false,
+      visibility: AndroidVisibility.PUBLIC,
+    } as any);
+
+    await notifee.displayNotification({
+      id: `circadian-live-${period.id}`,
+      title: content.title,
+      body:  content.body,
+      android: {
+        channelId: CIRCADIAN_CHANNEL,
+        importance: AndroidImportance.DEFAULT,
+        visibility: AndroidVisibility.PUBLIC,
+        pressAction: { id: 'default', launchActivity: 'default' },
+        color: content.color,
+        showTimestamp: true,
+        subText: content.sub,
+        autoCancel: true,
+      } as any,
+    });
+  } catch (e) {
+    console.warn('[Circadian] live notification failed:', e);
+  }
+}
+

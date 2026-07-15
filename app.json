@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Naad",
+    "name": "Nada",
     "slug": "nada-arise",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,11 +23,11 @@
           "processing",
           "location"
         ],
-        "NSUserNotificationsUsageDescription": "Naad uses notifications to ring your wake alarm.",
-        "NSLocationWhenInUseUsageDescription": "Naad tracks your walk distance during your sessions.",
-        "NSMotionUsageDescription": "Naad uses motion sensors to accurately count your walking steps.",
-        "NSHealthShareUsageDescription": "Naad tracks your steps and activity for walk sessions.",
-        "NSHealthUpdateUsageDescription": "Naad logs your walking activity and steps.",
+        "NSUserNotificationsUsageDescription": "Nada uses notifications to ring your wake alarm.",
+        "NSLocationWhenInUseUsageDescription": "Nada tracks your walk distance during your sessions.",
+        "NSMotionUsageDescription": "Nada uses motion sensors to accurately count your walking steps.",
+        "NSHealthShareUsageDescription": "Nada tracks your steps and activity for walk sessions.",
+        "NSHealthUpdateUsageDescription": "Nada logs your walking activity and steps.",
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.solrize.alarm-reschedule"
         ]
@@ -106,26 +106,26 @@
             "./assets/sounds/mantra_alarm.m4a"
           ],
           "androidMode": "default",
-          "androidCollapsedTitle": "Naad",
+          "androidCollapsedTitle": "Nada",
           "iosDisplayInForeground": true
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Naad to access your camera for mission completion."
+          "cameraPermission": "Allow Nada to access your camera for mission completion."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Naad to access your photos for mission completion."
+          "photosPermission": "Allow Nada to access your photos for mission completion."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Naad to show local weather and track your walk."
+          "locationWhenInUsePermission": "Allow Nada to show local weather and track your walk."
         }
       ],
       [

@@ -166,8 +166,31 @@ export async function cancelBrahmaMuhurtaNotif(): Promise<void> {
 }
 
 export const SACRED_CHANNEL = 'arise-sacred-hour';
-export const SUNRISE_NOTIF_ID = 'arise-sunrise-daily';
-export const SUNSET_NOTIF_ID = 'arise-sunset-daily';
+export const SUNRISE_NOTIF_ID  = 'arise-sunrise-daily';
+export const SUNSET_NOTIF_ID   = 'arise-sunset-daily';
+export const ZENITH_NOTIF_ID   = 'arise-zenith-daily';
+
+// ── Elegant Western-science sacred hour notification copy ─────────────────────
+const SACRED_NOTIF_CONTENT = {
+  sunrise: {
+    title: '🌅 Circadian Anchor — Sun Rising',
+    body:  'Your biological clock is locking to true sunrise right now. Step outside. 10 min of direct morning light sets your cortisol, mood and sleep for the full next 24 hours.',
+    sub:   'Sacred Hour · Sunrise',
+    color: '#fbbf24',
+  },
+  zenith: {
+    title: '☀️ Solar Zenith — Your Peak Hour',
+    body:  'The sun is at its highest point. Your core temperature, cognitive speed, reaction time and digestive enzymes are all peaking together. This is your sharpest hour — use it.',
+    sub:   'Sacred Hour · Solar Noon',
+    color: '#FDE047',
+  },
+  sunset: {
+    title: '🌇 Melatonin Gate — Sun Setting',
+    body:  'The sun has crossed the horizon. Melatonin synthesis begins. Your nervous system is shifting from sympathetic to parasympathetic mode. Lower your lights and wind down.',
+    sub:   'Sacred Hour · Sunset',
+    color: '#f97316',
+  },
+};
 
 export async function scheduleSacredHourNotifs(
   lat: number,
@@ -177,7 +200,7 @@ export async function scheduleSacredHourNotifs(
   try {
     await notifee.createChannel({
       id: SACRED_CHANNEL,
-      name: 'Sacred Hour Alerts',
+      name: 'Sacred Solar Hour Alerts',
       importance: AndroidImportance.HIGH,
       vibration: true,
       bypassDnd: false,
@@ -187,7 +210,7 @@ export async function scheduleSacredHourNotifs(
     const solar = getSolarTimes(lat, lon);
     const now = Date.now();
 
-    // Schedule Sunrise Notification
+    // ── Sunrise ──────────────────────────────────────────────────────────────
     const srH = Math.floor(solar.sunrise);
     const srM = Math.round((solar.sunrise - srH) * 60);
     const srFire = new Date();
@@ -198,17 +221,18 @@ export async function scheduleSacredHourNotifs(
     await notifee.createTriggerNotification(
       {
         id: SUNRISE_NOTIF_ID,
-        title: '🌅 Sacred Hour of Sunrise',
-        body: 'It is sacred hour of sunrise. Meditate now and connect with the divinity.',
+        title: SACRED_NOTIF_CONTENT.sunrise.title,
+        body:  SACRED_NOTIF_CONTENT.sunrise.body,
         android: {
           channelId: SACRED_CHANNEL,
           importance: AndroidImportance.HIGH,
           category: AndroidCategory.REMINDER,
           visibility: AndroidVisibility.PUBLIC,
           pressAction: { id: 'default', launchActivity: 'default' },
-          color: '#fbbf24',
+          color: SACRED_NOTIF_CONTENT.sunrise.color,
           showTimestamp: false,
-          subText: 'Sacred Hour',
+          subText: SACRED_NOTIF_CONTENT.sunrise.sub,
+          largeIcon: 'ic_sunrise',
         } as any,
       },
       {
@@ -219,7 +243,39 @@ export async function scheduleSacredHourNotifs(
       } as any,
     );
 
-    // Schedule Sunset Notification
+    // ── Solar Zenith / Noon ───────────────────────────────────────────────────
+    const snH = Math.floor(solar.solarNoon);
+    const snM = Math.round((solar.solarNoon - snH) * 60);
+    const snFire = new Date();
+    snFire.setHours(snH, snM, 0, 0);
+    if (snFire.getTime() <= now) snFire.setDate(snFire.getDate() + 1);
+
+    await notifee.cancelTriggerNotification(ZENITH_NOTIF_ID).catch(() => {});
+    await notifee.createTriggerNotification(
+      {
+        id: ZENITH_NOTIF_ID,
+        title: SACRED_NOTIF_CONTENT.zenith.title,
+        body:  SACRED_NOTIF_CONTENT.zenith.body,
+        android: {
+          channelId: SACRED_CHANNEL,
+          importance: AndroidImportance.HIGH,
+          category: AndroidCategory.REMINDER,
+          visibility: AndroidVisibility.PUBLIC,
+          pressAction: { id: 'default', launchActivity: 'default' },
+          color: SACRED_NOTIF_CONTENT.zenith.color,
+          showTimestamp: false,
+          subText: SACRED_NOTIF_CONTENT.zenith.sub,
+        } as any,
+      },
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: snFire.getTime(),
+        repeatFrequency: RepeatFrequency.DAILY,
+        alarmManager: { allowWhileIdle: true },
+      } as any,
+    );
+
+    // ── Sunset ───────────────────────────────────────────────────────────────
     const ssH = Math.floor(solar.sunset);
     const ssM = Math.round((solar.sunset - ssH) * 60);
     const ssFire = new Date();
@@ -230,17 +286,17 @@ export async function scheduleSacredHourNotifs(
     await notifee.createTriggerNotification(
       {
         id: SUNSET_NOTIF_ID,
-        title: '🌇 Sacred Hour of Sunset',
-        body: 'It is sacred hour of sunset. Meditate now and connect with the divinity.',
+        title: SACRED_NOTIF_CONTENT.sunset.title,
+        body:  SACRED_NOTIF_CONTENT.sunset.body,
         android: {
           channelId: SACRED_CHANNEL,
           importance: AndroidImportance.HIGH,
           category: AndroidCategory.REMINDER,
           visibility: AndroidVisibility.PUBLIC,
           pressAction: { id: 'default', launchActivity: 'default' },
-          color: '#f97316',
+          color: SACRED_NOTIF_CONTENT.sunset.color,
           showTimestamp: false,
-          subText: 'Sacred Hour',
+          subText: SACRED_NOTIF_CONTENT.sunset.sub,
         } as any,
       },
       {
@@ -259,4 +315,43 @@ export async function scheduleSacredHourNotifs(
 export async function cancelSacredHourNotifs(): Promise<void> {
   await notifee.cancelTriggerNotification(SUNRISE_NOTIF_ID).catch(() => {});
   await notifee.cancelTriggerNotification(SUNSET_NOTIF_ID).catch(() => {});
+  await notifee.cancelTriggerNotification(ZENITH_NOTIF_ID).catch(() => {});
+}
+
+// ── Real-time sacred hour notification (fires when hero ring changes phase) ────
+// Call this from index.tsx when sacredHour.type changes to a non-null value.
+export async function fireSacredHourNotification(
+  type: 'sunrise' | 'sunset' | 'zenith',
+): Promise<void> {
+  try {
+    const content = SACRED_NOTIF_CONTENT[type];
+    // Ensure channel exists (no-op if already created)
+    await notifee.createChannel({
+      id: SACRED_CHANNEL,
+      name: 'Sacred Solar Hour Alerts',
+      importance: AndroidImportance.HIGH,
+      vibration: true,
+      bypassDnd: false,
+      visibility: AndroidVisibility.PUBLIC,
+    } as any);
+
+    await notifee.displayNotification({
+      id: `sacred-live-${type}`,
+      title: content.title,
+      body: content.body,
+      android: {
+        channelId: SACRED_CHANNEL,
+        importance: AndroidImportance.HIGH,
+        category: AndroidCategory.REMINDER,
+        visibility: AndroidVisibility.PUBLIC,
+        pressAction: { id: 'default', launchActivity: 'default' },
+        color: content.color,
+        showTimestamp: true,
+        subText: content.sub,
+        autoCancel: true,
+      } as any,
+    });
+  } catch (e) {
+    console.warn('[SacredHour] live notification failed:', e);
+  }
 }

@@ -104,7 +104,7 @@ function AnalyzingScreen({ onComplete }: { onComplete: () => void }) {
         })}
       </View>
 
-      <Text style={as.footer}>Tridosha Intelligence · Charaka Samhita · © Naad</Text>
+      <Text style={as.footer}>Tridosha Intelligence · Charaka Samhita · © Nada</Text>
     </View>
   );
 }

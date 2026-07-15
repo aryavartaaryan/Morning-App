@@ -19,11 +19,11 @@ import { store, KEYS } from '@/lib/storage';
 import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
 import { getSolarTimes, getSunElevation, type SolarTimes } from '@/lib/solar';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
-import { getDoshaPeriods, getHeroRingContent, type DoshaPeriod } from '@/lib/ayurvedicPeriods';
+import { getDoshaPeriods, getHeroRingContent, type DoshaPeriod, fireCircadianNotification } from '@/lib/ayurvedicPeriods';
 import type { DailyPoint } from '@/lib/weather';
 import {
   getBrahmaMuhurtaInfo, scheduleBrahmaMuhurtaNotif, cancelBrahmaMuhurtaNotif,
-  SCIENCE_ALIASES, type BrahmaMuhurtaInfo,
+  SCIENCE_ALIASES, type BrahmaMuhurtaInfo, fireSacredHourNotification,
 } from '@/lib/brahmaMuhurta';
 import {
   AlarmSettings, DEFAULT_ALARM_SETTINGS,
@@ -145,10 +145,11 @@ function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
     if (h < brahmaMuhurtaStart) return 'night';
     if (h < sunrise - 0.3) return 'brahma';
     if (h < sunrise + 0.5) return 'predawn';
-    if (h < sunrise + 1)   return 'sunrise';
+    if (h < sunrise + 0.75) return 'sunrise';
+    if (h < sunrise + 1)   return 'sunrise_2';
     if (h < sunrise + 2)   return 'sunrise_late';
-    if (h < solarNoon - 1) return 'morning';
-    if (h < solarNoon + 2) return 'midday';
+    if (h < solarNoon - 0.5) return 'morning';
+    if (h < solarNoon + 1.5) return 'midday';
     if (h < sunset - 1.5)  return 'afternoon';
     if (h < sunset)        return 'sandhya';
     if (h < sunset + 0.5)  return 'twilight';
@@ -157,11 +158,12 @@ function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
   }
   if (h >= 2  && h < 5)   return 'brahma';
   if (h >= 5  && h < 5.5) return 'predawn';
-  if (h >= 5.5 && h < 6.75)  return 'sunrise';
+  if (h >= 5.5 && h < 6.125) return 'sunrise';
+  if (h >= 6.125 && h < 6.75) return 'sunrise_2';
   if (h >= 6.75 && h < 8)  return 'sunrise_late';
-  if (h >= 8  && h < 10)  return 'morning';
-  if (h >= 10 && h < 14)  return 'midday';
-  if (h >= 14 && h < 17)  return 'afternoon';
+  if (h >= 10 && h < 11.75)  return 'morning';
+  if (h >= 11.75 && h < 13.5)  return 'midday';
+  if (h >= 13.5 && h < 17)  return 'afternoon';
   if (h >= 17 && h < 19)    return 'sandhya';
   if (h >= 19 && h < 19.5)  return 'twilight';
   if (h >= 19.5 && h < 21)  return 'evening';
@@ -204,11 +206,11 @@ function getMoonPhase(date: Date = new Date()): {
   const tithi = `${TITHI_NAMES[tithiInPaksha] ?? tithiInPaksha}`;
 
   // Illumination-based phase (more accurate than fixed age thresholds)
-  if (illum >= 98) return { emoji: '�', name: 'Full Moon',         tithi, illumination: illum, paksha, tithiNum };
-  if (illum <= 2)  return { emoji: '�', name: 'New Moon',          tithi, illumination: illum, paksha, tithiNum };
-  if (illum < 45)  return { emoji: waxing ? '�' : '🌘', name: waxing ? 'Waxing Crescent' : 'Waning Crescent', tithi, illumination: illum, paksha, tithiNum };
-  if (illum < 55)  return { emoji: waxing ? '�' : '🌗', name: waxing ? 'First Quarter'   : 'Last Quarter',    tithi, illumination: illum, paksha, tithiNum };
-  return             { emoji: waxing ? '�' : '🌖', name: waxing ? 'Waxing Gibbous'  : 'Waning Gibbous',  tithi, illumination: illum, paksha, tithiNum };
+  if (illum >= 98) return { emoji: "🌕", name: "Full Moon",         tithi, illumination: illum, paksha, tithiNum };
+  if (illum <= 2)  return { emoji: "🌑", name: "New Moon",          tithi, illumination: illum, paksha, tithiNum };
+  if (illum < 45)  return { emoji: waxing ? "🌒" : "🌘", name: waxing ? "Waxing Crescent" : "Waning Crescent", tithi, illumination: illum, paksha, tithiNum };
+  if (illum < 55)  return { emoji: waxing ? "🌓" : "🌗", name: waxing ? "First Quarter"   : "Last Quarter",    tithi, illumination: illum, paksha, tithiNum };
+  return             { emoji: waxing ? "🌔" : "🌖", name: waxing ? "Waxing Gibbous"  : "Waning Gibbous",  tithi, illumination: illum, paksha, tithiNum };
 }
 
 // ── Next Purnima / Amavasya countdown ───────────────────────────────────
@@ -4643,7 +4645,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
 // Sleep Sounds pulsing entry button — home screen shortcut to Sleep tab
 // ══════════════════════════════════════════════════════════════════════════════
 function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaMuhurtaInfo['status'] | null): string {
-  if (!period) return 'Listen Naad Sounds & Heal';
+  if (!period) return 'Listen Nada Sounds & Heal';
 
   const getDurationMinutes = () => {
     const deltaH = (period.endH - period.startH + 24) % 24;
@@ -4653,7 +4655,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
 
   switch (period.id) {
     case 'night_vata':
-      if (brahmaStatus === 'active') return 'Listen Naad Sounds & Meditate';
+      if (brahmaStatus === 'active') return 'Listen Nada Sounds & Meditate';
       return 'Listen & Drift Toward Dawn';
     case 'morning_kapha':
       return 'Listen & Recharge for the Day';
@@ -4672,7 +4674,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
     case 'night_pitta':
       return 'Listen to Sounds & Sleep Deep';
     default:
-      return 'Listen Naad Sounds & Heal';
+      return 'Listen Nada Sounds & Heal';
   }
 }
 
@@ -4824,7 +4826,7 @@ function lerpColor(a: string, b: string, t: number): string {
 type AyurvedicPalette = { ring: string; halo: string; accent: string };
 
 // ── Sacred Hour Detection — sunrise / sunset ±30 min window ─────────────────
-type SacredHourType = 'sunrise' | 'sunset' | null;
+type SacredHourType = 'sunrise' | 'sunset' | 'zenith' | null;
 function getSacredHourInfo(nowH: number, solar?: SolarTimes | null): {
   type: SacredHourType;
   progress: number; // 0=window-start, 1=window-end, used for color lerp
@@ -4833,13 +4835,18 @@ function getSacredHourInfo(nowH: number, solar?: SolarTimes | null): {
   const WIN = 15 / 60; // ±15-min window in decimal hours
   const sr  = solar.sunrise;
   const ss  = solar.sunset;
+  const sn  = solar.solarNoon;
   const dSr = nowH - sr;
   const dSs = nowH - ss;
+  const dSn = nowH - sn;
   if (dSr >= -WIN && dSr <= WIN) {
     return { type: 'sunrise', progress: (dSr + WIN) / (2 * WIN) };
   }
   if (dSs >= -WIN && dSs <= WIN) {
     return { type: 'sunset',  progress: (dSs + WIN) / (2 * WIN) };
+  }
+  if (dSn >= -20/60 && dSn <= 2/60) {
+    return { type: 'zenith',  progress: (dSn + 20/60) / (22/60) };
   }
   return { type: null, progress: 0 };
 }
@@ -4861,12 +4868,20 @@ const SUNRISE_PALETTES: Array<AyurvedicPalette> = [
   { ring: '#DC2626', halo: '#EA580C', accent: '#FCA5A5' }, // horizon crimson
   { ring: '#D97706', halo: '#F59E0B', accent: '#FDE68A' }, // warm gold peak
 ];
-// Sunset palette: afternoon gold → crimson-amber → navy dusk
+// Sunset palette: afternoon gold → crimson-amber (maintained through dusk)
 const SUNSET_PALETTES: Array<AyurvedicPalette> = [
   { ring: '#D97706', halo: '#F59E0B', accent: '#FDE68A' }, // gold start
   { ring: '#C2410C', halo: '#EA580C', accent: '#FCA5A5' }, // crimson mid
-  { ring: '#1E3A8A', halo: '#2563EB', accent: '#93C5FD' }, // navy dusk
+  { ring: '#C2410C', halo: '#EA580C', accent: '#FCA5A5' }, // crimson maintained after sunset
 ];
+
+// Zenith palette: bright glowing gold to white-gold
+const ZENITH_PALETTES: Array<AyurvedicPalette> = [
+  { ring: '#FDE047', halo: '#FEF08A', accent: '#FEF9C3' }, // bright yellow start
+  { ring: '#F59E0B', halo: '#FBBF24', accent: '#FDE68A' }, // warm gold peak
+  { ring: '#FDE047', halo: '#FEF08A', accent: '#FEF9C3' }, // bright yellow end
+];
+
 function lerpPalette(palettes: Array<AyurvedicPalette>, t: number): AyurvedicPalette {
   const n = palettes.length - 1;
   const idx = Math.min(n - 1, Math.floor(t * n));
@@ -4918,6 +4933,7 @@ function getSolarRingPalette(
   const sacred = getSacredHourInfo(nowH, solar);
   if (sacred.type === 'sunrise') return lerpPalette(SUNRISE_PALETTES, sacred.progress);
   if (sacred.type === 'sunset')  return lerpPalette(SUNSET_PALETTES,  sacred.progress);
+  if (sacred.type === 'zenith')  return lerpPalette(ZENITH_PALETTES,  sacred.progress);
 
   // ── 2. Get real sun elevation — GPS if available, else approximate ────────
   let elevation: number;
@@ -5233,7 +5249,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <>
               {/* Sacred micro-label */}
               <Text style={{ fontSize: compact ? 5.5 : 6.5, fontWeight: '900', color: `${accentHex}CC`, letterSpacing: 2.2, textAlign: 'center', marginBottom: compact ? 5 : 10, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                {sacredHour.type === 'sunrise' ? 'SACRED HOUR OF SUNRISE' : 'SACRED HOUR OF SUNSET'}
+                {sacredHour.type === 'sunrise' ? 'SACRED HOUR OF SUNRISE' : 
+                 sacredHour.type === 'sunset' ? 'SACRED HOUR OF SUNSET' : 'SACRED HOUR OF ZENITH'}
               </Text>
 
               {/* Main sacred message */}
@@ -5250,7 +5267,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 lineHeight: compact ? 24 : 34,
                 marginBottom: compact ? 6 : 10,
               }}>
-                {sacredHour.type === 'sunrise' ? 'Sun is\nRising' : 'Sun is\nSetting'}
+                {sacredHour.type === 'sunrise' ? 'Sun is\nRising' : 
+                 sacredHour.type === 'sunset' ? 'Sun is\nSetting' : 'Sun is at\nits Peak'}
               </Text>
 
               {/* Thin gold divider */}
@@ -5268,7 +5286,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 6,
               }}>
-                Meditate Now
+                Divine hour. Meditate and connect with the divinity.
               </Text>
             </>
           ) : period === null || !heroContent ? (
@@ -5556,15 +5574,15 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
         )}
       </Animated.View>
 
-      {/* ── NAAD SOUNDS SUGGESTION — contextual nudge for every phase ── */}
+      {/* ── NADA SOUNDS SUGGESTION — contextual nudge for every phase ── */}
       {(() => {
         const NAAD_MAP: Record<string, { badge: string; title: string; sub: string }> = {
-          night_vata:     { badge: '✦  SACRED DAWN · NAAD SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Naad frequencies deepen stillness without effort. Just press play and breathe.' },
-          morning_kapha:  { badge: '✦  MORNING RITUAL · NAAD SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
-          midday_pitta:   { badge: '✦  DEEP FOCUS · NAAD SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
-          afternoon_vata: { badge: '✦  CREATIVE PEAK · NAAD SOUNDS',  title: 'Try Naad Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
-          evening_kapha:  { badge: '✦  WIND-DOWN · NAAD SOUNDS',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
-          night_pitta:    { badge: '✦  DEEP SLEEP · NAAD SOUNDS',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
+          night_vata:     { badge: '✦  SACRED DAWN · NADA SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Nada frequencies deepen stillness without effort. Just press play and breathe.' },
+          morning_kapha:  { badge: '✦  MORNING RITUAL · NADA SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
+          midday_pitta:   { badge: '✦  DEEP FOCUS · NADA SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
+          afternoon_vata: { badge: '✦  CREATIVE PEAK · NADA SOUNDS',  title: 'Try Nada Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
+          evening_kapha:  { badge: '✦  WIND-DOWN · NADA SOUNDS',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
+          night_pitta:    { badge: '✦  DEEP SLEEP · NADA SOUNDS',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
         };
         const naad = NAAD_MAP[period.id];
         if (!naad) return null;
@@ -6145,6 +6163,8 @@ function DailyTab() {
   const weatherLastFetched  = useRef<number>(0);
   const retryTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const weatherFetchingRef   = useRef(false);
+  const prevSacredTypeRef    = useRef<string | null | undefined>(undefined);
+  const prevPeriodIdRef      = useRef<string | null | undefined>(undefined);
 
   // Live clock tick
   useEffect(() => {
@@ -6233,9 +6253,31 @@ function DailyTab() {
     const nowH = liveClock.getHours() + liveClock.getMinutes() / 60;
     const p = getDoshaPeriods(solarTimes, nowH);
     setPeriods(p);
-    setCurrentPeriod(p.find(x => x.status === 'active') ?? null);
+    
+    const newPeriod = p.find(x => x.status === 'active') ?? null;
+    setCurrentPeriod(newPeriod);
     setBrahmaInfo(getBrahmaMuhurtaInfo(solarTimes));
-  }, [liveClock.getMinutes(), solarTimes]);
+
+    // Phase tracking for real-time notifications
+    const newSacredType = getSacredHourInfo(nowH, solarTimes).type;
+    
+    // 1. Circadian alerts
+    if (prevPeriodIdRef.current !== undefined && newPeriod && newPeriod.id !== prevPeriodIdRef.current) {
+      if (settings.circadianNotifs) {
+        fireCircadianNotification(newPeriod);
+      }
+    }
+    prevPeriodIdRef.current = newPeriod?.id ?? null;
+    
+    // 2. Sacred hour alerts
+    if (prevSacredTypeRef.current !== undefined && newSacredType !== null && newSacredType !== prevSacredTypeRef.current) {
+      if (settings.sacredHourNotifs) {
+        fireSacredHourNotification(newSacredType);
+      }
+    }
+    prevSacredTypeRef.current = newSacredType;
+
+  }, [liveClock.getMinutes(), solarTimes, settings.circadianNotifs, settings.sacredHourNotifs]);
 
   // Sync mode when period changes — disabled for now, mode stays 'normal' always
   // useEffect(() => {
@@ -6293,7 +6335,8 @@ function DailyTab() {
       return { label1: '☀️ Polar Day', mainText: '24h Daylight', label2: 'sun stays above horizon', color: 'rgba(251,191,36,0.85)', isLive: false };
     }
 
-    const ZENITH_WIN = 10 / 60; // ±10 min zenith live window
+    const ZENITH_WIN_BEFORE = 20 / 60; // 20 min before zenith
+    const ZENITH_WIN_AFTER = 2 / 60; // 2 min after zenith
     // Pitta period boundaries: solarNoon - 1h to solarNoon + 2h
     const pittaStart = sn - 1;
     const pittaEnd   = sn + 2;
@@ -6307,8 +6350,8 @@ function DailyTab() {
     if (Math.abs(h - ss) <= WIN) {
       return { label1: '🌇 Sun is', mainText: 'Setting Now', label2: fmtSolar(ss), color: 'rgba(244,63,94,0.95)', isLive: true };
     }
-    // Solar Zenith ±10 min live window (inside Pitta period)
-    if (Math.abs(h - sn) <= ZENITH_WIN) {
+    // Solar Zenith live window (inside Pitta period)
+    if (h - sn >= -ZENITH_WIN_BEFORE && h - sn <= ZENITH_WIN_AFTER) {
       return { label1: '☀️ Sun is', mainText: 'At Zenith Now', label2: fmtSolar(sn), color: 'rgba(251,191,36,0.98)', isLive: true };
     }
     // Before sunrise
@@ -6452,7 +6495,7 @@ function DailyTab() {
                 }
                 return (
                   <View style={{ flex: 1, alignItems: 'center', gap: 1, paddingHorizontal: 8, borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.10)' }}>
-                    <Text style={{ fontSize: 14 }}>{hMoon.emoji}</Text>
+                    <View style={{ marginBottom: 1 }}><MoonSVG tithiNum={hMoon.tithiNum} size={14} /></View>
                     <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(196,181,253,0.90)' }} numberOfLines={1}>{displayName}</Text>
                     <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.3 }}>{hMoon.illumination}% lit</Text>
                   </View>

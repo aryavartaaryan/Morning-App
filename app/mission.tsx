@@ -162,7 +162,7 @@ const CameraMission = React.memo(function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Camera Permission Blocked',
-            'Camera access is blocked. Please go to Settings → Apps → Naad → Permissions and enable Camera.',
+            'Camera access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Camera.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -196,7 +196,7 @@ const CameraMission = React.memo(function CameraMission({
         if (!canAskAgain) {
           Alert.alert(
             'Gallery Permission Blocked',
-            'Photo library access is blocked. Please go to Settings → Apps → Naad → Permissions and enable Storage / Photos.',
+            'Photo library access is blocked. Please go to Settings → Apps → Nada → Permissions and enable Storage / Photos.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -419,13 +419,14 @@ const MantraMission = React.memo(function MantraMission({ color, onComplete }: {
           </View>
 
           <TouchableOpacity
-            style={[mnt.tapBtn, { backgroundColor: color + '20', borderColor: color + '60' }]}
+            style={[mnt.tapBtn, { borderColor: taps >= TARGET ? '#FFFFFF10' : color + '50', shadowColor: color }]}
             onPress={tap}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             disabled={taps >= TARGET}
           >
-            <Text style={[mnt.tapIcon, { color }]}>🙏</Text>
-            <Text style={[mnt.tapLabel, { color }]}>Tap — I recited it</Text>
+            <LinearGradient colors={taps >= TARGET ? ['#FFFFFF05', '#FFFFFF02'] : [color + '20', color + '05']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
+            <Text style={[mnt.tapIcon, { color: taps >= TARGET ? '#FFFFFF40' : color }]}>🙏</Text>
+            <Text style={[mnt.tapLabel, { color: taps >= TARGET ? '#FFFFFF40' : color }]}>Tap — I recited it</Text>
           </TouchableOpacity>
 
           <Text style={mnt.hint}>Minimum time: 33 seconds · 3 seconds per recitation</Text>
@@ -439,42 +440,45 @@ const MantraMission = React.memo(function MantraMission({ color, onComplete }: {
   );
 });
 const mnt = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, gap: 16 },
-  stepLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 },
-  selectorRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 30, paddingBottom: 50, gap: 24 },
+  stepLabel: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF50', letterSpacing: 3, textTransform: 'uppercase' },
+  selectorRow: { flexDirection: 'row', gap: 16, width: '100%' },
   selectorCard: {
-    flex: 1, borderWidth: 1.5, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12,
-    alignItems: 'center', gap: 6,
+    flex: 1, borderWidth: 1, borderRadius: 28, paddingVertical: 24, paddingHorizontal: 12,
+    alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF05',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4,
   },
-  selectorIcon: { fontSize: 26 },
-  selectorName: { fontSize: 11, fontWeight: '800', textAlign: 'center', lineHeight: 16 },
-  activeDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
-  label: { fontSize: 9, fontWeight: '900', color: '#FFFFFF40', letterSpacing: 2, marginBottom: 2 },
+  selectorIcon: { fontSize: 36 },
+  selectorName: { fontSize: 13, fontFamily: 'Nunito_700Bold', textAlign: 'center', lineHeight: 18, letterSpacing: 0.2 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, marginTop: 4, shadowColor: '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4 },
+  label: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF50', letterSpacing: 3, marginBottom: 8, textTransform: 'uppercase' },
   mantraCard: {
-    width: '100%', borderWidth: 1, borderRadius: 22, padding: 24,
-    alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF06',
+    width: '100%', borderWidth: 1, borderRadius: 32, paddingHorizontal: 24, paddingVertical: 36,
+    alignItems: 'center', gap: 16, backgroundColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 8,
   },
-  divider: { width: '40%', height: 1, backgroundColor: '#FFFFFF12', marginVertical: 2 },
-  mantraText: { fontSize: 17, fontWeight: '900', textAlign: 'center', lineHeight: 30, letterSpacing: 0.4 },
-  englishText: { fontSize: 13, color: '#FFFFFFB0', textAlign: 'center', lineHeight: 22, fontStyle: 'italic' },
-  meaningBadge: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 6, marginTop: 4 },
-  meaningText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  counterRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  countLabel: { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
-  countOf: { fontSize: 14, fontWeight: '600', color: '#FFFFFF50' },
-  beadRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '80%' },
-  bead: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5 },
-  barBg: { width: '100%', height: 4, backgroundColor: '#FFFFFF15', borderRadius: 2 },
-  barFill: { height: 4, borderRadius: 2 },
+  divider: { width: '30%', height: 1, backgroundColor: '#FFFFFF20', marginVertical: 6 },
+  mantraText: { fontSize: 24, fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', lineHeight: 36, letterSpacing: 0.5 },
+  englishText: { fontSize: 15, color: '#FFFFFF90', textAlign: 'center', lineHeight: 26, fontStyle: 'italic', fontWeight: '400' },
+  meaningBadge: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, marginTop: 8, backgroundColor: '#FFFFFF08' },
+  meaningText: { fontSize: 13, fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.5 },
+  counterRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 12 },
+  countLabel: { fontSize: 64, fontWeight: '200', letterSpacing: -2 },
+  countOf: { fontSize: 16, fontFamily: 'Nunito_700Bold', color: '#FFFFFF50' },
+  beadRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', width: '90%' },
+  bead: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+  barBg: { width: '100%', height: 8, backgroundColor: '#FFFFFF15', borderRadius: 4, overflow: 'hidden', marginTop: 10 },
+  barFill: { height: 8, borderRadius: 4 },
   tapBtn: {
-    width: '100%', borderRadius: 99, borderWidth: 1.5, paddingVertical: 18,
-    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10,
+    width: '100%', borderRadius: 99, borderWidth: 1, paddingVertical: 20,
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 12, overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
   },
   tapIcon: { fontSize: 22 },
-  tapLabel: { fontSize: 16, fontWeight: '900' },
-  hint: { color: '#FFFFFF30', fontSize: 10, textAlign: 'center' },
-  pickHint: { paddingVertical: 32, alignItems: 'center' },
-  pickHintText: { color: '#FFFFFF30', fontSize: 13, fontStyle: 'italic' },
+  tapLabel: { fontSize: 16, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' },
+  hint: { color: '#FFFFFF40', fontSize: 12, textAlign: 'center', fontWeight: '500', letterSpacing: 0.2 },
+  pickHint: { paddingVertical: 60, alignItems: 'center' },
+  pickHintText: { color: '#FFFFFF50', fontSize: 15, fontStyle: 'italic', fontWeight: '400' },
 });
 
 
@@ -551,7 +555,7 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
         </Text>
 
         {/* Single prompt card */}
-        <View style={[grt.promptCard, { borderColor: color + '35' }]}>
+        <View style={[grt.promptCard, { borderColor: color + '40' }]}>
           <Text style={grt.promptLabel}>TODAY’S REFLECTION</Text>
           <Text style={[grt.promptText, { color }]}>{prompt}</Text>
         </View>
@@ -560,9 +564,9 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
         <View style={grt.inputWrap}>
           <TextInput
             ref={inputRef}
-            style={[grt.input, { borderColor: isReady ? color + '60' : '#FFFFFF20' }]}
+            style={[grt.input, { borderColor: isReady ? color + '80' : '#FFFFFF30' }]}
             placeholder="Write at least 3 words..."
-            placeholderTextColor="#FFFFFF30"
+            placeholderTextColor="#FFFFFF40"
             value={entry}
             onChangeText={setEntry}
             multiline
@@ -571,20 +575,21 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
             returnKeyType="default"
             showSoftInputOnFocus
           />
-          <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF30' }]}>
+          <Text style={[grt.wordCount, { color: isReady ? color : '#FFFFFF50' }]}>
             {wc} {wc === 1 ? 'word' : 'words'}{isReady ? ' ✓' : ' — need 3+'}
           </Text>
         </View>
 
         {/* Done button */}
         <TouchableOpacity
-          style={[grt.doneBtn, { backgroundColor: isReady && !submitting ? color : '#FFFFFF15' }]}
+          style={[grt.doneBtn, { shadowColor: isReady && !submitting ? color : '#000' }]}
           onPress={done}
           disabled={!isReady || submitting}
           activeOpacity={0.85}
         >
-          <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF30' }]}>
-            {submitting ? 'Saving...' : isReady ? '✓  Lock it in' : 'Write at least 3 words'}
+          <LinearGradient colors={isReady && !submitting ? [color, color + 'CC'] : ['#FFFFFF15', '#FFFFFF05']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
+          <Text style={[grt.doneTxt, { color: isReady && !submitting ? '#000' : '#FFFFFF50' }]}>
+            {submitting ? 'SAVING...' : isReady ? '✓  LOCK IT IN' : 'WRITE AT LEAST 3 WORDS'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -600,23 +605,25 @@ const GratitudeMission = React.memo(function GratitudeMission({ color, onComplet
   return <>{inner}</>;
 });
 const grt = StyleSheet.create({
-  wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 60, gap: 20 },
-  science: { color: '#FFFFFF45', fontSize: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
+  wrap: { paddingHorizontal: 24, paddingTop: 30, paddingBottom: 60, gap: 28 },
+  science: { color: '#FFFFFF60', fontSize: 14, textAlign: 'center', lineHeight: 24, fontWeight: '400', fontStyle: 'italic', letterSpacing: 0.3 },
   promptCard: {
-    width: '100%', borderWidth: 1, borderRadius: 20, padding: 22,
-    alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF07',
+    width: '100%', borderWidth: 1, borderRadius: 32, paddingHorizontal: 24, paddingVertical: 36,
+    alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 6,
   },
-  promptLabel: { fontSize: 9, fontWeight: '900', color: '#FFFFFF35', letterSpacing: 2 },
-  promptText: { fontSize: 17, fontWeight: '800', textAlign: 'center', lineHeight: 26 },
-  inputWrap: { gap: 6 },
+  promptLabel: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF60', letterSpacing: 3, textTransform: 'uppercase' },
+  promptText: { fontSize: 21, fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', lineHeight: 32, letterSpacing: 0.3 },
+  inputWrap: { gap: 12, width: '100%' },
   input: {
-    backgroundColor: '#FFFFFF0A', borderWidth: 1,
-    borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14,
-    color: '#FFFFFF', fontSize: 15, lineHeight: 24, minHeight: 110,
+    backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1,
+    borderRadius: 24, paddingHorizontal: 24, paddingVertical: 24,
+    color: '#FFFFFF', fontSize: 17, lineHeight: 28, minHeight: 140, fontWeight: '500',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10,
   },
-  wordCount: { fontSize: 11, fontWeight: '700', textAlign: 'right' },
-  doneBtn: { borderRadius: 99, paddingVertical: 18, alignItems: 'center', marginTop: 4 },
-  doneTxt: { fontSize: 16, fontWeight: '900' },
+  wordCount: { fontSize: 13, fontFamily: 'Nunito_700Bold', textAlign: 'right', letterSpacing: 0.5, paddingRight: 8 },
+  doneBtn: { borderRadius: 99, paddingVertical: 22, alignItems: 'center', marginTop: 10, overflow: 'hidden', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, width: '100%' },
+  doneTxt: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5 },
 });
 
 // ── Affirmations mission ──────────────────────────────────────────────────────
@@ -693,45 +700,47 @@ const AffirmationsMission = React.memo(function AffirmationsMission({ color, onC
 
       <View style={aff.cardProgress}>
         {[0, 1, 2].map(i => (
-          <View key={i} style={[aff.dot, { backgroundColor: i <= current ? color : '#FFFFFF20', width: i === current ? 24 : 8 }]} />
+          <View key={i} style={[aff.dot, { backgroundColor: i <= current ? color : '#FFFFFF25', width: i === current ? 32 : 10 }]} />
         ))}
       </View>
 
       <View style={[aff.card, { borderColor: color + '50' }]}>
-        <Text style={aff.cardNum}>{current + 1} / 3</Text>
+        <Text style={aff.cardNum}>AFFIRMATION {current + 1} OF 3</Text>
         <Text style={[aff.affText, { color }]}>{card.text}</Text>
       </View>
 
       <Text style={aff.readAloud}>Read this out loud. Mean every word.</Text>
 
       <TouchableOpacity
-        style={[aff.tapBtn, { backgroundColor: canTap ? color : '#FFFFFF15' }]}
+        style={[aff.tapBtn, { shadowColor: canTap ? color : '#000' }]}
         onPress={next}
         activeOpacity={0.85}
       >
+        <LinearGradient colors={canTap ? [color, color + 'CC'] : ['#FFFFFF15', '#FFFFFF05']} start={{x:0, y:0}} end={{x:1, y:1}} style={StyleSheet.absoluteFillObject} />
         <Text style={[aff.tapTxt, { color: canTap ? '#000' : '#FFFFFF40' }]}>
           {canTap
-            ? current < 2 ? 'I said it ✓  Next →' : 'I said it ✓  Complete'
-            : `Hold for ${countdown}s...`}
+            ? current < 2 ? 'I SAID IT ✓  NEXT →' : 'I SAID IT ✓  COMPLETE'
+            : `HOLD FOR ${countdown}S...`}
         </Text>
       </TouchableOpacity>
     </ScrollView>
   );
 });
 const aff = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 20 },
-  science: { color: '#FFFFFF55', fontSize: 12, textAlign: 'center', lineHeight: 18, fontStyle: 'italic' },
-  cardProgress: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  dot: { height: 8, borderRadius: 4 },
+  wrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 30, paddingBottom: 60, gap: 28 },
+  science: { color: '#FFFFFF60', fontSize: 14, textAlign: 'center', lineHeight: 24, fontWeight: '400', fontStyle: 'italic', letterSpacing: 0.3 },
+  cardProgress: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: -10 },
+  dot: { height: 8, borderRadius: 4, shadowColor: '#fff', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   card: {
-    width: '100%', borderWidth: 1.5, borderRadius: 22, padding: 28,
-    alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF06',
+    width: '100%', borderWidth: 1, borderRadius: 32, paddingHorizontal: 28, paddingVertical: 46,
+    alignItems: 'center', gap: 20, backgroundColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 8,
   },
-  cardNum: { fontSize: 10, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 1.5 },
-  affText: { fontSize: 18, fontWeight: '800', textAlign: 'center', lineHeight: 28 },
-  readAloud: { color: '#FFFFFF50', fontSize: 12, fontStyle: 'italic' },
-  tapBtn: { width: '100%', borderRadius: 99, paddingVertical: 18, alignItems: 'center' },
-  tapTxt: { fontSize: 16, fontWeight: '900' },
+  cardNum: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF50', letterSpacing: 4, textTransform: 'uppercase' },
+  affText: { fontSize: 26, fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', lineHeight: 38, letterSpacing: 0.5 },
+  readAloud: { color: '#FFFFFF60', fontSize: 14, fontStyle: 'italic', fontWeight: '500', marginTop: 4, letterSpacing: 0.2 },
+  tapBtn: { width: '100%', borderRadius: 99, paddingVertical: 22, alignItems: 'center', overflow: 'hidden', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, marginTop: 10 },
+  tapTxt: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5 },
 });
 
 // ── Move It mission — shake-to-dismiss (20 vigorous shakes) ───────────────────
@@ -994,10 +1003,8 @@ export default function MissionScreen() {
     store.getJSON<MissionSettings>(KEYS.missionSettings).then(ms => {
       setStreak(ms?.streak ?? 0);
     });
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => {
       deactivateKeepAwake();
-      sub.remove();
       // Stop background mantra carried over from alarm-ringing
       const bg = (global as any).__missionBgSound;
       if (bg) {
@@ -1013,6 +1020,16 @@ export default function MissionScreen() {
       }
     };
   }, []);
+
+  // ── Block hardware back button during mission ─────────────────────────────
+  useEffect(() => {
+    if (done) return; // Allow back button if mission is complete
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      return true;
+    });
+    return () => sub.remove();
+  }, [done]);
 
   // ── Mission foreground service — prevents HOME-button escape ─────────────────────
   // alarm-ringing.tsx cancelled the wake-alarm FGS when navigating here.

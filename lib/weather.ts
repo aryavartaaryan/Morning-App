@@ -111,7 +111,14 @@ export async function fetchWeather(): Promise<WeatherData | null> {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return null;
 
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    let loc = await Location.getLastKnownPositionAsync();
+    if (!loc) {
+      loc = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise<null>(r => setTimeout(() => r(null), 8000))
+      ]) as Location.LocationObject | null;
+    }
+    if (!loc) return null;
     const { latitude, longitude } = loc.coords;
 
     const url =

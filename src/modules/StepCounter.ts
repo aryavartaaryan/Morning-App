@@ -82,7 +82,7 @@ const SESSION_GOALS: Record<SessionType, number> = {
 
 const STRIDE_KM   = 0.000762;  // avg stride length
 const CAL_PER_STEP = 0.04;     // kcal per step (brisk walk)
-const DEFAULT_GOAL = 8000;
+const DEFAULT_GOAL = 5000;
 
 // ── Shared preferences keys (must match StepCounterService.kt) ───────────────
 
@@ -216,7 +216,7 @@ export const StepCounter = {
     } catch { /* */ }
 
     const goalSteps   = await StepCounter.getDailyGoal();
-    // Only use steps accumulated during active Naad walk sessions
+    // Only use steps accumulated during active Nada walk sessions
     const totalSteps  = manualSteps;
     const distanceKm  = parseFloat((totalSteps * STRIDE_KM).toFixed(2));
     const calories    = Math.round(totalSteps * CAL_PER_STEP);

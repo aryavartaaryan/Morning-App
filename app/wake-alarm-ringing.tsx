@@ -12,7 +12,7 @@
  * No vibration added (user's explicit request).
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, BackHandler,
   StatusBar, AppState, Platform, NativeModules, ImageBackground,
@@ -247,7 +247,7 @@ export default function WakeAlarmRingingScreen() {
     (async () => {
       try {
         await notifee.createChannel({
-          id: 'arise-soundbath', name: 'Naad Wake Alarm',
+          id: 'arise-soundbath', name: 'Nada Wake Alarm',
           importance: AndroidImportance.HIGH, bypassDnd: true,
           visibility: AndroidVisibility.PUBLIC,
         } as any);
@@ -274,12 +274,10 @@ export default function WakeAlarmRingingScreen() {
 
   // ── Block hardware back button ────────────────────────────────────────────
   useEffect(() => {
+    if (dismissed) return; // Completely detach listener when dismissed
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!dismissed) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        return true;
-      }
-      return false;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      return true;
     });
     return () => sub.remove();
   }, [dismissed]);
@@ -355,74 +353,88 @@ export default function WakeAlarmRingingScreen() {
   const hour = new Date().getHours();
   const kala = getKalaMessage(hour);
 
-  // ── Hard-timeout wrapper for native cleanup calls ─────────────────────────
-  // On OEM devices under memory pressure (after long ringing), native bridge
-  // calls can stall indefinitely. This wrapper ensures no cleanup step ever
-  // blocks the dismiss flow for more than `ms` milliseconds.
-  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | void> =>
-    Promise.race([promise, new Promise<void>(resolve => setTimeout(resolve, ms))]);
-
   // ── Stop Alarm (mission-free mode) ────────────────────────────────────────
-  const handleStopAlarm = async () => {
-    // Double-tap guard
+  //
+  // ROOT CAUSE (happens even at 5 min of ringing):
+  //
+  // After the button press, the old code set missionStartedRef=true, showed
+  // visual feedback, then called `await withTimeout(stopNativeAlarmSound(), 2500)`.
+  // If stopNativeAlarmSound() stalled on the native bridge (busy thread, OEM
+  // quirk), the entire async function was suspended for up to 2500ms. During
+  // this time: button is disabled (stopping=true) AND guard is set (missionStartedRef=true)
+  // so additional user taps do absolutely nothing — the button appears frozen.
+  //
+  // SECOND ROOT CAUSE (native watchdog fights navigation):
+  // Even when navigation DID fire, the native bringToFrontRunnable (200ms timer)
+  // would see the app leave foreground while alarm_stopping was still false
+  // (cleanup hadn't happened yet) and immediately call launchApp() to bring
+  // the alarm screen BACK — making the button appear to do nothing.
+  //
+  // THE PRECISE FIX:
+  // 1. Fire cleanup native calls FIRST as pure void (fire-and-forget, zero awaiting).
+  //    The Kotlin side receives stopAlarmSound() almost instantly and writes
+  //    alarm_stopping=true to SharedPreferences in-memory (synchronous .apply()).
+  //    Native watchdog stops immediately. Total JS time: <1ms.
+  // 2. Navigate in setTimeout(0) — fires on the NEXT JS event loop tick.
+  //    By then, alarm_stopping is already true in Kotlin, so the watchdog
+  //    will NOT call launchApp() even if it ticks during the transition.
+  // 3. Safety-net: reset guard after 3s in case navigation itself failed.
+  const handleStopAlarm = useCallback(() => {
+    // Double-tap guard — prevents duplicate navigation
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
 
-    // ── INSTANT escape hatch ── write this immediately before ANY await.
-    // This stops the index.js Notifee foreground service polling loop instantly,
-    // which relieves the back-pressure on the JS bridge that causes freezing.
+    // INSTANT: Write escape hatch flag (relieves foreground-service polling back-pressure)
     void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
 
-    // ── INSTANT visual feedback ── show disabled/stopping state IMMEDIATELY
-    // so the user knows the press was received even if native cleanup takes time.
+    // INSTANT: Visual feedback (synchronous React state queue)
     if (isMountedRef.current) setStopping(true);
     if (isMountedRef.current) setDismissed(true);
 
-    // Kill watchdog — no longer needed
+    // Kill JS watchdog — no longer needed
     if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
 
-    // Haptic confirms press immediately
+    // Haptic (synchronous, never stalls)
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Stop native alarm sound with a 2.5 s hard timeout per call.
-    // If the native bridge hangs (OEM memory pressure, stale foreground service),
-    // the timeout fires and we continue — the sound will stop when the service
-    // detects the notification is cancelled (handled below).
-    await withTimeout(Promise.all([
-      stopNativeAlarmSound().catch(() => {}),
-      stopNativeAlarmAudioOnly().catch(() => {}),
-      stopAlarmVibration().catch(() => {}),
-    ]), 2500);
-
-    // Unpin screen — also timeout-guarded so a stalled stopLockTask() never
-    // blocks navigation. The screen MUST unpin before navigate for HOME to work.
-    await withTimeout(stopNativeLockTask(), 1500);
-
-    // CRITICAL: Cancel the native AlarmManager alarm and clear the wasAlarmFired()
-    // flag in SharedPreferences. Without this, getInitialAlarmNotification() in
-    // _layout.tsx keeps returning true after the user closes the app, causing it
-    // to auto-reopen every time the app is brought to foreground.
+    // CRITICAL ORDER: Fire ALL native cleanup calls FIRST (no await, no timeout wrappers).
+    // These are void — the Promise is intentionally discarded. The Kotlin code for
+    // stopAlarmSound() writes alarm_stopping=true using .apply() (in-memory synchronous)
+    // so the native bringToFrontRunnable sees it before it can call launchApp() again.
+    // Total native bridge dispatch time: <1ms.
+    void stopNativeAlarmSound().catch(() => {});
+    void stopNativeAlarmAudioOnly().catch(() => {});
+    void stopAlarmVibration().catch(() => {});
+    void stopNativeLockTask().catch(() => {});
     void cancelNativeAlarm().catch(() => {});
-
-    // Cancel notifications (fire-and-forget — these don't block navigation)
     void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
     void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
 
-    // Navigate — guaranteed to happen within ~4 s of button press at worst
-    router.replace('/(tabs)' as never);
-  };
+    // Navigate on the NEXT JS tick — by this point alarm_stopping=true is already
+    // queued to Kotlin, so the native watchdog is already stopping before navigation fires.
+    setTimeout(() => {
+      try { router.replace('/(tabs)' as never); } catch { /* ignore */ }
+    }, 0);
+
+    // Safety-net: reset guard after 3s so if everything went wrong, user can retry
+    setTimeout(() => {
+      if (isMountedRef.current) { missionStartedRef.current = false; }
+    }, 3000);
+  }, []);
+
 
   // ── Begin Your Day (mission mode) ────────────────────────────────────────
-  const handleBeginMission = async () => {
+  // Same fix as handleStopAlarm — cleanup fires first (void/no-await),
+  // then navigate on next JS tick so the native watchdog can't fight us.
+  const handleBeginMission = useCallback(() => {
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
 
-    // ── INSTANT escape hatch ── write this immediately before ANY await.
     void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+    void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
 
-    // Instant visual feedback
     if (isMountedRef.current) setStopping(true);
     if (isMountedRef.current) setDismissed(true);
 
@@ -430,26 +442,26 @@ export default function WakeAlarmRingingScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Timeout-guarded native cleanup (same pattern as handleStopAlarm)
-    await withTimeout(Promise.all([
-      stopNativeAlarmSound().catch(() => {}),
-      stopNativeAlarmAudioOnly().catch(() => {}),
-      stopAlarmVibration().catch(() => {}),
-    ]), 2500);
-
-    await withTimeout(stopNativeLockTask(), 1500);
-
-    // Clear native wasAlarmFired() flag so app doesn't auto-reopen after mission
+    // Cleanup FIRST (sets alarm_stopping=true in Kotlin before navigation)
+    void stopNativeAlarmSound().catch(() => {});
+    void stopNativeAlarmAudioOnly().catch(() => {});
+    void stopAlarmVibration().catch(() => {});
+    void stopNativeLockTask().catch(() => {});
     void cancelNativeAlarm().catch(() => {});
-
     void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
     void notifee.cancelNotification(bttfNotifIdRef.current ?? 'wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
-    void AsyncStorage.setItem('onesutra_mission_active_v1', mission.id).catch(() => {});
 
-    router.replace(`/mission?id=${mission.id}` as never);
-  };
+    // Navigate on next JS tick (alarm_stopping already queued to Kotlin)
+    setTimeout(() => {
+      try { router.replace(`/mission?id=${mission.id}` as never); } catch { /* ignore */ }
+    }, 0);
+
+    setTimeout(() => {
+      if (isMountedRef.current) missionStartedRef.current = false;
+    }, 3000);
+  }, [mission.id]);
 
   if (!isLoaded) {
     return <View style={{ flex: 1, backgroundColor: '#060610' }} />;
@@ -532,10 +544,10 @@ export default function WakeAlarmRingingScreen() {
                 disabled={stopping}
               >
                 <LinearGradient
-                  colors={[accent + '55', accent + '30']}
+                  colors={[accent + '40', accent + '10']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]}
                 />
                 <Text style={S.ctaIcon}>{stopping ? '⏳' : '☀️'}</Text>
                 <View style={{ marginLeft: 10 }}>
@@ -563,10 +575,10 @@ export default function WakeAlarmRingingScreen() {
               disabled={stopping}
             >
               <LinearGradient
-                colors={[accent + '55', accent + '30']}
+                colors={[accent + '40', accent + '10']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
+                style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]}
               />
               <Text style={S.ctaIcon}>{stopping ? '⏳' : '🛑'}</Text>
               <View style={{ marginLeft: 10 }}>
@@ -595,45 +607,45 @@ const S = StyleSheet.create({
   ambientGlow: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
   // Top
-  topArea:   { paddingTop: 54, alignItems: 'center', gap: 10 },
-  chip:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8 },
-  liveDot:   { width: 7, height: 7, borderRadius: 3.5 },
-  chipLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.4 },
-  clockText: { fontSize: 64, fontWeight: '100', color: '#FFFFFF', letterSpacing: -2.5 },
+  topArea:   { paddingTop: 64, alignItems: 'center', gap: 14 },
+  chip:      { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 24, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.03)' },
+  liveDot:   { width: 8, height: 8, borderRadius: 4 },
+  chipLabel: { fontSize: 12, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' },
+  clockText: { fontSize: 72, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2 },
 
   // Center orb
   orbWrap:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  outerRing:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1.5 },
-  midRing:     { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1 },
-  innerCircle: { width: 110, height: 110, borderRadius: 55, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  orbIcon:     { fontSize: 44 },
+  outerRing:   { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 1 },
+  midRing:     { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1 },
+  innerCircle: { width: 140, height: 140, borderRadius: 70, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  orbIcon:     { fontSize: 54 },
 
   // Bottom
-  bottomArea: { paddingHorizontal: 26, paddingBottom: 48, alignItems: 'center', gap: 12 },
-  kalaHint:   { fontSize: 9, fontWeight: '800', letterSpacing: 1.8 },
+  bottomArea: { paddingHorizontal: 32, paddingBottom: 56, alignItems: 'center', gap: 16 },
+  kalaHint:   { fontSize: 10, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' },
 
   // Mission pill
   missionPill:   {
     width: '100%', flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderRadius: 18, paddingHorizontal: 18, paddingVertical: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.38, shadowRadius: 20, elevation: 12,
+    borderWidth: 1.5, borderRadius: 24, paddingHorizontal: 22, paddingVertical: 18,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5, shadowRadius: 30, elevation: 15,
   },
-  missionBadge:  { fontSize: 8, fontWeight: '900', letterSpacing: 2 },
-  missionName:   { fontSize: 16, fontWeight: '900', color: '#FFFFFF', marginTop: 2 },
-  missionTagline:{ fontSize: 11, color: '#FFFFFF60', marginTop: 2, lineHeight: 16 },
+  missionBadge:  { fontSize: 9, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' },
+  missionName:   { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', marginTop: 4, letterSpacing: 0.5 },
+  missionTagline:{ fontSize: 12, fontFamily: 'Nunito_400Regular', color: '#FFFFFF80', marginTop: 3, lineHeight: 18 },
 
   // CTA
   ctaBtn: {
     width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 24, paddingVertical: 22, overflow: 'hidden',
-    shadowOpacity: 0.45, shadowRadius: 24, elevation: 12, shadowOffset: { width: 0, height: 6 },
+    borderRadius: 28, paddingVertical: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
+    shadowOpacity: 0.6, shadowRadius: 32, elevation: 15, shadowOffset: { width: 0, height: 10 },
   },
-  ctaIcon:  { fontSize: 20, color: '#FFFFFFEE' },
-  ctaTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 },
-  ctaSub:   { fontSize: 10, fontWeight: '600', color: '#FFFFFF70', letterSpacing: 0.5, marginTop: 2 },
+  ctaIcon:  { fontSize: 22, color: '#FFFFFF' },
+  ctaTitle: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
+  ctaSub:   { fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#FFFFFF80', letterSpacing: 0.8, marginTop: 4, textTransform: 'uppercase' },
 
   // Lock bar
-  lockBar:    { alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFFFFF04', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF08' },
-  lockBarTxt: { fontSize: 9, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 0.5 },
+  lockBar:    { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  lockBarTxt: { fontSize: 10, color: '#FFFFFF50', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' },
 });
