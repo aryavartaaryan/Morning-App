@@ -11,7 +11,7 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
   'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_2', 'sunrise_late', 'sunrise_late_2', 'morning_early', 'morning_early_late', 'morning', 'morning_late', 'morning_late_2',
-  'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'midday_late_2', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_mid', 'sandhya_late_mid_2', 'sandhya_late_2', 'sandhya_late_3', 'twilight', 'twilight_late', 'twilight_deep', 'evening_early', 'evening_early_2', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_mid2_late', 'night_early_late', 'night', 'night_late',
+  'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_mid', 'midday_late', 'midday_late_2', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'afternoon_late_2', 'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_mid', 'sandhya_late_mid_2', 'sandhya_late_2', 'sandhya_late_3', 'twilight', 'twilight_late', 'twilight_deep', 'evening_early', 'evening_early_2', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_mid2_late', 'night_early_late', 'night', 'night_late',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
 
@@ -39,7 +39,8 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   afternoon: { label: 'Golden Afternoon', sub: 'Warm Pitta fire begins',   emoji: '🌤️', time: '2–2:30 PM' },
   afternoon_first_late: { label: 'Late Afternoon Warmth', sub: 'Warm Pitta fire deepens', emoji: '🌤️', time: '2:30–3 PM' },
   afternoon_mid: { label: 'Mellow Afternoon',  sub: 'Pitta warmth deepens',    emoji: '🔥', time: '3–4 PM' },
-  afternoon_late: { label: 'Late Afternoon Light', sub: 'Golden late light',       emoji: '', time: '4–5 PM' },
+  afternoon_late: { label: 'Late Afternoon Light', sub: 'Golden late light',       emoji: '', time: '4–4:30 PM' },
+  afternoon_late_2: { label: 'Fading Afternoon', sub: 'Golden light deepens',       emoji: '', time: '4:30–5 PM' },
   sandhya:   { label: 'Sunset Hour',  sub: 'Sacred golden sunset',     emoji: '🌇', time: '5:30–5:52 PM' },
   sandhya_mid: { label: 'Golden Sunset', sub: 'Deepening sacred sunset', emoji: '🌇', time: '5:52–6:15 PM' },
   sandhya_late: { label: 'Sunset Horizon', sub: 'Last golden light', emoji: '🌅', time: '6:15–6:26 PM' },
@@ -50,8 +51,8 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   twilight:  { label: 'Twilight Dusk',       sub: 'Dusk — Vata meets Kapha',  emoji: '🌆', time: '7:05–7:15 PM' },
   twilight_late: { label: 'Deep Twilight', sub: 'Deepening dusk glow', emoji: '🌇', time: '7:15–7:25 PM' },
   twilight_deep: { label: 'Cosmic Dusk', sub: 'Stars beginning to rise', emoji: '🌌', time: '7:25–7:35 PM' },
-  evening_early: { label: 'Early Evening Calm', sub: 'Cool night energy settling', emoji: '🌃', time: '7:30–7:52 PM' },
-  evening_early_2: { label: 'Early Evening Calm', sub: 'Cool night energy settling', emoji: '🌃', time: '7:52–8:15 PM' },
+  evening_early: { label: 'Eventide Serenity', sub: 'Cool night energy settling', emoji: '🌃', time: '7:30–7:52 PM' },
+  evening_early_2: { label: 'Velvet Nightfall', sub: 'Cool night energy settling', emoji: '🌃', time: '7:52–8:15 PM' },
   evening:   { label: 'Evening Calm',        sub: 'Cool night energy',        emoji: '🌃', time: '8:15–9 PM' },
   night_early: { label: 'Early Night', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–9:52 PM' },
   night_early_mid1: { label: 'Night Quietude', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:18 PM' },
@@ -87,6 +88,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   afternoon_first_late: '#201200',
   afternoon_mid: '#221400',
   afternoon_late: '#261200',
+  afternoon_late_2: '#281400',
   sandhya:   '#281000',
   sandhya_mid: '#291100',
   sandhya_late: '#2A1200',
@@ -132,6 +134,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   afternoon_first_late: '#381E00',
   afternoon_mid: '#3A2000',
   afternoon_late: '#3E2400',
+  afternoon_late_2: '#412100',
   sandhya:   '#441800',
   sandhya_mid: '#471A00',
   sandhya_late: '#4A2200',
@@ -230,9 +233,11 @@ export function getTimedBgKey(
     const afternoonStep = afternoonDuration / 3;
     const afternoonFirstHalf = afternoonStart + afternoonStep / 2;
     if (h < afternoonFirstHalf) return 'afternoon';
+    const afternoonLateFirstHalf = afternoonStart + afternoonStep * 2 + (afternoonEnd - (afternoonStart + afternoonStep * 2)) / 2;
     if (h < afternoonStart + afternoonStep) return 'afternoon_first_late';
     if (h < afternoonStart + afternoonStep * 2) return 'afternoon_mid';
-    if (h < afternoonEnd) return 'afternoon_late';
+    if (h < afternoonLateFirstHalf) return 'afternoon_late';
+    if (h < afternoonEnd) return 'afternoon_late_2';
     const sandhyaLateMid = sandhyaMid + (sunset - sandhyaMid) / 2;
     const sandhyaLateFirstHalf = sandhyaMid + (sandhyaLateMid - sandhyaMid) / 2;
     const duskEnd = sunset + (10 / 60);
@@ -284,7 +289,8 @@ export function getTimedBgKey(
   if (h >= 14  && h < 14.5) return 'afternoon';
   if (h >= 14.5  && h < 15) return 'afternoon_first_late';
   if (h >= 15  && h < 16)   return 'afternoon_mid';
-  if (h >= 16  && h < 17)   return 'afternoon_late';
+  if (h >= 16  && h < 16.5)   return 'afternoon_late';
+  if (h >= 16.5  && h < 17)   return 'afternoon_late_2';
   if (h >= 17  && h < 17.5)   return 'sandhya';
   if (h >= 17.5  && h < 18)   return 'sandhya_mid';
   if (h >= 18    && h < 18.25)  return 'sandhya_late';
@@ -522,11 +528,11 @@ export function BgProvider({ children }: { children: ReactNode }) {
     }}>
       {children}
       {/* Preload naad_step backgrounds into memory so they render instantly in walk.tsx */}
-      <Image source={{ uri: getBgSourceSync('naad_step') }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} />
-      <Image source={{ uri: getBgSourceSync('naad_step_night' as any) }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} />
+      {(() => { const _u1 = getBgSourceSync('naad_step'); return _u1 && _u1.length > 4 ? <Image source={{ uri: _u1 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
+      {(() => { const _u2 = getBgSourceSync('naad_step_night' as any); return _u2 && _u2.length > 4 ? <Image source={{ uri: _u2 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
       {/* Preload live_session backgrounds */}
-      <Image source={{ uri: getBgSourceSync('live_session') }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} />
-      <Image source={{ uri: getBgSourceSync('live_session_night' as any) }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} />
+      {(() => { const _u3 = getBgSourceSync('live_session'); return _u3 && _u3.length > 4 ? <Image source={{ uri: _u3 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
+      {(() => { const _u4 = getBgSourceSync('live_session_night' as any); return _u4 && _u4.length > 4 ? <Image source={{ uri: _u4 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
     </BgContext.Provider>
   );
 }

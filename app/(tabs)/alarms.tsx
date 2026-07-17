@@ -44,7 +44,7 @@ import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
-const ALARM_CARD_BG = 'rgba(0,0,0,0.26)';
+const ALARM_CARD_BG = 'transparent'; // iOS style frosted glass
 const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
   bhagya_suktam: 'bhagya_suktam', shiv_sankalpa_suktam: 'shiv_sankalpa_suktam',
@@ -58,7 +58,7 @@ const PRESETS = [
 ];
 const MANTRAS = [
   { id: 'gayatri',    label: 'Gayatri Mantra',      emoji: '🌞', color: '#fbbf24', hint: 'ॐ भूर्भुवः स्वः', pitch: 0.85, rate: 0.70, text: 'Om Bhur Bhuva Swaha, Tat Savitur Varenyam, Bhargo Devasya Dhimahi, Dhiyo Yo Nah Prachodayat. Om Shanti Shanti Shanti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' },
-  { id: 'lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65, text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
+  { id: 'lalitha',    label: 'Divine Power to Clear Obstacles (Lalitha Sahasranama)', emoji: '🌺', color: '#f472b6', hint: 'ॐ ऐं ह्रीं श्रीं', pitch: 0.80, rate: 0.65, text: 'Om Aim Hreem Shreem, Sri Lalitha Tripura Sundari, Namami Namami Namami. Om Shakti Shakti Shakti.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' },
   { id: 'shivtandav',           label: 'Shiv Tandav',              emoji: '🔱', color: '#60a5fa', hint: 'ॐ नमः शिवाय',     pitch: 0.75, rate: 0.68, text: 'Jata tavee galajjala pravaha pavithrasthale. Om Namah Shivaya, Om Namah Shivaya. Har Har Mahadev.', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' },
   { id: 'bhagya_suktam',        label: 'Hymn of Fortune (Bhagya Suktam)',            emoji: '🌟', color: '#fbbf24', hint: 'Fortune Hymn',    pitch: 0.85, rate: 0.70, text: 'Om Bhagyam Dehi, Shri Devi Namaha. May prosperity, wisdom and fortune flow into this day. Om Shanti.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' },
   { id: 'shiv_sankalpa_suktam', label: 'Shiv Sankalpa Suktam',     emoji: '🔱', color: '#60a5fa', hint: 'Sacred Mind Hymn',pitch: 0.80, rate: 0.68, text: 'Yat pragnanam uta cheto dhritishcha, Yat jyotir antah amritam prajasu. Yan nah chittam ahuti pupa ya, tan me manah shivasankalpam astu.', audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a' },
@@ -89,7 +89,7 @@ const ALARM_SOUNDS = [
   { id: 'om_shanti',               label: 'Om Shanti',              emoji: '🕉️', cat: 'Sacred', color: '#c084fc', audioUrl: null as string | null },
   { id: 'naad_aar_sitar_classical', label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Sacred', color: '#f59e0b', audioUrl: NAAD_BASE_ALARM + 'aar_music-indian-classical-music-sitar-296790.m4a' as string | null },
   { id: 'gayatri',                 label: 'Gayatri Mantra',         emoji: '🌞', cat: 'Mantra', color: '#fbbf24', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' as string | null },
-  { id: 'lalitha',                 label: 'Lalitha Sahasranama',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
+  { id: 'lalitha',                 label: 'Divine Power to Clear Obstacles (Lalitha Sahasranama)',    emoji: '🌺', cat: 'Mantra', color: '#f472b6', audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' as string | null },
   { id: 'naad_govinda_mantra',     label: 'Govinda Mantra',         emoji: '💙', cat: 'Mantra', color: '#818cf8', audioUrl: NAAD_BASE_ALARM + 'shidenbeatsmusic-govinda-mantra-female-voice-with-tanpura-and-sitar-120558.m4a' as string | null },
   { id: 'med_govind_bolo',         label: 'Govind Bolo · Krishna',  emoji: '🪈', cat: 'Mantra', color: '#38bdf8', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Govind%20BoloShri%20Krishna%20Govind%20%20Krishna%20Sankirtanl%20%20Om%20Voices.mp3' as string | null },
   { id: 'cdn_ultra_vedic_healing_chant', label: 'Vedic Healing Chanting', emoji: '🌿', cat: 'Mantra', color: '#86efac', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/Vedic%20Mantra%20for%20Weight%20Loss%20%20Healing%20Meditation%20Music%20%20Divine%20Female%20Chanting.m4a' as string | null },
@@ -1097,18 +1097,17 @@ export default function AlarmsTab() {
       </TouchableOpacity>
 
       {/* ── Page Header Card — glassmorphism matching sleep page hero ── */}
-      <View style={{ marginTop: 0, marginBottom: 10 }}>
+      <View style={{ marginTop: 0, marginBottom: 15 }}>
         <View style={{
           width: '100%',
-          backgroundColor: 'rgba(0,0,0,0.26)',
+          backgroundColor: 'rgba(0,0,0,0.45)', // Darker premium header background
           borderTopWidth: 0,
           borderBottomWidth: 1,
           borderColor: 'rgba(255,255,255,0.14)',
           borderRadius: 0,
           overflow: 'hidden',
-          paddingHorizontal: 20,
-          paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 10,
-          paddingBottom: 16,
+          paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
+          paddingBottom: 20,
           alignItems: 'center',
         }}>
           {/* Subtle top shimmer — identical to sleep hero */}
@@ -1118,9 +1117,9 @@ export default function AlarmsTab() {
             style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
           />
-          {/* Main title — DancingScript matching sleep hero font exactly */}
+          {/* Main title */}
           <Text style={{
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: '600',
             color: '#FFF8F0',
             letterSpacing: 0.5,
@@ -1133,32 +1132,29 @@ export default function AlarmsTab() {
           }}>
             Healing Rhythmic Alarm
           </Text>
-          {/* Subtitle — matching sleep page subtitle style */}
+          {/* Subtitle */}
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 2, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
             Rise with your body's natural rhythm
           </Text>
-          {/* Divider — identical to sleep hero */}
-          <View style={{ width: 32, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 12 }} />
-          {/* Tagline — visible, matching sleep hint text opacity */}
-          <Text style={{ fontSize: 10, fontWeight: '300', color: 'rgba(255,255,255,0.52)', letterSpacing: 0.3, textAlign: 'center', fontStyle: 'italic' }}>
-            ancient ragas · nature sounds · sacred mantras
-          </Text>
+          {/* Divider */}
+          <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 14 }} />
+          
+          {/* Fused Tag chips inside header for premium look */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, alignItems: 'center' }}>
+            {[
+              { label: 'Nature Sounds', color: '#34d399' },
+              { label: 'Raga Sounds',   color: '#a78bfa' },
+              { label: 'Bird Songs',    color: '#60a5fa' },
+              { label: 'Mantras',       color: '#fbbf24' },
+              { label: 'Stotras',       color: '#f472b6' },
+              { label: 'Sound Baths',   color: '#fb923c' },
+            ].map(tag => (
+              <View key={tag.label} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 24, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: tag.color + '40' }}>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: tag.color, letterSpacing: 0.3 }}>{tag.label}</Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
-        {/* Tag chips below card */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: 10, paddingBottom: 2, gap: 6 }}>
-          {[
-            { label: 'Nature Sounds', color: '#34d399' },
-            { label: 'Raga Sounds',   color: '#a78bfa' },
-            { label: 'Bird Songs',    color: '#60a5fa' },
-            { label: 'Mantras',       color: '#fbbf24' },
-            { label: 'Stotras',       color: '#f472b6' },
-            { label: 'Sound Baths',   color: '#fb923c' },
-          ].map(tag => (
-            <View key={tag.label} style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, backgroundColor: tag.color + '0D', borderWidth: 1, borderColor: tag.color + '28' }}>
-              <Text style={{ fontSize: 9, fontWeight: '500', color: tag.color + 'AA', letterSpacing: 0.2 }}>{tag.label}</Text>
-            </View>
-          ))}
-        </ScrollView>
       </View>
 
       {Platform.OS === 'android' && !allPermsOk && (
@@ -1188,6 +1184,7 @@ export default function AlarmsTab() {
 
           {/* Primary Wake Alarm Card — Smart A */}
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }} activeOpacity={0.8}>
@@ -1230,6 +1227,7 @@ export default function AlarmsTab() {
           {/* Brahma Muhurta Alarm Card */}
           {settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null && (
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
@@ -1271,6 +1269,7 @@ export default function AlarmsTab() {
           {/* Extra Wake Alarm Cards — Smart A */}
           {extraWakeAlarms.map(alarm => (
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
@@ -1323,6 +1322,7 @@ export default function AlarmsTab() {
               : `⚡  ${entry.label || 'Quick Alarm'}`;
             return (
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
+                <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
                 <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
                 <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>

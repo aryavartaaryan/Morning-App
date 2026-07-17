@@ -91,9 +91,11 @@ class MainActivity : ReactActivity() {
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
       lockTaskStartedForAlarm = false
-      // NOTE: stopLockTask() is NOT called here unconditionally — it would
-      // interfere with normal in-alarm navigation. The explicit call happens
-      // in mission.tsx handleComplete() via AlarmModule.stopLockTask().
+
+      // If we're returning from alarm navigation and Lock Task is still active,
+      // ensure it is stopped. Safe to call even if not in lock task mode.
+      try { stopLockTask() } catch (_: Exception) {}
+
       return
     }
     // Re-apply all alarm display flags every time the screen comes back
@@ -114,8 +116,6 @@ class MainActivity : ReactActivity() {
     }
     // Layer 3 — Screen Pinning (Lock Task Mode).
     // Pins this task so Android's OS itself blocks Home, Back, and Recent Apps.
-    // This is the same mechanism Alarmy uses for unescapable alarms.
-    // On first use the system shows a one-time "Screen pinned" toast — silent thereafter.
     startAlarmLockTaskOnce()
   }
 
@@ -139,8 +139,15 @@ class MainActivity : ReactActivity() {
       // Cancel any pending bring-to-front debounce — we're already in focus.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
-      // Pin the screen if alarm is active.
-      if (isAlarmActive()) {
+      // Pin the screen if alarm is active AND NOT stopping.
+      val alarmStopping = try {
+        getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+          .getBoolean("alarm_stopping", false) ||
+        getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+          .getBoolean("alarm_stopping", false)
+      } catch (_: Exception) { false }
+
+      if (isAlarmActive() && !alarmStopping) {
         startAlarmLockTaskOnce()
       }
     } else {
@@ -148,12 +155,12 @@ class MainActivity : ReactActivity() {
       // startActivity() during the normal alarm-dismissal navigation flow.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       val r = Runnable {
-        // Re-check AFTER the debounce — by now .commit() has settled and
+        // Re-check AFTER the debounce — by now .apply() has settled and
         // isAlarmActive() correctly reflects the real alarm state.
         //
         // ROOT CAUSE FIX: Also check alarm_stopping. When the user taps Stop,
         // React Navigation's transition causes onWindowFocusChanged(false) to
-        // fire immediately. Without this guard, the 350ms debounce could fire
+        // fire immediately. Without this guard, the debounce could fire
         // startActivity() right in the middle of router.replace() navigation
         // (especially under memory pressure after long ringing), making the
         // screen appear frozen. alarm_stopping=true is set synchronously in
@@ -186,7 +193,10 @@ class MainActivity : ReactActivity() {
         }
       }
       focusLossRunnable = r
-      focusLossHandler.postDelayed(r, 350)
+      // 600ms debounce (was 350ms): alarm_stopping=true is written by stopAlarmSound(),
+      // then the JS Promise resolves and router.replace() fires. By 600ms the flag is
+      // reliably settled in SharedPreferences memory so the check above is accurate.
+      focusLossHandler.postDelayed(r, 600)
     }
   }
 

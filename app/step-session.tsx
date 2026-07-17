@@ -30,6 +30,7 @@ import {
   ImageBackground,
   Modal,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Circle,
@@ -82,12 +83,13 @@ function fmtTime(seconds: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-// ── Glassy Overlay ────────────────────────────────────────────────────────────
+// ── Glassy Overlay (permanent peak frost) ────────────────────────────────────
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.03)', 'transparent']}
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.1)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -192,22 +194,6 @@ export default function StepSessionScreen() {
       const result = await StepCounter.startSession(type);
       startMsRef.current = result.startTime;
 
-      if (Platform.OS === 'android') {
-        setTimeout(async () => {
-          const src = await StepCounter.getSensorSource();
-          let msg: string;
-          if (src === 'STEP_DETECTOR') {
-            msg = '✅ Pedometer active — real-time, 1 step = 1 update';
-          } else if (src === 'STEP_COUNTER') {
-            msg = '⚠️ Batched pedometer — steps may arrive in small bursts';
-          } else {
-            msg = '❌ No step sensor found on this device';
-          }
-          ToastAndroid.showWithGravityAndOffset(
-            msg, ToastAndroid.LONG, ToastAndroid.BOTTOM, 0, 120,
-          );
-        }, 1500);
-      }
 
       Animated.parallel([
         Animated.timing(fadeIn,  { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -385,7 +371,7 @@ export default function StepSessionScreen() {
       source={{ uri: getBgSourceSync(sessionBgKey as any) }}
       style={[{ flex: 1, backgroundColor: accentColor || BG }]}
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
-      {!isNightReal && <GlassPulseOverlay />}
+      <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Session-colour aurora aura */}
@@ -508,37 +494,42 @@ export default function StepSessionScreen() {
         {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
         <View style={s.ringWrapper}>
           {/* Outer breathing aura layers */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.03, 0.10] }), transform: [{ scale: pulseAnim }], top: -35, left: -35 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, backgroundColor: GA, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.04, 0.12] }), transform: [{ scale: pulseAnim }], top: -18, left: -18 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.15, 0.35] }), transform: [{ scale: pulseAnim }], top: -35, left: -35 }} />
+          <Animated.View style={{ position: 'absolute', width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, backgroundColor: GA, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.12, 0.28] }), transform: [{ scale: pulseAnim }], top: -18, left: -18 }} />
 
-          {/* Inner disc removed for transparency */}
+          {/* Inner disc for better text contrast */}
+          <View style={{ position: 'absolute', top: 10, left: 10, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
 
           {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
-          <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 28, elevation: 12 }}>
+          <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
             <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
               <Defs>
                 <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
                   <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
                   <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
-                  <Stop offset="1"   stopColor={GB} stopOpacity="0.8" />
+                  <Stop offset="1"   stopColor={GB} stopOpacity="1" />
                 </SvgGrad>
               </Defs>
               
               {/* Outer razor-thin neon orbit */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 10} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 10} fill="none" stroke="url(#sessGrad)" strokeWidth={2} strokeDasharray={CIRCUM + 62.83} strokeDashoffset={(CIRCUM + 62.83) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM + 75} strokeDashoffset={(CIRCUM + 75) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
 
               {/* Main thick segmented track */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth={STROKE} strokeDasharray="3 4" />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.40)" strokeWidth={STROKE} strokeDasharray="4 6" />
               
-              {/* Active solid glowing progress overlay */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} />
+              {/* Massive blur duplicate for outer core glow */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 20} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.65} strokeLinecap="round" />
               {/* Intense blur duplicate for inner core glow */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 6} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.75} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.9} strokeLinecap="round" />
+              {/* Active solid glowing progress overlay */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} strokeLinecap="round" />
+              {/* Neon White Core */}
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#ffffff" strokeWidth={5} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} strokeLinecap="round" opacity={0.9} />
               
               {/* Inner razor-thin neon orbit */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 10} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 10} fill="none" stroke="url(#sessGrad)" strokeWidth={2} strokeDasharray={CIRCUM - 62.83} strokeDashoffset={(CIRCUM - 62.83) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM - 75} strokeDashoffset={(CIRCUM - 75) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
             </Svg>
           </View>
 

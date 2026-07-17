@@ -692,17 +692,29 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const applyAudioMode = () =>
-      Audio.setAudioModeAsync({
+    // Retry-based audio mode setup — on first install/phone restart, the audio
+    // session may not be immediately ready. Retrying up to 3×500ms fixes the
+    // "silent first play" crash that occurs when the OS audio daemon is still booting.
+    const applyAudioMode = async (): Promise<void> => {
+      const cfg = {
         staysActiveInBackground: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: false,
         playThroughEarpieceAndroid: false,
-        interruptionModeIOS: 1,
-        interruptionModeAndroid: 1,
-      }).catch(() => {});
+        interruptionModeIOS: 1 as const,
+        interruptionModeAndroid: 1 as const,
+      };
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          await Audio.setAudioModeAsync(cfg);
+          return; // success — stop retrying
+        } catch {
+          if (attempt < 3) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        }
+      }
+    };
 
-    applyAudioMode();
+    applyAudioMode().catch(() => {});
     initAudioCache().catch(() => {});
 
     // LOCK-SCREEN FIX: Re-activate audio session and restart interrupted sounds

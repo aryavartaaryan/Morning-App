@@ -123,19 +123,19 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
     let mounted = true;
     // Initial delay to let the app settle
     const initialDelay = setTimeout(() => {
-      Animated.timing(footerOp, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+      Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
 
       Animated.sequence([
-        Animated.delay(800),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.delay(1950), // Hold the screen for a bit so user can read everything (5s total)
+        Animated.delay(600),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.delay(1450), // Hold the screen for a bit so user can read everything (4s total)
         
         // Dismiss Splash
         Animated.parallel([
-          Animated.timing(titleOp, { toValue: 0, duration: 900, useNativeDriver: true }),
-          Animated.timing(titleSc, { toValue: 1.05, duration: 900, useNativeDriver: true }),
-          Animated.timing(screenOp, { toValue: 0, duration: 900, useNativeDriver: true }),
-          Animated.timing(screenSc, { toValue: 0.94, duration: 900, useNativeDriver: true }),
+          Animated.timing(titleOp, { toValue: 0, duration: 800, useNativeDriver: true }),
+          Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: true }),
+          Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: true }),
+          Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: true }),
         ]),
       ]).start(({ finished }) => {
         if (mounted && finished) onDone();
@@ -206,9 +206,6 @@ const SETUP_SUBTITLES = [
 
 function DownloadScreen({ progress, label, error, onRetry }: { progress: number; label: string; error?: boolean; onRetry?: () => void }) {
   const pulseAnim   = useRef(new Animated.Value(0)).current;
-  const rot1        = useRef(new Animated.Value(0)).current;
-  const rot2        = useRef(new Animated.Value(0)).current;
-  const rot3        = useRef(new Animated.Value(0)).current;
 
   // Animated subtitle cycling
   const subtitleOp  = useRef(new Animated.Value(1)).current;
@@ -217,10 +214,6 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
   useEffect(() => {
-    Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 60000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })).start();
-
     // Pulse core glow (slow, deep breathing)
     Animated.loop(
       Animated.sequence([
@@ -262,146 +255,88 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const cMain = 2 * Math.PI * rMain;
   const offsetMain = cMain * (1 - Math.min(progress, 1));
 
-  const rOuter = 125;
-  const rInner1 = 95;
-  const rInner2 = 85;
+  const rInner2 = 95; // slightly larger for glassy core
 
-  // Premium Minimalist Magenta Colors
-  const magenta = '#d946ef';
-  const deepMagenta = '#86198f';
-  const softMagenta = '#fdf4ff';
-  const etherealWhite = 'rgba(255,255,255,0.7)';
+  // Premium Minimalist Glassy Sky Blue Colors (Matching Home Page)
+  const skyBlue = '#60a5fa';
+  const softSkyBlue = '#bfdbfe';
+  const etherealWhite = 'rgba(255,255,255,0.8)';
 
   return (
     <Animated.View pointerEvents="auto" style={DS.screen}>
-      <LinearGradient colors={['#050106', '#140518', '#050106']} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['#020617', '#082f49', '#020617']} style={StyleSheet.absoluteFillObject} />
 
       {/* Ambient background ethereal glow */}
       <Animated.View style={{
-        position: 'absolute', width: 600, height: 600, borderRadius: 300, backgroundColor: magenta, top: '15%', 
-        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.01, 0.05] }), 
+        position: 'absolute', width: 600, height: 600, borderRadius: 300, backgroundColor: skyBlue, top: '15%', 
+        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.08] }), 
         alignSelf: 'center', 
-        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.1] }) }]
+        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }]
       }} />
 
       <View style={DS.center}>
-        <Text style={[DS.appName, { color: softMagenta, textShadowColor: magenta }]}>NADA</Text>
+        <Text style={[DS.appName, { color: softSkyBlue, textShadowColor: skyBlue }]}>NADA</Text>
         <View style={{ height: 60, justifyContent: 'center', marginBottom: 20 }}>
           <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
         </View>
 
         <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
           
-          {/* ── Ultra-Premium Layered Aura ── */}
-          <Animated.View style={{ position: 'absolute', width: SIZE + 50, height: SIZE + 50, borderRadius: (SIZE + 50) / 2, backgroundColor: deepMagenta, opacity: 0.08, shadowColor: magenta, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 50, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }] }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 10, height: SIZE + 10, borderRadius: (SIZE + 10) / 2, backgroundColor: `rgba(217,70,239,0.06)`, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] }) }] }} />
+          {/* === 5-layer pulsing aura (exactly like hero ring) === */}
+          <Animated.View style={{ position: 'absolute', width: SIZE + 72, height: SIZE + 72, borderRadius: (SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 52, height: SIZE + 52, borderRadius: (SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 34, height: SIZE + 34, borderRadius: (SIZE + 34) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulseAnim }], top: -17, left: -17 }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 18, height: SIZE + 18, borderRadius: (SIZE + 18) / 2, backgroundColor: 'rgba(96,165,250,0.15)', transform: [{ scale: pulseAnim }], top: -9, left: -9 }} />
+          <Animated.View style={{ position: 'absolute', width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: 'rgba(96,165,250,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
 
-          {/* ── Inner zone — premium glass core ── */}
-          <View style={{
-            position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
-            backgroundColor: `rgba(217,70,239,0.04)`,
-            overflow: 'hidden',
-            borderWidth: 0.5, borderColor: 'rgba(217,70,239,0.15)', // Subtle magenta rim
-          }}>
-            {/* Inner fill fusion gradient */}
-            <LinearGradient
-              colors={[`${magenta}20`, 'transparent', `${deepMagenta}15`]}
-              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-              style={StyleSheet.absoluteFillObject} />
-
-            {/* ── Fluid Effect with Fusion Colors ── */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: rInner2 * 3.2, height: rInner2 * 3.2,
-              top: -rInner2 * 0.6, left: -rInner2 * 0.6,
-              opacity: 0.4,
-              transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-            }}>
-               <LinearGradient colors={[`${magenta}00`, `${magenta}30`, `${deepMagenta}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: rInner2 * 2 }} />
-            </Animated.View>
-            
-            {/* ── Lunar breathing — gentle warm glow inhaling & exhaling ── */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: rInner2 * 2, height: rInner2 * 2, borderRadius: rInner2,
-              backgroundColor: `${magenta}08`,
-              opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.8] }),
-            }} />
-            
-            {/* ── Moonwater ripples — clean minimal expanding rings ── */}
-            {rippleAnims.map((anim, i) => {
-              const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.94] });
-              const opacity = anim.interpolate({ inputRange: [0, 0.14, 0.55, 1], outputRange: [0, 0.2, 0.05, 0] });
-              return (
-                <Animated.View key={i} pointerEvents="none" style={{
-                  position: 'absolute', width: rInner2 * 2, height: rInner2 * 2,
-                  borderRadius: rInner2,
-                  borderWidth: 1, borderColor: magenta,
-                  top: 0, left: 0,
-                  transform: [{ scale }], opacity,
-                }} />
-              );
-            })}
-            
-            {/* ── Glass highlight — frosted arc at top simulating premium lens refraction ── */}
-            <View pointerEvents="none" style={{
-              position: 'absolute',
-              width: rInner2 * 1.4, height: rInner2 * 1.4,
-              borderRadius: rInner2 * 0.7,
-              top: -rInner2 * 0.7, left: rInner2 * 0.3,
-              transform: [{ scaleX: 1.5 }],
-            }}>
-              <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)', 'transparent']} style={{ flex: 1, borderRadius: rInner2 }} />
-            </View>
-          </View>
-
-          {/* SVG Elements */}
+          {/* === SVG arc — 3-layer glassy blue glow stroke (exactly like hero ring) === */}
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
-            <Defs>
-              {/* Premium Minimal Gradient for Progress Arc */}
-              <SvgLinearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor={softMagenta} stopOpacity="1" />
-                <Stop offset="50%" stopColor={magenta} stopOpacity="1" />
-                <Stop offset="100%" stopColor={deepMagenta} stopOpacity="1" />
-              </SvgLinearGradient>
-            </Defs>
-
-            {/* Premium Track */}
-            <Circle cx={cx} cy={cx} r={rMain} stroke="rgba(255,255,255,0.03)" strokeWidth={8} fill="none" />
-
-            {/* Main Progress Arc Glow - Deep soft diffusion */}
-            <Circle cx={cx} cy={cx} r={rMain} stroke="url(#glow)" strokeWidth={24} fill="none" strokeDasharray={`${cMain}`} strokeDashoffset={`${offsetMain}`} strokeLinecap="round" rotation={-90} origin={`${cx}, ${cx}`} opacity={0.25} />
-
-            {/* Main Progress Arc Core */}
-            <Circle cx={cx} cy={cx} r={rMain} stroke="url(#glow)" strokeWidth={4} fill="none" strokeDasharray={`${cMain}`} strokeDashoffset={`${offsetMain}`} strokeLinecap="round" rotation={-90} origin={`${cx}, ${cx}`} />
+            {/* Track */}
+            <Circle cx={cx} cy={cx} r={rMain} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={6} />
+            {/* Wide outer glow stroke */}
+            <Circle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#93c5fd" strokeWidth={6 + 16} strokeLinecap="butt"
+              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.14}
+            />
+            {/* Mid glow stroke */}
+            <Circle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#7dd3fc" strokeWidth={6 + 8} strokeLinecap="butt"
+              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.26}
+            />
+            {/* Main crisp stroke */}
+            <Circle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#60a5fa" strokeWidth={6} strokeLinecap="butt"
+              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.96}
+            />
+            {/* Inner highlight sliver */}
+            <Circle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="butt"
+              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.40}
+            />
           </Svg>
 
-          {/* Rotating Outer Ring (Clean Minimalist) */}
-          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-              <Circle cx={cx} cy={cx} r={rOuter} stroke={magenta} strokeWidth={2} fill="none" strokeDasharray="2 30" opacity={0.5} strokeLinecap="round" />
-            </Svg>
-          </Animated.View>
-
-          {/* Rotating Inner Ring (Smooth Counter-Rotation) */}
-          <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-              <Circle cx={cx} cy={cx} r={rInner1} stroke={softMagenta} strokeWidth={1} fill="none" strokeDasharray="1 15" opacity={0.3} strokeLinecap="round" />
-            </Svg>
-          </Animated.View>
-
-          {/* Percentage Text inside the glass dome */}
+          {/* Percentage Text inside the ring */}
           <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <Text style={[DS.pctNum, { textShadowColor: 'rgba(217,70,239,0.5)' }]}>{pct}</Text>
-              <Text style={[DS.pctSign, { color: softMagenta }]}>%</Text>
+              <Text style={[DS.pctNum, { textShadowColor: 'rgba(96,165,250,0.6)' }]}>{pct}</Text>
+              <Text style={[DS.pctSign, { color: '#93c5fd' }]}>%</Text>
             </View>
-            <Text style={{ color: magenta, fontSize: 10, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 5, marginTop: 4, opacity: 0.9 }}>SYNCHRONIZING</Text>
+            <Text style={{ color: '#60a5fa', fontSize: 11, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 5, marginTop: 4, opacity: 0.95 }}>SYNCHRONIZING</Text>
           </View>
         </View>
 
         {/* Status */}
         {error ? (
           <View style={{ alignItems: 'center', height: 80 }}>
-            <Text style={[DS.statusLabel, { color: magenta, textTransform: 'uppercase', letterSpacing: 2 }]}>AWAITING CONNECTION...</Text>
+            <Text style={[DS.statusLabel, { color: skyBlue, textTransform: 'uppercase', letterSpacing: 2 }]}>AWAITING CONNECTION...</Text>
             <View style={{ marginTop: 12 }}>
               <Text style={{ color: etherealWhite, fontSize: 12, fontFamily: 'Nunito_400Regular' }}>Will auto-resume when online</Text>
             </View>
@@ -420,14 +355,14 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
 const DS = StyleSheet.create({
   screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#020617' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName:     { fontSize: 32, fontFamily: 'Nunito_900Black', color: '#bae6fd', letterSpacing: 12, marginBottom: 12, opacity: 0.9 },
-  subTagline:  { fontSize: 13, color: 'rgba(56,189,248,0.7)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 48, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
-  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_400Regular', letterSpacing: -1, textShadowColor: 'rgba(56,189,248,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 },
-  pctSign:     { fontSize: 18, color: '#bae6fd', fontFamily: 'Nunito_600SemiBold', marginTop: 10, marginLeft: 2 },
-  statusLabel: { fontSize: 11, color: '#38bdf8', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
-  setupHint:   { fontSize: 9, color: 'rgba(56,189,248,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1, marginTop: 10, textTransform: 'uppercase' },
-  retryBtn:    { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(2,132,199,0.2)', borderRadius: 4, borderWidth: 1, borderColor: '#0284c7' },
-  retryTxt:    { color: '#bae6fd', fontFamily: 'Nunito_700Bold', fontSize: 12, letterSpacing: 1 },
+  appName:     { fontSize: 32, fontFamily: 'Nunito_900Black', color: '#93c5fd', letterSpacing: 12, marginBottom: 12, opacity: 0.9 },
+  subTagline:  { fontSize: 13, color: 'rgba(96,165,250,0.7)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 48, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
+  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_400Regular', letterSpacing: -1, textShadowColor: 'rgba(96,165,250,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 },
+  pctSign:     { fontSize: 18, color: '#93c5fd', fontFamily: 'Nunito_600SemiBold', marginTop: 10, marginLeft: 2 },
+  statusLabel: { fontSize: 11, color: '#60a5fa', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
+  setupHint:   { fontSize: 9, color: 'rgba(96,165,250,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1, marginTop: 10, textTransform: 'uppercase' },
+  retryBtn:    { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(96,165,250,0.2)', borderRadius: 4, borderWidth: 1, borderColor: '#60a5fa' },
+  retryTxt:    { color: '#93c5fd', fontFamily: 'Nunito_700Bold', fontSize: 12, letterSpacing: 1 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {

@@ -71,33 +71,34 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopAlarmSound(promise: Promise) {
         try {
-            // Write alarm_stopping=true FIRST so that:
-            // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
-            // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
-            //    stops re-posting itself — preventing it from fighting router navigation.
-            //
-            // CRITICAL FIX: Changed from .commit() to .apply().
-            // .commit() is a SYNCHRONOUS disk write — it blocks the React Native bridge
-            // thread until the write completes. After the alarm has been ringing for a
-            // long time, disk I/O contention can make this take 500ms to 3 seconds.
-            // During that entire time the bridge thread is frozen — it cannot process
-            // any native module calls, including touch events routed via the bridge.
-            // This is what caused the "button unresponsive after long ringing" bug.
-            //
-            // .apply() updates the in-memory SharedPreferences map SYNCHRONOUSLY
-            // (all same-process readers including watchdogs see alarm_stopping=true
-            // immediately) and then writes to disk on a background thread.
-            // The bridge thread returns in <1ms, resolving the JS Promise instantly.
-            //
-            // alarm_stopping is cleared in AlarmSoundServiceBase.onDestroy() which
-            // is the authoritative moment the service actually stops.
+            // ══════════════════════════════════════════════════════════════
+            // STEP 0: Set the AtomicBoolean FIRST — zero latency, zero race.
+            // Instantly visible to ALL threads. Every watchdog checks this
+            // before anything else and stops immediately. launchApp() also
+            // checks it and cannot re-write alarm_fired_pending=true after this.
+            // ══════════════════════════════════════════════════════════════
+            AlarmSoundServiceBase.ALARM_FORCE_STOP.set(true)
+
+            // STEP 1: Write alarm_stopping=true + alarm_fired_pending=false.
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("alarm_stopping", true)
                 .putBoolean("alarm_fired_pending", false)
-                .apply()  // was .commit() — see comment above
-            (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState()
-            reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java))
+                .apply()
+
+            // STEP 2: Exit Lock Task (screen pinning) on the MAIN THREAD.
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    reactContext.currentActivity?.stopLockTask()
+                } catch (_: Exception) {}
+                try {
+                    (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState()
+                } catch (_: Exception) {}
+            }
+
+            // STEP 3: Stop the foreground service (triggers onDestroy).
+            try { reactContext.stopService(Intent(reactContext, AlarmSoundService::class.java)) } catch (_: Exception) {}
+
             promise.resolve("Sound stopped")
         } catch (e: Exception) {
             promise.reject("STOP_ERROR", e.message, e)
@@ -177,8 +178,8 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
 
     /**
      * Exit Lock Task (screen pinning) mode.
-     * Called from mission.tsx handleComplete() immediately after stopping the alarm
-     * so the user is never trapped inside the app after mission completion.
+     * Called from mission.tsx handleComplete() and also proactively from stopAlarmSound().
+     * Safe to call multiple times — stopLockTask() is idempotent on Android.
      */
     @ReactMethod
     fun stopLockTask(promise: Promise) {
@@ -187,7 +188,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
             if (activity != null) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     try { activity.stopLockTask() } catch (_: Exception) {}
-                    (activity as? MainActivity)?.resetAlarmLockTaskState()
+                    try { (activity as? MainActivity)?.resetAlarmLockTaskState() } catch (_: Exception) {}
                 }
             }
             promise.resolve("OK")

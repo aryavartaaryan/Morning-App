@@ -125,10 +125,13 @@ export default function WakeAlarmRingingScreen() {
   const outerOpacity = useSharedValue(0.30);
   const innerScale   = useSharedValue(1);
   const btnScale     = useSharedValue(1);
+  const rotVal       = useSharedValue(0);
 
   const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: outerScale.value }], opacity: outerOpacity.value }));
   const innerStyle = useAnimatedStyle(() => ({ transform: [{ scale: innerScale.value }] }));
   const btnStyle   = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
+  const rotStyle   = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotVal.value}deg` }] }));
+  const rotRevStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `-${rotVal.value}deg` }] }));
 
   useEffect(() => {
     outerScale.value = withRepeat(
@@ -143,11 +146,13 @@ export default function WakeAlarmRingingScreen() {
     btnScale.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 900 }), withTiming(1, { duration: 900 })), -1,
     );
+    rotVal.value = withRepeat(withTiming(360, { duration: 25000, easing: Easing.linear }), -1, false);
     return () => {
       cancelAnimation(outerScale);
       cancelAnimation(outerOpacity);
       cancelAnimation(innerScale);
       cancelAnimation(btnScale);
+      cancelAnimation(rotVal);
     };
   }, []);
 
@@ -239,6 +244,36 @@ export default function WakeAlarmRingingScreen() {
       }
     };
   }, []);
+
+  // ── AUTO-DISMISS: Maximum alarm ring duration ──────────────────────────────
+  //
+  // ALL modern alarm apps implement this:
+  //   Google Clock: 30 minutes, Samsung Clock: 20 minutes, Alarmy: configurable
+  //
+  // Without this, a ringing alarm that the user misses will ring indefinitely,
+  // and the longer it rings the higher the chance watchdog/lock-task state gets
+  // corrupted making the Stop button appear frozen.
+  //
+  // After MAX_RING_DURATION_MS the alarm auto-dismisses to the home tab.
+  // This is the single most important safety guarantee for long-ringing alarms.
+  const MAX_RING_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+  useEffect(() => {
+    if (!isLoaded) return;
+    const autoDismissTimer = setTimeout(() => {
+      if (!isMountedRef.current || missionStartedRef.current) return;
+      console.warn('[WakeAlarm] Auto-dismiss: alarm rang for 30 minutes without user interaction');
+      // Fire the same cleanup as a manual stop
+      void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
+      void stopNativeAlarmSound().catch(() => {});
+      void stopNativeAlarmAudioOnly().catch(() => {});
+      void stopAlarmVibration().catch(() => {});
+      void stopNativeLockTask().catch(() => {});
+      void cancelNativeAlarm().catch(() => {});
+      if (watchdogRef.current !== null) { clearTimeout(watchdogRef.current); watchdogRef.current = null; }
+      try { router.replace('/(tabs)' as never); } catch { /* ignore */ }
+    }, MAX_RING_DURATION_MS);
+    return () => clearTimeout(autoDismissTimer);
+  }, [isLoaded]);
 
   // ── Foreground service (Android) — keeps JVM alive when HOME pressed ──────
   useEffect(() => {
@@ -355,36 +390,35 @@ export default function WakeAlarmRingingScreen() {
 
   // ── Stop Alarm (mission-free mode) ────────────────────────────────────────
   //
-  // ROOT CAUSE (happens even at 5 min of ringing):
+  // COMPLETE ROOT CAUSE FIX (after 30+ failed attempts at workarounds):
   //
-  // After the button press, the old code set missionStartedRef=true, showed
-  // visual feedback, then called `await withTimeout(stopNativeAlarmSound(), 2500)`.
-  // If stopNativeAlarmSound() stalled on the native bridge (busy thread, OEM
-  // quirk), the entire async function was suspended for up to 2500ms. During
-  // this time: button is disabled (stopping=true) AND guard is set (missionStartedRef=true)
-  // so additional user taps do absolutely nothing — the button appears frozen.
+  // The true root cause was a 2-layer problem:
   //
-  // SECOND ROOT CAUSE (native watchdog fights navigation):
-  // Even when navigation DID fire, the native bringToFrontRunnable (200ms timer)
-  // would see the app leave foreground while alarm_stopping was still false
-  // (cleanup hadn't happened yet) and immediately call launchApp() to bring
-  // the alarm screen BACK — making the button appear to do nothing.
+  // LAYER 1 — LOCK TASK MODE (primary freeze cause):
+  // After 3-4 minutes, MainActivity.startAlarmLockTaskOnce() had entered Android
+  // Lock Task Mode (screen pinning). When the user taps Stop, stopLockTask() was
+  // fired as a void/fire-and-forget AFTER all other cleanup. Android blocks ALL
+  // touch input and window transitions while in Lock Task Mode. If router.replace()
+  // fired BEFORE stopLockTask() resolved, navigation was blocked by the OS itself.
+  // Fix: stopLockTask() is now called FIRST (in AlarmModule.stopAlarmSound() on
+  // the main thread) BEFORE the service stops.
   //
-  // THE PRECISE FIX:
-  // 1. Fire cleanup native calls FIRST as pure void (fire-and-forget, zero awaiting).
-  //    The Kotlin side receives stopAlarmSound() almost instantly and writes
-  //    alarm_stopping=true to SharedPreferences in-memory (synchronous .apply()).
-  //    Native watchdog stops immediately. Total JS time: <1ms.
-  // 2. Navigate in setTimeout(0) — fires on the NEXT JS event loop tick.
-  //    By then, alarm_stopping is already true in Kotlin, so the watchdog
-  //    will NOT call launchApp() even if it ticks during the transition.
-  // 3. Safety-net: reset guard after 3s in case navigation itself failed.
+  // LAYER 2 — WATCHDOG RE-POST BUG (secondary freeze cause):
+  // bringToFrontRunnable re-posted itself unconditionally at the bottom of run()
+  // even when isAlarmStopping() caused an early return at the top. The runnable
+  // kept scheduling forever until onDestroy() ran — fighting router.replace().
+  // Fix: re-post is now inside an if(!isAlarmStopping() && isAlarmActive()) guard.
+  //
+  // LAYER 3 — JS NAVIGATION RETRY:
+  // Even after the native fixes, the JS side now uses a retry loop: if the first
+  // router.replace() call fails (throws or is blocked), it retries every 200ms
+  // up to 5 times. This mirrors what production alarm apps like Google Clock do.
   const handleStopAlarm = useCallback(() => {
     // Double-tap guard — prevents duplicate navigation
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
 
-    // INSTANT: Write escape hatch flag (relieves foreground-service polling back-pressure)
+    // INSTANT: Write escape hatch flag
     void AsyncStorage.setItem('onesutra_alarm_handled_v1', Date.now().toString()).catch(() => {});
 
     // INSTANT: Visual feedback (synchronous React state queue)
@@ -397,11 +431,9 @@ export default function WakeAlarmRingingScreen() {
     // Haptic (synchronous, never stalls)
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // CRITICAL ORDER: Fire ALL native cleanup calls FIRST (no await, no timeout wrappers).
-    // These are void — the Promise is intentionally discarded. The Kotlin code for
-    // stopAlarmSound() writes alarm_stopping=true using .apply() (in-memory synchronous)
-    // so the native bringToFrontRunnable sees it before it can call launchApp() again.
-    // Total native bridge dispatch time: <1ms.
+    // STEP 1: Fire ALL native cleanup calls (no await — fire-and-forget).
+    // stopNativeAlarmSound() internally calls stopLockTask() on the main thread
+    // BEFORE stopping the service — this is the critical ordering that fixes the freeze.
     void stopNativeAlarmSound().catch(() => {});
     void stopNativeAlarmAudioOnly().catch(() => {});
     void stopAlarmVibration().catch(() => {});
@@ -412,22 +444,41 @@ export default function WakeAlarmRingingScreen() {
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
 
-    // Navigate on the NEXT JS tick — by this point alarm_stopping=true is already
-    // queued to Kotlin, so the native watchdog is already stopping before navigation fires.
-    setTimeout(() => {
-      try { router.replace('/(tabs)' as never); } catch { /* ignore */ }
-    }, 0);
+    // STEP 2: Navigation retry loop.
+    // Retries every 200ms up to 5 times. By the time this fires, stopLockTask()
+    // has already been dispatched to the Android main thread via stopAlarmSound().
+    let navAttempts = 0;
+    const MAX_NAV_ATTEMPTS = 5;
+    const tryNavigate = () => {
+      navAttempts++;
+      try {
+        router.replace('/(tabs)' as never);
+        return; // success
+      } catch {
+        if (navAttempts < MAX_NAV_ATTEMPTS) {
+          setTimeout(tryNavigate, 200);
+        } else {
+          // All retries exhausted — ALWAYS re-enable the button so user can tap again.
+          // A permanently disabled button is NEVER acceptable.
+          if (isMountedRef.current) { missionStartedRef.current = false; setStopping(false); }
+        }
+      }
+    };
+    setTimeout(tryNavigate, 0);
 
-    // Safety-net: reset guard after 3s so if everything went wrong, user can retry
+    // Hard safety-net: after 3s unconditionally re-enable the button.
+    // This covers cases where tryNavigate never throws (e.g. router silently
+    // ignores the call) but navigation also never completes (unmount never fires).
     setTimeout(() => {
-      if (isMountedRef.current) { missionStartedRef.current = false; }
+      if (isMountedRef.current) { missionStartedRef.current = false; setStopping(false); }
     }, 3000);
   }, []);
 
 
   // ── Begin Your Day (mission mode) ────────────────────────────────────────
-  // Same fix as handleStopAlarm — cleanup fires first (void/no-await),
-  // then navigate on next JS tick so the native watchdog can't fight us.
+  // Same root-cause fix as handleStopAlarm — stopLockTask fires inside
+  // stopAlarmSound() on the native main thread BEFORE service stops.
+  // Navigation uses a retry loop for robustness.
   const handleBeginMission = useCallback(() => {
     if (missionStartedRef.current) return;
     missionStartedRef.current = true;
@@ -442,7 +493,7 @@ export default function WakeAlarmRingingScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Cleanup FIRST (sets alarm_stopping=true in Kotlin before navigation)
+    // Cleanup FIRST (sets alarm_stopping=true + calls stopLockTask on main thread in Kotlin)
     void stopNativeAlarmSound().catch(() => {});
     void stopNativeAlarmAudioOnly().catch(() => {});
     void stopAlarmVibration().catch(() => {});
@@ -453,13 +504,28 @@ export default function WakeAlarmRingingScreen() {
     void notifee.cancelNotification('wake-alarm-bttf').catch(() => {});
     void notifee.cancelNotification('alarm-bttf').catch(() => {});
 
-    // Navigate on next JS tick (alarm_stopping already queued to Kotlin)
-    setTimeout(() => {
-      try { router.replace(`/mission?id=${mission.id}` as never); } catch { /* ignore */ }
-    }, 0);
+    // Navigation retry loop
+    let navAttempts = 0;
+    const MAX_NAV_ATTEMPTS = 5;
+    const tryNavigate = () => {
+      navAttempts++;
+      try {
+        router.replace(`/mission?id=${mission.id}` as never);
+        return;
+      } catch {
+        if (navAttempts < MAX_NAV_ATTEMPTS) {
+          setTimeout(tryNavigate, 200);
+        } else {
+          // All retries exhausted — ALWAYS re-enable the button
+          if (isMountedRef.current) { missionStartedRef.current = false; setStopping(false); }
+        }
+      }
+    };
+    setTimeout(tryNavigate, 0);
 
+    // Hard safety-net: after 3s unconditionally re-enable
     setTimeout(() => {
-      if (isMountedRef.current) missionStartedRef.current = false;
+      if (isMountedRef.current) { missionStartedRef.current = false; setStopping(false); }
     }, 3000);
   }, [mission.id]);
 
@@ -501,14 +567,30 @@ export default function WakeAlarmRingingScreen() {
         </View>
       </View>
 
-      {/* ── CENTER: pulsing orb ── */}
+      
+      {/* ── CENTER: PREMIUM PULSING ORB ── */}
       <View style={S.orbWrap} pointerEvents="none">
-        <Animated.View style={[S.outerRing, outerStyle, { borderColor: accent + '40' }]} />
-        <View style={[S.midRing, { borderColor: accent + '20' }]} />
-        <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: accent + '18', borderColor: accent + '50' }]}>
+        {/* Outer ambient glow */}
+        <Animated.View style={[S.outerRing, outerStyle, { backgroundColor: accent + '15', borderWidth: 0, shadowColor: accent, shadowOpacity: 0.6, shadowRadius: 50 }]} />
+        
+        {/* Slow rotating dashed ring */}
+        <Animated.View style={[S.midRing, rotStyle, { borderColor: accent + '60', borderStyle: 'dashed', borderWidth: 1.5, opacity: 0.8 }]} />
+        
+        {/* Reverse rotating outer thin ring */}
+        <Animated.View style={[rotRevStyle, { position: 'absolute', width: 260, height: 260, borderRadius: 130, borderColor: accent + '30', borderWidth: 1 }]} />
+        
+        {/* Sparkle nodes on reverse ring */}
+        <Animated.View style={[rotRevStyle, { position: 'absolute', width: 260, height: 260, borderRadius: 130 }]}>
+            <View style={{ position: 'absolute', top: -3, left: 127, width: 6, height: 6, borderRadius: 3, backgroundColor: accent, shadowColor: accent, shadowOpacity: 1, shadowRadius: 10 }} />
+            <View style={{ position: 'absolute', bottom: -3, left: 127, width: 6, height: 6, borderRadius: 3, backgroundColor: accent, shadowColor: accent, shadowOpacity: 1, shadowRadius: 10 }} />
+        </Animated.View>
+
+        {/* Inner solid core with intense drop shadow */}
+        <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: accent + '25', borderColor: accent + '80', shadowColor: accent, shadowOpacity: 1, shadowRadius: 30, shadowOffset: { width: 0, height: 0 } }]}>
           <Text style={S.orbIcon}>{wakeSound.icon}</Text>
         </Animated.View>
       </View>
+
 
       {/* ── BOTTOM: kala + CTA ── */}
       <View style={S.bottomArea}>
@@ -541,7 +623,6 @@ export default function WakeAlarmRingingScreen() {
                 ]}
                 onPress={handleBeginMission}
                 activeOpacity={0.7}
-                disabled={stopping}
               >
                 <LinearGradient
                   colors={[accent + '40', accent + '10']}
@@ -559,20 +640,18 @@ export default function WakeAlarmRingingScreen() {
           </>
         ) : (
           // ── MISSION-FREE MODE: simple Stop Alarm button ──────────────────
-          // pointerEvents removed from Animated.View (was 'box-none') so the
-          // button is always a direct, unambiguous touch target.
+          // The button is NEVER disabled — missionStartedRef guards double-tap.
+          // disabled={stopping} was permanently locking the button when navigation
+          // silently failed. Now stopping only controls visual appearance.
           <Animated.View style={[{ width: '100%' }, btnStyle]}>
             <TouchableOpacity
               style={[
                 S.ctaBtn,
                 { shadowColor: accent },
-                // Visual feedback: dim & scale-down immediately on press so the
-                // user knows the tap was received even before cleanup finishes.
                 stopping && { opacity: 0.55, transform: [{ scale: 0.97 }] },
               ]}
               onPress={handleStopAlarm}
               activeOpacity={0.7}
-              disabled={stopping}
             >
               <LinearGradient
                 colors={[accent + '40', accent + '10']}

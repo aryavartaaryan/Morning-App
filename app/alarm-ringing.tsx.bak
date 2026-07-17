@@ -154,7 +154,7 @@ export default function AlarmRingingScreen() {
 
       if (settings.bodhiMorningBrief) {
         const mission = MISSIONS.find(m => m.id === settings.selectedMission);
-        const mantraLabel = mantraId === 'lalitha' ? 'Lalitha Sahasranama'
+        const mantraLabel = mantraId === 'lalitha' ? 'Divine Power to Clear Obstacles (Lalitha Sahasranama)'
           : mantraId === 'shivtandav' ? 'Shiv Tandav'
           : 'Gayatri Mantra';
         const hour = new Date().getHours();

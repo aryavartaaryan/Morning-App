@@ -2470,13 +2470,14 @@ function WeatherSection({
   const rainMm  = weather.rain ?? weather.precipitation ?? 0;
 
   return (
-    <BlurView intensity={35} tint="dark" style={WSEC.container}>
+    <View style={WSEC.container}>
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
+        colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={WSEC.topEdge} />
+      <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.18)', width: '100%' }} />
 
       {/* ── HERO ROW ── */}
       <TouchableOpacity onPress={toggle} activeOpacity={0.85} style={WSEC.heroRow}>
@@ -2543,15 +2544,22 @@ function WeatherSection({
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
-    </BlurView>
+    </View>
   );
 }
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 0, marginTop: 0, marginBottom: 0,
-    borderRadius: 0, borderWidth: 0,
+    marginHorizontal: 14, marginTop: 4, marginBottom: 8,
+    borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.55,
+    shadowRadius: 28,
+    elevation: 18,
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
   heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, gap: 10 },
@@ -6066,7 +6074,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 
   return (
     <>
-    <Modal visible animationType="none" transparent={false} statusBarTranslucent onRequestClose={close}>
+    <Modal visible animationType="none" transparent={true} statusBarTranslucent onRequestClose={close}>
       <Animated.View style={{ flex: 1, backgroundColor: '#000', transform: [{ translateY }] }}>
         <ImageBackground
           source={bgUri ? { uri: bgUri } : undefined}
@@ -6165,6 +6173,17 @@ function DailyTab() {
   const weatherFetchingRef   = useRef(false);
   const prevSacredTypeRef    = useRef<string | null | undefined>(undefined);
   const prevPeriodIdRef      = useRef<string | null | undefined>(undefined);
+  const entranceAnim         = useRef(new Animated.Value(0)).current;
+
+  // Premium Breathe & Reveal entrance effect
+  useEffect(() => {
+    Animated.timing(entranceAnim, {
+      toValue: 1,
+      duration: 1500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entranceAnim]);
 
   // Live clock tick
   useEffect(() => {
@@ -6401,7 +6420,7 @@ function DailyTab() {
   const heroDate = liveClock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <View style={[D.screen, { backgroundColor: accentColor }]}>
+    <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <ImageBackground
         source={bgUri ? { uri: bgUri } : undefined}
         style={StyleSheet.absoluteFillObject}
@@ -6614,7 +6633,7 @@ function DailyTab() {
         visible={zenActive}
         onClose={() => { setZenActive(false); setMode('normal'); }}
       />
-    </View>
+    </Animated.View>
   );
 }
 

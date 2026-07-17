@@ -10,7 +10,7 @@ export const BG_URLS: Record<string, string> = {
   predawn:    'https://images.pexels.com/photos/1334116/pexels-photo-1334116.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn_mid: 'https://images.pexels.com/photos/12348207/pexels-photo-12348207.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise:    'https://images.pexels.com/photos/3952899/pexels-photo-3952899.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sunrise_2:  'https://images.pexels.com/photos/6193622/pexels-photo-6193622.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sunrise_2:  'https://images.pexels.com/photos/4161253/pexels-photo-4161253.png',
   sunrise_late: 'https://images.pexels.com/photos/6240658/pexels-photo-6240658.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise_late_2: 'https://images.pexels.com/photos/9004241/pexels-photo-9004241.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_early: 'https://images.pexels.com/photos/2035066/pexels-photo-2035066.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -21,32 +21,33 @@ export const BG_URLS: Record<string, string> = {
   midday_early: 'https://images.pexels.com/photos/14106721/pexels-photo-14106721.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_2: 'https://images.pexels.com/photos/33638423/pexels-photo-33638423.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_mid: 'https://images.pexels.com/photos/7171831/pexels-photo-7171831.jpeg?auto=compress&cs=tinysrgb&w=600',
-  midday_early_late: 'https://images.pexels.com/photos/7077810/pexels-photo-7077810.jpeg?auto=compress&cs=tinysrgb&w=600',
-  midday:     'https://images.pexels.com/photos/4723256/pexels-photo-4723256.jpeg',
+  midday_early_late: 'https://images.pexels.com/photos/4723256/pexels-photo-4723256.jpeg',
+  midday:     'https://images.pexels.com/photos/8952728/pexels-photo-8952728.jpeg',
   midday_mid: 'https://images.pexels.com/photos/14406384/pexels-photo-14406384.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_late: 'https://images.pexels.com/photos/31880368/pexels-photo-31880368.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_late_2: 'https://images.pexels.com/photos/12597857/pexels-photo-12597857.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon:  'https://images.pexels.com/photos/14516024/pexels-photo-14516024.jpeg?auto=compress&cs=tinysrgb&w=600',
-  afternoon_first_late: 'https://images.pexels.com/photos/12280325/pexels-photo-12280325.jpeg?auto=compress&cs=tinysrgb&w=600',
+  afternoon_first_late: 'https://images.pexels.com/photos/35835086/pexels-photo-35835086.jpeg',
   afternoon_mid: 'https://images.pexels.com/photos/2035108/pexels-photo-2035108.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon_late: 'https://images.pexels.com/photos/8819076/pexels-photo-8819076.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya:    'https://images.pexels.com/photos/6252095/pexels-photo-6252095.jpeg',
-  sandhya_mid: 'https://images.pexels.com/photos/9004268/pexels-photo-9004268.jpeg?auto=compress&cs=tinysrgb&w=600',
+  afternoon_late_2: 'https://images.pexels.com/photos/8952615/pexels-photo-8952615.jpeg',
+  sandhya:    'https://images.pexels.com/photos/16534748/pexels-photo-16534748.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_mid: 'https://images.pexels.com/photos/6252095/pexels-photo-6252095.jpeg',
   sandhya_late: 'https://images.pexels.com/photos/4723092/pexels-photo-4723092.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid: 'https://images.pexels.com/photos/11774422/pexels-photo-11774422.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_late_mid_2: 'https://images.pexels.com/photos/9179134/pexels-photo-9179134.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_late_2: 'https://images.pexels.com/photos/20737599/pexels-photo-20737599.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late_mid_2: 'https://images.pexels.com/photos/7929897/pexels-photo-7929897.jpeg',
+  sandhya_late_2: 'https://images.pexels.com/photos/4161255/pexels-photo-4161255.png',
   sandhya_late_3: 'https://images.pexels.com/photos/34644590/pexels-photo-34644590.jpeg?auto=compress&cs=tinysrgb&w=600',
   twilight:   'https://images.pexels.com/photos/14276463/pexels-photo-14276463.jpeg?auto=compress&cs=tinysrgb&w=600',
   twilight_late: 'https://images.pexels.com/photos/20565264/pexels-photo-20565264.png?auto=compress&cs=tinysrgb&w=600',
   twilight_deep: 'https://images.pexels.com/photos/34985075/pexels-photo-34985075.jpeg?auto=compress&cs=tinysrgb&w=600',
-  evening_early: 'https://images.pexels.com/photos/5724587/pexels-photo-5724587.jpeg?auto=compress&cs=tinysrgb&w=600',
-  evening_early_2: 'https://images.pexels.com/photos/15678073/pexels-photo-15678073.jpeg?auto=compress&cs=tinysrgb&w=600',
+  evening_early: 'https://images.pexels.com/photos/20565269/pexels-photo-20565269.png?auto=compress&cs=tinysrgb&w=600',
+  evening_early_2: 'https://images.pexels.com/photos/28893583/pexels-photo-28893583.jpeg?auto=compress&cs=tinysrgb&w=600',
   evening:    'https://images.pexels.com/photos/7828546/pexels-photo-7828546.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early: 'https://images.pexels.com/photos/29727067/pexels-photo-29727067.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid1: 'https://images.pexels.com/photos/16903505/pexels-photo-16903505.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid2: 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid2_late: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early: 'https://images.pexels.com/photos/20565262/pexels-photo-20565262.png',
+  night_early_mid1: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_mid2: 'https://images.pexels.com/photos/16903505/pexels-photo-16903505.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_mid2_late: 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_late: 'https://images.pexels.com/photos/31104752/pexels-photo-31104752.jpeg?auto=compress&cs=tinysrgb&w=600',
   night:      'https://images.pexels.com/photos/8887270/pexels-photo-8887270.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_late: 'https://images.pexels.com/photos/12490457/pexels-photo-12490457.jpeg',
@@ -119,7 +120,12 @@ export async function getBgSource(key: string): Promise<string> {
     }
     // Not cached yet — use network now, cache in background
     FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true })
-      .then(() => FileSystem.downloadAsync(url, path))
+      .then(() => {
+        const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+        return FileSystem.downloadAsync(url, tmpPath)
+          .then(() => FileSystem.moveAsync({ from: tmpPath, to: path }))
+          .catch(() => FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {}));
+      })
       .then(() => { BG_LOCAL_MAP[key] = path; })
       .catch(() => {});
     return url;
@@ -158,12 +164,15 @@ export async function ensureAllBgsCached(): Promise<void> {
 
         const needsDownload = urlChanged || !isValid;
         if (needsDownload) {
+          const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
           try {
-            await FileSystem.downloadAsync(url, path);
+            await FileSystem.downloadAsync(url, tmpPath);
+            await FileSystem.moveAsync({ from: tmpPath, to: path });
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch {
             // No internet — old file (if any) stays; hash not updated → retries next launch
+            await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
           }
         } else {
           updatedHashes[key] = urlHash;
@@ -208,7 +217,9 @@ export async function ensureBgKey(key: string): Promise<string> {
   try {
     const path = cachePath(key);
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
-    await FileSystem.downloadAsync(url, path);
+    const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+    await FileSystem.downloadAsync(url, tmpPath);
+    await FileSystem.moveAsync({ from: tmpPath, to: path });
     BG_LOCAL_MAP[key] = path;
     return path;
   } catch {
@@ -261,15 +272,17 @@ export async function ensureAllBgsCachedWithProgress(
 
         const needsDownload = urlChanged || !isValid;
         if (needsDownload) {
+          const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
           try {
             await Promise.race([
-              FileSystem.downloadAsync(url, path),
+              FileSystem.downloadAsync(url, tmpPath).then(() => FileSystem.moveAsync({ from: tmpPath, to: path })),
               _timeout(PER_IMAGE_TIMEOUT_MS),
             ]);
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch (e) {
             // Timed-out or failed — keep old cached file; hash not saved → retries next launch.
+            await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
             throw e;
           }
         } else {

@@ -57,10 +57,13 @@ export default function SoundBathRingingScreen() {
   const outerOpacity = useSharedValue(0.30);
   const innerScale   = useSharedValue(1);
   const btnScale     = useSharedValue(1);
+  const rotVal       = useSharedValue(0);
 
   const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: outerScale.value }], opacity: outerOpacity.value }));
   const innerStyle = useAnimatedStyle(() => ({ transform: [{ scale: innerScale.value }] }));
   const btnStyle   = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
+  const rotStyle   = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotVal.value}deg` }] }));
+  const rotRevStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `-${rotVal.value}deg` }] }));
 
   useEffect(() => {
     outerScale.value = withRepeat(
@@ -75,11 +78,13 @@ export default function SoundBathRingingScreen() {
     btnScale.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 900 }), withTiming(1, { duration: 900 })), -1,
     );
+    rotVal.value = withRepeat(withTiming(360, { duration: 25000, easing: Easing.linear }), -1, false);
     return () => {
       cancelAnimation(outerScale);
       cancelAnimation(outerOpacity);
       cancelAnimation(innerScale);
       cancelAnimation(btnScale);
+      cancelAnimation(rotVal);
     };
   }, []);
 

@@ -266,22 +266,6 @@ export default function StepAnalyticsScreen() {
                 </Svg>
               </View>
 
-              {/* Rotating Outer HUD (Sleek) */}
-              <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                  <Circle cx={cx} cy={cx} r={rMain + 16} stroke={CYAN} strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.5} />
-                  <Circle cx={cx} cy={cx} r={rMain + 16} stroke={BRIGHT_CYAN} strokeWidth={1.5} fill="none" strokeDasharray="1 24" opacity={0.7} />
-                </Svg>
-              </Animated.View>
-
-              {/* Rotating Inner HUD (Sleek) */}
-              <Animated.View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-                <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                  <Circle cx={cx} cy={cx} r={rMain - 14} stroke={CYAN} strokeWidth={1} fill="none" strokeDasharray="5 20" opacity={0.4} />
-                  <Circle cx={cx} cy={cx} r={rMain - 14} stroke="#ffffff" strokeWidth={1.5} fill="none" strokeDasharray="0.5 35" opacity={0.6} strokeLinecap="round" />
-                </Svg>
-              </Animated.View>
-
               {/* Clean Inner Typography */}
               <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
                 <Text style={[st.heroSteps, { fontSize: 44, fontWeight: '900', letterSpacing: -1.0, color: '#fff', textShadowColor: CYAN + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }]}>

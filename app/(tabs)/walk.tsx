@@ -24,6 +24,7 @@ import {
   type AppStateStatus,
   ImageBackground,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,12 +74,13 @@ const DEFAULT_STATS: TodayStats = {
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
 
-// ── Glassy Overlay ────────────────────────────────────────────────────────────
+// ── Glassy Overlay (permanent peak frost) ────────────────────────────────────
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.03)', 'transparent']}
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.1)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -259,7 +261,7 @@ export default function WalkTab() {
       source={{ uri: getBgSourceSync(stepBgKey as any) }}
       style={[{ flex: 1, backgroundColor: accentColor || BG_DARK }]}
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
-      {!isNightReal && <GlassPulseOverlay />}
+      <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       {/* Top violet aurora glow */}
       <Animated.View
@@ -393,51 +395,39 @@ export default function WalkTab() {
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
             {/* Outer breathing aura */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.03, 0.09] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 28, height: RING_SIZE + 28, borderRadius: (RING_SIZE + 28) / 2, backgroundColor: TEAL, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.06] }), transform: [{ scale: pulseAnim }], top: -14, left: -14 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.35] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
+            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 28, height: RING_SIZE + 28, borderRadius: (RING_SIZE + 28) / 2, backgroundColor: TEAL, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.12, 0.28] }), transform: [{ scale: pulseAnim }], top: -14, left: -14 }} />
 
-            {/* Inner disc removed for transparency */}
+            {/* Inner disc for better text contrast */}
+            <View style={{ position: 'absolute', top: 8, left: 8, width: RING_SIZE - 16, height: RING_SIZE - 16, borderRadius: (RING_SIZE - 16) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
 
             {/* ── SLEEK PREMIUM FUSION RING ─────────────────────────────────── */}
-            <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 10 }}>
+            <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 36, elevation: 20 }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} style={{ transform: [{ rotate: '-90deg' }] }}>
                 <Defs>
                   <SvgGrad id="sleekGlow" x1="0" y1="0" x2="1" y2="1">
                     <Stop offset="0"   stopColor="#34D399" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#38bdf8" stopOpacity="1" />
-                    <Stop offset="1"   stopColor="#38bdf8" stopOpacity="1" />
+                    <Stop offset="0.3" stopColor="#38bdf8" stopOpacity="1" />
+                    <Stop offset="0.7" stopColor="#A78BFA" stopOpacity="1" />
+                    <Stop offset="1"   stopColor="#F472B6" stopOpacity="1" />
                   </SvgGrad>
                   <SvgGrad id="trackGrad" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#ffffff" stopOpacity="0.25" />
-                    <Stop offset="1" stopColor="#ffffff" stopOpacity="0.10" />
+                    <Stop offset="0" stopColor="#ffffff" stopOpacity="0.45" />
+                    <Stop offset="1" stopColor="#ffffff" stopOpacity="0.25" />
                   </SvgGrad>
                 </Defs>
                 {/* Track */}
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#trackGrad)" strokeWidth={RING_STROKE + 2} />
                 {/* Ambient Glow */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 14} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.35} />
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 24} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.55} />
                 {/* Mid Glow */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 6} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.7} />
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 10} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.85} />
                 {/* Core Crisp Arc */}
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={1} />
+                {/* Neon White Core */}
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="#ffffff" strokeWidth={4} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.9} />
               </Svg>
             </View>
-
-            {/* Rotating Outer HUD (Sleek) */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }} pointerEvents="none">
-              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER + 12} stroke="#38bdf8" strokeWidth={1} fill="none" strokeDasharray="2 12" opacity={0.5} />
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER + 12} stroke="#bae6fd" strokeWidth={1.5} fill="none" strokeDasharray="1 24" opacity={0.7} />
-              </Svg>
-            </Animated.View>
-
-            {/* Rotating Inner HUD (Sleek) */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }} pointerEvents="none">
-              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 18} stroke="#38bdf8" strokeWidth={1} fill="none" strokeDasharray="5 20" opacity={0.4} />
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 18} stroke="#ffffff" strokeWidth={1.5} fill="none" strokeDasharray="0.5 35" opacity={0.6} strokeLinecap="round" />
-              </Svg>
-            </Animated.View>
 
             {/* Centre content */}
             <View style={st.ringCentre}>

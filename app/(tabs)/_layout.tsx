@@ -1267,16 +1267,16 @@ function CustomTabBar() {
   }, []);
 
   return (
-    <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
+    <View
       style={[
         styles.wrapper,
-        { paddingBottom: bottomPad, backgroundColor: accentColor || "#050510" },
+        { paddingBottom: bottomPad, backgroundColor: 'transparent' },
       ]}
-      imageStyle={styles.wrapperBgImage}
     >
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={["rgba(0,0,0,0.18)", "rgba(0,0,0,0.68)"]}
+        colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -1417,7 +1417,7 @@ function CustomTabBar() {
           );
         })}
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 

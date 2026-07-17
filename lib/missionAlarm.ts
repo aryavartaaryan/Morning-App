@@ -125,7 +125,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   },
   {
     id: 'lalitha',
-    label: 'Lalitha Sahasranama',
+    label: 'Divine Power to Clear Obstacles (Lalitha Sahasranama)',
     icon: '🌺',
     audioUrl: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3',
     category: 'mantra',

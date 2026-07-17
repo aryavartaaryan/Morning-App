@@ -16,7 +16,7 @@ import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, Trigger
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { getSolarTimes, SolarTimes } from '@/lib/solar';
-import { getCurrentPeriod } from '@/lib/ayurvedicPeriods';
+import { getCurrentPeriod, getHeroRingContent } from '@/lib/ayurvedicPeriods';
 import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
@@ -27,6 +27,7 @@ import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import SoundLibraryModal from '@/components/SoundLibraryModal';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { MarqueeText } from '@/components/MarqueeText';
 
 const { width: W, height: H } = Dimensions.get('screen');
 let _pageScrollRef: any = null;
@@ -285,7 +286,7 @@ const MANTRA_LIBRARY = [
     icon: '⚡',
     sounds: [
       { id: 'mantra_gayatri',    label: 'Gayatri Mantra',      emoji: '🌞', color: '#fbbf24', top: '#1A1000', bot: '#0A0800', desc: 'Universal prayer of light & wisdom',       cat: 'Meditations', src: { uri: 'https://ik.imagekit.io/rcsesr4xf/gayatri-mantra-ghanpaath.mp3' } },
-      { id: 'mantra_lalitha',    label: 'Lalitha Sahasranama', emoji: '🌺', color: '#f472b6', top: '#1A0010', bot: '#0A0008', desc: 'Thousand names of the divine feminine',     cat: 'Meditations', src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' } },
+      { id: 'mantra_lalitha',    label: 'Divine Power to Clear Obstacles (Lalitha Sahasranama)', emoji: '🌺', color: '#f472b6', top: '#1A0010', bot: '#0A0008', desc: 'Thousand names of the divine feminine',     cat: 'Meditations', src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3' } },
       { id: 'mantra_shivtandav', label: 'Shiv Tandav',         emoji: '🔱', color: '#a78bfa', top: '#100A1A', bot: '#08050A', desc: 'Cosmic dance of Shiva',                     cat: 'Meditations', src: { uri: 'https://ik.imagekit.io/rcsesr4xf/Shiva-Tandav.mp3' } },
     ],
   },
@@ -743,7 +744,7 @@ const SoundCard = memo(function SoundCard({
             </View>
             {/* Name + desc + badge */}
             <View>
-              <Text style={[S.cardName, isPlaying && { color: sound.color }]} numberOfLines={2}>{sound.label}</Text>
+              <MarqueeText style={[S.cardName, isPlaying && { color: sound.color }]} active={isPlaying} duration={8000} numberOfLines={2}>{sound.label}</MarqueeText>
               <Text style={S.cardDesc} numberOfLines={1}>{sound.desc}</Text>
               {isPlaying ? (
                 <View style={[S.badge, { backgroundColor: sound.color + '22', borderColor: sound.color + '55' }]}>
@@ -1620,11 +1621,18 @@ const REELS_ALL_SOUNDS: PlayableSoundMeta[] = (() => {
 // bottom controls out of the visible area.
 const { width: REEL_W, height: REEL_H } = Dimensions.get('screen');
 
+// Safe find helper — avoids ! non-null assertions that throw on first install
+const _findSleepSoundSrc = (id: string, fallbackSrc: any): any => {
+  try {
+    const found = (SLEEP_SOUNDS as readonly any[]).find(s => s.id === id);
+    return found?.src ?? fallbackSrc;
+  } catch { return fallbackSrc; }
+};
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
-  { id: 'morning_birds', label: 'Birds',  emoji: '🐦', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Birds',  desc: 'Dawn chorus',   src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'morning_birds')!.src, imageUri: SOUND_IMAGES['morning_birds'] },
-  { id: 'andean_flute',  label: 'Flute',  emoji: '🏔️', color: '#6ee7b7', top: '#081A10', bot: '#040C08', cat: 'Ragas',  desc: 'Andean melody', src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'andean_flute')!.src,  imageUri: SOUND_IMAGES['andean_flute'] },
-  { id: 'sitar_long',    label: 'Sitar',  emoji: '🎸', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sitar_long')!.src,    imageUri: SOUND_IMAGES['sitar_long'] },
-  { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: (SLEEP_SOUNDS as readonly any[]).find(s => s.id === 'sea_waves')!.src,     imageUri: SOUND_IMAGES['sea_waves'] },
+  { id: 'morning_birds', label: 'Birds',  emoji: '🐦', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Birds',  desc: 'Dawn chorus',   src: _findSleepSoundSrc('morning_birds', require('../../assets/sounds/morning-birds-loop.m4a')), imageUri: SOUND_IMAGES['morning_birds'] },
+  { id: 'andean_flute',  label: 'Flute',  emoji: '🏔️', color: '#6ee7b7', top: '#081A10', bot: '#040C08', cat: 'Ragas',  desc: 'Andean melody', src: _findSleepSoundSrc('andean_flute',  require('../../assets/sounds/andean-flute.m4a')),  imageUri: SOUND_IMAGES['andean_flute'] },
+  { id: 'sitar_long',    label: 'Sitar',  emoji: '🎸', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: _findSleepSoundSrc('sitar_long',    require('../../assets/sounds/sitar-long.m4a')),    imageUri: SOUND_IMAGES['sitar_long'] },
+  { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: _findSleepSoundSrc('sea_waves',     require('../../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a')),     imageUri: SOUND_IMAGES['sea_waves'] },
 ];
 
 
@@ -2093,7 +2101,7 @@ function ReelCard({
         </View>
       ) : (
         <LinearGradient
-          colors={[sound.color + '40', sound.top, sound.bot, '#000']}
+          colors={[(sound.color ?? '#333333') + '40', sound.top ?? '#050505', sound.bot ?? '#000000', '#000']}
           locations={[0, 0.3, 0.7, 1]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -2813,6 +2821,7 @@ function SoundReelsModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => setShowClosePrompt(true)}>
+      <ScreenErrorBoundary name="SoundReels">
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -3076,9 +3085,9 @@ function SoundReelsModal({
                             >
                               <Text style={{ fontSize: 17 }}>{sound.emoji}</Text>
                               <View style={{ flexShrink: 1 }}>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: isNowPlaying ? sound.color : '#FFFFFFEE' }} numberOfLines={1}>
+                                <MarqueeText style={{ fontSize: 11, fontWeight: '700', color: isNowPlaying ? sound.color : '#FFFFFFEE' }} active={isNowPlaying} duration={6000}>
                                   {sound.label}
-                                </Text>
+                                </MarqueeText>
                                 {isNowPlaying && (
                                   <Text style={{ fontSize: 7, color: sound.color, fontWeight: '900', letterSpacing: 0.5 }}>▶ PLAYING</Text>
                                 )}
@@ -3145,11 +3154,12 @@ function SoundReelsModal({
           </View>
         )}
       </View>
+      </ScreenErrorBoundary>
     </Modal>
   );
 }
 
-export default function SleepTab() {
+function SleepTabInner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { openReel } = useLocalSearchParams<{ openReel?: string }>();
@@ -3163,7 +3173,7 @@ export default function SleepTab() {
   const filteredSearchSounds = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const lowerQ = searchQuery.toLowerCase();
-    const matches = ALL_SLEEP_SOUNDS.filter(s => 
+    const matches = ALL_SOUNDS_LIST.filter(s => 
       !SLEEP_HIDDEN_IDS.has(s.id) &&
       ((s.label?.toLowerCase() || '').includes(lowerQ) || (s.cat?.toLowerCase() || '').includes(lowerQ))
     );
@@ -3577,10 +3587,6 @@ export default function SleepTab() {
   };
   const currentMins  = now.getHours() * 60 + now.getMinutes();
   const bestBedtime  = getBedtime(7.5);
-  const bestBedMins  = bestBedtime.h * 60 + bestBedtime.m;
-  const minsUntilBed = bestBedMins > currentMins ? bestBedMins - currentMins : bestBedMins + 1440 - currentMins;
-  const hrsToBed     = Math.floor(minsUntilBed / 60);
-  const minsToBed    = minsUntilBed % 60;
 
   // ── Ayurvedic GPS bedtime (sunset + 3.5h, clamped 9PM–11PM) ──
   const ayuBedtime = useMemo(() => {
@@ -3591,6 +3597,21 @@ export default function SleepTab() {
   }, [solarTimes]);
 
   const displayBedtime = ayuBedtime ?? bestBedtime;
+  const displayBedMins = displayBedtime.h * 60 + displayBedtime.m;
+  const minsUntilBed = displayBedMins > currentMins ? displayBedMins - currentMins : displayBedMins + 1440 - currentMins;
+  const hrsToBed     = Math.floor(minsUntilBed / 60);
+  const minsToBed    = minsUntilBed % 60;
+
+  // Whether current time is inside the sleep window (between bedtime and wake time)
+  const isSleepWindowActive = useMemo(() => {
+    const displayBedMins = displayBedtime.h * 60 + displayBedtime.m;
+    const wakeMins = wakeHour * 60 + wakeMinute;
+    if (displayBedMins < wakeMins) {
+      return currentMins >= displayBedMins && currentMins < wakeMins;
+    } else {
+      return currentMins >= displayBedMins || currentMins < wakeMins;
+    }
+  }, [displayBedtime, wakeHour, wakeMinute, currentMins]);
 
   const sunsetFmt = useMemo(() => {
     if (!solarTimes) return null;
@@ -3621,6 +3642,11 @@ export default function SleepTab() {
   }, [currentPeriod?.id, isBrahmaMuhurta, autoMode]);
   const displayMode = solarDisplayMode;
 
+  const heroContent = useMemo(() => {
+    if (!currentPeriod) return null;
+    return getHeroRingContent(currentPeriod.id, currentPeriod.id === 'night_vata');
+  }, [currentPeriod?.id]);
+
   const natureCategoryLabel = useMemo(() => {
     const periodId = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
     switch (periodId) {
@@ -3643,15 +3669,15 @@ export default function SleepTab() {
   }, [solarTimes, h, autoMode]);
 
   // Show ideal sleep chip only within 1 hour of actual bedtime
-  const showIdealSleepChip = useMemo(() => minsUntilBed <= 60, [minsUntilBed]);
+  const showIdealSleepChip = useMemo(() => minsUntilBed <= 60 && !isSleepWindowActive, [minsUntilBed, isSleepWindowActive]);
 
   // Show "approaching sleep" strip after sunset but more than 1 hour before bed
   const showApproachingChip = useMemo(() => {
-    if (showIdealSleepChip) return false;
+    if (showIdealSleepChip || isSleepWindowActive) return false;
     const nowDecH = now.getHours() + now.getMinutes() / 60;
     if (solarTimes) return nowDecH >= solarTimes.sunset || nowDecH < solarTimes.sunrise;
     return autoMode.key === 'evening' || autoMode.key === 'sleep';
-  }, [now, solarTimes, autoMode, showIdealSleepChip]);
+  }, [now, solarTimes, autoMode, showIdealSleepChip, isSleepWindowActive]);
   const dayHint = useMemo(() => {
     const key = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
     return PERIOD_DAY_HINTS[key] ?? null;
@@ -3897,47 +3923,21 @@ export default function SleepTab() {
             <View style={{
               width: '100%',
               paddingHorizontal: 24,
-              paddingVertical: 36,
+              paddingVertical: 40,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
               gap: 16,
             }}>
               {/* Main title */}
-              <Text style={[heroTextStyle, { fontSize: 24, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>{displayMode.label}</Text>
-              
-              {/* Subtitle */}
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center' }}>
-                {displayMode.subtitle}
+              <Text style={[heroTextStyle, { fontSize: 24, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>
+                {isSleepWindowActive ? 'Deep Rest Hours' : (heroContent ? heroContent.header : displayMode.label)}
               </Text>
-
-              {/* Elegant Divider */}
-              <View style={{ width: 30, height: 1.5, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 1 }} />
-
-              {/* Bottom hint — premium pills */}
-              {showIdealSleepChip ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981', shadowColor: '#10b981', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } }} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#10b981', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>Ideal Sleep Time</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
-                    · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
-                  </Text>
-                </View>
-              ) : showApproachingChip ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <Text style={{ fontSize: 15 }}>🌙</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#c4b5fd', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
-                    Sleep in {hrsToBed > 0 ? `${hrsToBed}h ${minsToBed}m` : `${minsToBed}m`}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', fontFamily: 'Nunito_500Medium' }}>
-                    · Bed {fmt12(displayBedtime.h, displayBedtime.m)}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.95)', letterSpacing: 1.0, textAlign: 'center', fontFamily: 'Nunito_600SemiBold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
-                  {isBrahmaMuhurta ? '✨ Brahma Muhurta · sacred dawn hour' : dayHint ? (dayHint.name === 'Morning Rise' ? 'Rise for a great Day' : dayHint.name === 'Creative Flow' ? 'Creative Flow Period' : dayHint.name) : 'listen to heal as the day dawns up'}
-                </Text>
-              )}
+              
+              {/* Subtitle / Status Text */}
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center', marginTop: 2 }}>
+                {isSleepWindowActive ? 'Deep sleep period. Listen and sleep.' : (heroContent ? heroContent.sentence : displayMode.subtitle)}
+              </Text>
             </View>
           )}
         </View>
@@ -3992,7 +3992,7 @@ export default function SleepTab() {
                       <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 16 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} numberOfLines={1}>{sound.label}</Text>
+                      <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000}>{sound.label}</MarqueeText>
                       {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
                     </View>
                     {isPlaying ? (
@@ -4229,6 +4229,14 @@ export default function SleepTab() {
       />
 
   </ImageBackground>
+  );
+}
+
+export default function SleepTab() {
+  return (
+    <ScreenErrorBoundary name="SleepTab">
+      <SleepTabInner />
+    </ScreenErrorBoundary>
   );
 }
 

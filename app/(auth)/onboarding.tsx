@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
@@ -22,6 +23,63 @@ import {
 } from '@/lib/locationIntel';
 import { scheduleBrahmaMuhurtaAlarm } from '@/lib/nativeAlarm';
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const SetupProgressRing = ({ step, totalSteps, isHi, label }: { step: number, totalSteps: number, isHi: boolean, label: string }) => {
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: totalSteps > 0 ? step / totalSteps : 0,
+      duration: 700,
+      useNativeDriver: false,
+    }).start();
+  }, [step, totalSteps]);
+
+  const radius = 34;
+  const strokeWidth = 2.5;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0]
+  });
+
+  return (
+    <View style={styles.premiumRingHeader}>
+      <View style={styles.premiumRingContainer}>
+        <Svg width="80" height="80" viewBox="0 0 80 80">
+          <Defs>
+            <SvgGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#00E5FF" />
+              <Stop offset="100%" stopColor="#00BFFF" />
+            </SvgGradient>
+            <SvgGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="rgba(0,191,255,0.04)" />
+              <Stop offset="100%" stopColor="rgba(0,191,255,0.08)" />
+            </SvgGradient>
+          </Defs>
+          <Circle cx="40" cy="40" r={radius} stroke="rgba(0,191,255,0.12)" strokeWidth={strokeWidth + 6} fill="none" />
+          <Circle cx="40" cy="40" r={radius} stroke="url(#bgGrad)" strokeWidth={strokeWidth} fill="none" />
+          <AnimatedCircle
+            cx="40" cy="40" r={radius}
+            stroke="url(#skyGrad)" strokeWidth={strokeWidth} fill="none"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            transform="rotate(-90 40 40)"
+          />
+        </Svg>
+        <View style={styles.premiumRingCenter}>
+          <Text style={styles.premiumRingCount}>{step}</Text>
+          <Text style={styles.premiumRingTotal}>/{totalSteps}</Text>
+        </View>
+      </View>
+      <View style={styles.premiumHeaderTitles}>
+        <Text style={[styles.premiumPhaseBadgeTxt, { color: '#00E5FF' }]}>YOUR JOURNEY</Text>
+        <Text style={styles.premiumSubBadgeTxt}>{label}</Text>
+      </View>
+    </View>
+  );
+};
 // ── Types ──────────────────────────────────────────────────────────────────
 type StepType = 'text' | 'choice' | 'multi';
 interface LOption { id: string; label: string; desc?: string; }
@@ -661,24 +719,27 @@ export default function OnboardingScreen() {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Thin gold progress bar — absolute top */}
-      <View style={styles.progressTrackWrap}>
-        <Animated.View style={[styles.progressFill, { width: `${progressPct}%` as `${number}%` }]} />
-      </View>
+      
 
       <SafeAreaView style={{ flex: 1 }}>
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+
+          {/* ── SLEEK ELEGANT SETUP PROGRESS RING ── */}
+          {(phase === 'steps' || phase === 'quiz') && (
+            <SetupProgressRing 
+              step={phase === 'quiz' ? steps.length + quizIdx + 1 : stepIdx + 1} 
+              totalSteps={totalSteps} 
+              isHi={isHi} 
+              label={PHASE_BADGE} 
+            />
+          )}
 
           {/* ── LIFESTYLE STEPS ── */}
           {phase === 'steps' && currentStep && (
             <View style={{ flex: 1 }}>
               <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-                {/* Badge + counter row */}
-                <View style={styles.topRow}>
-                  <View style={styles.phaseBadge}><Text style={styles.phaseBadgeTxt}>{PHASE_BADGE}</Text></View>
-                  <Text style={styles.stepCounter}>{stepIdx + 1} / {totalSteps}</Text>
-                </View>
+                
 
                 {/* Tap to hear */}
                 <TouchableOpacity onPress={() => speak(currentStep.q)} style={styles.tapToHear} activeOpacity={0.75}>
@@ -1487,13 +1548,23 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   // Progress bar
-  progressTrackWrap: { height: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99 },
-  progressFill: { height: '100%', backgroundColor: Colors.gold },
+  
+  
 
+  
+  premiumRingHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 10, paddingBottom: 12, backgroundColor: 'transparent' },
+  premiumRingContainer: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center' },
+  premiumRingCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  premiumRingCount: { color: '#00E5FF', fontSize: 18, fontWeight: '700', lineHeight: 22 },
+  premiumRingTotal: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginTop: -2 },
+  premiumHeaderTitles: { marginLeft: 16, justifyContent: 'center' },
+  premiumPhaseBadgeTxt: { fontSize: 14, fontWeight: '800', letterSpacing: 3, marginBottom: 4 },
+  premiumSubBadgeTxt: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' },
   scroll: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 32 },
 
   // Top row
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  
   phaseBadge: { borderWidth: 1, borderColor: 'rgba(245,196,66,0.3)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(245,196,66,0.10)' },
   phaseBadgeTxt: { fontSize: 10, fontWeight: '900', color: Colors.gold, letterSpacing: 1.5 },
   stepCounter: { fontSize: Font.sizes.sm, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },

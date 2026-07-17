@@ -10,7 +10,7 @@
     "scheme": "solrize",
     "splash": {
       "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#04030F"
     },
     "ios": {
@@ -44,7 +44,7 @@
     "android": {
       "splash": {
         "image": "./assets/splash-icon.png",
-        "resizeMode": "contain",
+        "resizeMode": "cover",
         "backgroundColor": "#04030F",
         "dark": {
           "image": "./assets/splash-icon.png",
