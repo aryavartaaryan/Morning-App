@@ -1051,7 +1051,7 @@ export default function AlarmsTab() {
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
   fabActionsRef.current = [
-    { label: 'Rise At The Divine Neuroplastic Hour', color: '#f59e0b', onPress: () => openBMModal() },
+    { label: '✨  Rise At The Divine Neuroplastic Hour', color: '#f59e0b', onPress: () => openBMModal() },
     { label: '⏰  Wake Alarm',               color: ACCENT,    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
     { label: '🎯  Habit Alarm',               color: '#10b981', onPress: () => openAddModal('habit') },
     { label: '⚡  Quick Alarm',                color: '#f97316', onPress: () => openAddModal('quick') },

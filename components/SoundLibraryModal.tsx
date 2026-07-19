@@ -119,8 +119,8 @@ export default function SoundLibraryModal({
         {/* Sleek Side Drawer Panel */}
         <SafeAreaView style={S.safeArea} pointerEvents="box-none">
           <View style={[S.drawer, drawerDynamicStyle]}>
-            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient colors={['rgba(20,20,22,0.75)', 'rgba(10,10,12,0.95)']} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['rgba(15,15,18,0.92)', 'rgba(8,8,10,0.99)']} style={StyleSheet.absoluteFillObject} />
             
             {/* Minimalist right border */}
             <View style={S.drawerBorderRight} />

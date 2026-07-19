@@ -286,9 +286,8 @@ function SoundGridCard({
                 style={StyleSheet.absoluteFill} 
                 resizeMode="cover"
               />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
               <LinearGradient
-                colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
+                colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.48)', 'rgba(0,0,0,0.88)']}
                 style={StyleSheet.absoluteFillObject}
               />
             </View>

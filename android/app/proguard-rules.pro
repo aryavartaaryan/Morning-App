@@ -83,3 +83,13 @@
 -dontwarn sun.misc.**
 -dontwarn java.lang.invoke.**
 -dontwarn org.conscrypt.**
+
+# @generated begin expo-build-properties - expo prebuild (DO NOT MODIFY)
+-keep class app.notifee.** { *; }
+-keep class com.solrize.** { *; }
+-keep class expo.modules.** { *; }
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn javax.annotation.**
+# @generated end expo-build-properties

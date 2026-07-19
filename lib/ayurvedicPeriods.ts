@@ -230,6 +230,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
   header: string;
   sentence: string;
   sciLabel: string;
+  actionText: string;
 } {
   if (brahmaActive) {
     return {
@@ -237,6 +238,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
       header: 'Neuroplasticity Peak Hours',
       sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
       sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+      actionText: 'Listen & meditate',
     };
   }
   if (periodId === 'midday_pitta') {
@@ -245,6 +247,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
       header: 'Peak Focus Period',
       sentence: 'Your metabolic fire and mental sharpness peak together. Decide. Create. Execute.',
       sciLabel: 'Peak Metabolic Fire · HCl + Pepsin + Bile at maximum · Thyroid apex',
+      actionText: 'Listen & work',
     };
   }
   if (periodId === 'midday_pitta_late') {
@@ -253,6 +256,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
       header: 'Energy Dip Phase',
       sentence: 'Your body enters a natural rest cycle. Digestion takes priority over focus.',
       sciLabel: 'Post-Solar Cortisol Dip · Melatonin Micro-Pulse · Digestive Blood Flow peaks',
+      actionText: 'Listen & rest',
     };
   }
   switch (periodId) {
@@ -262,6 +266,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Neuroplasticity Peak Hours',
         sentence: 'Your subconscious and conscious merge. The clearest thinking of your life.',
         sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
+        actionText: 'Listen & meditate',
       };
     case 'morning_kapha':
       return {
@@ -269,6 +274,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Rise & Build Hours',
         sentence: 'Your hormones are primed to build. Move now and it compounds all day.',
         sciLabel: 'Anabolic Hormone Peak · Lymphatic Clearance · Cortisol Rising',
+        actionText: 'Listen & work out',
       };
     case 'afternoon_vata':
       return {
@@ -276,6 +282,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Creative Peak Hours',
         sentence: 'Your body is built to move and create right now. Peak athletic window.',
         sciLabel: 'Lung Capacity Peak · Reaction Time Fastest · Neuromuscular Coordination',
+        actionText: 'Listen & get spark',
       };
     case 'evening_kapha':
       return {
@@ -283,6 +290,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Evening Wind Down Hours',
         sentence: 'Melatonin is rising. Your nervous system is ready to let go.',
         sciLabel: 'Melatonin Synthesis Begins · Core Temp Drops · Parasympathetic NS Active',
+        actionText: 'Listen & wind down',
       };
     case 'night_pitta':
       return {
@@ -290,6 +298,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Deep Repair Hours',
         sentence: 'Your body is in complete detox mode. Take deep sleep.',
         sciLabel: 'Liver Detox Phase I & II · Growth Hormone Surge · Cellular Autophagy Active',
+        actionText: 'Listen & sleep',
       };
     default:
       return {
@@ -297,6 +306,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         header: 'Circadian Rhythm',
         sentence: 'Align with nature.',
         sciLabel: 'Biological synchronization',
+        actionText: 'Listen & align',
       };
   }
 }

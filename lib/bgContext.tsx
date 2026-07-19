@@ -422,19 +422,28 @@ export function BgProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function refresh() {
+      if (cancelled) return;
       try {
         if (!solarRef.current) {
-          const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location).catch(() => null);
-          solarRef.current = loc?.lat && loc?.lon ? getSolarTimes(loc.lat, loc.lon) : null;
+          // Guard: store.getJSON can throw if MMKV is unavailable on cold boot
+          try {
+            const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location).catch(() => null);
+            if (loc?.lat && loc?.lon) {
+              try { solarRef.current = getSolarTimes(loc.lat, loc.lon); } catch { solarRef.current = null; }
+            }
+          } catch { solarRef.current = null; }
         }
+        if (cancelled) return;
         const nowH = new Date().getHours() + new Date().getMinutes() / 60;
-        const key  = getTimedBgKey(nowH, solarRef.current);
+        let key: string;
+        try { key = getTimedBgKey(nowH, solarRef.current); } catch { key = 'night'; }
         if (cancelled) return;
         
         if (key !== bgKeyRef.current || !resolvedOnce.current) {
           bgKeyRef.current   = key;
           resolvedOnce.current = true;
-          const syncUri = getBgSourceSync(key);
+          let syncUri = '';
+          try { syncUri = getBgSourceSync(key); } catch { syncUri = ''; }
           const localSyncUri = syncUri && !syncUri.startsWith('http') ? safeUri(syncUri) ?? null : null;
           const safeSyncUri  = safeUri(syncUri) ?? null;
           
@@ -454,20 +463,22 @@ export function BgProvider({ children }: { children: ReactNode }) {
             }
           }
           
-          const uri = await getBgSource(key);
-          if (!cancelled) {
-            const safe = safeUri(uri);
-            if (safe) setAllBgUris(prev => ({ ...prev, [key]: safe }));
-            if (wpModeRef.current === 'solar' && bgKeyRef.current === key) {
-              setBgUri(safe ?? null);
+          try {
+            const uri = await getBgSource(key);
+            if (!cancelled) {
+              const safe = safeUri(uri);
+              if (safe) setAllBgUris(prev => ({ ...prev, [key]: safe }));
+              if (wpModeRef.current === 'solar' && bgKeyRef.current === key) {
+                setBgUri(safe ?? null);
+              }
             }
-          }
+          } catch { /* non-fatal — cached URI already applied above */ }
         }
-      } catch { /* silent */ }
+      } catch { /* silent — any error here is non-fatal for the refresh timer */ }
     }
 
-    bgWarmup.then(() => { if (!cancelled) refresh(); }).catch(() => { if (!cancelled) refresh(); });
-    const timer = setInterval(refresh, 60_000);
+    bgWarmup.then(() => { if (!cancelled) refresh(); }).catch(() => { if (!cancelled) refresh().catch(() => {}); });
+    const timer = setInterval(() => { refresh().catch(() => {}); }, 60_000);
     return () => { cancelled = true; clearInterval(timer); };
   }, []);
 

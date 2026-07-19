@@ -24,7 +24,6 @@ class MainActivity : ReactActivity() {
   // and the SharedPreferences .commit() becoming visible on the UI thread.
   private val focusLossHandler  = android.os.Handler(android.os.Looper.getMainLooper())
   private var focusLossRunnable: Runnable? = null
-  private var lockTaskStartedForAlarm = false
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
@@ -65,7 +64,7 @@ class MainActivity : ReactActivity() {
       // while the app is ALREADY OPEN (onResume is not called again in that case).
       // This handles wake alarm, habit alarm, and quick alarm equally since
       // isAlarmActive() checks ALL alarm types from SharedPreferences.
-      startAlarmLockTaskOnce()
+      try { startLockTask() } catch (_: Exception) {}
     }
   }
 
@@ -90,7 +89,6 @@ class MainActivity : ReactActivity() {
       // bring-to-front never fires after the user has dismissed the alarm.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
-      lockTaskStartedForAlarm = false
 
       // If we're returning from alarm navigation and Lock Task is still active,
       // ensure it is stopped. Safe to call even if not in lock task mode.
@@ -116,7 +114,9 @@ class MainActivity : ReactActivity() {
     }
     // Layer 3 — Screen Pinning (Lock Task Mode).
     // Pins this task so Android's OS itself blocks Home, Back, and Recent Apps.
-    startAlarmLockTaskOnce()
+    // Called every time (no one-shot guard) so if the dialog is dismissed it
+    // is re-triggered on the very next focus change — screen stays unescapable.
+    try { startLockTask() } catch (_: Exception) {}
   }
 
   /**
@@ -147,24 +147,18 @@ class MainActivity : ReactActivity() {
           .getBoolean("alarm_stopping", false)
       } catch (_: Exception) { false }
 
-      if (isAlarmActive() && !alarmStopping) {
-        startAlarmLockTaskOnce()
+      // Also check ALARM_FORCE_STOP (instant AtomicBoolean kill switch)
+      if (isAlarmActive() && !alarmStopping && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
+        // Call startLockTask() every focus gain — no one-shot guard.
+        // This means: if the dialog was dismissed without pressing OK,
+        // the next focus event re-triggers it immediately.
+        try { startLockTask() } catch (_: Exception) {}
       }
     } else {
       // Window lost focus — debounce before reacting so we don't fire
       // startActivity() during the normal alarm-dismissal navigation flow.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       val r = Runnable {
-        // Re-check AFTER the debounce — by now .apply() has settled and
-        // isAlarmActive() correctly reflects the real alarm state.
-        //
-        // ROOT CAUSE FIX: Also check alarm_stopping. When the user taps Stop,
-        // React Navigation's transition causes onWindowFocusChanged(false) to
-        // fire immediately. Without this guard, the debounce could fire
-        // startActivity() right in the middle of router.replace() navigation
-        // (especially under memory pressure after long ringing), making the
-        // screen appear frozen. alarm_stopping=true is set synchronously in
-        // AlarmModule.stopAlarmSound() before any navigation happens.
         val alarmStopping = try {
           getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean("alarm_stopping", false) ||
@@ -172,31 +166,25 @@ class MainActivity : ReactActivity() {
             .getBoolean("alarm_stopping", false)
         } catch (_: Exception) { false }
 
-        if (!alarmStopping && isAlarmActive()) {
-          val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-          val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
-          val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-          val isScreenOn = try { pm.isInteractive } catch (_: Exception) { true }
-
-          if (!isLocked && isScreenOn) {
-            try {
-              startActivity(Intent(this, MainActivity::class.java).apply {
-                addFlags(
-                  Intent.FLAG_ACTIVITY_NEW_TASK or
-                  Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                  Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                  Intent.FLAG_ACTIVITY_NO_ANIMATION
-                )
-              })
-            } catch (_: Exception) {}
-          }
+        // The absolute kill switch: ALARM_FORCE_STOP.get() is checked instantly.
+        // If true, we abort immediately. No freezes, even after 10+ minutes ringing.
+        if (!alarmStopping && isAlarmActive() && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
+          try {
+            startActivity(Intent(this, MainActivity::class.java).apply {
+              addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_NO_ANIMATION
+              )
+            })
+          } catch (_: Exception) {}
         }
       }
       focusLossRunnable = r
-      // 600ms debounce (was 350ms): alarm_stopping=true is written by stopAlarmSound(),
-      // then the JS Promise resolves and router.replace() fires. By 600ms the flag is
-      // reliably settled in SharedPreferences memory so the check above is accurate.
-      focusLossHandler.postDelayed(r, 600)
+      // 350ms loop: Violently hijacks focus back if the pinning dialog is open or
+      // if the user swipes home. Creates an unbreakable state even if OK is not clicked.
+      focusLossHandler.postDelayed(r, 350)
     }
   }
 
@@ -256,15 +244,10 @@ class MainActivity : ReactActivity() {
     } catch (_: Exception) { false }
   }
 
-  private fun startAlarmLockTaskOnce() {
-    if (lockTaskStartedForAlarm) return
-    lockTaskStartedForAlarm = true
-    try { startLockTask() } catch (_: Exception) {}
-  }
-
-  fun resetAlarmLockTaskState() {
-    lockTaskStartedForAlarm = false
-  }
+  // resetAlarmLockTaskState() kept for compatibility with AlarmModule.kt and
+  // AlarmSoundServiceBase.kt call sites — now a no-op since the one-shot guard
+  // was removed. Callers can safely invoke it; it does nothing.
+  fun resetAlarmLockTaskState() { /* no-op — one-shot guard removed */ }
 
   /**
    * HOME button interceptor.

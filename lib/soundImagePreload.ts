@@ -130,12 +130,23 @@ const ALL_URLS: readonly string[] = [
  * Call this as early as possible (no delay needed, pure file-stat calls).
  */
 export async function warmSoundImageMap(): Promise<void> {
+  // ── COLD-BOOT FIX ─────────────────────────────────────────────────────────
+  // After a phone restart, Android's JNI/filesystem bridge is still warming up.
+  // FileSystem.getInfoAsync() can hang indefinitely during this window causing
+  // the entire app startup gate to block and eventually trigger an ANR kill.
+  // A 1.5-second per-file timeout guarantees we always finish quickly.
+  const FILE_STAT_TIMEOUT_MS = 1500;
   await Promise.allSettled(
     ALL_URLS.map(async (url) => {
       if (LOCAL_URI_MAP[url]) return;
       try {
         const path = CACHE_DIR + cacheFilename(url);
-        const info = await FileSystem.getInfoAsync(path);
+        const info = await Promise.race([
+          FileSystem.getInfoAsync(path),
+          new Promise<{ exists: false }>(r =>
+            setTimeout(() => r({ exists: false }), FILE_STAT_TIMEOUT_MS)
+          ),
+        ]);
         if ((info as any).exists) LOCAL_URI_MAP[url] = path;
       } catch { /* ignore */ }
     }),
@@ -188,9 +199,8 @@ export async function prefetchAllSoundImagesWithProgress(
       hasError = true;
     }
   }
-  if (hasError) {
-    throw new Error('Failed to download some sound images');
-  }
+  // Note: individual download failures are handled per-image above (remote URL used as fallback).
+  // We never throw here — this function is called fire-and-forget and must always resolve.
 }
 
 /**

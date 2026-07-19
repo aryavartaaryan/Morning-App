@@ -93,6 +93,9 @@ export default function StepAnalyticsScreen() {
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      // Reset for new day and snapshot today before loading analytics
+      await StepCounter.maybeResetForNewDay();
+      await StepCounter.snapshotTodayToHistory();
       const analytics = await StepCounter.getThirtyDayAnalytics();
       setAllData(analytics.dailyData);
       setSummary(analytics.summary);
@@ -135,15 +138,16 @@ export default function StepAnalyticsScreen() {
   };
 
   // ── Derived data ───────────────────────────────────────────────────────────
+  // Last 7 days — allData is already sorted ascending (oldest→newest) by getThirtyDayAnalytics
   const realLast7 = allData.slice(-7);
   const emptyDays = Array(Math.max(0, 7 - realLast7.length)).fill(null).map((_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (7 - i));
+    d.setDate(d.getDate() - (7 - realLast7.length - 1 + i));
     return {
       date: d.toISOString().split('T')[0], steps: 0, goal: 8000, distanceKm: 0, calories: 0, activeMinutes: 0, goalMet: false, goalPercent: 0
     } as DailyData;
   });
-  const last7Days = [...emptyDays, ...realLast7];
+  const last7Days = [...emptyDays, ...realLast7].slice(-7); // always exactly 7
   const goal = last7Days[last7Days.length - 1]?.goal ?? 8000;
 
   // Hero Ring Math - Using Today's stats for the ring as requested

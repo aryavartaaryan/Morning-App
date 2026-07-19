@@ -129,6 +129,11 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         Animated.delay(600),
         Animated.timing(shimmerOp, { toValue: 1, duration: 1000, useNativeDriver: true }),
         Animated.delay(1450), // Hold the screen for a bit so user can read everything (4s total)
+      ]).start(() => {
+        if (!mounted) return;
+        import('react-native').then(({ DeviceEventEmitter }) => {
+          DeviceEventEmitter.emit('splashFadeOut');
+        });
         
         // Dismiss Splash
         Animated.parallel([
@@ -136,9 +141,9 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: true }),
           Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: true }),
           Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: true }),
-        ]),
-      ]).start(({ finished }) => {
-        if (mounted && finished) onDone();
+        ]).start(({ finished }) => {
+          if (mounted && finished) onDone();
+        });
       });
     }, 150);
 
@@ -382,7 +387,12 @@ function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
     try {
       setupNotificationChannel().catch(() => {});
       scheduleHabitReminders();
-      scheduleAllNativeReminders().catch(() => {});
+      // ── COLD-BOOT FIX: Defer native bridge calls ───────────────────────────
+      // After a phone restart, NativeModules may not be fully initialized when
+      // AuthGuard fires. Deferring by 2 seconds ensures the JS bridge is ready
+      // before scheduling native reminders, preventing bridge errors that can
+      // propagate through Hermes's unhandled rejection path.
+      setTimeout(() => scheduleAllNativeReminders().catch(() => {}), 2000);
       checkAndRescheduleDaily().catch(() => {});
       // ── Bug 3 fix: re-sync native alarm sound path on every app open ──────────
       // The expo-asset path persisted in SharedPrefs at schedule time can go stale
@@ -1102,12 +1112,30 @@ export default function RootLayout() {
         ensureAllMantrasDownloaded().catch(() => {});
 
         // Fast disk-scan — no downloads, just file-existence checks (~10 ms)
-        await bgWarmup;
+        // ── COLD-BOOT FIX: Wrap bgWarmup with a 3-second absolute timeout ────
+        // bgWarmup runs warmBgLocalMap() at module load time. On a fresh cold
+        // boot, the filesystem may still be initializing. bgWarmup itself now
+        // has a 4s outer race (in bgImages.ts), but we add a 3s belt-and-
+        // suspenders guard here to prevent this await from ever blocking the
+        // startup gate and causing an ANR.
+        await Promise.race([
+          bgWarmup,
+          new Promise<void>(resolve => setTimeout(resolve, 3000)),
+        ]).catch(() => {});
         // Warm sound image map — MUST be awaited before showing any UI.
         // This populates LOCAL_URI_MAP so getLocalSoundImageUri() returns
         // the local file:// path synchronously at render time.
         // Without this await, cards render with remote URLs (may fail offline).
-        await warmSoundImageMap();
+        // ── COLD-BOOT FIX: Absolute 5-second timeout ──────────────────────────
+        // warmSoundImageMap() does 50+ FileSystem.getInfoAsync calls in parallel.
+        // On first cold boot after phone restart the Android filesystem/JNI
+        // bridge can hang. A 5s absolute timeout ensures the startup gate always
+        // advances even if the filesystem isn't fully ready yet. On subsequent
+        // opens all cache hits are in-memory and the timeout never fires.
+        await Promise.race([
+          warmSoundImageMap(),
+          new Promise<void>(resolve => setTimeout(resolve, 5000)),
+        ]).catch(() => {});
 
         // ── FIRST-INSTALL GATE ────────────────────────────────────────────
         // Use a persistent AsyncStorage flag as the primary check.
@@ -1176,7 +1204,17 @@ export default function RootLayout() {
 
           setDlLabel('Setting up...');
           // Phase 1: BG images (critical — splash depends on these)
-          await ensureAllBgsCachedWithProgress(tick);
+          // Wrapped in its own try-catch so a network failure shows the error UI
+          // rather than crashing the entire setup flow.
+          try {
+            await ensureAllBgsCachedWithProgress(tick);
+          } catch {
+            if (!cancelled) {
+              setDlError(true);
+              setDlLabel('Connection interrupted');
+              return;
+            }
+          }
 
           if (!cancelled) setDlLabel('Preparing your sounds...');
           // Phase 2: Sound card + reel images (high concurrency for speed)

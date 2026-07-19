@@ -80,20 +80,11 @@ export function installCrashShield() {
       try { if (typeof prev === 'function') prev(event); } catch { /* silent */ }
     };
 
-    // promise/setimmediate rejection tracking (React Native's built-in polyfill)
-    try {
-      const tracking = require('promise/setimmediate/rejection-tracking');
-      tracking.enable({
-        allRejections: true,
-        onUnhandled: (_id: string, error: Error | any) => {
-          try {
-            const msg = error instanceof Error ? error.message : String(error ?? 'Unknown');
-            ToastLogger.push(`⚠️ PROMISE REJECTION\n${msg}`, 'error');
-          } catch { /* silent */ }
-        },
-        onHandled: () => {},
-      });
-    } catch { /* polyfill not available */ }
+    // NOTE: promise/setimmediate/rejection-tracking with allRejections:true is
+    // intentionally NOT enabled here. On first cold boot after phone restart,
+    // the polyfill intercepts ALL promise rejections — including filesystem,
+    // native modules, and network — before ToastLogger is ready, causing a
+    // crash loop. The global onunhandledrejection handler above is sufficient.
   } catch { /* silent */ }
 
   // ── 3. console.error override ───────────────────────────────────────────────

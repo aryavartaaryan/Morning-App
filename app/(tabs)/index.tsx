@@ -7,7 +7,7 @@ import {
 } from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform,
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter
 } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6145,6 +6145,8 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 // ══════════════════════════════════════════════════════════════════════════════
 // Main Daily Screen
 // ══════════════════════════════════════════════════════════════════════════════
+let isDailyTabFirstLaunch = true;
+
 function DailyTab() {
   const [liveClock, setLiveClock]           = useState(new Date());
   const [solarTimes, setSolarTimes]         = useState<SolarTimes | null>(null);
@@ -6173,16 +6175,34 @@ function DailyTab() {
   const weatherFetchingRef   = useRef(false);
   const prevSacredTypeRef    = useRef<string | null | undefined>(undefined);
   const prevPeriodIdRef      = useRef<string | null | undefined>(undefined);
-  const entranceAnim         = useRef(new Animated.Value(0)).current;
+  const entranceAnim         = useRef(new Animated.Value(isDailyTabFirstLaunch ? 0 : 1)).current;
 
-  // Premium Breathe & Reveal entrance effect
+  // Premium Breathe & Reveal entrance effect synced with SplashOverlay
   useEffect(() => {
-    Animated.timing(entranceAnim, {
-      toValue: 1,
-      duration: 1500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    if (isDailyTabFirstLaunch) {
+      isDailyTabFirstLaunch = false;
+      const sub = DeviceEventEmitter.addListener('splashFadeOut', () => {
+        Animated.timing(entranceAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+      });
+      // Fallback in case splash screen is skipped (e.g. after download screen)
+      const fallbackTimer = setTimeout(() => {
+        Animated.timing(entranceAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+      }, 4000);
+      return () => {
+        sub.remove();
+        clearTimeout(fallbackTimer);
+      };
+    }
   }, [entranceAnim]);
 
   // Live clock tick

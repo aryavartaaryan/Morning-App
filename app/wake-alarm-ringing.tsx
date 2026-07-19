@@ -31,7 +31,7 @@ import {
   WAKE_SOUNDS, MISSIONS, DEFAULT_MISSION_SETTINGS, MissionSettings,
   getKalaMessage,
 } from '@/lib/missionAlarm';
-import { stopAlarmVibration, stopNativeLockTask, stopNativeAlarmSound, stopNativeAlarmAudioOnly, cancelNativeAlarm } from '@/lib/nativeAlarm';
+import { stopAlarmVibration, startNativeLockTask, stopNativeLockTask, stopNativeAlarmSound, stopNativeAlarmAudioOnly, cancelNativeAlarm } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 import { store, KEYS } from '@/lib/storage';
@@ -154,6 +154,18 @@ export default function WakeAlarmRingingScreen() {
       cancelAnimation(btnScale);
       cancelAnimation(rotVal);
     };
+  }, []);
+
+  // ── Pin screen immediately on mount (Lock Task Mode) ─────────────────────
+  // Restores the enforced/automatic screen pinning that was present earlier.
+  // Calls startLockTask() immediately when the wake alarm screen opens —
+  // same pattern as soundbath-ringing.tsx (proven stable). When the alarm
+  // fires on a locked/sleeping device via fullScreenIntent, this pins silently
+  // with NO dialog. When the device is already unlocked, Android shows its
+  // standard "App is pinned" confirmation — but the call is made automatically
+  // without waiting for any user button press.
+  useEffect(() => {
+    startNativeLockTask().catch(() => {});
   }, []);
 
   // ── Keep awake + native wake lock ─────────────────────────────────────────

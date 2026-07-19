@@ -41,12 +41,14 @@ import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getBgSourceSync } from '@/lib/bgImages';
+import { fetchWeather, type WeatherData } from '@/lib/weather';
+import { getSolarRingPalette } from '@/lib/solarRingPalette';
 
 const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const ACCENT   = '#38BDF8';
-const GREEN    = '#34D399';
+const ACCENT   = '#34D399';
+const GREEN    = '#10B981';
 const TEAL     = '#2DD4BF';
 const GOLD     = '#FCD34D';
 const BG_DARK  = '#0A0A0F';
@@ -56,7 +58,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = Math.min(W - 60, 210);
+const RING_SIZE   = 210;
 const RING_STROKE = 14;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -78,10 +80,10 @@ const DEFAULT_STATS: TodayStats = {
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={3} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.1)', 'transparent']}
-        start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
+        colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
     </View>
@@ -105,6 +107,8 @@ export default function WalkTab() {
   const [sessionTitle, setSessionTitle] = useState('Start Nature Walk');
   const [sessionType, setSessionType]   = useState<'morning' | 'evening'>('morning');
   const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
+  const [yesterdaySteps, setYesterdaySteps] = useState(0);
+  const [weather, setWeather]           = useState<WeatherData | null>(null);
 
   const ringAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
@@ -136,13 +140,17 @@ export default function WalkTab() {
 
   useFocusEffect(useCallback(() => {
     walkScrollRef.current?.scrollTo({ y: 0, animated: false });
-    refreshStats();
+    // Run daily reset check every time the tab is focused
+    StepCounter.maybeResetForNewDay().then(() => refreshStats());
   }, [refreshStats]));
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
+        // Always reset for new day before loading data
+        await StepCounter.maybeResetForNewDay();
+
         const loc = await store.getJSON<{lat: number, lon: number}>(KEYS.location);
       if (loc) {
         const solar = getSolarTimes(loc.lat, loc.lon);
@@ -165,6 +173,17 @@ export default function WalkTab() {
       if (avail) {
         await refreshStats();
       }
+      
+      try {
+        const w = await fetchWeather();
+        setWeather(w);
+      } catch (err) {
+        console.warn("Weather fetch error in walk.tsx:", err);
+      }
+
+      // Load yesterday's steps for motivational ring display
+      const ySteps = await StepCounter.getYesterdaySteps();
+      setYesterdaySteps(ySteps);
 
       } catch (err) {
         console.warn("Boot error in walk.tsx:", err);
@@ -174,21 +193,21 @@ export default function WalkTab() {
     })();
 
     Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.timing(cardSlide, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(cardSlide, { toValue: 0, duration: 800, easing: Easing.out(Easing.exp), useNativeDriver: true }),
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.06, duration: 3000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 3000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.07, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -210,9 +229,12 @@ export default function WalkTab() {
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      StepCounter.snapshotTodayToHistory();
-      refreshStats();
+    const t = setInterval(async () => {
+      await StepCounter.maybeResetForNewDay();
+      await StepCounter.snapshotTodayToHistory();
+      await refreshStats();
+      const ySteps = await StepCounter.getYesterdaySteps();
+      setYesterdaySteps(ySteps);
     }, 5 * 60 * 1000);
     return () => clearInterval(t);
   }, []);
@@ -227,7 +249,7 @@ export default function WalkTab() {
   useEffect(() => {
     Animated.timing(ringAnim, {
       toValue: stats.goalPercent / 100,
-      duration: 1200,
+      duration: 1500,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
@@ -247,14 +269,21 @@ export default function WalkTab() {
   };
 
   // ── Derived values for ring ─────────────────────────────────────────────────
-  const glowOpacity = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.5, 1] });
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.3, 0.8] });
   const shimmerTranslate = btnShimmer.interpolate({ inputRange: [0, 1], outputRange: [-W, W] });
 
   // ────────────────────────────────────────────────────────────────────────────
   const { bgUri, accentColor, bgKey, solarTimes } = useBgContext();
-  const hour = new Date().getHours() + new Date().getMinutes() / 60;
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
   const stepBgKey = isNightReal ? 'naad_step_night' : 'naad_step';
+  
+  const solarNoon = solarTimes?.solarNoon ?? 12.5;
+  const gpsLat = weather?.lat ?? null;
+  const gpsLon = weather?.lon ?? null;
+  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, gpsLat, gpsLon, false, weather?.temp);
+  const ringHex = palette.ring;
   
   return (
     <ImageBackground
@@ -263,18 +292,19 @@ export default function WalkTab() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      {/* Top violet aurora glow */}
+      
+      {/* Top green nature glow */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity, pointerEvents: 'none' }]}
         pointerEvents="none"
       >
         <LinearGradient
-          colors={['rgba(124,58,237,0.22)', 'transparent']}
+          colors={['rgba(52,211,153,0.15)', 'transparent']}
           style={{ position: 'absolute', top: -80, left: -80, width: 380, height: 380, borderRadius: 190 }}
         />
         <LinearGradient
-          colors={['rgba(45,212,191,0.10)', 'transparent']}
-          style={{ position: 'absolute', top: 60, right: -60, width: 280, height: 280, borderRadius: 140 }}
+          colors={['rgba(16,185,129,0.12)', 'transparent']}
+          style={{ position: 'absolute', top: 120, right: -60, width: 320, height: 320, borderRadius: 160 }}
         />
       </Animated.View>
 
@@ -283,102 +313,77 @@ export default function WalkTab() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
       >
-        {/* ── HEADER — deep frosted glass ────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 10 }}>
+        {/* ── HEADER ────────────────────────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 15 }}>
           <View style={{
             width: '100%',
-            overflow: 'hidden',
-            paddingHorizontal: 20,
-            paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 4,
-            paddingBottom: 16,
             alignItems: 'center',
-            backgroundColor: 'transparent',
+            paddingHorizontal: 20,
+            paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
           }}>
-            {/* Frosted shine shimmer at top */}
-            <LinearGradient
-              colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.7 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            {/* Subtle violet bottom glow line */}
-            <LinearGradient
-              colors={['transparent', 'rgba(56,189,248,0.18)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1 }}
-              pointerEvents="none"
-            />
-
-            {/* Title */}
             <Text style={{
-              fontSize: 22,
+              fontSize: 28,
               fontWeight: '700',
-              color: '#FFF8F0',
-              letterSpacing: 0.6,
+              color: '#FFF',
+              letterSpacing: 0.8,
               fontFamily: 'DancingScript_600SemiBold',
-              textShadowColor: 'rgba(56,189,248,0.55)',
+              textShadowColor: 'rgba(52,211,153,0.6)',
               textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: 14,
+              textShadowRadius: 18,
               textAlign: 'center',
               marginBottom: 4,
             }}>
               Nada Steps
             </Text>
-            {/* Date */}
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', letterSpacing: 0.4, fontWeight: '300', textAlign: 'center' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, fontWeight: '500', textTransform: 'uppercase' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
-            
-            {/* Divider */}
-            <View style={{ width: 40, height: 1, backgroundColor: 'rgba(56,189,248,0.28)', marginVertical: 10 }} />
-
-            {/* Tagline card — frosted glass */}
-            <View style={{
-              width: '100%',
-              paddingHorizontal: 14, paddingVertical: 10,
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              borderRadius: 16,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-              overflow: 'hidden',
-            }}>
-              <LinearGradient
-                colors={['rgba(52,211,153,0.10)', 'transparent']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#34D399', textAlign: 'center', marginBottom: 3, letterSpacing: 0.8 }}>
-                Do not count calories.. just walk organically.
-              </Text>
-              <Text style={{ fontSize: 10, fontWeight: '400', color: 'rgba(255,255,255,0.68)', textAlign: 'center', lineHeight: 15 }}>
-                Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath....
-              </Text>
-            </View>
-
-            {/* View Analytics button */}
-            <View style={{ marginTop: 12 }}>
-              <TouchableOpacity
-                onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
-                  paddingHorizontal: 18, paddingVertical: 9,
-                  borderRadius: 24,
-                  shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4,
-                  overflow: 'hidden',
-                }}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['rgba(56,189,248,0.15)', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <Ionicons name="bar-chart" size={13} color="#c4b5fd" />
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#e9d5ff', letterSpacing: 1.2, textTransform: 'uppercase' }}>View Analytics</Text>
-              </TouchableOpacity>
-            </View>
           </View>
+        </Animated.View>
+
+        {/* ── TAGLINE CARD ────────────────────────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 24, marginBottom: 20 }}>
+          <View style={{
+            backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
+            borderRadius: 20,
+            padding: 16,
+            borderWidth: 1, borderColor: 'rgba(52,211,153,0.15)',
+            alignItems: 'center',
+            overflow: 'hidden',
+          }}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <LinearGradient
+              colors={['rgba(52,211,153,0.08)', 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#34d399', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
+              Do not count calories.. just walk organically.
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center' }}>
+              Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* View Analytics Button - sleek pill */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 25 }}>
+          <TouchableOpacity
+            onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+              paddingHorizontal: 20, paddingVertical: 8,
+              borderRadius: 24,
+              overflow: 'hidden',
+            }}
+            activeOpacity={0.8}
+          >
+            <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="bar-chart" size={13} color="#fff" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 1.2, textTransform: 'uppercase' }}>View Analytics</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* ── NO SENSOR WARNING ───────────────────────────────────────────── */}
@@ -391,160 +396,158 @@ export default function WalkTab() {
         )}
 
         {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
-        <Animated.View style={[st.ringWrapper, { opacity: cardFade }]}>
+        <Animated.View style={[st.ringWrapper, { opacity: cardFade, transform: [{ scale: pulseAnim }] }]}>
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
-            {/* Outer breathing aura */}
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: ACCENT, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.35] }), transform: [{ scale: pulseAnim }], top: -30, left: -30 }} />
-            <Animated.View style={{ position: 'absolute', width: RING_SIZE + 28, height: RING_SIZE + 28, borderRadius: (RING_SIZE + 28) / 2, backgroundColor: TEAL, opacity: pulseAnim.interpolate({ inputRange: [1, 1.06], outputRange: [0.12, 0.28] }), transform: [{ scale: pulseAnim }], top: -14, left: -14 }} />
+            {/* Inner zone - solid clean frosted glass */}
+            <View style={{
+              position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
+              overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)'
+            }}>
+              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
+              <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim.interpolate({ inputRange: [1, 1.07], outputRange: [0.3, 0.9] }) }]}>
+                <LinearGradient
+                  colors={[`${ringHex}50`, `${ringHex}00`]}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+                  style={StyleSheet.absoluteFillObject} />
+              </Animated.View>
+            </View>
 
-            {/* Inner disc for better text contrast */}
-            <View style={{ position: 'absolute', top: 8, left: 8, width: RING_SIZE - 16, height: RING_SIZE - 16, borderRadius: (RING_SIZE - 16) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
-
-            {/* ── SLEEK PREMIUM FUSION RING ─────────────────────────────────── */}
-            <View style={{ shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 36, elevation: 20 }}>
-              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} style={{ transform: [{ rotate: '-90deg' }] }}>
-                <Defs>
-                  <SvgGrad id="sleekGlow" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0"   stopColor="#34D399" stopOpacity="1" />
-                    <Stop offset="0.3" stopColor="#38bdf8" stopOpacity="1" />
-                    <Stop offset="0.7" stopColor="#A78BFA" stopOpacity="1" />
-                    <Stop offset="1"   stopColor="#F472B6" stopOpacity="1" />
-                  </SvgGrad>
-                  <SvgGrad id="trackGrad" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#ffffff" stopOpacity="0.45" />
-                    <Stop offset="1" stopColor="#ffffff" stopOpacity="0.25" />
-                  </SvgGrad>
-                </Defs>
+            {/* ── CLEAN PREMIUM THIN RING ─────────────────────────────────── */}
+            <View style={{ shadowColor: ringHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 15, elevation: 8 }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Track */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#trackGrad)" strokeWidth={RING_STROKE + 2} />
-                {/* Ambient Glow */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 24} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.55} />
-                {/* Mid Glow */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE + 10} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.85} />
-                {/* Core Crisp Arc */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="url(#sleekGlow)" strokeWidth={RING_STROKE} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={1} />
-                {/* Neon White Core */}
-                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R_OUTER - 4} fill="none" stroke="#ffffff" strokeWidth={4} strokeLinecap="round" strokeDasharray={2 * Math.PI * (R_OUTER - 4)} strokeDashoffset={2 * Math.PI * (R_OUTER - 4) * (1 - (stats.goalPercent / 100))} opacity={0.9} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ringHex} strokeOpacity={0.15} strokeWidth={3} />
+                {/* Main crisp stroke */}
+                <Circle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER}
+                  fill="none" stroke={ringHex} strokeWidth={3} strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * R_OUTER} strokeDashoffset={2 * Math.PI * R_OUTER * (1 - (stats.goalPercent / 100))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
+                />
               </Svg>
             </View>
 
             {/* Centre content */}
             <View style={st.ringCentre}>
+              
+              {weather && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, opacity: 0.9 }}>
+                  <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: ringHex, marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    {weather.temp}° • {weather.condition}
+                  </Text>
+                </View>
+              )}
+              
               {/* Badge */}
-              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(56,189,248,0.18)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.55)', marginBottom: 8 }}>
-                <Text style={{ fontSize: 7, fontWeight: '900', color: '#e9d5ff', letterSpacing: 1.6 }}>👣  STEPS TODAY</Text>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 6 }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.5 }}>STEPS TODAY</Text>
               </View>
+              
               <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
               <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
+              
               <View style={st.ringDivider} />
               
-              <View style={{ flexDirection: 'row', gap: 14, marginTop: 4, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', gap: 16, marginTop: 4, alignItems: 'center' }}>
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>km</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>km</Text>
                 </View>
-                <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.14)' }} />
+                <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{stats.activeMinutes}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>min</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>min</Text>
                 </View>
-                <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.14)' }} />
+                <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{streak}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>days</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{streak}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>days</Text>
                 </View>
               </View>
               
-              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(56,189,248,0.20)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.50)', marginTop: 12 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: ACCENT, letterSpacing: 0.4 }}>{stats.goalPercent}% complete</Text>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(52,211,153,0.2)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.4)', marginTop: 14 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#6ee7b7', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
               </View>
+              
+              {/* Yesterday motivational display */}
+              {stats.totalSteps === 0 && yesterdaySteps > 0 && (
+                <View style={{ marginTop: 10, alignItems: 'center', opacity: 0.85 }}>
+                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(16,185,129,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#34d399' }}>{fmtK(yesterdaySteps)} steps</Text>
+                </View>
+              )}
             </View>
 
           </View>
         </Animated.View>
 
-        {/* ── ULTRA-SMART NATURE WALK BUTTON ───────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 20, marginTop: 8, marginBottom: 10 }}>
+        {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 32, gap: 14, marginTop: 15, marginBottom: 20 }}>
+          
+          {/* Start Nature Walk Button */}
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 20, overflow: 'hidden', shadowColor: '#2DD4BF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, alignSelf: 'center', width: '85%' }}
+            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 18, elevation: 8 }}
           >
-            {/* Translucent button base */}
             <LinearGradient
-              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+              colors={['rgba(56,189,248,0.3)', 'rgba(14,165,233,0.15)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              style={{ paddingVertical: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              {/* Border overlay */}
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' }} />
+              <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFillObject} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(56,189,248,0.4)' }} />
+              
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.12)', 'transparent']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                colors={['rgba(255,255,255,0.15)', 'transparent']}
+                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
+              
               {/* Animated shimmer sweep */}
               <Animated.View
                 style={{
-                  position: 'absolute', top: 0, bottom: 0, width: 60,
+                  position: 'absolute', top: 0, bottom: 0, width: 70,
                   transform: [{ translateX: shimmerTranslate }],
                 }}
                 pointerEvents="none"
               >
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.10)', 'transparent']}
+                  colors={['transparent', 'rgba(255,255,255,0.15)', 'transparent']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
-              {/* Animated glow pulse overlay */}
-              <Animated.View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-                  backgroundColor: 'rgba(45,212,191,0.14)',
-                  opacity: glowOpacity,
-                  borderRadius: 20,
-                }}
-              />
-
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.6, textShadowColor: 'rgba(45,212,191,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
+              
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(14,165,233,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }}>
                 {sessionTitle}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
-        </Animated.View>
 
-        {/* ── ULTRA-SMART MODIFY TARGET BUTTON ─────────────────────────────── */}
-        <Animated.View
-          style={[{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginHorizontal: 20, marginBottom: 16 }]}
-        >
+          {/* Adjust Target Button */}
           <TouchableOpacity
-            style={{ borderRadius: 20, overflow: 'hidden', shadowColor: '#34D399', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6, alignSelf: 'center', width: '85%' }}
+            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 }}
             onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
             activeOpacity={0.82}
           >
             <LinearGradient
               colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              {/* Border */}
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)' }} />
-              {/* Top shine */}
-              <LinearGradient
-                colors={['rgba(255,255,255,0.09)', 'transparent']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
-              />
+              <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
               
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.6 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.6 }}>
                 {stats.goalSteps > 0 ? "Adjust Today's Intention" : "Set Today's Intention"}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
+
         </Animated.View>
 
       </ScrollView>
@@ -597,7 +600,7 @@ function GoalModal({
           />
           {/* Top border glow */}
           <LinearGradient
-            colors={['rgba(56,189,248,0.5)', 'rgba(45,212,191,0.3)', 'rgba(56,189,248,0.5)']}
+            colors={['rgba(52,211,153,0.5)', 'rgba(16,185,129,0.3)', 'rgba(52,211,153,0.5)']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
@@ -609,11 +612,11 @@ function GoalModal({
               <TouchableOpacity
                 key={p.value}
                 onPress={() => { Haptics.selectionAsync(); setSelected(p.value); }}
-                style={[gm.preset, selected === p.value && { backgroundColor: 'rgba(56,189,248,0.22)', borderColor: ACCENT }]}
+                style={[gm.preset, selected === p.value && { backgroundColor: 'rgba(52,211,153,0.2)', borderColor: ACCENT }]}
               >
                 {selected === p.value && (
                   <LinearGradient
-                    colors={['rgba(56,189,248,0.18)', 'transparent']}
+                    colors={['rgba(52,211,153,0.15)', 'transparent']}
                     style={StyleSheet.absoluteFillObject}
                   />
                 )}
@@ -631,7 +634,7 @@ function GoalModal({
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected); }}
           >
             <LinearGradient
-              colors={['#38bdf8', '#0284c7']}
+              colors={['#34d399', '#059669']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ paddingVertical: 16, alignItems: 'center' }}
             >
@@ -644,7 +647,7 @@ function GoalModal({
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.30)', textAlign: 'center', fontSize: 14 }}>Cancel</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.35)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -652,19 +655,18 @@ function GoalModal({
   );
 }
 
-const ACCENT_MOD = '#38BDF8';
 const BORDER_MOD = 'rgba(255,255,255,0.10)';
 const CARD_MOD   = 'rgba(255,255,255,0.06)';
 
 const gm = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.78)' },
   sheet:   { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 42, overflow: 'hidden' },
-  handle:  { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  handle:  { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   title:   { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  sub:     { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  sub:     { fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 4, marginBottom: 24 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
   preset:  { flex: 1, minWidth: '28%', paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER_MOD, backgroundColor: CARD_MOD, alignItems: 'center', overflow: 'hidden' },
-  presetTxt: { color: 'rgba(255,255,255,0.65)', fontWeight: '700', fontSize: 15 },
+  presetTxt: { color: 'rgba(255,255,255,0.75)', fontWeight: '700', fontSize: 15 },
   saveBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 8 },
   saveTxt: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
 });
@@ -674,12 +676,12 @@ const gm = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   noSensorCard: {
-    margin: 20, padding: 24, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.40)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', gap: 8,
+    margin: 20, padding: 24, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.50)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center', gap: 8,
   },
   noSensorEmoji: { fontSize: 36 },
   noSensorTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  noSensorSub:   { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 18 },
+  noSensorSub:   { fontSize: 13, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 18 },
 
   ringWrapper: {
     alignSelf: 'center',
@@ -687,8 +689,8 @@ const st = StyleSheet.create({
     height: RING_SIZE + 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    marginBottom: 10,
+    marginTop: 0,
+    marginBottom: 5,
   },
   ringCentre: {
     position: 'absolute',
@@ -699,16 +701,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  ringSteps:   { fontSize: 40, fontWeight: '900', color: '#ffffff', letterSpacing: -1.5, textShadowColor: 'rgba(56,189,248,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 18 },
-  ringLabel:   { fontSize: 9, color: 'rgba(255,255,255,0.55)', fontWeight: '800', letterSpacing: 2.2, marginTop: -2 },
-  ringDivider: { width: 52, height: 1, backgroundColor: 'rgba(56,189,248,0.40)', marginVertical: 8 },
-
-  quickRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16 },
-  quickBtn: {
-    flex: 1, borderRadius: 20, borderWidth: 1, backgroundColor: 'rgba(0,0,0,0.35)', borderColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
-  },
-  quickLabel: { fontSize: 13, fontWeight: '800' },
-  quickSub:   { fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: '600', marginTop: 1 },
+  ringSteps:   { fontSize: 44, fontWeight: '900', color: '#ffffff', letterSpacing: -1, textShadowColor: 'rgba(52,211,153,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  ringLabel:   { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', letterSpacing: 2.2, marginTop: -2 },
+  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(52,211,153,0.3)', marginVertical: 10 },
 });

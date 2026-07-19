@@ -405,6 +405,49 @@ export const StepCounter = {
     await asSet('sc_daily_history', JSON.stringify(trimmed));
   },
 
+  /**
+   * Checks whether a new calendar day has started since the last reset.
+   * If so:
+   *  1. Snapshots the previous day's steps to history (before clearing)
+   *  2. Resets sc_session_steps_today and sc_active_minutes_today to 0
+   * This is idempotent — safe to call on every app focus/boot.
+   */
+  async maybeResetForNewDay(): Promise<boolean> {
+    const todayStr    = new Date().toISOString().split('T')[0];
+    const lastReset   = await asGet('sc_last_reset_date');
+    if (lastReset === todayStr) return false; // already reset today
+
+    // Snapshot yesterday before clearing
+    if (lastReset) {
+      const prevSteps = parseInt(await asGet('sc_session_steps_today') ?? '0', 10) || 0;
+      const history   = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
+      const existing  = history.findIndex(x => x.date === lastReset);
+      if (existing >= 0) history[existing].steps = prevSteps;
+      else history.push({ date: lastReset, steps: prevSteps });
+      const trimmed = history.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 90);
+      await asSet('sc_daily_history', JSON.stringify(trimmed));
+    }
+
+    // Reset daily accumulators
+    await asSet('sc_session_steps_today', '0');
+    await asSet('sc_active_minutes_today', '0');
+    await asSet('sc_last_reset_date', todayStr);
+    return true;
+  },
+
+  /**
+   * Returns yesterday's total step count from history (for motivational display).
+   * Returns 0 if no data available.
+   */
+  async getYesterdaySteps(): Promise<number> {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr   = yesterday.toISOString().split('T')[0];
+    const history = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
+    const entry   = history.find(x => x.date === yStr);
+    return entry?.steps ?? 0;
+  },
+
   // ── Event subscriptions ───────────────────────────────────────────────────────
 
   /**

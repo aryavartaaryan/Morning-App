@@ -87,10 +87,10 @@ function fmtTime(seconds: number): string {
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={3} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.1)', 'transparent']}
-        start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
+        colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.7)']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
     </View>

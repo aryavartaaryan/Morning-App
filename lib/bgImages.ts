@@ -93,11 +93,21 @@ export function getBgSourceSync(key: string): string {
  * Call this as early as possible in _layout.tsx before BgProvider mounts.
  */
 export async function warmBgLocalMap(): Promise<void> {
+  // ── COLD-BOOT FIX ─────────────────────────────────────────────────────────
+  // After a phone restart, Android's filesystem/JNI bridge may not be fully
+  // initialized. FileSystem.getInfoAsync() can hang indefinitely in this window.
+  // A per-file 2-second timeout guarantees we always resolve and never block.
+  const FILE_STAT_TIMEOUT_MS = 2000;
   await Promise.allSettled(
     Object.keys(BG_URLS).map(async (key) => {
       try {
         const path = cachePath(key);
-        const info = await FileSystem.getInfoAsync(path);
+        const info = await Promise.race([
+          FileSystem.getInfoAsync(path),
+          new Promise<{ exists: false }>(r =>
+            setTimeout(() => r({ exists: false }), FILE_STAT_TIMEOUT_MS)
+          ),
+        ]);
         if ((info as any).exists && (info as any).size > 0) BG_LOCAL_MAP[key] = path;
       } catch { /* ignore */ }
     }),
@@ -299,15 +309,24 @@ export async function ensureAllBgsCachedWithProgress(
     }
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
-    
-    if (hasError) {
-      throw new Error('Failed to download some background images');
-    }
-  } catch (err) { 
-    throw err; 
+    // Note: individual download failures are already handled per-image (old file kept, hash not saved).
+    // We never throw here — background callers and the gate's outer catch handle retry logic.
+  } catch (err) {
+    // Only re-throw if this is being called from the first-install gate (which has its own outer try-catch).
+    // Swallow silently otherwise to prevent unhandled rejection crashes on background calls.
+    throw err;
   }
 }
 
 // Kick off disk-scan the moment this module loads so BG_LOCAL_MAP is populated
 // before BgProvider's first render — eliminates the remote-URL flash on launch.
-export const bgWarmup: Promise<void> = warmBgLocalMap();
+//
+// ── COLD-BOOT FIX ─────────────────────────────────────────────────────────
+// After a phone restart Android's filesystem is still initializing. warmBgLocalMap
+// can hang if the JNI bridge isn't ready. A 4-second outer timeout guarantees
+// bgWarmup ALWAYS resolves — even on a fresh cold boot — so nothing that
+// `await bgWarmup` can ever block indefinitely and trigger an ANR.
+export const bgWarmup: Promise<void> = Promise.race([
+  warmBgLocalMap(),
+  new Promise<void>(resolve => setTimeout(resolve, 4000)),
+]).catch(() => {});

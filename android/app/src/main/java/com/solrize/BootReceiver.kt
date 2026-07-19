@@ -42,16 +42,27 @@ class BootReceiver : BroadcastReceiver() {
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // STALE STATE FIX: Clear alarm_fired_pending on reboot.
-        // If the phone was restarted mid-mission (e.g., user restarted because
-        // the keyboard was not working in gratitude mission), alarm_fired_pending
-        // stays true. On next app launch, _layout.tsx routes to wake-alarm-ringing
-        // even though no alarm is actually ringing — causing a stuck/broken state.
-        // Clearing it on boot ensures the app opens normally. The rescheduled alarm
-        // (below) will ring at the correct time and set the flag again properly.
+        // Check if the wake alarm was ACTIVELY RINGING when the phone was restarted.
+        // alarm_fired_pending=true means the alarm had fired but was not yet dismissed.
+        // In this case we re-fire immediately (5s delay) so the app reopens in pinned
+        // alarm state — exactly as the user expects after a restart mid-alarm.
+        val wakeAlarmWasRinging = context
+            .getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean("alarm_fired_pending", false)
+
+        // Clear all stale alarm state flags — prevents stuck pinned state on normal reboot.
         clearStaleAlarmState(context)
 
-        rescheduleWakeAlarm(context, am)
+        if (wakeAlarmWasRinging && action != Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // Phone was restarted while wake alarm was ringing.
+            // Re-fire alarm in 5 seconds so the screen reopens in pinned state.
+            Log.d("AriseAlarm", "BootReceiver: wake alarm was ringing at restart — re-firing in 5s")
+            refireWakeAlarmNow(context, am)
+        } else {
+            // Normal reboot or package replace — schedule for next daily occurrence.
+            rescheduleWakeAlarm(context, am)
+        }
+
         rescheduleHabitAlarms(context, am)
         restartDailyStepTracking(context)
     }
@@ -60,8 +71,9 @@ class BootReceiver : BroadcastReceiver() {
         context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean("alarm_fired_pending", false)
+            .putBoolean("alarm_stopping", false)
             .apply()
-            
+
         // STALE STATE FIX 2: Also clear HabitAlarm active flags.
         // Without this, if the phone is rebooted during a habit alarm or sound bath,
         // KEY_ACTIVE remains true forever. On next launch, MainActivity enters
@@ -72,11 +84,43 @@ class BootReceiver : BroadcastReceiver() {
             .putBoolean(HabitAlarmModule.KEY_ACTIVE, false)
             .putString("active_alarm_type", "")
             .apply()
-            
+
         Log.d("AriseAlarm", "BootReceiver: cleared all stale alarm states")
     }
 
-    // ── Wake alarm ────────────────────────────────────────────────────────────
+    // ── Re-fire wake alarm immediately (used when phone restarts mid-alarm) ───
+
+    private fun refireWakeAlarmNow(context: Context, am: AlarmManager) {
+        val prefs  = context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+        val hour   = prefs.getInt("alarm_hour",   -1)
+        val minute = prefs.getInt("alarm_minute", -1)
+
+        val pi = PendingIntent.getBroadcast(
+            context, AlarmModule.REQUEST_CODE,
+            Intent(context, AlarmBroadcastReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Fire in 5 seconds — enough time for the system to fully boot and
+        // the app to launch before the alarm rings again.
+        val fireAt = System.currentTimeMillis() + 5_000L
+        scheduleExact(am, fireAt, pi)
+        Log.d("AriseAlarm", "BootReceiver: wake alarm re-fired for ${Date(fireAt)}")
+
+        // Also schedule the next daily occurrence so the alarm continues tomorrow.
+        if (hour >= 0 && minute >= 0) {
+            val nextPi = PendingIntent.getBroadcast(
+                context, AlarmModule.REQUEST_CODE + 9000,
+                Intent(context, AlarmBroadcastReceiver::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val next = nextOccurrence(hour, minute)
+            scheduleExact(am, next, nextPi)
+            Log.d("AriseAlarm", "BootReceiver: next daily occurrence scheduled for ${Date(next)}")
+        }
+    }
+
+    // ── Wake alarm (normal reschedule) ────────────────────────────────────────
 
     private fun rescheduleWakeAlarm(context: Context, am: AlarmManager) {
         val prefs  = context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)

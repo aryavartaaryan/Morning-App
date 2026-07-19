@@ -134,6 +134,7 @@ const SLEEP_SOUNDS = [
   // ── Tanpura additions ──────────────────────────────────────────────────────
   { id: 'tanpura_mystic',      label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Ragas'   as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
   { id: 'tanpura_mystic_sleep',      label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Sleep'   as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
+  { id: 'tanpura_mystic_meditation', label: 'Mystic Tanpura',        emoji: '🌌',  cat: 'Meditations' as const, color: '#818cf8', top: '#0C0830' as const, bot: '#060418' as const, desc: 'Ethereal mystic tanpura waves',          src: require('../../assets/sounds/tanpura-mystic.m4a') },
   { id: 'tanpura_serene',      label: 'Serene Tanpura',        emoji: '🧘',  cat: 'Ragas'   as const, color: '#a78bfa', top: '#100828' as const, bot: '#080414' as const, desc: 'Calm serene tanpura meditation',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/tanpura-serene.m4a' } },
   // ── Sacred mantra addition ─────────────────────────────────────────────────
   { id: 'om_shanti',           label: 'Om Shanti',             emoji: '🕉️',  cat: 'Meditations' as const, color: '#c084fc', top: '#140A28' as const, bot: '#0A0516' as const, desc: 'Vedic peace chant — Om Shanti Shanti Shanti', src: require('../../assets/sounds/om-shanti.m4a') },
@@ -181,8 +182,8 @@ const NAAD_SOUNDS: NaadSound[] = [
   // ── Sitar ──────────────────────────────────────────────────────────────────
   { id: 'naad_aar_sitar_classical',    label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Classical Indian sitar melody',              src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-296790.m4a' } },
   { id: 'naad_aar_sitar_flute',        label: 'Sitar & Flute',          emoji: '🎵', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sitar and bansuri flute interplay',          src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-flute-298975.m4a' } },
-  { id: 'naad_sitar_vibes_i',          label: 'Sitar Vibes I',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NAAD_BASE + 'gskvibes-sitar-2-361895.m4a' } },
-  { id: 'naad_sitar_vibes_ii',         label: 'Sitar Vibes II',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NAAD_BASE + 'gskvibes-sitar-4-361900.m4a' } },
+  { id: 'naad_sitar_vibes_i',          label: 'Sitar Resonance',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NAAD_BASE + 'gskvibes-sitar-2-361895.m4a' } },
+  { id: 'naad_sitar_vibes_ii',         label: 'Sitar Reverie',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NAAD_BASE + 'gskvibes-sitar-4-361900.m4a' } },
   { id: 'naad_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
   { id: 'naad_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
   { id: 'naad_short_classical_sitar',  label: 'Classical Sitar Short',  emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Short Indian classical sitar',                src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-short-sitar-music-classical-indian-404177.m4a' } },
@@ -206,8 +207,8 @@ const NAAD_SOUNDS: NaadSound[] = [
   { id: 'naad_bansuri_tabla_fusion',   label: 'Bansuri Tabla Fusion',   emoji: '🎶', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Indian bansuri tabla fusion',                  src: { uri: NAAD_BASE + 'kalsstockmedia-indian-bansuri-tabla-fusion-short-music-25-seconds-track-269954.m4a' } },
   { id: 'naad_flute_tabla_remastered', label: 'Flute Tabla Remastered', emoji: '🌟', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Remastered flute and tabla melody',            src: { uri: NAAD_BASE + 'kalsstockmedia-indian-flute-and-tabla-new-tune-remastered-277266.m4a' } },
   { id: 'naad_summer_flute_tabla',     label: 'Summer Flute Tabla',     emoji: '☀️', cat: 'Ragas', color: '#34d399', top: '#081A0C', bot: '#040C06', desc: 'Warm summer flute & tabla blend',              src: { uri: NAAD_BASE + 'kalsstockmedia-indian-summer-tabla-flute-calm-background-music-track-280183.m4a' } },
-  { id: 'naad_krishna_flute_i',        label: 'Krishna Flute I',        emoji: '💙', cat: 'Ragas', color: '#38bdf8', top: '#0A1E28', bot: '#050F14', desc: 'Lord Krishna\'s divine flute melody',           src: { uri: NAAD_BASE + 'krasnoshchok-hindu-krishna-flute-music-499585.m4a' } },
-  { id: 'naad_krishna_flute_ii',       label: 'Krishna Flute II',       emoji: '🌀', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Second Krishna flute meditation',              src: { uri: NAAD_BASE + 'krasnoshchok-krishna-flute-hindu-music-450217.m4a' } },
+  { id: 'naad_krishna_flute_i',        label: 'Divine Krishna Flute',        emoji: '💙', cat: 'Ragas', color: '#38bdf8', top: '#0A1E28', bot: '#050F14', desc: 'Lord Krishna\'s divine flute melody',           src: { uri: NAAD_BASE + 'krasnoshchok-hindu-krishna-flute-music-499585.m4a' } },
+  { id: 'naad_krishna_flute_ii',       label: 'Celestial Krishna Flute',       emoji: '🌀', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Second Krishna flute meditation',              src: { uri: NAAD_BASE + 'krasnoshchok-krishna-flute-hindu-music-450217.m4a' } },
   { id: 'naad_muladhara_flute',        label: 'Muladhara Flute',        emoji: '🕉️', cat: 'Ragas', color: '#6ee7b7', top: '#081810', bot: '#040C08', desc: 'Root chakra flute meditation',                 src: { uri: NAAD_BASE + 'meditativetiger-lord-krishnax27s-mulhadara-flute-meditative-tiger-edit-410414.m4a' } },
   { id: 'naad_himalayan_village_flute',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NAAD_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
   { id: 'naad_himalayan_village_flute_sleep',label: 'Himalayan Village Flute',emoji: '🏔️', cat: 'Sleep', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Flute echoing through Himalayan village',      src: { uri: NAAD_BASE + 'oqu-himalayan-village-flute-251427.m4a' } },
@@ -219,11 +220,11 @@ const NAAD_SOUNDS: NaadSound[] = [
   { id: 'naad_flute_rain_ambiance',    label: 'Flute & Rain',           emoji: '🌧️', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Flute music with soothing rain ambiance',      src: { uri: NAAD_BASE + 'wr_ambiance-flute-music-with-rain-ambiance-370521.m4a' } },
   // ── Tabla ──────────────────────────────────────────────────────────────────
   { id: 'naad_tabla_110',              label: 'Tabla 110',              emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Crisp tabla at 110 BPM',                       src: { uri: NAAD_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
-  { id: 'naad_tabla_flute_i',          label: 'Tabla & Flute I',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
-  { id: 'naad_tabla_flute_ii',         label: 'Tabla & Flute II',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
-  { id: 'naad_tabla_flute_iii',        label: 'Tabla & Flute III',      emoji: '🎶', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Tabla and flute melody III',                  src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-105-262271.m4a' } },
-  { id: 'naad_tabla_flute_strings_i',  label: 'Tabla Flute Strings I',  emoji: '🪗', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla, flute and strings blend I',            src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-105-262265.m4a' } },
-  { id: 'naad_tabla_flute_strings_ii', label: 'Tabla Flute Strings II', emoji: '🎼', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Tabla, flute and strings blend II',           src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-107-262266.m4a' } },
+  { id: 'naad_tabla_flute_i',          label: 'Awakening Tabla & Flute',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
+  { id: 'naad_tabla_flute_ii',         label: 'Tranquil Tabla & Flute',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
+  { id: 'naad_tabla_flute_iii',        label: 'Mystic Tabla & Flute',      emoji: '🎶', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Tabla and flute melody III',                  src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-105-262271.m4a' } },
+  { id: 'naad_tabla_flute_strings_i',  label: 'Tabla Flute Harmony',  emoji: '🪗', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla, flute and strings blend I',            src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-105-262265.m4a' } },
+  { id: 'naad_tabla_flute_strings_ii', label: 'Tabla Flute Serenade', emoji: '🎼', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Tabla, flute and strings blend II',           src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-107-262266.m4a' } },
   { id: 'naad_calming_tabla_flute',    label: 'Calming Tabla Flute',    emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Calming Indian background tabla and flute',   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-calming-indian-background-music-tabla-flute-385106.m4a' } },
   { id: 'naad_rhythm_riot',            label: 'Rhythm Riot',            emoji: '⚡', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Energetic tabla rhythm',                       src: { uri: NAAD_BASE + 'nra-lab-stomps-riser-rhythm-riot-246396.m4a' } },
   { id: 'naad_tabla_dance',            label: 'Tabla Dance Groove',     emoji: '🕺', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Joyful tabla dance rhythm',                    src: { uri: NAAD_BASE + 'one_nug-dont-worry-be-happy-tabla-dance-340952.m4a' } },
@@ -3767,34 +3768,6 @@ function SleepTabInner() {
       {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>
 
-        {/* Premium Floating Settings Button */}
-        {!isSearching && (
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              borderWidth: 1.5,
-              borderColor: 'rgba(255,255,255,0.25)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 8,
-              elevation: 5,
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
-          </TouchableOpacity>
-        )}
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
         
@@ -3812,13 +3785,9 @@ function SleepTabInner() {
               <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
               
               {/* Main row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 0, paddingRight: isSearching ? 14 : 60, gap: 10 }}>
-                {/* Back / Nada Library Icon */}
-                {!isSearching ? (
-                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
-                    <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
-                  </TouchableOpacity>
-                ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 0, paddingRight: 14, gap: 10 }}>
+                {/* Back Icon */}
+                {isSearching ? (
                   <TouchableOpacity onPress={() => {
                     Keyboard.dismiss();
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -3827,7 +3796,7 @@ function SleepTabInner() {
                   }} activeOpacity={0.7} style={{ padding: 4, marginRight: 4 }}>
                     <Ionicons name="arrow-back" size={28} color="rgba(255,255,255,0.95)" />
                   </TouchableOpacity>
-                )}
+                ) : null}
 
                 {/* Search Bar (Expands inline) */}
                 <TouchableOpacity
@@ -3886,6 +3855,13 @@ function SleepTabInner() {
                     <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
                   </TouchableOpacity>
                 )}
+
+                {/* Nada Library Menu Icon on the right */}
+                {!isSearching && (
+                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
+                    <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -3931,12 +3907,18 @@ function SleepTabInner() {
             }}>
               {/* Main title */}
               <Text style={[heroTextStyle, { fontSize: 24, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>
-                {isSleepWindowActive ? 'Deep Rest Hours' : (heroContent ? heroContent.header : displayMode.label)}
+                {heroContent ? heroContent.header : displayMode.label}
               </Text>
               
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -2, marginBottom: 2 }}>
+                <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
+                  {heroContent ? heroContent.actionText : 'Listen & tune in'}
+                </Text>
+              </View>
+
               {/* Subtitle / Status Text */}
               <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center', marginTop: 2 }}>
-                {isSleepWindowActive ? 'Deep sleep period. Listen and sleep.' : (heroContent ? heroContent.sentence : displayMode.subtitle)}
+                {heroContent ? heroContent.sentence : displayMode.subtitle}
               </Text>
             </View>
           )}
