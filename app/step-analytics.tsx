@@ -13,7 +13,8 @@ import {
   Dimensions,
   Animated,
   Easing,
-  Modal,
+  Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -92,7 +93,7 @@ export default function StepAnalyticsScreen() {
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
+    const loadData = async () => {
       // Reset for new day and snapshot today before loading analytics
       await StepCounter.maybeResetForNewDay();
       await StepCounter.snapshotTodayToHistory();
@@ -105,7 +106,13 @@ export default function StepAnalyticsScreen() {
         Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
       ]).start();
-    })();
+    };
+    
+    loadData();
+    
+    const sub = DeviceEventEmitter.addListener('SessionEnded', () => {
+      loadData();
+    });
 
     Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 38000, easing: Easing.linear, useNativeDriver: true })).start();
@@ -124,6 +131,10 @@ export default function StepAnalyticsScreen() {
         Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
+
+    return () => {
+      sub.remove();
+    };
   }, []);
 
   // ── Sheet open/close ────────────────────────────────────────────────────────

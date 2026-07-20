@@ -2,7 +2,7 @@
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity, Easing } from 'react-native';
+import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity, Easing, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,6 +28,8 @@ import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DA
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
+import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
 import { BgProvider } from '@/lib/bgContext';
 import { MoodSheet } from '@/components/MoodSheet';
@@ -158,20 +160,57 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       pointerEvents="none"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
-      {/* Absolute Black Background for elegant premium look */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#04030F' }]} />
+      {/* Background Image matching Setup Screen */}
+      <Image source={require('@/assets/images/splash_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* The Native-Matching "Nada" Text combined with message */}
+        {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <Text style={SS.arise}>Nada</Text>
-          <Text style={[SS.tagline, { marginTop: 4, letterSpacing: 4 }]}>THE RESONANCE</Text>
+          <Text style={{ 
+            fontSize: 42, 
+            fontFamily: 'Nunito_900Black', 
+            color: '#bfdbfe', 
+            letterSpacing: 16, 
+            textShadowColor: '#60a5fa',
+            textShadowRadius: 12,
+            textShadowOffset: { width: 0, height: 0 },
+            opacity: 0.95 
+          }}>NADA</Text>
           
-          <View style={{ marginTop: 42, alignItems: 'center', position: 'relative' }}>
-            <Text style={[SS.newMainTitle, { fontSize: 32, lineHeight: 42 }]}>Resonate & Transform{'\n'}through the Nada.</Text>
-            <Animated.Text style={[SS.newMainTitle, StyleSheet.absoluteFillObject, { fontSize: 32, lineHeight: 42, color: '#FFFFFF', opacity: shimmerOp }]}>
+          <Text style={{ 
+            fontSize: 12, 
+            color: '#60a5fa', 
+            fontFamily: 'Nunito_800ExtraBold', 
+            letterSpacing: 8, 
+            marginTop: 6,
+            opacity: 0.85
+          }}>THE RESONANCE</Text>
+          
+          <View style={{ marginTop: 56, alignItems: 'center', position: 'relative' }}>
+            <Text style={{ 
+              fontSize: 22, 
+              color: 'rgba(255,255,255,0.7)', 
+              fontFamily: 'DancingScript_600SemiBold', 
+              letterSpacing: 1, 
+              textAlign: 'center', 
+              lineHeight: 32 
+            }}>
+              Resonate & Transform{'\n'}through the Nada.
+            </Text>
+            <Animated.Text style={{ 
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              fontSize: 22, 
+              color: '#ffffff', 
+              fontFamily: 'DancingScript_600SemiBold', 
+              letterSpacing: 1, 
+              textAlign: 'center', 
+              lineHeight: 32,
+              opacity: shimmerOp 
+            }}>
               Resonate & Transform{'\n'}through the Nada.
             </Animated.Text>
           </View>
@@ -209,12 +248,22 @@ const SETUP_SUBTITLES = [
   'A new dawn of conscious living awaits you',
 ];
 
-function DownloadScreen({ progress, label, error, onRetry }: { progress: number; label: string; error?: boolean; onRetry?: () => void }) {
+function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOutComplete }: { progress: number; label: string; error?: boolean; onRetry?: () => void; isFadingOut?: boolean; onFadeOutComplete?: () => void }) {
   const pulseAnim   = useRef(new Animated.Value(0)).current;
+  const screenOp    = useRef(new Animated.Value(1)).current;
+  const scaleAnim   = useRef(new Animated.Value(1)).current;
 
   // Animated subtitle cycling
   const subtitleOp  = useRef(new Animated.Value(1)).current;
   const [subtitleIdx, setSubtitleIdx] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const progressRef = useRef(progress);
+  useEffect(() => { progressRef.current = progress; }, [progress]);
+
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
@@ -238,6 +287,8 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
       ]).start();
     });
 
+    // (Fade out and audio stop logic moved to separate useEffect below)
+
     // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
       Animated.sequence([
@@ -248,8 +299,69 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
       });
     };
     const interval = setInterval(cycleSubtitle, 6000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Audio setup for "Hymn of Sun (Surya Suktam)"
+    let isCancelled = false;
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    }).catch(() => {});
+
+    Audio.Sound.createAsync(
+      { uri: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/converted/Aupicious%20Mantras.m4a' },
+      { shouldPlay: true, isLooping: true, isMuted: false, volume: 0.65 }
+    ).then(({ sound }) => {
+      if (isCancelled) {
+        sound.unloadAsync();
+      } else {
+        soundRef.current = sound;
+        // Apply current mute state via ref in case user toggled before load finished
+        sound.setIsMutedAsync(isMutedRef.current).catch(() => {});
+      }
+    }).catch((e) => { console.log("Failed to load setup audio", e); });
+
+    return () => {
+      isCancelled = true;
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+      clearInterval(interval);
+    };
+  }, []); // Run only once on mount
+
+  // Stop audio gracefully when progress hits 98%
+  useEffect(() => {
+    if (progress >= 0.98 && soundRef.current) {
+      soundRef.current.setVolumeAsync(0).catch(() => {});
+      setTimeout(() => {
+        soundRef.current?.stopAsync().catch(() => {});
+      }, 600);
+    }
+  }, [progress >= 0.98]);
+
+  // Watch for fade out trigger
+  useEffect(() => {
+    if (isFadingOut) {
+      if (soundRef.current) soundRef.current.unloadAsync();
+      Animated.parallel([
+        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+      ]).start(() => {
+        if (onFadeOutComplete) onFadeOutComplete();
+      });
+    }
+  }, [isFadingOut]);
+
+  const toggleMute = () => {
+    setIsMuted(prev => {
+      const next = !prev;
+      if (soundRef.current) {
+        soundRef.current.setIsMutedAsync(next).catch(() => {});
+      }
+      return next;
+    });
+  };
 
   const pct = Math.round(Math.min(progress, 1) * 100);
   const SIZE = 280;
@@ -268,8 +380,63 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
   const etherealWhite = 'rgba(255,255,255,0.8)';
 
   return (
-    <Animated.View pointerEvents="auto" style={DS.screen}>
-      <LinearGradient colors={['#020617', '#082f49', '#020617']} style={StyleSheet.absoluteFillObject} />
+    <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
+      <Image source={require('@/assets/images/splash_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
+
+      {/* ── TOP ROW: Now Playing pill + Mute button ── */}
+      <View style={{
+        position: 'absolute',
+        top: 56,
+        left: 20,
+        right: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 10,
+      }}>
+        {/* Now Playing pill */}
+        <View style={{
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.08)',
+          marginRight: 12,
+        }}>
+          <Ionicons name="musical-notes-outline" size={13} color="#93c5fd" style={{ marginRight: 10, opacity: 0.85, marginTop: 1 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_400Regular', fontSize: 10, letterSpacing: 0.4, marginBottom: 2 }}>
+              Playing <Text style={{ color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_700Bold' }}>Auspicious Mantras</Text>
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_400Regular', fontSize: 9, lineHeight: 13 }}>
+              Ancient Swasti invocations to weave harmony, grace, and boundless auspicious energy into your life.
+            </Text>
+          </View>
+        </View>
+
+        {/* Mute button */}
+        <TouchableOpacity
+          onPress={toggleMute}
+          activeOpacity={0.7}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: isMuted ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.06)',
+            borderWidth: 1,
+            borderColor: isMuted ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.12)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={17} color={isMuted ? "#93c5fd" : "rgba(255,255,255,0.75)"} />
+        </TouchableOpacity>
+      </View>
 
       {/* Ambient background ethereal glow */}
       <Animated.View style={{
@@ -285,8 +452,18 @@ function DownloadScreen({ progress, label, error, onRetry }: { progress: number;
           <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
         </View>
 
-        <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
+          <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
           
+          {/* Moonwater outward ripples */}
+          {rippleAnims.map((anim, i) => (
+            <Animated.View key={`rip-${i}`} style={{
+              position: 'absolute', width: SIZE - 20, height: SIZE - 20, borderRadius: (SIZE - 20) / 2,
+              borderWidth: 1, borderColor: skyBlue,
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.15, 0] }),
+              transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.8] }) }],
+            }} />
+          ))}
+
           {/* === 5-layer pulsing aura (exactly like hero ring) === */}
           <Animated.View style={{ position: 'absolute', width: SIZE + 72, height: SIZE + 72, borderRadius: (SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }} />
           <Animated.View style={{ position: 'absolute', width: SIZE + 52, height: SIZE + 52, borderRadius: (SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }} />
@@ -1058,7 +1235,7 @@ function GlobalMoodLayer() {
 //   'downloading' → images missing, showing download progress screen
 //   'splash'      → all images cached, showing 5-second splash with bg image
 //   'done'        → splash finished, full app visible
-type AppPhase = 'gate' | 'downloading' | 'splash' | 'done';
+type AppPhase = 'gate' | 'downloading' | 'downloading_done' | 'splash' | 'done';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -1218,21 +1395,17 @@ export default function RootLayout() {
 
           if (!cancelled) setDlLabel('Preparing your sounds...');
           // Phase 2: Sound card + reel images (high concurrency for speed)
-          await prefetchAllSoundImagesWithProgress(tick, 20);
+          try {
+            await prefetchAllSoundImagesWithProgress(tick, 8);
+          } catch (e) {
+            console.warn('[Setup] Pre-fetch sound error (ignoring):', e);
+          }
 
           if (!cancelled) {
             setDlProgress(1);
-            setDlLabel('Requesting permissions...');
-            // Wait a beat so the UI updates
+            setDlLabel('Finalizing...');
+            // Wait a beat so the progress ring hits 100% visually
             await new Promise(r => setTimeout(r, 400));
-            try {
-              await Location.requestForegroundPermissionsAsync();
-              await requestAllAlarmPermissions();
-              await ImagePicker.requestCameraPermissionsAsync();
-              await ImagePicker.requestMediaLibraryPermissionsAsync();
-            } catch (e) {
-              console.warn('[Setup] Error requesting permissions:', e);
-            }
           }
 
           if (!cancelled) {
@@ -1249,8 +1422,10 @@ export default function RootLayout() {
           ]);
 
           if (cancelled) return;
-          // After first-install setup, open the app immediately — skip splash.
-          setPhase('done');
+          // Trigger smooth fade out before revealing the app.
+          // After fade completes, onFadeOutComplete sets phase to 'done' directly —
+          // skipping the SplashOverlay so there is ZERO white/blank screen flash.
+          setPhase('downloading_done');
           return;
         } else {
           // Subsequent opens — ensure the flag is set (handles upgrade from
@@ -1264,7 +1439,7 @@ export default function RootLayout() {
           // is now populated. Kick off any missing downloads silently in the background.
           // Do NOT race this with rendering — warmSoundImageMap already ensures
           // every card gets a local path synchronously.
-          prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+          prefetchAllSoundImagesWithProgress(() => {}, 8).catch(() => {});
         }
 
         if (cancelled) return;
@@ -1276,7 +1451,7 @@ export default function RootLayout() {
 
         // Any missing sound images: download in background after UI is shown.
         // warmSoundImageMap() already ran above — cards already have local paths.
-        prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+        prefetchAllSoundImagesWithProgress(() => {}, 8).catch(() => {});
 
       } catch {
         if (!cancelled) {
@@ -1296,7 +1471,7 @@ export default function RootLayout() {
               } else {
                 setSplashBgUri(getBgSourceSync('splash'));
                 setPhase('splash');
-                prefetchAllSoundImagesWithProgress(() => {}, 20).catch(() => {});
+                prefetchAllSoundImagesWithProgress(() => {}, 8).catch(() => {});
               }
             });
           });
@@ -1309,80 +1484,75 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
 
-  // ── SETUP GATE: Prevent any routing until setup is 100% complete ──
-  // During both the initial async check ('gate') and first-install ('downloading'),
-  // we return early and DO NOT render the Stack navigator.
-  // This guarantees zero leakage: if the Stack is never mounted, there is no
-  // navigation container for Expo Router to accidentally route to the home page.
-  if (phase === 'gate' || phase === 'downloading') {
-    return (
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#020617' }}>
-        <SafeAreaProvider>
-          <CrashToast />
-          <StatusBar style="light" />
-          
-          {phase === 'gate' && (
-            <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
-          )}
-
-          {phase === 'downloading' && (
-            <>
-              <DownloadScreen
-                progress={dlProgress}
-                label={dlLabel}
-                error={dlError}
-                onRetry={() => setRetryTrigger(prev => prev + 1)}
-              />
-              {/* Absolute touch blocker — belt-and-suspenders */}
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-only" />
-            </>
-          )}
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    );
-  }
-
+  // ── SETUP GATE & MAIN APP ──
+  // We use a single root GestureHandlerRootView to prevent white flashes when switching phases.
+  // The Stack is only mounted when phase is 'splash' or 'done' or 'downloading_done'.
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg }}>
       <SafeAreaProvider>
-      {/* CrashToast lives OUTSIDE AppErrorBoundary so it stays alive on crashes */}
-      <CrashToast />
-      <AppErrorBoundary>
-      <SoundPlayerProvider>
-        <BgProvider>
-        <GlobalMoodLayer />
+        <CrashToast />
         <StatusBar style="light" />
-        {/* AuthGuard fires only after setup is done (phase='splash' or 'done').
-             At this point the Stack is already mounted and navigation is safe. */}
-        {(phase === 'splash' || phase === 'done') && (
-          <AuthGuard onAuthReady={() => setAuthReady(true)} />
-        )}
-        <BodhiNotificationListener />
-        {/* NADA animated splash — shown during 'splash' phase only, 
-             since 'gate' is handled by the early return above. */}
-        {phase === 'splash' && (
+
+        {/* App stack — ALWAYS mounted so the home page renders behind the setup
+            screen. When DownloadScreen fades out the home page is already fully
+            painted underneath → zero blank/white gap. */}
+        <AppErrorBoundary>
+          <SoundPlayerProvider>
+            <BgProvider>
+              <GlobalMoodLayer />
+              {phase !== 'gate' && (
+                <AuthGuard onAuthReady={() => setAuthReady(true)} />
+              )}
+              <BodhiNotificationListener />
+
+              {/* NADA animated splash (normal startup) */}
+              {phase === 'splash' && (
+                <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
+              )}
+
+              <ScreenErrorBoundary name="Navigation">
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
+                  <Stack.Screen name="index" options={{ animation: 'none' }} />
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
+                  <Stack.Screen name="habit-alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
+                  <Stack.Screen name="soundbath-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
+                  <Stack.Screen name="notification-landing" options={{ animation: 'fade', gestureEnabled: false }} />
+                  <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
+                  <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="cosmic-science" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
+                  <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
+                  <Stack.Screen name="step-analytics" options={{ animation: 'slide_from_right' }} />
+                </Stack>
+              </ScreenErrorBoundary>
+            </BgProvider>
+          </SoundPlayerProvider>
+        </AppErrorBoundary>
+
+        {/* ── SETUP OVERLAY — sits on top of the already-mounted Stack ── */}
+        {/* gate: very first open before we know if setup is needed */}
+        {phase === 'gate' && (
           <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
         )}
-        <ScreenErrorBoundary name="Navigation">
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg }, animation: 'fade' }}>
-          <Stack.Screen name="index" options={{ animation: 'none' }} />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
-          <Stack.Screen name="habit-alarm-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
-          <Stack.Screen name="soundbath-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
-          <Stack.Screen name="notification-landing" options={{ animation: 'fade', gestureEnabled: false }} />
-          <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
-          <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="cosmic-science" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
-          <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
-          <Stack.Screen name="step-analytics" options={{ animation: 'slide_from_right' }} />
-        </Stack>
-        </ScreenErrorBoundary>
-        </BgProvider>
-      </SoundPlayerProvider>
-      </AppErrorBoundary>
+
+        {/* downloading / downloading_done: first-install setup ring */}
+        {(phase === 'downloading' || phase === 'downloading_done') && (
+          <>
+            <DownloadScreen
+              progress={dlProgress}
+              label={dlLabel}
+              error={dlError}
+              onRetry={() => setRetryTrigger(prev => prev + 1)}
+              isFadingOut={phase === 'downloading_done'}
+              onFadeOutComplete={() => setPhase('done')}
+            />
+            {/* Touch blocker — prevents taps reaching the home page during setup */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-only" />
+          </>
+        )}
+
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

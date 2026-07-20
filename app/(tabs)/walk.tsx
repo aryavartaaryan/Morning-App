@@ -23,6 +23,7 @@ import {
   AppState,
   type AppStateStatus,
   ImageBackground,
+  DeviceEventEmitter,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,8 +48,8 @@ import { getSolarRingPalette } from '@/lib/solarRingPalette';
 const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const ACCENT   = '#34D399';
-const GREEN    = '#10B981';
+const ACCENT   = '#60a5fa';
+const GREEN    = '#3b82f6';
 const TEAL     = '#2DD4BF';
 const GOLD     = '#FCD34D';
 const BG_DARK  = '#0A0A0F';
@@ -58,7 +59,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 210;
+const RING_SIZE   = 230;
 const RING_STROKE = 14;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -137,6 +138,13 @@ export default function WalkTab() {
       console.warn("Failed to fetch step stats:", err);
     }
   }, []);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('SessionEnded', () => {
+      refreshStats();
+    });
+    return () => sub.remove();
+  }, [refreshStats]);
 
   useFocusEffect(useCallback(() => {
     walkScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -299,11 +307,11 @@ export default function WalkTab() {
         pointerEvents="none"
       >
         <LinearGradient
-          colors={['rgba(52,211,153,0.15)', 'transparent']}
+          colors={['rgba(96,165,250,0.15)', 'transparent']}
           style={{ position: 'absolute', top: -80, left: -80, width: 380, height: 380, borderRadius: 190 }}
         />
         <LinearGradient
-          colors={['rgba(16,185,129,0.12)', 'transparent']}
+          colors={['rgba(59,130,246,0.12)', 'transparent']}
           style={{ position: 'absolute', top: 120, right: -60, width: 320, height: 320, borderRadius: 160 }}
         />
       </Animated.View>
@@ -327,7 +335,7 @@ export default function WalkTab() {
               color: '#FFF',
               letterSpacing: 0.8,
               fontFamily: 'DancingScript_600SemiBold',
-              textShadowColor: 'rgba(52,211,153,0.6)',
+              textShadowColor: 'rgba(96,165,250,0.6)',
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 18,
               textAlign: 'center',
@@ -347,17 +355,17 @@ export default function WalkTab() {
             backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
             borderRadius: 20,
             padding: 16,
-            borderWidth: 1, borderColor: 'rgba(52,211,153,0.15)',
+            borderWidth: 1, borderColor: 'rgba(96,165,250,0.15)',
             alignItems: 'center',
             overflow: 'hidden',
           }}>
             <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(52,211,153,0.08)', 'transparent']}
+              colors={['rgba(96,165,250,0.08)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#34d399', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#60a5fa', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
               Do not count calories.. just walk organically.
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center' }}>
@@ -431,13 +439,15 @@ export default function WalkTab() {
             {/* Centre content */}
             <View style={st.ringCentre}>
               
-              {weather && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, opacity: 0.9 }}>
+              {weather ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, opacity: 0.95 }}>
                   <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: ringHex, marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                     {weather.temp}° • {weather.condition}
                   </Text>
                 </View>
+              ) : (
+                <View style={{ height: 20, marginBottom: 10 }} />
               )}
               
               {/* Badge */}
@@ -467,15 +477,15 @@ export default function WalkTab() {
                 </View>
               </View>
               
-              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(52,211,153,0.2)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.4)', marginTop: 14 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#6ee7b7', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(96,165,250,0.2)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', marginTop: 14 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#93c5fd', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
               </View>
               
               {/* Yesterday motivational display */}
               {stats.totalSteps === 0 && yesterdaySteps > 0 && (
                 <View style={{ marginTop: 10, alignItems: 'center', opacity: 0.85 }}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(16,185,129,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#34d399' }}>{fmtK(yesterdaySteps)} steps</Text>
+                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(59,130,246,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa' }}>{fmtK(yesterdaySteps)} steps</Text>
                 </View>
               )}
             </View>
@@ -600,7 +610,7 @@ function GoalModal({
           />
           {/* Top border glow */}
           <LinearGradient
-            colors={['rgba(52,211,153,0.5)', 'rgba(16,185,129,0.3)', 'rgba(52,211,153,0.5)']}
+            colors={['rgba(96,165,250,0.5)', 'rgba(59,130,246,0.3)', 'rgba(96,165,250,0.5)']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
@@ -612,11 +622,11 @@ function GoalModal({
               <TouchableOpacity
                 key={p.value}
                 onPress={() => { Haptics.selectionAsync(); setSelected(p.value); }}
-                style={[gm.preset, selected === p.value && { backgroundColor: 'rgba(52,211,153,0.2)', borderColor: ACCENT }]}
+                style={[gm.preset, selected === p.value && { backgroundColor: 'rgba(96,165,250,0.2)', borderColor: ACCENT }]}
               >
                 {selected === p.value && (
                   <LinearGradient
-                    colors={['rgba(52,211,153,0.15)', 'transparent']}
+                    colors={['rgba(96,165,250,0.15)', 'transparent']}
                     style={StyleSheet.absoluteFillObject}
                   />
                 )}
@@ -634,7 +644,7 @@ function GoalModal({
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected); }}
           >
             <LinearGradient
-              colors={['#34d399', '#059669']}
+              colors={['#60a5fa', '#2563eb']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ paddingVertical: 16, alignItems: 'center' }}
             >
@@ -701,7 +711,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  ringSteps:   { fontSize: 44, fontWeight: '900', color: '#ffffff', letterSpacing: -1, textShadowColor: 'rgba(52,211,153,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  ringSteps:   { fontSize: 44, fontWeight: '900', color: '#ffffff', letterSpacing: -1, textShadowColor: 'rgba(96,165,250,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
   ringLabel:   { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', letterSpacing: 2.2, marginTop: -2 },
-  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(52,211,153,0.3)', marginVertical: 10 },
+  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(96,165,250,0.3)', marginVertical: 10 },
 });

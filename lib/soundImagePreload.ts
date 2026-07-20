@@ -172,9 +172,17 @@ export function isSoundImageFullyCached(): boolean {
  * the initial render). Images already on disk are skipped instantly.
  */
 export async function prefetchAllSoundImages(concurrency = 10): Promise<void> {
-  for (let i = 0; i < ALL_URLS.length; i += concurrency) {
-    await Promise.allSettled(ALL_URLS.slice(i, i + concurrency).map(cacheOne));
+  const executing = new Set<Promise<any>>();
+  for (const url of ALL_URLS) {
+    const p = cacheOne(url);
+    executing.add(p);
+    const clean = () => executing.delete(p);
+    p.then(clean).catch(clean);
+    if (executing.size >= concurrency) {
+      await Promise.race(executing);
+    }
   }
+  await Promise.all(executing);
 }
 
 /**
@@ -187,20 +195,30 @@ export async function prefetchAllSoundImagesWithProgress(
   const total = ALL_URLS.length;
   let done = 0;
   let hasError = false;
-  for (let i = 0; i < ALL_URLS.length; i += concurrency) {
-    const results = await Promise.allSettled(
-      ALL_URLS.slice(i, i + concurrency).map(async (url) => {
-        await cacheOne(url);
-        done += 1;
-        onProgress(done, total);
-      }),
-    );
-    if (results.some(r => r.status === 'rejected')) {
-      hasError = true;
+  
+  const executing = new Set<Promise<any>>();
+  
+  for (const url of ALL_URLS) {
+    const p = (async () => {
+      await cacheOne(url);
+      done += 1;
+      onProgress(done, total);
+    })();
+    
+    const pWrapped = p.catch(() => { hasError = true; });
+    executing.add(pWrapped);
+    const clean = () => executing.delete(pWrapped);
+    pWrapped.then(clean);
+    
+    if (executing.size >= concurrency) {
+      await Promise.race(executing);
     }
   }
-  // Note: individual download failures are handled per-image above (remote URL used as fallback).
-  // We never throw here — this function is called fire-and-forget and must always resolve.
+  await Promise.all(executing);
+  
+  if (hasError) {
+    throw new Error("Network error during download");
+  }
 }
 
 /**

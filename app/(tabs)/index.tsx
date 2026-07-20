@@ -3575,6 +3575,7 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
     period.id === 'night_vata'      ? 'BRAHMA MUHURTA  ·  PRE-DAWN'
     : period.id === 'night_pitta'   ? 'SLEEP  ·  DEEP REPAIR PHASE'
     : period.id === 'evening_kapha' ? 'EVENING  ·  WIND-DOWN PHASE'
+    : period.id === 'morning_kapha_early' ? 'MORNING  ·  YOGA & MEDITATION'
     : period.id === 'morning_kapha' ? 'MORNING  ·  POWER HOUR'
     : period.id === 'midday_pitta'  ? 'MIDDAY  ·  PEAK PERFORMANCE'
     : 'AFTERNOON  ·  CREATIVE PEAK';
@@ -3598,6 +3599,7 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
     period.id === 'night_vata'      ? 'Brahma Muhurta — the sacred pre-dawn window'
     : period.id === 'night_pitta'   ? 'Deep repair · Growth hormone · Autophagy'
     : period.id === 'evening_kapha' ? 'Sleep hormone rising · Body cooling · Relax mode'
+    : period.id === 'morning_kapha_early' ? 'Nervous system · Cortisol rising · Grounding'
     : period.id === 'morning_kapha' ? 'Strength building · Hormone peak · Energy surge'
     : period.id === 'midday_pitta'  ? 'Digestion peak · Mental clarity · Metabolism high'
     : 'Brain sharpest · Creativity peaks · Energy flows';
@@ -4232,6 +4234,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
               <>
                 {(() => {
                   const ayurMap: Record<string, { agni: string; bio: string }> = {
+                    morning_kapha_early:  { agni: 'AGNI GROUNDING · MINDFULNESS WINDOW',       bio: 'Cortisol gentle rise · Nervous system receptive · Grounding phase' },
                     morning_kapha:  { agni: 'AGNI BALANCED · ANABOLIC WINDOW',       bio: 'Testosterone & GH surge · Lymphatic clearance peak · Anabolic cellular repair' },
                     midday_pitta:   { agni: 'AGNI BLAZING · DIGESTIVE FIRE PEAK',    bio: 'HCl & enzymes elevated · Insulin sensitivity optimal · Metabolism at daily high' },
                     afternoon_vata: { agni: 'PRANA VATA · NEURAL FIRE PEAK',         bio: 'Dopamine & Norepinephrine surge · Acetylcholine peaks · Neural plasticity open' },
@@ -4251,6 +4254,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                 })()}
                 {(() => {
                   const pillsMap: Record<string, string[]> = {
+                    morning_kapha_early:  ['🧘 Nervous Sys', '📈 Cortisol', '🌱 Mindset', '🧘 Flow'],
                     morning_kapha:  ['💪 Testosterone', '📈 GH', '🛡️ Lymph Peak', '⚡ Cortisol Rise'],
                     midday_pitta:   ['🧪 HCl Peak', '🔑 Insulin', '⚡ Cortisol', '🔥 Bile Acids'],
                     afternoon_vata: ['🎯 Dopamine', '⚡ Norepinephrine', '🧠 Acetylcholine', '💨 Lung Peak'],
@@ -4452,7 +4456,8 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
 
    const CardWrapper = onPress ? TouchableOpacity : View;
   // ── Period label for DO/DON'T cards — shown as header in single-item cards
-  const periodLabel = period.id === 'morning_kapha' ? 'MORNING KAPHA PERIOD'
+  const periodLabel = period.id === 'morning_kapha_early' ? 'EARLY MORNING KAPHA PERIOD'
+    : period.id === 'morning_kapha' ? 'MORNING KAPHA PERIOD'
     : period.id === 'midday_pitta' ? 'SOLAR PITTA PERIOD'
     : period.id === 'afternoon_vata' ? 'AFTERNOON VATA PERIOD'
     : period.id === 'evening_kapha' ? 'EVENING KAPHA PERIOD'
@@ -4665,6 +4670,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
     case 'night_vata':
       if (brahmaStatus === 'active') return 'Listen Nada Sounds & Meditate';
       return 'Listen & Drift Toward Dawn';
+    case 'morning_kapha_early':
     case 'morning_kapha':
       return 'Listen & Recharge for the Day';
     case 'midday_pitta': {
@@ -4797,7 +4803,8 @@ function getPeriodActionBlurb(id: string, brahmaStatus?: 'active' | 'upcoming' |
     return 'Rest deeply — Brahma Muhurta window is approaching';
   }
   switch (id) {
-    case 'morning_kapha':  return 'Ideal for workouts, yoga & building strength';
+    case 'morning_kapha_early': return 'Ideal for yoga, meditation, gentle stretching & setting intentions.';
+    case 'morning_kapha':  return 'Ideal for workouts, building strength & energetic start. Imperfect perfection, elegance, and a premium effect.';
     case 'midday_pitta':   return 'Best for deep work, decisions & your main meal';
     case 'afternoon_vata': return 'Ideal for creativity, exercise & collaboration';
     case 'evening_kapha':  return 'Family time, journaling & gentle creative work';
@@ -5586,6 +5593,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
       {(() => {
         const NAAD_MAP: Record<string, { badge: string; title: string; sub: string }> = {
           night_vata:     { badge: '✦  SACRED DAWN · NADA SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Nada frequencies deepen stillness without effort. Just press play and breathe.' },
+          morning_kapha_early:  { badge: '✦  EARLY RITUAL · NADA SOUNDS', title: 'Ground & align your nervous system',               sub: 'Anchor your morning in 5 minutes. Healing frequencies ease you into the day.' },
           morning_kapha:  { badge: '✦  MORNING RITUAL · NADA SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
           midday_pitta:   { badge: '✦  DEEP FOCUS · NADA SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
           afternoon_vata: { badge: '✦  CREATIVE PEAK · NADA SOUNDS',  title: 'Try Nada Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },

@@ -204,7 +204,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }
       sound.setOnPlaybackStatusUpdate((status) => {
         try {
-          if (!status.isLoaded) return;
+          if (!status.isLoaded) {
+            if ((status as any).error) {
+              console.warn('[SoundPlayer] Playback error:', (status as any).error);
+              setAudioNetworkError(true);
+              try { sound.setOnPlaybackStatusUpdate(null); } catch {}
+              sound.unloadAsync().catch(() => {});
+              mixRefs.current.delete(meta.id);
+            }
+            return;
+          }
           if (unloadedIdsRef.current.has(meta.id)) return;
           
           lastStatusUpdateRef.current.set(meta.id, Date.now());
@@ -329,7 +338,16 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
               // If this sound was removed from the map, abort — do not reload it into
               // a playSound() session that has already started its own sounds.
               if (!mixRefs.current.has(id)) continue;
-              if (!status.isLoaded || status.isPlaying) continue;
+              if (!status.isLoaded) {
+                if ((status as any).error) {
+                  setAudioNetworkError(true);
+                  try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+                  snd.unloadAsync().catch(() => {});
+                  mixRefs.current.delete(id);
+                }
+                continue;
+              }
+              if (status.isPlaying) continue;
               restartingIdsRef.current.add(id);
               // Use replayAsync only when at end-of-file (isLooping silently failed).
               // Use playAsync for mid-play interruptions (audio focus lost, etc.)

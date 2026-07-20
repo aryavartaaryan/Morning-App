@@ -18,6 +18,38 @@ export type WellnessEntry = {
 };
 
 export const WELLNESS: Record<string, WellnessEntry> = {
+  morning_kapha_early: {
+    displayName: 'Yoga & Meditation',
+    romanElements: 'Earth + Water',
+    sunDesc: 'Active when sun is rising — Sunrise to ~2 hrs after',
+    boundaryNote: 'Pre-dawn Vata settles as Kapha rises. Energy shifts from subtle to grounded.',
+    elements: [
+      { name: 'Earth (Prithvi)', emoji: '🌍', desc: 'Your physical body mass — bones, muscles, tissues, solid structure. Not literal soil, but the principle of', italic: 'density and form.' },
+      { name: 'Water (Jala)', emoji: '💧', desc: 'All fluids — blood, lymph, mucus, synovial fluid. Not drinking water alone, but the', italic: 'cohesion and flow principle in all of nature.' },
+    ],
+    modernBrief: 'Cortisol Awakening Response initiates. Optimal time for gentle movement and mindfulness practice before the active day begins.',
+    ayurvedaBrief: 'Ideal for building stability (Sthira) through grounded practices like yoga, meditation, and breathwork.',
+    bodyBullets: [
+      { dot: '#F5A623', text: 'Cortisol begins its morning ascent' },
+      { dot: '#10b981', text: 'Joints and tissues waking up from overnight rest' },
+      { dot: '#9B7FD4', text: 'Mind is highly receptive to intention setting' },
+      { dot: '#60a5fa', text: 'Digestive fire (Agni) is mild — body prefers light hydration' },
+      { dot: '#F5A623', text: 'Brain is alert but calm' },
+    ],
+    doItems: [
+      { emoji: '🧘', text: 'Yoga & Sun Salutations' },
+      { emoji: '📿', text: 'Meditation & Mindfulness' },
+      { emoji: '🌬️', text: 'Deep breathing exercises' },
+      { emoji: '☀️', text: 'Gentle stretching' },
+    ],
+    avoidItems: [
+      { emoji: '🍳', text: 'Heavy breakfast' },
+      { emoji: '🏋️', text: 'High-intensity workouts' },
+      { emoji: '📱', text: 'Checking emails immediately' },
+      { emoji: '☕', text: 'Excessive caffeine' },
+    ],
+    naadSounds: ['morning_birds', 'hz_432', 'singing_bowl', 'morning_flute'],
+  },
   morning_kapha: {
     displayName: 'Kapha time',
     romanElements: 'Earth + Water',
@@ -218,6 +250,7 @@ export const WELLNESS: Record<string, WellnessEntry> = {
 };
 
 export const PERIOD_SANSKRIT: Record<string, { sanskrit: string; meaning: string }> = {
+  morning_kapha_early: { sanskrit: 'Prabhāta Kapha Dhyāna', meaning: 'The early dawn time of earth and water for meditation' },
   morning_kapha:  { sanskrit: 'Prabhāta Kapha Kāla', meaning: 'The time of earth and water at dawn' },
   midday_pitta:   { sanskrit: 'Madhyāhna Pitta Kāla', meaning: 'The time of fire and transformation at noon' },
   afternoon_vata: { sanskrit: 'Aparāhna Vāta Kāla', meaning: 'The time of air and movement in the afternoon' },
@@ -251,6 +284,20 @@ export const PERIOD_EXTENDED: Record<string, PeriodExtended> = {
     sunPosition: '🌑 Sun 6–12° below the horizon (astronomical twilight) — retinal ipRGC photoreceptors not yet stimulated. Pineal gland maintains peak melatonin release. Maximum neurological openness, minimum sympathetic activation.',
     systemTags: ['Neurological', 'Cognitive', 'Glymphatic', 'Endocrine'],
     elementCombined: 'Pre-dawn Vāyu (Air) is the subtlest movement — the stirring of consciousness from deep sleep toward awareness. Alpha-theta brainwave oscillations are literally Vāyu moving through Ākāsha. The mind has been emptied by sleep and is now a perfect vessel for Sankalpa and meditation.',
+  },
+  morning_kapha_early: {
+    phonetic: 'prahb-HAA-tah · KAH-phah · dh-YAA-nah',
+    etymParts: [
+      { term: 'Prabhāta', breakdown: 'pra (first/forward) + bhāta (shining) = the first illumination' },
+      { term: 'Kapha', breakdown: 'ka (water/head) + pha (fills) = that which fills, binds, and nourishes' },
+      { term: 'Dhyāna', breakdown: 'meditation, reflection, profound abstract religious meditation' },
+    ],
+    classicalRef: { text: 'Uṣāpānaṃ kṛtvā śaucādi vidhāya dhyānam ācaret.', source: 'Traditional Dinacharya' },
+    phaseNumber: 2,
+    circadianSci: 'The body transitions from sleep to wakefulness. Gentle stretching and mindfulness during this window help regulate the rising cortisol levels.',
+    sunPosition: '☀️ Sun just rising over the eastern horizon — early light exposure begins setting the circadian clock.',
+    systemTags: ['Nervous', 'Endocrine', 'Musculoskeletal'],
+    elementCombined: 'Earth (Prithvī) provides grounding for the mind, while Water (Jala) ensures smooth transition and flow of energy.',
   },
   morning_kapha: {
     phonetic: 'prahb-HAA-tah · KAH-phah · KAA-lah',

@@ -425,6 +425,24 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     }
 
     // ── Helper ───────────────────────────────────────────────────────────────
+
+    /**
+     * Called from JS (wake-alarm-ringing screen) when the alarm UI is unmounted
+     * while the alarm is still ringing in the background.
+     * Resets alarmScreenLaunched on the service so the next bringToFront call
+     * fires the deep-link again instead of just REORDER_TO_FRONT.
+     * This makes the alarm screen reappear when the user opens the app.
+     */
+    @ReactMethod
+    fun notifyAlarmUIDismissed(promise: Promise) {
+        try {
+            AlarmSoundServiceBase.ALARM_UI_DISMISSED.set(true)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.resolve(false)
+        }
+    }
+
     private fun buildPendingIntent(): PendingIntent =
         PendingIntent.getBroadcast(
             reactContext,

@@ -82,6 +82,15 @@ abstract class AlarmSoundServiceBase : Service() {
          */
         @JvmField
         val ALARM_FORCE_STOP = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        /**
+         * Set to true by AlarmModule.notifyAlarmUIDismissed() when the JS alarm
+         * screen is navigated away from or unmounted while the alarm is still ringing.
+         * Causes the next launchApp() call to reset alarmScreenLaunched → re-fires
+         * the deep-link so the alarm screen appears again when the user opens the app.
+         */
+        @JvmField
+        val ALARM_UI_DISMISSED = java.util.concurrent.atomic.AtomicBoolean(false)
     }
 
     // ── Shared mutable state ──────────────────────────────────────────────────
@@ -272,7 +281,11 @@ abstract class AlarmSoundServiceBase : Service() {
                 return // stop re-posting — runnable fully dies here
             }
 
-            if (!isAppInForeground() && !isPickerActive()) {
+            // If ALARM_UI_DISMISSED is true, the user is inside the app (foreground) but somehow closed the alarm UI.
+            // We MUST force them back to the alarm UI immediately.
+            val shouldForceLaunch = ALARM_UI_DISMISSED.get() || !isAppInForeground()
+
+            if (shouldForceLaunch && !isPickerActive()) {
                 val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
                 val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
                 val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -518,10 +531,16 @@ abstract class AlarmSoundServiceBase : Service() {
         // is called concurrently, it won't re-write alarm_fired_pending=true after
         // the stop sequence has begun. This is the fix for the long-ringing freeze.
         if (ALARM_FORCE_STOP.get()) return
+        // If the JS alarm screen was dismissed/navigated away from while the alarm
+        // was still ringing, reset the flag so the deep-link fires again and routes
+        // the user back to the alarm screen when they open the app.
+        if (ALARM_UI_DISMISSED.compareAndSet(true, false)) {
+            alarmScreenLaunched = false
+        }
         try {
             markAlarmActive()
             if (!alarmScreenLaunched) {
-                // First call: deep-link to the alarm screen
+                // First call (or after UI dismissed): deep-link to the alarm screen
                 alarmScreenLaunched = true
                 buildFullScreenPendingIntent().send()
             } else {

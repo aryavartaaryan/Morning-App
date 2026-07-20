@@ -54,10 +54,22 @@ const WESTERN_EXPLAINER: Record<string, {
   whyMatters: string; analogy: string;
   topFact: { icon: string; label: string; value: string }[];
 }> = {
+  morning_kapha_early: {
+    headline: 'Your Body is Grounding & Waking',
+    tagline: 'Yoga & Meditation Hour · Cortisol rising · Best time for mindfulness',
+    what: 'Right now, your body is transitioning from sleep to wakefulness. Cortisol is beginning its ascent. Ayurveda calls this early Kapha — the quiet, grounding phase before the active day.',
+    whyMatters: 'Mindfulness and gentle movement in THIS window regulate your nervous system for the entire day. It sets your baseline stress response.',
+    analogy: '🌅  The engine is warming up. Don\'t redline it immediately. Let it idle smoothly with breathwork and stretching.',
+    topFact: [
+      { icon: '🧘', label: 'Nervous Sys', value: 'Highly receptive' },
+      { icon: '📈', label: 'Cortisol', value: 'Morning rise' },
+      { icon: '🌱', label: 'Mindset', value: 'Open for intention' },
+    ],
+  },
   morning_kapha: {
     headline: 'Your Body is in Build Mode',
     tagline: 'Peak Anabolic Window · Testosterone highest · Best time to move',
-    what: 'Right now (6–10 AM), your body is pumping its highest testosterone and growth hormone. Joints are freshly lubricated. Muscles are primed to grow. Ayurveda calls this Kapha — the heavy, building, earthy phase.',
+    what: 'Right now, your body is pumping its highest testosterone and growth hormone. Joints are freshly lubricated. Muscles are primed to grow. Ayurveda calls this Kapha — the heavy, building, earthy phase.',
     whyMatters: 'Exercise in THIS window builds 23% more muscle than the same workout at 6 PM. Your anabolic hormones will never be higher today.',
     analogy: '🏗️  Your body is a construction site. The foreman just arrived. Workers are energised. Build NOW.',
     topFact: [
@@ -315,7 +327,8 @@ function Card2BodyClock({ period, solarTimes, accent }: {
   const vataStart = dipEnd;
 
   const PERIODS_ORDERED = [
-    { id: 'morning_kapha',      start: sr,         end: sr + daySeg,  color: '#34d399', emoji: '🌿', label: 'Morning Kapha' },
+    { id: 'morning_kapha_early',start: sr,         end: sr + daySeg/2,color: '#34d399', emoji: '🧘', label: 'Yoga & Med' },
+    { id: 'morning_kapha',      start: sr + daySeg/2, end: sr + daySeg, color: '#34d399', emoji: '🌿', label: 'Morning Kapha' },
     { id: 'midday_pitta',       start: sr + daySeg, end: dipStart,    color: '#fb923c', emoji: '🔥', label: 'Peak Focus' },
     { id: 'midday_pitta_late',  start: dipStart,   end: dipEnd,       color: '#f59e0b', emoji: '🍃', label: 'Energy Dip' },
     { id: 'afternoon_vata',     start: vataStart,  end: ss,           color: '#a78bfa', emoji: '🌬️', label: 'Afternoon Vāta' },

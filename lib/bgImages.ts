@@ -14,9 +14,10 @@ export const BG_URLS: Record<string, string> = {
   sunrise_late: 'https://images.pexels.com/photos/6240658/pexels-photo-6240658.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise_late_2: 'https://images.pexels.com/photos/9004241/pexels-photo-9004241.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_early: 'https://images.pexels.com/photos/2035066/pexels-photo-2035066.jpeg?auto=compress&cs=tinysrgb&w=600',
-  morning_early_late: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=600',
-  morning:     'https://images.pexels.com/photos/14469571/pexels-photo-14469571.jpeg?auto=compress&cs=tinysrgb&w=600',
-  morning_late: 'https://images.pexels.com/photos/7077853/pexels-photo-7077853.jpeg?auto=compress&cs=tinysrgb&w=600',
+  morning_early_late: 'https://images.pexels.com/photos/7077853/pexels-photo-7077853.jpeg?auto=compress&cs=tinysrgb&w=600',
+  morning:     'https://images.pexels.com/photos/31198416/pexels-photo-31198416.jpeg',
+  morning_2:   'https://images.pexels.com/photos/14469571/pexels-photo-14469571.jpeg?auto=compress&cs=tinysrgb&w=600',
+  morning_late: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_late_2: 'https://images.pexels.com/photos/34732117/pexels-photo-34732117.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early: 'https://images.pexels.com/photos/14106721/pexels-photo-14106721.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_2: 'https://images.pexels.com/photos/33638423/pexels-photo-33638423.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -29,11 +30,12 @@ export const BG_URLS: Record<string, string> = {
   afternoon:  'https://images.pexels.com/photos/14516024/pexels-photo-14516024.jpeg?auto=compress&cs=tinysrgb&w=600',
   afternoon_first_late: 'https://images.pexels.com/photos/35835086/pexels-photo-35835086.jpeg',
   afternoon_mid: 'https://images.pexels.com/photos/2035108/pexels-photo-2035108.jpeg?auto=compress&cs=tinysrgb&w=600',
-  afternoon_late: 'https://images.pexels.com/photos/8819076/pexels-photo-8819076.jpeg?auto=compress&cs=tinysrgb&w=600',
-  afternoon_late_2: 'https://images.pexels.com/photos/8952615/pexels-photo-8952615.jpeg',
+  afternoon_late: 'https://images.pexels.com/photos/8952400/pexels-photo-8952400.jpeg?auto=compress&cs=tinysrgb&w=600',
+  afternoon_late_2: 'https://images.pexels.com/photos/8952105/pexels-photo-8952105.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya:    'https://images.pexels.com/photos/16534748/pexels-photo-16534748.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sandhya_mid: 'https://images.pexels.com/photos/6252095/pexels-photo-6252095.jpeg',
-  sandhya_late: 'https://images.pexels.com/photos/4723092/pexels-photo-4723092.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_mid: 'https://images.pexels.com/photos/35662311/pexels-photo-35662311.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sandhya_late: 'https://images.pexels.com/photos/34323059/pexels-photo-34323059.jpeg',
+  sandhya_late_part2: 'https://images.pexels.com/photos/8038504/pexels-photo-8038504.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid: 'https://images.pexels.com/photos/11774422/pexels-photo-11774422.jpeg?auto=compress&cs=tinysrgb&w=600',
   sandhya_late_mid_2: 'https://images.pexels.com/photos/7929897/pexels-photo-7929897.jpeg',
   sandhya_late_2: 'https://images.pexels.com/photos/4161255/pexels-photo-4161255.png',
@@ -159,8 +161,11 @@ export async function ensureAllBgsCached(): Promise<void> {
       JSON.parse((await store.get(KEYS.bgCacheVersion)) ?? '{}');
     const updatedHashes: Record<string, string> = { ...storedHashes };
 
-    await Promise.allSettled(
-      Object.entries(BG_URLS).map(async ([key, url]) => {
+    const entries = Object.entries(BG_URLS);
+    const executing = new Set<Promise<any>>();
+
+    for (const [key, url] of entries) {
+      const p = (async () => {
         const path      = cachePath(key);
         const urlHash   = djb2(url);
         const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false, size: 0 }));
@@ -181,15 +186,22 @@ export async function ensureAllBgsCached(): Promise<void> {
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch {
-            // No internet — old file (if any) stays; hash not updated → retries next launch
             await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
           }
         } else {
           updatedHashes[key] = urlHash;
           BG_LOCAL_MAP[key]  = path;
         }
-      })
-    );
+      })();
+
+      executing.add(p);
+      const clean = () => executing.delete(p);
+      p.then(clean).catch(clean);
+      if (executing.size >= 8) {
+        await Promise.race(executing);
+      }
+    }
+    await Promise.all(executing);
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
   } catch { /* silent */ }
@@ -244,12 +256,12 @@ function _timeout(ms: number): Promise<never> {
 
 /**
  * Like ensureAllBgsCached but reports progress after each image completes.
- * Downloads ALL images in PARALLEL (same as ensureAllBgsCached) so the
- * total time equals the slowest single image, not the sum of all images.
+ * Uses a concurrency limit to prevent network thread exhaustion/crashes.
  * Each download is individually raced against a 10s timeout.
  */
 export async function ensureAllBgsCachedWithProgress(
   onProgress: (done: number, total: number) => void,
+  concurrency = 8,
 ): Promise<void> {
   const PER_IMAGE_TIMEOUT_MS = 10_000;
 
@@ -263,14 +275,13 @@ export async function ensureAllBgsCachedWithProgress(
     let done = 0;
 
     let hasError = false;
+    const executing = new Set<Promise<any>>();
 
-    // Parallel: all images download concurrently — total time ≈ slowest image.
-    const results = await Promise.allSettled(
-      entries.map(async ([key, url]) => {
+    for (const [key, url] of entries) {
+      const p = (async () => {
         const path      = cachePath(key);
         const urlHash   = djb2(url);
         const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false, size: 0 }));
-        // Only consider URL changed if we previously HAD a hash and it differs.
         const hasHash    = typeof storedHashes[key] === 'string';
         const urlChanged = hasHash && storedHashes[key] !== urlHash;
         const isValid = (cached as any).exists && (cached as any).size > 0;
@@ -291,7 +302,6 @@ export async function ensureAllBgsCachedWithProgress(
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch (e) {
-            // Timed-out or failed — keep old cached file; hash not saved → retries next launch.
             await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
             throw e;
           }
@@ -301,11 +311,21 @@ export async function ensureAllBgsCachedWithProgress(
         }
         done += 1;
         onProgress(done, total);
-      }),
-    );
+      })();
 
-    if (results.some(r => r.status === 'rejected')) {
-      hasError = true;
+      const pWrapped = p.catch(() => { hasError = true; });
+      executing.add(pWrapped);
+      const clean = () => executing.delete(pWrapped);
+      pWrapped.then(clean);
+      
+      if (executing.size >= concurrency) {
+        await Promise.race(executing);
+      }
+    }
+    await Promise.all(executing);
+
+    if (hasError) {
+      throw new Error("Network error during download");
     }
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));

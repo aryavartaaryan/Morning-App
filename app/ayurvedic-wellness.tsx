@@ -315,7 +315,8 @@ const WELLNESS: Record<string, {
 };
 
 const NEXT_PERIOD: Record<string, string> = {
-  night_vata: 'morning_kapha',
+  night_vata: 'morning_kapha_early',
+  morning_kapha_early: 'morning_kapha',
   morning_kapha: 'midday_pitta',
   midday_pitta: 'midday_pitta_late',
   midday_pitta_late: 'afternoon_vata',
@@ -384,7 +385,7 @@ function RhythmTimeline({ currentId }: { currentId: string }) {
   const periods = useMemo(() => getDoshaPeriods(defaultSolar, nowH), []);
   const nextId = NEXT_PERIOD[currentId] ?? 'morning_kapha';
 
-  const DISPLAY_ORDER = ['morning_kapha', 'midday_pitta', 'midday_pitta_late', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
+  const DISPLAY_ORDER = ['morning_kapha_early', 'morning_kapha', 'midday_pitta', 'midday_pitta_late', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
 
   return (
     <View style={{ gap: 0 }}>
@@ -395,7 +396,8 @@ function RhythmTimeline({ currentId }: { currentId: string }) {
         const isNext = id === nextId;
         const color = DOSHA_COLOR[p.dosha] ?? '#FFFFFF';
         const PERIOD_LABELS: Record<string, string> = {
-          morning_kapha:      'Kapha · Earth + Water',
+          morning_kapha_early: 'Kapha · Yoga & Meditation',
+          morning_kapha:      'Kapha · Rise & Build',
           midday_pitta:       'Pitta · Peak Focus',
           midday_pitta_late:  'Pitta · Energy Dip',
           afternoon_vata:     'Vata · Air + Space',
@@ -404,6 +406,7 @@ function RhythmTimeline({ currentId }: { currentId: string }) {
           night_vata:         'Vata · pre-dawn creativity & spirit',
         };
         const PERIOD_SUBLABELS: Record<string, string> = {
+          morning_kapha_early:`${p.startLabel}  |  ${p.endLabel}`,
           morning_kapha:      `${p.startLabel}  |  ${p.endLabel}`,
           midday_pitta:       `${p.startLabel}  |  ${p.endLabel}`,
           midday_pitta_late:  `${p.startLabel}  |  ${p.endLabel}`,

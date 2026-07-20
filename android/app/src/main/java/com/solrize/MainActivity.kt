@@ -24,6 +24,7 @@ class MainActivity : ReactActivity() {
   // and the SharedPreferences .commit() becoming visible on the UI thread.
   private val focusLossHandler  = android.os.Handler(android.os.Looper.getMainLooper())
   private var focusLossRunnable: Runnable? = null
+  private var lockTaskStartedForAlarm = false
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
@@ -32,6 +33,9 @@ class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
+    
+    // Intercept intent BEFORE super.onCreate so React Native sees the modified intent on boot
+    interceptLauncherIntentIfNeeded(intent)
     super.onCreate(null)
 
     // Always show over lock screen — required for alarm fullScreenIntent on all Android versions
@@ -55,6 +59,7 @@ class MainActivity : ReactActivity() {
   }
 
   override fun onNewIntent(intent: Intent) {
+    interceptLauncherIntentIfNeeded(intent)
     super.onNewIntent(intent)
     setIntent(intent)
     // Re-apply keep-screen-on every time the alarm service brings us back to front
@@ -64,7 +69,7 @@ class MainActivity : ReactActivity() {
       // while the app is ALREADY OPEN (onResume is not called again in that case).
       // This handles wake alarm, habit alarm, and quick alarm equally since
       // isAlarmActive() checks ALL alarm types from SharedPreferences.
-      try { startLockTask() } catch (_: Exception) {}
+      startAlarmLockTaskOnce()
     }
   }
 
@@ -114,9 +119,9 @@ class MainActivity : ReactActivity() {
     }
     // Layer 3 — Screen Pinning (Lock Task Mode).
     // Pins this task so Android's OS itself blocks Home, Back, and Recent Apps.
-    // Called every time (no one-shot guard) so if the dialog is dismissed it
-    // is re-triggered on the very next focus change — screen stays unescapable.
-    try { startLockTask() } catch (_: Exception) {}
+    // This is the same mechanism Alarmy uses for unescapable alarms.
+    // On first use the system shows a one-time "Screen pinned" toast — silent thereafter.
+    startAlarmLockTaskOnce()
   }
 
   /**
@@ -149,10 +154,9 @@ class MainActivity : ReactActivity() {
 
       // Also check ALARM_FORCE_STOP (instant AtomicBoolean kill switch)
       if (isAlarmActive() && !alarmStopping && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
-        // Call startLockTask() every focus gain — no one-shot guard.
-        // This means: if the dialog was dismissed without pressing OK,
-        // the next focus event re-triggers it immediately.
-        try { startLockTask() } catch (_: Exception) {}
+        // Call startAlarmLockTaskOnce() — one-shot guard.
+        // The one-shot guard is critical for the OS exploit to work.
+        startAlarmLockTaskOnce()
       }
     } else {
       // Window lost focus — debounce before reacting so we don't fire
@@ -244,10 +248,15 @@ class MainActivity : ReactActivity() {
     } catch (_: Exception) { false }
   }
 
-  // resetAlarmLockTaskState() kept for compatibility with AlarmModule.kt and
-  // AlarmSoundServiceBase.kt call sites — now a no-op since the one-shot guard
-  // was removed. Callers can safely invoke it; it does nothing.
-  fun resetAlarmLockTaskState() { /* no-op — one-shot guard removed */ }
+  private fun startAlarmLockTaskOnce() {
+    if (lockTaskStartedForAlarm) return
+    lockTaskStartedForAlarm = true
+    try { startLockTask() } catch (_: Exception) {}
+  }
+
+  fun resetAlarmLockTaskState() {
+    lockTaskStartedForAlarm = false
+  }
 
   /**
    * HOME button interceptor.
@@ -318,6 +327,24 @@ class MainActivity : ReactActivity() {
     // Fall back to super only if the OS refuses to move the task (extremely rare).
     if (!moveTaskToBack(false)) {
       super.invokeDefaultOnBackPressed()
+    }
+  }
+
+  /**
+   * If the user forcefully closes the alarm UI (e.g. killing the app) and opens it again,
+   * rewrite the intent to a deep-link URI so Expo Router automatically routes them back
+   * to the active alarm screen. We enforce this regardless of the launch intent category.
+   */
+  private fun interceptLauncherIntentIfNeeded(intent: Intent?) {
+    if (intent == null) return
+    val isWakeAlarm = try {
+      getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean("alarm_fired_pending", false)
+    } catch (_: Exception) { false }
+
+    if (isWakeAlarm) {
+      intent.action = Intent.ACTION_VIEW
+      intent.data = android.net.Uri.parse("solrize://wake-alarm-ringing")
     }
   }
 }

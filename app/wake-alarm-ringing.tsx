@@ -186,6 +186,12 @@ export default function WakeAlarmRingingScreen() {
       deactivateKeepAwake('wake-alarm');
       if (Platform.OS === 'android') {
         NativeModules.HabitAlarmModule?.releaseWakeLock?.().catch?.(() => {});
+        // Notify the native service that the JS alarm UI was dismissed.
+        // This resets alarmScreenLaunched on the service so the next time the
+        // user opens the app while the alarm is still ringing, the native watchdog
+        // will re-fire the deep-link (solrize://wake-alarm-ringing) instead of
+        // just doing REORDER_TO_FRONT (which lands on the home screen).
+        NativeModules.AlarmModule?.notifyAlarmUIDismissed?.().catch?.(() => {});
       }
     };
   }, []);

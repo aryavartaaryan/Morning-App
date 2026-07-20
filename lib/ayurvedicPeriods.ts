@@ -65,6 +65,20 @@ export const PERIOD_TEMPLATES = [
     avoidances: ['Heavy food or drinks', 'Intense physical exertion', 'Digital media & bright screens', 'Loud conversation or noise', 'Checking phone or social media'],
   },
   {
+    id: 'morning_kapha_early',
+    dosha: 'kapha' as DoshaType,
+    label: 'Early Morning Kapha',
+    englishLabel: 'Yoga & Meditation',
+    emoji: '🧘',
+    color: '#34d399',
+    bgColor: 'rgba(52,211,153,0.08)',
+    sciEmoji: '🧘',
+    sciTitle: 'Cortisol Awakening & Mindfulness Window',
+    sciDesc: 'Optimal time for grounding the nervous system before the active day begins. Gentle movement and mindfulness practice.',
+    activities: ['Yoga & Asana practice', 'Meditation & Mindfulness', 'Deep breathing exercises', 'Gentle stretching'],
+    avoidances: ['Heavy breakfast', 'High-intensity workouts', 'Checking emails immediately'],
+  },
+  {
     id: 'morning_kapha',
     dosha: 'kapha' as DoshaType,
     label: 'Morning Kapha',
@@ -172,15 +186,16 @@ export function getDoshaPeriods(solar: SolarTimes, nowH: number): DoshaPeriod[] 
   // Afternoon Vata starts right when the dip ends — anchored to real sun position.
   const vataStart = dipEnd;
 
-  // Order: predawn, morning-kapha, midday-pitta, energy-dip, afternoon-vata, evening-kapha, night-pitta
+  // Order: predawn, morning-kapha-early, morning-kapha, midday-pitta, energy-dip, afternoon-vata, evening-kapha, night-pitta
   const RANGES: [string, number, number][] = [
-    ['night_vata',        brahmaMuhurta,  sunrise + 24],  // Brahma Muhurta → sunrise
-    ['morning_kapha',     sunrise,        sunrise + daySeg], // e.g. 6–10 AM
-    ['midday_pitta',      sunrise + daySeg, dipStart],    // Peak focus: ~10 AM → 1:30 PM
-    ['midday_pitta_late', dipStart,       dipEnd],         // Energy Dip: ~1:30 PM → 3:00 PM (sun-based)
-    ['afternoon_vata',    vataStart,      sunset],         // Creative peak: ~3 PM → sunset
-    ['evening_kapha',     sunset,         sunset + nightSeg], // e.g. 6:30–10 PM
-    ['night_pitta',       sunset + nightSeg, brahmaMuhurta], // deep sleep until Brahma Muhurta
+    ['night_vata',          brahmaMuhurta,  sunrise + 24],  // Brahma Muhurta → sunrise
+    ['morning_kapha_early', sunrise,        sunrise + daySeg / 2], // e.g. 6–8 AM
+    ['morning_kapha',       sunrise + daySeg / 2, sunrise + daySeg], // e.g. 8–10 AM
+    ['midday_pitta',        sunrise + daySeg, dipStart],    // Peak focus: ~10 AM → 1:30 PM
+    ['midday_pitta_late',   dipStart,       dipEnd],         // Energy Dip: ~1:30 PM → 3:00 PM (sun-based)
+    ['afternoon_vata',      vataStart,      sunset],         // Creative peak: ~3 PM → sunset
+    ['evening_kapha',       sunset,         sunset + nightSeg], // e.g. 6:30–10 PM
+    ['night_pitta',         sunset + nightSeg, brahmaMuhurta], // deep sleep until Brahma Muhurta
   ];
 
   // Normalise nowH so early-morning hours map to the night cycle
@@ -268,6 +283,14 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
         sciLabel: 'Alpha-Theta Brainwave State · Cortisol Awakening Response begins',
         actionText: 'Listen & meditate',
       };
+    case 'morning_kapha_early':
+      return {
+        subPill: 'MORNING KAPHA PERIOD',
+        header: 'Yoga & Meditation Hour',
+        sentence: 'Ground your nervous system. Perfect time for mindfulness and gentle stretching.',
+        sciLabel: 'Cortisol Awakening & Mindfulness Window',
+        actionText: 'Listen & stretch',
+      };
     case 'morning_kapha':
       return {
         subPill: 'MORNING KAPHA PERIOD',
@@ -320,6 +343,12 @@ const CIRCADIAN_NOTIF_CONTENT: Record<string, { title: string; body: string; sub
     body:   'Theta-alpha brainwave dominance is peaking. The boundary between subconscious and conscious is at its thinnest. Ideal window for meditation, intention-setting and deep breathwork.',
     sub:    'Circadian Cycle · Night Vata',
     color:  '#c7d2e0',
+  },
+  morning_kapha_early: {
+    title:  '🧘 Yoga & Meditation Hour',
+    body:   'Cortisol is beginning its ascent. This is the optimal window to ground your nervous system before the active day begins. Focus on gentle movement and mindfulness.',
+    sub:    'Circadian Cycle · Early Morning Kapha',
+    color:  '#34d399',
   },
   morning_kapha: {
     title:  '💪 Anabolic Window — Move Now',

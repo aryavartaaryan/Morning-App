@@ -42,6 +42,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { DeviceEventEmitter } from 'react-native';
 
 import StepCounter, { type SessionType } from '@/src/modules/StepCounter';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
@@ -50,6 +51,7 @@ import { ALL_SOUNDS_LIST } from '@/app/(tabs)/sleep';
 import { useBgContext } from '@/lib/bgContext';
 import { getBgSourceSync } from '@/lib/bgImages';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
+import { getSolarRingPalette } from '@/lib/solarRingPalette';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -67,7 +69,7 @@ const SESSION_META: Record<
   SessionType,
   { label: string; emoji: string; color: string; goal: number; bgTop: string; gradA: string; gradB: string }
 > = {
-  morning:  { label: 'Morning Walk',   emoji: '🌅', color: '#34D399', goal: 3000, bgTop: '#0A1A12', gradA: '#34D399', gradB: '#2DD4BF' },
+  morning:  { label: 'Morning Walk',   emoji: '🌅', color: '#38bdf8', goal: 3000, bgTop: '#081a29', gradA: '#38bdf8', gradB: '#0ea5e9' },
   evening:  { label: 'Evening Walk',   emoji: '🌆', color: '#F472B6', goal: 3000, bgTop: '#1A0A12', gradA: '#F472B6', gradB: '#A78BFA' },
   postmeal: { label: 'Post-meal Walk', emoji: '🍽️', color: '#FB923C', goal: 100,  bgTop: '#1A0E08', gradA: '#FB923C', gradB: '#FCD34D' },
 };
@@ -116,9 +118,16 @@ export default function StepSessionScreen() {
   // Always use "The Walk" as the title
   meta = { ...meta, label: 'The Walk' };
 
-  const C  = meta.color;
-  const GA = meta.gradA;
-  const GB = meta.gradB;
+  const { solarTimes } = useBgContext();
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
+  const solarNoon = solarTimes?.solarNoon ?? 12.5;
+  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, null, null, false, undefined);
+  
+  const isDynamic = type !== 'postmeal';
+  const C  = isDynamic ? palette.ring : meta.color;
+  const GA = isDynamic ? palette.ring : meta.gradA;
+  const GB = isDynamic ? palette.halo : meta.gradB;
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [steps,    setSteps]    = useState(0);
@@ -141,6 +150,7 @@ export default function StepSessionScreen() {
   const pausedAtRef  = useRef(0);
   const doneRef      = useRef(false);
   const lastUpdateRef = useRef(0);
+  const lastBounceRef = useRef(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -217,35 +227,39 @@ export default function StepSessionScreen() {
     const sub = StepCounter.onStep((total) => {
       if (pausedRef.current || doneRef.current) return;
 
-      Animated.sequence([
-        Animated.spring(stepBounce, { toValue: 1.16, useNativeDriver: true, speed: 60, bounciness: 14 }),
-        Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 40, bounciness: 4  }),
-      ]).start();
+      const now = Date.now();
+      
+      if (now - lastBounceRef.current > 350) {
+        lastBounceRef.current = now;
+        Animated.sequence([
+          Animated.spring(stepBounce, { toValue: 1.16, useNativeDriver: true, speed: 60, bounciness: 14 }),
+          Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 40, bounciness: 4  }),
+        ]).start();
 
-      rippleScale.setValue(0);
-      rippleOp.setValue(0.55);
-      Animated.parallel([
-        Animated.timing(rippleScale, { toValue: 1, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(rippleOp,   { toValue: 0, duration: 750, useNativeDriver: true }),
-      ]).start();
+        rippleScale.setValue(0);
+        rippleOp.setValue(0.55);
+        Animated.parallel([
+          Animated.timing(rippleScale, { toValue: 1, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(rippleOp,   { toValue: 0, duration: 750, useNativeDriver: true }),
+        ]).start();
+      }
 
       if (type === 'postmeal' && total >= 100 && !doneRef.current) {
         doneRef.current = true;
         launchConfetti();
       }
 
-      const now = Date.now();
       const syncState = () => {
         setSteps(total);
         setProgressDashOffset(CIRCUM - Math.min(1, total / meta.goal) * CIRCUM);
         lastUpdateRef.current = Date.now();
+        syncTimeoutRef.current = null;
       };
 
-      if (now - lastUpdateRef.current > 1000) {
-        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      if (now - lastUpdateRef.current >= 1000) {
+        if (syncTimeoutRef.current) { clearTimeout(syncTimeoutRef.current); syncTimeoutRef.current = null; }
         syncState();
-      } else {
-        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      } else if (!syncTimeoutRef.current) {
         syncTimeoutRef.current = setTimeout(syncState, 1000 - (now - lastUpdateRef.current));
       }
     });
@@ -329,6 +343,7 @@ export default function StepSessionScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     await StepCounter.endSession();
     await StepCounter.snapshotTodayToHistory();
+    DeviceEventEmitter.emit('SessionEnded');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   }, []);
@@ -361,8 +376,7 @@ export default function StepSessionScreen() {
   const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  const { bgUri, accentColor, bgKey, solarTimes } = useBgContext();
-  const hour = new Date().getHours() + new Date().getMinutes() / 60;
+  const { bgUri, accentColor, bgKey } = useBgContext();
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
   const sessionBgKey = isNightReal ? 'live_session_night' : 'live_session';
 
@@ -454,51 +468,48 @@ export default function StepSessionScreen() {
       {/* ── BODY ────────────────────────────────────────────────────────────── */}
       <Animated.View style={[s.body, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
 
-        {/* Headphone hint */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(12,24,42,0.72)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(56,189,248,0.22)', marginBottom: 6 }}>
-          <Ionicons name="headset" size={10} color="#38bdf8" style={{ marginRight: 6 }} />
-          <Text style={{ fontSize: 9, fontWeight: '700', color: '#bae6fd', letterSpacing: 0.4 }}>Use headphone, listen Nada sound and just walk</Text>
-        </View>
-
-        {/* Nature Wisdom card — frosted glass */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center',
-          backgroundColor: 'rgba(255,255,255,0.08)',
-          paddingHorizontal: 12, paddingVertical: 8,
-          borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-          width: '96%', alignSelf: 'center', marginBottom: 6, overflow: 'hidden',
-        }}>
-          <LinearGradient
-            colors={['rgba(52,211,153,0.12)', 'transparent']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <LinearGradient
-            colors={['rgba(255,255,255,0.07)', 'transparent']}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}
-          />
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(52,211,153,0.18)', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)' }}>
-            <Ionicons name="earth" size={16} color="#34d399" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 9, fontWeight: '900', color: '#34d399', letterSpacing: 1.8, textTransform: 'uppercase', marginBottom: 2 }}>
+        {/* ── PREMIUM SUGGESTION CARD ────────────────────────────────────── */}
+        <View style={{ width: '100%', marginBottom: 16 }}>
+          <View style={{
+            backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
+            borderRadius: 20,
+            padding: 16,
+            borderWidth: 1, borderColor: C + '25',
+            alignItems: 'center',
+            overflow: 'hidden',
+          }}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <LinearGradient
+              colors={[C + '15', 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: C, letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
               Nature Connection
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '500', color: 'rgba(255,255,255,0.70)', lineHeight: 14 }}>
+            <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center', marginBottom: 10 }}>
               Walk barefoot if conditions permit, or simply wear shoes and take a mindful nature bath.
             </Text>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="headset" size={11} color={C} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: C, letterSpacing: 0.2 }}>Use headphones for Nada sound</Text>
+            </View>
           </View>
         </View>
 
         {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
         <View style={s.ringWrapper}>
           {/* Outer breathing aura layers */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, backgroundColor: C, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.15, 0.35] }), transform: [{ scale: pulseAnim }], top: -35, left: -35 }} />
-          <Animated.View style={{ position: 'absolute', width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, backgroundColor: GA, opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.12, 0.28] }), transform: [{ scale: pulseAnim }], top: -18, left: -18 }} />
+          <Animated.View style={{ position: 'absolute', top: -15, left: -15, width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.3, 0.8] }), transform: [{ scale: pulseAnim }] }}>
+            <LinearGradient colors={[`${GA}80`, `${GB}00`]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          </Animated.View>
+          <Animated.View style={{ position: 'absolute', top: 2, left: 2, width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.5, 1] }), transform: [{ scale: pulseAnim }] }}>
+            <LinearGradient colors={[`${GA}80`, `${GB}00`]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          </Animated.View>
 
           {/* Inner disc for better text contrast */}
-          <View style={{ position: 'absolute', top: 10, left: 10, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
+          <View style={{ position: 'absolute', top: 30, left: 30, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
 
           {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
           <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
@@ -534,7 +545,7 @@ export default function StepSessionScreen() {
           </View>
 
           {/* Rotating Outer Visualizer HUD */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+          <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
               <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
               <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
@@ -542,7 +553,7 @@ export default function StepSessionScreen() {
           </Animated.View>
 
           {/* Rotating Inner HUD (Sine wave rapid feel) */}
-          <Animated.View style={{ position: 'absolute', width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
+          <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
             <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
               <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
               <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />

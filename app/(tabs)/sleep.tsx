@@ -17,6 +17,7 @@ import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
 import { getSolarTimes, SolarTimes } from '@/lib/solar';
 import { getCurrentPeriod, getHeroRingContent } from '@/lib/ayurvedicPeriods';
+import { getSacredHourInfo } from '@/lib/solarRingPalette';
 import { useBgContext } from '@/lib/bgContext';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
@@ -451,6 +452,7 @@ export const ALL_SOUNDS_LIST: any[] = [
 // ─── Solar-aware section label map ────────────────────────────────────────
 const PERIOD_SECTION_LABELS: Record<string, { title: string; icon: string; isNight: boolean }> = {
   night_vata:     { title: 'Recommended Now', icon: '✨', isNight: false },
+  morning_kapha_early: { title: 'Recommended Now', icon: '🧘', isNight: false },
   morning_kapha:  { title: 'Recommended Now', icon: '🌅', isNight: false },
   midday_pitta:   { title: 'Recommended Now', icon: '☀️', isNight: false },
   afternoon_vata: { title: 'Recommended Now', icon: '🌬️', isNight: false },
@@ -482,7 +484,8 @@ function CyclingSubtitle({ lines, style }: { lines: string[]; style?: object }) 
 // ─── Period chip friendly labels + hint sentences ──────────────────────────
 const PERIOD_CHIP_LABELS: Record<string, { label: string; hint: string }> = {
   night_vata:     { label: 'Sacred Dawn · Body Awakening',   hint: 'Perfect for meditation & deep calm' },
-  morning_kapha:  { label: 'Morning Rise · Anabolic Phase',  hint: 'Move, nourish and build strength' },
+  morning_kapha_early: { label: 'Morning Rise · Yoga & Meditation', hint: 'Gentle movement and mindfulness practice.' },
+  morning_kapha:  { label: 'Morning Rise · Anabolic Phase',  hint: 'Move, nourish, build strength & meditation hour. Imperfect perfection, elegance, and a premium effect.' },
   midday_pitta:   { label: 'Peak Deep Work · Body Phase',    hint: 'Peak focus — tackle what matters most' },
   afternoon_vata: { label: 'Creative Flow · Neural Peak',    hint: 'Create, move and express freely' },
   evening_kapha:  { label: 'Wind Down · Recovery Phase',     hint: 'Ease into rest, connect and unwind' },
@@ -492,6 +495,7 @@ const PERIOD_CHIP_LABELS: Record<string, { label: string; hint: string }> = {
 // ─── Ayurvedic day-phase hints (sound + activity suggestions) ─────────────
 const PERIOD_DAY_HINTS: Record<string, { icon: string; name: string; line1: string; line2: string; color: string }> = {
   night_vata:    { icon: '✨', name: 'Brahma Muhurta',    line1: 'The most sacred hour — before the world wakes.', line2: 'Meditate or listen to birds. Your body is designed to come alive with these sounds and set the tone for everything that follows.', color: '#818cf8' },
+  morning_kapha_early: { icon: '🧘', name: 'Yoga & Meditation', line1: 'Ground your nervous system.', line2: 'Perfect time for mindfulness and gentle stretching.', color: '#34d399' },
   morning_kapha: { icon: '🌅', name: 'Morning Rise',      line1: 'Listen to birds as the day opens up.',           line2: 'Nature calibrated your body to thrive with these sounds. Start your day strong — they will make your whole system work properly.', color: '#f59e0b' },
   midday_pitta:  { icon: '☀️', name: 'Deep Work Time',    line1: 'Your body is at peak focus right now.',          line2: 'As per your body rhythm, this is the deepest work window. Listen to sounds as you work — they sharpen output and keep you in flow.', color: '#fb923c' },
   afternoon_vata:{ icon: '🌬️', name: 'Creative Flow',     line1: 'A natural window for creativity and expression.', line2: 'Let flowing ragas and world music carry you. Create, move, and feel freely — your mind is primed for it right now.', color: '#a78bfa' },
@@ -897,6 +901,7 @@ function getCategoryMeta(cat: string, periodId?: string | null): { emoji: string
   if (cat === 'Nature' && periodId) {
     switch (periodId) {
       case 'night_vata':        return { emoji: '✨', color: '#22d3ee' }; // Brahma teal / awakening
+      case 'morning_kapha_early': return { emoji: '🧘', color: '#34d399' };
       case 'morning_kapha':     return { emoji: '💪', color: '#34d399' }; // kapha green
       case 'midday_pitta':      return { emoji: '🔥', color: '#fb923c' }; // pitta orange
       case 'midday_pitta_late': return { emoji: '🍃', color: '#f59e0b' }; // dip amber
@@ -1890,6 +1895,19 @@ function ReelCard({
     return () => { loops.forEach(l => l.stop()); [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => p.stopAnimation()); };
   }, [isActive, isPlaying, isPaused]);
 
+  // ── Scrubber drag state & Stall Detection ──────────────────────────────────
+  const isDragging = useRef(false);
+  const dragFraction = useRef(new Animated.Value(0)).current;
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const scrubFractionRef = useRef(0);
+  const [scrubPositionMs, setScrubPositionMs] = useState(0);
+  const prevPositionMsRef = useRef(0);
+  const stallCountRef = useRef(0);
+  const [isAudioStalled, setIsAudioStalled] = useState(false);
+  const trackDurMsRef = useRef(0);
+  const trackWRef = useRef(0);
+  const seekToRef = useRef(seekTo);
+
   const controlsAnim = useRef(new Animated.Value(1)).current;
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintAnim = useRef(new Animated.Value(0)).current;
@@ -1994,22 +2012,7 @@ function ReelCard({
   }, [trackDurMs, isActive, isPlaying, isPaused]);
 
   // ── Scrubber drag state ──────────────────────────────────────────────────
-  const isDragging = useRef(false);
-  // dragFraction: 0→1 value set directly (no animation) during drag — JS driver, width-only
-  const dragFraction = useRef(new Animated.Value(0)).current;
-  // thumbScaleAnim removed — thumb is now a plain View (no animated driver conflicts)
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  // Use a ref for the current scrub fraction — PanResponder is created once
-  // so closures over state would capture stale values.
-  const scrubFractionRef = useRef(0);
-  const [scrubPositionMs, setScrubPositionMs] = useState(0);
-  const prevPositionMsRef = useRef(0);
-  const stallCountRef = useRef(0);
-  const [isAudioStalled, setIsAudioStalled] = useState(false);
-  // Use refs so the PanResponder (created once) always sees current values
-  const trackDurMsRef = useRef(trackDurMs);
-  const trackWRef = useRef(TRACK_W);
-  const seekToRef = useRef(seekTo);
+  // (Declarations moved to top of component to satisfy React hook ordering and TDZ rules)
   useEffect(() => { trackDurMsRef.current = trackDurMs; }, [trackDurMs]);
   useEffect(() => { trackWRef.current = TRACK_W; }, [TRACK_W]);
   useEffect(() => { seekToRef.current = seekTo; }, [seekTo]);
@@ -3622,7 +3625,7 @@ function SleepTabInner() {
   }, [solarTimes]);
 
   const playingSrc  = SLEEP_SOUNDS.find(s => s.id === playingId);
-  const h           = now.getHours();
+  const h           = now.getHours() + now.getMinutes() / 60;
   const autoMode    = useMemo(() => getAutoMode(h), [h]);
   const currentPeriod = useMemo(() => solarTimes ? getCurrentPeriod(solarTimes, h) : null, [solarTimes, h]);
   const isBrahmaMuhurta = currentPeriod?.id === 'night_vata';
@@ -3633,6 +3636,7 @@ function SleepTabInner() {
     if (isBrahmaMuhurta) return BRAHMA_MODE;
     if (!currentPeriod) return autoMode;
     switch (currentPeriod.id) {
+      case 'morning_kapha_early':
       case 'morning_kapha':  return SOUND_MODES.morning;
       case 'midday_pitta':   return SOUND_MODES.focus;
       case 'afternoon_vata': return SOUND_MODES.restore;
@@ -3643,15 +3647,31 @@ function SleepTabInner() {
   }, [currentPeriod?.id, isBrahmaMuhurta, autoMode]);
   const displayMode = solarDisplayMode;
 
+  const sacredHour = useMemo(() => {
+    return solarTimes ? getSacredHourInfo(h, solarTimes) : { type: null, progress: 0 };
+  }, [h, solarTimes]);
+
   const heroContent = useMemo(() => {
+    if (sacredHour.type !== null) {
+      return {
+        subPill: sacredHour.type === 'sunrise' ? 'SACRED HOUR OF SUNRISE' :
+                 sacredHour.type === 'sunset' ? 'SACRED HOUR OF SUNSET' : 'SACRED HOUR OF ZENITH',
+        header: sacredHour.type === 'sunrise' ? 'Sun is Rising' :
+                sacredHour.type === 'sunset' ? 'Sun is Setting' : 'Sun is at its Peak',
+        actionText: 'Meditate now',
+        sentence: 'Divine hour. Meditate and connect with the divinity.',
+        sciLabel: 'Sacred Hour'
+      };
+    }
     if (!currentPeriod) return null;
     return getHeroRingContent(currentPeriod.id, currentPeriod.id === 'night_vata');
-  }, [currentPeriod?.id]);
+  }, [currentPeriod?.id, sacredHour.type]);
 
   const natureCategoryLabel = useMemo(() => {
     const periodId = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
     switch (periodId) {
       case 'night_vata':        return 'The world sleeps... breathe with nature and ease into the dawn';
+      case 'morning_kapha_early': return 'Morning rises... ground yourself and align with nature';
       case 'morning_kapha':     return 'Morning rises... listen to nature\'s sounds and align yourself';
       case 'midday_pitta':      return 'The sun peaks... ground yourself in nature\'s steady rhythm';
       case 'midday_pitta_late': return 'The afternoon drifts... let nature\'s sounds restore your calm';
@@ -3699,11 +3719,11 @@ function SleepTabInner() {
       if (!p) return true;
       if (periodKey === 'night_vata') {
         if ((s as any).cat === 'Meditations') return true;
-        return p.includes('night_vata') || p.includes('morning_kapha');
+        return p.includes('night_vata') || p.includes('morning_kapha') || p.includes('morning_kapha_early');
       }
-      if (periodKey === 'morning_kapha') {
+      if (periodKey === 'morning_kapha' || periodKey === 'morning_kapha_early') {
         if ((s as any).cat === 'Meditations') return true;
-        return p.includes('morning_kapha');
+        return p.includes('morning_kapha') || p.includes('morning_kapha_early');
       }
       return p.includes(periodKey);
     }) as SoundItem[];

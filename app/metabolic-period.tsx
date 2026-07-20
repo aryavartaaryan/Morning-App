@@ -75,12 +75,13 @@ function BodyClockFull({ periodId, dosha, solarTimes }: {
   const bmStart = sr + 24 - 1.6;
 
   const PERIODS_CLOCK = [
-    { id: 'night_vata',     start: bmStart,         end: sr + 24,        color: '#818cf8', label: 'Pre-Dawn', emoji: '✨' },
-    { id: 'morning_kapha',  start: sr,               end: sr + daySeg,   color: '#34d399', label: 'Morning',  emoji: '💪' },
-    { id: 'midday_pitta',   start: sr + daySeg,      end: sr + 2*daySeg, color: '#fb923c', label: 'Noon',     emoji: '🔥' },
-    { id: 'afternoon_vata', start: sr + 2*daySeg,    end: ss,            color: '#a78bfa', label: 'Afternoon',emoji: '🌬️' },
-    { id: 'evening_kapha',  start: ss,               end: ss + nightSeg, color: '#34d399', label: 'Evening',  emoji: '🌅' },
-    { id: 'night_pitta',    start: ss + nightSeg,    end: bmStart,       color: '#fbbf24', label: 'Night',    emoji: '🌕' },
+    { id: 'night_vata',          start: bmStart,         end: sr + 24,        color: '#818cf8', label: 'Pre-Dawn', emoji: '✨' },
+    { id: 'morning_kapha_early', start: sr,              end: sr + daySeg/2,  color: '#34d399', label: 'Yoga & Med',emoji: '🧘' },
+    { id: 'morning_kapha',       start: sr + daySeg/2,   end: sr + daySeg,    color: '#34d399', label: 'Morning',  emoji: '💪' },
+    { id: 'midday_pitta',        start: sr + daySeg,     end: sr + 2*daySeg,  color: '#fb923c', label: 'Noon',     emoji: '🔥' },
+    { id: 'afternoon_vata',      start: sr + 2*daySeg,   end: ss,             color: '#a78bfa', label: 'Afternoon',emoji: '🌬️' },
+    { id: 'evening_kapha',       start: ss,              end: ss + nightSeg,  color: '#34d399', label: 'Evening',  emoji: '🌅' },
+    { id: 'night_pitta',         start: ss + nightSeg,   end: bmStart,        color: '#fbbf24', label: 'Night',    emoji: '🌕' },
   ];
 
   const hourToAngle = (h: number) => ((h % 24) / 24) * 360 - 90;
@@ -288,7 +289,7 @@ function AllPeriodsOverview({ currentId, solarTimes }: { currentId: string; sola
   const solar = solarTimes ?? { sunrise: 6, sunset: 18, solarNoon: 12 };
   const periods = useMemo(() => getDoshaPeriods(solar, nowH), [nowH]);
 
-  const DISPLAY = ['morning_kapha', 'midday_pitta', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
+  const DISPLAY = ['morning_kapha_early', 'morning_kapha', 'midday_pitta', 'afternoon_vata', 'evening_kapha', 'night_pitta', 'night_vata'];
   const tmpl = PERIOD_TEMPLATES;
 
   return (
