@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, {
   Circle, Defs, LinearGradient as SvgGrad, Stop,
-  Line, Text as SvgText,
+  Line, Text as SvgText, G
 } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -300,6 +300,52 @@ export default function StepAnalyticsScreen() {
             </Text>
           </View>
 
+          {/* ── WEEKLY JOURNEY (Frosted Glass Card) ─────────────────────────────── */}
+          {summary && (
+            <View style={[st.chartCard, { paddingVertical: 24 }]}>
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View>
+                  <Text style={st.chartTitle}>Weekly Journey</Text>
+                  <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>Last 7 Days Progress</Text>
+                </View>
+                <View style={[st.goalBadge, { borderColor: ACCENT_VIOLET + '40', backgroundColor: ACCENT_VIOLET + '15' }]}>
+                  <Text style={[st.goalBadgeTxt, { color: ACCENT_VIOLET }]}>Target {fmtK(summary.weeklyGoal)}</Text>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 32, fontFamily: 'Nunito_800ExtraBold', color: '#fff', textShadowColor: ACCENT_VIOLET + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
+                    {summary.weeklySteps.toLocaleString()} <Text style={{ fontSize: 14, color: MUTED }}>steps</Text>
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: ACCENT_VIOLET }}>{summary.weeklyGoalPercent}%</Text>
+                </View>
+                {/* Progress Bar */}
+                <View style={{ height: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, overflow: 'hidden' }}>
+                  <View style={{ 
+                    position: 'absolute', top: 0, left: 0, bottom: 0, 
+                    width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
+                    backgroundColor: ACCENT_VIOLET,
+                    borderRadius: 6 
+                  }}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.4)', 'transparent']}
+                      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 8, textAlign: 'center', fontWeight: '500' }}>
+                {summary.weeklyGoalPercent >= 100 
+                  ? 'Incredible! You have reached your weekly cosmic goal.' 
+                  : `${(summary.weeklyGoal - summary.weeklySteps).toLocaleString()} steps remaining to complete your weekly journey.`}
+              </Text>
+            </View>
+          )}
+
           {/* ── 7-DAY BAR CHART (Frosted Glass) ─────────────────────────────── */}
           <View style={st.chartCard}>
             <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
@@ -310,46 +356,68 @@ export default function StepAnalyticsScreen() {
               </View>
             </View>
 
-            <View style={{ height: chartH + 30, marginTop: 10 }}>
-              <Svg width={chartW} height={chartH + 30}>
+            <View style={{ height: chartH + 50, marginTop: 10 }}>
+              <Svg width={chartW} height={chartH + 50}>
                 <Defs>
                   <SvgGrad id="barGrad" x1="0" y1="0" x2="0" y2="1">
                     <Stop offset="0" stopColor={BRIGHT_CYAN} stopOpacity="1" />
                     <Stop offset="0.5" stopColor={CYAN} stopOpacity="1" />
                     <Stop offset="1" stopColor={DEEP_CYAN} stopOpacity="0.8" />
                   </SvgGrad>
+                  <SvgGrad id="hotGrad" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={GOLD} stopOpacity="1" />
+                    <Stop offset="0.5" stopColor={ORANGE} stopOpacity="1" />
+                    <Stop offset="1" stopColor={ORANGE} stopOpacity="0.8" />
+                  </SvgGrad>
                 </Defs>
 
                 {/* Goal dashed line */}
                 <Line
-                  x1={0} y1={chartH - (goal / maxBarSteps) * chartH} x2={chartW} y2={chartH - (goal / maxBarSteps) * chartH}
-                  stroke={GOLD} strokeWidth={1} strokeDasharray="4 4" opacity={0.4}
+                  x1={0} y1={chartH - (goal / maxBarSteps) * chartH + 20} x2={chartW} y2={chartH - (goal / maxBarSteps) * chartH + 20}
+                  stroke={GOLD} strokeWidth={1.5} strokeDasharray="6 6" opacity={0.5}
                 />
 
                 {last7Days.map((d, i) => {
                   const x = (i + 0.5) * barSpacing;
                   const barH = Math.max(8, (d.steps / maxBarSteps) * chartH);
-                  const y = chartH - barH;
+                  const y = chartH - barH + 20; // Shift down by 20 for top label space
                   const isMet = d.goalMet;
+                  const isHot = d.steps >= goal * 1.5;
+                  const strokeCol = isHot ? "url(#hotGrad)" : isMet ? "url(#barGrad)" : "rgba(56,189,248,0.25)";
 
                   return (
-                    <React.Fragment key={d.date}>
+                    <G key={d.date} onPress={() => d.steps > 0 && openSheet(d)}>
+                      {/* Invisible touch target for easy clicking */}
+                      <Line x1={x} y1={0} x2={x} y2={chartH + 50} stroke="transparent" strokeWidth={barSpacing * 0.8} />
+                      
                       {/* Bar Track Background */}
-                      <Line x1={x} y1={0} x2={x} y2={chartH} stroke="rgba(255,255,255,0.06)" strokeWidth={10} strokeLinecap="round" />
+                      <Line x1={x} y1={20} x2={x} y2={chartH + 20} stroke="rgba(255,255,255,0.04)" strokeWidth={16} strokeLinecap="round" />
+                      
                       {/* Actual Bar */}
                       <Line
-                        x1={x} y1={chartH} x2={x} y2={y}
-                        stroke={isMet ? "url(#barGrad)" : "rgba(56,189,248,0.25)"}
-                        strokeWidth={10} strokeLinecap="round"
+                        x1={x} y1={chartH + 20} x2={x} y2={y}
+                        stroke={strokeCol}
+                        strokeWidth={16} strokeLinecap="round"
                       />
-                      {/* Label */}
+                      
+                      {/* Top Step Count Label */}
+                      {d.steps > 0 && (
+                        <SvgText
+                          x={x} y={y - 12}
+                          fontSize={11} fill={isMet ? '#ffffff' : MUTED} textAnchor="middle" fontWeight="800"
+                        >
+                          {fmtK(d.steps)}
+                        </SvgText>
+                      )}
+
+                      {/* Bottom Day Label */}
                       <SvgText
-                        x={x} y={chartH + 20}
-                        fontSize={10} fill={MUTED} textAnchor="middle" fontWeight="700"
+                        x={x} y={chartH + 44}
+                        fontSize={11} fill={MUTED} textAnchor="middle" fontWeight="700"
                       >
                         {weekdayChar(d.date)}
                       </SvgText>
-                    </React.Fragment>
+                    </G>
                   );
                 })}
               </Svg>

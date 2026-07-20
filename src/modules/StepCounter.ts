@@ -65,6 +65,9 @@ export interface AnalyticsSummary {
   currentStreak: number;
   longestStreak: number;
   goalRate: number;        // 0–100 %
+  weeklySteps: number;     // Sum of last 7 days steps
+  weeklyGoal: number;      // Target for the week
+  weeklyGoalPercent: number; // 0-100 % progress against weekly goal
 }
 
 export interface ThirtyDayAnalytics {
@@ -216,8 +219,9 @@ export const StepCounter = {
     } catch { /* */ }
 
     const goalSteps   = await StepCounter.getDailyGoal();
-    // Only use steps accumulated during active Nada walk sessions
-    const totalSteps  = manualSteps;
+    // User requested "real data" for 7 days, so we combine auto steps (native all-day counter) 
+    // and manual session steps to ensure full daily activity is captured.
+    const totalSteps  = Math.max(autoSteps, manualSteps);
     const distanceKm  = parseFloat((totalSteps * STRIDE_KM).toFixed(2));
     const calories    = Math.round(totalSteps * CAL_PER_STEP);
     const activeMin   = parseInt(await asGet('sc_active_minutes_today') ?? '0', 10) || 0;
@@ -307,6 +311,7 @@ export const StepCounter = {
   /** Returns 30-day analytics computed in JS from persisted history. */
   async getThirtyDayAnalytics(): Promise<ThirtyDayAnalytics> {
     const goal = await StepCounter.getDailyGoal();
+    const weeklyGoal = await StepCounter.getWeeklyGoal();
 
     // Build a 30-slot array of daily steps from stored daily snapshots
     const stored = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
@@ -342,12 +347,12 @@ export const StepCounter = {
       });
     }
 
-    const summary = StepCounter._computeSummary(dailyData, goal);
+    const summary = StepCounter._computeSummary(dailyData, goal, weeklyGoal);
     return { dailyData, summary };
   },
 
   /** Internal: compute summary stats from a daily data array. */
-  _computeSummary(data: DailyData[], goal: number): AnalyticsSummary {
+  _computeSummary(data: DailyData[], goal: number, weeklyGoal: number = 35000): AnalyticsSummary {
     const validDays = data.filter(d => d.steps > 0);
     const totalSteps = validDays.reduce((s, d) => s + d.steps, 0);
     const bestDay    = Math.max(0, ...data.map(d => d.steps));
@@ -368,8 +373,12 @@ export const StepCounter = {
         running = 0;
       }
     }
+    // Weekly progress (last 7 days of the dataset, since array is chronological)
+    const last7 = data.slice(-7);
+    const weeklySteps = last7.reduce((s, d) => s + d.steps, 0);
+    const weeklyGoalPercent = Math.min(100, Math.round((weeklySteps / weeklyGoal) * 100));
 
-    return { totalSteps, bestDay, avgPerDay, currentStreak, longestStreak, goalRate };
+    return { totalSteps, bestDay, avgPerDay, currentStreak, longestStreak, goalRate, weeklySteps, weeklyGoal, weeklyGoalPercent };
   },
 
   // ── Settings ─────────────────────────────────────────────────────────────────
@@ -381,6 +390,15 @@ export const StepCounter = {
 
   async setDailyGoal(steps: number): Promise<void> {
     await asSet('sc_daily_goal', String(Math.max(500, steps)));
+  },
+
+  async getWeeklyGoal(): Promise<number> {
+    const stored = await asGet('sc_weekly_goal');
+    return stored ? (parseInt(stored, 10) || (DEFAULT_GOAL * 7)) : (DEFAULT_GOAL * 7);
+  },
+
+  async setWeeklyGoal(steps: number): Promise<void> {
+    await asSet('sc_weekly_goal', String(Math.max(3500, steps)));
   },
 
   async getStrideLength(): Promise<number> {
@@ -396,10 +414,11 @@ export const StepCounter = {
 
   async snapshotTodayToHistory(): Promise<void> {
     const stats   = await StepCounter.getTodayStats();
+    await asSet('sc_last_total_steps', String(stats.totalSteps)); // Save for midnight rollover
     const dateStr = new Date().toISOString().split('T')[0];
     const history = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
     const existing = history.findIndex(x => x.date === dateStr);
-    if (existing >= 0) history[existing].steps = stats.totalSteps;
+    if (existing >= 0) history[existing].steps = Math.max(history[existing].steps, stats.totalSteps);
     else history.push({ date: dateStr, steps: stats.totalSteps });
     const trimmed = history.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 90);
     await asSet('sc_daily_history', JSON.stringify(trimmed));
@@ -419,11 +438,12 @@ export const StepCounter = {
 
     // Snapshot yesterday before clearing
     if (lastReset) {
-      const prevSteps = parseInt(await asGet('sc_session_steps_today') ?? '0', 10) || 0;
+      // Use the last known total steps saved by snapshotTodayToHistory, ensuring real data persists
+      const lastTotal = parseInt(await asGet('sc_last_total_steps') ?? '0', 10) || 0;
       const history   = JSON.parse(await asGet('sc_daily_history') ?? '[]') as { date: string; steps: number }[];
       const existing  = history.findIndex(x => x.date === lastReset);
-      if (existing >= 0) history[existing].steps = prevSteps;
-      else history.push({ date: lastReset, steps: prevSteps });
+      if (existing >= 0) history[existing].steps = Math.max(history[existing].steps, lastTotal);
+      else history.push({ date: lastReset, steps: lastTotal });
       const trimmed = history.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 90);
       await asSet('sc_daily_history', JSON.stringify(trimmed));
     }
@@ -431,6 +451,7 @@ export const StepCounter = {
     // Reset daily accumulators
     await asSet('sc_session_steps_today', '0');
     await asSet('sc_active_minutes_today', '0');
+    await asSet('sc_last_total_steps', '0'); // Reset the rollover helper
     await asSet('sc_last_reset_date', todayStr);
     return true;
   },

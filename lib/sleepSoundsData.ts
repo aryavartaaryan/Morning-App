@@ -23,6 +23,10 @@ export const SOUND_IMAGES: Record<string, string> = {
   wanderlust:    'https://images.pexels.com/photos/16004934/pexels-photo-16004934.jpeg?auto=compress&cs=tinysrgb&w=600',
   forest_birds:  'https://images.pexels.com/photos/6938734/pexels-photo-6938734.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_jungle_chiangmai: 'https://images.pexels.com/photos/1327786/pexels-photo-1327786.jpeg?auto=compress&cs=tinysrgb&w=600',
+  med_om_chanting_new: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600',
+  med_tanpura_new: 'https://images.pexels.com/photos/37824749/pexels-photo-37824749.png?auto=compress&cs=tinysrgb&w=600',
+  om_chant_cosmic: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600',
+  tanpura_nada: 'https://images.pexels.com/photos/37824749/pexels-photo-37824749.png?auto=compress&cs=tinysrgb&w=600',
   // ── Birds ─────────────────────────────────────────────────────────────────
   eagle_feather:           'https://images.pexels.com/photos/1624438/pexels-photo-1624438.jpeg?auto=compress&cs=tinysrgb&w=600',
   cuckoo_forest:           'https://images.pexels.com/photos/10523815/pexels-photo-10523815.jpeg?auto=compress&cs=tinysrgb&w=600',

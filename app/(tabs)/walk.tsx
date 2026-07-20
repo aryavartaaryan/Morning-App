@@ -110,6 +110,7 @@ export default function WalkTab() {
   const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
   const [yesterdaySteps, setYesterdaySteps] = useState(0);
   const [weather, setWeather]           = useState<WeatherData | null>(null);
+  const [summary, setSummary]           = useState<any>(null);
 
   const ringAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
@@ -134,6 +135,7 @@ export default function WalkTab() {
       setStats(s);
       setWeekData(analytics.dailyData.slice(-7));
       setStreak(analytics.summary.currentStreak);
+      setSummary(analytics.summary);
     } catch (err) {
       console.warn("Failed to fetch step stats:", err);
     }
@@ -491,6 +493,34 @@ export default function WalkTab() {
             </View>
 
           </View>
+          
+          {/* ── WEEKLY PROGRESS BAR ───────────────────────────────────────── */}
+          {summary && summary.weeklyGoal > 0 && (
+            <View style={{ width: '100%', paddingHorizontal: 32, marginTop: 30 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Goal</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: '#60a5fa' }}>{summary.weeklyGoalPercent}%</Text>
+              </View>
+              
+              <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
+                <View style={{ 
+                  position: 'absolute', left: 0, top: 0, bottom: 0, 
+                  width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
+                  backgroundColor: '#60a5fa', borderRadius: 5 
+                }}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.3)', 'transparent']}
+                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                </View>
+              </View>
+              
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 8, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 }}>
+                {summary.weeklySteps.toLocaleString()} <Text style={{fontWeight: '400'}}>of</Text> {summary.weeklyGoal.toLocaleString()} <Text style={{fontWeight: '400'}}>steps</Text>
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
@@ -566,9 +596,11 @@ export default function WalkTab() {
       <GoalModal
         visible={showGoalModal}
         current={stats.goalSteps}
+        currentWeekly={summary?.weeklyGoal ?? 35000}
         onClose={() => setShowGoalModal(false)}
-        onSave={async (g) => {
-          await StepCounter.setDailyGoal(g);
+        onSave={async (d, w) => {
+          await StepCounter.setDailyGoal(d);
+          await StepCounter.setWeeklyGoal(w);
           setShowGoalModal(false);
           await refreshStats();
         }}
@@ -581,11 +613,11 @@ export default function WalkTab() {
 // Goal modal
 // ─────────────────────────────────────────────────────────────────────────────
 function GoalModal({
-  visible, current, onClose, onSave,
+  visible, current, currentWeekly, onClose, onSave,
 }: {
-  visible: boolean; current: number; onClose: () => void; onSave: (g: number) => void;
+  visible: boolean; current: number; currentWeekly: number; onClose: () => void; onSave: (d: number, w: number) => void;
 }) {
-  const PRESETS = [
+  const PRESETS_DAILY = [
     { value: 3000, label: 'Grounding' },
     { value: 5000, label: 'Harmony' },
     { value: 6000, label: 'Vitality' },
@@ -593,8 +625,22 @@ function GoalModal({
     { value: 10000, label: 'Awakened' },
     { value: 12000, label: 'Limitless' }
   ];
+  const PRESETS_WEEKLY = [
+    { value: 21000, label: 'Foundation' },
+    { value: 35000, label: 'Balance' },
+    { value: 50000, label: 'Momentum' },
+    { value: 70000, label: 'Mastery' }
+  ];
   const [selected, setSelected] = useState(current);
-  useEffect(() => { if (visible) setSelected(current); }, [visible, current]);
+  const [selectedWeekly, setSelectedWeekly] = useState(currentWeekly);
+  const [tab, setTab] = useState<'daily'|'weekly'>('daily');
+
+  useEffect(() => { 
+    if (visible) {
+      setSelected(current); 
+      setSelectedWeekly(currentWeekly);
+    }
+  }, [visible, current, currentWeekly]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -602,46 +648,58 @@ function GoalModal({
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={gm.sheet}>
           <LinearGradient colors={['rgba(20,10,50,0.98)', 'rgba(8,8,20,0.99)']} style={StyleSheet.absoluteFillObject} />
-          {/* Top frost shine */}
           <LinearGradient
             colors={['rgba(255,255,255,0.08)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.4 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
-          {/* Top border glow */}
           <LinearGradient
             colors={['rgba(96,165,250,0.5)', 'rgba(59,130,246,0.3)', 'rgba(96,165,250,0.5)']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
           <View style={gm.handle} />
-          <Text style={gm.title}>Today's Step Target</Text>
-          <Text style={gm.sub}>Choose your sacred goal for today</Text>
-          <View style={gm.presets}>
-            {PRESETS.map(p => (
-              <TouchableOpacity
-                key={p.value}
-                onPress={() => { Haptics.selectionAsync(); setSelected(p.value); }}
-                style={[gm.preset, selected === p.value && { backgroundColor: 'rgba(96,165,250,0.2)', borderColor: ACCENT }]}
-              >
-                {selected === p.value && (
-                  <LinearGradient
-                    colors={['rgba(96,165,250,0.15)', 'transparent']}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                )}
-                <Text style={[gm.presetTxt, selected === p.value && { color: ACCENT }]}>
-                  {p.value.toLocaleString()}
-                </Text>
-                <Text style={[{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }, selected === p.value && { color: ACCENT + 'CC' }]}>
-                  {p.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          
+          <Text style={gm.title}>Set Your Intentions</Text>
+          
+          <View style={gm.tabs}>
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setTab('daily'); }} style={[gm.tabBtn, tab === 'daily' && gm.tabBtnActive]}>
+              <Text style={[gm.tabTxt, tab === 'daily' && gm.tabTxtActive]}>Daily Minimum</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setTab('weekly'); }} style={[gm.tabBtn, tab === 'weekly' && gm.tabBtnActive]}>
+              <Text style={[gm.tabTxt, tab === 'weekly' && gm.tabTxtActive]}>Weekly Goal</Text>
+            </TouchableOpacity>
           </View>
+
+          <View style={gm.presets}>
+            {(tab === 'daily' ? PRESETS_DAILY : PRESETS_WEEKLY).map(p => {
+              const isSel = tab === 'daily' ? (selected === p.value) : (selectedWeekly === p.value);
+              return (
+                <TouchableOpacity
+                  key={p.value}
+                  onPress={() => { Haptics.selectionAsync(); tab === 'daily' ? setSelected(p.value) : setSelectedWeekly(p.value); }}
+                  style={[gm.preset, tab === 'weekly' && { minWidth: '45%' }, isSel && { backgroundColor: 'rgba(96,165,250,0.2)', borderColor: ACCENT }]}
+                >
+                  {isSel && (
+                    <LinearGradient
+                      colors={['rgba(96,165,250,0.15)', 'transparent']}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  )}
+                  <Text style={[gm.presetTxt, isSel && { color: ACCENT }]}>
+                    {p.value.toLocaleString()}
+                  </Text>
+                  <Text style={[{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }, isSel && { color: ACCENT + 'CC' }]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <TouchableOpacity
             style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 10, shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 14, elevation: 6 }}
-            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected); }}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected, selectedWeekly); }}
           >
             <LinearGradient
               colors={['#60a5fa', '#2563eb']}
@@ -653,7 +711,7 @@ function GoalModal({
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}
               />
-              <Text style={gm.saveTxt}>Save Target</Text>
+              <Text style={gm.saveTxt}>Save Targets</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12 }}>
@@ -673,8 +731,12 @@ const gm = StyleSheet.create({
   sheet:   { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 42, overflow: 'hidden' },
   handle:  { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   title:   { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  sub:     { fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 4, marginBottom: 24 },
-  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+  tabs:    { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 4, marginVertical: 16, marginHorizontal: 20 },
+  tabBtn:  { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  tabBtnActive: { backgroundColor: 'rgba(96,165,250,0.2)' },
+  tabTxt:  { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
+  tabTxtActive: { color: ACCENT, fontWeight: '800' },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28, justifyContent: 'center' },
   preset:  { flex: 1, minWidth: '28%', paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER_MOD, backgroundColor: CARD_MOD, alignItems: 'center', overflow: 'hidden' },
   presetTxt: { color: 'rgba(255,255,255,0.75)', fontWeight: '700', fontSize: 15 },
   saveBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 8 },
