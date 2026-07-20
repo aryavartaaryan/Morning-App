@@ -47,7 +47,7 @@ class AlarmSoundService : AlarmSoundServiceBase() {
     override fun getRestartRequestCode(): Int = 99
 
     override fun getOverlayTitle(): String = "⏰  Arise Wake Alarm"
-    override fun getOverlayBody(): String  = "Time to rise and begin your day"
+    override fun getOverlayBody(): String  = "Brahma Muhūrta — your sacred morning window is open"
 
     /**
      * Wake alarm carries no intent extras — the selected mantra path is
@@ -90,7 +90,7 @@ class AlarmSoundService : AlarmSoundServiceBase() {
         val pi = buildFullScreenPendingIntent()
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("⏰ Arise Wake Alarm")
-            .setContentText("Wake Alarm — Time to rise and begin your day. 🙏")
+            .setContentText("Brahma Muhurta — Rise and begin your sacred day. 🙏")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(pi)
             .setFullScreenIntent(pi, true)

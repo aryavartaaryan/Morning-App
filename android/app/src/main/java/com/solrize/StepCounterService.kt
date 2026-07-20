@@ -139,7 +139,18 @@ class StepCounterService : Service(), SensorEventListener {
         }
 
         registerSensors()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(NOTIFICATION_ID, buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start walk foreground", e)
+            stopSelf()
+            isWalkRunning = false
+            return
+        }
         Log.d(TAG, "Walk session started. sensorSource=$sensorSource " +
             "(detector=${stepDetector != null}, counter=${stepCounter != null})")
     }
@@ -194,7 +205,18 @@ class StepCounterService : Service(), SensorEventListener {
 
         registerSensors()
         if (!isWalkRunning) {
-            startForeground(NOTIFICATION_ID, buildNotification())
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startForeground(NOTIFICATION_ID, buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+                } else {
+                    startForeground(NOTIFICATION_ID, buildNotification())
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start daily foreground", e)
+                stopSelf()
+                isDailyRunning = false
+                return
+            }
         }
         // Emit current known count immediately
         emitDailyStepEvent(todaySteps)

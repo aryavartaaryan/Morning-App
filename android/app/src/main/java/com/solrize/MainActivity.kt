@@ -33,9 +33,6 @@ class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
-    
-    // Intercept intent BEFORE super.onCreate so React Native sees the modified intent on boot
-    interceptLauncherIntentIfNeeded(intent)
     super.onCreate(null)
 
     // Always show over lock screen — required for alarm fullScreenIntent on all Android versions
@@ -59,7 +56,6 @@ class MainActivity : ReactActivity() {
   }
 
   override fun onNewIntent(intent: Intent) {
-    interceptLauncherIntentIfNeeded(intent)
     super.onNewIntent(intent)
     setIntent(intent)
     // Re-apply keep-screen-on every time the alarm service brings us back to front
@@ -94,11 +90,10 @@ class MainActivity : ReactActivity() {
       // bring-to-front never fires after the user has dismissed the alarm.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
-
-      // If we're returning from alarm navigation and Lock Task is still active,
-      // ensure it is stopped. Safe to call even if not in lock task mode.
-      try { stopLockTask() } catch (_: Exception) {}
-
+      lockTaskStartedForAlarm = false
+      // NOTE: stopLockTask() is NOT called here unconditionally — it would
+      // interfere with normal in-alarm navigation. The explicit call happens
+      // in mission.tsx handleComplete() via AlarmModule.stopLockTask().
       return
     }
     // Re-apply all alarm display flags every time the screen comes back
@@ -144,18 +139,8 @@ class MainActivity : ReactActivity() {
       // Cancel any pending bring-to-front debounce — we're already in focus.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
-      // Pin the screen if alarm is active AND NOT stopping.
-      val alarmStopping = try {
-        getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-          .getBoolean("alarm_stopping", false) ||
-        getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-          .getBoolean("alarm_stopping", false)
-      } catch (_: Exception) { false }
-
-      // Also check ALARM_FORCE_STOP (instant AtomicBoolean kill switch)
-      if (isAlarmActive() && !alarmStopping && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
-        // Call startAlarmLockTaskOnce() — one-shot guard.
-        // The one-shot guard is critical for the OS exploit to work.
+      // Pin the screen if alarm is active.
+      if (isAlarmActive()) {
         startAlarmLockTaskOnce()
       }
     } else {
@@ -163,6 +148,16 @@ class MainActivity : ReactActivity() {
       // startActivity() during the normal alarm-dismissal navigation flow.
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       val r = Runnable {
+        // Re-check AFTER the debounce — by now .commit() has settled and
+        // isAlarmActive() correctly reflects the real alarm state.
+        //
+        // ROOT CAUSE FIX: Also check alarm_stopping. When the user taps Stop,
+        // React Navigation's transition causes onWindowFocusChanged(false) to
+        // fire immediately. Without this guard, the 350ms debounce could fire
+        // startActivity() right in the middle of router.replace() navigation
+        // (especially under memory pressure after long ringing), making the
+        // screen appear frozen. alarm_stopping=true is set synchronously in
+        // AlarmModule.stopAlarmSound() before any navigation happens.
         val alarmStopping = try {
           getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean("alarm_stopping", false) ||
@@ -170,24 +165,27 @@ class MainActivity : ReactActivity() {
             .getBoolean("alarm_stopping", false)
         } catch (_: Exception) { false }
 
-        // The absolute kill switch: ALARM_FORCE_STOP.get() is checked instantly.
-        // If true, we abort immediately. No freezes, even after 10+ minutes ringing.
-        if (!alarmStopping && isAlarmActive() && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
-          try {
-            startActivity(Intent(this, MainActivity::class.java).apply {
-              addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_NO_ANIMATION
-              )
-            })
-          } catch (_: Exception) {}
+        if (!alarmStopping && isAlarmActive()) {
+          val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+          val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
+          val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+          val isScreenOn = try { pm.isInteractive } catch (_: Exception) { true }
+
+          if (!isLocked && isScreenOn) {
+            try {
+              startActivity(Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                  Intent.FLAG_ACTIVITY_NEW_TASK or
+                  Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                  Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                  Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+              })
+            } catch (_: Exception) {}
+          }
         }
       }
       focusLossRunnable = r
-      // 350ms loop: Violently hijacks focus back if the pinning dialog is open or
-      // if the user swipes home. Creates an unbreakable state even if OK is not clicked.
       focusLossHandler.postDelayed(r, 350)
     }
   }
@@ -327,25 +325,6 @@ class MainActivity : ReactActivity() {
     // Fall back to super only if the OS refuses to move the task (extremely rare).
     if (!moveTaskToBack(false)) {
       super.invokeDefaultOnBackPressed()
-    }
-  }
-
-  /**
-   * If the user forcefully closes the alarm UI (e.g. killing the app) and opens it again,
-   * rewrite the intent to a deep-link URI so Expo Router automatically routes them back
-   * to the active alarm screen. We enforce this regardless of the launch intent category.
-   */
-  private fun interceptLauncherIntentIfNeeded(intent: Intent?) {
-    if (intent == null) return
-    val isWakeAlarm = try {
-      getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-        .getBoolean("alarm_fired_pending", false)
-    } catch (_: Exception) { false }
-
-    if (isWakeAlarm) {
-      intent.action = Intent.ACTION_VIEW
-      intent.data = android.net.Uri.parse("solrize://wake-alarm-ringing")
-      setIntent(intent) // Ensure React Native sees the modified intent
     }
   }
 }

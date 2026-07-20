@@ -134,23 +134,22 @@ class HabitAlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopHabitAlarmSound(promise: Promise) {
         try {
-            // STEP 0: Set ALARM_FORCE_STOP first — same fix as AlarmModule.stopAlarmSound().
-            // This is an AtomicBoolean, instantly visible to all threads.
-            // Stops all watchdogs and prevents launchApp() from re-writing KEY_ACTIVE=true.
-            AlarmSoundServiceBase.ALARM_FORCE_STOP.set(true)
-
+            // Write alarm_stopping=true FIRST so that:
+            // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
+            // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and
+            //    stops re-posting itself — preventing it from fighting router navigation.
+            //
+            // CRITICAL FIX: Changed from .commit() to .apply().
+            // .commit() blocks the React Native bridge thread with synchronous disk I/O.
+            // After long ringing, this made the bridge freeze for seconds, causing the
+            // stop button to appear completely unresponsive. See AlarmModule.stopAlarmSound()
+            // for the full explanation. Same fix applies here.
+            // alarm_stopping is cleared in AlarmSoundServiceBase.onDestroy().
             reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("alarm_stopping", true)
                 .putBoolean(KEY_ACTIVE, false)
-                .apply()
-
-            // Exit Lock Task on main thread
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                try { reactContext.currentActivity?.stopLockTask() } catch (_: Exception) {}
-                try { (reactContext.currentActivity as? MainActivity)?.resetAlarmLockTaskState() } catch (_: Exception) {}
-            }
-
+                .apply()  // was .commit() — see comment above
             reactContext.stopService(Intent(reactContext, HabitAlarmSoundService::class.java))
             promise.resolve("Habit alarm sound stopped")
         } catch (e: Exception) {
