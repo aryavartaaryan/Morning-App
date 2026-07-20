@@ -345,6 +345,7 @@ class MainActivity : ReactActivity() {
     if (isWakeAlarm) {
       intent.action = Intent.ACTION_VIEW
       intent.data = android.net.Uri.parse("solrize://wake-alarm-ringing")
+      setIntent(intent) // Ensure React Native sees the modified intent
     }
   }
 }

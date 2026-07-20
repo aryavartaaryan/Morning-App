@@ -47,6 +47,7 @@ const SOUND_ACCENT: Record<string, string> = {
   morning_flute: '#6ee7b7', sitar_morning: '#f59e0b', healing_bells_432: '#fde68a',
   indian_beats: '#fb923c', gayatri: '#fbbf24', lalitha: '#f472b6',
   shivtandav: '#60a5fa', bhagya_suktam: '#fbbf24', shiv_sankalpa_suktam: '#c4b5fd',
+  om_chant_cosmic: '#6366f1', tanpura_nada: '#818cf8',
   // Sitar
   space_sitar: '#fcd34d', sitar_long: '#f59e0b', sitar_tabla_bells: '#fbbf24',
   indian_sitar_raga: '#fb923c', sitar_summer_raga: '#fde68a', sitar_radiance: '#f97316',

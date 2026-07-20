@@ -6452,7 +6452,7 @@ function DailyTab() {
       <ImageBackground
         source={bgUri ? { uri: bgUri } : undefined}
         style={StyleSheet.absoluteFillObject}
-        imageStyle={{ opacity: 0.65, resizeMode: 'cover' }}
+        imageStyle={{ opacity: 1, resizeMode: 'cover' }}
       />
 
       {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}

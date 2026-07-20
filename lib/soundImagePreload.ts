@@ -8,6 +8,34 @@ import { SOUND_IMAGES, ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 
 const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache-v3/';
 
+async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: number = 15000): Promise<void> {
+  const tmpPath = finalPath + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+  const resumable = FileSystem.createDownloadResumable(url, tmpPath);
+  let timeoutId: any;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      resumable.cancelAsync().catch(() => {});
+      reject(new Error('timeout'));
+    }, timeoutMs);
+  });
+
+  try {
+    const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    if (res && res.status >= 200 && res.status < 400) {
+      await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
+    } else {
+      throw new Error(`HTTP ${res?.status}`);
+    }
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    throw e;
+  }
+}
+
+
 // In-memory map: remote URL → local file URI (populated during prefetch/cache-hit)
 const LOCAL_URI_MAP: Record<string, string> = {};
 
@@ -87,15 +115,12 @@ async function cacheOne(url: string): Promise<void> {
         return;
       }
       await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
-      // Atomic write to prevent partial/corrupted files if app is killed mid-download
-      await FileSystem.downloadAsync(url, tmpPath);
-      await FileSystem.moveAsync({ from: tmpPath, to: path });
+      await safeDownloadAndMove(url, path);
       LOCAL_URI_MAP[url] = path;
       _urlSubs.get(url)?.forEach(cb => cb());
       _urlSubs.delete(url);
     } catch (e) {
       // silent — remote URL remains as fallback on next render
-      await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
       throw e;
     } finally {
       delete IN_FLIGHT_DOWNLOADS[url];

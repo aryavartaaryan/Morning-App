@@ -166,6 +166,22 @@ export const WAKE_SOUNDS: WakeSound[] = [
     audioUrl: 'https://audio.onesutralabs.com/sounds-large/shiv-sankalpa-suktam.m4a',
     category: 'mantra',
   },
+  {
+    id: 'om_chant_cosmic',
+    label: 'Om Chanting (Cosmic Sound)',
+    icon: '🕉️',
+    audioUrl: 'https://audio.onesutralabs.com/om.mp3',
+    category: 'mantra',
+    isGentle: true,
+  },
+  {
+    id: 'tanpura_nada',
+    label: 'Tanpura (Nada Sound)',
+    icon: '🎵',
+    audioUrl: 'https://audio.onesutralabs.com/Tanpura.mp3',
+    category: 'mantra',
+    isGentle: true,
+  },
 
   // ── Gentle wake sounds ─────────────────────────────────────────────────────
   {

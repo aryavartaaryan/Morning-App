@@ -161,7 +161,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Image matching Setup Screen */}
-      <Image source={require('@/assets/images/splash_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={{ uri: 'https://images.pexels.com/photos/14314635/pexels-photo-14314635.jpeg' }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}
@@ -258,6 +258,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const [subtitleIdx, setSubtitleIdx] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef2 = useRef<Audio.Sound | null>(null);
 
   const progressRef = useRef(progress);
   useEffect(() => { progressRef.current = progress; }, [progress]);
@@ -309,34 +310,48 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     }).catch(() => {});
 
     Audio.Sound.createAsync(
-      { uri: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/converted/Aupicious%20Mantras.m4a' },
+      { uri: 'https://audio.onesutralabs.com/Tanpura.mp3' },
       { shouldPlay: true, isLooping: true, isMuted: false, volume: 0.65 }
     ).then(({ sound }) => {
       if (isCancelled) {
         sound.unloadAsync();
       } else {
         soundRef.current = sound;
-        // Apply current mute state via ref in case user toggled before load finished
         sound.setIsMutedAsync(isMutedRef.current).catch(() => {});
       }
-    }).catch((e) => { console.log("Failed to load setup audio", e); });
+    }).catch((e) => { console.log("Failed to load setup audio 1", e); });
+
+    Audio.Sound.createAsync(
+      { uri: 'https://audio.onesutralabs.com/om.mp3' },
+      { shouldPlay: true, isLooping: true, isMuted: false, volume: 0.65 }
+    ).then(({ sound }) => {
+      if (isCancelled) {
+        sound.unloadAsync();
+      } else {
+        soundRef2.current = sound;
+        sound.setIsMutedAsync(isMutedRef.current).catch(() => {});
+      }
+    }).catch((e) => { console.log("Failed to load setup audio 2", e); });
 
     return () => {
       isCancelled = true;
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
+      if (soundRef.current) soundRef.current.unloadAsync();
+      if (soundRef2.current) soundRef2.current.unloadAsync();
       clearInterval(interval);
     };
   }, []); // Run only once on mount
 
   // Stop audio gracefully when progress hits 98%
   useEffect(() => {
-    if (progress >= 0.98 && soundRef.current) {
-      soundRef.current.setVolumeAsync(0).catch(() => {});
-      setTimeout(() => {
-        soundRef.current?.stopAsync().catch(() => {});
-      }, 600);
+    if (progress >= 0.98) {
+      if (soundRef.current) {
+        soundRef.current.setVolumeAsync(0).catch(() => {});
+        setTimeout(() => { soundRef.current?.stopAsync().catch(() => {}); }, 600);
+      }
+      if (soundRef2.current) {
+        soundRef2.current.setVolumeAsync(0).catch(() => {});
+        setTimeout(() => { soundRef2.current?.stopAsync().catch(() => {}); }, 600);
+      }
     }
   }, [progress >= 0.98]);
 
@@ -344,6 +359,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   useEffect(() => {
     if (isFadingOut) {
       if (soundRef.current) soundRef.current.unloadAsync();
+      if (soundRef2.current) soundRef2.current.unloadAsync();
       Animated.parallel([
         Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true })
@@ -356,9 +372,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const toggleMute = () => {
     setIsMuted(prev => {
       const next = !prev;
-      if (soundRef.current) {
-        soundRef.current.setIsMutedAsync(next).catch(() => {});
-      }
+      if (soundRef.current) soundRef.current.setIsMutedAsync(next).catch(() => {});
+      if (soundRef2.current) soundRef2.current.setIsMutedAsync(next).catch(() => {});
       return next;
     });
   };
@@ -381,7 +396,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('@/assets/images/splash_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={{ uri: 'https://images.pexels.com/photos/14314635/pexels-photo-14314635.jpeg' }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}
@@ -411,10 +426,10 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
           <Ionicons name="musical-notes-outline" size={13} color="#93c5fd" style={{ marginRight: 10, opacity: 0.85, marginTop: 1 }} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_400Regular', fontSize: 10, letterSpacing: 0.4, marginBottom: 2 }}>
-              Playing <Text style={{ color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_700Bold' }}>Auspicious Mantras</Text>
+              Playing <Text style={{ color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_700Bold' }}>Nada (Cosmic Sound)</Text>
             </Text>
             <Text style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_400Regular', fontSize: 9, lineHeight: 13 }}>
-              Ancient Swasti invocations to weave harmony, grace, and boundless auspicious energy into your life.
+              Nada means "Sound". The universe resonates in two forms: Ahat (struck) and Anahata (unstruck). Heal and harmonize with the cosmic vibration of Nada.
             </Text>
           </View>
         </View>
@@ -667,10 +682,10 @@ function BodhiNotificationListener() {
         // wasAlarmFired() can stay true on the native side after a completed alarm cycle
         // causing a crash loop where alarm-ringing remounts into a stopped native service.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 30-minute window (was 5 min) — prevents auto-reopen even if the native
+        // 5-second window — prevents auto-reopen even if the native
         // wasAlarmFired() flag is slow to clear after stopAlarmSound() or cancelAlarm().
-        if (handled && Date.now() - Number(handled) < 1_800_000) {
-          // Handled within last 30 minutes = just completed this cycle. Prevent crash loop.
+        if (handled && Date.now() - Number(handled) < 5000) {
+          // Handled within last 5 seconds = just completed this cycle. Prevent crash loop.
           alarmRoutedRef.current = true; // suppress future routing this session
           return;
         }
@@ -705,9 +720,9 @@ function BodhiNotificationListener() {
         // Guard: skip routing if alarm was already handled — prevents crash loop
         // caused by wasAlarmFired() persisting after a completed alarm cycle.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 30-minute window — same as cold-start guard above.
-        if (handled && Date.now() - Number(handled) < 1_800_000) {
-          // Handled within last 30 minutes = just completed. Prevent crash loop.
+        // 5-second window
+        if (handled && Date.now() - Number(handled) < 5000) {
+          // Handled within last 5 seconds = just completed. Prevent crash loop.
           alarmRoutedRef.current = true;
           return;
         }
@@ -746,8 +761,8 @@ function BodhiNotificationListener() {
       if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
       (async () => {
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 30-minute window — prevents deep-link from re-opening dismissed alarm
-        if (handled && Date.now() - Number(handled) < 1_800_000) {
+        // 5-second window — prevents deep-link from re-opening dismissed alarm
+        if (handled && Date.now() - Number(handled) < 5000) {
           alarmRoutedRef.current = true; return;
         }
         const fired = await getInitialAlarmNotification().catch(() => false);
@@ -1546,10 +1561,17 @@ export default function RootLayout() {
               error={dlError}
               onRetry={() => setRetryTrigger(prev => prev + 1)}
               isFadingOut={phase === 'downloading_done'}
-              onFadeOutComplete={() => setPhase('done')}
+              onFadeOutComplete={async () => {
+                setPhase('done');
+                // Request permissions sequentially after the setup screen has faded away and the home screen is visible.
+                try { await Location.requestForegroundPermissionsAsync(); } catch (e) {}
+                try { await requestAllAlarmPermissions(); } catch (e) {}
+                try { await ImagePicker.requestCameraPermissionsAsync(); } catch (e) {}
+                try { await ImagePicker.requestMediaLibraryPermissionsAsync(); } catch (e) {}
+              }}
             />
-            {/* Touch blocker — prevents taps reaching the home page during setup */}
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-only" />
+            {/* Touch blocker — prevents taps reaching the home page during setup but sits behind DownloadScreen */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }} pointerEvents="box-only" />
           </>
         )}
 

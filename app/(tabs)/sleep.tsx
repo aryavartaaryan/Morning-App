@@ -3767,7 +3767,7 @@ function SleepTabInner() {
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
       style={[S.screen, { backgroundColor: bgUri ? accentColor : '#04040E' }]}
-      imageStyle={{ opacity: 0.72, resizeMode: 'cover' }}>
+      imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       {/* Premium frosted-glass gradient overlay — lets background image breathe while keeping text readable */}
       <LinearGradient
         colors={[

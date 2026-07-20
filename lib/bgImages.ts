@@ -5,6 +5,33 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { store, KEYS } from '@/lib/storage';
 
+async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: number = 15000): Promise<void> {
+  const tmpPath = finalPath + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+  const resumable = FileSystem.createDownloadResumable(url, tmpPath);
+  let timeoutId: any;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      resumable.cancelAsync().catch(() => {});
+      reject(new Error('timeout'));
+    }, timeoutMs);
+  });
+
+  try {
+    const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    if (res && res.status >= 200 && res.status < 400) {
+      await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
+    } else {
+      throw new Error(`HTTP ${res?.status}`);
+    }
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    throw e;
+  }
+}
+
 export const BG_URLS: Record<string, string> = {
   brahma:     'https://images.pexels.com/photos/20494584/pexels-photo-20494584.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn:    'https://images.pexels.com/photos/1334116/pexels-photo-1334116.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -132,12 +159,7 @@ export async function getBgSource(key: string): Promise<string> {
     }
     // Not cached yet — use network now, cache in background
     FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true })
-      .then(() => {
-        const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
-        return FileSystem.downloadAsync(url, tmpPath)
-          .then(() => FileSystem.moveAsync({ from: tmpPath, to: path }))
-          .catch(() => FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {}));
-      })
+      .then(() => safeDownloadAndMove(url, path))
       .then(() => { BG_LOCAL_MAP[key] = path; })
       .catch(() => {});
     return url;
@@ -179,14 +201,12 @@ export async function ensureAllBgsCached(): Promise<void> {
 
         const needsDownload = urlChanged || !isValid;
         if (needsDownload) {
-          const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
           try {
-            await FileSystem.downloadAsync(url, tmpPath);
-            await FileSystem.moveAsync({ from: tmpPath, to: path });
+            await safeDownloadAndMove(url, path);
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch {
-            await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+            // silent fail, keeps old file if exists
           }
         } else {
           updatedHashes[key] = urlHash;
@@ -239,9 +259,7 @@ export async function ensureBgKey(key: string): Promise<string> {
   try {
     const path = cachePath(key);
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true }).catch(() => {});
-    const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
-    await FileSystem.downloadAsync(url, tmpPath);
-    await FileSystem.moveAsync({ from: tmpPath, to: path });
+    await safeDownloadAndMove(url, path);
     BG_LOCAL_MAP[key] = path;
     return path;
   } catch {
@@ -293,16 +311,11 @@ export async function ensureAllBgsCachedWithProgress(
 
         const needsDownload = urlChanged || !isValid;
         if (needsDownload) {
-          const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
           try {
-            await Promise.race([
-              FileSystem.downloadAsync(url, tmpPath).then(() => FileSystem.moveAsync({ from: tmpPath, to: path })),
-              _timeout(PER_IMAGE_TIMEOUT_MS),
-            ]);
+            await safeDownloadAndMove(url, path);
             updatedHashes[key] = urlHash;
             BG_LOCAL_MAP[key]  = path;
           } catch (e) {
-            await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
             throw e;
           }
         } else {
