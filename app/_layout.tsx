@@ -20,6 +20,9 @@ import { store, KEYS } from '@/lib/storage';
 import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 import { scheduleHabitReminders, setupNotificationChannel, NOTIFICATION_SPEECHES } from '@/lib/notifications';
 import { getInitialAlarmNotification, requestAllAlarmPermissions, checkAndRescheduleDaily, syncNativeWakeAlarmSound, ALARM_NOTIF_ID } from '@/lib/nativeAlarm';
 import * as ImagePicker from 'expo-image-picker';
@@ -161,7 +164,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Image matching Setup Screen */}
-      <Image source={{ uri: 'https://images.pexels.com/photos/14314635/pexels-photo-14314635.jpeg' }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}
@@ -247,6 +250,86 @@ const SETUP_SUBTITLES = [
   'Align your rhythm with the universe\'s wisdom',
   'A new dawn of conscious living awaits you',
 ];
+
+function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
+  const [q1, setQ1] = useState<string[]>([]);
+  const [q2, setQ2] = useState<string | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+  }, []);
+
+  const tags1 = ['Reduce Stress', 'Regain Focus', 'Digital Detox', 'Reduce Brain Fog', 'Reconnect with Nature', 'Improve Sleep'];
+  const tags2 = ['Mostly Sedentary', 'Lightly Active', 'Very Active'];
+
+  const canContinue = q1.length > 0 && q2;
+
+  const toggleQ1 = (tag: string) => {
+    setQ1(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleComplete = () => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start(() => {
+      // Intelligently set default intention based on rhythm
+      const target = q2 === 'Mostly Sedentary' ? '21000' : q2 === 'Lightly Active' ? '35000' : '50000';
+      AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
+      AsyncStorage.setItem('sc_intentions', JSON.stringify(q1)).catch(() => {});
+      onComplete();
+    });
+  };
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
+      
+      <View style={{ flex: 1, zIndex: 10 }}>
+        <Text style={{ fontSize: 36, color: '#bfdbfe', fontFamily: 'Nunito_900Black', marginBottom: 8, letterSpacing: 2 }}>Welcome</Text>
+        <Text style={{ fontSize: 16, color: 'rgba(147,197,253,0.7)', fontFamily: 'DancingScript_600SemiBold', marginBottom: 48, letterSpacing: 1 }}>Begin your conscious journey...</Text>
+        
+        <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>What brings you to Nada?</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 48 }}>
+          {tags1.map(t => {
+            const isSelected = q1.includes(t);
+            return (
+              <TouchableOpacity key={t} onPress={() => toggleQ1(t)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: isSelected ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: isSelected ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
+                <Text style={{ color: isSelected ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>Your Current Rhythm?</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          {tags2.map(t => (
+            <TouchableOpacity key={t} onPress={() => setQ2(t)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: q2 === t ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: q2 === t ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ color: q2 === t ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={{ zIndex: 10, paddingBottom: 40 }}>
+        <TouchableOpacity 
+          disabled={!canContinue}
+          onPress={handleComplete}
+          activeOpacity={0.8}
+          style={{ 
+            backgroundColor: canContinue ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.03)', 
+            paddingVertical: 18, 
+            borderRadius: 30, 
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: canContinue ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.05)'
+          }}>
+          <Text style={{ color: canContinue ? '#bfdbfe' : 'rgba(255,255,255,0.2)', fontFamily: 'Nunito_800ExtraBold', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Begin Journey</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+}
+
 
 function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOutComplete }: { progress: number; label: string; error?: boolean; onRetry?: () => void; isFadingOut?: boolean; onFadeOutComplete?: () => void }) {
   const pulseAnim   = useRef(new Animated.Value(0)).current;
@@ -387,6 +470,22 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const cMain = 2 * Math.PI * rMain;
   const offsetMain = cMain * (1 - Math.min(progress, 1));
 
+  const animatedProgress = useRef(new Animated.Value(progress)).current;
+  useEffect(() => {
+    Animated.timing(animatedProgress, {
+      toValue: progress,
+      duration: 350,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false
+    }).start();
+  }, [progress]);
+
+  const offsetMainAnim = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [cMain, 0],
+    extrapolate: 'clamp'
+  });
+
   const rInner2 = 95; // slightly larger for glassy core
 
   // Premium Minimalist Glassy Sky Blue Colors (Matching Home Page)
@@ -396,7 +495,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={{ uri: 'https://images.pexels.com/photos/14314635/pexels-photo-14314635.jpeg' }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}
@@ -491,31 +590,31 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
             {/* Track */}
             <Circle cx={cx} cy={cx} r={rMain} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={6} />
             {/* Wide outer glow stroke */}
-            <Circle
+            <AnimatedCircle
               cx={cx} cy={cx} r={rMain}
               fill="none" stroke="#93c5fd" strokeWidth={6 + 16} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
               transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.14}
             />
             {/* Mid glow stroke */}
-            <Circle
+            <AnimatedCircle
               cx={cx} cy={cx} r={rMain}
               fill="none" stroke="#7dd3fc" strokeWidth={6 + 8} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
               transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.26}
             />
             {/* Main crisp stroke */}
-            <Circle
+            <AnimatedCircle
               cx={cx} cy={cx} r={rMain}
               fill="none" stroke="#60a5fa" strokeWidth={6} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
               transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.96}
             />
             {/* Inner highlight sliver */}
-            <Circle
+            <AnimatedCircle
               cx={cx} cy={cx} r={rMain}
               fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={String(offsetMain)}
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
               transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.40}
             />
           </Svg>
@@ -533,10 +632,13 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
         {/* Status */}
         {error ? (
           <View style={{ alignItems: 'center', height: 80 }}>
-            <Text style={[DS.statusLabel, { color: skyBlue, textTransform: 'uppercase', letterSpacing: 2 }]}>AWAITING CONNECTION...</Text>
-            <View style={{ marginTop: 12 }}>
-              <Text style={{ color: etherealWhite, fontSize: 12, fontFamily: 'Nunito_400Regular' }}>Will auto-resume when online</Text>
-            </View>
+            <Text style={[DS.statusLabel, { color: skyBlue, textTransform: 'uppercase', letterSpacing: 2 }]}>CONNECTION INTERRUPTED</Text>
+            <TouchableOpacity 
+              onPress={onRetry}
+              activeOpacity={0.7}
+              style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'rgba(96,165,250,0.15)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)' }}>
+              <Text style={{ color: skyBlue, fontSize: 12, fontFamily: 'Nunito_700Bold' }}>Tap to Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={{ alignItems: 'center', height: 80 }}>
@@ -1261,6 +1363,8 @@ export default function RootLayout() {
 
   const [authReady,   setAuthReady]   = useState(false);
   const [phase,       setPhase]       = useState<AppPhase>('gate');
+  const [showSurvey,  setShowSurvey]  = useState(false);
+  const [surveyFinishedSignal, setSurveyFinishedSignal] = useState(0);
   const [dlProgress,  setDlProgress]  = useState(0);
   const [dlLabel,     setDlLabel]     = useState('Preparing...');
   const [dlError,     setDlError]     = useState(false);
@@ -1283,18 +1387,10 @@ export default function RootLayout() {
   //   • Solar positions, Ayurvedic periods etc. are pure JS computation — instant.
   //   • On subsequent opens all BGs are already cached → gate resolves in <50 ms.
   useEffect(() => {
-    if (!dlError) return;
-    const unsubscribe = NetInfo.addEventListener(state => {
-      if (state.isConnected && state.isInternetReachable !== false) {
-        setRetryTrigger(t => t + 1); // Auto-resume when connection returns
-      }
-    });
-    return () => unsubscribe();
-  }, [dlError]);
-
-  useEffect(() => {
     if (!fontsLoaded) return;
     let cancelled = false;
+    // NetInfo auto-retry removed to prevent infinite restart loops on flaky connections.
+    // The user can now use the explicit 'Tap to Retry' button if a download fails.
 
     (async () => {
       try {
@@ -1314,21 +1410,6 @@ export default function RootLayout() {
           bgWarmup,
           new Promise<void>(resolve => setTimeout(resolve, 3000)),
         ]).catch(() => {});
-        // Warm sound image map — MUST be awaited before showing any UI.
-        // This populates LOCAL_URI_MAP so getLocalSoundImageUri() returns
-        // the local file:// path synchronously at render time.
-        // Without this await, cards render with remote URLs (may fail offline).
-        // ── COLD-BOOT FIX: Absolute 5-second timeout ──────────────────────────
-        // warmSoundImageMap() does 50+ FileSystem.getInfoAsync calls in parallel.
-        // On first cold boot after phone restart the Android filesystem/JNI
-        // bridge can hang. A 5s absolute timeout ensures the startup gate always
-        // advances even if the filesystem isn't fully ready yet. On subsequent
-        // opens all cache hits are in-memory and the timeout never fires.
-        await Promise.race([
-          warmSoundImageMap(),
-          new Promise<void>(resolve => setTimeout(resolve, 5000)),
-        ]).catch(() => {});
-
         // ── FIRST-INSTALL GATE ────────────────────────────────────────────
         // Use a persistent AsyncStorage flag as the primary check.
         // isSplashCached() reads an in-memory map (BG_LOCAL_MAP) that resets
@@ -1345,17 +1426,27 @@ export default function RootLayout() {
         const SETUP_DONE_KEY       = 'arise_bg_setup_done_v2';
         const SETUP_INPROGRESS_KEY = 'arise_bg_setup_inprogress_v1';
         const SETUP_PROGRESS_KEY   = 'arise_bg_setup_progress_val';
-        const [setupFlagRaw, inProgressRaw, savedProgressRaw] = await Promise.all([
+        const SETUP_SURVEY_DONE    = 'arise_survey_done_v1';
+        
+        const [setupFlagRaw, inProgressRaw, savedProgressRaw, surveyDoneRaw] = await Promise.all([
           AsyncStorage.getItem(SETUP_DONE_KEY).catch(() => null),
           AsyncStorage.getItem(SETUP_INPROGRESS_KEY).catch(() => null),
           AsyncStorage.getItem(SETUP_PROGRESS_KEY).catch(() => null),
+          AsyncStorage.getItem(SETUP_SURVEY_DONE).catch(() => null),
         ]);
+        
         const setupDone       = !!setupFlagRaw;
         const setupInProgress = !!inProgressRaw;   // killed mid-download last time
+        const surveyDone      = !!surveyDoneRaw;
+        
         // Treat as first install if never completed, interrupted mid-download, or missing required files.
         const isFirstInstall  = !setupDone || setupInProgress || !isBgFullyCached();
 
         if (isFirstInstall) {
+          if (!surveyDone) {
+            setShowSurvey(true);
+            return; // Do not start background download yet
+          }
           // First install (or interrupted resume): gate on BG images + sound
           // card images together. Both run with high concurrency for speed.
           // After this, every sound card and every reel has its image ready.
@@ -1394,7 +1485,7 @@ export default function RootLayout() {
             }
           };
 
-          setDlLabel('Setting up...');
+          setDlLabel('Preparing the app for you. Listen to the Nada sound till then and calm down...');
           // Phase 1: BG images (critical — splash depends on these)
           // Wrapped in its own try-catch so a network failure shows the error UI
           // rather than crashing the entire setup flow.
@@ -1443,6 +1534,23 @@ export default function RootLayout() {
           setPhase('downloading_done');
           return;
         } else {
+          // Warm sound image map — MUST be awaited before showing any UI.
+          // This populates LOCAL_URI_MAP so getLocalSoundImageUri() returns
+          // the local file:// path synchronously at render time.
+          // Without this await, cards render with remote URLs (may fail offline).
+          // ── COLD-BOOT FIX: Absolute 5-second timeout ──────────────────────────
+          // warmSoundImageMap() does 50+ FileSystem.getInfoAsync calls in parallel.
+          // On first cold boot after phone restart the Android filesystem/JNI
+          // bridge can hang. A 5s absolute timeout ensures the startup gate always
+          // advances even if the filesystem isn't fully ready yet. On subsequent
+          // opens all cache hits are in-memory and the timeout never fires.
+          await Promise.race([
+            warmSoundImageMap(),
+            new Promise<void>(resolve => setTimeout(resolve, 5000)),
+          ]).catch(() => {});
+          
+          if (cancelled) return;
+          
           // Subsequent opens — ensure the flag is set (handles upgrade from
           // older builds that had no flag but already had images on disk).
           if (!setupDone) AsyncStorage.setItem(SETUP_DONE_KEY, '1').catch(() => {});
@@ -1495,7 +1603,7 @@ export default function RootLayout() {
     })();
 
     return () => { cancelled = true; };
-  }, [fontsLoaded, retryTrigger]);
+  }, [fontsLoaded, retryTrigger, surveyFinishedSignal]);
 
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
 
@@ -1549,11 +1657,11 @@ export default function RootLayout() {
         {/* ── SETUP OVERLAY — sits on top of the already-mounted Stack ── */}
         {/* gate: very first open before we know if setup is needed */}
         {phase === 'gate' && (
-          <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
+          <SplashOverlay key="naad-splash-gate" onDone={() => {}} bgUri={splashBgUri} />
         )}
 
         {/* downloading / downloading_done: first-install setup ring */}
-        {(phase === 'downloading' || phase === 'downloading_done') && (
+        {(phase === 'downloading' || phase === 'downloading_done') && !showSurvey && (
           <>
             <DownloadScreen
               progress={dlProgress}
@@ -1563,16 +1671,21 @@ export default function RootLayout() {
               isFadingOut={phase === 'downloading_done'}
               onFadeOutComplete={async () => {
                 setPhase('done');
-                // Request permissions sequentially after the setup screen has faded away and the home screen is visible.
-                try { await Location.requestForegroundPermissionsAsync(); } catch (e) {}
-                try { await requestAllAlarmPermissions(); } catch (e) {}
-                try { await ImagePicker.requestCameraPermissionsAsync(); } catch (e) {}
-                try { await ImagePicker.requestMediaLibraryPermissionsAsync(); } catch (e) {}
+                // Removed aggressive permission popups to allow just-in-time requests.
               }}
             />
             {/* Touch blocker — prevents taps reaching the home page during setup but sits behind DownloadScreen */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }} pointerEvents="box-only" />
           </>
+        )}
+
+        {/* Survey screen (Blocks download until finished) */}
+        {showSurvey && (
+          <OnboardingSurveyScreen onComplete={() => {
+             AsyncStorage.setItem('arise_survey_done_v1', '1').catch(() => {});
+             setShowSurvey(false);
+             setSurveyFinishedSignal(prev => prev + 1);
+          }} />
         )}
 
       </SafeAreaProvider>

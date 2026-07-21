@@ -24,6 +24,7 @@ import {
   type AppStateStatus,
   ImageBackground,
   DeviceEventEmitter,
+  TextInput,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,7 +60,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 230;
+const RING_SIZE   = 270;
 const RING_STROKE = 14;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -324,12 +325,12 @@ export default function WalkTab() {
         contentContainerStyle={{ paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
       >
         {/* ── HEADER ────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 15 }}>
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 5 }}>
           <View style={{
             width: '100%',
             alignItems: 'center',
             paddingHorizontal: 20,
-            paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
+            paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)),
           }}>
             <Text style={{
               fontSize: 28,
@@ -352,11 +353,11 @@ export default function WalkTab() {
         </Animated.View>
 
         {/* ── TAGLINE CARD ────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 24, marginBottom: 20 }}>
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 24, marginBottom: 12 }}>
           <View style={{
             backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
-            borderRadius: 20,
-            padding: 16,
+            borderRadius: 16,
+            padding: 12,
             borderWidth: 1, borderColor: 'rgba(96,165,250,0.15)',
             alignItems: 'center',
             overflow: 'hidden',
@@ -376,23 +377,29 @@ export default function WalkTab() {
           </View>
         </Animated.View>
 
-        {/* View Analytics Button - sleek pill */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 25 }}>
+        {/* View Analytics Button - sleek premium iOS style */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 28, zIndex: 10 }}>
           <TouchableOpacity
             onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-              paddingHorizontal: 20, paddingVertical: 8,
-              borderRadius: 24,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: 'rgba(0, 0, 0, 0.25)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+              paddingHorizontal: 24, paddingVertical: 12,
+              borderRadius: 30,
               overflow: 'hidden',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5,
             }}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
-            <Ionicons name="bar-chart" size={13} color="#fff" />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 1.2, textTransform: 'uppercase' }}>View Analytics</Text>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="stats-chart" size={14} color="#93c5fd" />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#e0f2fe', letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'Nunito_700Bold' }}>View Analytics</Text>
+            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.4)" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -442,23 +449,23 @@ export default function WalkTab() {
             <View style={st.ringCentre}>
               
               {weather ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, opacity: 0.95 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, opacity: 0.95 }}>
                   <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                     {weather.temp}° • {weather.condition}
                   </Text>
                 </View>
               ) : (
-                <View style={{ height: 20, marginBottom: 10 }} />
+                <View style={{ height: 10, marginBottom: 6 }} />
               )}
               
               {/* Badge */}
-              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 6 }}>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 2 }}>
                 <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.5 }}>STEPS TODAY</Text>
               </View>
               
               <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
-              <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
+              <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} INTENTION</Text>
               
               <View style={st.ringDivider} />
               
@@ -479,13 +486,13 @@ export default function WalkTab() {
                 </View>
               </View>
               
-              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(96,165,250,0.2)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', marginTop: 14 }}>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(96,165,250,0.2)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', marginTop: 10 }}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: '#93c5fd', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
               </View>
               
               {/* Yesterday motivational display */}
               {stats.totalSteps === 0 && yesterdaySteps > 0 && (
-                <View style={{ marginTop: 10, alignItems: 'center', opacity: 0.85 }}>
+                <View style={{ marginTop: 8, alignItems: 'center', opacity: 0.85 }}>
                   <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(59,130,246,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
                   <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa' }}>{fmtK(yesterdaySteps)} steps</Text>
                 </View>
@@ -498,15 +505,15 @@ export default function WalkTab() {
           {summary && summary.weeklyGoal > 0 && (
             <View style={{ width: '100%', paddingHorizontal: 32, marginTop: 30 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Goal</Text>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: '#60a5fa' }}>{summary.weeklyGoalPercent}%</Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Intention</Text>
+                <Text style={{ fontSize: 13, fontWeight: '900', color: ringHex }}>{summary.weeklyGoalPercent}%</Text>
               </View>
               
               <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
                 <View style={{ 
                   position: 'absolute', left: 0, top: 0, bottom: 0, 
                   width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
-                  backgroundColor: '#60a5fa', borderRadius: 5 
+                  backgroundColor: ringHex, borderRadius: 5 
                 }}>
                   <LinearGradient
                     colors={['rgba(255,255,255,0.3)', 'transparent']}
@@ -530,15 +537,15 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 18, elevation: 8 }}
+            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: ringHex, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 18, elevation: 8 }}
           >
             <LinearGradient
-              colors={['rgba(56,189,248,0.3)', 'rgba(14,165,233,0.15)']}
+              colors={[`${ringHex}60`, `${ringHex}25`]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ paddingVertical: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
               <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFillObject} />
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(56,189,248,0.4)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: `${ringHex}70` }} />
               
               {/* Top shine */}
               <LinearGradient
@@ -562,7 +569,7 @@ export default function WalkTab() {
                 />
               </Animated.View>
               
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(14,165,233,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: ringHex, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }}>
                 {sessionTitle}
               </Text>
             </LinearGradient>
@@ -583,7 +590,7 @@ export default function WalkTab() {
               <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
               
               <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.6 }}>
-                {stats.goalSteps > 0 ? "Adjust Today's Intention" : "Set Today's Intention"}
+                {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -595,11 +602,10 @@ export default function WalkTab() {
       {/* ── GOAL MODAL ──────────────────────────────────────────────────────── */}
       <GoalModal
         visible={showGoalModal}
-        current={stats.goalSteps}
         currentWeekly={summary?.weeklyGoal ?? 35000}
         onClose={() => setShowGoalModal(false)}
-        onSave={async (d, w) => {
-          await StepCounter.setDailyGoal(d);
+        accentColor={ringHex}
+        onSave={async (w) => {
           await StepCounter.setWeeklyGoal(w);
           setShowGoalModal(false);
           await refreshStats();
@@ -613,34 +619,21 @@ export default function WalkTab() {
 // Goal modal
 // ─────────────────────────────────────────────────────────────────────────────
 function GoalModal({
-  visible, current, currentWeekly, onClose, onSave,
+  visible, currentWeekly, onClose, onSave, accentColor
 }: {
-  visible: boolean; current: number; currentWeekly: number; onClose: () => void; onSave: (d: number, w: number) => void;
+  visible: boolean; currentWeekly: number; onClose: () => void; onSave: (w: number) => void; accentColor: string;
 }) {
-  const PRESETS_DAILY = [
-    { value: 3000, label: 'Grounding' },
-    { value: 5000, label: 'Harmony' },
-    { value: 6000, label: 'Vitality' },
-    { value: 8000, label: 'Ascension' },
-    { value: 10000, label: 'Awakened' },
-    { value: 12000, label: 'Limitless' }
-  ];
   const PRESETS_WEEKLY = [
     { value: 21000, label: 'Foundation' },
     { value: 35000, label: 'Balance' },
     { value: 50000, label: 'Momentum' },
     { value: 70000, label: 'Mastery' }
   ];
-  const [selected, setSelected] = useState(current);
   const [selectedWeekly, setSelectedWeekly] = useState(currentWeekly);
-  const [tab, setTab] = useState<'daily'|'weekly'>('daily');
 
   useEffect(() => { 
-    if (visible) {
-      setSelected(current); 
-      setSelectedWeekly(currentWeekly);
-    }
-  }, [visible, current, currentWeekly]);
+    if (visible) setSelectedWeekly(currentWeekly);
+  }, [visible, currentWeekly]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -654,42 +647,34 @@ function GoalModal({
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
           <LinearGradient
-            colors={['rgba(96,165,250,0.5)', 'rgba(59,130,246,0.3)', 'rgba(96,165,250,0.5)']}
+            colors={[`${accentColor}80`, `${accentColor}30`, `${accentColor}80`]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           />
           <View style={gm.handle} />
           
-          <Text style={gm.title}>Set Your Intentions</Text>
-          
-          <View style={gm.tabs}>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setTab('daily'); }} style={[gm.tabBtn, tab === 'daily' && gm.tabBtnActive]}>
-              <Text style={[gm.tabTxt, tab === 'daily' && gm.tabTxtActive]}>Daily Minimum</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setTab('weekly'); }} style={[gm.tabBtn, tab === 'weekly' && gm.tabBtnActive]}>
-              <Text style={[gm.tabTxt, tab === 'weekly' && gm.tabTxtActive]}>Weekly Goal</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={gm.title}>Weekly Intention</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Pace your rhythmic journey over 7 days.</Text>
 
           <View style={gm.presets}>
-            {(tab === 'daily' ? PRESETS_DAILY : PRESETS_WEEKLY).map(p => {
-              const isSel = tab === 'daily' ? (selected === p.value) : (selectedWeekly === p.value);
+            {PRESETS_WEEKLY.map(p => {
+              const isSel = (selectedWeekly === p.value);
               return (
                 <TouchableOpacity
                   key={p.value}
-                  onPress={() => { Haptics.selectionAsync(); tab === 'daily' ? setSelected(p.value) : setSelectedWeekly(p.value); }}
-                  style={[gm.preset, tab === 'weekly' && { minWidth: '45%' }, isSel && { backgroundColor: 'rgba(96,165,250,0.2)', borderColor: ACCENT }]}
+                  onPress={() => { Haptics.selectionAsync(); setSelectedWeekly(p.value); }}
+                  style={[gm.preset, { minWidth: '45%' }, isSel && { backgroundColor: `${accentColor}30`, borderColor: accentColor }]}
                 >
                   {isSel && (
                     <LinearGradient
-                      colors={['rgba(96,165,250,0.15)', 'transparent']}
+                      colors={[`${accentColor}25`, 'transparent']}
                       style={StyleSheet.absoluteFillObject}
                     />
                   )}
-                  <Text style={[gm.presetTxt, isSel && { color: ACCENT }]}>
+                  <Text style={[gm.presetTxt, isSel && { color: accentColor }]}>
                     {p.value.toLocaleString()}
                   </Text>
-                  <Text style={[{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }, isSel && { color: ACCENT + 'CC' }]}>
+                  <Text style={[{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }, isSel && { color: `${accentColor}CC` }]}>
                     {p.label}
                   </Text>
                 </TouchableOpacity>
@@ -697,12 +682,26 @@ function GoalModal({
             })}
           </View>
 
+          <View style={{ marginBottom: 28 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, textAlign: 'center' }}>Or enter custom intention</Text>
+            <TextInput
+              style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 20, color: '#fff', fontSize: 24, fontWeight: '800', textAlign: 'center', borderWidth: 1, borderColor: `${accentColor}50` }}
+              keyboardType="number-pad"
+              value={String(selectedWeekly)}
+              onChangeText={t => {
+                const num = parseInt(t.replace(/[^0-9]/g, ''), 10) || 0;
+                setSelectedWeekly(num);
+              }}
+              selectionColor={accentColor}
+            />
+          </View>
+
           <TouchableOpacity
-            style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 10, shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 14, elevation: 6 }}
-            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selected, selectedWeekly); }}
+            style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 10, shadowColor: accentColor, shadowOpacity: 0.4, shadowRadius: 14, elevation: 6 }}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selectedWeekly); }}
           >
             <LinearGradient
-              colors={['#60a5fa', '#2563eb']}
+              colors={[`${accentColor}90`, `${accentColor}40`]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ paddingVertical: 16, alignItems: 'center' }}
             >
@@ -711,7 +710,7 @@ function GoalModal({
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}
               />
-              <Text style={gm.saveTxt}>Save Targets</Text>
+              <Text style={gm.saveTxt}>Set Intention</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12 }}>
@@ -773,7 +772,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  ringSteps:   { fontSize: 44, fontWeight: '900', color: '#ffffff', letterSpacing: -1, textShadowColor: 'rgba(96,165,250,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  ringSteps:   { fontSize: 56, fontFamily: 'Nunito_300Light', color: '#ffffff', letterSpacing: -1.5, textShadowColor: 'rgba(96,165,250,0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
   ringLabel:   { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', letterSpacing: 2.2, marginTop: -2 },
-  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(96,165,250,0.3)', marginVertical: 10 },
+  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(96,165,250,0.3)', marginVertical: 6 },
 });

@@ -71,6 +71,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopAlarmSound(promise: Promise) {
         try {
+            AlarmSoundServiceBase.ALARM_FORCE_STOP.set(true)
             // Write alarm_stopping=true FIRST so that:
             // 1. onTaskRemoved() sees it and does NOT schedule a 1-second AlarmManager restart.
             // 2. The 200ms bringToFrontRunnable in AlarmSoundServiceBase sees it and

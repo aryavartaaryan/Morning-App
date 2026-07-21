@@ -62,7 +62,6 @@ export default function WalkTracker() {
   const uid            = auth.currentUser?.uid;
   useKeepAwake();
 
-  const calories = calsFromKm(distanceKm);
 
   // ── On mount: check permissions ─────────────────────────────────────────────
   useEffect(() => {
@@ -236,7 +235,6 @@ export default function WalkTracker() {
           <View style={s.infoItem}><Text style={s.infoEmoji}>👣</Text><Text style={s.infoLbl}>Pedometer</Text></View>
           <View style={s.infoItem}><Text style={s.infoEmoji}>📍</Text><Text style={s.infoLbl}>GPS Distance</Text></View>
           <View style={s.infoItem}><Text style={s.infoEmoji}>⏱</Text><Text style={s.infoLbl}>Duration</Text></View>
-          <View style={s.infoItem}><Text style={s.infoEmoji}>🔥</Text><Text style={s.infoLbl}>Calories</Text></View>
         </View>
         <TouchableOpacity style={[s.startBtn, { backgroundColor: meta.color }]} onPress={startWalk}>
           <Text style={s.startTxt}>START WALK</Text>
@@ -281,11 +279,6 @@ export default function WalkTracker() {
             <Text style={s.statEmoji}>📍</Text>
             <Text style={[s.statVal, { color: meta.color }]}>{distanceKm.toFixed(2)}</Text>
             <Text style={s.statUnit}>km</Text>
-          </View>
-          <View style={[s.statCard, { borderColor: meta.color + '30' }]}>
-            <Text style={s.statEmoji}>🔥</Text>
-            <Text style={[s.statVal, { color: meta.color }]}>{calories}</Text>
-            <Text style={s.statUnit}>kcal</Text>
           </View>
         </View>
 
@@ -339,11 +332,6 @@ export default function WalkTracker() {
             <Text style={s.summaryLbl}>
               {pedometerAvail ? 'Steps (Sensor)' : 'Steps (Est.)'}
             </Text>
-          </View>
-          <View style={[s.summaryCard, { borderColor: meta.color + '30', backgroundColor: meta.color + '10' }]}>
-            <Text style={s.summaryEmoji}>🔥</Text>
-            <Text style={[s.summaryBig, { color: meta.color }]}>{calories}</Text>
-            <Text style={s.summaryLbl}>kcal</Text>
           </View>
         </View>
 

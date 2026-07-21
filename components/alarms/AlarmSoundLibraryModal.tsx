@@ -188,9 +188,9 @@ export default function AlarmSoundLibraryModal({
                   return (
                     <View key={cat} style={{ marginBottom: 24 }}>
                       <Text style={S.categoryHeader}>{cat}</Text>
-                      <View style={S.grid}>
+                      <View style={S.listGrid}>
                         {catSounds.map(item => (
-                          <SoundGridCard 
+                          <SoundListCard 
                             key={item.id}
                             sound={item} 
                             isSelected={selectedId === item.id}
@@ -207,9 +207,9 @@ export default function AlarmSoundLibraryModal({
                   );
                 })
               ) : (
-                <View style={S.grid}>
+                <View style={S.listGrid}>
                   {filteredSounds.map(item => (
-                    <SoundGridCard 
+                    <SoundListCard 
                       key={item.id}
                       sound={item} 
                       isSelected={selectedId === item.id}
@@ -258,12 +258,9 @@ export default function AlarmSoundLibraryModal({
   );
 }
 
-const CARD_MARGIN = 6;
-// Calculate 3 items per row with margins
-const CARD_W = (W - 32 - (CARD_MARGIN * 4)) / 3;
-const CARD_H = CARD_W * 1.15; // Slightly taller than square
 
-function SoundGridCard({ 
+
+function SoundListCard({ 
   sound, isSelected, isPreviewing, isLoading, status, progress, onSelect, onTogglePreview 
 }: { 
   sound: AlarmSoundItem, isSelected: boolean, isPreviewing: boolean, isLoading?: boolean, status?: string, progress?: number, onSelect: () => void, onTogglePreview: () => void 
@@ -272,72 +269,58 @@ function SoundGridCard({
   const imageUri = SOUND_IMAGES[sound.id];
 
   return (
-    <View style={[S.cardWrapper, isSelected && { borderColor: highlightColor, backgroundColor: highlightColor + '15' }]}>
-      <TouchableOpacity 
-        style={S.cardMainArea}
-        onPress={onSelect}
-        activeOpacity={0.8}
-      >
-        <View style={S.cardInner}>
-          {imageUri ? (
-            <View style={StyleSheet.absoluteFill}>
-              <Image 
-                source={{ uri: imageUri }} 
-                style={StyleSheet.absoluteFill} 
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.48)', 'rgba(0,0,0,0.88)']}
-                style={StyleSheet.absoluteFillObject}
-              />
-            </View>
-          ) : (
-            <LinearGradient
-              colors={[highlightColor + '30', 'rgba(0,0,0,0.8)']}
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
-
-          {isSelected && (
-            <View style={S.selectedBadge}>
-              <Feather name="check" size={10} color="#fff" />
-            </View>
-          )}
-
-          <View style={S.cardContent}>
-            <View style={S.emojiContainer}>
-              <Text style={{ fontSize: 16 }}>{sound.emoji || '🎵'}</Text>
-            </View>
-            <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 6 }}>
-              <Text style={[S.cardTitle, isSelected && { color: highlightColor }]} numberOfLines={2}>
-                {sound.label}
-              </Text>
-              {isSelected ? (
-                <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: highlightColor, marginTop: 2, letterSpacing: 1 }}>SELECTED</Text>
-              ) : null}
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-
-      {/* Play/Pause Button Area positioned at the top right inside the card */}
-      <TouchableOpacity 
-        style={[S.playBtn, isPreviewing && { backgroundColor: highlightColor + '40', borderColor: highlightColor }]}
-        onPress={onTogglePreview}
-        activeOpacity={0.8}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        {isLoading ? (
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: highlightColor }} />
-        ) : status === 'downloading' ? (
-          <Text style={{ fontSize: 8, fontFamily: 'Nunito_800ExtraBold', color: '#fff' }}>{Math.round((progress ?? 0) * 100)}%</Text>
-        ) : isPreviewing ? (
-          <Feather name="square" size={10} color={highlightColor} />
+    <TouchableOpacity 
+      style={[
+        S.listCardWrapper,
+        isSelected && { borderColor: highlightColor, backgroundColor: highlightColor + '15' }
+      ]}
+      onPress={onSelect}
+      activeOpacity={0.8}
+    >
+      <View style={S.listCardThumb}>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <Feather name="play" size={12} color="rgba(255,255,255,0.9)" style={{ marginLeft: 2 }} />
+          <LinearGradient colors={[highlightColor + '40', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFillObject} />
         )}
-      </TouchableOpacity>
-    </View>
+        <View style={S.listCardEmojiWrap}>
+          <Text style={{ fontSize: 22 }}>{sound.emoji || '🎵'}</Text>
+        </View>
+      </View>
+
+      <View style={S.listCardInfo}>
+        <Text style={[S.listCardTitle, isSelected && { color: highlightColor }]} numberOfLines={2}>
+          {sound.label}
+        </Text>
+        <Text style={S.listCardSub} numberOfLines={1}>
+          {sound.desc || sound.cat || 'Premium Sound'}
+        </Text>
+      </View>
+
+      <View style={S.listCardActions}>
+        {isSelected && (
+          <View style={S.listCardCheck}>
+            <Feather name="check-circle" size={20} color={highlightColor} />
+          </View>
+        )}
+        <TouchableOpacity 
+          style={[S.listCardPlayBtn, isPreviewing && { backgroundColor: highlightColor + '40', borderColor: highlightColor }]}
+          onPress={onTogglePreview}
+          activeOpacity={0.8}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
+          {isLoading ? (
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: highlightColor }} />
+          ) : status === 'downloading' ? (
+            <Text style={{ fontSize: 9, fontFamily: 'Nunito_800ExtraBold', color: '#fff' }}>{Math.round((progress ?? 0) * 100)}%</Text>
+          ) : isPreviewing ? (
+            <Feather name="square" size={14} color={highlightColor} />
+          ) : (
+            <Feather name="play" size={16} color="rgba(255,255,255,0.9)" style={{ marginLeft: 2 }} />
+          )}
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -420,12 +403,6 @@ const S = StyleSheet.create({
     fontFamily: 'Nunito_800ExtraBold',
     color: '#fff',
     marginBottom: 12,
-    marginLeft: CARD_MARGIN,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -CARD_MARGIN,
   },
   emptyState: {
     paddingTop: 80,
@@ -436,69 +413,76 @@ const S = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito_400Regular',
   },
-  cardWrapper: {
-    width: CARD_W,
-    height: CARD_H,
-    margin: CARD_MARGIN,
-    borderRadius: 16,
+  listGrid: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  listCardWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 80,
+    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingRight: 12,
   },
-  cardMainArea: {
-    flex: 1,
+  listCardThumb: {
+    width: 80,
+    height: 80,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  cardInner: {
-    flex: 1,
-  },
-  cardContent: {
-    flex: 1,
-    padding: 10,
-  },
-  emojiContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  listCardEmojiWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  listCardInfo: {
+    flex: 1,
+    paddingLeft: 14,
+    justifyContent: 'center',
+  },
+  listCardTitle: {
+    fontSize: 15,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#ffffff',
     marginBottom: 4,
+    lineHeight: 18,
   },
-  cardTitle: { 
-    fontSize: 12, 
-    fontFamily: 'Nunito_700Bold',
-    color: '#ffffff', 
-    lineHeight: 16,
+  listCardSub: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: 'rgba(255,255,255,0.5)',
   },
-  playBtn: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  listCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  listCardCheck: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listCardPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    zIndex: 10,
   },
-  selectedBadge: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-  },
+
 
   // Confirmation Box Styles
   confirmBox: {

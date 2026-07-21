@@ -125,9 +125,12 @@ export default function StepSessionScreen() {
   const palette = getSolarRingPalette(hour, solarNoon, solarTimes, null, null, false, undefined);
   
   const isDynamic = type !== 'postmeal';
-  const C  = isDynamic ? palette.ring : meta.color;
-  const GA = isDynamic ? palette.ring : meta.gradA;
-  const GB = isDynamic ? palette.halo : meta.gradB;
+  
+  // Use the dynamic solar palette so the progress ring colors match the time of day,
+  // sunrise/sunset, and temperature exactly like the homepage.
+  const C  = palette.ring;
+  const GA = palette.ring;
+  const GB = palette.halo;
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [steps,    setSteps]    = useState(0);

@@ -43,6 +43,7 @@ import android.widget.TextView
 abstract class AlarmSoundServiceBase : Service() {
 
     companion object {
+        val ALARM_FORCE_STOP = java.util.concurrent.atomic.AtomicBoolean(false)
         /** Intent action: start the hardware vibration pattern from the running service. */
         const val ACTION_START_VIBRATION = "com.solrize.START_ALARM_VIBRATION"
         /** Intent action: stop the hardware vibration pattern from the running service. */
@@ -241,11 +242,11 @@ abstract class AlarmSoundServiceBase : Service() {
             // By NOT re-posting when isAlarmStopping(), the runnable fully dies the
             // moment the user taps Stop. onDestroy() also calls removeCallbacks() as
             // its first action as a belt-and-suspenders guarantee.
-            if (isAlarmStopping()) {
+            if (isAlarmStopping() || ALARM_FORCE_STOP.get()) {
                 return // stop re-posting — runnable dies here
             }
 
-            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
+            if (isAlarmActive() && !isAppInForeground() && !isPickerActive() && !ALARM_FORCE_STOP.get()) {
                 val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
                 val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
                 val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -735,6 +736,7 @@ abstract class AlarmSoundServiceBase : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ALARM_FORCE_STOP.set(false)
         // ── Vibration control without restarting the service ────────────────
         // JS calls AlarmModule.startAlarmVibration() / stopAlarmVibration()
         // to control vibration during snooze without stopping the FGS.
@@ -877,7 +879,7 @@ abstract class AlarmSoundServiceBase : Service() {
         // The fix: AlarmModule.stopAlarmSound() writes alarm_stopping=true BEFORE
         // clearing alarm_fired_pending. isAlarmStopping() reads that flag here so
         // we never schedule a restart during normal alarm dismissal.
-        if (isAlarmActive() && !isAlarmStopping()) {
+        if (isAlarmActive() && !isAlarmStopping() && !ALARM_FORCE_STOP.get()) {
             // User swiped the app from recents while alarm is GENUINELY active.
             // START_STICKY alone is ignored by many OEM ROMs (MIUI, ColorOS, OneUI).
             // Belt-and-suspenders: schedule an AlarmManager restart in 1 s so audio

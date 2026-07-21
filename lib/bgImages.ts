@@ -21,13 +21,14 @@ async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: nu
     const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
     if (timeoutId) clearTimeout(timeoutId);
     if (res && res.status >= 200 && res.status < 400) {
+      await FileSystem.deleteAsync(finalPath, { idempotent: true }).catch(() => {});
       await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
     } else {
       throw new Error(`HTTP ${res?.status}`);
     }
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
-    await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
     throw e;
   }
 }
@@ -50,7 +51,7 @@ export const BG_URLS: Record<string, string> = {
   midday_early_2: 'https://images.pexels.com/photos/33638423/pexels-photo-33638423.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_mid: 'https://images.pexels.com/photos/7171831/pexels-photo-7171831.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_late: 'https://images.pexels.com/photos/4723256/pexels-photo-4723256.jpeg',
-  midday:     'https://images.pexels.com/photos/8952728/pexels-photo-8952728.jpeg',
+  midday:     'https://images.pexels.com/photos/3269583/pexels-photo-3269583.jpeg',
   midday_mid: 'https://images.pexels.com/photos/14406384/pexels-photo-14406384.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_late: 'https://images.pexels.com/photos/31880368/pexels-photo-31880368.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_late_2: 'https://images.pexels.com/photos/12597857/pexels-photo-12597857.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -81,7 +82,7 @@ export const BG_URLS: Record<string, string> = {
   night:      'https://images.pexels.com/photos/8887270/pexels-photo-8887270.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_late: 'https://images.pexels.com/photos/12490457/pexels-photo-12490457.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg?auto=compress&cs=tinysrgb&w=600',
-  splash:     'https://images.pexels.com/photos/26570345/pexels-photo-26570345.jpeg?auto=compress&cs=tinysrgb&w=600',
+  splash:     'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
   naad_step:  'https://images.pexels.com/photos/8690653/pexels-photo-8690653.jpeg?auto=compress&cs=tinysrgb&w=600',
   naad_step_night: 'https://images.pexels.com/photos/30987027/pexels-photo-30987027.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -137,7 +138,7 @@ export async function warmBgLocalMap(): Promise<void> {
             setTimeout(() => r({ exists: false }), FILE_STAT_TIMEOUT_MS)
           ),
         ]);
-        if ((info as any).exists && (info as any).size > 0) BG_LOCAL_MAP[key] = path;
+        if ((info as any).exists && (info as any).size > 1024) BG_LOCAL_MAP[key] = path;
       } catch { /* ignore */ }
     }),
   );
@@ -299,10 +300,13 @@ export async function ensureAllBgsCachedWithProgress(
       const p = (async () => {
         const path      = cachePath(key);
         const urlHash   = djb2(url);
-        const cached    = await FileSystem.getInfoAsync(path).catch(() => ({ exists: false, size: 0 }));
+        const cached = await Promise.race([
+          FileSystem.getInfoAsync(path),
+          new Promise<any>(r => setTimeout(() => r({ exists: false, size: 0 }), 1500))
+        ]).catch(() => ({ exists: false, size: 0 }));
         const hasHash    = typeof storedHashes[key] === 'string';
         const urlChanged = hasHash && storedHashes[key] !== urlHash;
-        const isValid = (cached as any).exists && (cached as any).size > 0;
+        const isValid = (cached as any).exists && (cached as any).size > 1024;
 
         if (urlChanged && (cached as any).exists) {
           await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});

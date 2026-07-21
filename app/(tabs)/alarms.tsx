@@ -96,7 +96,7 @@ const ALARM_SOUNDS = [
   { id: 'cdn_ultra_mahamrityunjaya',      label: '108 Mahamrityunjaya Mantra',    emoji: '🕉️', cat: 'Mantra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/NadaUltra/108%20Mahamrityunjaya%20Mantra%20Chant%20%20Tibetan%20Shiva%20Mantra%20for%20Protection%20%26%20Healing.m4a' as string | null },
   { id: 'om_chant_cosmic',                label: 'Om Chanting (Cosmic Sound)',    emoji: '🕉️', cat: 'Mantra', color: '#6366f1', audioUrl: 'https://audio.onesutralabs.com/om.mp3' as string | null },
   { id: 'tanpura_nada',                   label: 'Tanpura (Nada Sound)',          emoji: '🎵', cat: 'Mantra', color: '#818cf8', audioUrl: 'https://audio.onesutralabs.com/Tanpura.mp3' as string | null },
-  { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🐘', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
+  { id: 'med_ganesha_pancharatnam',      label: 'Ganesha Pancharatnam',   emoji: '🪔', cat: 'Stotra', color: '#fb923c', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Ganesha%20Pancharatnam%20I%20Om%20Voices%20Junior%20I%20Mudakaratha%20Modakam%20I%20Adi%20Shankaracharya.mp3' as string | null },
   { id: 'med_shyamale_meenakshi',  label: 'Feminine Universal Energy (Shyamale Meenakshi)', emoji: '🌺', cat: 'Stotra', color: '#f9a8d4', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/Shyamale%20Meenakshi%20%20I%20Om%20Voices%20Junior%20I%20Praise%20Goddess%20Meenakshi%20with%20Dikshitar%27s%20Nottuswara.mp3' as string | null },
   { id: 'med_saraswati_shloka',    label: 'Wisdom Awakening (Saraswati Shloka)',          emoji: '📚', cat: 'Stotra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/%E0%A4%B8%E0%A4%B0%E0%A4%B8%E0%A4%B5%E0%A4%A4%20%E0%A4%B6%E0%A4%B2%E0%A4%95%20%20%20Rekha%20Bharadwaj%20%20Saraswati%20Shloka%20%20%E0%A4%A8%E0%A4%B5%E0%A4%B0%E0%A4%A4%E0%A4%B0%20%E0%A4%B8%E0%A4%AA%E0%A4%B6%E0%A4%B2%20%20Times%20Music%20Spiritual.mp3' as string | null },
   { id: 'bhagya_suktam',           label: 'Hymn of Fortune (Bhagya Suktam)',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
@@ -392,42 +392,89 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
   actionsRef: React.MutableRefObject<FabAction[]>;
 }) {
   const [open, setOpen] = React.useState(false);
+  const anim = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
     useCallback(() => {
       return () => {
         setOpen(false);
+        anim.setValue(0);
       };
     }, [])
   );
 
+  const toggle = () => {
+    if (!open) {
+      setOpen(true);
+      Animated.spring(anim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 7,
+        tension: 60,
+      }).start();
+    } else {
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setOpen(false));
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const backdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const spin = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] });
+
   return (
     <>
       {open && (
-        <TouchableOpacity style={S.fabBackdrop} onPress={() => setOpen(false)} activeOpacity={1} />
+        <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 9, opacity: backdropOpacity }]} pointerEvents="auto">
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={toggle} activeOpacity={1} />
+        </Animated.View>
       )}
       {open && (
-        <View style={[S.fabMenu, { bottom: bottomOffset + 82 }]}>
-          {actionsRef.current.map((item, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[S.fabMenuItem, { borderColor: item.color + '50' }]}
-              onPress={() => { setOpen(false); item.onPress(); }}
-              activeOpacity={0.8}
-            >
-              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <LinearGradient colors={['rgba(255,255,255,0.1)', 'transparent']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={[S.fabMenu, { bottom: bottomOffset + 82 }]} pointerEvents="box-none">
+          {actionsRef.current.map((item, i) => {
+            const count = actionsRef.current.length;
+            const revIdx = count - 1 - i;
+            const start = revIdx * 0.1;
+            const end = start + 0.4;
+            const itemY = anim.interpolate({
+              inputRange: [0, start, end, 1],
+              outputRange: [40, 40, 0, 0],
+              extrapolate: 'clamp',
+            });
+            const itemOp = anim.interpolate({
+              inputRange: [0, start, end, 1],
+              outputRange: [0, 0, 1, 1],
+              extrapolate: 'clamp',
+            });
+
+            return (
+              <Animated.View key={i} style={{ opacity: itemOp, transform: [{ translateY: itemY }], width: '100%', alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[S.fabMenuItem, { borderColor: item.color + '40' }]}
+                  onPress={() => { toggle(); setTimeout(() => item.onPress(), 200); }}
+                  activeOpacity={0.7}
+                >
+                  <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={['rgba(255,255,255,0.15)', 'transparent']} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+                  <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
         </View>
       )}
       <TouchableOpacity
         style={[S.fab, { bottom: bottomOffset + 16 }, open && S.fabOpen]}
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setOpen(v => !v); }}
+        onPress={toggle}
         activeOpacity={0.85}
       >
-        <Text style={S.fabTxt}>{open ? '✕' : '+'}</Text>
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <Text style={S.fabTxt}>+</Text>
+        </Animated.View>
       </TouchableOpacity>
     </>
   );
@@ -1062,7 +1109,7 @@ export default function AlarmsTab() {
 
 
   return (
-    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={[S.screen, { backgroundColor: accentColor }]} imageStyle={{ opacity: 0.50, resizeMode: 'cover' }}>
+    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={[S.screen, { backgroundColor: accentColor }]} imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <LinearGradient
         colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
         locations={[0, 0.28, 1]}
@@ -2098,13 +2145,13 @@ const S = StyleSheet.create({
   emptyHint: { marginHorizontal: 16, marginTop: 32, alignItems: 'center', gap: 8, paddingVertical: 44, borderRadius: 22, borderWidth: 1, borderColor: '#FFFFFF06', borderStyle: 'dashed' },
   emptyIcon: { fontSize: 40, color: '#FFFFFF10' },
   emptyTxt: { fontSize: 13, color: '#FFFFFF22', fontWeight: '500' },
-  fab: { position: 'absolute', bottom: 92, left: width / 2 - 27, width: 54, height: 54, borderRadius: 27, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: ACCENT, shadowOpacity: 0.6, shadowRadius: 16, zIndex: 11 },
-  fabOpen: { backgroundColor: '#c05e00' },
-  fabTxt: { fontSize: 26, color: '#fff', fontWeight: '200', lineHeight: 32, marginTop: 2 },
+  fab: { position: 'absolute', bottom: 92, left: width / 2 - 27, width: 54, height: 54, borderRadius: 27, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', elevation: 12, shadowColor: ACCENT, shadowOpacity: 0.8, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, zIndex: 11 },
+  fabOpen: { backgroundColor: 'rgba(255,255,255,0.15)', shadowOpacity: 0, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  fabTxt: { fontSize: 28, color: '#fff', fontWeight: '300', lineHeight: 32, marginTop: -2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', left: 0, right: 0, gap: 10, alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
-  fabMenuItem: { backgroundColor: 'rgba(20,15,35,0.65)', borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, elevation: 14, width: width - 70, alignItems: 'center', overflow: 'hidden' },
-  fabMenuItemTxt: { fontSize: 15, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.3 },
+  fabMenu: { position: 'absolute', left: 0, right: 0, gap: 14, alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  fabMenuItem: { backgroundColor: 'transparent', borderWidth: 1, borderRadius: 24, paddingHorizontal: 24, paddingVertical: 18, elevation: 14, width: width - 60, alignItems: 'center', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  fabMenuItemTxt: { fontSize: 16, fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },

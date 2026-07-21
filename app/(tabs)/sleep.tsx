@@ -3681,6 +3681,7 @@ function SleepTabInner() {
       default:                  return 'Let nature\'s sounds align your mind and body';
     }
   }, [currentPeriod?.id, autoMode.key]);
+
   const isNightTime = useMemo(() => {
     if (solarTimes) {
       const nowNorm = h < solarTimes.sunrise ? h + 24 : h;
@@ -3688,6 +3689,13 @@ function SleepTabInner() {
     }
     return autoMode.key === 'sleep';
   }, [solarTimes, h, autoMode]);
+
+  const isSunsetToSunrise = useMemo(() => {
+    if (solarTimes) {
+      return h >= solarTimes.sunset || h < solarTimes.sunrise;
+    }
+    return h >= 18 || h < 6;
+  }, [solarTimes, h]);
 
   // Show ideal sleep chip only within 1 hour of actual bedtime
   const showIdealSleepChip = useMemo(() => minsUntilBed <= 60 && !isSleepWindowActive, [minsUntilBed, isSleepWindowActive]);
@@ -3768,13 +3776,19 @@ function SleepTabInner() {
       source={bgUri ? { uri: bgUri } : undefined}
       style={[S.screen, { backgroundColor: bgUri ? accentColor : '#04040E' }]}
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
-      {/* Premium frosted-glass gradient overlay — lets background image breathe while keeping text readable */}
+      <BlurView
+        tint="dark"
+        intensity={90}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Premium frosted-glass gradient overlay for focus */}
       <LinearGradient
         colors={[
-          'rgba(0,0,0,0.08)',
-          'rgba(0,0,0,0.18)',
-          'rgba(0,0,0,0.28)',
-          'rgba(0,0,0,0.48)',
+          'rgba(0,0,0,0.40)',
+          'rgba(0,0,0,0.55)',
+          'rgba(0,0,0,0.70)',
+          'rgba(0,0,0,0.85)',
         ]}
         locations={[0, 0.25, 0.60, 1]}
         style={StyleSheet.absoluteFillObject}

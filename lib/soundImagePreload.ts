@@ -24,13 +24,14 @@ async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: nu
     const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
     if (timeoutId) clearTimeout(timeoutId);
     if (res && res.status >= 200 && res.status < 400) {
+      await FileSystem.deleteAsync(finalPath, { idempotent: true }).catch(() => {});
       await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
     } else {
       throw new Error(`HTTP ${res?.status}`);
     }
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
-    await FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
     throw e;
   }
 }
@@ -107,8 +108,11 @@ async function cacheOne(url: string): Promise<void> {
     const path = CACHE_DIR + cacheFilename(url);
     const tmpPath = path + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
     try {
-      const info = await FileSystem.getInfoAsync(path);
-      if ((info as any).exists && (info as any).size > 100) {
+      const info = await Promise.race([
+        FileSystem.getInfoAsync(path),
+        new Promise<any>(r => setTimeout(() => r({ exists: false, size: 0 }), 1500))
+      ]).catch(() => ({ exists: false, size: 0 }));
+      if ((info as any).exists && (info as any).size > 1024) {
         LOCAL_URI_MAP[url] = path;
         _urlSubs.get(url)?.forEach(cb => cb());
         _urlSubs.delete(url);

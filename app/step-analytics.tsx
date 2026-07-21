@@ -15,6 +15,7 @@ import {
   Easing,
   Platform,
   DeviceEventEmitter,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -33,9 +34,9 @@ const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const BG = '#050B14';
-// Frosted glass tokens — rich, not transparent
-const CARD = 'rgba(12,20,38,0.75)';
-const BORDER = 'rgba(56,189,248,0.18)';
+// Frosted glass tokens — rich, deeper, and softer edges
+const CARD = 'rgba(8,14,28,0.55)';
+const BORDER = 'rgba(255,255,255,0.06)';
 const SKY_BLUE = '#0ea5e9';
 const CYAN = '#38bdf8';
 const DEEP_CYAN = '#0284c7';
@@ -288,15 +289,15 @@ export default function StepAnalyticsScreen() {
                 </Text>
                 <Text style={[st.heroStepsLbl, { color: 'rgba(255,255,255,0.5)', marginTop: 0, letterSpacing: 2, fontSize: 10 }]}>STEPS</Text>
                 <View style={{ marginTop: 8, backgroundColor: 'rgba(56,189,248,0.18)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)' }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: BRIGHT_CYAN }}>{Math.round(todayPct * 100)}% of Goal</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: BRIGHT_CYAN }}>{Math.round(todayPct * 100)}% of Intention</Text>
                 </View>
               </View>
             </View>
 
             <Text style={st.heroSubtitle}>
               {todayPct >= 1
-                ? 'Daily goal achieved. You are perfectly grounded today.'
-                : `You are ${Math.round(todayPct * 100)}% to your daily grounding goal.`}
+                ? 'Daily intention fulfilled. You are perfectly grounded today.'
+                : `You are ${Math.round(todayPct * 100)}% to your daily grounding intention.`}
             </Text>
           </View>
 
@@ -310,7 +311,7 @@ export default function StepAnalyticsScreen() {
                   <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>Last 7 Days Progress</Text>
                 </View>
                 <View style={[st.goalBadge, { borderColor: ACCENT_VIOLET + '40', backgroundColor: ACCENT_VIOLET + '15' }]}>
-                  <Text style={[st.goalBadgeTxt, { color: ACCENT_VIOLET }]}>Target {fmtK(summary.weeklyGoal)}</Text>
+                  <Text style={[st.goalBadgeTxt, { color: ACCENT_VIOLET }]}>Intention {fmtK(summary.weeklyGoal)}</Text>
                 </View>
               </View>
 
@@ -340,7 +341,7 @@ export default function StepAnalyticsScreen() {
               
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 8, textAlign: 'center', fontWeight: '500' }}>
                 {summary.weeklyGoalPercent >= 100 
-                  ? 'Incredible! You have reached your weekly cosmic goal.' 
+                  ? 'Incredible! You have reached your weekly cosmic intention.' 
                   : `${(summary.weeklyGoal - summary.weeklySteps).toLocaleString()} steps remaining to complete your weekly journey.`}
               </Text>
             </View>
@@ -350,14 +351,14 @@ export default function StepAnalyticsScreen() {
           <View style={st.chartCard}>
             <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={st.chartTop}>
-              <Text style={st.chartTitle}>Past 7 Days</Text>
+              <Text style={st.chartTitle}>Your Daily Rhythm</Text>
               <View style={[st.goalBadge, { borderColor: GOLD + '40', backgroundColor: GOLD + '15' }]}>
-                <Text style={[st.goalBadgeTxt, { color: GOLD }]}>Target {fmtK(goal)}</Text>
+                <Text style={[st.goalBadgeTxt, { color: GOLD }]}>Intention {fmtK(goal)}</Text>
               </View>
             </View>
 
-            <View style={{ height: chartH + 50, marginTop: 10 }}>
-              <Svg width={chartW} height={chartH + 50}>
+            <View style={{ height: chartH + 65, marginTop: 10 }}>
+              <Svg width={chartW} height={chartH + 65}>
                 <Defs>
                   <SvgGrad id="barGrad" x1="0" y1="0" x2="0" y2="1">
                     <Stop offset="0" stopColor={BRIGHT_CYAN} stopOpacity="1" />
@@ -388,7 +389,7 @@ export default function StepAnalyticsScreen() {
                   return (
                     <G key={d.date} onPress={() => d.steps > 0 && openSheet(d)}>
                       {/* Invisible touch target for easy clicking */}
-                      <Line x1={x} y1={0} x2={x} y2={chartH + 50} stroke="transparent" strokeWidth={barSpacing * 0.8} />
+                      <Line x1={x} y1={0} x2={x} y2={chartH + 65} stroke="transparent" strokeWidth={barSpacing * 0.8} />
                       
                       {/* Bar Track Background */}
                       <Line x1={x} y1={20} x2={x} y2={chartH + 20} stroke="rgba(255,255,255,0.04)" strokeWidth={16} strokeLinecap="round" />
@@ -412,10 +413,17 @@ export default function StepAnalyticsScreen() {
 
                       {/* Bottom Day Label */}
                       <SvgText
-                        x={x} y={chartH + 44}
+                        x={x} y={chartH + 42}
                         fontSize={11} fill={MUTED} textAnchor="middle" fontWeight="700"
                       >
                         {weekdayChar(d.date)}
+                      </SvgText>
+                      {/* Date Number */}
+                      <SvgText
+                        x={x} y={chartH + 56}
+                        fontSize={9} fill={MUTED} textAnchor="middle" fontWeight="600" opacity={0.6}
+                      >
+                        {new Date(d.date + 'T12:00:00').getDate()}
                       </SvgText>
                     </G>
                   );
@@ -565,9 +573,9 @@ const st = StyleSheet.create({
   heroSubtitle: { fontSize: 12, color: 'rgba(186,230,253,0.65)', textAlign: 'center', lineHeight: 18, fontWeight: '500', paddingHorizontal: 32 },
 
   chartCard: {
-    borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: CARD, padding: 20, marginBottom: 16, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5,
+    borderRadius: 32, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 24, marginBottom: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 8,
   },
   chartTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chartTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
@@ -578,9 +586,9 @@ const st = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginBottom: 16,
   },
   statCard: {
-    width: '47.5%', borderRadius: 24, borderWidth: 1,
-    backgroundColor: CARD, padding: 18, gap: 8, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5,
+    width: '47.5%', borderRadius: 28, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 20, gap: 8, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 8,
   },
   statIconBox: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   statIcon: { fontSize: 15 },
@@ -588,9 +596,9 @@ const st = StyleSheet.create({
   statLabel: { fontSize: 10, color: MUTED, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
 
   heatCard: {
-    borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: CARD, padding: 20, marginBottom: 32, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5,
+    borderRadius: 32, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: CARD, padding: 24, marginBottom: 32, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 8,
   },
   heatTitle: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 14, letterSpacing: 0.3 },
   heatHeaderTxt: { fontSize: 10, color: MUTED, fontWeight: '800', textAlign: 'center', flex: 1, marginTop: 4 },

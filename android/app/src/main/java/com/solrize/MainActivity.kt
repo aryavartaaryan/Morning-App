@@ -140,7 +140,7 @@ class MainActivity : ReactActivity() {
       focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
       focusLossRunnable = null
       // Pin the screen if alarm is active.
-      if (isAlarmActive()) {
+      if (isAlarmActive() && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
         startAlarmLockTaskOnce()
       }
     } else {
@@ -165,7 +165,7 @@ class MainActivity : ReactActivity() {
             .getBoolean("alarm_stopping", false)
         } catch (_: Exception) { false }
 
-        if (!alarmStopping && isAlarmActive()) {
+        if (!alarmStopping && isAlarmActive() && !AlarmSoundServiceBase.ALARM_FORCE_STOP.get()) {
           val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
           val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
           val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
