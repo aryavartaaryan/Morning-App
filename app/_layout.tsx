@@ -164,7 +164,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Image matching Setup Screen */}
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}
@@ -281,7 +281,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
       
       <View style={{ flex: 1, zIndex: 10 }}>
@@ -495,7 +495,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}
@@ -1440,7 +1440,7 @@ export default function RootLayout() {
         const surveyDone      = !!surveyDoneRaw;
         
         // Treat as first install if never completed, interrupted mid-download, or missing required files.
-        const isFirstInstall  = !setupDone || setupInProgress || !isBgFullyCached();
+        const isFirstInstall  = setupInProgress || (!setupDone && !isBgFullyCached());
 
         if (isFirstInstall) {
           if (!surveyDone) {
@@ -1586,7 +1586,7 @@ export default function RootLayout() {
             // Check inProgress again synchronously if possible, or just assume if it's not done and not splash, we need to fail
             AsyncStorage.getItem(SETUP_INPROGRESS_KEY).then(inProgressRaw => {
               const setupInProgress = !!inProgressRaw;
-              const isFirstInstall = !setupDone || setupInProgress || !isBgFullyCached();
+              const isFirstInstall = setupInProgress || (!setupDone && !isBgFullyCached());
               
               if (isFirstInstall) {
                 setDlError(true);

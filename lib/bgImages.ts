@@ -45,8 +45,8 @@ export const BG_URLS: Record<string, string> = {
   morning_early_late: 'https://images.pexels.com/photos/7077853/pexels-photo-7077853.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning:     'https://images.pexels.com/photos/31198416/pexels-photo-31198416.jpeg',
   morning_2:   'https://images.pexels.com/photos/14469571/pexels-photo-14469571.jpeg?auto=compress&cs=tinysrgb&w=600',
-  morning_late: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=600',
-  morning_late_2: 'https://images.pexels.com/photos/34732117/pexels-photo-34732117.jpeg?auto=compress&cs=tinysrgb&w=600',
+  morning_late: 'https://images.pexels.com/photos/2121062/pexels-photo-2121062.jpeg',
+  morning_late_2: 'https://images.pexels.com/photos/21134472/pexels-photo-21134472.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early: 'https://images.pexels.com/photos/14106721/pexels-photo-14106721.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_2: 'https://images.pexels.com/photos/33638423/pexels-photo-33638423.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_mid: 'https://images.pexels.com/photos/7171831/pexels-photo-7171831.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -68,9 +68,9 @@ export const BG_URLS: Record<string, string> = {
   sandhya_late_mid_2: 'https://images.pexels.com/photos/7929897/pexels-photo-7929897.jpeg',
   sandhya_late_2: 'https://images.pexels.com/photos/4161255/pexels-photo-4161255.png',
   sandhya_late_3: 'https://images.pexels.com/photos/34644590/pexels-photo-34644590.jpeg?auto=compress&cs=tinysrgb&w=600',
-  twilight:   'https://images.pexels.com/photos/14276463/pexels-photo-14276463.jpeg?auto=compress&cs=tinysrgb&w=600',
-  twilight_late: 'https://images.pexels.com/photos/20565264/pexels-photo-20565264.png?auto=compress&cs=tinysrgb&w=600',
-  twilight_deep: 'https://images.pexels.com/photos/34985075/pexels-photo-34985075.jpeg?auto=compress&cs=tinysrgb&w=600',
+  twilight:   'https://images.pexels.com/photos/25210466/pexels-photo-25210466.jpeg?auto=compress&cs=tinysrgb&w=600',
+  twilight_late: 'https://images.pexels.com/photos/1929611/pexels-photo-1929611.jpeg?auto=compress&cs=tinysrgb&w=600',
+  twilight_deep: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=600',
   evening_early: 'https://images.pexels.com/photos/20565269/pexels-photo-20565269.png?auto=compress&cs=tinysrgb&w=600',
   evening_early_2: 'https://images.pexels.com/photos/28893583/pexels-photo-28893583.jpeg?auto=compress&cs=tinysrgb&w=600',
   evening:    'https://images.pexels.com/photos/7828546/pexels-photo-7828546.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -78,11 +78,11 @@ export const BG_URLS: Record<string, string> = {
   night_early_mid1: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_mid2: 'https://images.pexels.com/photos/16903505/pexels-photo-16903505.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_mid2_late: 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_late: 'https://images.pexels.com/photos/31104752/pexels-photo-31104752.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night:      'https://images.pexels.com/photos/8887270/pexels-photo-8887270.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_late: 'https://images.pexels.com/photos/3204950/pexels-photo-3204950.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night:      'https://images.pexels.com/photos/37057917/pexels-photo-37057917.jpeg',
   night_late: 'https://images.pexels.com/photos/12490457/pexels-photo-12490457.jpeg',
   auth:       'https://images.pexels.com/photos/10404089/pexels-photo-10404089.jpeg?auto=compress&cs=tinysrgb&w=600',
-  splash:     'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600',
+  splash:     'https://images.pexels.com/photos/7981134/pexels-photo-7981134.jpeg?auto=compress&cs=tinysrgb&w=600',
   onboarding: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=85&auto=format&fit=crop',
   naad_step:  'https://images.pexels.com/photos/8690653/pexels-photo-8690653.jpeg?auto=compress&cs=tinysrgb&w=600',
   naad_step_night: 'https://images.pexels.com/photos/30987027/pexels-photo-30987027.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -326,9 +326,10 @@ export async function ensureAllBgsCachedWithProgress(
           updatedHashes[key] = urlHash;
           BG_LOCAL_MAP[key]  = path;
         }
+      })().finally(() => {
         done += 1;
         onProgress(done, total);
-      })();
+      });
 
       const pWrapped = p.catch(() => { hasError = true; });
       executing.add(pWrapped);
@@ -341,17 +342,12 @@ export async function ensureAllBgsCachedWithProgress(
     }
     await Promise.all(executing);
 
-    if (hasError) {
-      throw new Error("Network error during download");
-    }
-
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
     // Note: individual download failures are already handled per-image (old file kept, hash not saved).
-    // We never throw here — background callers and the gate's outer catch handle retry logic.
+    // We do NOT throw an error here to prevent the setup screen from getting stuck.
   } catch (err) {
-    // Only re-throw if this is being called from the first-install gate (which has its own outer try-catch).
-    // Swallow silently otherwise to prevent unhandled rejection crashes on background calls.
-    throw err;
+    // Swallow silently to prevent unhandled rejection crashes on background calls.
+    console.warn('[bgImages] ensureAllBgsCachedWithProgress ignored error:', err);
   }
 }
 

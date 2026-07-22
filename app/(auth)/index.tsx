@@ -111,7 +111,7 @@ export default function LoginScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#04020E' }}>
-      <ImageBackground source={authBg ? { uri: authBg } : undefined} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.28, resizeMode: 'cover' }} />
+      <ImageBackground source={require('../../assets/images/new_bg.jpeg')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.28, resizeMode: 'contain' }} />
       <LinearGradient
         colors={['rgba(4,2,18,0.55)', 'rgba(4,2,18,0.72)', 'rgba(4,2,18,0.96)']}
         locations={[0, 0.45, 1]}

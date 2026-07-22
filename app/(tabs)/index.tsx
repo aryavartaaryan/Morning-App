@@ -39,6 +39,7 @@ import CosmicStoryModal from '@/components/CosmicStoryModal';
 import { getTodayWakeLog, getStreak, markCardShown, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
 import { ToastLogger } from '@/lib/toastLogger';
 import { ScreenErrorBoundary, withScreenBoundary } from '@/components/ScreenErrorBoundary';
+import { DailyIntentionCard } from '@/components/DailyIntentionCard';
 
 const ACCENT = '#00D4B8';
 const SCREEN_W = Dimensions.get('window').width;
@@ -362,6 +363,7 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
   const [expanded, setExpanded] = React.useState(false);
   const p            = getPanchangData();
   const moon         = getMoonPhase();
+  const vMonth       = getVedicMonth();
   const vaar         = VAARS[p.vaarIdx];
   const nakshatra    = NAKSHATRAS[p.nakshatraIdx];
   const yoga         = YOGAS[p.yogaIdx];
@@ -419,7 +421,9 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
           <Text style={{ fontSize: 28 }}>{vaar.emoji}</Text>
           <View style={{ flex: 1 }}>
             <Text style={[PC.energyTitle, { color: vaar.color }]}>{vaar.energy}</Text>
-            <Text style={PC.energySub}>{vaar.planet} Day  ·  <Text style={{ fontStyle: 'italic', color: '#FFFFFF30' }}>{vaar.vedicName}</Text></Text>
+            <Text style={PC.energySub}>
+              <Text style={{ fontSize: 13, color: '#FFFFFFEE', fontWeight: '800' }}>{vaar.planet} Day (Vaar)</Text>  ·  <Text style={{ fontStyle: 'italic', color: '#FFFFFF60' }}>{vaar.vedicName}</Text>
+            </Text>
           </View>
         </View>
 
@@ -429,12 +433,19 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
           <Text style={PC.actionText}>{vaarAction}</Text>
         </View>
 
-        {/* ── Cosmic Alignment ── */}
+        {/* ── Cosmic Alignment & Maas ── */}
         <View style={PC.alignRow}>
           <View style={[PC.alignDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]} />
           <Text style={PC.alignText}>
-            <Text style={{ color: yoga.auspicious ? '#10b981DD' : '#f87171DD', fontWeight: '800' }}>{yoga.en}  </Text>
-            <Text style={{ color: '#FFFFFF45' }}>— {yoga.meaning}</Text>
+            <Text style={{ color: yoga.auspicious ? '#10b981' : '#f87171', fontWeight: '800', fontSize: 12 }}>{yoga.en} (Yoga)  </Text>
+            <Text style={{ color: '#FFFFFF70', fontStyle: 'italic' }}>— {yoga.name}</Text>
+          </Text>
+        </View>
+        <View style={[PC.alignRow, { marginTop: -4 }]}>
+          <View style={[PC.alignDot, { backgroundColor: '#a78bfa' }]} />
+          <Text style={PC.alignText}>
+            <Text style={{ color: '#a78bfa', fontWeight: '800', fontSize: 12 }}>Vedic Month (Maas)  </Text>
+            <Text style={{ color: '#FFFFFF70', fontStyle: 'italic' }}>— {vMonth.name} ({vMonth.en})</Text>
           </Text>
         </View>
 
@@ -6455,9 +6466,9 @@ function DailyTab() {
         imageStyle={{ opacity: 1, resizeMode: 'cover' }}
       />
 
-      {/* Smart gradient overlay — lighter at top to show image, darker at bottom for card readability */}
+      {/* Premium gradient overlay — balanced for legibility without being too dark */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.35)']}
+        colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.50)']}
         locations={[0, 0.40, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
@@ -6601,6 +6612,7 @@ function DailyTab() {
               </View>
             ) : (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 + (soundPlayingId ? 72 : 0) }}>
+                  <DailyIntentionCard />
                   <View style={{ paddingTop: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
                   </View>
@@ -6731,9 +6743,9 @@ const D = StyleSheet.create({
 });
 
 const W = StyleSheet.create({
-  stripContainer: { marginTop: 8, marginBottom: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 2 },
+  stripContainer: { marginTop: 4, marginBottom: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 2 },
   hourCell: {
-    alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 10,
+    alignItems: 'center', gap: 3, paddingHorizontal: 10, paddingVertical: 8,
     borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
     minWidth: 58,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
@@ -6743,7 +6755,7 @@ const W = StyleSheet.create({
   hourEmoji: { fontSize: 20 },
   hourTemp:  { fontSize: 12, fontWeight: '900', color: '#FFFFFFEE', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   moreBtn: {
-    alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 10,
+    alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 16, backgroundColor: ACCENT + '25', borderWidth: 1, borderColor: ACCENT + '60',
     minWidth: 66,
     shadowColor: ACCENT, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 4,
@@ -6755,19 +6767,19 @@ const W = StyleSheet.create({
 
 const WS = StyleSheet.create({
   card: {
-    marginHorizontal: 0, marginTop: 10, borderRadius: 0, borderWidth: 1.5,
+    marginHorizontal: 0, marginTop: 4, borderRadius: 0, borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(6,15,40,0.42)', flexDirection: 'row', overflow: 'hidden',
-    paddingVertical: 16, paddingRight: 16,
+    paddingVertical: 10, paddingRight: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20, elevation: 12,
   },
   colorBar:     { width: 4, borderRadius: 2, marginLeft: 4 },
   timeLabel:    { fontSize: 8, fontWeight: '900', color: '#FFFFFF28', letterSpacing: 1.6, marginBottom: 6 },
   titleRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title:        { fontSize: 14, fontWeight: '900', flex: 1 },
-  tipRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  tipRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   tipDot:       { width: 5, height: 5, borderRadius: 3, marginTop: 5 },
-  tipText:      { fontSize: 11, color: '#FFFFFF60', lineHeight: 18, flex: 1 },
+  tipText:      { fontSize: 11, color: '#FFFFFF60', lineHeight: 16, flex: 1 },
   upcomingRow:  { marginTop: 14, borderTopWidth: 1, borderTopColor: '#FFFFFF08', paddingTop: 10 },
   upcomingLabel:{ fontSize: 7, fontWeight: '900', color: '#FFFFFF20', letterSpacing: 1.5, marginBottom: 2 },
   chip: {
@@ -6916,32 +6928,32 @@ const NP = StyleSheet.create({
 
 const PC = StyleSheet.create({
   card: {
-    marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1,
+    marginHorizontal: 16, marginTop: 4, borderRadius: 22, borderWidth: 1,
     borderColor: 'rgba(0,212,184,0.35)',
     backgroundColor: 'rgba(6,15,40,0.46)', flexDirection: 'row', overflow: 'hidden',
-    paddingVertical: 16, paddingRight: 16,
+    paddingVertical: 10, paddingRight: 16,
     shadowColor: '#00D4B8', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.30, shadowRadius: 30, elevation: 14,
   },
   sideBar:         { width: 4, borderRadius: 2, marginLeft: 4 },
-  headerRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  headerRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   sectionTag:      { fontSize: 8, fontWeight: '900', color: '#00D4B888', letterSpacing: 1.5 },
   arrow:           { fontSize: 20, color: '#00D4B855', fontWeight: '200' },
   scorePill:       { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 4 },
   scoreNum:        { fontSize: 12, fontWeight: '900' },
   scoreLabel:      { fontSize: 9, fontWeight: '700' },
-  moonBanner:      { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12 },
+  moonBanner:      { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, padding: 10, marginBottom: 8 },
   moonBannerTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5, marginBottom: 2 },
   moonBannerSub:   { fontSize: 10, color: '#FFFFFF60', lineHeight: 15 },
-  energyRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  energyRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   energyTitle:     { fontSize: 15, fontWeight: '900', lineHeight: 21 },
   energySub:       { fontSize: 10, color: '#FFFFFF40', marginTop: 3 },
-  actionBox:       { backgroundColor: 'rgba(0,212,184,0.08)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,184,0.22)', padding: 12, marginBottom: 10 },
+  actionBox:       { backgroundColor: 'rgba(0,212,184,0.08)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,184,0.22)', padding: 8, marginBottom: 4 },
   actionLabel:     { fontSize: 8, fontWeight: '900', color: '#00D4B888', letterSpacing: 1.5, marginBottom: 5 },
   actionText:      { fontSize: 12, fontWeight: '600', color: '#FFFFFFCC', lineHeight: 18 },
-  alignRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
+  alignRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 4 },
   alignDot:        { width: 6, height: 6, borderRadius: 3, marginTop: 5 },
   alignText:       { flex: 1, fontSize: 11, lineHeight: 17 },
-  ritualRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(124,58,237,0.10)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(124,58,237,0.28)', padding: 12 },
+  ritualRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(124,58,237,0.10)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(124,58,237,0.28)', padding: 8 },
   ritualPrompt:    { fontSize: 9, fontWeight: '800', color: '#FFFFFF35', letterSpacing: 0.5, marginBottom: 3 },
   ritualText:      { fontSize: 11, color: '#FFFFFF65', lineHeight: 17, fontStyle: 'italic' },
   expandedSection: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#FFFFFF08', paddingTop: 12, gap: 12 },
@@ -6953,12 +6965,12 @@ const PC = StyleSheet.create({
   triEn:           { fontSize: 9, color: '#00D4B8AA', fontWeight: '700', marginTop: 3 },
   infoNote:        { backgroundColor: 'rgba(0,212,184,0.07)', borderWidth: 1, borderColor: 'rgba(0,212,184,0.22)', borderRadius: 14, padding: 12 },
   infoNoteText:    { fontSize: 10, color: '#00D4B880', lineHeight: 15 },
-  biRow:           { flexDirection: 'row', gap: 8, marginBottom: 10, marginTop: 2 },
-  biCell:          { flex: 1, borderWidth: 1, borderRadius: 14, backgroundColor: 'rgba(6,15,40,0.44)', borderColor: 'rgba(0,212,184,0.22)', padding: 10, gap: 3 },
+  biRow:           { flexDirection: 'row', gap: 8, marginBottom: 4, marginTop: 2 },
+  biCell:          { flex: 1, borderWidth: 1, borderRadius: 14, backgroundColor: 'rgba(6,15,40,0.44)', borderColor: 'rgba(0,212,184,0.22)', padding: 8, gap: 3 },
   biTag:           { fontSize: 7, fontWeight: '900', color: '#00D4B880', letterSpacing: 1.2, marginBottom: 2 },
   biSanskrit:      { fontSize: 13, fontWeight: '900' },
-  biEnglish:       { fontSize: 10, color: '#00D4B8CC', fontWeight: '700' },
-  exploreBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, marginTop: 10, marginBottom: 2 },
+  biEnglish:       { fontSize: 12, color: '#FFFFFFEE', fontWeight: '800' },
+  exploreBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8, marginTop: 4, marginBottom: 2 },
   exploreTxt:      { fontSize: 12, fontWeight: '800', flex: 1 },
   exploreArrow:    { fontSize: 16, fontWeight: '800' },
 });

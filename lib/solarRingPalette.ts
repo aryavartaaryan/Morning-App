@@ -41,7 +41,7 @@ export function getSacredHourInfo(nowH: number, solar?: SolarTimes | null): {
   return { type: null, progress: 0 };
 }
 
-const COOLING_BLUE_PALETTE: AyurvedicPalette = { ring: '#00BFFF', halo: '#00E5FF', accent: '#80FFFF' };
+const COOLING_BLUE_PALETTE: AyurvedicPalette = { ring: '#0284c7', halo: '#38bdf8', accent: '#bae6fd' }; // Sky blue, not cyan
 
 function blendPalette(a: AyurvedicPalette, b: AyurvedicPalette, t: number): AyurvedicPalette {
   return {
@@ -49,6 +49,15 @@ function blendPalette(a: AyurvedicPalette, b: AyurvedicPalette, t: number): Ayur
     halo:   lerpColor(a.halo,   b.halo,   t),
     accent: lerpColor(a.accent, b.accent, t),
   };
+}
+
+function blendPaletteNoGreen(a: AyurvedicPalette, b: AyurvedicPalette, t: number): AyurvedicPalette {
+  // To avoid mixing yellow and blue into green, we fade through TRUE_SILVER
+  if (t < 0.5) {
+     return blendPalette(a, TRUE_SILVER, t * 2);
+  } else {
+     return blendPalette(TRUE_SILVER, b, (t - 0.5) * 2);
+  }
 }
 
 const SUNRISE_PALETTES: Array<AyurvedicPalette> = [
@@ -147,7 +156,7 @@ export function getSolarRingPalette(
 
   if (temp != null && temp > 20) {
     const blendFactor = Math.min(1, Math.max(0, (temp - 20) / 15));
-    return blendPalette(basePalette, COOLING_BLUE_PALETTE, blendFactor);
+    return blendPaletteNoGreen(basePalette, COOLING_BLUE_PALETTE, blendFactor);
   }
 
   return basePalette;

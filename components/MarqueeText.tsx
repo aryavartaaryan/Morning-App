@@ -58,7 +58,7 @@ export function MarqueeText({ children, duration = 5000, active = true, style, .
           {...props}
           style={[style, active ? { flexShrink: 0 } : { flexShrink: 1, width: '100%' }]} 
           numberOfLines={active ? 1 : props.numberOfLines || 1}
-          adjustsFontSizeToFit={!active}
+          adjustsFontSizeToFit={props.adjustsFontSizeToFit !== undefined ? props.adjustsFontSizeToFit : !active}
           minimumFontScale={0.65}
           onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
         >

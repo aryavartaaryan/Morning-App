@@ -52,6 +52,7 @@ import { useBgContext } from '@/lib/bgContext';
 import { getBgSourceSync } from '@/lib/bgImages';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getSolarRingPalette } from '@/lib/solarRingPalette';
+import { fetchWeather } from '@/lib/weather';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -121,11 +122,20 @@ export default function StepSessionScreen() {
   const { solarTimes } = useBgContext();
   const now = new Date();
   const hour = now.getHours() + now.getMinutes() / 60;
+  const [done,     setDone]     = useState(false);
+  const [confetti, setConfetti] = useState(false);
+  const [progressDashOffset, setProgressDashOffset] = useState(CIRCUM);
+  const [weather, setWeather] = useState<any>(null);
+
   const solarNoon = solarTimes?.solarNoon ?? 12.5;
-  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, null, null, false, undefined);
+  const gpsLat = weather?.lat ?? null;
+  const gpsLon = weather?.lon ?? null;
+  const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
+  const showBrahma = isNightReal && !!solarTimes && hour >= (solarTimes.sunrise - 1.5) && hour < solarTimes.sunrise;
+  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp);
   
   const isDynamic = type !== 'postmeal';
-  
+
   // Use the dynamic solar palette so the progress ring colors match the time of day,
   // sunrise/sunset, and temperature exactly like the homepage.
   const C  = palette.ring;
@@ -136,9 +146,6 @@ export default function StepSessionScreen() {
   const [steps,    setSteps]    = useState(0);
   const [elapsed,  setElapsed]  = useState(0);
   const [paused,   setPaused]   = useState(false);
-  const [done,     setDone]     = useState(false);
-  const [confetti, setConfetti] = useState(false);
-  const [progressDashOffset, setProgressDashOffset] = useState(CIRCUM);
 
   // Sound Integration
   const { playingId, isPaused, togglePause, stopSound, playSound } = useSoundPlayer();
@@ -204,8 +211,17 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
     (async () => {
-      const result = await StepCounter.startSession(type);
-      startMsRef.current = result.startTime;
+      try {
+        const w = await fetchWeather();
+        setWeather(w);
+      } catch (err) {}
+
+      try {
+        const result = await StepCounter.startSession(type);
+        startMsRef.current = result.startTime;
+      } catch (e) {
+        console.warn("Failed to start walk session: ", e);
+      }
 
 
       Animated.parallel([
@@ -380,7 +396,6 @@ export default function StepSessionScreen() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   const { bgUri, accentColor, bgKey } = useBgContext();
-  const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
   const sessionBgKey = isNightReal ? 'live_session_night' : 'live_session';
 
   return (
@@ -447,7 +462,7 @@ export default function StepSessionScreen() {
           {/* Centre — session identity */}
           <View style={{ alignItems: 'center' }}>
             <Text style={{ fontSize: 18, marginBottom: 1 }}>{meta.emoji}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: C, letterSpacing: 0.6, textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: C, letterSpacing: 0.6, textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
               {meta.label}
             </Text>
           </View>
@@ -567,7 +582,7 @@ export default function StepSessionScreen() {
           <View style={[s.centreBox, { gap: 3 }]}>
             {/* Badge */}
             <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: C + '20', borderWidth: 1, borderColor: C + '60', marginBottom: 4 }}>
-              <Text style={{ fontSize: 7, fontWeight: '900', color: C, letterSpacing: 1.4 }}>👣  LIVE STEPS</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: C, letterSpacing: 1.4 }}>👣  LIVE STEPS</Text>
             </View>
             <View style={{ alignItems: 'center' }}>
               <Animated.Text style={[s.bigSteps, { fontSize: playingId ? 44 : 54, lineHeight: playingId ? 50 : 60, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
@@ -598,7 +613,7 @@ export default function StepSessionScreen() {
                       style={StyleSheet.absoluteFillObject}
                     />
                     <Ionicons name="musical-notes" size={12} color="#38bdf8" style={{ marginRight: 5 }} />
-                    <Text style={{ color: '#bae6fd', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>SELECT SOUND</Text>
+                    <Text style={{ color: '#bae6fd', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>SELECT SOUND</Text>
                   </View>
                 </TouchableOpacity>
               ) : (
@@ -824,7 +839,7 @@ function ExitModal({
               <Ionicons name="walk" size={22} color="#fff" style={{ marginLeft: 2 }} />
             </View>
             
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 }}>
               Session in Progress
             </Text>
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginBottom: 26, lineHeight: 20, paddingHorizontal: 10 }}>
@@ -894,7 +909,7 @@ const s = StyleSheet.create({
   centreBox: {
     position: 'absolute', alignItems: 'center', justifyContent: 'center',
   },
-  bigSteps:     { fontSize: 58, fontWeight: '900', letterSpacing: -2, lineHeight: 64 },
+  bigSteps:     { fontSize: 58, fontWeight: '300', fontVariant: ['tabular-nums'], letterSpacing: -1.5, lineHeight: 64 },
   bigStepsUnit: { fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '600', marginTop: -2, letterSpacing: 2 },
   goalChip: {
     borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8,
@@ -902,9 +917,9 @@ const s = StyleSheet.create({
   goalChipTxt: { fontSize: 10, fontWeight: '700' },
 
   timer: {
-    fontSize: 22, fontWeight: '700',
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 3,
+    fontSize: 24, fontWeight: '300', fontVariant: ['tabular-nums'],
+    color: 'rgba(255,255,255,0.75)',
+    letterSpacing: 2,
   },
 
   metricRow: {
@@ -916,7 +931,7 @@ const s = StyleSheet.create({
   },
   metric:     { flex: 1, alignItems: 'center', paddingVertical: 8, gap: 2 },
   metricIcon: { fontSize: 16, marginBottom: 2 },
-  metricVal:  { fontSize: 18, fontWeight: '900' },
+  metricVal:  { fontSize: 18, fontWeight: '500', fontVariant: ['tabular-nums'] },
   metricUnit: { fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: '600' },
 
   shataBar:   { alignSelf: 'stretch', gap: 8, marginBottom: 12 },
@@ -925,13 +940,13 @@ const s = StyleSheet.create({
   shataFill:  { height: 6, borderRadius: 3 },
 
   btnRow: { flexDirection: 'row', gap: 14, alignSelf: 'stretch', justifyContent: 'center' },
-  pauseTxt: { fontSize: 13, fontWeight: '800', letterSpacing: 1 },
-  endTxt:   { fontSize: 13, fontWeight: '900', color: '#0A0A0F', letterSpacing: 1 },
+  pauseTxt: { fontSize: 13, fontWeight: '600', letterSpacing: 1 },
+  endTxt:   { fontSize: 13, fontWeight: '600', color: '#0A0A0F', letterSpacing: 1 },
 
   overlay:   { alignItems: 'center', justifyContent: 'center' },
   particle:  { position: 'absolute', width: 10, height: 10, borderRadius: 5, alignSelf: 'center', top: '50%' },
   celebMsg:  { alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   celebEmoji:{ fontSize: 56 },
-  celebTitle:{ fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  celebTitle:{ fontSize: 24, fontWeight: '600', textAlign: 'center', letterSpacing: 0.5 },
   celebBody: { fontSize: 14, color: 'rgba(255,255,255,0.58)', textAlign: 'center', lineHeight: 20 },
 });

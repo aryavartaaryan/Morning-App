@@ -14,12 +14,14 @@ export default function SoundLibraryModal({
   sounds,
   playingId,
   onPlaySound,
+  initialCategory,
 }: {
   visible: boolean;
   onClose: () => void;
   sounds: any[];
   playingId: string | null;
   onPlaySound: (id: string) => void;
+  initialCategory?: string | null;
 }) {
   const router = useRouter();
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
@@ -27,10 +29,10 @@ export default function SoundLibraryModal({
 
   useEffect(() => {
     if (visible) {
-      setExpandedCat(null);
+      setExpandedCat(initialCategory ?? null);
       setSearchQuery('');
     }
-  }, [visible]);
+  }, [visible, initialCategory]);
 
   const toggleCat = (cat: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

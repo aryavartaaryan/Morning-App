@@ -1217,30 +1217,29 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
 
       {/* ── Row: tabs ── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', paddingVertical: 6, paddingHorizontal: 4 }}>
-        {/* ── Glowing sliding pill background ── */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 6,
-            bottom: 6,
-            left: indicatorX,
-            width: indicatorW,
-            borderRadius: 24,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.15)',
-            shadowColor: activeColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.5,
-            shadowRadius: 12,
-            elevation: 4,
-          }}
-        />
+      <View style={{ marginHorizontal: 16, marginVertical: 8, backgroundColor: 'rgba(10,15,30,0.5)', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', padding: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative' }}>
+          {/* ── Glowing sliding pill background ── */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: indicatorX,
+              width: indicatorW,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          />
 
-        {/* ── Category tabs ── */}
-        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {/* ── Category tabs ── */}
+          <View style={{ flex: 1, flexDirection: 'row' }}>
           {TAB_CATEGORIES.map(cat => {
             const isActive = selectedCat === cat;
             const catColor = getCategoryMeta(cat, activePeriodId).color;
@@ -1292,6 +1291,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
               </TouchableOpacity>
             );
           })}
+        </View>
         </View>
       </View>
     </HeaderView>
@@ -1851,46 +1851,46 @@ function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
-  // ── 5 staggered pulse loops — each ring has its own rhythm/speed ──
+  // ── 5 staggered pulse loops — premium signature visual, each ring has its own cosmic rhythm ──
   useEffect(() => {
     const loops: Animated.CompositeAnimation[] = [];
     if (!isActive || !isPlaying || isPaused) {
       [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => { p.stopAnimation(); p.setValue(0); });
       return;
     }
-    // Ring 1 — slowest, outermost — deep breath
+    // Ring 1 — outermost — deep cosmic exhale (slowest, most ethereal)
     pulse1.setValue(0);
     const l1 = Animated.loop(Animated.sequence([
-      Animated.timing(pulse1, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse1, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse1, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse1, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])); l1.start(); loops.push(l1);
-    // Ring 2 — slightly faster, offset with delay
+    // Ring 2 — second breath, offset 500ms for wave cascade
     pulse2.setValue(0);
     const l2 = Animated.loop(Animated.sequence([
-      Animated.delay(320),
-      Animated.timing(pulse2, { toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse2, { toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.delay(500),
+      Animated.timing(pulse2, { toValue: 1, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse2, { toValue: 0, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])); l2.start(); loops.push(l2);
-    // Ring 3 — mid rhythm
+    // Ring 3 — mid, main fill ring — strong visual presence
     pulse3.setValue(0);
     const l3 = Animated.loop(Animated.sequence([
-      Animated.delay(640),
-      Animated.timing(pulse3, { toValue: 1, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse3, { toValue: 0, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.delay(900),
+      Animated.timing(pulse3, { toValue: 1, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse3, { toValue: 0, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])); l3.start(); loops.push(l3);
-    // Ring 4 — faster inner pulse
+    // Ring 4 — inner pulse, vivid core glow
     pulse4.setValue(0);
     const l4 = Animated.loop(Animated.sequence([
-      Animated.delay(960),
-      Animated.timing(pulse4, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse4, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.delay(1200),
+      Animated.timing(pulse4, { toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse4, { toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])); l4.start(); loops.push(l4);
-    // Ring 5 — fastest, innermost — heartbeat
+    // Ring 5 — innermost heartbeat — fastest, most intense
     pulse5.setValue(0);
     const l5 = Animated.loop(Animated.sequence([
-      Animated.delay(1280),
-      Animated.timing(pulse5, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse5, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.delay(1600),
+      Animated.timing(pulse5, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse5, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])); l5.start(); loops.push(l5);
     return () => { loops.forEach(l => l.stop()); [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => p.stopAnimation()); };
   }, [isActive, isPlaying, isPaused]);
@@ -2112,37 +2112,41 @@ function ReelCard({
       )}
 
       {/* ── Cinematic scrims ── */}
-      {/* Top gradient: strong dark cover for category strip + top bar readability */}
+      {/* Top gradient: subtle shading for top bar readability */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)', 'transparent']}
+        colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.05)', 'transparent']}
         locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Bottom gradient: starts low so most of the background image is visible */}
+      {/* Bottom gradient: subtle shading for text readability */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.80)', 'rgba(0,0,0,0.97)']}
+        colors={['transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.6)']}
         locations={[0.52, 0.70, 0.86, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* ── Premium multi-layer glowing pulsing visualizer — vibrant hero style ── */}
+      {/* ── SIGNATURE premium multi-layer pulsing visualizer — filled theme colors ── */}
       {(() => {
-        const baseSize = REEL_W * 0.58;
+        const baseSize = REEL_W * 0.78;  // much larger — signature hero element
         const ringColor = accentColor || sound.color;
-        // Derive 3 harmonious colors from the accent for a multicolor layered feel
-        const c1 = ringColor;        // primary accent
-        const c2 = sound.color;      // sound's own tint
-        const c3 = '#ffffff';        // white glint
+        const c1 = ringColor;   // primary accent / theme
+        const c2 = sound.color; // sound tint
+        const c3 = '#ffffff';   // white inner glint
 
-        const rings = [
-          // [pulseAnim, sizeMult, baseOpacityMin, baseOpacityMax, colorHex, scaleMin, scaleMax, borderWidth]
-          { anim: pulse1, sm: 1.15, oMin: 0.05, oMax: 0.25, color: c1, sMin: 0.92, sMax: 1.08, bw: 1 },
-          { anim: pulse2, sm: 0.92, oMin: 0.10, oMax: 0.40, color: c2, sMin: 0.94, sMax: 1.06, bw: 1.5 },
-          { anim: pulse3, sm: 0.72, oMin: 0.25, oMax: 0.65, color: c1, sMin: 0.96, sMax: 1.04, bw: 2 },
-          { anim: pulse4, sm: 0.54, oMin: 0.45, oMax: 0.85, color: c2, sMin: 0.97, sMax: 1.03, bw: 3 },
-          { anim: pulse5, sm: 0.38, oMin: 0.60, oMax: 1.00, color: c3, sMin: 0.98, sMax: 1.02, bw: 4 },
+        // Each ring: [anim, sizeMult, opacityMin, opacityMax, color, scaleMin, scaleMax, borderWidth, fillOpacity, shadowRadius]
+        const rings: Array<{ anim: Animated.Value; sm: number; oMin: number; oMax: number; color: string; sMin: number; sMax: number; bw: number; fill: number; sr: number }> = [
+          // Outermost — slow, barely visible breath
+          { anim: pulse1, sm: 1.30, oMin: 0.00, oMax: 0.18, color: c1, sMin: 0.90, sMax: 1.10, bw: 0.8, fill: 0.03, sr: 30 },
+          // Second ring — medium breath
+          { anim: pulse2, sm: 1.10, oMin: 0.03, oMax: 0.30, color: c1, sMin: 0.93, sMax: 1.07, bw: 1.2, fill: 0.07, sr: 28 },
+          // Third ring — strong fill, main visual
+          { anim: pulse3, sm: 0.88, oMin: 0.08, oMax: 0.55, color: c2, sMin: 0.95, sMax: 1.05, bw: 1.5, fill: 0.18, sr: 35 },
+          // Fourth ring — tight, vibrant core glow
+          { anim: pulse4, sm: 0.66, oMin: 0.15, oMax: 0.70, color: c1, sMin: 0.97, sMax: 1.03, bw: 2.0, fill: 0.30, sr: 40 },
+          // Innermost heartbeat — bright white-tinted core
+          { anim: pulse5, sm: 0.45, oMin: 0.25, oMax: 0.88, color: c3, sMin: 0.98, sMax: 1.02, bw: 2.0, fill: 0.50, sr: 45 },
         ];
 
         return (
@@ -2152,7 +2156,7 @@ function ReelCard({
               position: 'absolute',
               width: baseSize, height: baseSize,
               left: (REEL_W - baseSize) / 2,
-              top: (REEL_H - baseSize) / 2 - REEL_H * 0.05,
+              top: (REEL_H - baseSize) / 2 - REEL_H * 0.06,
               zIndex: 2,
               alignItems: 'center', justifyContent: 'center',
             }}
@@ -2171,18 +2175,27 @@ function ReelCard({
                     borderColor: r.color,
                     shadowColor: r.color,
                     shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.8,
-                    shadowRadius: 15,
+                    shadowOpacity: 0.95,
+                    shadowRadius: r.sr,
                     opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
                     transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
                   }}
                 >
-                  {/* Subtle inner fill so it doesn't wash out the image but still has body */}
+                  {/* Vibrant filled theme color — the signature effect */}
                   <View style={{
                     ...StyleSheet.absoluteFillObject,
                     backgroundColor: r.color,
-                    opacity: 0.06,
+                    opacity: r.fill,
                     borderRadius: s / 2,
+                  }} />
+                  {/* Deep glow halo over the fill */}
+                  <View style={{
+                    ...StyleSheet.absoluteFillObject,
+                    borderRadius: s / 2,
+                    shadowColor: r.color,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.80,
+                    shadowRadius: r.sr + 10,
                   }} />
                 </Animated.View>
               );
@@ -2312,30 +2325,32 @@ function ReelCard({
           </View>
         )}
 
-        {/* Title row + playing status badge */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-          <Pressable
-            // @ts-ignore - RN Web hover props
-            onHoverIn={() => setIsTitleExpanded(true)}
-            onHoverOut={() => setIsTitleExpanded(false)}
-            onPressIn={() => setIsTitleExpanded(true)}
-            onPressOut={() => setIsTitleExpanded(false)}
-            style={{ flex: 1, marginRight: 10 }}
-          >
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.4 }} numberOfLines={isTitleExpanded ? undefined : 1}>
+        {/* Title row + playing status badge — sleek premium compact */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1 }}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <MarqueeText
+              style={{ fontSize: 19, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: 'Nunito_700Bold' }}
+              active={isPlaying}
+              duration={8000}
+            >
               {sound.label}
-            </Text>
-          </Pressable>
+            </MarqueeText>
+          </View>
           {isPlaying && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
+              backgroundColor: isPaused ? 'rgba(255,255,255,0.06)' : sound.color + '20',
+              borderWidth: 0.8, borderColor: isPaused ? 'rgba(255,255,255,0.12)' : sound.color + '55',
+            }}>
               <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color }} />
-              <Text style={{ fontSize: 9, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.30)' : sound.color, letterSpacing: 1.8 }}>
+              <Text style={{ fontSize: 8.5, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.35)' : sound.color, letterSpacing: 1.6 }}>
                 {isPaused ? 'PAUSED' : 'PLAYING'}
               </Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', marginBottom: 14, lineHeight: 16 }} numberOfLines={1}>
+        <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginBottom: 10, lineHeight: 15, letterSpacing: 0.1 }} numberOfLines={1}>
           {sound.desc}
         </Text>
 
@@ -2641,12 +2656,14 @@ function ReelProgressBar({ progress, color }: { progress: number; color: string 
 function SoundReelsModal({
   visible, startIndex, playingId, isPaused, sessionSecs, stopIdx,
   onPlaySound, onToggle, onStop, onStopSilent, onClose, onChangeTimer,
+  onOpenLibrary,
 }: {
   visible: boolean; startIndex: number;
   playingId: string | null; isPaused: boolean; sessionSecs: number; stopIdx: number;
   onPlaySound: (id: string) => void; onToggle: () => void; onStop: () => void;
   onStopSilent: () => void;
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
+  onOpenLibrary?: (category: string) => void;
 }) {
   const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const flatRef = useRef<FlatList>(null);
@@ -2927,44 +2944,54 @@ function SoundReelsModal({
             </TouchableOpacity>
           </View>
 
-          {/* ── Category selector — elegant pill layout ── */}
-          <View style={{ paddingBottom: 10, marginTop: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, width: '100%' }}>
-              {TAB_CATEGORIES.map(cat => {
-                const isActive = activeSound?.cat === cat;
-                const meta = REEL_CAT_META[cat] ?? { color: '#FFFFFF' };
-                const catIcon = (CAT_ICONS[cat] ?? 'apps') as any;
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    onPress={() => scrollToCategory(cat)}
-                    activeOpacity={0.70}
-                    style={{
-                      flexDirection: 'row', gap: 6,
-                      paddingHorizontal: 14, paddingVertical: 8,
-                      borderRadius: 20,
-                      alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: isActive ? meta.color + '28' : 'rgba(255,255,255,0.05)',
-                      borderWidth: 1,
-                      borderColor: isActive ? meta.color + '65' : 'rgba(255,255,255,0.1)',
-                      shadowColor: isActive ? meta.color : 'transparent',
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: isActive ? 0.4 : 0,
-                      shadowRadius: 8,
-                    }}
-                  >
-                    {cat === 'Birds' || cat === 'Meditations' ? (
-                      <MaterialCommunityIcons name={catIcon} size={12} color={isActive ? meta.color : 'rgba(255,255,255,0.45)'} />
-                    ) : (
-                      <Ionicons name={catIcon} size={12} color={isActive ? meta.color : 'rgba(255,255,255,0.45)'} />
-                    )}
-                    <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? meta.color : 'rgba(255,255,255,0.55)', fontFamily: isActive ? 'Nunito_700Bold' : 'Nunito_400Regular', letterSpacing: 0.2 }}>
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          {/* ── Smart "Select Sound" library button — replaces category strip ── */}
+          <View style={{ paddingBottom: 12, marginTop: 2, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Current category chip */}
+            {activeSound && (() => {
+              const meta = REEL_CAT_META[activeSound.cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+              return (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+                  backgroundColor: meta.color + '18',
+                  borderWidth: 0.8, borderColor: meta.color + '50',
+                }}>
+                  <Text style={{ fontSize: 12 }}>{meta.emoji}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: meta.color, letterSpacing: 0.4, fontFamily: 'Nunito_700Bold' }}>
+                    {activeSound.cat}
+                  </Text>
+                </View>
+              );
+            })()}
+            {/* Select Sound CTA button */}
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onOpenLibrary?.(activeSound?.cat ?? '');
+              }}
+              activeOpacity={0.78}
+              style={{
+                flex: 1,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+                paddingHorizontal: 16, paddingVertical: 9,
+                borderRadius: 22,
+                backgroundColor: 'rgba(255,255,255,0.10)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.22)',
+                overflow: 'hidden',
+              }}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)']}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <Ionicons name="musical-notes-outline" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={{ fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.3, fontFamily: 'Nunito_700Bold' }}>
+                Select Sound
+              </Text>
+              <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.45)" />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
 
@@ -3118,8 +3145,8 @@ function SoundReelsModal({
               <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
               
               <View style={{ padding: 22, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold' }}>Keep Listening?</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>Would you like to minimize this reel and keep the audio playing, or stop playback entirely?</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold' }}>Leave Session?</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>You can minimize the player to continue listening in the background, or leave the session entirely.</Text>
               </View>
               
               <TouchableOpacity
@@ -3130,7 +3157,7 @@ function SoundReelsModal({
                 }}
                 style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)' }}
               >
-                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Minimize (Keep Playing)</Text>
+                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Minimize & Keep Playing</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -3142,7 +3169,7 @@ function SoundReelsModal({
                 }}
                 style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,0,50,0.08)' }}
               >
-                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Stop Audio & Close</Text>
+                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Leave Session</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -3170,6 +3197,7 @@ function SleepTabInner() {
   const { bgUri, accentColor, gradientStart, solarTimes } = useBgContext();
   const [now, setNow] = useState(new Date());
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryInitialCat, setLibraryInitialCat] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<TextInput>(null);
@@ -3759,15 +3787,15 @@ function SleepTabInner() {
       mode === 'evening' ? 'rgba(80,30,0,0.78)'  :
       'rgba(0,0,10,0.72)';
     return {
-      fontSize: 20,
+      fontSize: 32,
       fontWeight: '600' as const,
+      fontFamily: 'DancingScript_600SemiBold',
       letterSpacing: 0.5,
-      color,
-      textShadowColor: shadowColor,
+      color: '#FFF8F0',
+      textShadowColor: 'rgba(60,20,0,0.75)',
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 12,
       textAlign: 'center' as const,
-      fontFamily: 'DancingScript_600SemiBold',
     };
   }, [displayMode.key]);
 
@@ -3778,17 +3806,17 @@ function SleepTabInner() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <BlurView
         tint="dark"
-        intensity={90}
+        intensity={70}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
       {/* Premium frosted-glass gradient overlay for focus */}
       <LinearGradient
         colors={[
-          'rgba(0,0,0,0.40)',
+          'rgba(0,0,0,0.20)',
+          'rgba(0,0,0,0.35)',
           'rgba(0,0,0,0.55)',
           'rgba(0,0,0,0.70)',
-          'rgba(0,0,0,0.85)',
         ]}
         locations={[0, 0.25, 0.60, 1]}
         style={StyleSheet.absoluteFillObject}
@@ -3810,11 +3838,12 @@ function SleepTabInner() {
           style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
           onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
         >
-          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 6 }}>
+          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(10,15,30,0.4)', paddingBottom: 6, overflow: 'hidden' }}>
+              <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
+                colors={['rgba(255,255,255,0.15)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFillObject} />
+                style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               {/* Bottom shimmer line hinting expansion */}
               <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
               
@@ -3933,25 +3962,27 @@ function SleepTabInner() {
             <View style={{
               width: '100%',
               paddingHorizontal: 24,
-              paddingVertical: 40,
+              paddingVertical: 32,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
-              gap: 16,
+              marginTop: 16,
+              marginBottom: 16,
+              gap: 12,
             }}>
               {/* Main title */}
-              <Text style={[heroTextStyle, { fontSize: 24, letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }]}>
+              <Text style={[heroTextStyle, { marginBottom: 4 }]}>
                 {heroContent ? heroContent.header : displayMode.label}
               </Text>
               
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -2, marginBottom: 2 }}>
-                <Text style={{ fontSize: 12.5, color: '#FFFFFF', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginBottom: 2 }}>
+                <Text style={{ fontSize: 12, color: '#FFFFFF', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
                   {heroContent ? heroContent.actionText : 'Listen & tune in'}
                 </Text>
               </View>
 
               {/* Subtitle / Status Text */}
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontWeight: '400', fontFamily: 'Nunito_400Regular', textAlign: 'center', marginTop: 2 }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', marginTop: 2 }}>
                 {heroContent ? heroContent.sentence : displayMode.subtitle}
               </Text>
             </View>
@@ -4008,7 +4039,7 @@ function SleepTabInner() {
                       <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 16 }}>
-                      <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000}>{sound.label}</MarqueeText>
+                      <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000} adjustsFontSizeToFit={false} numberOfLines={2}>{sound.label}</MarqueeText>
                       {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
                     </View>
                     {isPlaying ? (
@@ -4230,11 +4261,16 @@ function SleepTabInner() {
         onStopSilent={handleStopSilent}
         onClose={handleReelClose}
         onChangeTimer={changeStopTimer}
+        onOpenLibrary={(cat) => {
+          setLibraryInitialCat(cat);
+          setLibraryOpen(true);
+        }}
       />
 
       {/* ── Sound Library Modal ── */}
       <SoundLibraryModal
         visible={libraryOpen}
+        initialCategory={libraryInitialCat}
         onClose={() => setLibraryOpen(false)}
         sounds={ALL_SOUNDS_LIST}
         playingId={playingId}
@@ -4341,12 +4377,12 @@ const S = StyleSheet.create({
   chipDivider: { width: 1, height: 22, backgroundColor: '#FFFFFF10', marginHorizontal: 4, alignSelf: 'center' },
 
   // ── Night Settings grouped card ────────────────────────────
-  groupCard:     { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.45)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
-  groupRow:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
-  groupIcon:     { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  groupRowTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
-  groupRowSub:   { fontSize: 11, color: '#FFFFFF65', marginTop: 2 },
-  groupDivider:  { height: 1, backgroundColor: '#FFFFFF0C', marginLeft: 70 },
+  groupCard:     { marginHorizontal: 16, borderRadius: 28, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(10,14,28,0.55)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 16 },
+  groupRow:      { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, paddingVertical: 18 },
+  groupIcon:     { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  groupRowTitle: { fontSize: 14.5, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
+  groupRowSub:   { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 3, letterSpacing: 0.1 },
+  groupDivider:  { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginLeft: 80, marginRight: 20 },
   idealBedChip:      { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#a78bfa14', borderWidth: 1, borderColor: '#a78bfa35', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
   idealBedChipLabel: { fontSize: 9, fontWeight: '600', color: '#a78bfa70', letterSpacing: 0.3 },
   idealBedChipTxt:   { fontSize: 11, fontWeight: '800', color: '#a78bfaCC', fontFamily: 'Nunito_800ExtraBold' },

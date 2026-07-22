@@ -712,7 +712,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ImageBackground source={obBg ? { uri: obBg } : undefined} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.14, resizeMode: 'cover' }} />
+      <ImageBackground source={require('../../assets/images/new_bg.jpeg')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.14, resizeMode: 'contain' }} />
       <LinearGradient
         colors={['rgba(7,22,62,0.97)', 'rgba(4,13,42,0.99)', 'rgba(2,7,22,1)']}
         locations={[0, 0.5, 1]}

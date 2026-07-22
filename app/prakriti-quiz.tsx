@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Animated, Easing, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import * as Haptics from 'expo-haptics';
@@ -260,6 +260,7 @@ export default function PrakritiQuizScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.bg }}>
+      <ImageBackground source={require('../assets/images/new_bg.jpeg')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: 0.14, resizeMode: 'contain' }} />
       <ScreenHeader title="Prakriti Assessment" subtitle="10 questions · Discover your real constitution" showBack accent={Colors.gold} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 

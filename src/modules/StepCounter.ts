@@ -241,7 +241,12 @@ export const StepCounter = {
     const hasPerms = await ensurePermissions();
     if (!hasPerms) return { goalSteps: SESSION_GOALS[type], startTime: Date.now() };
     
-    const isRunning = await (_native?.isRunning() ?? Promise.resolve(false));
+    let isRunning = false;
+    try {
+      isRunning = await (_native?.isRunning() ?? Promise.resolve(false));
+    } catch {
+      isRunning = false;
+    }
     if (isRunning) {
       const existingStart = await asGet('sc_current_session_start');
       return { 

@@ -230,9 +230,10 @@ export async function prefetchAllSoundImagesWithProgress(
   for (const url of ALL_URLS) {
     const p = (async () => {
       await cacheOne(url);
+    })().finally(() => {
       done += 1;
       onProgress(done, total);
-    })();
+    });
     
     const pWrapped = p.catch(() => { hasError = true; });
     executing.add(pWrapped);
@@ -246,7 +247,7 @@ export async function prefetchAllSoundImagesWithProgress(
   await Promise.all(executing);
   
   if (hasError) {
-    throw new Error("Network error during download");
+    console.warn('[soundImagePreload] prefetchAllSoundImagesWithProgress ignored some download errors.');
   }
 }
 
