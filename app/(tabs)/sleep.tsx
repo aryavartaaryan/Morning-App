@@ -2967,7 +2967,7 @@ function SoundReelsModal({
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onOpenLibrary?.(activeSound?.cat ?? '');
+                onOpenLibrary?.('');
               }}
               activeOpacity={0.78}
               style={{
@@ -3135,53 +3135,68 @@ function SoundReelsModal({
           </View>
         )}
 
-        {/* iOS Style Action Popup */}
+        {/* Ultra-Modern Action Popup */}
         {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
-            <View style={{ width: 300, backgroundColor: 'rgba(25,25,25,0.85)', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Animated.View style={{ width: W * 0.85, maxWidth: 350, borderRadius: 32, overflow: 'hidden', backgroundColor: 'rgba(20,20,22,0.75)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15 }}>
+              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 22, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold' }}>Leave Session?</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>You can minimize the player to continue listening in the background, or leave the session entirely.</Text>
+              <View style={{ padding: 32, alignItems: 'center' }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+                   <Ionicons name="musical-notes-outline" size={28} color="#FFF" />
+                </View>
+                <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 12, fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.4 }}>Leave Session?</Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22 }}>You can minimize the player to continue listening in the background, or stop it entirely.</Text>
               </View>
               
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowClosePrompt(false);
-                  onClose(isLast);
-                }}
-                style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)' }}
-              >
-                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Minimize & Keep Playing</Text>
-              </TouchableOpacity>
+              <View style={{ paddingHorizontal: 24, paddingBottom: 28, gap: 14 }}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowClosePrompt(false);
+                    onClose(isLast);
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#0A84FF', '#005BB5']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', shadowColor: '#0A84FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 12 }}
+                  >
+                    <Ionicons name="chevron-down" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold' }}>Minimize & Keep Playing</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowClosePrompt(false);
-                  onStop();
-                  onClose(isLast);
-                }}
-                style={{ paddingVertical: 16, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,0,50,0.08)' }}
-              >
-                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Leave Session</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setShowClosePrompt(false);
+                    onStop();
+                    onClose(isLast);
+                  }}
+                  style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255,69,58,0.1)', borderWidth: 1, borderColor: 'rgba(255,69,58,0.25)' }}
+                >
+                  <Ionicons name="power" size={20} color="#FF453A" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '700', fontFamily: 'Nunito_700Bold' }}>Leave Session</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowClosePrompt(false);
-                }}
-                style={{ paddingVertical: 16, alignItems: 'center' }}
-              >
-                <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowClosePrompt(false);
+                  }}
+                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
+                >
+                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           </View>
         )}
       </View>
@@ -3806,19 +3821,19 @@ function SleepTabInner() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <BlurView
         tint="dark"
-        intensity={70}
+        intensity={65}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Premium frosted-glass gradient overlay for focus */}
+      {/* Premium iOS frosted-glass gradient overlay */}
       <LinearGradient
         colors={[
-          'rgba(0,0,0,0.20)',
-          'rgba(0,0,0,0.35)',
-          'rgba(0,0,0,0.55)',
-          'rgba(0,0,0,0.70)',
+          'rgba(4,6,14,0.15)',
+          'rgba(4,6,14,0.30)',
+          'rgba(4,6,14,0.45)',
+          'rgba(4,6,14,0.65)',
         ]}
-        locations={[0, 0.25, 0.60, 1]}
+        locations={[0, 0.3, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -3838,8 +3853,8 @@ function SleepTabInner() {
           style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
           onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
         >
-          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(10,15,30,0.4)', paddingBottom: 6, overflow: 'hidden' }}>
-              <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(10,15,30,0.1)', paddingBottom: 6, overflow: 'hidden' }}>
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
                 colors={['rgba(255,255,255,0.15)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
@@ -4314,21 +4329,21 @@ const S = StyleSheet.create({
   secCount:  { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.58)' },
 
   // ── Tonight's Window inline strip ────────────────────────
-  windowRow:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 14, borderRadius: 18, borderWidth: 1, borderColor: SLEEP_COLOR + '35', backgroundColor: 'rgba(4,12,28,0.72)', paddingHorizontal: 20, paddingVertical: 14 },
+  windowRow:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 14, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 20, paddingVertical: 14 },
   windowCell:     { flex: 1 },
   windowDivider:  { width: 1, height: 36, backgroundColor: '#FFFFFF10', marginHorizontal: 16 },
-  windowLabel:    { fontSize: 10, color: '#FFFFFF45', fontWeight: '600', marginBottom: 4 },
+  windowLabel:    { fontSize: 10, color: '#FFFFFF50', fontWeight: '600', marginBottom: 4 },
   windowTime:     { fontSize: 18, fontWeight: '700', letterSpacing: -0.5 },
 
   // ── Sleep Intelligence full card ──────────────────────────
-  windowCard:     { marginHorizontal: 16, borderRadius: 24, borderWidth: 1.5, borderColor: SLEEP_COLOR + '35', backgroundColor: 'rgba(15,23,42,0.45)', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
+  windowCard:     { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
   sleepBar:       { height: 5, backgroundColor: '#FFFFFF08', borderRadius: 3, overflow: 'visible', position: 'relative', marginTop: 4 },
   sleepBarFill:   { position: 'absolute', left: 0, top: 0, bottom: 0, right: 0, borderRadius: 3 },
   sleepBarDot:    { position: 'absolute', top: -5, width: 15, height: 15, borderRadius: 8, borderWidth: 2.5, borderColor: '#000000' },
-  barLabel:       { fontSize: 9, color: '#FFFFFF25', fontWeight: '700', letterSpacing: 0.3 },
+  barLabel:       { fontSize: 9, color: '#FFFFFF35', fontWeight: '700', letterSpacing: 0.3 },
 
   // ── Featured Hero Card ─────────────────────────────────────
-  featuredCard:  { borderRadius: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', padding: 18, height: 186, justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12 },
+  featuredCard:  { borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: 'rgba(255,255,255,0.08)', padding: 18, height: 186, justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 12 },
   featOrb1:      { position: 'absolute', top: -40, right: -30, width: 180, height: 180, borderRadius: 90 },
   featOrb2:      { position: 'absolute', bottom: -20, left: -10, width: 110, height: 110, borderRadius: 55 },
   featTopRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -4337,16 +4352,16 @@ const S = StyleSheet.create({
   featLiveLabel: { fontSize: 9, fontWeight: '500', letterSpacing: 0.7, fontFamily: 'Nunito_600SemiBold' },
   featTimer:     { fontSize: 18, fontWeight: '200', letterSpacing: -0.5 },
   featTitle:     { fontSize: 20, fontWeight: '200', color: '#fff', letterSpacing: -0.5, marginBottom: 5 },
-  featDesc:      { fontSize: 12, color: '#FFFFFF45', marginBottom: 18, letterSpacing: 0.1 },
+  featDesc:      { fontSize: 12, color: '#FFFFFF50', marginBottom: 18, letterSpacing: 0.1 },
   featControls:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   featPauseBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12 },
   featPlayBtn:   { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'flex-start' },
   featPauseTxt:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   featStopBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 12 },
-  featStopTxt:   { fontSize: 12, color: '#FFFFFF35', fontWeight: '600' },
+  featStopTxt:   { fontSize: 12, color: '#FFFFFF45', fontWeight: '600' },
 
   // ── Night Theme Cards ─────────────────────────────────────
-  themeCard:     { width: THEME_CARD_W, height: THEME_CARD_H, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', justifyContent: 'flex-end', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
+  themeCard:     { width: THEME_CARD_W, height: THEME_CARD_H, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'flex-end', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 10 },
   themeOrb1:     { position: 'absolute', top: -30, right: -20, width: 110, height: 110, borderRadius: 55, opacity: 0.7 },
   themeOrb2:     { position: 'absolute', bottom: 10, left: -15, width: 70, height: 70, borderRadius: 35, opacity: 0.5 },
   themeContent:  { padding: 14, gap: 4 },
@@ -4359,7 +4374,7 @@ const S = StyleSheet.create({
 
   // ── Sound grid ────────────────────────────────────────────
   grid:          { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 4 },
-  soundCard:     { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
+  soundCard:     { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 10 },
   soundGrad:     { padding: 14, flex: 1, justifyContent: 'space-between', position: 'relative', overflow: 'hidden' },
   soundOrb:      { position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: 45 },
   soundTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -4377,9 +4392,9 @@ const S = StyleSheet.create({
   chipDivider: { width: 1, height: 22, backgroundColor: '#FFFFFF10', marginHorizontal: 4, alignSelf: 'center' },
 
   // ── Night Settings grouped card ────────────────────────────
-  groupCard:     { marginHorizontal: 16, borderRadius: 28, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(10,14,28,0.55)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 16 },
+  groupCard:     { marginHorizontal: 16, borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 16 },
   groupRow:      { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, paddingVertical: 18 },
-  groupIcon:     { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  groupIcon:     { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
   groupRowTitle: { fontSize: 14.5, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
   groupRowSub:   { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 3, letterSpacing: 0.1 },
   groupDivider:  { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginLeft: 80, marginRight: 20 },
@@ -4388,7 +4403,7 @@ const S = StyleSheet.create({
   idealBedChipTxt:   { fontSize: 11, fontWeight: '800', color: '#a78bfaCC', fontFamily: 'Nunito_800ExtraBold' },
 
   // ── Sleep Cycle chips ─────────────────────────────────────
-  cycleChip:        { width: 112, borderRadius: 16, borderWidth: 1, padding: 12, gap: 2 },
+  cycleChip:        { width: 112, borderRadius: 16, borderWidth: 1, padding: 12, gap: 2, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)' },
   cycleChipBadge:   { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 },
   cycleChipTime:    { fontSize: 13, fontWeight: '600', letterSpacing: -0.3, fontFamily: 'Nunito_600SemiBold' },
   cycleChipHours:   { fontSize: 10, fontWeight: '600', color: '#FFFFFFBB', fontFamily: 'Nunito_600SemiBold' },
@@ -4396,11 +4411,11 @@ const S = StyleSheet.create({
   cycleChipCycles:  { fontSize: 10, color: '#FFFFFF35', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   // ── Sleep Science ─────────────────────────────────────────
-  tipCard:    { marginHorizontal: 16, marginBottom: 12, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(15,23,42,0.4)', flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10 },
-  tipIconBox: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  tipCard:    { marginHorizontal: 16, marginBottom: 12, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 10 },
+  tipIconBox: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   tipTitle:   { fontSize: 12, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' },
   tipSub:     { fontSize: 10, color: '#FFFFFFBB', marginTop: 2, lineHeight: 15 },
-  scienceNote:    { marginHorizontal: 16, marginTop: 4, marginBottom: 8, backgroundColor: 'rgba(6,15,40,0.50)', borderWidth: 1, borderColor: SLEEP_COLOR + '45', borderRadius: 16, padding: 16 },
+  scienceNote:    { marginHorizontal: 16, marginTop: 4, marginBottom: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 16 },
   scienceNoteTxt: { fontSize: 11, color: SLEEP_COLOR + 'DD', lineHeight: 18 },
 
   // ── Auto-start modal ──────────────────────────────────────

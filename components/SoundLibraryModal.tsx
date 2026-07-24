@@ -36,7 +36,6 @@ export default function SoundLibraryModal({
 
   const toggleCat = (cat: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedCat(prev => prev === cat ? null : cat);
   };
 

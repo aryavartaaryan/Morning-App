@@ -110,7 +110,7 @@ class AppErrorBoundary extends Component<
   }
 }
 
-const { height: SH } = Dimensions.get('window');
+const { height: SH, width: SW } = Dimensions.get('window');
 
 function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }) {
   // "Nada" text (starts visible to seamlessly match native splash, then fades out)
@@ -123,17 +123,24 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
 
+  const mantraOp = useRef(new Animated.Value(0)).current;
+  const mantraTy = useRef(new Animated.Value(20)).current;
+
   // Animation sequence starts after component mounts
   useEffect(() => {
     let mounted = true;
     // Initial delay to let the app settle
     const initialDelay = setTimeout(() => {
-      Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+      Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: false }).start();
 
       Animated.sequence([
         Animated.delay(600),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.delay(1450), // Hold the screen for a bit so user can read everything (4s total)
+        Animated.timing(shimmerOp, { toValue: 1, duration: 800, useNativeDriver: false }),
+        Animated.parallel([
+           Animated.timing(mantraOp, { toValue: 1, duration: 1200, useNativeDriver: false }),
+           Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+        ]),
+        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -142,10 +149,10 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         
         // Dismiss Splash
         Animated.parallel([
-          Animated.timing(titleOp, { toValue: 0, duration: 800, useNativeDriver: true }),
-          Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: true }),
-          Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: true }),
-          Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: true }),
+          Animated.timing(titleOp, { toValue: 0, duration: 800, useNativeDriver: false }),
+          Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: false }),
+          Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: false }),
+          Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: false }),
         ]).start(({ finished }) => {
           if (mounted && finished) onDone();
         });
@@ -164,7 +171,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Image matching Setup Screen */}
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
+      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}
@@ -217,6 +224,24 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
               Resonate & Transform{'\n'}through the Nada.
             </Animated.Text>
           </View>
+
+          {/* Mantra with translation - Ultra Premium Layout */}
+          <Animated.View style={{ marginTop: 36, opacity: mantraOp, transform: [{ translateY: mantraTy }], alignItems: 'center', paddingHorizontal: 20 }}>
+            {/* Devanagari Script - Large, elegant, slightly transparent anchor */}
+            <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 30, marginBottom: 14, fontWeight: '400', letterSpacing: 2 }}>
+              असतो मा सद्गमय ।{'\n'}तमसो मा ज्योतिर्गमय ।{'\n'}मृत्योर्मा अमृतं गमय ॥
+            </Text>
+            
+            {/* Transliteration */}
+            <Text style={{ fontSize: 12, color: '#bfdbfe', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.95, letterSpacing: 0.5 }}>
+              "Asato Ma Sadgamaya, Tamaso Ma Jyotir Gamaya,{'\n'}Mrityor Ma Amritam Gamaya"
+            </Text>
+            
+            {/* Translation */}
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 18, marginTop: 10, letterSpacing: 0.5 }}>
+              Lead us from the unreal to the real,{'\n'}from darkness to light, from death to immortality.
+            </Text>
+          </Animated.View>
         </Animated.View>
         
       </View>
@@ -257,7 +282,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: false }).start();
   }, []);
 
   const tags1 = ['Reduce Stress', 'Regain Focus', 'Digital Detox', 'Reduce Brain Fog', 'Reconnect with Nature', 'Improve Sleep'];
@@ -270,7 +295,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   };
 
   const handleComplete = () => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: false }).start(() => {
       // Intelligently set default intention based on rhythm
       const target = q2 === 'Mostly Sedentary' ? '21000' : q2 === 'Lightly Active' ? '35000' : '50000';
       AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
@@ -281,7 +306,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
+      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
       
       <View style={{ flex: 1, zIndex: 10 }}>
@@ -355,8 +380,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     // Pulse core glow (slow, deep breathing)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ])
     ).start();
 
@@ -365,8 +390,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       Animated.sequence([
         Animated.delay(i * 2500),
         Animated.loop(Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 8000, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
-          Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 1, duration: 8000, useNativeDriver: false, easing: Easing.out(Easing.cubic) }),
+          Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: false }),
         ])),
       ]).start();
     });
@@ -376,10 +401,10 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
       Animated.sequence([
-        Animated.timing(subtitleOp, { toValue: 0, duration: 1500, useNativeDriver: true }),
+        Animated.timing(subtitleOp, { toValue: 0, duration: 1500, useNativeDriver: false }),
       ]).start(() => {
         setSubtitleIdx(i => (i + 1) % SETUP_SUBTITLES.length);
-        Animated.timing(subtitleOp, { toValue: 1, duration: 1500, useNativeDriver: true }).start();
+        Animated.timing(subtitleOp, { toValue: 1, duration: 1500, useNativeDriver: false }).start();
       });
     };
     const interval = setInterval(cycleSubtitle, 6000);
@@ -444,8 +469,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       if (soundRef.current) soundRef.current.unloadAsync();
       if (soundRef2.current) soundRef2.current.unloadAsync();
       Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false })
       ]).start(() => {
         if (onFadeOutComplete) onFadeOutComplete();
       });
@@ -495,7 +520,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('../assets/images/setup_splash.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
+      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}

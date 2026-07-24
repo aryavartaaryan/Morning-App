@@ -44,7 +44,7 @@ import { store, KEYS } from '@/lib/storage';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getBgSourceSync } from '@/lib/bgImages';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
-import { getSolarRingPalette } from '@/lib/solarRingPalette';
+import { getSacredHourInfo } from '@/lib/solarRingPalette';
 
 const { width: W } = Dimensions.get('window');
 
@@ -60,7 +60,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 250;
+const RING_SIZE   = 220;
 const RING_STROKE = 14;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -78,15 +78,27 @@ const DEFAULT_STATS: TodayStats = {
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
 
-// ── Glassy Overlay (permanent peak frost) ────────────────────────────────────
+// ── iOS-style glass overlay — identical to sleep.tsx ─────────────────────────
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <BlurView intensity={3} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <LinearGradient
-        colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
-        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+      <BlurView
+        tint="dark"
+        intensity={65}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Premium iOS frosted-glass gradient overlay — same as sleep page */}
+      <LinearGradient
+        colors={[
+          'rgba(4,6,14,0.15)',
+          'rgba(4,6,14,0.30)',
+          'rgba(4,6,14,0.45)',
+          'rgba(4,6,14,0.65)',
+        ]}
+        locations={[0, 0.3, 0.7, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
     </View>
   );
@@ -112,6 +124,8 @@ export default function WalkTab() {
   const [yesterdaySteps, setYesterdaySteps] = useState(0);
   const [weather, setWeather]           = useState<WeatherData | null>(null);
   const [summary, setSummary]           = useState<any>(null);
+  // Track compact step-session bar visibility for bottom padding
+  const [stepBarActive, setStepBarActive] = useState(false);
 
   const ringAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
@@ -119,6 +133,8 @@ export default function WalkTab() {
   const cardFade    = useRef(new Animated.Value(0)).current;
   const cardSlide   = useRef(new Animated.Value(30)).current;
   const btnShimmer  = useRef(new Animated.Value(0)).current;
+  // 0 = normal, 1 = compact (bar visible)
+  const compactAnim = useRef(new Animated.Value(0)).current;
   const walkScrollRef = useRef<ScrollView | null>(null);
 
   // Sci-fi ring rotations
@@ -140,6 +156,15 @@ export default function WalkTab() {
     } catch (err) {
       console.warn("Failed to fetch step stats:", err);
     }
+  }, []);
+
+  useEffect(() => {
+    // Listen to compact step-session bar appearing / disappearing so we
+    // always add the right amount of bottom padding and nothing gets covered.
+    const sub = DeviceEventEmitter.addListener('StepTracker.active', (visible: boolean) => {
+      setStepBarActive(visible);
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -279,6 +304,35 @@ export default function WalkTab() {
     } as never);
   };
 
+  // ── Compact mode: smoothly shrink UI when a floating bar is visible ──────────
+  const compactMode = stepBarActive || !!playingId;
+  useEffect(() => {
+    Animated.spring(compactAnim, {
+      toValue: compactMode ? 1 : 0,
+      useNativeDriver: false,
+      friction: 8,
+      tension: 50,
+    }).start();
+  }, [compactMode]);
+  // Interpolated compact values
+  // Ring: scale from 1.0 down to 0.77 (220 → ~170)
+  const ringScale      = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.77] });
+  // Tagline card: fade out and collapse vertically
+  const taglineOpacity = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const taglineHeight  = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [88, 0] });
+  // Header top padding shrink
+  const headerTopPad   = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
+  // Ring wrapper margin tighten
+  const ringMarginTop  = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
+  // Weekly bar margin tighten
+  const weeklyMargin   = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 6] });
+  // Button area margin tighten
+  const btnMarginTop   = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 4] });
+  const btnMarginBot   = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 4] });
+  // Button inner padding shrink
+  const btnPadV        = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 10] });
+  const btnPadV2       = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 10] });
+
   // ── Derived values for ring ─────────────────────────────────────────────────
   const glowOpacity = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.3, 0.8] });
   const shimmerTranslate = btnShimmer.interpolate({ inputRange: [0, 1], outputRange: [-W, W] });
@@ -289,16 +343,15 @@ export default function WalkTab() {
   const hour = now.getHours() + now.getMinutes() / 60;
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
   const stepBgKey = isNightReal ? 'naad_step_night' : 'naad_step';
-  
-  const solarNoon = solarTimes?.solarNoon ?? 12.5;
-  const gpsLat = weather?.lat ?? null;
-  const gpsLon = weather?.lon ?? null;
-  const showBrahma = isNightReal && !!solarTimes && hour >= (solarTimes.sunrise - 1.5) && hour < solarTimes.sunrise;
-  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp);
-  const ringHex = palette.ring;
-  const haloHex = palette.halo;
-  const accentHex = palette.accent;
-  
+
+  // Fixed premium ring colors — no time-based theme changes
+  const ringHex = ACCENT;
+  const haloHex = TEAL;
+
+  const sacred = getSacredHourInfo(hour, solarTimes);
+  const isSunset = sacred.type === 'sunset';
+  const isSunrise = sacred.type === 'sunrise';
+
   return (
     <ImageBackground
       source={{ uri: getBgSourceSync(stepBgKey as any) }}
@@ -306,8 +359,8 @@ export default function WalkTab() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      {/* Top green nature glow */}
+
+      {/* Top nature glow */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity, pointerEvents: 'none' }]}
         pointerEvents="none"
@@ -325,15 +378,18 @@ export default function WalkTab() {
       <ScrollView
         ref={walkScrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: getTabBarClearance(insets.bottom, !!playingId) }}
+        contentContainerStyle={{
+          paddingBottom: getTabBarClearance(insets.bottom, !!playingId, stepBarActive),
+        }}
       >
         {/* ── HEADER ────────────────────────────────────── */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 0 }}>
-          <View style={{
+          <Animated.View style={{
             width: '100%',
             alignItems: 'center',
             paddingHorizontal: 20,
             paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)),
+            transform: [{ translateY: headerTopPad }],
           }}>
             <Text style={{
               fontSize: 34,
@@ -352,11 +408,17 @@ export default function WalkTab() {
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, fontWeight: '500', textTransform: 'uppercase' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
-          </View>
+          </Animated.View>
         </Animated.View>
 
-        {/* ── TAGLINE CARD ────────────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 24, marginBottom: 8 }}>
+        {/* ── TAGLINE CARD — hides smoothly in compact mode ────────────────── */}
+        <Animated.View style={{
+          opacity: taglineOpacity,
+          height: taglineHeight,
+          overflow: 'hidden',
+          paddingHorizontal: 24,
+          marginBottom: 4,
+        }}>
           <View style={{
             backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
             borderRadius: 16,
@@ -381,7 +443,7 @@ export default function WalkTab() {
         </Animated.View>
 
         {/* View Analytics Button - sleek premium iOS style */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 40, zIndex: 10 }}>
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 16, zIndex: 10 }}>
           <TouchableOpacity
             onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
             style={{
@@ -416,10 +478,17 @@ export default function WalkTab() {
         )}
 
         {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
-        <Animated.View style={[st.ringWrapper, { opacity: cardFade, transform: [{ scale: pulseAnim }] }]}>
+        <Animated.View style={[st.ringWrapper, {
+          opacity: cardFade,
+          transform: [
+            { scale: pulseAnim },
+            { scale: ringScale },
+          ],
+          marginTop: ringMarginTop,
+        }]}>
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
-            {/* Inner zone - vibrant solid theme colored glass */}
+            {/* Inner zone - fixed premium frosted glass disc */}
             <View style={{
               position: 'absolute', top: 0, left: 0, width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
               overflow: 'hidden', borderWidth: 1, borderColor: `${haloHex}50`
@@ -427,21 +496,21 @@ export default function WalkTab() {
               <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
               <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim.interpolate({ inputRange: [1, 1.07], outputRange: [0.6, 0.95] }) }]}>
                 <LinearGradient
-                  colors={[`${accentHex}50`, `${ringHex}80`, `${haloHex}40`]}
+                  colors={[`${ACCENT}50`, `${ACCENT}80`, `${TEAL}40`]}
                   start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
                   style={StyleSheet.absoluteFillObject} />
               </Animated.View>
             </View>
 
             {/* ── CLEAN PREMIUM THIN RING ─────────────────────────────────── */}
-            <View style={{ shadowColor: ringHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 15, elevation: 8 }}>
+            <View style={{ shadowColor: ACCENT, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 15, elevation: 8 }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Track */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ringHex} strokeOpacity={0.15} strokeWidth={3} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={ACCENT} strokeOpacity={0.15} strokeWidth={3} />
                 {/* Main crisp stroke */}
                 <Circle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER}
-                  fill="none" stroke={ringHex} strokeWidth={3} strokeLinecap="round"
+                  fill="none" stroke={ACCENT} strokeWidth={3} strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * R_OUTER} strokeDashoffset={2 * Math.PI * R_OUTER * (1 - (stats.goalPercent / 100))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
                 />
@@ -451,54 +520,65 @@ export default function WalkTab() {
             {/* Centre content */}
             <View style={st.ringCentre}>
               
-              {weather ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, opacity: 0.95 }}>
-                  <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                    {weather.temp}° • {weather.condition}
+              {(isSunset || isSunrise) ? (
+                <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
+                    {isSunset ? 'Sunset setting meditate now..' : 'Sunrise starting meditate now..'}
                   </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Connect with the divinity..</Text>
                 </View>
               ) : (
-                <View style={{ height: 10, marginBottom: 6 }} />
-              )}
-              
-              {/* Badge */}
-              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 2 }}>
-                <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.5 }}>STEPS TODAY</Text>
-              </View>
-              
-              <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
-              <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} INTENTION</Text>
-              
-              <View style={st.ringDivider} />
-              
-              <View style={{ flexDirection: 'row', gap: 16, marginTop: 4, alignItems: 'center' }}>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>km</Text>
-                </View>
-                <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>min</Text>
-                </View>
-                <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{streak}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>days</Text>
-                </View>
-              </View>
-              
-              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(96,165,250,0.2)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', marginTop: 10 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#93c5fd', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
-              </View>
-              
-              {/* Yesterday motivational display */}
-              {stats.totalSteps === 0 && yesterdaySteps > 0 && (
-                <View style={{ marginTop: 8, alignItems: 'center', opacity: 0.85 }}>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(59,130,246,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa' }}>{fmtK(yesterdaySteps)} steps</Text>
-                </View>
+                <>
+                  {weather ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, opacity: 0.95 }}>
+                      <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                        {weather.temp}° • {weather.condition}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ height: 10, marginBottom: 6 }} />
+                  )}
+                  
+                  {/* Badge */}
+                  <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 2 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.5 }}>STEPS TODAY</Text>
+                  </View>
+                  
+                  <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
+                  <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} INTENTION</Text>
+                  
+                  <View style={st.ringDivider} />
+                  
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 4, alignItems: 'center' }}>
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>km</Text>
+                    </View>
+                    <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>min</Text>
+                    </View>
+                    <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{streak}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>days</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(96,165,250,0.2)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', marginTop: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#93c5fd', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
+                  </View>
+                  
+                  {/* Yesterday motivational display */}
+                  {stats.totalSteps === 0 && yesterdaySteps > 0 && (
+                    <View style={{ marginTop: 8, alignItems: 'center', opacity: 0.85 }}>
+                      <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(59,130,246,0.8)', letterSpacing: 1.2 }}>YESTERDAY</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5fa' }}>{fmtK(yesterdaySteps)} steps</Text>
+                    </View>
+                  )}
+                </>
               )}
             </View>
 
@@ -506,35 +586,44 @@ export default function WalkTab() {
           
           {/* ── WEEKLY PROGRESS BAR ───────────────────────────────────────── */}
           {summary && summary.weeklyGoal > 0 && (
-            <View style={{ width: '100%', paddingHorizontal: 32, marginTop: 16 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Intention</Text>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: ringHex }}>{summary.weeklyGoalPercent}%</Text>
-              </View>
-              
-              <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
-                <View style={{ 
-                  position: 'absolute', left: 0, top: 0, bottom: 0, 
-                  width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
-                  backgroundColor: ringHex, borderRadius: 5 
-                }}>
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.3)', 'transparent']}
-                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
+            <View style={{ width: '100%', paddingHorizontal: 32 }}>
+              <Animated.View style={{ marginTop: weeklyMargin }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Intention</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: ACCENT }}>{summary.weeklyGoalPercent}%</Text>
                 </View>
-              </View>
-              
-              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 8, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 }}>
-                {summary.weeklySteps.toLocaleString()} <Text style={{fontWeight: '400'}}>of</Text> {summary.weeklyGoal.toLocaleString()} <Text style={{fontWeight: '400'}}>steps</Text>
-              </Text>
+                
+                <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
+                  <View style={{ 
+                    position: 'absolute', left: 0, top: 0, bottom: 0, 
+                    width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
+                    backgroundColor: ACCENT, borderRadius: 5 
+                  }}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.3)', 'transparent']}
+                      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  </View>
+                </View>
+                
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 8, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 }}>
+                  {summary.weeklySteps.toLocaleString()} <Text style={{fontWeight: '400'}}>of</Text> {summary.weeklyGoal.toLocaleString()} <Text style={{fontWeight: '400'}}>steps</Text>
+                </Text>
+              </Animated.View>
             </View>
           )}
         </Animated.View>
 
         {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 32, gap: 10, marginTop: 12, marginBottom: 15 }}>
+        <Animated.View style={{
+          opacity: cardFade,
+          transform: [{ translateY: cardSlide }],
+          paddingHorizontal: 32,
+          gap: 10,
+          marginTop: btnMarginTop,
+          marginBottom: btnMarginBot,
+        }}>
           
           {/* Start Nature Walk Button */}
           <TouchableOpacity
@@ -545,8 +634,9 @@ export default function WalkTab() {
             <LinearGradient
               colors={['rgba(2, 132, 199, 0.85)', 'rgba(56, 189, 248, 0.75)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ paddingVertical: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
+              <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, paddingVertical: btnPadV }} />
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(125, 211, 252, 0.6)' }} />
               
@@ -572,9 +662,11 @@ export default function WalkTab() {
                 />
               </Animated.View>
               
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                {sessionTitle}
-              </Text>
+              <Animated.View style={{ paddingVertical: btnPadV }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                  {sessionTitle}
+                </Text>
+              </Animated.View>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -587,7 +679,7 @@ export default function WalkTab() {
             <LinearGradient
               colors={['rgba(234, 88, 12, 0.85)', 'rgba(251, 146, 60, 0.75)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(253, 186, 116, 0.6)' }} />
@@ -599,9 +691,11 @@ export default function WalkTab() {
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
 
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 0.6, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
-              </Text>
+              <Animated.View style={{ paddingVertical: btnPadV2 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 0.6, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                  {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
+                </Text>
+              </Animated.View>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -769,8 +863,8 @@ const st = StyleSheet.create({
     width:  RING_SIZE + 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 16,
   },
   ringCentre: {
     position: 'absolute',

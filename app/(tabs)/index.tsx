@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { 
   getPanchangData, getVedicMonth, getCosmicScore, getExactTimings,
+  getUpcomingFestival, getYearlyFestivals, getFestivalForDate, Festival,
   NAKSHATRAS, YOGAS, VAARS, TITHI_NAMES, MOON_RITUALS, VAAR_ACTIONS, SCORE_META,
   TITHI_ORDINALS, ENGLISH_DAYS, TITHI_ENERGY
 } from '@/lib/cosmicData';
@@ -359,8 +360,9 @@ function SettingSunSVG({ size = 26 }: { size?: number }) {
 // ── Imported Panchang Data ───────────────────────────────────────────────
 
 // ── Panchang Card ─────────────────────────────────────────────────────────
-function PanchangCard({ onExplore }: { onExplore: () => void }) {
+function PanchangCard({ onExplore, onShowCalendar }: { onExplore: () => void; onShowCalendar?: () => void }) {
   const [expanded, setExpanded] = React.useState(false);
+  const [showCalendar, setShowCalendar] = React.useState(false);
   const p            = getPanchangData();
   const moon         = getMoonPhase();
   const vMonth       = getVedicMonth();
@@ -373,6 +375,10 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
   const score        = getCosmicScore(yoga.auspicious, moon.emoji, p.tithiName);
   const scoreMeta    = SCORE_META[score];
   const isSpecialMoon = moon.emoji === '🌕' || moon.emoji === '🌑';
+  
+  const todayFest = getFestivalForDate();
+  const upFest = getUpcomingFestival(new Date(), 14);
+  const activeFest = todayFest || (upFest?.festival);
 
   return (
     <>
@@ -401,8 +407,24 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
           </View>
         </View>
 
-        {/* ── Full/New Moon Special Banner ── */}
-        {isSpecialMoon && (
+        {/* ── Festival or Special Moon Banner ── */}
+        {todayFest ? (
+          <View style={[PC.moonBanner, { borderColor: '#f43f5e40', backgroundColor: '#f43f5e0C' }]}>
+            <Text style={{ fontSize: 18 }}>{todayFest.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[PC.moonBannerTitle, { color: '#f43f5e' }]}>TODAY: {todayFest.name.toUpperCase()}</Text>
+              <Text style={PC.moonBannerSub}>{todayFest.desc}</Text>
+            </View>
+          </View>
+        ) : upFest && upFest.days <= 7 ? (
+          <View style={[PC.moonBanner, { borderColor: '#f43f5e25', backgroundColor: '#f43f5e06' }]}>
+            <Text style={{ fontSize: 18 }}>{upFest.festival.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[PC.moonBannerTitle, { color: '#f43f5e' }]}>UPCOMING: {upFest.festival.name}</Text>
+              <Text style={PC.moonBannerSub}>In {upFest.days} days  ·  {upFest.festival.desc}</Text>
+            </View>
+          </View>
+        ) : isSpecialMoon ? (
           <View style={[PC.moonBanner, { borderColor: moon.emoji === '🌕' ? '#fbbf2440' : '#60a5fa40', backgroundColor: moon.emoji === '🌕' ? '#fbbf2408' : '#60a5fa08' }]}>
             <Text style={{ fontSize: 18 }}>{moon.emoji}</Text>
             <View style={{ flex: 1 }}>
@@ -414,16 +436,14 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
               </Text>
             </View>
           </View>
-        )}
+        ) : null}
 
-        {/* ── Vaar headline — English first ── */}
+        {/* ── Vaar headline — English highlight ── */}
         <View style={PC.energyRow}>
-          <Text style={{ fontSize: 28 }}>{vaar.emoji}</Text>
+          <Text style={{ fontSize: 26 }}>{vaar.emoji}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={[PC.energyTitle, { color: vaar.color }]}>{vaar.energy}</Text>
-            <Text style={PC.energySub}>
-              <Text style={{ fontSize: 13, color: '#FFFFFFEE', fontWeight: '800' }}>{vaar.planet} Day (Vaar)</Text>  ·  <Text style={{ fontStyle: 'italic', color: '#FFFFFF60' }}>{vaar.vedicName}</Text>
-            </Text>
+            <Text style={[PC.energyTitle, { color: vaar.color }]}>{vaar.planet} Day <Text style={{ fontSize: 13, color: vaar.color + '90', fontStyle: 'italic', fontWeight: '500' }}>({vaar.vedicName} Vaar)</Text></Text>
+            <Text style={PC.energySub}>{vaar.energy}</Text>
           </View>
         </View>
 
@@ -437,29 +457,29 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
         <View style={PC.alignRow}>
           <View style={[PC.alignDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]} />
           <Text style={PC.alignText}>
-            <Text style={{ color: yoga.auspicious ? '#10b981' : '#f87171', fontWeight: '800', fontSize: 12 }}>{yoga.en} (Yoga)  </Text>
-            <Text style={{ color: '#FFFFFF70', fontStyle: 'italic' }}>— {yoga.name}</Text>
+            <Text style={{ color: yoga.auspicious ? '#10b981' : '#f87171', fontWeight: '800', fontSize: 12.5 }}>{yoga.en} </Text>
+            <Text style={{ color: '#FFFFFF50', fontStyle: 'italic', fontSize: 11 }}>({yoga.name} Yoga)</Text>
           </Text>
         </View>
         <View style={[PC.alignRow, { marginTop: -4 }]}>
           <View style={[PC.alignDot, { backgroundColor: '#a78bfa' }]} />
           <Text style={PC.alignText}>
-            <Text style={{ color: '#a78bfa', fontWeight: '800', fontSize: 12 }}>Vedic Month (Maas)  </Text>
-            <Text style={{ color: '#FFFFFF70', fontStyle: 'italic' }}>— {vMonth.name} ({vMonth.en})</Text>
+            <Text style={{ color: '#a78bfa', fontWeight: '800', fontSize: 12.5 }}>{vMonth.en} </Text>
+            <Text style={{ color: '#FFFFFF50', fontStyle: 'italic', fontSize: 11 }}>({vMonth.name} Maas)</Text>
           </Text>
         </View>
 
         {/* ── Tithi · Nakshatra bilingual strip ── */}
         <View style={PC.biRow}>
-          <View style={[PC.biCell, { borderColor: '#60a5fa20' }]}>
-            <Text style={PC.biTag}>🌙 TITHI  ·  लुनर दिन</Text>
-            <Text style={[PC.biSanskrit, { color: '#60a5fa' }]}>{p.tithiName}</Text>
-            <Text style={PC.biEnglish}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon · Day {p.tithiInPaksha}</Text>
+          <View style={[PC.biCell, { borderColor: '#60a5fa30', backgroundColor: '#60a5fa08' }]}>
+            <Text style={PC.biTag}>🌙 LUNAR DAY  ·  तिथि</Text>
+            <Text style={[PC.biEnglish, { color: '#60a5fa', fontSize: 13, marginBottom: 1 }]}>{p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon</Text>
+            <Text style={{ fontSize: 11, color: '#FFFFFFEE', fontWeight: '600' }}>Day {p.tithiInPaksha}  <Text style={PC.biSanskrit}>({p.tithiName})</Text></Text>
           </View>
-          <View style={[PC.biCell, { borderColor: '#fbbf2420' }]}>
-            <Text style={PC.biTag}>{nakshatra.emoji} NAKSHATRA  ·  नक्षत्र</Text>
-            <Text style={[PC.biSanskrit, { color: '#fbbf24' }]}>{nakshatra.name}</Text>
-            <Text style={PC.biEnglish}>{nakshatra.en}</Text>
+          <View style={[PC.biCell, { borderColor: '#fbbf2430', backgroundColor: '#fbbf2408' }]}>
+            <Text style={PC.biTag}>{nakshatra.emoji} LUNAR MANSION  ·  नक्षत्र</Text>
+            <Text style={[PC.biEnglish, { color: '#fbbf24', fontSize: 13, marginBottom: 1 }]}>{nakshatra.en}</Text>
+            <Text style={{ fontSize: 11, color: '#FFFFFFEE', fontWeight: '600' }}>Star  <Text style={PC.biSanskrit}>({nakshatra.name})</Text></Text>
           </View>
         </View>
 
@@ -510,16 +530,26 @@ function PanchangCard({ onExplore }: { onExplore: () => void }) {
           </View>
         )}
 
-        {/* Explore Cosmos button */}
-        <TouchableOpacity
-          onPress={(e) => { e.stopPropagation?.(); onExplore(); }}
-          activeOpacity={0.8}
-          style={[PC.exploreBtn, { borderColor: vaar.color + '40', backgroundColor: vaar.color + '10' }]}>
-          <Text style={[PC.exploreTxt, { color: vaar.color }]}>🔭  Explore Astral Science</Text>
-          <Text style={[PC.exploreArrow, { color: vaar.color }]}>→</Text>
-        </TouchableOpacity>
+        {/* Explore buttons */}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); onExplore(); }}
+            activeOpacity={0.8}
+            style={[PC.exploreBtn, { flex: 1, borderColor: vaar.color + '40', backgroundColor: vaar.color + '10' }]}>
+            <Text style={[PC.exploreTxt, { color: vaar.color }]}>🔭 Astral Science</Text>
+            <Text style={[PC.exploreArrow, { color: vaar.color }]}>→</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); onShowCalendar?.(); setShowCalendar(true); }}
+            activeOpacity={0.8}
+            style={[PC.exploreBtn, { flex: 1, borderColor: '#f43f5e40', backgroundColor: '#f43f5e10' }]}>
+            <Text style={[PC.exploreTxt, { color: '#f43f5e' }]}>📅 Yearly Festivals</Text>
+            <Text style={[PC.exploreArrow, { color: '#f43f5e' }]}>→</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
+    {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} />}
     </>
   );
 }
@@ -738,6 +768,84 @@ function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () =>
                 </View>
               );
             })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Vedic Calendar Modal ────────────────────────────────────────────────────
+function VedicCalendarModal({ onClose }: { onClose: () => void }) {
+  const festivals = React.useMemo(() => getYearlyFestivals(new Date().getFullYear()), []);
+  const hinduFests = festivals.filter(f => f.festival.type === 'hindu');
+  const globalFests = festivals.filter(f => f.festival.type !== 'hindu');
+
+  const renderFest = (item: any, i: number, color: string) => {
+    const dateStr = item.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+    return (
+      <View key={i} style={{ 
+        flexDirection: 'row', alignItems: 'center', gap: 14, 
+        backgroundColor: 'rgba(6,15,40,0.42)', 
+        borderWidth: 1, borderColor: color + '30', 
+        borderRadius: 16, padding: 12, marginBottom: 8,
+        shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+      }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color + '15', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 24 }}>{item.festival.emoji}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 2 }}>{item.festival.name}</Text>
+          <Text style={{ fontSize: 12, color: '#FFFFFF90', fontWeight: '500' }}>{item.festival.desc}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 11, fontWeight: '900', color: color, letterSpacing: 0.5 }}>{dateStr.toUpperCase()}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={EX.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <View style={EX.sheet}>
+          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <LinearGradient
+            colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <LinearGradient
+            colors={['#f43f5e1E', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+            pointerEvents="none"
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#f43f5e70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
+          <View style={EX.handle} />
+          <View style={EX.sheetHeader}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f43f5e' }} />
+                <Text style={EX.sheetCap}>VEDIC ALMANAC</Text>
+              </View>
+              <Text style={EX.sheetTitle}>Yearly Cosmic Festivals</Text>
+              <Text style={EX.sheetSub}>{new Date().getFullYear()} Sacred Dates · Hindu & Global</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={EX.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={EX.closeTxt}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '900', color: '#f43f5e', letterSpacing: 2, marginBottom: 10, marginTop: 4 }}>✦ HINDU FESTIVALS</Text>
+            {hinduFests.map((item, i) => renderFest(item, i, '#f43f5e'))}
+            
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 16 }} />
+            
+            <Text style={{ fontSize: 13, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 10 }}>✧ GLOBAL OBSERVANCES</Text>
+            {globalFests.map((item, i) => renderFest(item, i, '#60a5fa'))}
           </ScrollView>
         </View>
       </View>
@@ -5661,6 +5769,10 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
 
   const [activeExp, setActiveExp] = useState<{title: string; sanskrit: string; icon: string; description: string} | null>(null);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const todayFest = getFestivalForDate();
+  const upFest = getUpcomingFestival(new Date(), 14);
 
   const nextEvent = lunar.daysToFull <= lunar.daysToNew
     ? { label: lunar.daysToFull === 0 ? 'Full Moon Today!' : `Full Moon in ${lunar.daysToFull}d`, color: '#fbbf24', icon: '🌕' }
@@ -5698,7 +5810,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     {
       label: 'MAAS',
       labelFull: 'Month',
-      value: vMonth.name,
+      value: `${vMonth.name} Maas`,
       sub: vMonth.en,
       timing: `${tFmt(timings.maasStart)} - ${tFmt(timings.maasEnd)}`,
       color: '#fbbf24',
@@ -5751,9 +5863,9 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     <>
       {/* VEDIC ALMANAC CARD */}
       <View style={{
-        marginHorizontal: 14,
-        marginTop: 4,
-        marginBottom: 4,
+        marginHorizontal: 10,
+        marginTop: 2,
+        marginBottom: 2,
         borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
@@ -5779,7 +5891,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         {/* TOP BOUNDARY */}
         <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.18)', width: '100%' }} />
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+        <View style={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10 }}>
 
           {/* TITLE + DATE HEADER */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -5841,15 +5953,15 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 0.1 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 }} numberOfLines={1}>
                       {row.value}
                     </Text>
-                    <Text style={{ fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.4)', marginTop: 1 }} numberOfLines={1}>
-                      {row.sub}
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: row.color, marginTop: 2, letterSpacing: 0.3 }} numberOfLines={1}>
+                      {row.sub.toUpperCase()}
                     </Text>
                     {row.timing && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 }}>
-                        <Text style={{ fontSize: 8.5, fontWeight: '800', color: row.color + 'A0', letterSpacing: 0.3 }} numberOfLines={1}>
+                        <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }} numberOfLines={1}>
                           {row.timing.replace(' - ', '  →  ').toUpperCase()}
                         </Text>
                       </View>
@@ -5935,28 +6047,47 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             </View>
           )}
 
-          {/* EXPLORE VEDIC ALMANAC BUTTON */}
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
-            style={{ borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.38)' }}>
-            <LinearGradient
-              colors={['rgba(167,139,250,0.16)', 'rgba(96,165,250,0.09)', 'rgba(167,139,250,0.06)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 14 }}>🪐</Text>
-              <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.3 }}>
-                EXPLORE VEDIC ALMANAC
-              </Text>
-              <Text style={{ fontSize: 14, color: '#A78BFA', fontWeight: '900' }}>→</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* ACTION BUTTONS */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
+              style={{ flex: 1, borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.38)' }}>
+              <LinearGradient
+                colors={['rgba(167,139,250,0.16)', 'rgba(96,165,250,0.09)', 'rgba(167,139,250,0.06)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <Text style={{ fontSize: 14 }}>🪐</Text>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.2 }}>
+                  ASTRAL SCIENCE
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
+              style={{ flex: 1, borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,63,94,0.35)' }}>
+              <LinearGradient
+                colors={['rgba(244,63,94,0.14)', 'rgba(244,63,94,0.06)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <Text style={{ fontSize: 14 }}>📅</Text>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: '#fda4af', letterSpacing: 1.2 }}>
+                  YEARLY FESTIVALS
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
 
         </View>
 
         {/* BOTTOM BOUNDARY */}
         <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.10)', width: '100%' }} />
       </View>
+
+      {/* VEDIC CALENDAR MODAL */}
+      {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} />}
 
       {/* EXPLANATION MODAL */}
       <Modal visible={!!activeExp} transparent animationType="fade" onRequestClose={() => setActiveExp(null)}>
@@ -6576,24 +6707,6 @@ function DailyTab() {
             </View>
           </View>
 
-          {/* Premium Targeted Pull-Down Tab */}
-          <View style={{ alignItems: 'center', marginTop: -8, zIndex: 20 }}>
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-              activeOpacity={0.85}
-              style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                paddingHorizontal: 24, paddingVertical: 8,
-                backgroundColor: 'rgba(15, 20, 35, 0.95)',
-                borderWidth: 1, borderColor: 'rgba(96, 165, 250, 0.35)',
-                borderRadius: 20,
-                shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8
-              }}
-            >
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
-              <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* ── Hero content — ring centred, buttons pinned to bottom ── */}
@@ -6611,10 +6724,29 @@ function DailyTab() {
                 </TouchableOpacity>
               </View>
             ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 + (soundPlayingId ? 72 : 0) }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 }}>
                   <DailyIntentionCard />
                   <View style={{ paddingTop: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
+                  </View>
+
+                  {/* Premium Targeted Pull-Down Tab (Moved below Hero Ring) */}
+                  <View style={{ alignItems: 'center', marginTop: -20, zIndex: 20 }}>
+                    <TouchableOpacity
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+                      activeOpacity={0.85}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        paddingHorizontal: 24, paddingVertical: 8,
+                        backgroundColor: 'rgba(15, 20, 35, 0.95)',
+                        borderWidth: 1, borderColor: 'rgba(96, 165, 250, 0.35)',
+                        borderRadius: 20,
+                        shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8
+                      }}
+                    >
+                      <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
+                      <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
+                    </TouchableOpacity>
                   </View>
 
                   <View style={{ marginTop: 24, alignItems: 'center', width: '100%' }}>
@@ -6767,10 +6899,10 @@ const W = StyleSheet.create({
 
 const WS = StyleSheet.create({
   card: {
-    marginHorizontal: 0, marginTop: 4, borderRadius: 0, borderWidth: 1.5,
+    marginHorizontal: 0, marginTop: 2, borderRadius: 0, borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(6,15,40,0.42)', flexDirection: 'row', overflow: 'hidden',
-    paddingVertical: 10, paddingRight: 16,
+    paddingVertical: 8, paddingRight: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20, elevation: 12,
   },
   colorBar:     { width: 4, borderRadius: 2, marginLeft: 4 },
@@ -6896,10 +7028,10 @@ const CP = StyleSheet.create({
 
 const NP = StyleSheet.create({
   card: {
-    marginHorizontal: 16, marginTop: 6, borderRadius: 22, borderWidth: 1.5,
+    marginHorizontal: 16, marginTop: 4, borderRadius: 22, borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
-    paddingVertical: 16, paddingRight: 16, flexDirection: 'row',
+    paddingVertical: 14, paddingRight: 16, flexDirection: 'row',
     shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.22, shadowRadius: 28, elevation: 14,
   },
   sideBar:       { width: 3, borderRadius: 2, marginLeft: 4 },

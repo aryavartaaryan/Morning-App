@@ -46,8 +46,8 @@ export default function LanguageScreen() {
     // Bodhi orb gentle pulse
     Animated.loop(
       Animated.sequence([
-        Animated.timing(orbPulse, { toValue: 1.08, duration: 1800, useNativeDriver: true }),
-        Animated.timing(orbPulse, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(orbPulse, { toValue: 1.08, duration: 1800, useNativeDriver: false }),
+        Animated.timing(orbPulse, { toValue: 1, duration: 1800, useNativeDriver: false }),
       ])
     ).start();
     // Greet in English by default — 1500ms gives Gemini Live time to stabilise on fresh app start

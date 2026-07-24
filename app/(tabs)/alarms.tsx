@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
   TextInput, Alert, Animated, Dimensions, NativeModules, Platform,
-  ToastAndroid, ImageBackground, Linking, ActionSheetIOS, StatusBar,
+  ToastAndroid, ImageBackground, Linking, ActionSheetIOS, StatusBar, Easing,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -382,7 +382,7 @@ function GlassPulseOverlay() {
   );
 }
 
-type FabAction = { label: string; color: string; iconName: string; onPress: () => void };
+type FabAction = { label: string; sub: string; color: string; iconName: string; onPress: () => void };
 
 const AlarmFabMenu = React.memo(function AlarmFabMenu({
   bottomOffset,
@@ -429,29 +429,48 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
     <>
       {open && (
         <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 9, opacity: backdropOpacity }]} pointerEvents="auto">
-          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={toggle} activeOpacity={1} />
-        </Animated.View>
-      )}
-      {open && (
-        <Animated.View style={[S.fabMenu, { bottom: bottomOffset + 82, transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }], opacity: anim }]} pointerEvents="box-none">
-          <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,25,0.5)' }}>
-            <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
-            {actionsRef.current.map((item, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  S.fabMenuItem,
-                  i < actionsRef.current.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' }
-                ]}
-                onPress={() => { toggle(); setTimeout(() => item.onPress(), 200); }}
-                activeOpacity={0.6}
-              >
-                <Text style={[S.fabMenuItemTxt, { color: item.color }]}>{item.label}</Text>
-                <Ionicons name={item.iconName as any} size={20} color={item.color} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          
+          <Animated.View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, pointerEvents: 'box-none', transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}>
+            <Text style={{ color: '#fff', fontSize: 36, fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', marginBottom: 32, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 }}>
+              Create New
+            </Text>
+            <View style={{ gap: 16 }}>
+              {actionsRef.current.map((item, i) => (
+                <Animated.View key={i} style={{
+                  transform: [
+                    { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [30 + (i * 15), 0] }) }
+                  ]
+                }}>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderRadius: 24,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.15)',
+                      overflow: 'hidden',
+                    }}
+                    onPress={() => { toggle(); setTimeout(() => item.onPress(), 200); }}
+                    activeOpacity={0.7}
+                  >
+                    <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${item.color}25`, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
+                      <Ionicons name={item.iconName as any} size={28} color={item.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#fff', letterSpacing: 0.3, marginBottom: 4 }}>{item.label}</Text>
+                      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>{item.sub}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </View>
+          </Animated.View>
         </Animated.View>
       )}
       <TouchableOpacity
@@ -464,6 +483,64 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
         </Animated.View>
       </TouchableOpacity>
     </>
+  );
+});
+
+const AUTO_SCROLL_CATEGORIES = [
+  { label: 'Nature', color: '#34d399' },
+  { label: 'Ragas',  color: '#a78bfa' },
+  { label: 'Birds',  color: '#60a5fa' },
+  { label: 'Mantras',color: '#fbbf24' },
+  { label: 'Stotras',color: '#f472b6' },
+];
+
+const AutoScrollingCategories = React.memo(() => {
+  const anim = useRef(new Animated.Value(0)).current;
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    if (width > 0) {
+      // 50ms per pixel means a 300px strip takes 15 seconds. Very calming.
+      const duration = width * 50; 
+      
+      anim.setValue(0);
+      Animated.loop(
+        Animated.timing(anim, {
+          toValue: -width,
+          duration,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [width, anim]);
+
+  const onLayout = (e: any) => {
+    if (width === 0) setWidth(e.nativeEvent.layout.width);
+  };
+
+  const strip = (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }} onLayout={onLayout}>
+      {AUTO_SCROLL_CATEGORIES.map((tag, idx) => (
+        <View key={`${tag.label}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 }}>
+            {tag.label}
+          </Text>
+          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginLeft: 16 }} />
+        </View>
+      ))}
+    </View>
+  );
+
+  return (
+    <View style={{ overflow: 'hidden', flexDirection: 'row', width: '100%' }}>
+      <Animated.View style={{ flexDirection: 'row', transform: [{ translateX: anim }] }}>
+        {strip}
+        {width > 0 && strip}
+        {width > 0 && strip}
+        {width > 0 && strip}
+      </Animated.View>
+    </View>
   );
 });
 
@@ -1087,11 +1164,11 @@ export default function AlarmsTab() {
   const allPermsOk    = permStatus.notifications && permStatus.exactAlarm && permStatus.batteryOpt && permStatus.fullScreen;
 
   fabActionsRef.current = [
-    { label: 'Divine Hour',  color: '#f59e0b', iconName: 'sparkles', onPress: () => openBMModal() },
-    { label: 'Wake Alarm',   color: ACCENT,    iconName: 'alarm',    onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
-    { label: 'Habit Alarm',  color: '#10b981', iconName: 'target',   onPress: () => openAddModal('habit') },
-    { label: 'Quick Alarm',  color: '#f97316', iconName: 'flash',    onPress: () => openAddModal('quick') },
-    { label: 'Sound Bath',   color: '#a78bfa', iconName: 'musical-notes', onPress: () => openAddModal('soundbath') },
+    { label: 'Divine Hour Wake', sub: 'Awaken during the sacred hours', color: '#f59e0b', iconName: 'sparkles', onPress: () => openBMModal() },
+    { label: 'Daily Wake Alarm', sub: 'Set your regular morning alarm', color: ACCENT, iconName: 'alarm', onPress: () => { setEditingExtraWake(null); setExtraFormHour(5); setExtraFormMinute(0); setExtraFormLabel(''); setIsAddingExtraWake(true); setShowWakeEdit(true); } },
+    { label: 'Habit Reminders', sub: 'Build routines throughout the day', color: '#10b981', iconName: 'target', onPress: () => openAddModal('habit') },
+    { label: 'Quick Timer', sub: 'Set a fast timer for naps or tasks', color: '#f97316', iconName: 'flash', onPress: () => openAddModal('quick') },
+    { label: 'Healing Sound Bath', sub: 'Immersive healing audio session', color: '#a78bfa', iconName: 'musical-notes', onPress: () => openAddModal('soundbath') },
   ];
 
 
@@ -1136,19 +1213,19 @@ export default function AlarmsTab() {
       <View style={{ marginTop: 0, marginBottom: 15 }}>
         <View style={{
           width: '100%',
-          backgroundColor: 'rgba(0,0,0,0.45)', // Darker premium header background
-          borderTopWidth: 0,
-          borderBottomWidth: 1,
-          borderColor: 'rgba(255,255,255,0.14)',
-          borderRadius: 0,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderColor: 'rgba(255,255,255,0.15)',
           overflow: 'hidden',
           paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 12,
-          paddingBottom: 20,
+          paddingBottom: 8,
           alignItems: 'center',
         }}>
-          {/* Subtle top shimmer — identical to sleep hero */}
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5, 5, 10, 0.3)' }]} />
+          
+          {/* Subtle top shimmer */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.08)', 'transparent']}
+            colors={['rgba(255,255,255,0.1)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
             style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
@@ -1160,41 +1237,25 @@ export default function AlarmsTab() {
             color: '#FFF8F0',
             letterSpacing: 0.5,
             fontFamily: 'DancingScript_600SemiBold',
-            textShadowColor: 'rgba(60,20,0,0.75)',
+            textShadowColor: 'rgba(0,0,0,0.8)',
             textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 12,
+            textShadowRadius: 10,
             textAlign: 'center',
-            marginBottom: 6,
+            marginBottom: 4,
           }}>
             Healing Rhythmic Alarm
           </Text>
           {/* Subtitle */}
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.58)', marginTop: 2, letterSpacing: 0.1, fontWeight: '300', textAlign: 'center' }}>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 0, letterSpacing: 0.2, fontWeight: '400', textAlign: 'center' }}>
             Rise with your body's natural rhythm
           </Text>
-          {/* Divider */}
-          <View style={{ width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 14 }} />
           
-          {/* Sleek unified iOS-style category stripe */}
-          <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(10,15,30,0.4)', borderRadius: 24, paddingVertical: 8, paddingHorizontal: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
-              <BlurView intensity={75} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 16, alignItems: 'center' }}>
-                {[
-                  { label: 'Nature', color: '#34d399' },
-                  { label: 'Ragas',  color: '#a78bfa' },
-                  { label: 'Birds',  color: '#60a5fa' },
-                  { label: 'Mantras',color: '#fbbf24' },
-                  { label: 'Stotras',color: '#f472b6' },
-                  { label: 'Baths',  color: '#fb923c' },
-                ].map((tag, idx) => (
-                  <View key={tag.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 }}>{tag.label}</Text>
-                    {idx < 5 && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginLeft: 16 }} />}
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
+          {/* Divider */}
+          <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginTop: 12, marginBottom: 8 }} />
+          
+          {/* Seamless floating category stripe */}
+          <View style={{ width: '100%', marginTop: 2 }}>
+            <AutoScrollingCategories />
           </View>
         </View>
       </View>
@@ -2142,9 +2203,9 @@ const S = StyleSheet.create({
   fabOpen: { backgroundColor: 'rgba(255,255,255,0.15)', shadowOpacity: 0, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   fabTxt: { fontSize: 28, color: '#fff', fontWeight: '300', lineHeight: 32, marginTop: -2 },
   fabBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 },
-  fabMenu: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
-  fabMenuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, width: 200 },
-  fabMenuItemTxt: { fontSize: 15, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 },
+  fabMenu: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
+  fabMenuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, minWidth: 260 },
+  fabMenuItemTxt: { fontSize: 16, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' },
   sheet: { backgroundColor: '#0D0D20', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '92%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },

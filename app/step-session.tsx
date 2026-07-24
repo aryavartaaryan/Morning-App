@@ -86,15 +86,82 @@ function fmtTime(seconds: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-// ── Glassy Overlay (permanent peak frost) ────────────────────────────────────
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, GA, GB, C, progressAnim, rot1, rot2 }: any) => (
+  <>
+    {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
+    <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
+      <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
+        <Defs>
+          <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
+            <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
+            <Stop offset="1"   stopColor={GB} stopOpacity="1" />
+          </SvgGrad>
+        </Defs>
+        
+        {/* Outer razor-thin neon orbit */}
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM + 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM + 75] })} strokeLinecap="round" />
+
+        {/* Main thick segmented track */}
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.40)" strokeWidth={STROKE} strokeDasharray="4 6" />
+        
+        {/* Massive blur duplicate for outer core glow */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 20} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.65} strokeLinecap="round" />
+        {/* Intense blur duplicate for inner core glow */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.9} strokeLinecap="round" />
+        {/* Active solid glowing progress overlay */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" />
+        {/* Neon White Core */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#ffffff" strokeWidth={5} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" opacity={0.9} />
+        
+        {/* Inner razor-thin neon orbit */}
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM - 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM - 75] })} strokeLinecap="round" />
+      </Svg>
+    </View>
+
+    {/* Rotating Outer Visualizer HUD */}
+    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
+      </Svg>
+    </Animated.View>
+
+    {/* Rotating Inner HUD (Sine wave rapid feel) */}
+    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
+      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />
+      </Svg>
+    </Animated.View>
+  </>
+));
+
+// ── iOS-style glass overlay — identical to sleep.tsx ─────────────────────────
 function GlassPulseOverlay() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <BlurView intensity={3} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <LinearGradient
-        colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.7)']}
-        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+      <BlurView
+        tint="dark"
+        intensity={65}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Premium iOS frosted-glass gradient overlay — same as sleep page */}
+      <LinearGradient
+        colors={[
+          'rgba(4,6,14,0.15)',
+          'rgba(4,6,14,0.30)',
+          'rgba(4,6,14,0.45)',
+          'rgba(4,6,14,0.65)',
+        ]}
+        locations={[0, 0.3, 0.7, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
       />
     </View>
   );
@@ -124,23 +191,14 @@ export default function StepSessionScreen() {
   const hour = now.getHours() + now.getMinutes() / 60;
   const [done,     setDone]     = useState(false);
   const [confetti, setConfetti] = useState(false);
-  const [progressDashOffset, setProgressDashOffset] = useState(CIRCUM);
   const [weather, setWeather] = useState<any>(null);
 
-  const solarNoon = solarTimes?.solarNoon ?? 12.5;
-  const gpsLat = weather?.lat ?? null;
-  const gpsLon = weather?.lon ?? null;
-  const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
-  const showBrahma = isNightReal && !!solarTimes && hour >= (solarTimes.sunrise - 1.5) && hour < solarTimes.sunrise;
-  const palette = getSolarRingPalette(hour, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp);
-  
-  const isDynamic = type !== 'postmeal';
+  // Fixed ultra-premium sky blue palette for the ring — always crisp & consistent
+  const C  = '#38bdf8';   // sky-400 — signature live-session blue
+  const GA = '#38bdf8';   // sky gradient start
+  const GB = '#0ea5e9';   // sky-500 — deeper gradient end
 
-  // Use the dynamic solar palette so the progress ring colors match the time of day,
-  // sunrise/sunset, and temperature exactly like the homepage.
-  const C  = palette.ring;
-  const GA = palette.ring;
-  const GB = palette.halo;
+  const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [steps,    setSteps]    = useState(0);
@@ -168,7 +226,7 @@ export default function StepSessionScreen() {
   const pulseAnim    = useRef(new Animated.Value(1)).current;
   const rippleScale  = useRef(new Animated.Value(0)).current;
   const rippleOp     = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(CIRCUM)).current;
   const confettiOp   = useRef(new Animated.Value(0)).current;
   const fadeIn       = useRef(new Animated.Value(0)).current;
   const slideUp      = useRef(new Animated.Value(40)).current;
@@ -192,6 +250,12 @@ export default function StepSessionScreen() {
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Start animations IMMEDIATELY so content appears instantly
+    Animated.parallel([
+      Animated.timing(fadeIn,  { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(slideUp, { toValue: 0, duration: 300, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+    ]).start();
+
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.10, duration: 3000, useNativeDriver: true }),
@@ -210,6 +274,14 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
+    // Start timer immediately
+    timerRef.current = setInterval(() => {
+      if (!pausedRef.current) {
+        setElapsed(Math.round((Date.now() - startMsRef.current - pausedMsRef.current) / 1000));
+      }
+    }, 1000);
+
+    // Async background operations (weather + session start)
     (async () => {
       try {
         const w = await fetchWeather();
@@ -222,18 +294,6 @@ export default function StepSessionScreen() {
       } catch (e) {
         console.warn("Failed to start walk session: ", e);
       }
-
-
-      Animated.parallel([
-        Animated.timing(fadeIn,  { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(slideUp, { toValue: 0, duration: 600, easing: Easing.out(Easing.exp), useNativeDriver: true }),
-      ]).start();
-
-      timerRef.current = setInterval(() => {
-        if (!pausedRef.current) {
-          setElapsed(Math.round((Date.now() - startMsRef.current - pausedMsRef.current) / 1000));
-        }
-      }, 1000);
     })();
 
     return () => {
@@ -270,7 +330,7 @@ export default function StepSessionScreen() {
 
       const syncState = () => {
         setSteps(total);
-        setProgressDashOffset(CIRCUM - Math.min(1, total / meta.goal) * CIRCUM);
+        Animated.timing(progressAnim, { toValue: CIRCUM - Math.min(1, total / meta.goal) * CIRCUM, duration: 250, useNativeDriver: false }).start();
         lastUpdateRef.current = Date.now();
         syncTimeoutRef.current = null;
       };
@@ -529,54 +589,7 @@ export default function StepSessionScreen() {
           {/* Inner disc for better text contrast */}
           <View style={{ position: 'absolute', top: 30, left: 30, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
 
-          {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
-          <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
-            <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
-              <Defs>
-                <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
-                  <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
-                  <Stop offset="1"   stopColor={GB} stopOpacity="1" />
-                </SvgGrad>
-              </Defs>
-              
-              {/* Outer razor-thin neon orbit */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM + 75} strokeDashoffset={(CIRCUM + 75) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
-
-              {/* Main thick segmented track */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.40)" strokeWidth={STROKE} strokeDasharray="4 6" />
-              
-              {/* Massive blur duplicate for outer core glow */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 20} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.65} strokeLinecap="round" />
-              {/* Intense blur duplicate for inner core glow */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} opacity={0.9} strokeLinecap="round" />
-              {/* Active solid glowing progress overlay */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} strokeLinecap="round" />
-              {/* Neon White Core */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#ffffff" strokeWidth={5} strokeDasharray={CIRCUM} strokeDashoffset={progressDashOffset} strokeLinecap="round" opacity={0.9} />
-              
-              {/* Inner razor-thin neon orbit */}
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM - 75} strokeDashoffset={(CIRCUM - 75) * (progressDashOffset / CIRCUM)} strokeLinecap="round" />
-            </Svg>
-          </View>
-
-          {/* Rotating Outer Visualizer HUD */}
-          <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
-            </Svg>
-          </Animated.View>
-
-          {/* Rotating Inner HUD (Sine wave rapid feel) */}
-          <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-            <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
-              <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />
-            </Svg>
-          </Animated.View>
+          <MemoRing RING_SZ={RING_SZ} R={R} STROKE={STROKE} CIRCUM={CIRCUM} GA={GA} GB={GB} C={C} progressAnim={progressAnim} rot1={rot1} rot2={rot2} />
 
           {/* Centre content */}
           <View style={[s.centreBox, { gap: 3 }]}>
@@ -817,71 +830,93 @@ function ExitModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
+      <View style={{ flex: 1, backgroundColor: 'rgba(4,6,14,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
         
-        {/* Apple-style floating premium sheet */}
-        <View style={{ borderRadius: 24, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.4, shadowRadius: 36 }}>
+        {/* Ultra-premium floating glass sheet */}
+        <View style={{ width: '100%', borderRadius: 32, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.35, shadowRadius: 40, elevation: 20 }}>
+          <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFillObject} />
+          
           <LinearGradient
-            colors={['rgba(25,25,35,0.85)', 'rgba(15,15,25,0.92)']}
-            style={{ padding: 28, paddingBottom: 20, alignItems: 'center' }}
+            colors={['rgba(18,22,35,0.7)', 'rgba(10,12,20,0.85)']}
+            style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}
           >
             {/* Top border shine */}
             <LinearGradient
-              colors={['rgba(255,255,255,0.18)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.1 }}
+              colors={['rgba(255,255,255,0.3)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.08 }}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
+            {/* Inner Border */}
+            <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)' }} />
             
-            {/* Elegant minimal icon */}
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-              <Ionicons name="walk" size={22} color="#fff" style={{ marginLeft: 2 }} />
+            {/* Ambient Background Glow */}
+            <View pointerEvents="none" style={{ position: 'absolute', top: -50, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: gradB, opacity: 0.2, transform: [{ scale: 1.5 }] }} />
+            <View pointerEvents="none" style={{ position: 'absolute', bottom: -30, left: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: gradA, opacity: 0.15, transform: [{ scale: 1.5 }] }} />
+            
+            {/* Elegant glowing icon */}
+            <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}>
+              <LinearGradient
+                colors={[gradA, gradB]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ position: 'absolute', inset: 0, borderRadius: 34, opacity: 0.2 }}
+              />
+              <Ionicons name="walk" size={32} color={color} style={{ marginLeft: 3 }} />
             </View>
             
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.5 }}>
               Session in Progress
             </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginBottom: 26, lineHeight: 20, paddingHorizontal: 10 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: 36, lineHeight: 24, paddingHorizontal: 10, fontWeight: '400' }}>
               Minimize the screen to keep walking with Nada Audio, or end the session to save your progress.
             </Text>
             
-            <View style={{ width: '100%', gap: 10 }}>
-              {/* Keep Walking (Primary Safe Action) — Translucent Glass */}
+            <View style={{ width: '100%', gap: 14 }}>
+              {/* Keep Walking (Primary Safe Action) — Vibrant Glass */}
               <TouchableOpacity
                 onPress={onMinimize}
-                style={{ borderRadius: 20, overflow: 'hidden' }}
-                activeOpacity={0.8}
+                style={{ borderRadius: 24, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}
+                activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.06)']}
-                  style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  colors={[gradA + 'E6', gradB + 'F2']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
                 >
-                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }} />
-                  <Ionicons name="chevron-down" size={16} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, letterSpacing: 0.2 }}>Keep Walking in Background</Text>
+                  <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }} />
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.3)', 'transparent']}
+                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
+                    pointerEvents="none"
+                  />
+                  <Ionicons name="chevron-down" size={20} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, letterSpacing: 0.4, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                    Keep Walking in Background
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
               
-              {/* End Session (Destructive/Final Action) — Subtle Destructive Gradient */}
+              {/* End Session (Destructive/Final Action) */}
               <TouchableOpacity
                 onPress={onEnd}
-                style={{ borderRadius: 20, overflow: 'hidden' }}
+                style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(20,20,30,0.5)' }}
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['rgba(239,68,68,0.20)', 'rgba(220,38,38,0.10)']}
-                  style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  colors={['rgba(239,68,68,0.12)', 'rgba(220,38,38,0.05)']}
+                  style={{ paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
-                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }} />
-                  <Ionicons name="stop" size={14} color="#fca5a5" />
-                  <Text style={{ color: '#fca5a5', fontWeight: '700', fontSize: 14, letterSpacing: 0.3 }}>End Session</Text>
+                  <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' }} />
+                  <Ionicons name="stop" size={16} color="#f87171" />
+                  <Text style={{ color: '#f87171', fontWeight: '600', fontSize: 16, letterSpacing: 0.3 }}>End Session</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
             
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 22, paddingVertical: 8, paddingHorizontal: 20 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 28, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.55)', textAlign: 'center', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 }}>Cancel</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>

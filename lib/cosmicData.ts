@@ -359,3 +359,80 @@ export function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithi
   if (tithiName === 'Ashtami' || tithiName === 'Chaturdashi') score -= 1;
   return Math.max(1, Math.min(10, score));
 }
+
+// ── Festivals ───────────────────────────────────────────────────────────────
+export type Festival = {
+  name: string;
+  type: 'hindu' | 'christian' | 'global';
+  month?: number; // 1-12
+  day?: number; // 1-31
+  vMonth?: string;
+  tithi?: string;
+  paksha?: 'Shukla' | 'Krishna';
+  emoji: string;
+  desc: string;
+};
+
+export const FESTIVALS: Festival[] = [
+  // Hindu
+  { name: 'Diwali / Deepawali', type: 'hindu', vMonth: 'Kartik', tithi: 'Amavasya', emoji: '🪔', desc: 'Festival of Lights. Triumph of light over darkness.' },
+  { name: 'Dussehra / Vijayadashami', type: 'hindu', vMonth: 'Ashwin', tithi: 'Dashami', paksha: 'Shukla', emoji: '🏹', desc: 'Victory of good over evil.' },
+  { name: 'Maha Shivaratri', type: 'hindu', vMonth: 'Phalguna', tithi: 'Chaturdashi', paksha: 'Krishna', emoji: '🔱', desc: 'The Great Night of Shiva.' },
+  { name: 'Holi', type: 'hindu', vMonth: 'Phalguna', tithi: 'Purnima', emoji: '🎨', desc: 'Festival of Colors. Arrival of spring.' },
+  { name: 'Ganesh Chaturthi', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Chaturthi', paksha: 'Shukla', emoji: '🐘', desc: 'Birth of Lord Ganesha.' },
+  { name: 'Rama Navami', type: 'hindu', vMonth: 'Chaitra', tithi: 'Navami', paksha: 'Shukla', emoji: '🕉️', desc: 'Birth of Lord Rama.' },
+  { name: 'Krishna Janmashtami', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Ashtami', paksha: 'Krishna', emoji: '🦚', desc: 'Birth of Lord Krishna.' },
+  { name: 'Raksha Bandhan', type: 'hindu', vMonth: 'Shravana', tithi: 'Purnima', emoji: '🧿', desc: 'Bond of protection between siblings.' },
+  { name: 'Makar Sankranti', type: 'hindu', month: 1, day: 14, emoji: '🪁', desc: 'Sun transitions into Makara (Capricorn).' },
+  { name: 'Navaratri Begins', type: 'hindu', vMonth: 'Ashwin', tithi: 'Pratipada', paksha: 'Shukla', emoji: '🌺', desc: 'Nine nights honoring the Divine Mother.' },
+  { name: 'Hanuman Jayanti', type: 'hindu', vMonth: 'Chaitra', tithi: 'Purnima', emoji: '🐒', desc: 'Birth of Lord Hanuman.' },
+  
+  // Christian / Global
+  { name: 'Christmas', type: 'christian', month: 12, day: 25, emoji: '🎄', desc: 'Birth of Jesus Christ.' },
+  { name: 'Halloween', type: 'christian', month: 10, day: 31, emoji: '🎃', desc: 'All Hallows\' Eve.' },
+  { name: 'New Year', type: 'global', month: 1, day: 1, emoji: '🎆', desc: 'Gregorian New Year.' },
+  { name: 'Valentine\'s Day', type: 'global', month: 2, day: 14, emoji: '💝', desc: 'Day of love and affection.' },
+  { name: 'Earth Day', type: 'global', month: 4, day: 22, emoji: '🌍', desc: 'Honoring our planet and environment.' }
+];
+
+export function getFestivalForDate(date: Date = new Date()): Festival | null {
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const p = getPanchangData(date);
+  const vm = getVedicMonth(date);
+  
+  for (const f of FESTIVALS) {
+    if (f.month && f.day) {
+      if (f.month === m && f.day === d) return f;
+    } else if (f.vMonth && f.tithi) {
+      if (vm.name === f.vMonth && p.tithiName === f.tithi) {
+        if (!f.paksha || f.paksha === p.paksha) return f;
+      }
+    }
+  }
+  return null;
+}
+
+export function getUpcomingFestival(startDate: Date = new Date(), maxDays: number = 30): { festival: Festival; days: number; date: Date } | null {
+  for (let i = 0; i <= maxDays; i++) {
+    const checkDate = new Date(startDate.getTime() + i * 86400000);
+    const fest = getFestivalForDate(checkDate);
+    if (fest) {
+      return { festival: fest, days: i, date: checkDate };
+    }
+  }
+  return null;
+}
+
+export function getYearlyFestivals(year: number = new Date().getFullYear()): { festival: Festival; date: Date }[] {
+  const results = [];
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const fest = getFestivalForDate(d);
+    if (fest) {
+      results.push({ festival: fest, date: new Date(d) });
+    }
+  }
+  return results;
+}

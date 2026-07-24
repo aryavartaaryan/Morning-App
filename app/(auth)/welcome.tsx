@@ -43,8 +43,8 @@ export default function WelcomeScreen() {
 
   React.useEffect(() => {
     Animated.loop(Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 1.07, duration: 2200, useNativeDriver: true }),
-      Animated.timing(pulseAnim, { toValue: 1, duration: 2200, useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 1.07, duration: 2200, useNativeDriver: false }),
+      Animated.timing(pulseAnim, { toValue: 1, duration: 2200, useNativeDriver: false }),
     ])).start();
   }, []);
 
