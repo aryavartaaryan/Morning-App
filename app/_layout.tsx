@@ -125,6 +125,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
 
   const mantraOp = useRef(new Animated.Value(0)).current;
   const mantraTy = useRef(new Animated.Value(20)).current;
+  const mantraSc = useRef(new Animated.Value(0.95)).current;
 
   // Animation sequence starts after component mounts
   useEffect(() => {
@@ -139,8 +140,9 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         Animated.parallel([
            Animated.timing(mantraOp, { toValue: 1, duration: 1200, useNativeDriver: false }),
            Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+           Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
         ]),
-        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra
+        Animated.delay(4000), // Hold for a full 4 seconds so the user can absorb the mantra
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -226,19 +228,19 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           </View>
 
           {/* Mantra with translation - Ultra Premium Layout */}
-          <Animated.View style={{ marginTop: 36, opacity: mantraOp, transform: [{ translateY: mantraTy }], alignItems: 'center', paddingHorizontal: 20 }}>
+          <Animated.View style={{ marginTop: 36, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 20 }}>
             {/* Devanagari Script - Large, elegant, slightly transparent anchor */}
-            <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 30, marginBottom: 14, fontWeight: '400', letterSpacing: 2 }}>
+            <Text style={{ fontSize: 20, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 32, marginBottom: 14, fontWeight: '400', letterSpacing: 2, textShadowColor: 'rgba(255, 255, 255, 0.2)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }}>
               असतो मा सद्गमय ।{'\n'}तमसो मा ज्योतिर्गमय ।{'\n'}मृत्योर्मा अमृतं गमय ॥
             </Text>
             
             {/* Transliteration */}
-            <Text style={{ fontSize: 12, color: '#bfdbfe', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.95, letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 13, color: '#bfdbfe', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.95, letterSpacing: 1 }}>
               "Asato Ma Sadgamaya, Tamaso Ma Jyotir Gamaya,{'\n'}Mrityor Ma Amritam Gamaya"
             </Text>
             
             {/* Translation */}
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 18, marginTop: 10, letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 18, marginTop: 12, letterSpacing: 0.8, textTransform: 'uppercase' }}>
               Lead us from the unreal to the real,{'\n'}from darkness to light, from death to immortality.
             </Text>
           </Animated.View>

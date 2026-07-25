@@ -193,10 +193,10 @@ export default function StepSessionScreen() {
   const [confetti, setConfetti] = useState(false);
   const [weather, setWeather] = useState<any>(null);
 
-  // Ultra-premium glassy white palette for the ring — no theme color
-  const C  = 'rgba(255, 255, 255, 0.9)';   // clean white
-  const GA = 'rgba(255, 255, 255, 1)';     // crisp white start
-  const GB = 'rgba(255, 255, 255, 0.2)';   // glassy transparent end
+  // Fixed ultra-premium iOS style palette for the ring — neutral frosted glass
+  const C  = '#FFFFFF';
+  const GA = 'rgba(255,255,255,0.9)';
+  const GB = 'rgba(255,255,255,0.3)';
 
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
 
@@ -619,20 +619,20 @@ export default function StepSessionScreen() {
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }}
                   activeOpacity={0.8}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: 'rgba(14,28,48,0.80)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.35)', overflow: 'hidden' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
                     <LinearGradient
-                      colors={['rgba(56,189,248,0.12)', 'transparent']}
+                      colors={['rgba(255,255,255,0.1)', 'transparent']}
                       start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    <Ionicons name="musical-notes" size={12} color="#38bdf8" style={{ marginRight: 5 }} />
-                    <Text style={{ color: '#bae6fd', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>SELECT SOUND</Text>
+                    <Ionicons name="musical-notes" size={12} color="#FFFFFF" style={{ marginRight: 5 }} />
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>SELECT SOUND</Text>
                   </View>
                 </TouchableOpacity>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(8,18,36,0.85)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.40)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 22, gap: 12, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 5 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 22, gap: 12, overflow: 'hidden', shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
                   <LinearGradient
-                    colors={['rgba(56,189,248,0.08)', 'transparent']}
+                    colors={['rgba(255,255,255,0.1)', 'transparent']}
                     start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
                     style={StyleSheet.absoluteFillObject}
                   />
@@ -642,7 +642,7 @@ export default function StepSessionScreen() {
                   
                   <TouchableOpacity 
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
-                    style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(56,189,248,0.22)', borderWidth: 1.5, borderColor: 'rgba(56,189,248,0.55)', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Ionicons name={isPaused ? "play" : "pause"} size={16} color="#FFF" style={isPaused ? { marginLeft: 2 } : {}} />
                   </TouchableOpacity>
@@ -830,75 +830,65 @@ function ExitModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
         
-        {/* Apple-style floating premium sheet */}
-        <View style={{ borderRadius: 32, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 24 }, shadowOpacity: 0.6, shadowRadius: 40, elevation: 10 }}>
-          <BlurView intensity={80} tint="dark" style={{ padding: 32, paddingBottom: 24, alignItems: 'center', backgroundColor: 'rgba(20,20,30,0.55)' }}>
+        {/* Apple-style floating premium frosted glass sheet */}
+        <View style={{ borderRadius: 28, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.5, shadowRadius: 40 }}>
+          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+          
+          <View style={{ padding: 28, paddingBottom: 16, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 28 }}>
             
-            {/* Top border shine */}
+            {/* Top inner shine */}
             <LinearGradient
               colors={['rgba(255,255,255,0.25)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.2 }}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
             
             {/* Elegant minimal icon */}
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}>
-              <LinearGradient colors={[gradA, gradB]} style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} opacity={0.12} />
-              <Ionicons name="sparkles" size={24} color={color} />
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: '#FFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10 }}>
+              <Ionicons name="walk" size={24} color="#fff" style={{ marginLeft: 3 }} />
             </View>
             
-            <Text style={{ fontSize: 22, fontWeight: '400', color: '#ffffff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.4, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-light' }}>
-              Journey in Progress
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.35 }}>
+              Session in Progress
             </Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 32, lineHeight: 22, paddingHorizontal: 4, letterSpacing: 0.2 }}>
-              Allow your walk to flow seamlessly in the background with Nada Audio, or gracefully conclude your session to save your progress.
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 28, lineHeight: 18, paddingHorizontal: 12 }}>
+              Minimize to keep tracking steps and playing audio in the background, or end your session.
             </Text>
             
             <View style={{ width: '100%', gap: 12 }}>
-              {/* Keep Walking (Primary Safe Action) — Translucent Glass */}
+              {/* Keep Walking (Primary Safe Action) — Glass Button */}
               <TouchableOpacity
                 onPress={onMinimize}
-                style={{ borderRadius: 20, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 4 }}
+                style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
                 activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.08)']}
-                  start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-                  style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-                >
-                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' }} />
-                  <Ionicons name="layers-outline" size={18} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '500', fontSize: 15, letterSpacing: 0.5 }}>Continue in Background</Text>
-                </LinearGradient>
+                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Ionicons name="chevron-down" size={16} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 }}>Keep Walking in Background</Text>
+                </View>
               </TouchableOpacity>
               
-              {/* End Session (Destructive/Final Action) — Subtle Destructive Gradient */}
+              {/* End Session (Destructive) — Subtle Red Tint */}
               <TouchableOpacity
                 onPress={onEnd}
-                style={{ borderRadius: 20, overflow: 'hidden' }}
+                style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}
                 activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={['rgba(239,68,68,0.15)', 'rgba(220,38,38,0.05)']}
-                  style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }} />
-                  <Ionicons name="stop-circle-outline" size={18} color="#fca5a5" />
-                  <Text style={{ color: '#fca5a5', fontWeight: '500', fontSize: 15, letterSpacing: 0.5 }}>Conclude Session</Text>
-                </LinearGradient>
+                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Ionicons name="stop" size={14} color="#fca5a5" />
+                  <Text style={{ color: '#fca5a5', fontWeight: '700', fontSize: 15, letterSpacing: 0.3 }}>End Session</Text>
+                </View>
               </TouchableOpacity>
             </View>
             
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 24, paddingVertical: 10, paddingHorizontal: 24 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500', letterSpacing: 0.5 }}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 20, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontSize: 15, fontWeight: '600', letterSpacing: 0.2 }}>Cancel</Text>
             </TouchableOpacity>
-          </BlurView>
+          </View>
         </View>
       </View>
     </Modal>

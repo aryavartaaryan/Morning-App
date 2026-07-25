@@ -398,6 +398,12 @@ export const FESTIVALS: Festival[] = [
     scienceDesc: 'Aligns with the equinox. The 9-day fasting resets the gut microbiome during the drastic climatic shift between summer and winter.' },
   { name: 'Hanuman Jayanti', type: 'hindu', vMonth: 'Chaitra', tithi: 'Purnima', emoji: '🐒', desc: 'Birth of Lord Hanuman.',
     scienceDesc: 'Spring full moon phase. The emphasis on breathwork (Pranayama) and strength honors the vital life-force energy (Prana) surging in nature.' },
+  { name: 'Guru Purnima', type: 'hindu', vMonth: 'Ashadha', tithi: 'Purnima', emoji: '🌕', desc: 'Honoring spiritual teachers and wisdom.',
+    scienceDesc: 'Occurs on the first full moon after the summer solstice, marking the start of the monsoon. A time traditionally dedicated to deep study and inner reflection.' },
+  { name: 'Sharad Purnima', type: 'hindu', vMonth: 'Ashwin', tithi: 'Purnima', emoji: '🎑', desc: 'Harvest festival on the autumn full moon.',
+    scienceDesc: 'The moon is closest to Earth on this night. The cooling lunar rays are believed to infuse crops and medicinal herbs with healing properties.' },
+  { name: 'Gudi Padwa', type: 'hindu', vMonth: 'Chaitra', tithi: 'Pratipada', paksha: 'Shukla', emoji: '🚩', desc: 'Traditional New Year for Maharashtrians and Konkanis.',
+    scienceDesc: 'Marks the onset of spring and the harvest of Rabi crops. Eating neem and jaggery on this day prepares the immune system for the transition to summer.' },
   
   // Christian / Global
   { name: 'Christmas', type: 'christian', month: 12, day: 25, emoji: '🎄', desc: 'Birth of Jesus Christ.',

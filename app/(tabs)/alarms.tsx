@@ -15,6 +15,7 @@ import * as Speech from 'expo-speech';
 import { speakBodhi, stopBodhi } from '@/lib/speech';
 import { store, KEYS } from '@/lib/storage';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
 import { Audio } from 'expo-av';
 import {
   AlarmSettings, DEFAULT_ALARM_SETTINGS, rescheduleAllFromSettings, requestNotificationPermission,
@@ -500,8 +501,8 @@ const AutoScrollingCategories = React.memo(() => {
 
   useEffect(() => {
     if (width > 0) {
-      // 50ms per pixel means a 300px strip takes 15 seconds. Very calming.
-      const duration = width * 50; 
+      // 100ms per pixel makes it much slower and more calming.
+      const duration = width * 100; 
       
       anim.setValue(0);
       Animated.loop(
@@ -523,7 +524,7 @@ const AutoScrollingCategories = React.memo(() => {
     <View style={{ flexDirection: 'row', alignItems: 'center' }} onLayout={onLayout}>
       {AUTO_SCROLL_CATEGORIES.map((tag, idx) => (
         <View key={`${tag.label}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: 'rgba(255,255,255,0.85)', letterSpacing: 1.0, textTransform: 'uppercase' }}>
+          <Text style={{ fontSize: 20, fontWeight: '600', fontFamily: 'DancingScript_600SemiBold', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.8 }}>
             {tag.label}
           </Text>
           <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginLeft: 16 }} />
@@ -653,7 +654,18 @@ export default function AlarmsTab() {
       }
       // Calculate Brahma Muhurta (96 min before sunrise) from stored location
       try {
-        const loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location);
+        let loc = await store.getJSON<{ lat: number; lon: number }>(KEYS.location);
+        if (!loc?.lat || !loc?.lon) {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const currentLoc = await Location.getLastKnownPositionAsync({}) ?? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (currentLoc) {
+              loc = { lat: currentLoc.coords.latitude, lon: currentLoc.coords.longitude };
+              await store.setJSON(KEYS.location, loc);
+            }
+          }
+        }
+        
         if (loc?.lat && loc?.lon) {
           const solar = getSolarTimes(loc.lat, loc.lon);
           const bmDecimal = solar.sunrise - 96 / 60;
@@ -2180,10 +2192,10 @@ const S = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 6, marginBottom: 0, gap: 10 },
   sectionHeaderTxt: { fontSize: 9, fontWeight: '900', color: '#74B87480', letterSpacing: 2.0, fontFamily: 'Nunito_900Black' },
   sectionHeaderLine: { flex: 1, height: 1, backgroundColor: '#74B87430' },
-  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', elevation: 12, shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
-  alarmCardActive: { borderColor: 'rgba(255,255,255,0.40)', backgroundColor: 'rgba(255,255,255,0.16)', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 24, elevation: 16 },
-  alarmCardHabit: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)', shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 22, elevation: 14 },
-  alarmCardQuick: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)', shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 22, elevation: 14 },
+  alarmCard: { marginHorizontal: 16, marginTop: 10, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.10)', overflow: 'hidden' },
+  alarmCardActive: { borderColor: 'rgba(255,255,255,0.40)', backgroundColor: 'rgba(255,255,255,0.16)' },
+  alarmCardHabit: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)' },
+  alarmCardQuick: { borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.10)' },
   alarmCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 6, paddingLeft: 11, gap: 12 },
   alarmAccentBar: { width: 3, alignSelf: 'stretch' },
   alarmLeft: { flex: 1, gap: 2 },
@@ -2235,7 +2247,7 @@ const S = StyleSheet.create({
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#38bdf8BB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   listContainer: { marginHorizontal: 'auto', width: '90%', marginTop: 6, marginBottom: 14, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 12 },
-  alarmCard2: { marginHorizontal: 'auto', width: '92%', borderRadius: 26, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'transparent', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14, marginBottom: 16 },
+  alarmCard2: { marginHorizontal: 'auto', width: '92%', borderRadius: 26, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'transparent', marginBottom: 16 },
   alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
   alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },
