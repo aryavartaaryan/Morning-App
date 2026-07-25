@@ -42,7 +42,7 @@ export default function LanguageScreen() {
   useEffect(() => { getBgSource('auth').then(setAuthBg).catch(() => {}); }, []);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: false }).start();
     // Bodhi orb gentle pulse
     Animated.loop(
       Animated.sequence([

@@ -738,7 +738,6 @@ function GlobalPlayerBar() {
     openReelsOrPlayer,
   } = useSoundPlayer();
   const slideAnim = useRef(new Animated.Value(100)).current;
-  const glowEffectAnim = useRef(new Animated.Value(0.4)).current;
   // Persist last-known meta so the bar never flickers during sound transitions
   const lastMetaRef = useRef<typeof playingMeta>(null);
   if (playingMeta) lastMetaRef.current = playingMeta;
@@ -784,27 +783,6 @@ function GlobalPlayerBar() {
     }
   }, [playingId]);
 
-  useEffect(() => {
-    if (!playingId || isPaused) {
-      glowEffectAnim.setValue(0.4);
-      return;
-    }
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowEffectAnim, {
-          toValue: 1.0,
-          duration: 1800,
-          useNativeDriver: false,
-        }),
-        Animated.timing(glowEffectAnim, {
-          toValue: 0.8,
-          duration: 1200,
-          useNativeDriver: false,
-        }),
-      ]),
-    ).start();
-    return () => glowEffectAnim.stopAnimation();
-  }, [playingId, isPaused]);
 
   if (!rendered || !displayMeta || stepActive) return null;
 
@@ -820,23 +798,17 @@ function GlobalPlayerBar() {
   return (
     <Animated.View
       style={[
-        {
+        GP.wrap,
+        { 
+          transform: [{ translateY: slideAnim }],
+          borderColor: accentColor,
           shadowColor: accentColor,
-          shadowOpacity: glowEffectAnim,
+          shadowOpacity: 0.7,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 0 },
         }
       ]}
     >
-      <Animated.View
-        style={[
-          GP.wrap,
-          { 
-            transform: [{ translateY: slideAnim }],
-            borderColor: accentColor,
-          }
-        ]}
-      >
       <LinearGradient
         colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
         start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
@@ -904,7 +876,6 @@ function GlobalPlayerBar() {
           <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
       </LinearGradient>
-      </Animated.View>
     </Animated.View>
   );
 }
@@ -988,7 +959,7 @@ function GlobalStepTracker() {
   const [startMs, setStartMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const slideAnim = useRef(new Animated.Value(100)).current;
-  const glowEffectAnim = useRef(new Animated.Value(0.4)).current;
+
 
   // Re-check state on mount or tab change
   const checkState = useCallback(async () => {
@@ -1045,14 +1016,9 @@ function GlobalStepTracker() {
     });
 
     if (shouldShow) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowEffectAnim, { toValue: 0.8, duration: 1400, useNativeDriver: false }),
-          Animated.timing(glowEffectAnim, { toValue: 0.4, duration: 1400, useNativeDriver: false })
-        ])
-      ).start();
+      // bar is visible
     } else {
-      glowEffectAnim.stopAnimation();
+      // bar is hidden
     }
   }, [active, path]);
 
@@ -1076,24 +1042,18 @@ function GlobalStepTracker() {
   return (
     <Animated.View
       style={[
+        GP.wrap,
         {
+          transform: [{ translateY: slideAnim }],
+          borderColor: accentColor,
+          marginBottom: 12,
           shadowColor: accentColor,
-          shadowOpacity: glowEffectAnim,
+          shadowOpacity: 0.7,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 0 },
         }
       ]}
     >
-      <Animated.View
-        style={[
-          GP.wrap,
-          {
-            transform: [{ translateY: slideAnim }],
-            borderColor: accentColor,
-            marginBottom: 12,
-          }
-        ]}
-      >
       <LinearGradient
         colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
         start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
@@ -1125,9 +1085,9 @@ function GlobalStepTracker() {
             {playingId && !isPaused && (
               <Ionicons name="musical-notes" size={12} color={accentColor} style={{ marginRight: 6 }} />
             )}
-            <Animated.Text style={{ color: accentColor, fontSize: 10, fontWeight: '800', opacity: glowEffectAnim }}>
+            <Text style={{ color: accentColor, fontSize: 10, fontWeight: '800', opacity: 0.85 }}>
               LIVE
-            </Animated.Text>
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -1135,7 +1095,6 @@ function GlobalStepTracker() {
           <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
       </LinearGradient>
-      </Animated.View>
     </Animated.View>
   );
 }

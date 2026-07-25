@@ -182,6 +182,7 @@ export default function WalkTab() {
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
+    console.log('[WalkTab] mounted — all animations JS-driver only');
     (async () => {
       try {
         // Always reset for new day before loading data
@@ -229,25 +230,26 @@ export default function WalkTab() {
     })();
 
     Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(cardSlide, { toValue: 0, duration: 800, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 800, useNativeDriver: false }),
+      Animated.timing(cardSlide, { toValue: 0, duration: 800, easing: Easing.out(Easing.exp), useNativeDriver: false }),
     ]).start();
 
+    // pulseAnim uses JS driver to stay consistent with all other JS-driver props on the same views
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.07, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.07, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
       ])
     ).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ])
     ).start();
 
-    // Shimmer for walk button
+    // Shimmer for walk button — uses native driver (translateX only, no mixing)
     Animated.loop(
       Animated.timing(btnShimmer, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true })
     ).start();
@@ -295,6 +297,7 @@ export default function WalkTab() {
     return () => ringAnim.removeListener(id);
   }, [stats.goalPercent]);
 
+
   // ── Launch session ──────────────────────────────────────────────────────────
   const launchSession = (type: 'morning' | 'evening' | 'postmeal') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -314,6 +317,8 @@ export default function WalkTab() {
       tension: 50,
     }).start();
   }, [compactMode]);
+  // ringAnim also uses JS driver consistently
+
   // Interpolated compact values
   // Ring: scale from 1.0 down to 0.77 (220 → ~170)
   const ringScale      = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.77] });
@@ -478,14 +483,17 @@ export default function WalkTab() {
         )}
 
         {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
+        {/* Ring wrapper: JS-driver opacity+margin outer, JS-driver scale inner — no mixing */}
         <Animated.View style={[st.ringWrapper, {
           opacity: cardFade,
-          transform: [
-            { scale: pulseAnim },
-            { scale: ringScale },
-          ],
           marginTop: ringMarginTop,
         }]}>
+          <Animated.View style={{
+            transform: [
+              { scale: pulseAnim },
+              { scale: ringScale },
+            ],
+          }}>
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
             {/* Inner zone - fixed premium frosted glass disc */}
@@ -581,9 +589,10 @@ export default function WalkTab() {
                 </>
               )}
             </View>
-
           </View>
-          
+
+          </Animated.View>
+
           {/* ── WEEKLY PROGRESS BAR ───────────────────────────────────────── */}
           {summary && summary.weeklyGoal > 0 && (
             <View style={{ width: '100%', paddingHorizontal: 32 }}>
@@ -636,7 +645,7 @@ export default function WalkTab() {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, paddingVertical: btnPadV }} />
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(125, 211, 252, 0.6)' }} />
               
@@ -662,11 +671,11 @@ export default function WalkTab() {
                 />
               </Animated.View>
               
-              <Animated.View style={{ paddingVertical: btnPadV }}>
+              <View style={{ paddingVertical: 15 }}>
                 <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
                   {sessionTitle}
                 </Text>
-              </Animated.View>
+              </View>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -691,11 +700,11 @@ export default function WalkTab() {
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
 
-              <Animated.View style={{ paddingVertical: btnPadV2 }}>
+              <View style={{ paddingVertical: 14 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 0.6, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
                   {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
                 </Text>
-              </Animated.View>
+              </View>
             </LinearGradient>
           </TouchableOpacity>
 
