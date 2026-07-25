@@ -3802,7 +3802,7 @@ function SleepTabInner() {
       mode === 'evening' ? 'rgba(80,30,0,0.78)'  :
       'rgba(0,0,10,0.72)';
     return {
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: '600' as const,
       fontFamily: 'DancingScript_600SemiBold',
       letterSpacing: 0.5,
@@ -3821,19 +3821,19 @@ function SleepTabInner() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <BlurView
         tint="dark"
-        intensity={65}
+        intensity={85}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Premium iOS frosted-glass gradient overlay */}
+      {/* Ultra-premium iOS frosted-glass gradient overlay */}
       <LinearGradient
         colors={[
-          'rgba(4,6,14,0.15)',
-          'rgba(4,6,14,0.30)',
-          'rgba(4,6,14,0.45)',
-          'rgba(4,6,14,0.65)',
+          'rgba(4,6,14,0.1)',
+          'rgba(4,6,14,0.25)',
+          'rgba(4,6,14,0.55)',
+          'rgba(4,6,14,0.90)',
         ]}
-        locations={[0, 0.3, 0.7, 1]}
+        locations={[0, 0.35, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />

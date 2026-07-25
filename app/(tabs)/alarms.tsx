@@ -428,15 +428,15 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
   return (
     <>
       {open && (
-        <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 9, opacity: backdropOpacity }]} pointerEvents="auto">
+        <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999, opacity: backdropOpacity }]} pointerEvents="auto">
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={toggle} activeOpacity={1} />
           
-          <Animated.View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, pointerEvents: 'box-none', transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}>
-            <Text style={{ color: '#fff', fontSize: 36, fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', marginBottom: 32, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 }}>
+          <Animated.View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, pointerEvents: 'box-none', transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}>
+            <Text style={{ color: '#fff', fontSize: 32, fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', marginBottom: 24, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 }}>
               Create New
             </Text>
-            <View style={{ gap: 16 }}>
+            <View style={{ gap: 12 }}>
               {actionsRef.current.map((item, i) => (
                 <Animated.View key={i} style={{
                   transform: [
@@ -448,8 +448,8 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
                       flexDirection: 'row',
                       alignItems: 'center',
                       backgroundColor: 'rgba(255,255,255,0.06)',
-                      borderRadius: 24,
-                      padding: 16,
+                      borderRadius: 22,
+                      padding: 14,
                       borderWidth: 1,
                       borderColor: 'rgba(255,255,255,0.15)',
                       overflow: 'hidden',
@@ -458,14 +458,14 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
                     activeOpacity={0.7}
                   >
                     <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
-                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${item.color}25`, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
-                      <Ionicons name={item.iconName as any} size={28} color={item.color} />
+                    <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${item.color}25`, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                      <Ionicons name={item.iconName as any} size={24} color={item.color} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#fff', letterSpacing: 0.3, marginBottom: 4 }}>{item.label}</Text>
-                      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>{item.sub}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#fff', letterSpacing: 0.2, marginBottom: 2 }}>{item.label}</Text>
+                      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>{item.sub}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
                   </TouchableOpacity>
                 </Animated.View>
               ))}
@@ -523,7 +523,7 @@ const AutoScrollingCategories = React.memo(() => {
     <View style={{ flexDirection: 'row', alignItems: 'center' }} onLayout={onLayout}>
       {AUTO_SCROLL_CATEGORIES.map((tag, idx) => (
         <View key={`${tag.label}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
-          <Text style={{ fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: 'rgba(255,255,255,0.85)', letterSpacing: 1.0, textTransform: 'uppercase' }}>
             {tag.label}
           </Text>
           <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginLeft: 16 }} />
@@ -1220,7 +1220,7 @@ export default function AlarmsTab() {
           paddingBottom: 8,
           alignItems: 'center',
         }}>
-          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5, 5, 10, 0.3)' }]} />
           
           {/* Subtle top shimmer */}
@@ -1232,7 +1232,7 @@ export default function AlarmsTab() {
           />
           {/* Main title */}
           <Text style={{
-            fontSize: 22,
+            fontSize: 28,
             fontWeight: '600',
             color: '#FFF8F0',
             letterSpacing: 0.5,
@@ -1254,7 +1254,7 @@ export default function AlarmsTab() {
           <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginTop: 12, marginBottom: 8 }} />
           
           {/* Seamless floating category stripe */}
-          <View style={{ width: '100%', marginTop: 2 }}>
+          <View style={{ width: '100%', marginTop: 2, marginBottom: 12 }}>
             <AutoScrollingCategories />
           </View>
         </View>
@@ -1277,7 +1277,7 @@ export default function AlarmsTab() {
         ref={alarmScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingBottom: getTabBarClearance(insets.bottom, !!playingId) + 72,
+          paddingBottom: getTabBarClearance(insets.bottom, !!playingId) + 140,
           paddingTop: 12,
         }}
         showsVerticalScrollIndicator={false}
@@ -1287,7 +1287,7 @@ export default function AlarmsTab() {
 
           {/* Primary Wake Alarm Card — Smart A */}
           <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#7dd3fc' }} />
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => { setIsAddingExtraWake(false); setWakeRepeatDays(settings.wakeAlarm.days ?? [0, 1, 2, 3, 4, 5, 6]); setWakeFormHour(settings.wakeAlarm.hour); setWakeFormMinute(settings.wakeAlarm.minute); setShowWakeEdit(true); }} activeOpacity={0.8}>
@@ -1330,7 +1330,7 @@ export default function AlarmsTab() {
           {/* Brahma Muhurta Alarm Card */}
           {settings.brahmaMuhurtaAlarm?.enabled && bmHour !== null && (
             <View style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#fde68a' }} />
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 8, gap: 12 }} onPress={() => openBMModal()} activeOpacity={0.8}>
@@ -1372,7 +1372,7 @@ export default function AlarmsTab() {
           {/* Extra Wake Alarm Cards — Smart A */}
           {extraWakeAlarms.map(alarm => (
             <View key={alarm.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
               <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#93c5fd' }} />
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditExtraWake(alarm)} activeOpacity={0.8}>
@@ -1425,7 +1425,7 @@ export default function AlarmsTab() {
               : `⚡  ${entry.label || 'Quick Alarm'}`;
             return (
               <View key={entry.id} style={[S.alarmCard2, { backgroundColor: ALARM_CARD_BG }]}>
-                <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+                <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
                 <LinearGradient colors={['rgba(255,255,255,0.08)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: accent }} />
                 <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingVertical: 12, gap: 12 }} onPress={() => openEditEntry(entry)} activeOpacity={0.8}>
@@ -2235,7 +2235,7 @@ const S = StyleSheet.create({
   alarmBigTime: { fontSize: 38, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2, lineHeight: 46 },
   alarmCountdownSub: { fontSize: 11, color: '#38bdf8BB', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   listContainer: { marginHorizontal: 'auto', width: '90%', marginTop: 6, marginBottom: 14, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 12 },
-  alarmCard2: { marginHorizontal: 'auto', width: '92%', borderRadius: 26, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(10,10,20,0.3)', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24, elevation: 14, marginBottom: 16 },
+  alarmCard2: { marginHorizontal: 'auto', width: '92%', borderRadius: 26, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'transparent', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 14, marginBottom: 16 },
   alarmRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   alarmRowBadge: { fontSize: 8, fontWeight: '500', letterSpacing: 0.8 },
   alarmRowTime: { fontSize: 18, fontWeight: '200', color: '#FFFFFF', letterSpacing: -1.0, lineHeight: 22 },

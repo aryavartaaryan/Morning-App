@@ -193,10 +193,10 @@ export default function StepSessionScreen() {
   const [confetti, setConfetti] = useState(false);
   const [weather, setWeather] = useState<any>(null);
 
-  // Fixed ultra-premium sky blue palette for the ring — always crisp & consistent
-  const C  = '#38bdf8';   // sky-400 — signature live-session blue
-  const GA = '#38bdf8';   // sky gradient start
-  const GB = '#0ea5e9';   // sky-500 — deeper gradient end
+  // Ultra-premium glassy white palette for the ring — no theme color
+  const C  = 'rgba(255, 255, 255, 0.9)';   // clean white
+  const GA = 'rgba(255, 255, 255, 1)';     // crisp white start
+  const GB = 'rgba(255, 255, 255, 0.2)';   // glassy transparent end
 
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
 
@@ -830,95 +830,75 @@ function ExitModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(4,6,14,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
         
-        {/* Ultra-premium floating glass sheet */}
-        <View style={{ width: '100%', borderRadius: 32, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.35, shadowRadius: 40, elevation: 20 }}>
-          <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFillObject} />
-          
-          <LinearGradient
-            colors={['rgba(18,22,35,0.7)', 'rgba(10,12,20,0.85)']}
-            style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}
-          >
+        {/* Apple-style floating premium sheet */}
+        <View style={{ borderRadius: 32, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 24 }, shadowOpacity: 0.6, shadowRadius: 40, elevation: 10 }}>
+          <BlurView intensity={80} tint="dark" style={{ padding: 32, paddingBottom: 24, alignItems: 'center', backgroundColor: 'rgba(20,20,30,0.55)' }}>
+            
             {/* Top border shine */}
             <LinearGradient
-              colors={['rgba(255,255,255,0.3)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.08 }}
+              colors={['rgba(255,255,255,0.25)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
-            {/* Inner Border */}
-            <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)' }} />
             
-            {/* Ambient Background Glow */}
-            <View pointerEvents="none" style={{ position: 'absolute', top: -50, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: gradB, opacity: 0.2, transform: [{ scale: 1.5 }] }} />
-            <View pointerEvents="none" style={{ position: 'absolute', bottom: -30, left: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: gradA, opacity: 0.15, transform: [{ scale: 1.5 }] }} />
-            
-            {/* Elegant glowing icon */}
-            <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}>
-              <LinearGradient
-                colors={[gradA, gradB]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ position: 'absolute', inset: 0, borderRadius: 34, opacity: 0.2 }}
-              />
-              <Ionicons name="walk" size={32} color={color} style={{ marginLeft: 3 }} />
+            {/* Elegant minimal icon */}
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12 }}>
+              <LinearGradient colors={[gradA, gradB]} style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} opacity={0.12} />
+              <Ionicons name="sparkles" size={24} color={color} />
             </View>
             
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.5 }}>
-              Session in Progress
+            <Text style={{ fontSize: 22, fontWeight: '400', color: '#ffffff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.4, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-light' }}>
+              Journey in Progress
             </Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: 36, lineHeight: 24, paddingHorizontal: 10, fontWeight: '400' }}>
-              Minimize the screen to keep walking with Nada Audio, or end the session to save your progress.
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 32, lineHeight: 22, paddingHorizontal: 4, letterSpacing: 0.2 }}>
+              Allow your walk to flow seamlessly in the background with Nada Audio, or gracefully conclude your session to save your progress.
             </Text>
             
-            <View style={{ width: '100%', gap: 14 }}>
-              {/* Keep Walking (Primary Safe Action) — Vibrant Glass */}
+            <View style={{ width: '100%', gap: 12 }}>
+              {/* Keep Walking (Primary Safe Action) — Translucent Glass */}
               <TouchableOpacity
                 onPress={onMinimize}
-                style={{ borderRadius: 24, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={[gradA + 'E6', gradB + 'F2']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={{ paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-                >
-                  <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }} />
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.3)', 'transparent']}
-                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                    style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
-                    pointerEvents="none"
-                  />
-                  <Ionicons name="chevron-down" size={20} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, letterSpacing: 0.4, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                    Keep Walking in Background
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              {/* End Session (Destructive/Final Action) */}
-              <TouchableOpacity
-                onPress={onEnd}
-                style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(20,20,30,0.5)' }}
+                style={{ borderRadius: 20, overflow: 'hidden', shadowColor: color, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 4 }}
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['rgba(239,68,68,0.12)', 'rgba(220,38,38,0.05)']}
-                  style={{ paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.08)']}
+                  start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                  style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
                 >
-                  <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' }} />
-                  <Ionicons name="stop" size={16} color="#f87171" />
-                  <Text style={{ color: '#f87171', fontWeight: '600', fontSize: 16, letterSpacing: 0.3 }}>End Session</Text>
+                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' }} />
+                  <Ionicons name="layers-outline" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '500', fontSize: 15, letterSpacing: 0.5 }}>Continue in Background</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              {/* End Session (Destructive/Final Action) — Subtle Destructive Gradient */}
+              <TouchableOpacity
+                onPress={onEnd}
+                style={{ borderRadius: 20, overflow: 'hidden' }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(239,68,68,0.15)', 'rgba(220,38,38,0.05)']}
+                  style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <View style={{ position: 'absolute', inset: 0, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }} />
+                  <Ionicons name="stop-circle-outline" size={18} color="#fca5a5" />
+                  <Text style={{ color: '#fca5a5', fontWeight: '500', fontSize: 15, letterSpacing: 0.5 }}>Conclude Session</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
             
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 28, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.55)', textAlign: 'center', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 }}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 24, paddingVertical: 10, paddingHorizontal: 24 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500', letterSpacing: 0.5 }}>Cancel</Text>
             </TouchableOpacity>
-          </LinearGradient>
+          </BlurView>
         </View>
       </View>
     </Modal>

@@ -780,28 +780,105 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   const festivals = React.useMemo(() => getYearlyFestivals(new Date().getFullYear()), []);
   const hinduFests = festivals.filter(f => f.festival.type === 'hindu');
   const globalFests = festivals.filter(f => f.festival.type !== 'hindu');
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
-  const renderFest = (item: any, i: number, color: string) => {
+  const renderFest = (item: any, color: string) => {
+    const isExpanded = expandedId === item.festival.name;
     const dateStr = item.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+    
+    // Calculate panchang for this specific festival date
+    const p = getPanchangData(item.date);
+    const n = NAKSHATRAS[p.nakshatraIdx];
+    const y = YOGAS[p.yogaIdx];
+    const v = VAARS[p.vaarIdx];
+
     return (
-      <View key={i} style={{ 
-        flexDirection: 'row', alignItems: 'center', gap: 14, 
-        backgroundColor: 'rgba(6,15,40,0.42)', 
-        borderWidth: 1, borderColor: color + '30', 
-        borderRadius: 16, padding: 12, marginBottom: 8,
-        shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+      <TouchableOpacity 
+        activeOpacity={0.85}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setExpandedId(isExpanded ? null : item.festival.name);
+        }}
+        key={item.festival.name} style={{ 
+        flexDirection: 'column', 
+        backgroundColor: isExpanded ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)', 
+        borderWidth: 1, borderColor: isExpanded ? color + '50' : 'rgba(255,255,255,0.1)', 
+        borderRadius: 18, padding: 14, marginBottom: 10,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5,
+        overflow: 'hidden'
       }}>
-        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color + '15', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 24 }}>{item.festival.emoji}</Text>
+        <LinearGradient
+          colors={[color + (isExpanded ? '25' : '15'), 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        
+        {/* Main Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color + '30' }}>
+            <Text style={{ fontSize: 26 }}>{item.festival.emoji}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 2 }}>{item.festival.name}</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' }}>{item.festival.desc}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: color + '20', borderWidth: 1, borderColor: color + '40' }}>
+              <Text style={{ fontSize: 10, fontWeight: '900', color: color, letterSpacing: 0.5 }}>{dateStr.toUpperCase()}</Text>
+            </View>
+            <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.3)', marginTop: 6, marginRight: 6 }}>{isExpanded ? '↑' : '›'}</Text>
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 2 }}>{item.festival.name}</Text>
-          <Text style={{ fontSize: 12, color: '#FFFFFF90', fontWeight: '500' }}>{item.festival.desc}</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 11, fontWeight: '900', color: color, letterSpacing: 0.5 }}>{dateStr.toUpperCase()}</Text>
-        </View>
-      </View>
+
+        {/* Expanded Cosmic Content */}
+        {isExpanded && (
+          <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+            
+            {/* Scientific / Agricultural Significance */}
+            {item.festival.scienceDesc && (
+              <View style={{ marginBottom: 14, backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 12 }}>🧬</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: color, letterSpacing: 1 }}>BIO-COSMIC SIGNIFICANCE</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20 }}>
+                  {item.festival.scienceDesc}
+                </Text>
+              </View>
+            )}
+
+            {/* Exact Cosmic Alignments on that day */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 1, marginBottom: 2 }}>LUNAR PHASE (TITHI)</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{p.tithiName}</Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{p.paksha} Paksha</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#60a5fa', letterSpacing: 1, marginBottom: 2 }}>STAR (NAKSHATRA)</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{n.name}</Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{n.constellation}</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: y.auspicious ? '#10b981' : '#f87171', letterSpacing: 1, marginBottom: 2 }}>ALIGNMENT (YOGA)</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{y.name}</Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{y.auspicious ? 'Auspicious' : 'Inauspicious'}</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: v.color, letterSpacing: 1, marginBottom: 2 }}>DAY RULER (VAAR)</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{v.vedicName}</Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{v.planet}</Text>
+              </View>
+
+            </View>
+
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -831,7 +908,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                 <Text style={EX.sheetCap}>VEDIC ALMANAC</Text>
               </View>
               <Text style={EX.sheetTitle}>Yearly Cosmic Festivals</Text>
-              <Text style={EX.sheetSub}>{new Date().getFullYear()} Sacred Dates · Hindu & Global</Text>
+              <Text style={EX.sheetSub}>{new Date().getFullYear()} Sacred Dates · Cosmic & Global</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={EX.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={EX.closeTxt}>✕</Text>
@@ -839,13 +916,13 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '900', color: '#f43f5e', letterSpacing: 2, marginBottom: 10, marginTop: 4 }}>✦ HINDU FESTIVALS</Text>
-            {hinduFests.map((item, i) => renderFest(item, i, '#f43f5e'))}
+            <Text style={{ fontSize: 13, fontWeight: '900', color: '#f43f5e', letterSpacing: 2, marginBottom: 10, marginTop: 4 }}>✦ COSMIC FESTIVALS</Text>
+            {hinduFests.map((item) => renderFest(item, '#f43f5e'))}
             
             <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 16 }} />
             
             <Text style={{ fontSize: 13, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 10 }}>✧ GLOBAL OBSERVANCES</Text>
-            {globalFests.map((item, i) => renderFest(item, i, '#60a5fa'))}
+            {globalFests.map((item) => renderFest(item, '#60a5fa'))}
           </ScrollView>
         </View>
       </View>
@@ -5863,9 +5940,9 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     <>
       {/* VEDIC ALMANAC CARD */}
       <View style={{
-        marginHorizontal: 10,
-        marginTop: 2,
-        marginBottom: 2,
+        marginHorizontal: 6,
+        marginTop: 1,
+        marginBottom: 1,
         borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
@@ -5891,7 +5968,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         {/* TOP BOUNDARY */}
         <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.18)', width: '100%' }} />
 
-        <View style={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10 }}>
+        <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 6 }}>
 
           {/* TITLE + DATE HEADER */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -5946,7 +6023,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                     Haptics.selectionAsync();
                     setExpandedRow(isExpanded ? null : idx);
                   }}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 10 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, gap: 10 }}>
                   <View style={{ width: 70 }}>
                     <Text style={{ fontSize: 7, fontWeight: '900', color: row.color + 'BB', letterSpacing: 1.4 }}>
                       {row.label}
@@ -6596,11 +6673,21 @@ function DailyTab() {
         style={StyleSheet.absoluteFillObject}
         imageStyle={{ opacity: 1, resizeMode: 'cover' }}
       />
-
-      {/* Premium gradient overlay — balanced for legibility without being too dark */}
+      <BlurView
+        tint="dark"
+        intensity={85}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Ultra-premium iOS frosted-glass gradient overlay */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.50)']}
-        locations={[0, 0.40, 1]}
+        colors={[
+          'rgba(4,6,14,0.1)',
+          'rgba(4,6,14,0.25)',
+          'rgba(4,6,14,0.55)',
+          'rgba(4,6,14,0.90)',
+        ]}
+        locations={[0, 0.35, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -6899,10 +6986,10 @@ const W = StyleSheet.create({
 
 const WS = StyleSheet.create({
   card: {
-    marginHorizontal: 0, marginTop: 2, borderRadius: 0, borderWidth: 1.5,
+    marginHorizontal: 0, marginTop: 1, borderRadius: 0, borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.22)',
     backgroundColor: 'rgba(6,15,40,0.42)', flexDirection: 'row', overflow: 'hidden',
-    paddingVertical: 8, paddingRight: 16,
+    paddingVertical: 6, paddingRight: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.38, shadowRadius: 20, elevation: 12,
   },
   colorBar:     { width: 4, borderRadius: 2, marginLeft: 4 },

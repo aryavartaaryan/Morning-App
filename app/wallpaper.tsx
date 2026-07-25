@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Animated, StatusBar
+  Animated, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -121,11 +122,13 @@ export default function WallpaperSettings() {
   }
 
   return (
-    <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
-      style={styles.screen}
-      imageStyle={{ opacity: 1 }}
-    >
+    <View style={styles.screen}>
+      <Image
+        source={bgUri ? { uri: bgUri } : undefined}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+        transition={500}
+      />
       <StatusBar barStyle="light-content" />
       {/* Immersive glass overlay to keep UI legible over any background */}
       <LinearGradient
@@ -324,11 +327,13 @@ export default function WallpaperSettings() {
                       }
                     ]}
                   >
-                    <ImageBackground
-                      source={imgUri ? { uri: imgUri } : undefined}
-                      style={{ flex: 1 }}
-                      imageStyle={{ borderRadius: 16 }}
-                    >
+                    <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                      <Image
+                        source={imgUri ? { uri: imgUri } : undefined}
+                        style={StyleSheet.absoluteFillObject}
+                        contentFit="cover"
+                        transition={300}
+                      />
                       <LinearGradient
                         colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
                         locations={[0, 0.4, 1]}
@@ -363,7 +368,7 @@ export default function WallpaperSettings() {
                           {meta.sub}
                         </Text>
                       </View>
-                    </ImageBackground>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -374,7 +379,7 @@ export default function WallpaperSettings() {
         </View>
 
       </ScrollView>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -440,15 +445,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroTime: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#FFFFFF90',
     letterSpacing: 1.5,
     marginBottom: 6,
   },
   heroName: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
     fontFamily: 'Nunito_900Black',
     textAlign: 'center',
@@ -457,7 +462,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   heroSub: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#FFFFFFCC',
     marginTop: 4,
     fontWeight: '500',

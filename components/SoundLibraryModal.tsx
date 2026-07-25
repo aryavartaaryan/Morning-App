@@ -120,8 +120,8 @@ export default function SoundLibraryModal({
         {/* Sleek Side Drawer Panel */}
         <SafeAreaView style={S.safeArea} pointerEvents="box-none">
           <View style={[S.drawer, drawerDynamicStyle]}>
-            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient colors={['rgba(15,15,18,0.92)', 'rgba(8,8,10,0.99)']} style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={75} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={['rgba(15,15,18,0.65)', 'rgba(8,8,10,0.80)']} style={StyleSheet.absoluteFillObject} />
             
             {/* Minimalist right border */}
             <View style={S.drawerBorderRight} />
@@ -134,8 +134,8 @@ export default function SoundLibraryModal({
                   <Text style={S.title}>Nada Library</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); router.push('/(tabs)/settings' as never); }} style={[S.closeBtn, { marginRight: 8 }]} activeOpacity={0.7}>
-                    <Ionicons name="settings-outline" size={16} color="rgba(255,255,255,0.6)" />
+                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); router.push('/(tabs)/settings' as never); }} style={[S.premiumBtn, { marginRight: 12 }]} activeOpacity={0.7}>
+                    <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
                     <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
@@ -236,6 +236,21 @@ const S = StyleSheet.create({
     marginBottom: 16,
   },
   title: { fontSize: 16, fontWeight: '500', color: '#FFFFFF', letterSpacing: 0.5 },
+  premiumBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   closeBtn: { 
     width: 28, 
     height: 28, 

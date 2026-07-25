@@ -371,28 +371,45 @@ export type Festival = {
   paksha?: 'Shukla' | 'Krishna';
   emoji: string;
   desc: string;
+  scienceDesc?: string;
 };
 
 export const FESTIVALS: Festival[] = [
-  // Hindu
-  { name: 'Diwali / Deepawali', type: 'hindu', vMonth: 'Kartik', tithi: 'Amavasya', emoji: '🪔', desc: 'Festival of Lights. Triumph of light over darkness.' },
-  { name: 'Dussehra / Vijayadashami', type: 'hindu', vMonth: 'Ashwin', tithi: 'Dashami', paksha: 'Shukla', emoji: '🏹', desc: 'Victory of good over evil.' },
-  { name: 'Maha Shivaratri', type: 'hindu', vMonth: 'Phalguna', tithi: 'Chaturdashi', paksha: 'Krishna', emoji: '🔱', desc: 'The Great Night of Shiva.' },
-  { name: 'Holi', type: 'hindu', vMonth: 'Phalguna', tithi: 'Purnima', emoji: '🎨', desc: 'Festival of Colors. Arrival of spring.' },
-  { name: 'Ganesh Chaturthi', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Chaturthi', paksha: 'Shukla', emoji: '🐘', desc: 'Birth of Lord Ganesha.' },
-  { name: 'Rama Navami', type: 'hindu', vMonth: 'Chaitra', tithi: 'Navami', paksha: 'Shukla', emoji: '🕉️', desc: 'Birth of Lord Rama.' },
-  { name: 'Krishna Janmashtami', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Ashtami', paksha: 'Krishna', emoji: '🦚', desc: 'Birth of Lord Krishna.' },
-  { name: 'Raksha Bandhan', type: 'hindu', vMonth: 'Shravana', tithi: 'Purnima', emoji: '🧿', desc: 'Bond of protection between siblings.' },
-  { name: 'Makar Sankranti', type: 'hindu', month: 1, day: 14, emoji: '🪁', desc: 'Sun transitions into Makara (Capricorn).' },
-  { name: 'Navaratri Begins', type: 'hindu', vMonth: 'Ashwin', tithi: 'Pratipada', paksha: 'Shukla', emoji: '🌺', desc: 'Nine nights honoring the Divine Mother.' },
-  { name: 'Hanuman Jayanti', type: 'hindu', vMonth: 'Chaitra', tithi: 'Purnima', emoji: '🐒', desc: 'Birth of Lord Hanuman.' },
+  // Hindu / Cosmic
+  { name: 'Diwali / Deepawali', type: 'hindu', vMonth: 'Kartik', tithi: 'Amavasya', emoji: '🪔', desc: 'Festival of Lights. Triumph of light over darkness.',
+    scienceDesc: 'Marks the darkest new moon of autumn. Lighting lamps is an ancient method to sanitize the air post-monsoon and align human circadian rhythms with the changing season.' },
+  { name: 'Dussehra / Vijayadashami', type: 'hindu', vMonth: 'Ashwin', tithi: 'Dashami', paksha: 'Shukla', emoji: '🏹', desc: 'Victory of good over evil.',
+    scienceDesc: 'Signals the end of the monsoon and the preparation for the winter harvest. The cooling atmosphere calms the Pitta dosha in the body.' },
+  { name: 'Maha Shivaratri', type: 'hindu', vMonth: 'Phalguna', tithi: 'Chaturdashi', paksha: 'Krishna', emoji: '🔱', desc: 'The Great Night of Shiva.',
+    scienceDesc: 'Occurs on the darkest night before the new moon in late winter. The planetary positions induce a natural upsurge of energy in the human spine, making staying awake biologically beneficial.' },
+  { name: 'Holi', type: 'hindu', vMonth: 'Phalguna', tithi: 'Purnima', emoji: '🎨', desc: 'Festival of Colors. Arrival of spring.',
+    scienceDesc: 'Celebrated on the spring full moon. The transition from winter to spring causes Kapha dosha imbalances (colds/allergies); the natural colored powders and bonfires originally served medicinal and purifying purposes.' },
+  { name: 'Ganesh Chaturthi', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Chaturthi', paksha: 'Shukla', emoji: '🐘', desc: 'Birth of Lord Ganesha.',
+    scienceDesc: 'Marks the late monsoon phase. Traditional clay idols immersed in rivers served to purify and mineralize water bodies post-rains.' },
+  { name: 'Rama Navami', type: 'hindu', vMonth: 'Chaitra', tithi: 'Navami', paksha: 'Shukla', emoji: '🕉️', desc: 'Birth of Lord Rama.',
+    scienceDesc: 'Coincides with the peak of spring. Dietary restrictions (fasting) during this period scientifically prepare the digestive system for the intense summer heat.' },
+  { name: 'Krishna Janmashtami', type: 'hindu', vMonth: 'Bhadrapada', tithi: 'Ashtami', paksha: 'Krishna', emoji: '🦚', desc: 'Birth of Lord Krishna.',
+    scienceDesc: 'Celebrated on the 8th waning moon during peak monsoon. Midnight fasting and alignment with lunar phases helps detoxify the body during high humidity.' },
+  { name: 'Raksha Bandhan', type: 'hindu', vMonth: 'Shravana', tithi: 'Purnima', emoji: '🧿', desc: 'Bond of protection between siblings.',
+    scienceDesc: 'A monsoon full-moon festival. Originally tied to agricultural cycles where communities bound threads to invoke protection against water-borne diseases and bad harvests.' },
+  { name: 'Makar Sankranti', type: 'hindu', month: 1, day: 14, emoji: '🪁', desc: 'Sun transitions into Makara (Capricorn).',
+    scienceDesc: 'A purely astronomical event marking the Winter Solstice (Sun moving north). Sun exposure via kite flying helps synthesize Vitamin D in peak winter.' },
+  { name: 'Navaratri Begins', type: 'hindu', vMonth: 'Ashwin', tithi: 'Pratipada', paksha: 'Shukla', emoji: '🌺', desc: 'Nine nights honoring the Divine Mother.',
+    scienceDesc: 'Aligns with the equinox. The 9-day fasting resets the gut microbiome during the drastic climatic shift between summer and winter.' },
+  { name: 'Hanuman Jayanti', type: 'hindu', vMonth: 'Chaitra', tithi: 'Purnima', emoji: '🐒', desc: 'Birth of Lord Hanuman.',
+    scienceDesc: 'Spring full moon phase. The emphasis on breathwork (Pranayama) and strength honors the vital life-force energy (Prana) surging in nature.' },
   
   // Christian / Global
-  { name: 'Christmas', type: 'christian', month: 12, day: 25, emoji: '🎄', desc: 'Birth of Jesus Christ.' },
-  { name: 'Halloween', type: 'christian', month: 10, day: 31, emoji: '🎃', desc: 'All Hallows\' Eve.' },
-  { name: 'New Year', type: 'global', month: 1, day: 1, emoji: '🎆', desc: 'Gregorian New Year.' },
-  { name: 'Valentine\'s Day', type: 'global', month: 2, day: 14, emoji: '💝', desc: 'Day of love and affection.' },
-  { name: 'Earth Day', type: 'global', month: 4, day: 22, emoji: '🌍', desc: 'Honoring our planet and environment.' }
+  { name: 'Christmas', type: 'christian', month: 12, day: 25, emoji: '🎄', desc: 'Birth of Jesus Christ.',
+    scienceDesc: 'Corresponds closely with the winter solstice, marking the return of longer days and sunlight in the Northern Hemisphere.' },
+  { name: 'Halloween', type: 'christian', month: 10, day: 31, emoji: '🎃', desc: 'All Hallows\' Eve.',
+    scienceDesc: 'Historically marks the end of the harvest season and the beginning of winter, acknowledging the seasonal death of vegetation.' },
+  { name: 'New Year', type: 'global', month: 1, day: 1, emoji: '🎆', desc: 'Gregorian New Year.',
+    scienceDesc: 'A civil calendar milestone for psychological reset and intention setting.' },
+  { name: 'Valentine\'s Day', type: 'global', month: 2, day: 14, emoji: '💝', desc: 'Day of love and affection.',
+    scienceDesc: 'Coincides with early spring in many regions, a biological period of renewal and social bonding.' },
+  { name: 'Earth Day', type: 'global', month: 4, day: 22, emoji: '🌍', desc: 'Honoring our planet and environment.',
+    scienceDesc: 'A modern global observance emphasizing environmental conservation and ecological harmony.' }
 ];
 
 export function getFestivalForDate(date: Date = new Date()): Festival | null {

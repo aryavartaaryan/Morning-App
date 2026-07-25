@@ -155,14 +155,11 @@ export function DailyIntentionCard() {
       </TouchableOpacity>
 
       {/* ── WRITE MODAL (MIDDLE SCREEN) ── */}
-      <Modal visible={showWriteModal} transparent={true} animationType="slide">
+      <Modal visible={showWriteModal} transparent={true} animationType="slide" onRequestClose={() => setShowWriteModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <BlurView intensity={100} tint="light" style={styles.modalBlurLight}>
-            <View style={styles.modalHeaderFullScreen}>
-              <TouchableOpacity onPress={() => setShowWriteModal(false)} hitSlop={{top:20,bottom:20,left:20,right:20}}>
-                <Ionicons name="close" size={32} color="#000" />
-              </TouchableOpacity>
-            </View>
+            {/* Header area removed for premium look, relies on back button */}
+            <View style={{ height: Platform.OS === 'ios' ? 60 : 40 }} />
             
             <View style={styles.writeContentTop}>
               <Text style={styles.writePrefixText}>Today I will...</Text>
@@ -209,13 +206,10 @@ export function DailyIntentionCard() {
       </Modal>
 
       {/* ── CONFIRM SET INTENTION MODAL ── */}
-      <Modal visible={showConfirmModal} transparent={true} animationType="slide">
+      <Modal visible={showConfirmModal} transparent={true} animationType="slide" onRequestClose={() => setShowConfirmModal(false)}>
         <BlurView intensity={100} tint="light" style={styles.modalBlurLight}>
-          <View style={styles.modalHeaderFullScreen}>
-            <TouchableOpacity onPress={() => setShowConfirmModal(false)} hitSlop={{top:20,bottom:20,left:20,right:20}}>
-              <Ionicons name="close" size={32} color="#000" />
-            </TouchableOpacity>
-          </View>
+          {/* Header area removed for premium look */}
+          <View style={{ height: Platform.OS === 'ios' ? 60 : 40 }} />
           
           <View style={styles.logContentCenter}>
             <Text style={styles.writePrefixText}>Today I will...</Text>
@@ -249,12 +243,10 @@ export function DailyIntentionCard() {
       </Modal>
 
       {/* ── LOG MODAL (RIGHT SCREEN) ── */}
-      <Modal visible={showLogModal} transparent={true} animationType="slide">
+      <Modal visible={showLogModal} transparent={true} animationType="slide" onRequestClose={() => setShowLogModal(false)}>
         <BlurView intensity={100} tint="light" style={styles.modalBlurLight}>
           <View style={styles.modalHeaderFullScreen}>
-            <TouchableOpacity onPress={() => setShowLogModal(false)} hitSlop={{top:20,bottom:20,left:20,right:20}}>
-              <Ionicons name="close" size={32} color="#000" />
-            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
             <TouchableOpacity hitSlop={{top:20,bottom:20,left:20,right:20}}>
               <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
             </TouchableOpacity>
@@ -293,7 +285,7 @@ export function DailyIntentionCard() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 10, // Positive value places it securely below the header without pushing into it
+    top: -20, // Perfectly balanced between the top header and hero ring
     left: 20,
     right: 20,
     zIndex: 100,
@@ -330,13 +322,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   homePlaceholderText: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.9)',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   homeIntentionText: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: '700',
     color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',

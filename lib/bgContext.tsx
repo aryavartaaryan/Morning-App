@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 import { getBgSource, getBgSourceSync, BG_URLS, bgWarmup } from '@/lib/bgImages';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
@@ -11,7 +11,7 @@ const WP_MANUAL_KEY = 'morning_wp_manual_v1';  // key from BG_KEYS
 // ── All background images with display metadata ────────────────────────────
 export const BG_KEYS = [
   'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_2', 'sunrise_late', 'sunrise_late_2', 'morning_early', 'morning_early_late', 'morning', 'morning_2', 'morning_late', 'morning_late_2',
-  'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_late', 'midday_late_2', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'afternoon_late_2', 'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_part2', 'sandhya_late_mid', 'sandhya_late_mid_2', 'sandhya_late_2', 'sandhya_late_3', 'twilight', 'evening_early', 'evening_early_2', 'evening', 'night_early', 'night_early_mid1', 'night_early_mid2', 'night_early_late', 'night', 'night_late',
+  'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_late', 'midday_late_2', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'afternoon_late_2', 'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_part2', 'sandhya_late_mid', 'sandhya_late_mid_2', 'sandhya_late_2', 'sandhya_late_3', 'twilight', 'evening_early', 'evening_early_2', 'evening', 'night_early', 'night_early_mid2', 'night_early_late', 'night', 'night_late',
 ] as const;
 export type BgKey = typeof BG_KEYS[number];
 
@@ -53,8 +53,7 @@ export const BG_META: Record<BgKey, { label: string; sub: string; emoji: string;
   evening_early: { label: 'Eventide Serenity', sub: 'Cool night energy settling', emoji: '🌃', time: '7:30–7:52 PM' },
   evening_early_2: { label: 'Velvet Nightfall', sub: 'Cool night energy settling', emoji: '🌃', time: '7:52–8:15 PM' },
   evening:   { label: 'Evening Calm',        sub: 'Cool night energy',        emoji: '🌃', time: '8:15–9 PM' },
-  night_early: { label: 'Early Night', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–9:52 PM' },
-  night_early_mid1: { label: 'Night Quietude', sub: 'Quiet deepens', emoji: '🌌', time: '9:52 PM–10:18 PM' },
+  night_early: { label: 'Early Night', sub: 'Early stillness descends', emoji: '🌌', time: '9 PM–10:18 PM' },
   night_early_mid2: { label: 'Night Stillness', sub: 'Quiet deepens', emoji: '🌌', time: '10:18 PM–10:32 PM' },
   night_early_late: { label: 'Midnight Deep', sub: 'Stillness deepens', emoji: '🌌', time: '10:32 PM–12:30 AM' },
   night:     { label: 'Late Night Stillness',   sub: 'Deep Vata stillness',      emoji: '🌙', time: '12:30 AM–2:15 AM' },
@@ -98,8 +97,7 @@ export const BG_ACCENT_COLORS: Record<string, string> = {
   evening_early: '#090614',
   evening_early_2: '#090614',
   evening:   '#090614',
-  night_early: '#08051A',
-  night_early_mid1: '#070416',
+  night_early: '#070416',
   night_early_mid2: '#070416',
   night_early_late: '#060312',
   night: '#04020C',
@@ -143,8 +141,7 @@ export const BG_GRADIENT_START: Record<string, string> = {
   evening_early: '#0E0A24',
   evening_early_2: '#0E0A24',
   evening:   '#0E0A24',
-  night_early: '#0A0620',
-  night_early_mid1: '#09051B',
+  night_early: '#09051B',
   night_early_mid2: '#09051B',
   night_early_late: '#080415',
   night: '#060310',
@@ -173,8 +170,7 @@ export function getTimedBgKey(
       const q1MidHalf = q1Half + (q1 - q1Half) / 2;
       const q1MidHalf2 = q1MidHalf + (q1 - q1MidHalf) / 2;
       if (hAdj < q1MidHalf2) {
-        if (hAdj < q1Half) return 'night_early';
-        if (hAdj < q1MidHalf) return 'night_early_mid1';
+        if (hAdj < q1MidHalf) return 'night_early';
         return 'night_early_mid2';
       }
       if (hAdj < q2) return 'night_early_late';
@@ -305,8 +301,7 @@ export function getTimedBgKey(
   if (h >= staticEveningEarlyMid && h < staticEveningMid) return 'evening_early_2';
   if (h >= staticEveningMid && h < 21)  return 'evening';
   if (h >= 21 && h < 22.53125) {
-    if (h < 21.875) return 'night_early';
-    if (h < 22.3125) return 'night_early_mid1';
+    if (h < 22.3125) return 'night_early';
     return 'night_early_mid2';
   }
   if (h >= 22.53125 || h < 0.5) return 'night_early_late';
@@ -395,7 +390,10 @@ export function BgProvider({ children }: { children: ReactNode }) {
           // Guard: getBgSourceSync can return null/undefined for uncached keys.
           // Use safeUri to filter empty strings that crash Android ImageBackground.
           const u = safeUri(getBgSourceSync(k));
-          if (u) syncUris[k] = u;
+          if (u) {
+            syncUris[k] = u;
+            Image.prefetch(u);
+          }
         }
         setAllBgUris(syncUris);
         // Then update each key individually as getBgSource resolves —
@@ -404,7 +402,10 @@ export function BgProvider({ children }: { children: ReactNode }) {
           BG_KEYS.map(async (k) => {
             try {
               const uri = safeUri(await getBgSource(k));
-              if (uri) setAllBgUris(prev => ({ ...prev, [k]: uri }));
+              if (uri) {
+                setAllBgUris(prev => ({ ...prev, [k]: uri }));
+                Image.prefetch(uri);
+              }
             } catch { /* ignore — thumbnail missing is non-fatal */ }
           })
         );
