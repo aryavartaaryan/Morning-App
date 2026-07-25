@@ -540,6 +540,11 @@ export function BgProvider({ children }: { children: ReactNode }) {
       {/* Preload live_session backgrounds */}
       {(() => { const _u3 = getBgSourceSync('live_session'); return _u3 && _u3.length > 4 ? <Image source={{ uri: _u3 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
       {(() => { const _u4 = getBgSourceSync('live_session_night' as any); return _u4 && _u4.length > 4 ? <Image source={{ uri: _u4 }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} /> : null; })()}
+      {/* Preload all wallpaper images into memory so they render instantly in the picker */}
+      {Object.entries(allBgUris).map(([k, uri]) => {
+        if (!uri || typeof uri !== 'string' || uri.length < 5) return null;
+        return <Image key={k} source={{ uri }} style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }} cachePolicy="memory-disk" />;
+      })}
     </BgContext.Provider>
   );
 }

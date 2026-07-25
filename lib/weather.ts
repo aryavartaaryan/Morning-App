@@ -128,7 +128,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       `,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day` +
       `&hourly=temperature_2m,weathercode,precipitation_probability,is_day,wind_speed_10m` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum` +
-      `&forecast_days=7&timezone=auto&models=best_match`;
+      `&forecast_days=14&timezone=auto&models=best_match`;
 
     const controller  = new AbortController();
     const fetchTimeout = setTimeout(() => controller.abort(), 12_000);

@@ -430,7 +430,7 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
     <>
       {open && (
         <Animated.View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999, opacity: backdropOpacity }]} pointerEvents="auto">
-          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={Platform.OS === 'android' ? 60 : 100} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={toggle} activeOpacity={1} />
           
           <Animated.View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, pointerEvents: 'box-none', transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}>
@@ -458,7 +458,7 @@ const AlarmFabMenu = React.memo(function AlarmFabMenu({
                     onPress={() => { toggle(); setTimeout(() => item.onPress(), 200); }}
                     activeOpacity={0.7}
                   >
-                    <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+                    <BlurView intensity={Platform.OS === 'android' ? 20 : 20} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
                     <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${item.color}25`, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
                       <Ionicons name={item.iconName as any} size={24} color={item.color} />
                     </View>

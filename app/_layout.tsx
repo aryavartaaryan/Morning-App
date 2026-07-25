@@ -142,7 +142,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
            Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
            Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
         ]),
-        Animated.delay(4000), // Hold for a full 4 seconds so the user can absorb the mantra
+        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -173,15 +173,16 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Video matching Setup Screen */}
+      <View style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, backgroundColor: '#020617' }} />
       <Video 
         source={require('../assets/videos/splash.mp4')}
-        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }}
+        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.85 }}
         resizeMode={ResizeMode.COVER}
         shouldPlay
         isLooping
         isMuted
       />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.78)' }]} />
       
       {/* Center Content */}
       <View style={SS.center}>
@@ -1657,9 +1658,16 @@ export default function RootLayout() {
           ]);
 
           if (cancelled) return;
+
+          // Background retry just in case any downloads failed during setup
+          // due to flaky network. This ensures no background image is left out.
+          if (!isBgFullyCached()) {
+            ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
+          }
+
           // Trigger smooth fade out before revealing the app.
-          // After fade completes, onFadeOutComplete sets phase to 'done' directly —
-          // skipping the SplashOverlay so there is ZERO white/blank screen flash.
+          // After fade completes, onFadeOutComplete sets phase to 'splash' so
+          // the user gets the premium video splash screen on first launch too.
           setPhase('downloading_done');
           return;
         } else {
@@ -1799,7 +1807,7 @@ export default function RootLayout() {
               onRetry={() => setRetryTrigger(prev => prev + 1)}
               isFadingOut={phase === 'downloading_done'}
               onFadeOutComplete={async () => {
-                setPhase('done');
+                setPhase('splash');
                 // Removed aggressive permission popups to allow just-in-time requests.
               }}
             />

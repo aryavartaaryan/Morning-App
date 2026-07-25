@@ -716,54 +716,83 @@ function SmartWeatherCard({
   );
 }
 
-// ── 7-Day Forecast Modal ──────────────────────────────────────────────────
-function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () => void }) {
+// ── Extended Forecast Modal (14-Day) ──────────────────────────────────────────────────
+function ExtendedForecastModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () => void }) {
+  const maxAcross = Math.max(...daily.map(d => d.maxTemp));
+  const minAcross = Math.min(...daily.map(d => d.minTemp));
+  const range = maxAcross - minAcross || 1;
+
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={SD.overlay}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
-        <View style={SD.sheet}>
+        <View style={[SD.sheet, { backgroundColor: 'rgba(6, 12, 28, 0.85)' }]}>
+          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <LinearGradient
+            colors={['rgba(255,255,255,0.05)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
           <View style={SD.handle} />
           <View style={SD.sheetHeader}>
-            <Text style={SD.sheetTitle}>7-Day Forecast</Text>
+            <Text style={SD.sheetTitle}>14-Day Forecast</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={{ color: '#FFFFFF30', fontSize: 22, fontWeight: '200' }}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32, gap: 8 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}>
             {daily.map((day, i) => {
-              const sugg = getWeatherSuggestion(day.weatherCode, day.maxTemp, 60);
               const isToday = i === 0;
+              const leftPad = ((day.minTemp - minAcross) / range) * 100;
+              const barWidth = ((day.maxTemp - day.minTemp) / range) * 100;
+              
               return (
-                <View key={i} style={[
-                  SD.dayCard,
-                  { borderColor: isToday ? ACCENT + '80' : sugg.color + '38', backgroundColor: isToday ? ACCENT + '12' : sugg.color + '0C' },
-                ]}>
-                  <LinearGradient
-                    colors={[isToday ? ACCENT + '22' : sugg.color + '18', 'rgba(4,4,18,0.55)', 'rgba(2,2,14,0.78)']}
-                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.65)' }} />
-                  {/* Left accent bar */}
-                  <View style={{ width: 3, borderRadius: 2, alignSelf: 'stretch', backgroundColor: sugg.color + 'CC', marginRight: 12 }} />
+                <View key={i} style={{
+                  flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+                  borderBottomWidth: i === daily.length - 1 ? 0 : 1,
+                  borderBottomColor: 'rgba(255,255,255,0.06)'
+                }}>
                   {/* Day label */}
-                  <View style={{ width: 54 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: isToday ? ACCENT : '#fff', letterSpacing: 0.2 }}>{day.dayLabel}</Text>
-                    <Text style={{ fontSize: 8, color: '#FFFFFF35', marginTop: 2, fontWeight: '600' }}>{day.date.slice(5).replace('-', ' / ')}</Text>
+                  <View style={{ width: 48 }}>
+                    <Text style={{ fontSize: 16, fontWeight: isToday ? '800' : '500', color: isToday ? '#60a5fa' : '#fff' }}>
+                      {day.dayLabel.substring(0, 3)}
+                    </Text>
                   </View>
-                  {/* Emoji */}
-                  <Text style={{ fontSize: 28, width: 38, textAlign: 'center' }}>{day.emoji}</Text>
-                  {/* Condition + suggestion */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, color: '#FFFFFFBB', fontWeight: '700', lineHeight: 16 }}>{day.condition}</Text>
-                    {day.precipitation > 0 && <Text style={{ fontSize: 9, color: '#60a5fa', fontWeight: '700', marginTop: 2 }}>💧 {day.precipitation} mm</Text>}
-                    <Text style={{ fontSize: 8, color: sugg.color + 'CC', fontWeight: '800', marginTop: 3, letterSpacing: 0.5 }}>{sugg.title}</Text>
+                  
+                  {/* Icon & Precip */}
+                  <View style={{ width: 45, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>{day.emoji}</Text>
+                    {day.precipitation > 0 && (
+                      <Text style={{ fontSize: 9, color: '#60a5fa', fontWeight: '800', marginTop: 1 }}>{day.precipitation}mm</Text>
+                    )}
                   </View>
-                  {/* Temps */}
-                  <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff' }}>{day.maxTemp}°</Text>
-                    <Text style={{ fontSize: 10, color: '#FFFFFF38', fontWeight: '700' }}>{day.minTemp}°</Text>
+
+                  {/* Temp Range Bar */}
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
+                    <Text style={{ width: 30, fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.5)', textAlign: 'right', marginRight: 10 }}>
+                      {day.minTemp}°
+                    </Text>
+                    
+                    <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                      <View style={{ 
+                        position: 'absolute', 
+                        left: `${leftPad}%`, 
+                        width: `${Math.max(barWidth, 3)}%`, 
+                        height: '100%', 
+                        borderRadius: 3,
+                        overflow: 'hidden'
+                      }}>
+                        <LinearGradient 
+                           colors={['#818cf8', '#fbbf24']}
+                           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                           style={StyleSheet.absoluteFillObject}
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={{ width: 30, fontSize: 15, fontWeight: '800', color: '#fff', textAlign: 'left', marginLeft: 10 }}>
+                      {day.maxTemp}°
+                    </Text>
                   </View>
                 </View>
               );
@@ -775,109 +804,40 @@ function SevenDayModal({ daily, onClose }: { daily: DailyPoint[]; onClose: () =>
   );
 }
 
-// ── Vedic Calendar Modal ────────────────────────────────────────────────────
+// ── Vedic Calendar Modal (Grid) ────────────────────────────────────────────────────
 function VedicCalendarModal({ onClose }: { onClose: () => void }) {
-  const festivals = React.useMemo(() => getYearlyFestivals(new Date().getFullYear()), []);
-  const hinduFests = festivals.filter(f => f.festival.type === 'hindu');
-  const globalFests = festivals.filter(f => f.festival.type !== 'hindu');
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [currentMonthDate, setCurrentMonthDate] = React.useState(new Date());
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
 
-  const renderFest = (item: any, color: string) => {
-    const isExpanded = expandedId === item.festival.name;
-    const dateStr = item.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
-    
-    // Calculate panchang for this specific festival date
-    const p = getPanchangData(item.date);
-    const n = NAKSHATRAS[p.nakshatraIdx];
-    const y = YOGAS[p.yogaIdx];
-    const v = VAARS[p.vaarIdx];
+  const festivals = React.useMemo(() => getYearlyFestivals(currentMonthDate.getFullYear()), [currentMonthDate]);
 
-    return (
-      <View key={item.festival.name} style={{ marginBottom: 12 }}>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setExpandedId(isExpanded ? null : item.festival.name);
-          }}
-          style={{ 
-          flexDirection: 'column', 
-          backgroundColor: isExpanded ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.05)', 
-          borderRadius: 20, 
-          padding: 16,
-          borderWidth: 1,
-          borderColor: isExpanded ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
-          overflow: 'hidden'
-        }}>
-          
-          {/* Main Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, paddingRight: 16 }}>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.3, marginBottom: 4 }}>
-                {item.festival.name.split(' / ')[0]}
-              </Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontWeight: '400', lineHeight: 18 }}>
-                {item.festival.desc}
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: color }}>
-                {dateStr}
-              </Text>
-            </View>
-          </View>
+  // Calendar Math
+  const daysInMonth = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 0).getDate();
+  const firstDayOfWeek = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1).getDay();
+  
+  const days = [];
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), i));
+  }
 
-          {/* Expanded Cosmic Content */}
-          {isExpanded && (
-            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
-              
-              {/* Scientific / Agricultural Significance */}
-              {item.festival.scienceDesc && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: color, letterSpacing: 1.5, marginBottom: 6 }}>
-                    BIO-COSMIC SIGNIFICANCE
-                  </Text>
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 22, fontWeight: '300' }}>
-                    {item.festival.scienceDesc}
-                  </Text>
-                </View>
-              )}
-
-              {/* Exact Cosmic Alignments on that day */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                
-                <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 4 }}>LUNAR PHASE</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{p.tithiName}</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{p.paksha} Paksha</Text>
-                </View>
-
-                <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 4 }}>NAKSHATRA</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{n.name}</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{n.constellation}</Text>
-                </View>
-
-                <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 4 }}>COSMIC YOGA</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{y.name}</Text>
-                  <Text style={{ fontSize: 11, color: y.auspicious ? '#10b981' : '#f87171', marginTop: 2 }}>{y.auspicious ? 'Auspicious' : 'Inauspicious'}</Text>
-                </View>
-
-                <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 4 }}>DAY RULER</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{v.vedicName}</Text>
-                  <Text style={{ fontSize: 11, color: v.color, marginTop: 2 }}>{v.planet}</Text>
-                </View>
-
-              </View>
-
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    );
+  const changeMonth = (offset: number) => {
+    setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + offset, 1));
   };
+
+  // Selected date data
+  const selectedP = getPanchangData(selectedDate);
+  const selN = NAKSHATRAS[selectedP.nakshatraIdx];
+  const selY = YOGAS[selectedP.yogaIdx];
+  const selV = VAARS[selectedP.vaarIdx];
+
+  // Find festival for selected date
+  const selFest = festivals.find(f => 
+    f.date.getDate() === selectedDate.getDate() && 
+    f.date.getMonth() === selectedDate.getMonth()
+  );
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
@@ -886,40 +846,133 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
         <View style={EX.sheet}>
           <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
           <LinearGradient
-            colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+            colors={['rgba(10,12,28,0.85)', 'rgba(6,8,20,0.92)', 'rgba(10,12,28,0.88)']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
-          <LinearGradient
-            colors={['#f43f5e1E', 'transparent']}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
-            pointerEvents="none"
-          />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#f43f5e70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
           <View style={EX.handle} />
-          <View style={EX.sheetHeader}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f43f5e' }} />
-                <Text style={EX.sheetCap}>VEDIC ALMANAC</Text>
+
+          {/* Header */}
+          <View style={[EX.sheetHeader, { paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }]}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 10 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '200' }}>‹</Text>
+              </TouchableOpacity>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
+                  {currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </Text>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 1.5, marginTop: 2 }}>
+                  VEDIC ALMANAC
+                </Text>
               </View>
-              <Text style={EX.sheetTitle}>Yearly Cosmic Festivals</Text>
-              <Text style={EX.sheetSub}>{new Date().getFullYear()} Sacred Dates · Cosmic & Global</Text>
+              <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 10 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '200' }}>›</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={EX.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <TouchableOpacity onPress={onClose} style={[EX.closeBtn, { position: 'absolute', right: 16, top: 0 }]} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={EX.closeTxt}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '900', color: '#f43f5e', letterSpacing: 2, marginBottom: 10, marginTop: 4 }}>✦ COSMIC FESTIVALS</Text>
-            {hinduFests.map((item) => renderFest(item, '#f43f5e'))}
+          {/* Calendar Grid Container */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            {/* Weekdays */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+              {['S','M','T','W','T','F','S'].map((d, i) => (
+                <View key={i} style={{ width: `${100/7}%`, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.3)' }}>{d}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Grid Days */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {days.map((date, i) => {
+                if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 55 }} />;
+                
+                const isSelected = date.getDate() === selectedDate.getDate() && date.getMonth() === selectedDate.getMonth();
+                const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
+                
+                const dayPanchang = getPanchangData(date);
+                const tithiShort = dayPanchang.tithiName.substring(0, 3).toUpperCase();
+                
+                const festMatch = festivals.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
+                
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    activeOpacity={0.7}
+                    onPress={() => { Haptics.selectionAsync(); setSelectedDate(date); }}
+                    style={{ width: `${100/7}%`, height: 55, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 6 }}
+                  >
+                    <View style={{
+                      width: 38, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: isSelected ? 'rgba(244,63,94,0.15)' : 'transparent',
+                      borderWidth: isSelected ? 1 : 0, borderColor: isSelected ? 'rgba(244,63,94,0.4)' : 'transparent'
+                    }}>
+                      <Text style={{ fontSize: 16, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#f43f5e' : (isToday ? '#fff' : 'rgba(255,255,255,0.85)') }}>
+                        {date.getDate()}
+                      </Text>
+                      <Text style={{ fontSize: 8, fontWeight: '700', color: isSelected ? '#f43f5e' : 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                        {tithiShort}
+                      </Text>
+                      {festMatch && (
+                        <View style={{ position: 'absolute', top: -2, right: 0, width: 6, height: 6, borderRadius: 3, backgroundColor: festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa' }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Details Section for Selected Date */}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
             
-            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 16 }} />
-            
-            <Text style={{ fontSize: 13, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 10 }}>✧ GLOBAL OBSERVANCES</Text>
-            {globalFests.map((item) => renderFest(item, '#60a5fa'))}
+            {selFest && (
+              <View style={{ marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: selFest.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa', letterSpacing: 1.5, marginBottom: 6 }}>
+                  {selFest.festival.type === 'hindu' ? 'COSMIC FESTIVAL' : 'GLOBAL OBSERVANCE'}
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 6 }}>{selFest.festival.name.split(' / ')[0]}</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 20, marginBottom: 12 }}>{selFest.festival.desc}</Text>
+                
+                {selFest.festival.scienceDesc && (
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#A78BFA', letterSpacing: 1.2, marginBottom: 6 }}>BIO-COSMIC SIGNIFICANCE</Text>
+                    <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20, fontWeight: '400' }}>{selFest.festival.scienceDesc}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 4 }}>LUNAR PHASE</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{selectedP.tithiName}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{selectedP.paksha} Paksha</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 4 }}>NAKSHATRA</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{selN.name}</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{selN.constellation}</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 4 }}>COSMIC YOGA</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{selY.name}</Text>
+                <Text style={{ fontSize: 11, color: selY.auspicious ? '#10b981' : '#f87171', marginTop: 2 }}>{selY.auspicious ? 'Auspicious' : 'Inauspicious'}</Text>
+              </View>
+
+              <View style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(0,0,0,0.2)', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 4 }}>DAY RULER</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{selV.vedicName}</Text>
+                <Text style={{ fontSize: 11, color: selV.color, marginTop: 2 }}>{selV.planet}</Text>
+              </View>
+            </View>
+
           </ScrollView>
         </View>
       </View>
@@ -2733,7 +2786,7 @@ function WeatherSection({
           })}
           <TouchableOpacity onPress={onMore} activeOpacity={0.8} style={[WSEC.hourCard, { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', paddingHorizontal: 14 }]}>
             <Text style={{ fontSize: 14 }}>📅</Text>
-            <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>7 DAY</Text>
+            <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>14 DAYS</Text>
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
@@ -6878,9 +6931,9 @@ function DailyTab() {
         />
       )}
 
-      {/* 7-Day forecast modal */}
+      {/* 14-Day forecast modal */}
       {show7Day && weather?.daily && weather.daily.length > 0 && (
-        <SevenDayModal daily={weather.daily} onClose={() => setShow7Day(false)} />
+        <ExtendedForecastModal daily={weather.daily} onClose={() => setShow7Day(false)} />
       )}
 
       {/* WAKE-UP SHARE CARD MODAL */}
