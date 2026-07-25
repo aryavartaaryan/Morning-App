@@ -127,7 +127,7 @@ export default function WallpaperSettings() {
         source={bgUri ? { uri: bgUri } : undefined}
         style={StyleSheet.absoluteFillObject}
         contentFit="cover"
-        transition={500}
+        transition={0}
       />
       <StatusBar barStyle="light-content" />
       {/* Immersive glass overlay to keep UI legible over any background */}
@@ -332,7 +332,8 @@ export default function WallpaperSettings() {
                         source={imgUri ? { uri: imgUri } : undefined}
                         style={StyleSheet.absoluteFillObject}
                         contentFit="cover"
-                        transition={300}
+                        transition={0}
+                        cachePolicy="memory-disk"
                       />
                       <LinearGradient
                         colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
@@ -404,16 +405,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#fff',
-    fontFamily: 'Nunito_900Black',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#FFFFFF80',
     marginTop: 2,
-    fontWeight: '700',
+    fontWeight: '500',
     letterSpacing: 0.5,
   },
   toastBanner: {
@@ -452,13 +453,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   heroName: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#fff',
-    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 2 },
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   heroSub: {
@@ -554,26 +555,26 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 18,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   timePill: {
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   timePillText: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#FFFFFFEE',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   activeStatusPill: {
     position: 'absolute',
@@ -599,15 +600,15 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   itemTitle: {
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#fff',
-    marginBottom: 3,
-    fontFamily: 'Nunito_900Black',
+    marginBottom: 2,
+    letterSpacing: 0.3,
   },
   itemSub: {
-    fontSize: 10,
-    color: '#FFFFFFCC',
-    fontWeight: '600',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
   },
 });

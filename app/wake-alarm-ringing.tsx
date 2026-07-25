@@ -375,9 +375,9 @@ export default function WakeAlarmRingingScreen() {
     };
 
     const sub = AppState.addEventListener('change', next => {
-      if (!dismissed && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) {
+      if (!dismissed && !missionStartedRef.current && appStateRef.current === 'active' && (next === 'background' || next === 'inactive')) {
         appStateRef.current = next; fireBttf(); ensureAudioPlaying();
-      } else if (!dismissed && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') {
+      } else if (!dismissed && !missionStartedRef.current && (appStateRef.current === 'background' || appStateRef.current === 'inactive') && next === 'active') {
         appStateRef.current = next; cancelBttf(); ensureAudioPlaying();
       } else { appStateRef.current = next; }
     });
@@ -454,8 +454,6 @@ export default function WakeAlarmRingingScreen() {
     // stopNativeAlarmSound() internally calls stopLockTask() on the main thread
     // BEFORE stopping the service — this is the critical ordering that fixes the freeze.
     void stopNativeAlarmSound().catch(() => {});
-    void stopNativeAlarmAudioOnly().catch(() => {});
-    void stopAlarmVibration().catch(() => {});
     void stopNativeLockTask().catch(() => {});
     void cancelNativeAlarm().catch(() => {});
     void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});
@@ -514,8 +512,6 @@ export default function WakeAlarmRingingScreen() {
 
     // Cleanup FIRST (sets alarm_stopping=true + calls stopLockTask on main thread in Kotlin)
     void stopNativeAlarmSound().catch(() => {});
-    void stopNativeAlarmAudioOnly().catch(() => {});
-    void stopAlarmVibration().catch(() => {});
     void stopNativeLockTask().catch(() => {});
     void cancelNativeAlarm().catch(() => {});
     void notifee.cancelNotification(WAKE_FS_ID).catch(() => {});

@@ -31,7 +31,7 @@ import { scheduleAllNativeReminders, getInitialReminderNotification, REMINDER_DA
 import { speakBodhi } from '@/lib/speech';
 import { Colors } from '@/constants/theme';
 import { ensureAllMantrasDownloaded } from '@/lib/mantraDownload';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { SoundPlayerProvider, useSoundPlayer } from '@/lib/soundPlayerContext';
 import { BgProvider } from '@/lib/bgContext';
@@ -172,8 +172,15 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       pointerEvents="none"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
-      {/* Background Image matching Setup Screen */}
-      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      {/* Background Video matching Setup Screen */}
+      <Video 
+        source={require('../assets/videos/splash.mp4')}
+        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+        isMuted
+      />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
       
       {/* Center Content */}

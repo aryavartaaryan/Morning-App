@@ -195,8 +195,8 @@ export default function StepSessionScreen() {
 
   // Fixed ultra-premium iOS style palette for the ring — neutral frosted glass
   const C  = '#FFFFFF';
-  const GA = 'rgba(255,255,255,0.9)';
-  const GB = 'rgba(255,255,255,0.3)';
+  const GA = 'rgba(255,255,255,0.05)';
+  const GB = 'transparent';
 
   const isNightReal = solarTimes ? (hour < solarTimes.sunrise || hour >= solarTimes.sunset) : (hour < 6 || hour >= 18);
 
@@ -549,20 +549,20 @@ export default function StepSessionScreen() {
         {/* ── PREMIUM SUGGESTION CARD ────────────────────────────────────── */}
         <View style={{ width: '100%', marginBottom: 16 }}>
           <View style={{
-            backgroundColor: 'rgba(20, 30, 25, 0.45)', // Sleek nature tint
+            backgroundColor: 'rgba(0, 0, 0, 0.3)', // iOS dark glass
             borderRadius: 20,
             padding: 16,
-            borderWidth: 1, borderColor: C + '25',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
             alignItems: 'center',
             overflow: 'hidden',
           }}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={[C + '15', 'transparent']}
+              colors={['rgba(255,255,255,0.05)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: C, letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
               Nature Connection
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center', marginBottom: 10 }}>
@@ -570,24 +570,23 @@ export default function StepSessionScreen() {
             </Text>
             
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="headset" size={11} color={C} />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: C, letterSpacing: 0.2 }}>Use headphones for Nada sound</Text>
+              <Ionicons name="headset" size={11} color="#FFFFFF" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.2 }}>Use headphones for Nada sound</Text>
             </View>
           </View>
         </View>
 
         {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
         <View style={s.ringWrapper}>
-          {/* Outer breathing aura layers */}
-          <Animated.View style={{ position: 'absolute', top: -15, left: -15, width: RING_SZ + 70, height: RING_SZ + 70, borderRadius: (RING_SZ + 70) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.3, 0.8] }), transform: [{ scale: pulseAnim }] }}>
-            <LinearGradient colors={[`${GA}80`, `${GB}00`]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
-          </Animated.View>
-          <Animated.View style={{ position: 'absolute', top: 2, left: 2, width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.5, 1] }), transform: [{ scale: pulseAnim }] }}>
-            <LinearGradient colors={[`${GA}80`, `${GB}00`]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          {/* Subtle breathing aura instead of massive glowing blob */}
+          <Animated.View style={{ position: 'absolute', top: 2, left: 2, width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.3, 0.8] }), transform: [{ scale: pulseAnim }], borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
           </Animated.View>
 
-          {/* Inner disc for better text contrast */}
-          <View style={{ position: 'absolute', top: 30, left: 30, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
+          {/* Inner disc for elegant contrast */}
+          <View style={{ position: 'absolute', top: 30, left: 30, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+          </View>
 
           <MemoRing RING_SZ={RING_SZ} R={R} STROKE={STROKE} CIRCUM={CIRCUM} GA={GA} GB={GB} C={C} progressAnim={progressAnim} rot1={rot1} rot2={rot2} />
 
@@ -668,8 +667,10 @@ export default function StepSessionScreen() {
           </Text>
         </View>
 
-        {/* ── METRIC ROW — frosted glass cards ───────────────────────────── */}
+        {/* ── METRIC ROW — crisp dark glass cards ───────────────────────────── */}
         <View style={s.metricRow}>
+          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
           {[
             { icon: '🏃', val: `${distKm.toFixed(2)}`, unit: 'km',  label: 'Distance' },
             { icon: '⚡',  val: pace,                    unit: 'pace', label: 'Pace'     },
@@ -678,7 +679,7 @@ export default function StepSessionScreen() {
               key={i}
               style={[
                 s.metric,
-                i > 0 && { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.08)' },
+                i > 0 && { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)' },
               ]}
             >
               <Text style={s.metricIcon}>{m.icon}</Text>
@@ -707,21 +708,17 @@ export default function StepSessionScreen() {
             <TouchableOpacity
               onPress={toggleSessionPause}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: paused ? C : '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: paused ? 0.35 : 0.25, shadowRadius: 14, elevation: 5 }}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
             >
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={paused ? [GA + '30', GA + '18', GA + '25'] : ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                colors={paused ? ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.05)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1.5, borderColor: paused ? C + '60' : 'rgba(255,255,255,0.2)' }} />
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.10)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 22, borderTopLeftRadius: 22, borderTopRightRadius: 22 }}
-                />
-                <Ionicons name={paused ? 'play' : 'pause'} size={16} color={paused ? C : '#FFF'} />
-                <Text style={[s.pauseTxt, paused ? { color: C } : { color: '#FFF' }]}>
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: paused ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)' }} />
+                <Ionicons name={paused ? 'play' : 'pause'} size={16} color="#FFF" />
+                <Text style={[s.pauseTxt, { color: '#FFF' }]}>
                   {paused ? 'RESUME' : 'PAUSE'}
                 </Text>
               </LinearGradient>
@@ -733,19 +730,15 @@ export default function StepSessionScreen() {
             <TouchableOpacity 
               onPress={promptExit}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 14, elevation: 5 }}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
             >
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                colors={['rgba(255,255,255,0.05)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)' }} />
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.10)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 22, borderTopLeftRadius: 22, borderTopRightRadius: 22 }}
-                />
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }} />
                 <Ionicons name="stop" size={15} color="#FFF" />
                 <Text style={[s.endTxt, { color: '#FFF' }]}>END</Text>
               </LinearGradient>

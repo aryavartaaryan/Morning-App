@@ -6301,6 +6301,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
     <Modal visible animationType="none" transparent={true} statusBarTranslucent onRequestClose={close}>
       <Animated.View style={{ flex: 1, backgroundColor: '#000', transform: [{ translateY }] }}>
         <ImageBackground
+          key={bgUri || 'default'}
           source={bgUri ? { uri: bgUri } : undefined}
           style={StyleSheet.absoluteFillObject}
           imageStyle={{ opacity: 1, resizeMode: 'cover' }}
@@ -6465,6 +6466,9 @@ function DailyTab() {
           setBrahmaInfo(getBrahmaMuhurtaInfo(s));
         }
       }).catch(() => {});
+    store.getJSON<WeatherData>(KEYS.weatherCache)
+      .then(w => { if (w && !weather) setWeather(w); })
+      .catch(() => {});
     loadWeather();
   }, []);
 
@@ -6484,6 +6488,7 @@ function DailyTab() {
         setBrahmaInfo(getBrahmaMuhurtaInfo(s));
         store.setJSON(KEYS.location, { lat: w.lat, lon: w.lon }).catch(() => {});
       }
+      store.setJSON(KEYS.weatherCache, w).catch(() => {});
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       ToastLogger.push(`⚡ Weather load error: ${msg}`, 'error');
@@ -6666,6 +6671,7 @@ function DailyTab() {
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <ImageBackground
+        key={bgUri || 'default'}
         source={bgUri ? { uri: bgUri } : undefined}
         style={StyleSheet.absoluteFillObject}
         imageStyle={{ opacity: 1, resizeMode: 'cover' }}

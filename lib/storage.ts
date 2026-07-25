@@ -44,4 +44,5 @@ export const KEYS = {
   habitAlarmStreaks:  'onesutra_habit_alarm_streaks_v1', // Record<habitKey, { streak, lastDate, history }>
   bgCacheVersion:     'solrize_bg_cache_version_v2',     // hash of BG_URLS — wipe cache on mismatch
   stepTracking:       'naad_step_tracking_v1',           // StepTrackingState — daily step tracking data
+  weatherCache:       'onesutra_weather_cache_v1',       // WeatherData — last fetched weather
 };

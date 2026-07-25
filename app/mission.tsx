@@ -1154,7 +1154,6 @@ export default function MissionScreen() {
     // set alarm_fired_pending=false BEFORE any navigation or state changes happen.
     // This guarantees the watchdog sees false when the transition triggers onPause.
     await stopNativeAlarmSound().catch(() => {});
-    stopAlarmVibration().catch(() => {});
     stopNativeLockTask().catch(() => {});
 
     setDone(true);
@@ -1167,9 +1166,6 @@ export default function MissionScreen() {
       try { await bg.unloadAsync(); } catch { /* ignore */ }
       (global as any).__missionBgSound = null;
     }
-    // Second vibration stop after 300 ms — catches any JVM vibration that restarted
-    setTimeout(() => { stopAlarmVibration().catch(() => {}); }, 300);
-
     // ── 2. Cancel ALL notifications — prevents any app-reopen after completion ──
     await AsyncStorage.removeItem('onesutra_mission_active_v1').catch(() => {});
     await cancelNativeAlarm().catch(() => {});

@@ -86,11 +86,11 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
 const glass = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(20,20,20,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
 });
 
@@ -120,10 +120,10 @@ function ToggleRow({ emoji, label, sub, value, onToggle, color, last = false }: 
 const tog = StyleSheet.create({
   row:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
   content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingRight: 16 },
-  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.15)' },
-  icon:   { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  title:  { fontSize: 17, color: '#fff', fontWeight: '400' },
-  sub:    { fontSize: 13, color: '#EBEBF599', marginTop: 2, lineHeight: 16 },
+  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  icon:   { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  title:  { fontSize: 16, color: '#fff', fontWeight: '500', letterSpacing: 0.3 },
+  sub:    { fontSize: 13, color: '#EBEBF580', marginTop: 2, lineHeight: 16 },
 });
 
 function WallpaperPicker() {
@@ -194,13 +194,13 @@ function WallpaperPicker() {
 }
 
 const wp = StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: '#111' },
+  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,20,0.6)' },
   previewImg: { height: 160, width: '100%', justifyContent: 'flex-end' },
   previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 16 },
-  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-  previewName: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  previewBtn: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
+  previewName: { fontSize: 20, color: '#fff', fontWeight: '600', letterSpacing: 0.3 },
+  previewBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '500' },
 });
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
@@ -415,8 +415,8 @@ export default function SettingsTab() {
 
 const S = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#000000' },
-  header:  { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
-  headerTitle: { fontSize: 34, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  header:  { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
+  headerTitle: { fontSize: 26, fontWeight: '600', color: '#fff', letterSpacing: 0.35 },
 
   tagPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' },
   tagTxt:  { fontSize: 11, fontWeight: '500', color: '#EBEBF5', letterSpacing: 0.2 },

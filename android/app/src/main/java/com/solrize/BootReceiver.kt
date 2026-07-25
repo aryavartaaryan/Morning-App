@@ -179,6 +179,23 @@ class BootReceiver : BroadcastReceiver() {
             Log.d("AriseAlarm", "BootReceiver: daily step tracking not enabled — skip")
             return
         }
+        
+        // PERFECT ROOT CAUSE FIX:
+        // Do not attempt to start StepCounterService if ACTIVITY_RECOGNITION is missing.
+        // If we call startForegroundService() and the permission is missing (e.g. user revoked it),
+        // StepCounterService's startForeground() will throw a SecurityException.
+        // Even if we catch it inside the service, the OS still expects a successful
+        // startForeground() call and will crash the entire app ~10 seconds later
+        // with a ForegroundServiceDidNotStartInTimeException.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.ACTIVITY_RECOGNITION
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.w("AriseAlarm", "BootReceiver: ACTIVITY_RECOGNITION permission missing, skipping daily step tracking to prevent crash")
+                return
+            }
+        }
+
         Log.d("AriseAlarm", "BootReceiver: restarting daily step tracking after boot")
         val intent = Intent(context, StepCounterService::class.java).apply {
             action = StepCounterService.ACTION_START_DAILY
