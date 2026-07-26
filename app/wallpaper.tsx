@@ -13,8 +13,30 @@ import {
   useBgContext,
   BG_KEYS, BG_META, type BgKey, getTimedBgKey
 } from '@/lib/bgContext';
-import { getBgSourceSync } from '@/lib/bgImages';
+import { getBgSourceSync, getBgSource } from '@/lib/bgImages';
 import AppBackground from '@/components/AppBackground';
+
+function AsyncWallpaperImage({ bgKey }: { bgKey: string }) {
+  const [imgUri, setImgUri] = React.useState<string | null>(() => getBgSourceSync(bgKey));
+  
+  React.useEffect(() => {
+    let mounted = true;
+    getBgSource(bgKey).then(uri => {
+      if (mounted) setImgUri(uri);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [bgKey]);
+
+  if (!imgUri || imgUri.length < 5) return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#1e293b' }]} />;
+  
+  return (
+    <Image
+      source={{ uri: imgUri }}
+      style={StyleSheet.absoluteFillObject}
+      resizeMode="cover"
+    />
+  );
+}
 
 const PURPLE = '#a78bfa';
 const GOLD   = '#fbbf24';
@@ -334,10 +356,6 @@ export default function WallpaperSettings() {
               {rowKeys.map(key => {
                 const meta = BG_META[key];
                 const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
-                
-                // Get the local URI synchronously just like the sleep page does
-                const rawActiveUri = getBgSourceSync(key);
-                const imgUri = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
 
                 return (
                   <TouchableOpacity
@@ -363,11 +381,7 @@ export default function WallpaperSettings() {
                     ]}
                   >
                     <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
-                      <Image
-                        source={imgUri ? { uri: imgUri } : undefined}
-                        style={StyleSheet.absoluteFillObject}
-                        resizeMode="cover"
-                      />
+                      <AsyncWallpaperImage bgKey={key} />
                       <LinearGradient
                         colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
                         locations={[0, 0.4, 1]}

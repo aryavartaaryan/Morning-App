@@ -236,8 +236,17 @@ export default function WalkTracker() {
           <View style={s.infoItem}><Text style={s.infoEmoji}>📍</Text><Text style={s.infoLbl}>GPS Distance</Text></View>
           <View style={s.infoItem}><Text style={s.infoEmoji}>⏱</Text><Text style={s.infoLbl}>Duration</Text></View>
         </View>
-        <TouchableOpacity style={[s.startBtn, { backgroundColor: meta.color }]} onPress={startWalk}>
-          <Text style={s.startTxt}>START WALK</Text>
+        <TouchableOpacity 
+          style={[s.startBtn, { paddingVertical: 0, paddingHorizontal: 0, overflow: 'hidden', borderWidth: 1.5, borderColor: '#00F0FF', shadowColor: '#FF007F', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 15, elevation: 10 }]} 
+          onPress={startWalk}
+        >
+          <LinearGradient
+            colors={['rgba(0, 240, 255, 0.3)', 'rgba(255, 0, 127, 0.3)']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={{ paddingVertical: 18, paddingHorizontal: 48, alignItems: 'center', justifyContent: 'center', width: '100%' }}
+          >
+            <Text style={[s.startTxt, { textShadowColor: '#00F0FF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }]}>START WALK</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </LinearGradient>

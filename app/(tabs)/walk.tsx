@@ -61,7 +61,7 @@ const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SIZE   = 260;
-const RING_STROKE = 22;
+const RING_STROKE = 16;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
@@ -511,29 +511,48 @@ export default function WalkTab() {
               </Animated.View>
             </View>
 
-            {/* ── ULTRA-PREMIUM ACTIVITY RING ─────────────────────────────────── */}
-            <View style={{ shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 30, elevation: 12 }}>
+            {/* ── HOLOGRAPHIC 3D FUTURISTIC RING ─────────────────────────────────── */}
+            <View style={{ shadowColor: '#00F0FF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 30, elevation: 15 }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 <Defs>
-                  <SvgGrad id="premiumGrad" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#5EEAD4" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#7DD3FC" stopOpacity="1" />
-                    <Stop offset="1" stopColor="#B4A4E5" stopOpacity="1" />
+                  <SvgGrad id="glowGrad" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor="#00F0FF" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#7B2CBF" stopOpacity="0.8" />
+                    <Stop offset="1" stopColor="#FF007F" stopOpacity="1" />
+                  </SvgGrad>
+                  <SvgGrad id="bgGrad" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor="rgba(0, 240, 255, 0.15)" />
+                    <Stop offset="1" stopColor="rgba(255, 0, 127, 0.15)" />
                   </SvgGrad>
                 </Defs>
 
-                {/* 1. Track Ring (Solid Translucent) */}
-                <Circle 
-                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} 
-                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={RING_STROKE} 
-                />
+                {/* Outer Glass Ring */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 12} fill="none" stroke="url(#bgGrad)" strokeWidth={1.5} opacity={0.5} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 2} fill="none" stroke="#00F0FF" strokeOpacity={0.2} strokeWidth={0.5} />
                 
-                {/* 2. Main Progress Indicator - Vibrant Premium Gradient */}
+                {/* Background Track */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={RING_STROKE} />
+
+                {/* Inner Energy Core Ring */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 14} fill="none" stroke="url(#glowGrad)" strokeOpacity={0.3} strokeWidth={2} strokeDasharray="4 6" />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 18} fill="none" stroke="#FF007F" strokeOpacity={0.15} strokeWidth={1} />
+
+                {/* Main Holographic Progress Indicator */}
                 <Circle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER}
-                  fill="none" stroke="url(#premiumGrad)" strokeWidth={RING_STROKE} strokeLinecap="round"
-                  strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset}
-                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1}
+                  fill="none" stroke="url(#glowGrad)" strokeWidth={RING_STROKE} strokeLinecap="round"
+                  strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`}
+                  opacity={0.95}
+                />
+                
+                {/* Progress Inner Glow */}
+                <Circle
+                  cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER}
+                  fill="none" stroke="#FFFFFF" strokeWidth={RING_STROKE * 0.3} strokeLinecap="round"
+                  strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`}
+                  opacity={0.6}
                 />
               </Svg>
             </View>
@@ -651,18 +670,19 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}
+            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#FFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 8, backgroundColor: 'rgba(0,0,0,0.15)' }}
           >
+            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['#5EEAD4', '#7DD3FC', '#B4A4E5']}
+              colors={['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.05)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.25)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.3)', 'transparent']}
+                colors={['rgba(255,255,255,0.15)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
@@ -676,14 +696,14 @@ export default function WalkTab() {
                 pointerEvents="none"
               >
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
+                  colors={['transparent', 'rgba(255,255,255,0.2)', 'transparent']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
               
               <View style={{ paddingVertical: 15 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>
                   {sessionTitle}
                 </Text>
               </View>
@@ -698,21 +718,21 @@ export default function WalkTab() {
           >
             <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.08)', 'transparent']}
+              colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(125, 211, 252, 0.25)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.1)', 'transparent']}
+                colors={['rgba(255,255,255,0.08)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
 
               <View style={{ paddingVertical: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#7DD3FC', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
                   {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
                 </Text>
               </View>
@@ -821,20 +841,20 @@ function GoalModal({
           </View>
 
           <TouchableOpacity
-            style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 10, shadowColor: accentColor, shadowOpacity: 0.4, shadowRadius: 14, elevation: 6 }}
+            style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 10, shadowColor: '#00F0FF', shadowOpacity: 0.6, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: '#00F0FF' }}
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onSave(selectedWeekly); }}
           >
             <LinearGradient
-              colors={[`${accentColor}90`, `${accentColor}40`]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              colors={['rgba(0, 240, 255, 0.2)', 'rgba(255, 0, 127, 0.4)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ paddingVertical: 16, alignItems: 'center' }}
             >
               <LinearGradient
-                colors={['rgba(255,255,255,0.18)', 'transparent']}
+                colors={['rgba(255,255,255,0.4)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
               />
-              <Text style={gm.saveTxt}>Set Intention</Text>
+              <Text style={[gm.saveTxt, { textShadowColor: '#00F0FF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }]}>Set Intention</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ paddingVertical: 12 }}>

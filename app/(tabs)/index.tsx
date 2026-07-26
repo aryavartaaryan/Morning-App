@@ -875,13 +875,22 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             </View>
 
             {/* Monthly Highlights */}
-            {monthHighlights ? (
-              <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 11, color: '#A78BFA', fontWeight: '600', lineHeight: 18, textAlign: 'center', letterSpacing: 0.5 }}>
-                  {monthHighlights}
-                </Text>
+            {monthFestivals.length > 0 && (
+              <View style={{ marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, paddingHorizontal: 4 }}>
+                {monthFestivals.map((f, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    activeOpacity={0.7} 
+                    onPress={() => { Haptics.selectionAsync(); setSelectedDate(f.date); }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center' }}
+                  >
+                    <Text style={{ fontSize: 10, color: f.festival.type === 'hindu' ? '#f43f5e' : '#A78BFA', fontWeight: '700' }}>
+                      {f.festival.type === 'hindu' ? '✦' : '✧'} {f.festival.name.split(' / ')[0]} <Text style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>({f.date.getDate()} {f.date.toLocaleString('en-US', { month: 'short' })})</Text>
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ) : null}
+            )}
           </View>
 
           {/* Calendar Grid Container */}
