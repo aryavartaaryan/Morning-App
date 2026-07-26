@@ -8,31 +8,40 @@ import { SOUND_IMAGES, ALL_SLEEP_SOUNDS } from './sleepSoundsData';
 
 const CACHE_DIR = (FileSystem.documentDirectory ?? '') + 'sound-img-cache-v3/';
 
-async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: number = 15000): Promise<void> {
-  const tmpPath = finalPath + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
-  const resumable = FileSystem.createDownloadResumable(url, tmpPath);
-  let timeoutId: any;
-  
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      resumable.cancelAsync().catch(() => {});
-      reject(new Error('timeout'));
-    }, timeoutMs);
-  });
+async function safeDownloadAndMove(url: string, finalPath: string, timeoutMs: number = 15000, maxRetries: number = 3): Promise<void> {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    attempt++;
+    const tmpPath = finalPath + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '.tmp';
+    const resumable = FileSystem.createDownloadResumable(url, tmpPath);
+    let timeoutId: any;
+    
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        resumable.cancelAsync().catch(() => {});
+        reject(new Error('timeout'));
+      }, timeoutMs);
+    });
 
-  try {
-    const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
-    if (timeoutId) clearTimeout(timeoutId);
-    if (res && res.status >= 200 && res.status < 400) {
-      await FileSystem.deleteAsync(finalPath, { idempotent: true }).catch(() => {});
-      await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
-    } else {
-      throw new Error(`HTTP ${res?.status}`);
+    try {
+      const res = await Promise.race([ resumable.downloadAsync(), timeoutPromise ]);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (res && res.status >= 200 && res.status < 400) {
+        await FileSystem.deleteAsync(finalPath, { idempotent: true }).catch(() => {});
+        await FileSystem.moveAsync({ from: tmpPath, to: finalPath });
+        return; // Success
+      } else {
+        throw new Error(`HTTP ${res?.status}`);
+      }
+    } catch (e) {
+      if (timeoutId) clearTimeout(timeoutId);
+      FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+      if (attempt >= maxRetries) {
+        throw e;
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(r => setTimeout(r, 1000 * attempt));
     }
-  } catch (e) {
-    if (timeoutId) clearTimeout(timeoutId);
-    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
-    throw e;
   }
 }
 
@@ -176,7 +185,7 @@ export async function warmSoundImageMap(): Promise<void> {
             setTimeout(() => r({ exists: false }), FILE_STAT_TIMEOUT_MS)
           ),
         ]);
-        if ((info as any).exists) LOCAL_URI_MAP[url] = path;
+        if ((info as any).exists && (info as any).size > 1024) LOCAL_URI_MAP[url] = path;
       } catch { /* ignore */ }
     }),
   );
