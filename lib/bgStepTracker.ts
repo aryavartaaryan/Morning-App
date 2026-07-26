@@ -61,59 +61,9 @@ async function pollAndroidSteps(): Promise<number> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function startBackgroundStepTracking(): Promise<void> {
-  stopBackgroundStepTracking();
-  isRunning = true;
-
-  ToastLogger.info(`[BgSteps] Starting on ${Platform.OS}...`);
-
-  if (Platform.OS === 'android') {
-    if (!StepCounterModule) {
-      ToastLogger.warn('[BgSteps] StepCounterModule is NULL — check native build');
-      isRunning = false;
-      return;
-    }
-
-    // Start native foreground service for daily tracking
-    try {
-      await StepCounterModule.startDailyTracking();
-      ToastLogger.info('[BgSteps] ✓ Android native daily tracking started');
-    } catch (e: any) {
-      ToastLogger.warn(`[BgSteps] startDailyTracking error: ${e?.message ?? e}`);
-      isRunning = false;
-      return;
-    }
-
-    // Read initial count immediately
-    const initial = await pollAndroidSteps();
-    ToastLogger.info(`[BgSteps] Android initial today: ${initial} steps`);
-    if (initial > 0) await updateDailySteps(initial);
-
-    // Poll every 30 seconds — avoids DeviceEventEmitter New Architecture issue
-    pollInterval = setInterval(async () => {
-      const state = await getStepTrackingState();
-      if (!state.enabled) { stopBackgroundStepTracking(); return; }
-      const steps = await pollAndroidSteps();
-      ToastLogger.debug(`[BgSteps] Android 30s poll: ${steps} today`);
-      if (steps > 0) await updateDailySteps(steps);
-    }, 30_000);
-
-    ToastLogger.info('[BgSteps] ✓ Android 30s poll ACTIVE');
-
-  } else {
-    // iOS: poll HealthKit every 60 seconds
-    const steps = await readTodayStepsIOS();
-    if (steps > 0) await updateDailySteps(steps);
-
-    pollInterval = setInterval(async () => {
-      const state = await getStepTrackingState();
-      if (!state.enabled) { stopBackgroundStepTracking(); return; }
-      const s = await readTodayStepsIOS();
-      if (s > 0) await updateDailySteps(s);
-      ToastLogger.debug(`[BgSteps] iOS 60s poll: ${s}`);
-    }, 60_000);
-
-    ToastLogger.info('[BgSteps] ✓ iOS HealthKit 60s poll ACTIVE');
-  }
+  // Background step tracking is intentionally disabled by user request.
+  isRunning = false;
+  return;
 }
 
 export function stopBackgroundStepTracking(): void {

@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, StatusBar
+  Animated, StatusBar, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
   useBgContext,
   BG_KEYS, BG_META, type BgKey, getTimedBgKey
 } from '@/lib/bgContext';
+import { getBgSourceSync } from '@/lib/bgImages';
+import AppBackground from '@/components/AppBackground';
 
 const PURPLE = '#a78bfa';
 const GOLD   = '#fbbf24';
@@ -123,12 +125,7 @@ export default function WallpaperSettings() {
 
   return (
     <View style={styles.screen}>
-      <Image
-        source={bgUri ? { uri: bgUri } : undefined}
-        style={StyleSheet.absoluteFillObject}
-        contentFit="cover"
-        transition={0}
-      />
+      <AppBackground />
       <StatusBar barStyle="light-content" />
       {/* Immersive glass overlay to keep UI legible over any background */}
       <LinearGradient
@@ -150,8 +147,8 @@ export default function WallpaperSettings() {
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.headerSubtitle}>PREMIUM THEMES</Text>
             <Text style={styles.headerTitle}>Wallpaper</Text>
-            <Text style={styles.headerSubtitle}>Premium Themes</Text>
           </View>
           <View style={{ width: 44 }} /> {/* Balance for back button */}
         </View>
@@ -182,7 +179,7 @@ export default function WallpaperSettings() {
         </View>
 
         {/* Segmented Mode Selector */}
-        <View style={styles.segmentedControl}>
+        <BlurView intensity={20} tint="light" style={styles.segmentedControl}>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
@@ -194,9 +191,9 @@ export default function WallpaperSettings() {
             }}
             style={[styles.segmentBtn, wallpaperMode === 'solar' && styles.segmentBtnActiveSolar]}
           >
-            <Text style={{ fontSize: 16 }}>☀️</Text>
+            <Text style={{ fontSize: 14 }}>☀️</Text>
             <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD }]}>
-              Auto Solar
+              Solar
             </Text>
           </TouchableOpacity>
 
@@ -211,12 +208,29 @@ export default function WallpaperSettings() {
             }}
             style={[styles.segmentBtn, wallpaperMode === 'manual' && styles.segmentBtnActiveManual]}
           >
-            <Text style={{ fontSize: 16 }}>📌</Text>
+            <Text style={{ fontSize: 14 }}>📌</Text>
             <Text style={[styles.segmentText, wallpaperMode === 'manual' && { color: PURPLE }]}>
-              Pinned Mode
+              Pinned
             </Text>
           </TouchableOpacity>
-        </View>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (wallpaperMode !== 'video') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setWallpaperMode('video');
+                showToast('✨ Cinemagraph active.', 'info');
+              }
+            }}
+            style={[styles.segmentBtn, wallpaperMode === 'video' && styles.segmentBtnActiveVideo]}
+          >
+            <Text style={{ fontSize: 14 }}>✨</Text>
+            <Text style={[styles.segmentText, wallpaperMode === 'video' && { color: '#60a5fa' }]}>
+              Video
+            </Text>
+          </TouchableOpacity>
+        </BlurView>
 
         {/* Mode Description Banner */}
         {wallpaperMode === 'solar' ? (
@@ -234,6 +248,25 @@ export default function WallpaperSettings() {
                 </Text>
                 <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
                   Your wallpaper shifts dynamically through 40 solar states in sync with the sun's elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        ) : wallpaperMode === 'video' ? (
+          <View style={[styles.modeDesc, { borderColor: 'rgba(96, 165, 250, 0.25)' }]}>
+            <LinearGradient
+              colors={['rgba(96, 165, 250, 0.12)', 'rgba(10, 15, 30, 0.3)']}
+              style={styles.modeDescGradient}
+            >
+              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
+                <Text style={{ fontSize: 20 }}>✨</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#60a5fa', marginBottom: 2 }}>
+                  Calming Video Active
+                </Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
+                  A subtle, relaxing video loop plays continuously in the background for a premium, immersive experience.
                 </Text>
               </View>
             </LinearGradient>
@@ -301,7 +334,9 @@ export default function WallpaperSettings() {
               {rowKeys.map(key => {
                 const meta = BG_META[key];
                 const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
-                const rawActiveUri = allBgUris[key];
+                
+                // Get the local URI synchronously just like the sleep page does
+                const rawActiveUri = getBgSourceSync(key);
                 const imgUri = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
 
                 return (
@@ -331,9 +366,7 @@ export default function WallpaperSettings() {
                       <Image
                         source={imgUri ? { uri: imgUri } : undefined}
                         style={StyleSheet.absoluteFillObject}
-                        contentFit="cover"
-                        transition={0}
-                        cachePolicy="memory-disk"
+                        resizeMode="cover"
                       />
                       <LinearGradient
                         colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
@@ -342,11 +375,11 @@ export default function WallpaperSettings() {
                       />
 
                       {/* Time Pill */}
-                      <View style={styles.timePill}>
+                      <BlurView intensity={40} tint="dark" style={styles.timePill}>
                         <Text style={styles.timePillText}>
                           {dynamicTimes[key] || meta.time}
                         </Text>
-                      </View>
+                      </BlurView>
 
                       {/* Selection Status Overlay */}
                       {active && (
@@ -354,6 +387,7 @@ export default function WallpaperSettings() {
                           styles.activeStatusPill,
                           { backgroundColor: wallpaperMode === 'solar' ? GOLD : PURPLE }
                         ]}>
+                          <Ionicons name="checkmark-sharp" size={14} color="#000" />
                           <Text style={styles.activeStatusText}>
                             {wallpaperMode === 'solar' ? 'ACTIVE' : 'PINNED'}
                           </Text>
@@ -405,79 +439,82 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#FFFFFF80',
-    marginTop: 2,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    color: '#FFFFFF99',
+    marginBottom: 2,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   toastBanner: {
     position: 'absolute',
-    top: 80,
+    top: 70,
     alignSelf: 'center',
-    backgroundColor: 'rgba(10, 15, 30, 0.95)',
-    borderRadius: 99,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderWidth: 1,
+    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
     zIndex: 999,
   },
   heroContainer: {
-    height: 120,
+    height: 160,
     justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 30,
   },
   heroContent: {
     alignItems: 'center',
   },
   heroTime: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#FFFFFF90',
-    letterSpacing: 1.5,
-    marginBottom: 6,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 2,
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
   heroName: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
-    letterSpacing: 0.3,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   heroSub: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFFCC',
-    marginTop: 4,
+    marginTop: 6,
     fontWeight: '500',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 6,
     marginHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    overflow: 'hidden',
   },
   segmentBtn: {
     flex: 1,
@@ -486,42 +523,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'transparent',
   },
   segmentBtnActiveSolar: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    borderColor: 'rgba(251, 191, 36, 0.3)',
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   segmentBtnActiveManual: {
-    backgroundColor: 'rgba(167, 139, 250, 0.15)',
-    borderColor: 'rgba(167, 139, 250, 0.3)',
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    borderColor: 'rgba(167, 139, 250, 0.4)',
+  },
+  segmentBtnActiveVideo: {
+    backgroundColor: 'rgba(96, 165, 250, 0.2)',
+    borderColor: 'rgba(96, 165, 250, 0.4)',
   },
   segmentText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF80',
     letterSpacing: 0.3,
   },
   modeDesc: {
     marginHorizontal: 16,
-    marginBottom: 24,
-    borderRadius: 20,
+    marginBottom: 32,
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
   },
   modeDescGradient: {
-    padding: 16,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
   modeDescIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -529,14 +570,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 99,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   categoryTabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   categoryTabInactive: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -547,13 +588,13 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    gap: 16,
+    marginBottom: 16,
   },
   gridItem: {
     flex: 1,
-    height: 200,
-    borderRadius: 18,
+    height: 220,
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -561,54 +602,63 @@ const styles = StyleSheet.create({
   },
   timePill: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    top: 12,
+    left: 12,
     borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
   },
   timePillText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#FFFFFFEE',
+    fontWeight: '700',
+    color: '#fff',
     letterSpacing: 0.5,
   },
   activeStatusPill: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    borderRadius: 8,
+    top: 12,
+    right: 12,
+    borderRadius: 12,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 2,
+    shadowRadius: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   activeStatusText: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '800',
     color: '#000',
     letterSpacing: 0.5,
   },
   itemContent: {
     flex: 1,
     justifyContent: 'flex-end',
-    padding: 12,
+    padding: 16,
   },
   itemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
-    letterSpacing: 0.3,
+    marginBottom: 3,
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   itemSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.7)',
-    fontWeight: '500',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, Component } from 'reac
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   Alert, Modal, Platform, Linking, ImageBackground, Dimensions,
-  Animated, Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import Constants from 'expo-constants';
+import AppBackground from '@/components/AppBackground';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -174,19 +176,19 @@ function WallpaperPicker() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         router.push('/wallpaper');
       }}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       style={wp.card}
     >
       <ImageBackground source={activeUri ? { uri: activeUri } : undefined} style={wp.previewImg}>
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFillObject} />
         <View style={wp.previewContent}>
           <View style={{ flex: 1 }}>
             <Text style={wp.previewTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
             <Text style={wp.previewName}>{activeMeta.emoji} {activeMeta.label}</Text>
           </View>
-          <View style={wp.previewBtn}>
+          <BlurView intensity={30} tint="light" style={wp.previewBtn}>
             <Text style={wp.previewBtnTxt}>Edit</Text>
-          </View>
+          </BlurView>
         </View>
       </ImageBackground>
     </TouchableOpacity>
@@ -194,13 +196,13 @@ function WallpaperPicker() {
 }
 
 const wp = StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,20,0.6)' },
-  previewImg: { height: 160, width: '100%', justifyContent: 'flex-end' },
-  previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 16 },
-  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
-  previewName: { fontSize: 20, color: '#fff', fontWeight: '600', letterSpacing: 0.3 },
-  previewBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '500' },
+  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(20,20,20,0.6)' },
+  previewImg: { height: 180, width: '100%', justifyContent: 'flex-end' },
+  previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20 },
+  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 },
+  previewName: { fontSize: 22, color: '#fff', fontWeight: '700', letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  previewBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
+  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '600', letterSpacing: 0.3 },
 });
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
@@ -333,11 +335,8 @@ export default function SettingsTab() {
 
   return (
     <SettingsErrorBoundary>
-    <ImageBackground
-      source={bgUri ? { uri: bgUri } : undefined}
-      style={S.screen}
-      imageStyle={{ opacity: 1 }}
-    >
+    <View style={[S.screen, { backgroundColor: accentColor }]}>
+      <AppBackground />
       <LinearGradient
         colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.92)', '#000000']}
         style={StyleSheet.absoluteFillObject}
@@ -408,7 +407,7 @@ export default function SettingsTab() {
           </View>
         </GlassCard>
       </ScrollView>
-    </ImageBackground>
+    </View>
     </SettingsErrorBoundary>
   );
 }

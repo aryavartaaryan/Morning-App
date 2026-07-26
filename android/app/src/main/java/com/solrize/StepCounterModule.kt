@@ -153,7 +153,11 @@ class StepCounterModule(private val reactContext: ReactApplicationContext)
             this.action = action
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            reactContext.startForegroundService(intent)
+            if (action == StepCounterService.ACTION_START || action == StepCounterService.ACTION_START_DAILY) {
+                reactContext.startForegroundService(intent)
+            } else {
+                reactContext.startService(intent)
+            }
         } else {
             reactContext.startService(intent)
         }

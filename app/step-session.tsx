@@ -60,8 +60,8 @@ const { width: W, height: H } = Dimensions.get('window');
 const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SZ = 200; // Slightly larger for live activity feel
-const STROKE  = 14;
+const RING_SZ = 220; // Slightly larger for live activity feel
+const STROKE  = 22;
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
 
@@ -90,54 +90,48 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, GA, GB, C, progressAnim, rot1, rot2 }: any) => (
   <>
-    {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
-    <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
+    {/* ── ULTRA-PREMIUM LIVE ACTIVITY RING ───────────────────────────────── */}
+    <View style={{ shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 35, elevation: 20 }}>
       <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
         <Defs>
-          <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
-            <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
-            <Stop offset="1"   stopColor={GB} stopOpacity="1" />
+          <SvgGrad id="sessGradPremium" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#5EEAD4" stopOpacity="1" />
+            <Stop offset="0.5" stopColor="#7DD3FC" stopOpacity="1" />
+            <Stop offset="1" stopColor="#B4A4E5" stopOpacity="1" />
           </SvgGrad>
         </Defs>
-        
-        {/* Outer razor-thin neon orbit */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM + 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM + 75] })} strokeLinecap="round" />
 
-        {/* Main thick segmented track */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.40)" strokeWidth={STROKE} strokeDasharray="4 6" />
+        {/* 1. Track Ring (Solid Translucent) */}
+        <Circle 
+          cx={RING_SZ/2} cy={RING_SZ/2} r={R} 
+          fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={STROKE} 
+        />
         
-        {/* Massive blur duplicate for outer core glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 20} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.65} strokeLinecap="round" />
-        {/* Intense blur duplicate for inner core glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.9} strokeLinecap="round" />
-        {/* Active solid glowing progress overlay */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" />
-        {/* Neon White Core */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#ffffff" strokeWidth={5} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" opacity={0.9} />
+        {/* 2. Subtle under-glow for the active ring */}
+        <AnimatedCircle 
+          cx={RING_SZ/2} cy={RING_SZ/2} r={R} 
+          fill="none" stroke="url(#sessGradPremium)" strokeWidth={STROKE + 8} 
+          strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} 
+          strokeLinecap="round" opacity={0.35} 
+        />
         
-        {/* Inner razor-thin neon orbit */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM - 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM - 75] })} strokeLinecap="round" />
+        {/* 3. Main Progress Indicator - Vibrant Premium Gradient */}
+        <AnimatedCircle 
+          cx={RING_SZ/2} cy={RING_SZ/2} r={R} 
+          fill="none" stroke="url(#sessGradPremium)" strokeWidth={STROKE} 
+          strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} 
+          strokeLinecap="round" opacity={1} 
+        />
+        
+        {/* 4. Very subtle bright core for 3D rounded feel */}
+        <AnimatedCircle 
+          cx={RING_SZ/2} cy={RING_SZ/2} r={R} 
+          fill="none" stroke="#ffffff" strokeWidth={STROKE * 0.25} 
+          strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} 
+          strokeLinecap="round" opacity={0.4} 
+        />
       </Svg>
     </View>
-
-    {/* Rotating Outer Visualizer HUD */}
-    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
-      </Svg>
-    </Animated.View>
-
-    {/* Rotating Inner HUD (Sine wave rapid feel) */}
-    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />
-      </Svg>
-    </Animated.View>
   </>
 ));
 
@@ -708,17 +702,17 @@ export default function StepSessionScreen() {
             <TouchableOpacity
               onPress={toggleSessionPause}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
             >
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={paused ? ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.05)', 'transparent']}
+                colors={paused ? ['#5EEAD4', '#7DD3FC', '#B4A4E5'] : ['rgba(255,255,255,0.1)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: paused ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)' }} />
-                <Ionicons name={paused ? 'play' : 'pause'} size={16} color="#FFF" />
-                <Text style={[s.pauseTxt, { color: '#FFF' }]}>
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: paused ? 'rgba(255,255,255,0.4)' : 'rgba(125, 211, 252, 0.35)' }} />
+                <Ionicons name={paused ? 'play' : 'pause'} size={16} color={paused ? '#FFF' : '#7DD3FC'} />
+                <Text style={[s.pauseTxt, { color: paused ? '#FFF' : '#7DD3FC', textShadowColor: paused ? 'rgba(0,0,0,0.15)' : 'transparent', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }]}>
                   {paused ? 'RESUME' : 'PAUSE'}
                 </Text>
               </LinearGradient>
@@ -730,7 +724,7 @@ export default function StepSessionScreen() {
             <TouchableOpacity 
               onPress={promptExit}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
+              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(0,0,0,0.35)' }}
             >
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
@@ -738,9 +732,9 @@ export default function StepSessionScreen() {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }} />
-                <Ionicons name="stop" size={15} color="#FFF" />
-                <Text style={[s.endTxt, { color: '#FFF' }]}>END</Text>
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.15)' }} />
+                <Ionicons name="stop" size={15} color="rgba(255,255,255,0.7)" />
+                <Text style={[s.endTxt, { color: 'rgba(255,255,255,0.7)' }]}>END</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

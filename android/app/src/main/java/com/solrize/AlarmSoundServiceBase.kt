@@ -776,6 +776,15 @@ abstract class AlarmSoundServiceBase : Service() {
         // Self-stopping here is the single-line fix that prevents phantom
         // post-mission vibration without touching any other alarm path.
         if (intent == null && !isAlarmActive()) {
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startForeground(getNotifId(), buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                } else {
+                    startForeground(getNotifId(), buildNotification())
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
             stopSelf()
             return START_NOT_STICKY
         }

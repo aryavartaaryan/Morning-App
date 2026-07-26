@@ -61,7 +61,7 @@ const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SIZE   = 260;
-const RING_STROKE = 16;
+const RING_STROKE = 22;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
 
@@ -511,27 +511,29 @@ export default function WalkTab() {
               </Animated.View>
             </View>
 
-            {/* ── CASIO SMARTWATCH TACTICAL RING ─────────────────────────────────── */}
-            <View style={{ shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 }}>
+            {/* ── ULTRA-PREMIUM ACTIVITY RING ─────────────────────────────────── */}
+            <View style={{ shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 30, elevation: 12 }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                {/* 1. Tactical Bezel (Outer ring border) */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 8} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER - 8} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+                <Defs>
+                  <SvgGrad id="premiumGrad" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor="#5EEAD4" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#7DD3FC" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#B4A4E5" stopOpacity="1" />
+                  </SvgGrad>
+                </Defs>
 
-                {/* 2. Segmented Track (Casio minute ticks) - 60 segments */}
+                {/* 1. Track Ring (Solid Translucent) */}
                 <Circle 
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} 
-                  fill="none" stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={RING_STROKE} 
-                  strokeDasharray={`2 ${CIRCUMF / 60 - 2}`} 
-                  strokeLinecap="butt" 
+                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={RING_STROKE} 
                 />
                 
-                {/* 3. Main Progress Indicator - High Contrast Solid Glow */}
+                {/* 2. Main Progress Indicator - Vibrant Premium Gradient */}
                 <Circle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER}
-                  fill="none" stroke="#FFFFFF" strokeWidth={RING_STROKE} strokeLinecap="round"
-                  strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))}
-                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
+                  fill="none" stroke="url(#premiumGrad)" strokeWidth={RING_STROKE} strokeLinecap="round"
+                  strokeDasharray={CIRCUMF} strokeDashoffset={ringDashOffset}
+                  transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1}
                 />
               </Svg>
             </View>
@@ -649,19 +651,18 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#FFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 8, backgroundColor: 'rgba(0,0,0,0.15)' }}
+            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#7DD3FC', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}
           >
-            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.05)']}
+              colors={['#5EEAD4', '#7DD3FC', '#B4A4E5']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.25)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'transparent']}
+                colors={['rgba(255,255,255,0.3)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
@@ -675,14 +676,14 @@ export default function WalkTab() {
                 pointerEvents="none"
               >
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.2)', 'transparent']}
+                  colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
               
               <View style={{ paddingVertical: 15 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
                   {sessionTitle}
                 </Text>
               </View>
@@ -697,21 +698,21 @@ export default function WalkTab() {
           >
             <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+              colors={['rgba(255, 255, 255, 0.08)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(125, 211, 252, 0.25)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.08)', 'transparent']}
+                colors={['rgba(255,255,255,0.1)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
               />
 
               <View style={{ paddingVertical: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#7DD3FC', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
                   {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
                 </Text>
               </View>

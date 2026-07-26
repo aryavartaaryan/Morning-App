@@ -363,7 +363,8 @@ export function getCosmicScore(yogaAuspicious: boolean, moonEmoji: string, tithi
 // ── Festivals ───────────────────────────────────────────────────────────────
 export type Festival = {
   name: string;
-  type: 'hindu' | 'christian' | 'global';
+  type: 'hindu' | 'christian' | 'global' | 'buddhist' | 'jain' | 'muslim' | 'jewish';
+  year?: number; // For specific year hardcoded dates
   month?: number; // 1-12
   day?: number; // 1-31
   vMonth?: string;
@@ -405,6 +406,12 @@ export const FESTIVALS: Festival[] = [
   { name: 'Gudi Padwa', type: 'hindu', vMonth: 'Chaitra', tithi: 'Pratipada', paksha: 'Shukla', emoji: '🚩', desc: 'Traditional New Year for Maharashtrians and Konkanis.',
     scienceDesc: 'Marks the onset of spring and the harvest of Rabi crops. Eating neem and jaggery on this day prepares the immune system for the transition to summer.' },
   
+  // Buddhist & Jain
+  { name: 'Vesak (Buddha Purnima)', type: 'buddhist', vMonth: 'Vaishakha', tithi: 'Purnima', emoji: '🧘', desc: 'Birth, enlightenment, and death of Gautama Buddha.',
+    scienceDesc: 'Occurs on the spring full moon, a period of heightened geomagnetic activity ideal for deep meditation and energetic sensitivity.' },
+  { name: 'Mahavir Jayanti', type: 'jain', vMonth: 'Chaitra', tithi: 'Trayodashi', paksha: 'Shukla', emoji: '🕊️', desc: 'Birth of Mahavira, the 24th Tirthankara.',
+    scienceDesc: 'Aligns with the spring renewal phase. Fasting and non-violence (Ahimsa) practices during this time reduce ecological footprints and detoxify the body.' },
+    
   // Christian / Global
   { name: 'Christmas', type: 'christian', month: 12, day: 25, emoji: '🎄', desc: 'Birth of Jesus Christ.',
     scienceDesc: 'Corresponds closely with the winter solstice, marking the return of longer days and sunlight in the Northern Hemisphere.' },
@@ -415,17 +422,35 @@ export const FESTIVALS: Festival[] = [
   { name: 'Valentine\'s Day', type: 'global', month: 2, day: 14, emoji: '💝', desc: 'Day of love and affection.',
     scienceDesc: 'Coincides with early spring in many regions, a biological period of renewal and social bonding.' },
   { name: 'Earth Day', type: 'global', month: 4, day: 22, emoji: '🌍', desc: 'Honoring our planet and environment.',
-    scienceDesc: 'A modern global observance emphasizing environmental conservation and ecological harmony.' }
+    scienceDesc: 'A modern global observance emphasizing environmental conservation and ecological harmony.' },
+    
+  // Muslim (2026 Dates)
+  { name: 'Ramadan Begins', type: 'muslim', year: 2026, month: 2, day: 18, emoji: '🌙', desc: 'Month of fasting, prayer, and reflection.',
+    scienceDesc: 'A rigorous 30-day intermittent fasting period that triggers autophagy, promoting cellular renewal and deep detoxification.' },
+  { name: 'Eid al-Fitr', type: 'muslim', year: 2026, month: 3, day: 20, emoji: '🕌', desc: 'Festival of Breaking the Fast.',
+    scienceDesc: 'Marks the successful completion of the month-long metabolic reset of Ramadan.' },
+  { name: 'Eid al-Adha', type: 'muslim', year: 2026, month: 5, day: 27, emoji: '🕋', desc: 'Feast of the Sacrifice.',
+    scienceDesc: 'Coincides with the Hajj pilgrimage, fostering immense global community coherence and charity.' },
+
+  // Jewish (2026 Dates)
+  { name: 'Passover (Pesach)', type: 'jewish', year: 2026, month: 4, day: 2, emoji: '🍷', desc: 'Commemorates liberation from slavery.',
+    scienceDesc: 'Aligns with the spring equinox. The dietary shift (unleavened bread) historically prevented foodborne illnesses in the shifting season.' },
+  { name: 'Yom Kippur', type: 'jewish', year: 2026, month: 9, day: 21, emoji: '🕍', desc: 'Day of Atonement.',
+    scienceDesc: 'A strict 25-hour dry fast during the autumn equinox period. Scientifically proven to induce deep cellular repair and reset insulin sensitivity.' },
+  { name: 'Hanukkah', type: 'jewish', year: 2026, month: 12, day: 5, emoji: '🕎', desc: 'Festival of Lights.',
+    scienceDesc: 'Celebrated near the winter solstice, utilizing the psychological and biological benefits of fire/light during the darkest time of the year.' }
 ];
 
 export function getFestivalForDate(date: Date = new Date()): Festival | null {
   const m = date.getMonth() + 1;
   const d = date.getDate();
+  const y = date.getFullYear();
   const p = getPanchangData(date);
   const vm = getVedicMonth(date);
   
   for (const f of FESTIVALS) {
     if (f.month && f.day) {
+      if (f.year && f.year !== y) continue;
       if (f.month === m && f.day === d) return f;
     } else if (f.vMonth && f.tithi) {
       if (vm.name === f.vMonth && p.tithiName === f.tithi) {

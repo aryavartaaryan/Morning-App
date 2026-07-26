@@ -32,6 +32,7 @@ import {
 import { useBgContext } from '@/lib/bgContext';
 import { getCardBg, getCardBgLight } from '@/lib/cardTheme';
 import { getBgSource, getBgSourceSync } from '@/lib/bgImages';
+import AppBackground from '@/components/AppBackground';
 import { Font } from '@/constants/theme';
 import Svg, { Circle as SvgCircle, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import WakeUpShareCard from '@/components/WakeUpShareCard';
@@ -839,57 +840,65 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     f.date.getMonth() === selectedDate.getMonth()
   );
 
-  return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={EX.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
-        <View style={EX.sheet}>
-          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <LinearGradient
-            colors={['rgba(10,12,28,0.85)', 'rgba(6,8,20,0.92)', 'rgba(10,12,28,0.88)']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View style={EX.handle} />
+  // Compute month festivals for highlights
+  const monthFestivals = festivals.filter(f => f.date.getMonth() === currentMonthDate.getMonth());
+  const monthHighlights = monthFestivals.map(f => `${f.festival.type === 'hindu' ? '✦' : '✧'} ${f.festival.name.split(' / ')[0]}`).join('  •  ');
 
+  return (
+    <Modal visible animationType="slide" transparent={false} onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: '#06091A' }}>
+        <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <LinearGradient
+          colors={['rgba(10,12,28,0.95)', 'rgba(6,8,20,1)', 'rgba(10,12,28,0.95)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        <View style={{ paddingTop: 60, paddingHorizontal: 16 }}>
           {/* Header */}
-          <View style={[EX.sheetHeader, { paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }]}>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 10 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '200' }}>‹</Text>
+          <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 10, paddingLeft: 0 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>‹</Text>
               </TouchableOpacity>
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
                   {currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 1.5, marginTop: 2 }}>
-                  VEDIC ALMANAC
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 2, marginTop: 4 }}>
+                  COSMIC CALENDAR
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 10 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '200' }}>›</Text>
+              <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 10, paddingRight: 0 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>›</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={[EX.closeBtn, { position: 'absolute', right: 16, top: 0 }]} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Text style={EX.closeTxt}>✕</Text>
-            </TouchableOpacity>
+
+            {/* Monthly Highlights */}
+            {monthHighlights ? (
+              <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 11, color: '#A78BFA', fontWeight: '600', lineHeight: 18, textAlign: 'center', letterSpacing: 0.5 }}>
+                  {monthHighlights}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Calendar Grid Container */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <View style={{ paddingTop: 20 }}>
             {/* Weekdays */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-              {['S','M','T','W','T','F','S'].map((d, i) => (
+              {['SUN','MON','TUE','WED','THU','FRI','SAT'].map((d, i) => (
                 <View key={i} style={{ width: `${100/7}%`, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.3)' }}>{d}</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>{d}</Text>
                 </View>
               ))}
             </View>
 
             {/* Grid Days */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
               {days.map((date, i) => {
-                if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 55 }} />;
+                if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 65 }} />;
                 
                 const isSelected = date.getDate() === selectedDate.getDate() && date.getMonth() === selectedDate.getMonth();
                 const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
@@ -904,21 +913,20 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                     key={i}
                     activeOpacity={0.7}
                     onPress={() => { Haptics.selectionAsync(); setSelectedDate(date); }}
-                    style={{ width: `${100/7}%`, height: 55, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 6 }}
+                    style={{ width: `${100/7}%`, height: 65, alignItems: 'center', justifyContent: 'center' }}
                   >
                     <View style={{
-                      width: 38, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: isSelected ? 'rgba(244,63,94,0.15)' : 'transparent',
-                      borderWidth: isSelected ? 1 : 0, borderColor: isSelected ? 'rgba(244,63,94,0.4)' : 'transparent'
+                      width: 44, height: 52, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: isSelected ? '#f43f5e' : (isToday ? 'rgba(255,255,255,0.06)' : 'transparent'),
                     }}>
-                      <Text style={{ fontSize: 16, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#f43f5e' : (isToday ? '#fff' : 'rgba(255,255,255,0.85)') }}>
+                      <Text style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#fff' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.9)') }}>
                         {date.getDate()}
                       </Text>
-                      <Text style={{ fontSize: 8, fontWeight: '700', color: isSelected ? '#f43f5e' : 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.4)'), marginTop: 2, letterSpacing: 0.5 }}>
                         {tithiShort}
                       </Text>
                       {festMatch && (
-                        <View style={{ position: 'absolute', top: -2, right: 0, width: 6, height: 6, borderRadius: 3, backgroundColor: festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa' }} />
+                        <View style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa') }} />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -926,14 +934,15 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
               })}
             </View>
           </View>
+        </View>
 
-          {/* Details Section for Selected Date */}
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+        {/* Details Section for Selected Date */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
             
             {selFest && (
               <View style={{ marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: selFest.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa', letterSpacing: 1.5, marginBottom: 6 }}>
-                  {selFest.festival.type === 'hindu' ? 'COSMIC FESTIVAL' : 'GLOBAL OBSERVANCE'}
+                  {selFest.festival.type === 'hindu' ? 'COSMIC FESTIVAL' : selFest.festival.type.toUpperCase() + ' OBSERVANCE'}
                 </Text>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 6 }}>{selFest.festival.name.split(' / ')[0]}</Text>
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 20, marginBottom: 12 }}>{selFest.festival.desc}</Text>
@@ -974,7 +983,6 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             </View>
 
           </ScrollView>
-        </View>
       </View>
     </Modal>
   );
@@ -6353,12 +6361,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
     <>
     <Modal visible animationType="none" transparent={true} statusBarTranslucent onRequestClose={close}>
       <Animated.View style={{ flex: 1, backgroundColor: '#000', transform: [{ translateY }] }}>
-        <ImageBackground
-          key={bgUri || 'default'}
-          source={bgUri ? { uri: bgUri } : undefined}
-          style={StyleSheet.absoluteFillObject}
-          imageStyle={{ opacity: 1, resizeMode: 'cover' }}
-        />
+        <AppBackground />
 
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
@@ -6723,12 +6726,7 @@ function DailyTab() {
 
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
-      <ImageBackground
-        key={bgUri || 'default'}
-        source={bgUri ? { uri: bgUri } : undefined}
-        style={StyleSheet.absoluteFillObject}
-        imageStyle={{ opacity: 1, resizeMode: 'cover' }}
-      />
+      <AppBackground />
       <BlurView
         tint="dark"
         intensity={10}

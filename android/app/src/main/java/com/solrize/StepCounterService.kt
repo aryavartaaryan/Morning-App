@@ -110,6 +110,25 @@ class StepCounterService : Service(), SensorEventListener {
             ACTION_STOP        -> handleStopWalk()
             ACTION_START_DAILY -> handleStartDaily()
             ACTION_STOP_DAILY  -> handleStopDaily()
+            null -> {
+                // Sticky restart by the OS. Must call startForeground to prevent crash!
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                if (prefs.getBoolean(KEY_DAILY_ON, false)) {
+                    handleStartDaily()
+                } else {
+                    // Even if we stop, we MUST call startForeground if we were restarted as a foreground service.
+                    try {
+                        if (Build.VERSION.SDK_INT >= 34) {
+                            startForeground(NOTIFICATION_ID, buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+                        } else {
+                            startForeground(NOTIFICATION_ID, buildNotification())
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to startForeground on sticky stop", e)
+                    }
+                    stopSelf()
+                }
+            }
         }
         return START_STICKY
     }

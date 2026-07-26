@@ -40,20 +40,14 @@ class BootReceiver : BroadcastReceiver() {
 
         Log.d("AriseAlarm", "BootReceiver fired (action=$action)")
 
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
         // STALE STATE FIX: Clear alarm_fired_pending on reboot.
-        // If the phone was restarted mid-mission (e.g., user restarted because
-        // the keyboard was not working in gratitude mission), alarm_fired_pending
-        // stays true. On next app launch, _layout.tsx routes to wake-alarm-ringing
-        // even though no alarm is actually ringing — causing a stuck/broken state.
-        // Clearing it on boot ensures the app opens normally. The rescheduled alarm
-        // (below) will ring at the correct time and set the flag again properly.
         clearStaleAlarmState(context)
 
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         rescheduleWakeAlarm(context, am)
         rescheduleHabitAlarms(context, am)
-        restartDailyStepTracking(context)
+        // Background step tracking is intentionally disabled by user request.
+        // restartDailyStepTracking(context)
     }
 
     private fun clearStaleAlarmState(context: Context) {
@@ -62,11 +56,6 @@ class BootReceiver : BroadcastReceiver() {
             .putBoolean("alarm_fired_pending", false)
             .apply()
             
-        // STALE STATE FIX 2: Also clear HabitAlarm active flags.
-        // Without this, if the phone is rebooted during a habit alarm or sound bath,
-        // KEY_ACTIVE remains true forever. On next launch, MainActivity enters
-        // LockTask mode (screen pinning) and aggressive bringToFront, which locks
-        // the app up and causes crashes/ANRs when the user tries to navigate normally.
         context.getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(HabitAlarmModule.KEY_ACTIVE, false)
@@ -122,9 +111,6 @@ class BootReceiver : BroadcastReceiver() {
                 continue
             }
 
-            // If the saved time is in the future, use it as-is.
-            // If it already passed (e.g., phone was off for a day), keep the same
-            // hour:minute but advance to the next future day — mirrors AlarmBroadcastReceiver.
             val alarmTime = if (savedTs > now) {
                 savedTs
             } else {
@@ -168,46 +154,6 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             Log.e("AriseAlarm", "BootReceiver: scheduleExact failed", e)
-        }
-    }
-
-    /** Restarts daily step tracking after boot if it was enabled before shutdown. */
-    private fun restartDailyStepTracking(context: Context) {
-        val prefs   = context.getSharedPreferences(StepCounterService.PREFS_NAME, Context.MODE_PRIVATE)
-        val enabled = prefs.getBoolean("daily_tracking_enabled", false)
-        if (!enabled) {
-            Log.d("AriseAlarm", "BootReceiver: daily step tracking not enabled — skip")
-            return
-        }
-        
-        // PERFECT ROOT CAUSE FIX:
-        // Do not attempt to start StepCounterService if ACTIVITY_RECOGNITION is missing.
-        // If we call startForegroundService() and the permission is missing (e.g. user revoked it),
-        // StepCounterService's startForeground() will throw a SecurityException.
-        // Even if we catch it inside the service, the OS still expects a successful
-        // startForeground() call and will crash the entire app ~10 seconds later
-        // with a ForegroundServiceDidNotStartInTimeException.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(
-                    context, android.Manifest.permission.ACTIVITY_RECOGNITION
-                ) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Log.w("AriseAlarm", "BootReceiver: ACTIVITY_RECOGNITION permission missing, skipping daily step tracking to prevent crash")
-                return
-            }
-        }
-
-        Log.d("AriseAlarm", "BootReceiver: restarting daily step tracking after boot")
-        val intent = Intent(context, StepCounterService::class.java).apply {
-            action = StepCounterService.ACTION_START_DAILY
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        } catch (e: Exception) {
-            Log.e("AriseAlarm", "BootReceiver: Failed to start StepCounterService", e)
         }
     }
 }

@@ -31,6 +31,8 @@ import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, Trigger
 import { Colors, Font } from '@/constants/theme';
 import { PRAKRITI_PLANS, type PledgeData } from '@/lib/prakritiPlan';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { getBgSourceSync } from '@/lib/bgImages';
+import AppBackground from '@/components/AppBackground';
 import { useBgContext } from '@/lib/bgContext';
 import { getCardBg } from '@/lib/cardTheme';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -1185,7 +1187,8 @@ export default function AlarmsTab() {
 
 
   return (
-    <ImageBackground source={bgUri ? { uri: bgUri } : undefined} style={[S.screen, { backgroundColor: accentColor }]} imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
+    <View style={[S.screen, { backgroundColor: accentColor }]}>
+      <AppBackground />
       <LinearGradient
         colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
         locations={[0, 0.28, 1]}
@@ -2165,7 +2168,7 @@ export default function AlarmsTab() {
         onTogglePreview={togglePreview}
       />
 
-    </ImageBackground>
+    </View>
   );
 }
 

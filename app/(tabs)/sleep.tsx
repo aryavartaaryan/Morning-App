@@ -3934,10 +3934,30 @@ function SleepTabInner() {
                   </TouchableOpacity>
                 )}
 
-                {/* Nada Library Menu Icon on the right */}
+                {/* Select Sound Premium Button on the right */}
                 {!isSearching && (
-                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} activeOpacity={0.7} style={{ padding: 4 }}>
-                    <Ionicons name="menu-outline" size={30} color="rgba(255,255,255,0.95)" />
+                  <TouchableOpacity 
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} 
+                    activeOpacity={0.8} 
+                    style={{ marginLeft: 6 }}
+                  >
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.1)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ 
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 14,
+                        paddingVertical: 7,
+                        borderRadius: 24,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.3)',
+                      }}
+                    >
+                      <Ionicons name="musical-notes" size={15} color="#FFF" style={{ marginRight: 6 }} />
+                      <Text style={{ color: '#FFF', fontSize: 13, fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>Select Sound</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                 )}
               </View>

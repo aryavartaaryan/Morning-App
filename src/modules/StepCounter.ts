@@ -176,14 +176,10 @@ export const StepCounter = {
 
   /**
    * Starts the background foreground-service that counts steps all day.
-   * Safe to call on every app launch — the service checks if it's already
-   * running and is a no-op if so.
+   * Background step tracking is intentionally disabled by user request.
    */
   async startBackgroundTracking(): Promise<void> {
-    if (Platform.OS !== 'android') return;
-    const hasPerms = await ensurePermissions();
-    if (!hasPerms) return;
-    try { await _native?.startDailyTracking(); } catch { /* */ }
+    return; // Disabled by user request
   },
 
   /** Stops background step counting. */
@@ -194,9 +190,7 @@ export const StepCounter = {
 
   /** Returns true if background step counting is active. */
   async isTrackingEnabled(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try { return await (_native?.isDailyRunning() ?? Promise.resolve(false)); }
-    catch { return false; }
+    return false; // Disabled by user request
   },
 
   // ── Today's summary ──────────────────────────────────────────────────────────
