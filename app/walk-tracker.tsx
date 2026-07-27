@@ -237,15 +237,20 @@ export default function WalkTracker() {
           <View style={s.infoItem}><Text style={s.infoEmoji}>⏱</Text><Text style={s.infoLbl}>Duration</Text></View>
         </View>
         <TouchableOpacity 
-          style={[s.startBtn, { paddingVertical: 0, paddingHorizontal: 0, overflow: 'hidden', borderWidth: 1.5, borderColor: '#00F0FF', shadowColor: '#FF007F', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 15, elevation: 10 }]} 
+          style={[s.startBtn, { paddingVertical: 0, paddingHorizontal: 0, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', shadowColor: '#00F2FE', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 15, elevation: 10 }]} 
           onPress={startWalk}
         >
           <LinearGradient
-            colors={['rgba(0, 240, 255, 0.3)', 'rgba(255, 0, 127, 0.3)']}
+            colors={['#0052D4', '#2AB0FE', '#00F2FE']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={{ paddingVertical: 18, paddingHorizontal: 48, alignItems: 'center', justifyContent: 'center', width: '100%' }}
           >
-            <Text style={[s.startTxt, { textShadowColor: '#00F0FF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }]}>START WALK</Text>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.5)', 'transparent']}
+              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
+            />
+            <Text style={[s.startTxt, { textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>START WALK</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

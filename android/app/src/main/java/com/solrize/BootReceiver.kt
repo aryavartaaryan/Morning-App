@@ -51,18 +51,28 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun clearStaleAlarmState(context: Context) {
+        // CRITICAL: Use .commit() NOT .apply() here.
+        // .apply() is asynchronous — on a cold boot after phone restart, Android's
+        // SharedPreferences file is re-read from disk. If .apply() hasn't flushed
+        // before AlarmSoundService or the Notifee BootReceiver reads the prefs,
+        // they see the stale 'true' value, think an alarm is active, and start
+        // ringing + bringing the app to front → crash on first open after reboot.
+        // .commit() writes synchronously to disk before this method returns,
+        // guaranteeing all readers see 'false'.
         context.getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean("alarm_fired_pending", false)
-            .apply()
+            .putBoolean("alarm_stopping", false)
+            .commit()  // SYNC — must be commit(), not apply()
             
         context.getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(HabitAlarmModule.KEY_ACTIVE, false)
+            .putBoolean("alarm_stopping", false)
             .putString("active_alarm_type", "")
-            .apply()
+            .commit()  // SYNC — must be commit(), not apply()
             
-        Log.d("AriseAlarm", "BootReceiver: cleared all stale alarm states")
+        Log.d("AriseAlarm", "BootReceiver: cleared all stale alarm states (sync)")
     }
 
     // ── Wake alarm ────────────────────────────────────────────────────────────

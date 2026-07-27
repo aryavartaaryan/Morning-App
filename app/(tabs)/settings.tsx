@@ -46,16 +46,16 @@ class SettingsErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, backgroundColor: '#060A18', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ fontSize: 28, marginBottom: 12 }}>⚙️</Text>
-          <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff', marginBottom: 8 }}>Settings couldn't load</Text>
-          <Text style={{ fontSize: 11, color: '#FFFFFF50', textAlign: 'center', lineHeight: 18 }}>
+          <Text style={{ fontSize: 22, marginBottom: 12 }}>⚙️</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff', marginBottom: 8 }}>Settings couldn't load</Text>
+          <Text style={{ fontSize: 12, letterSpacing: 0.2, color: '#FFFFFF50', textAlign: 'center', lineHeight: 18 }}>
             An unexpected error occurred.{`\n`}Please restart the app.
           </Text>
           <TouchableOpacity
             onPress={() => this.setState({ hasError: false })}
             style={{ marginTop: 24, backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)' }}
           >
-            <Text style={{ color: '#a78bfa', fontWeight: '700', fontSize: 13 }}>Try Again</Text>
+            <Text style={{ color: '#a78bfa', fontWeight: '700', fontSize: 11, letterSpacing: 1.5 }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -73,14 +73,14 @@ function SectionHeader({ label }: { label: string; }) {
   );
 }
 const sec = StyleSheet.create({
-  row:   { marginHorizontal: 32, marginTop: 28, marginBottom: 8 },
-  label: { fontSize: 13, color: '#EBEBF599', fontWeight: '500', letterSpacing: 0 },
+  row:   { marginHorizontal: 24, marginTop: 32, marginBottom: 10 },
+  label: { fontSize: 13, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
 });
 
 // ─── Glass card ──────────────────────────────────────────────────────────────
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object; }) {
   return (
-    <BlurView intensity={60} tint="dark" style={[glass.card, style]}>
+    <BlurView intensity={25} tint="dark" style={[glass.card, style]}>
       {children}
     </BlurView>
   );
@@ -88,11 +88,11 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
 const glass = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 });
 
@@ -101,7 +101,7 @@ function ToggleRow({ emoji, label, sub, value, onToggle, color, last = false }: 
   return (
     <View style={[tog.row]}>
       <View style={[tog.icon, { backgroundColor: color }]}>
-        <Text style={{ fontSize: 18 }}>{emoji}</Text>
+        <Text style={{ fontSize: 16 }}>{emoji}</Text>
       </View>
       <View style={[tog.content, !last && tog.border]}>
         <View style={{ flex: 1, paddingRight: 12 }}>
@@ -121,11 +121,11 @@ function ToggleRow({ emoji, label, sub, value, onToggle, color, last = false }: 
 }
 const tog = StyleSheet.create({
   row:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
-  content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingRight: 16 },
+  content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 16 },
   border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
-  icon:   { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  icon:   { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   title:  { fontSize: 16, color: '#fff', fontWeight: '500', letterSpacing: 0.3 },
-  sub:    { fontSize: 13, color: '#EBEBF580', marginTop: 2, lineHeight: 16 },
+  sub:    { fontSize: 13, color: 'rgba(235,235,245,0.6)', marginTop: 4, lineHeight: 18, letterSpacing: 0.1 },
 });
 
 function WallpaperPicker() {
@@ -180,13 +180,13 @@ function WallpaperPicker() {
       style={wp.card}
     >
       <ImageBackground source={activeUri ? { uri: activeUri } : undefined} style={wp.previewImg}>
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} style={StyleSheet.absoluteFillObject} />
         <View style={wp.previewContent}>
           <View style={{ flex: 1 }}>
             <Text style={wp.previewTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
             <Text style={wp.previewName}>{activeMeta.emoji} {activeMeta.label}</Text>
           </View>
-          <BlurView intensity={30} tint="light" style={wp.previewBtn}>
+          <BlurView intensity={40} tint="light" style={wp.previewBtn}>
             <Text style={wp.previewBtnTxt}>Edit</Text>
           </BlurView>
         </View>
@@ -196,13 +196,13 @@ function WallpaperPicker() {
 }
 
 const wp = StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(20,20,20,0.6)' },
-  previewImg: { height: 180, width: '100%', justifyContent: 'flex-end' },
+  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(20,20,20,0.4)' },
+  previewImg: { height: 240, width: '100%', justifyContent: 'flex-end' },
   previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20 },
-  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 },
-  previewName: { fontSize: 22, color: '#fff', fontWeight: '700', letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  previewBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
-  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '600', letterSpacing: 0.3 },
+  previewTime: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
+  previewName: { fontSize: 22, color: '#fff', fontWeight: '700', letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
+  previewBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.15)' },
+  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
@@ -243,8 +243,6 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
     }
   };
 
-
-
   useEffect(() => { check(); }, []);
 
   const allOk = perms.notifications && perms.exactAlarm && perms.batteryOpt && perms.fullScreen;
@@ -267,17 +265,17 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
       ] as const).map((p, i, arr) => (
         <View key={p.label} style={[perm.row, i < arr.length - 1 && perm.border]}>
           <View style={[perm.dot, { backgroundColor: p.ok ? '#34C759' : '#FF3B30' }]} />
-          <Text style={[perm.label, { color: p.ok ? '#EBEBF599' : '#fff', fontWeight: p.ok ? '400' : '500' }]}>
+          <Text style={[perm.label, { color: p.ok ? 'rgba(235,235,245,0.6)' : '#fff', fontWeight: p.ok ? '400' : '500' }]}>
             {p.label}
           </Text>
-          <Text style={{ fontSize: 13, fontWeight: '500', color: p.ok ? '#EBEBF560' : '#FF3B30' }}>
+          <Text style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: '600', color: p.ok ? 'rgba(235,235,245,0.4)' : '#FF3B30' }}>
             {p.ok ? 'OK' : 'MISSING'}
           </Text>
         </View>
       ))}
       {!allOk && (
         <TouchableOpacity onPress={handleFix} disabled={checking} style={perm.fixBtn} activeOpacity={0.8}>
-          <Text style={{ color: '#FF3B30', fontWeight: '500', fontSize: 16 }}>
+          <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 15 }}>
             {checking ? 'Checking...' : 'Fix Permissions'}
           </Text>
         </TouchableOpacity>
@@ -288,8 +286,8 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
 const perm = StyleSheet.create({
   row:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.15)', marginLeft: 34 },
-  dot:    { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-  label:  { flex: 1, fontSize: 15 },
+  dot:    { width: 6, height: 6, borderRadius: 3, marginRight: 10 },
+  label:  { flex: 1, fontSize: 14, letterSpacing: 0.1 },
   fixBtn: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', paddingVertical: 14, alignItems: 'center' },
 });
 
@@ -391,10 +389,10 @@ export default function SettingsTab() {
         <GlassCard>
           <View style={{ padding: 16, gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 20, fontWeight: '600', color: '#fff' }}>Nada</Text>
-              <Text style={{ fontSize: 15, color: '#EBEBF560' }}>v1.0</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff', letterSpacing: 0.5 }}>Nada</Text>
+              <Text style={{ fontSize: 12, color: '#EBEBF550' }}>v1.0</Text>
             </View>
-            <Text style={{ fontSize: 13, color: '#EBEBF599', lineHeight: 18 }}>
+            <Text style={{ fontSize: 11, letterSpacing: 1.5, color: '#EBEBF599', lineHeight: 18 }}>
               Rise with the sun · Ancient Wisdom · Modern Intelligence
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -414,9 +412,9 @@ export default function SettingsTab() {
 
 const S = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#000000' },
-  header:  { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
-  headerTitle: { fontSize: 26, fontWeight: '600', color: '#fff', letterSpacing: 0.35 },
+  header:  { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 },
+  headerTitle: { fontSize: 34, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
 
-  tagPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' },
-  tagTxt:  { fontSize: 11, fontWeight: '500', color: '#EBEBF5', letterSpacing: 0.2 },
+  tagPill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  tagTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
 });

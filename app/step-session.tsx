@@ -29,15 +29,11 @@ import {
   Platform,
   ImageBackground,
   Modal,
+  PanResponder,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgGrad,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Circle, Line, G, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -53,14 +49,26 @@ import { getBgSourceSync } from '@/lib/bgImages';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getSolarRingPalette } from '@/lib/solarRingPalette';
 import { fetchWeather } from '@/lib/weather';
+import { saveBloomedSeed } from '@/lib/seedStorage';
+
+// ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
+let Gyroscope: any = null;
+let Magnetometer: any = null;
+let Accelerometer: any = null;
+try { Gyroscope = require('expo-sensors').Gyroscope; } catch (_) {}
+try { Magnetometer = require('expo-sensors').Magnetometer; } catch (_) {}
+try { Accelerometer = require('expo-sensors').Accelerometer; } catch (_) {}
 
 const { width: W, height: H } = Dimensions.get('window');
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SZ = 200; // Slightly larger for live activity feel
+const RING_SZ = 260; // Larger for live activity feel to fit everything inside
 const STROKE  = 14;
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
@@ -86,60 +94,211 @@ function fmtTime(seconds: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+// MemoRing — fully featured with all 7 enhancements
+const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassHeading, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, isSeedPlanting, seedType, seedGrowthAnim }: any) => {
+  return (
+    <View
+      style={{ width: RING_SZ, height: RING_SZ, alignItems: 'center', justifyContent: 'center' }}
+      {...PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          heartbeatIntervalRef.current = setInterval(() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            rippleScaleHeart.setValue(0.6);
+            rippleOpHeart.setValue(0.6);
+            Animated.parallel([
+              Animated.timing(rippleScaleHeart, { toValue: 1.6, duration: 700, useNativeDriver: true }),
+              Animated.timing(rippleOpHeart,    { toValue: 0,   duration: 700, useNativeDriver: true }),
+            ]).start();
+          }, 800);
+        },
+        onPanResponderRelease:   () => { if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current); },
+        onPanResponderTerminate: () => { if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current); },
+      }).panHandlers}
+    >
+      {/* Feature 4: Heartbeat ripple */}
+      <Animated.View pointerEvents="none" style={{
+        position: 'absolute', width: RING_SZ, height: RING_SZ, borderRadius: RING_SZ / 2,
+        borderWidth: 2, borderColor: 'rgba(56,189,248,0.7)',
+        transform: [{ scale: rippleScaleHeart }], opacity: rippleOpHeart,
+      }} />
 
-const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, GA, GB, C, progressAnim, rot1, rot2 }: any) => (
-  <>
-    {/* ── LIVE ACTIVITY DYNAMIC NEON RING ───────────────────────────────── */}
-    <View style={{ shadowColor: C, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 20 }}>
-      <Svg width={RING_SZ} height={RING_SZ} style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Defs>
-          <SvgGrad id="sessGrad" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0"   stopColor="#ffffff" stopOpacity="1" />
-            <Stop offset="0.4" stopColor={GA} stopOpacity="1" />
-            <Stop offset="1"   stopColor={GB} stopOpacity="1" />
-          </SvgGrad>
-        </Defs>
-        
-        {/* Outer razor-thin neon orbit */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM + 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM + 75] })} strokeLinecap="round" />
+      {/* Layered aura pulse glow */}
+      <Animated.View style={{ position: 'absolute', width: RING_SZ + 24, height: RING_SZ + 24, borderRadius: (RING_SZ + 24) / 2, backgroundColor: 'rgba(56,189,248,0.06)', transform: [{ scale: pulseAnim }], top: -12, left: -12 }} />
+      <Animated.View style={{ position: 'absolute', width: RING_SZ + 14, height: RING_SZ + 14, borderRadius: (RING_SZ + 14) / 2, backgroundColor: 'rgba(56,189,248,0.14)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
+      <Animated.View style={{ position: 'absolute', width: RING_SZ + 6,  height: RING_SZ + 6,  borderRadius: (RING_SZ + 6)  / 2, backgroundColor: 'rgba(56,189,248,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
 
-        {/* Main thick segmented track */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(255,255,255,0.40)" strokeWidth={STROKE} strokeDasharray="4 6" />
-        
-        {/* Massive blur duplicate for outer core glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 20} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.65} strokeLinecap="round" />
-        {/* Intense blur duplicate for inner core glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE + 8} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} opacity={0.9} strokeLinecap="round" />
-        {/* Active solid glowing progress overlay */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="url(#sessGrad)" strokeWidth={STROKE} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" />
-        {/* Neon White Core */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#ffffff" strokeWidth={5} strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} strokeLinecap="round" opacity={0.9} />
-        
-        {/* Inner razor-thin neon orbit */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 12} fill="none" stroke="url(#sessGrad)" strokeWidth={3} strokeDasharray={CIRCUM - 75} strokeDashoffset={progressAnim.interpolate({ inputRange: [0, CIRCUM], outputRange: [0, CIRCUM - 75] })} strokeLinecap="round" />
+      {/* Feature 1: Gyroscope parallax on inner glass disc */}
+      <View style={{
+        position: 'absolute', width: RING_SZ - STROKE, height: RING_SZ - STROKE, borderRadius: (RING_SZ - STROKE) / 2,
+        backgroundColor: 'rgba(56,189,248,0.08)', overflow: 'hidden',
+      }}>
+        <Animated.View style={{
+          position: 'absolute', top: -12, left: -12, right: -12, bottom: -12,
+          transform: [{ translateX: gyroX }, { translateY: gyroY }],
+        }}>
+          {/* Feature 3: Environmental tint */}
+          <LinearGradient
+            colors={(
+              isSunrise || isSunset
+                ? ['rgba(251,191,36,0.14)', 'rgba(251,146,60,0.08)', 'transparent']
+                : isRaining
+                ? ['rgba(147,197,253,0.18)', 'rgba(56,189,248,0.08)', 'transparent']
+                : ['rgba(186,230,253,0.15)', 'rgba(56,189,248,0.08)', 'transparent']
+            )}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {/* Breath glow */}
+          <Animated.View pointerEvents="none" style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: isSunrise || isSunset ? 'rgba(251,191,36,0.1)' : 'rgba(186,230,253,0.1)',
+            opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+          }} />
+          {/* Feature 3: Rain droplets */}
+          {isRaining && rainAnims.map((ra: any, i: number) => (
+            <Animated.View key={i} pointerEvents="none" style={{
+              position: 'absolute', left: ra.x, top: 0,
+              width: 1.5, height: 8, borderRadius: 1,
+              backgroundColor: 'rgba(186,230,253,0.8)',
+              opacity: ra.op, transform: [{ translateY: ra.y }],
+            }} />
+          ))}
+          
+          {/* Feature 8: Premium Gyroscope Glare */}
+          <AnimatedLinearGradient
+            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              position: 'absolute',
+              width: RING_SZ * 2,
+              height: RING_SZ * 2,
+              top: -RING_SZ / 2,
+              left: -RING_SZ / 2,
+              transform: [
+                { translateX: gyroX.interpolate({ inputRange: [-6, 6], outputRange: [RING_SZ * 0.7, -RING_SZ * 0.7] }) },
+                { translateY: gyroY.interpolate({ inputRange: [-6, 6], outputRange: [RING_SZ * 0.7, -RING_SZ * 0.7] }) }
+              ],
+            }}
+          />
+
+          {/* Feature 7: Compass */}
+          {compassHeading !== null && (
+            <View pointerEvents="none" style={{ position: 'absolute', bottom: 42, left: 0, right: 0, alignItems: 'center' }}>
+              <Animated.View style={{ transform: [{ rotate: `${-compassHeading}deg` }], width: 60, height: 60 }}>
+                <Svg width={60} height={60} viewBox="0 0 60 60">
+                  {/* Outer ticks */}
+                  <Circle cx={30} cy={30} r={28} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={2} strokeDasharray="2 6.79" />
+                  <Circle cx={30} cy={30} r={24} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+                  
+                  {/* Secondary diagonal star (Cyan/Blue) */}
+                  <G transform="rotate(45, 30, 30)">
+                    <Path d="M30 30 L28.5 28.5 L30 12 Z" fill="#7dd3fc" opacity={0.6} />
+                    <Path d="M30 30 L30 12 L31.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
+                    <Path d="M30 30 L31.5 28.5 L48 30 Z" fill="#7dd3fc" opacity={0.6} />
+                    <Path d="M30 30 L48 30 L31.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
+                    <Path d="M30 30 L31.5 31.5 L30 48 Z" fill="#7dd3fc" opacity={0.6} />
+                    <Path d="M30 30 L30 48 L28.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
+                    <Path d="M30 30 L28.5 31.5 L12 30 Z" fill="#7dd3fc" opacity={0.6} />
+                    <Path d="M30 30 L12 30 L28.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
+                  </G>
+                  
+                  {/* Primary N-S-E-W star (Red/White) */}
+                  <Path d="M30 30 L33 27 L54 30 Z" fill="rgba(255,255,255,0.8)" />
+                  <Path d="M30 30 L54 30 L33 33 Z" fill="rgba(255,255,255,0.4)" />
+                  <Path d="M30 30 L33 33 L30 54 Z" fill="rgba(255,255,255,0.8)" />
+                  <Path d="M30 30 L30 54 L27 33 Z" fill="rgba(255,255,255,0.4)" />
+                  <Path d="M30 30 L27 33 L6 30 Z" fill="rgba(255,255,255,0.8)" />
+                  <Path d="M30 30 L6 30 L27 27 Z" fill="rgba(255,255,255,0.4)" />
+                  <Path d="M30 30 L27 27 L30 6 Z" fill="#f87171" opacity={0.95} />
+                  <Path d="M30 30 L30 6 L33 27 Z" fill="#dc2626" opacity={0.9} />
+
+                  {/* Center pivot */}
+                  <Circle cx={30} cy={30} r={2} fill="#ffffff" />
+                </Svg>
+              </Animated.View>
+              <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1, marginTop: 2 }}>N</Text>
+            </View>
+          )}
+
+          {/* Feature 10: Seed Planting (Game) */}
+          {isSeedPlanting && (
+            <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+              <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+                {/* The glowing seed base */}
+                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedType === 'calm' ? 'rgba(56,189,248,0.2)' : 'rgba(251,146,60,0.2)'} />
+                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedType === 'calm' ? '#38bdf8' : '#fb923c'} />
+                
+                {/* The growing stem and leaves. 
+                    Path length is ~200. We will map seedGrowthAnim from 0->1 to strokeDashoffset 200->0 
+                */}
+                <AnimatedPath
+                  d={`M${RING_SZ/2} ${RING_SZ - 50} Q${RING_SZ/2 + 30} ${RING_SZ/2} ${RING_SZ/2} 40`}
+                  stroke={seedType === 'calm' ? 'rgba(56,189,248,0.8)' : 'rgba(251,146,60,0.8)'}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  fill="none"
+                  strokeDasharray={200}
+                  strokeDashoffset={seedGrowthAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [200, 0],
+                  })}
+                />
+                {/* Leaves */}
+                <AnimatedPath
+                  d={`M${RING_SZ/2 + 10} ${RING_SZ/2 + 20} Q${RING_SZ/2 + 40} ${RING_SZ/2 + 10} ${RING_SZ/2 + 40} ${RING_SZ/2 - 10} Q${RING_SZ/2 + 10} ${RING_SZ/2 - 10} ${RING_SZ/2 + 10} ${RING_SZ/2 + 20}`}
+                  fill={seedType === 'calm' ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] })}
+                />
+                <AnimatedPath
+                  d={`M${RING_SZ/2 - 10} ${RING_SZ/2 - 10} Q${RING_SZ/2 - 40} ${RING_SZ/2} ${RING_SZ/2 - 40} ${RING_SZ/2 - 30} Q${RING_SZ/2 - 10} ${RING_SZ/2 - 30} ${RING_SZ/2 - 10} ${RING_SZ/2 - 10}`}
+                  fill={seedType === 'calm' ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [0, 0, 1] })}
+                />
+                {/* Bloom flower (appears at 100%) */}
+                <AnimatedCircle
+                  cx={RING_SZ/2} cy={40} r={18}
+                  fill={seedType === 'calm' ? '#e0f2fe' : '#ffedd5'}
+                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.99, 1], outputRange: [0, 0, 1] })}
+                />
+              </Svg>
+            </Animated.View>
+          )}
+        </Animated.View>
+      </View>
+
+      {/* SVG ring layers */}
+      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+        {/* Track */}
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={3} />
+        {/* Wide glow */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#38bdf8" strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.2} />
+        {/* Mid halo */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#7dd3fc" strokeWidth={7}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.5} />
+        {/* Main crisp arc */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#38bdf8" strokeWidth={3}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={1} />
+        {/* Shimmer sliver */}
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#bae6fd" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.85} />
+        {/* Feature 2: Liquid leading-edge droplet */}
+        {pct > 0 && pct < 1 && (() => {
+          const angle = pct * 360 - 90;
+          const rad = angle * Math.PI / 180;
+          const cx = RING_SZ / 2 + R * Math.cos(rad);
+          const cy = RING_SZ / 2 + R * Math.sin(rad);
+          return (
+            <>
+              <Circle cx={cx} cy={cy} r={6}   fill="#38bdf8" opacity={0.25} />
+              <Circle cx={cx} cy={cy} r={3.5} fill="#7dd3fc" opacity={0.7} />
+              <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
+            </>
+          );
+        })()}
       </Svg>
     </View>
-
-    {/* Rotating Outer Visualizer HUD */}
-    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={C} strokeWidth={2.5} fill="none" strokeDasharray="1 10" opacity={0.65} />
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R + 22} stroke={GB} strokeWidth={4} fill="none" strokeDasharray="1 50" opacity={0.80} />
-      </Svg>
-    </Animated.View>
-
-    {/* Rotating Inner HUD (Sine wave rapid feel) */}
-    <Animated.View style={{ position: 'absolute', top: 20, left: 20, width: RING_SZ, height: RING_SZ, transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
-      <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke={C} strokeWidth={1} fill="none" strokeDasharray="4 22" opacity={0.45} />
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R - 18} stroke="#ffffff" strokeWidth={2.5} fill="none" strokeDasharray="0.5 14" opacity={0.9} strokeLinecap="round" />
-      </Svg>
-    </Animated.View>
-  </>
-));
+  );
+});
 
 // ── iOS-style glass overlay — identical to sleep.tsx ─────────────────────────
 function GlassPulseOverlay() {
@@ -171,7 +330,7 @@ function GlassPulseOverlay() {
 export default function StepSessionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionType } = useLocalSearchParams<{ sessionType?: string }>();
+  const { sessionType, seedType } = useLocalSearchParams<{ sessionType?: string, seedType?: 'none'|'calm'|'vitality' }>();
 
   const type = (sessionType as SessionType | undefined) ?? 'morning';
   let meta = SESSION_META[type] ?? SESSION_META.morning;
@@ -183,8 +342,18 @@ export default function StepSessionScreen() {
     }
   }
 
-  // Always use "The Walk" as the title
-  meta = { ...meta, label: 'The Walk' };
+  const isSeedPlanting = seedType === 'calm' || seedType === 'vitality';
+  if (isSeedPlanting) {
+    meta = { 
+      ...meta, 
+      label: seedType === 'calm' ? 'Nurturing Seed of Calm' : 'Nurturing Seed of Vitality', 
+      goal: 3000,
+      emoji: '🌱'
+    };
+  } else {
+    // Always use "The Walk" as the title if not planting a seed
+    meta = { ...meta, label: 'The Walk' };
+  }
 
   const { solarTimes } = useBgContext();
   const now = new Date();
@@ -206,7 +375,7 @@ export default function StepSessionScreen() {
   const [paused,   setPaused]   = useState(false);
 
   // Sound Integration
-  const { playingId, isPaused, togglePause, stopSound, playSound } = useSoundPlayer();
+  const { playingId, isPaused, togglePause, stopSound, playSound, setGlobalVolume } = useSoundPlayer();
   const [isSoundModalVisible, setIsSoundModalVisible] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
 
@@ -238,6 +407,41 @@ export default function StepSessionScreen() {
   const rot2 = useRef(new Animated.Value(0)).current;
   const rot3 = useRef(new Animated.Value(0)).current;
 
+  // Feature 1: Gyroscope parallax
+  const gyroX = useRef(new Animated.Value(0)).current;
+  const gyroY = useRef(new Animated.Value(0)).current;
+
+  // Feature 2: Liquid leading-edge pulse
+  const liquidPulse = useRef(new Animated.Value(1)).current;
+
+  // Feature 3: Rain droplets
+  const RAIN_COUNT = 5;
+  const rainAnims = useRef(Array.from({ length: RAIN_COUNT }, () => ({
+    y:  new Animated.Value(0),
+    op: new Animated.Value(0),
+    x:  Math.random() * 100 + 50,
+  }))).current;
+
+  // Feature 4: Heartbeat
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rippleScaleHeart = useRef(new Animated.Value(0)).current;
+  const rippleOpHeart    = useRef(new Animated.Value(0)).current;
+
+  // Feature 6: Quote cycling
+  const QUOTES = ['Finding your rhythm...', 'In sync with nature.', 'Every step, a breath.'];
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  const quoteOpacity = useRef(new Animated.Value(1)).current;
+
+  // Feature 7: Compass
+  const [compassHeading, setCompassHeading] = useState<number | null>(null);
+  
+  // Feature 9: Posture Coach
+  const [isLookingDown, setIsLookingDown] = useState(false);
+  const lookDownAnim = useRef(new Animated.Value(0)).current;
+
+  // Feature 10: Seed Planting
+  const seedGrowthAnim = useRef(new Animated.Value(0)).current;
+
   // Confetti particles
   const PARTICLE_COUNT = 32;
   const particlesX   = useRef(Array.from({ length: PARTICLE_COUNT }, () => new Animated.Value(0))).current;
@@ -258,8 +462,8 @@ export default function StepSessionScreen() {
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.10, duration: 3000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 3000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.10, duration: 4500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, useNativeDriver: true }),
       ])
     ).start();
 
@@ -273,6 +477,78 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot1, { toValue: 1, duration: 20000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
+
+    // Feature 2: Liquid leading-edge pulse
+    Animated.loop(Animated.sequence([
+      Animated.timing(liquidPulse, { toValue: 1.6, duration: 800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(liquidPulse, { toValue: 1.0, duration: 800, easing: Easing.in(Easing.ease),  useNativeDriver: true }),
+    ])).start();
+
+    // Feature 6: Quote crossfade every 8s
+    const quoteCycle = setInterval(() => {
+      Animated.timing(quoteOpacity, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => {
+        setQuoteIdx(i => (i + 1) % QUOTES.length);
+        Animated.timing(quoteOpacity, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+      });
+    }, 8000);
+
+    // Feature 1: Gyroscope parallax — throttled to 300ms to free JS thread for audio
+    let gyroSub: any = null;
+    if (Gyroscope) {
+      try {
+        Gyroscope.setUpdateInterval(300);
+        let lastGyroUpdate = 0;
+        gyroSub = Gyroscope.addListener(({ x, y }: { x: number; y: number }) => {
+          const now = Date.now();
+          if (now - lastGyroUpdate < 300) return;
+          lastGyroUpdate = now;
+          Animated.spring(gyroX, { toValue: Math.max(-6, Math.min(6, y * 35)), useNativeDriver: true, tension: 40, friction: 15 }).start();
+          Animated.spring(gyroY, { toValue: Math.max(-6, Math.min(6, x * 35)), useNativeDriver: true, tension: 40, friction: 15 }).start();
+        });
+      } catch (_) {}
+    }
+
+    // Feature 7: Compass — throttled to 500ms, uses ref to avoid setState on every update
+    let magSub: any = null;
+    let lastMagHeading = -1;
+    if (Magnetometer) {
+      try {
+        Magnetometer.setUpdateInterval(500);
+        magSub = Magnetometer.addListener(({ x, y }: { x: number; y: number }) => {
+          const heading = Math.round((90 - Math.atan2(y, x) * (180 / Math.PI) + 360) % 360);
+          // Only setState if heading changed by >5 degrees to avoid constant re-renders
+          if (Math.abs(heading - lastMagHeading) > 5) {
+            lastMagHeading = heading;
+            setCompassHeading(heading);
+          }
+        });
+      } catch (_) {}
+    }
+
+    // Feature 9: Posture Coach
+    let accSub: any = null;
+    let isCurrentlyLookingDown = false;
+    if (Accelerometer) {
+      try {
+        Accelerometer.setUpdateInterval(400); // Check posture every 400ms
+        accSub = Accelerometer.addListener(({ z }: { z: number }) => {
+          // z > 0.65 means phone is tilted flat up towards the sky/face
+          const lookingDown = z > 0.65;
+          if (lookingDown && !isCurrentlyLookingDown) {
+            isCurrentlyLookingDown = true;
+            setIsLookingDown(true);
+            setGlobalVolume(0.4); // Dip the volume to remind them
+            Animated.timing(lookDownAnim, { toValue: 1, duration: 800, useNativeDriver: false }).start();
+          } else if (!lookingDown && isCurrentlyLookingDown && z < 0.4) {
+            // Hysteresis: wait until z < 0.4 (phone drops) before recovering
+            isCurrentlyLookingDown = false;
+            setIsLookingDown(false);
+            setGlobalVolume(1.0); // Reward good posture with full volume
+            Animated.timing(lookDownAnim, { toValue: 0, duration: 800, useNativeDriver: false }).start();
+          }
+        });
+      } catch (_) {}
+    }
 
     // Start timer immediately
     timerRef.current = setInterval(() => {
@@ -298,8 +574,47 @@ export default function StepSessionScreen() {
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      quoteCycle && clearInterval(quoteCycle);
+      if (gyroSub) try { gyroSub.remove(); } catch (_) {}
+      if (magSub)  try { magSub.remove();  } catch (_) {}
+      if (accSub) {
+        try { accSub.remove(); } catch (_) {}
+        setGlobalVolume(1.0);
+      }
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
     };
   }, []);
+
+  // Feature 3: Rain droplet animation
+  const isRaining = !!(weather && weather.weatherCode >= 51 && weather.weatherCode <= 99);
+  useEffect(() => {
+    if (!isRaining) return;
+    const anims = rainAnims.map((ra, i) => {
+      ra.y.setValue(0); ra.op.setValue(0);
+      return Animated.sequence([
+        Animated.delay(i * 600),
+        Animated.loop(Animated.sequence([
+          Animated.parallel([
+            Animated.timing(ra.y,  { toValue: 120, duration: 2200, easing: Easing.linear, useNativeDriver: false }),
+            Animated.sequence([
+              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: false }),
+              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: false }),
+            ]),
+          ]),
+          Animated.parallel([
+            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: false }),
+            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: false }),
+          ]),
+        ])),
+      ]);
+    });
+    anims.forEach(a => a.start());
+    return () => anims.forEach(a => a.stop());
+  }, [isRaining]);
+
+  // Sacred hour check for environmental reflections
+  const isSunrise = solarTimes ? (Math.abs(hour - solarTimes.sunrise) < 0.5) : false;
+  const isSunset  = solarTimes ? (Math.abs(hour - solarTimes.sunset)  < 0.5) : false;
 
   // ── Step event subscription ────────────────────────────────────────────────
   useEffect(() => {
@@ -308,38 +623,59 @@ export default function StepSessionScreen() {
 
       const now = Date.now();
       
-      if (now - lastBounceRef.current > 350) {
+      // Throttle bounce animation more aggressively when sound is playing
+      // to free JS thread — at least 500ms apart when audio is active
+      const bounceThrottle = 500;
+      if (now - lastBounceRef.current > bounceThrottle) {
         lastBounceRef.current = now;
         Animated.sequence([
-          Animated.spring(stepBounce, { toValue: 1.16, useNativeDriver: true, speed: 60, bounciness: 14 }),
-          Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 40, bounciness: 4  }),
+          Animated.spring(stepBounce, { toValue: 1.12, useNativeDriver: true, speed: 50, bounciness: 10 }),
+          Animated.spring(stepBounce, { toValue: 1.00, useNativeDriver: true, speed: 30, bounciness: 3  }),
         ]).start();
 
-        rippleScale.setValue(0);
-        rippleOp.setValue(0.55);
-        Animated.parallel([
-          Animated.timing(rippleScale, { toValue: 1, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(rippleOp,   { toValue: 0, duration: 750, useNativeDriver: true }),
-        ]).start();
+        // Only show ripple if NOT playing sound — ripple is JS thread work
+        if ((rippleOp as any)._value === 0) {
+          rippleScale.setValue(0);
+          rippleOp.setValue(0.5);
+          Animated.parallel([
+            Animated.timing(rippleScale, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(rippleOp,   { toValue: 0, duration: 900, useNativeDriver: true }),
+          ]).start();
+        }
       }
 
-      if (type === 'postmeal' && total >= 100 && !doneRef.current) {
+      if ((type === 'postmeal' || isSeedPlanting) && total >= meta.goal && !doneRef.current) {
         doneRef.current = true;
         launchConfetti();
+        // Play majestic sound if blooming seed
+        if (isSeedPlanting) {
+          if (seedType === 'calm' || seedType === 'vitality') {
+            saveBloomedSeed(seedType, total);
+          }
+          // Temporarily play a nice sound or haptic sequence
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 300);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 600);
+        }
       }
 
       const syncState = () => {
         setSteps(total);
         Animated.timing(progressAnim, { toValue: CIRCUM - Math.min(1, total / meta.goal) * CIRCUM, duration: 250, useNativeDriver: false }).start();
+        if (isSeedPlanting) {
+          Animated.timing(seedGrowthAnim, { toValue: Math.min(1, total / meta.goal), duration: 250, useNativeDriver: false }).start();
+        }
         lastUpdateRef.current = Date.now();
         syncTimeoutRef.current = null;
       };
 
-      if (now - lastUpdateRef.current >= 1000) {
+      // Throttle step state updates to max once per 2 seconds to free JS thread
+      const now2 = Date.now();
+      if (now2 - lastUpdateRef.current >= 2000) {
         if (syncTimeoutRef.current) { clearTimeout(syncTimeoutRef.current); syncTimeoutRef.current = null; }
         syncState();
       } else if (!syncTimeoutRef.current) {
-        syncTimeoutRef.current = setTimeout(syncState, 1000 - (now - lastUpdateRef.current));
+        syncTimeoutRef.current = setTimeout(syncState, 2000 - (now2 - lastUpdateRef.current));
       }
     });
 
@@ -578,19 +914,31 @@ export default function StepSessionScreen() {
 
         {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
         <View style={s.ringWrapper}>
-          {/* Subtle breathing aura instead of massive glowing blob */}
-          <Animated.View style={{ position: 'absolute', top: 2, left: 2, width: RING_SZ + 36, height: RING_SZ + 36, borderRadius: (RING_SZ + 36) / 2, overflow: 'hidden', opacity: pulseAnim.interpolate({ inputRange: [1, 1.10], outputRange: [0.3, 0.8] }), transform: [{ scale: pulseAnim }], borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-            <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
-          </Animated.View>
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
+            <MemoRing
+              RING_SZ={RING_SZ} R={R} STROKE={STROKE} CIRCUM={CIRCUM}
+              pct={pct}
+              progressAnim={progressAnim}
+              pulseAnim={pulseAnim} glowAnim={glowAnim}
+              gyroX={gyroX} gyroY={gyroY}
+              isRaining={isRaining} isSunrise={isSunrise} isSunset={isSunset}
+              rainAnims={rainAnims}
+              compassHeading={compassHeading}
+              liquidPulse={liquidPulse}
+              heartbeatIntervalRef={heartbeatIntervalRef}
+              rippleScaleHeart={rippleScaleHeart}
+              rippleOpHeart={rippleOpHeart}
+              isSeedPlanting={isSeedPlanting}
+              seedType={seedType}
+              seedGrowthAnim={seedGrowthAnim}
+            />
 
-          {/* Inner disc for elegant contrast */}
-          <View style={{ position: 'absolute', top: 30, left: 30, width: RING_SZ - 20, height: RING_SZ - 20, borderRadius: (RING_SZ - 20) / 2, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-          </View>
-
-          <MemoRing RING_SZ={RING_SZ} R={R} STROKE={STROKE} CIRCUM={CIRCUM} GA={GA} GB={GB} C={C} progressAnim={progressAnim} rot1={rot1} rot2={rot2} />
-
-          {/* Centre content */}
+            {/* Feature 6: Animated quote below ring */}
+            <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginTop: 10, letterSpacing: 0.5, opacity: quoteOpacity }}>
+              {QUOTES[quoteIdx]}
+            </Animated.Text>
+          
+            {/* Inner Content overlay */}
           <View style={[s.centreBox, { gap: 3 }]}>
             {/* Badge */}
             <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: C + '20', borderWidth: 1, borderColor: C + '60', marginBottom: 4 }}>
@@ -603,8 +951,18 @@ export default function StepSessionScreen() {
               <Text style={[s.bigStepsUnit, playingId && { fontSize: 10 }]}>STEPS</Text>
             </View>
             
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{distKm.toFixed(2)} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: '500' }}>km</Text></Text>
+              </View>
+              <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{pace}</Text>
+              </View>
+            </View>
+            
             {!playingId && (
-              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '40' }]}>
+              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '40', marginTop: 4 }]}>
                 <Text style={[s.goalChipTxt, { color: C }]}>
                   {Math.min(100, Math.round(pct * 100))}% · {meta.goal.toLocaleString()} goal
                 </Text>
@@ -654,6 +1012,7 @@ export default function StepSessionScreen() {
             </View>
           </View>
         </View>
+        </View>
 
         {/* ── TIMER — frosted glass pill ──────────────────────────────────── */}
         <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 10, overflow: 'hidden' }}>
@@ -667,27 +1026,6 @@ export default function StepSessionScreen() {
           </Text>
         </View>
 
-        {/* ── METRIC ROW — crisp dark glass cards ───────────────────────────── */}
-        <View style={s.metricRow}>
-          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
-          {[
-            { icon: '🏃', val: `${distKm.toFixed(2)}`, unit: 'km',  label: 'Distance' },
-            { icon: '⚡',  val: pace,                    unit: 'pace', label: 'Pace'     },
-          ].map((m, i) => (
-            <View
-              key={i}
-              style={[
-                s.metric,
-                i > 0 && { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)' },
-              ]}
-            >
-              <Text style={s.metricIcon}>{m.icon}</Text>
-              <Text style={[s.metricVal, { color: C }]}>{m.val}</Text>
-              <Text style={s.metricUnit}>{m.label}</Text>
-            </View>
-          ))}
-        </View>
 
         {/* Post-meal progress bar */}
         {type === 'postmeal' && (
@@ -751,8 +1089,8 @@ export default function StepSessionScreen() {
       {/* ── CONFETTI / CELEBRATION OVERLAY ──────────────────────────────────── */}
       {confetti && (
         <Animated.View
-          style={[StyleSheet.absoluteFillObject, s.overlay, { opacity: confettiOp }]}
-          pointerEvents="none"
+          style={[StyleSheet.absoluteFillObject, s.overlay, { opacity: confettiOp, zIndex: 100 }]}
+          pointerEvents={isSeedPlanting ? 'auto' : 'none'}
         >
           <LinearGradient
             colors={['rgba(0,0,0,0.92)', 'rgba(5,20,12,0.96)']}
@@ -776,12 +1114,30 @@ export default function StepSessionScreen() {
             />
           ))}
           <View style={s.celebMsg}>
-            <Text style={s.celebEmoji}>🎉</Text>
-            <Text style={[s.celebTitle, { color: C }]}>Shatapavalli Complete!</Text>
-            <Text style={s.celebBody}>100 steps walked. Agni is awakened.</Text>
-            <Text style={[s.celebBody, { color: 'rgba(255,255,255,0.35)', marginTop: 4 }]}>
-              Walk no more — rest and digest 🙏
+            <Text style={s.celebEmoji}>{isSeedPlanting ? '🌺' : '🎉'}</Text>
+            <Text style={[s.celebTitle, { color: C }]}>
+              {isSeedPlanting ? 'Seed Bloomed!' : 'Shatapavalli Complete!'}
             </Text>
+            <Text style={s.celebBody}>
+              {isSeedPlanting ? 'Your seed has fully grown into a stunning flower.' : '100 steps walked. Agni is awakened.'}
+            </Text>
+            {!isSeedPlanting && (
+              <Text style={[s.celebBody, { color: 'rgba(255,255,255,0.35)', marginTop: 4 }]}>
+                Walk no more — rest and digest 🙏
+              </Text>
+            )}
+            
+            {isSeedPlanting && (
+              <TouchableOpacity
+                onPress={() => {
+                  endSession();
+                  router.replace('/garden');
+                }}
+                style={{ marginTop: 24, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: 0.5 }}>View in Garden</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.View>
       )}
@@ -808,7 +1164,31 @@ export default function StepSessionScreen() {
         color={C}
         gradA={GA}
         gradB={GB}
+        isSeedPlanting={isSeedPlanting}
       />
+
+      {/* ── Feature 9: Posture Coach Overlay ────────────────────────────────────── */}
+      <Animated.View 
+        pointerEvents="none" 
+        style={[
+          StyleSheet.absoluteFill,
+          { opacity: lookDownAnim, alignItems: 'center', justifyContent: 'center' }
+        ]}
+      >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.6)', 'transparent']}
+          style={{ width: '100%', paddingVertical: 60, alignItems: 'center' }}
+        >
+          <Ionicons name="leaf-outline" size={42} color="rgba(255,255,255,0.9)" style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 0.5, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+            Look up at the sky.
+          </Text>
+          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', fontWeight: '500', letterSpacing: 0.3 }}>
+            Walk organically. Take a nature bath.
+          </Text>
+        </LinearGradient>
+      </Animated.View>
     </ImageBackground>
   );
 }
@@ -817,69 +1197,59 @@ export default function StepSessionScreen() {
 // Exit Modal — frosted glass
 // ─────────────────────────────────────────────────────────────────────────────
 function ExitModal({
-  visible, onClose, onMinimize, onEnd, color, gradA, gradB
+  visible, onClose, onMinimize, onEnd, color, gradA, gradB, isSeedPlanting
 }: {
-  visible: boolean; onClose: () => void; onMinimize: () => void; onEnd: () => void; color: string; gradA: string; gradB: string;
+  visible: boolean; onClose: () => void; onMinimize: () => void; onEnd: () => void; color: string; gradA: string; gradB: string; isSeedPlanting: boolean;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
         
-        {/* Apple-style floating premium frosted glass sheet */}
-        <View style={{ borderRadius: 28, width: '100%', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.5, shadowRadius: 40 }}>
-          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+        {/* Solid, slim, elegant modal */}
+        <View style={{ width: '100%', maxWidth: 320, backgroundColor: '#0f172a', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.05)', 'transparent']}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.2 }}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
           
-          <View style={{ padding: 28, paddingBottom: 16, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 28 }}>
+          <View style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}>
             
-            {/* Top inner shine */}
-            <LinearGradient
-              colors={['rgba(255,255,255,0.25)', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.2 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            
-            {/* Elegant minimal icon */}
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: '#FFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10 }}>
-              <Ionicons name="walk" size={24} color="#fff" style={{ marginLeft: 3 }} />
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={isSeedPlanting ? "leaf" : "walk"} size={22} color="#fff" style={isSeedPlanting ? {} : { marginLeft: 3 }} />
             </View>
             
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.35 }}>
-              Session in Progress
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.2 }}>
+              {isSeedPlanting ? 'Abandon Seed?' : 'End Session?'}
             </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 28, lineHeight: 18, paddingHorizontal: 12 }}>
-              Minimize to keep tracking steps and playing audio in the background, or end your session.
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 24, lineHeight: 18, paddingHorizontal: 10 }}>
+              {isSeedPlanting 
+                ? 'Your seed is still growing. Minimize to keep tracking steps, or end to discard it.' 
+                : 'Minimize to keep tracking steps and audio, or end your walk now.'}
             </Text>
             
-            <View style={{ width: '100%', gap: 12 }}>
-              {/* Keep Walking (Primary Safe Action) — Glass Button */}
+            <View style={{ width: '100%', gap: 10 }}>
               <TouchableOpacity
                 onPress={onMinimize}
-                style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+                style={{ borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}
                 activeOpacity={0.8}
               >
-                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Ionicons name="chevron-down" size={16} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 }}>Keep Walking in Background</Text>
-                </View>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>Keep in Background</Text>
               </TouchableOpacity>
               
-              {/* End Session (Destructive) — Subtle Red Tint */}
               <TouchableOpacity
                 onPress={onEnd}
-                style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}
+                style={{ borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}
                 activeOpacity={0.8}
               >
-                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Ionicons name="stop" size={14} color="#fca5a5" />
-                  <Text style={{ color: '#fca5a5', fontWeight: '700', fontSize: 15, letterSpacing: 0.3 }}>End Session</Text>
-                </View>
+                <Text style={{ color: '#fca5a5', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>End Session</Text>
               </TouchableOpacity>
             </View>
             
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 20, width: '100%', alignItems: 'center' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontSize: 15, fontWeight: '600', letterSpacing: 0.2 }}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 16, paddingVertical: 12, width: '100%' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -2781,7 +2781,7 @@ function WeatherSection({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8 }}
+          contentContainerStyle={{ gap: 6, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 6 }}
         >
           {weather.hourly?.map((pt, i) => {
             const isNow = i === 0;
@@ -2825,7 +2825,7 @@ const WSEC = StyleSheet.create({
     elevation: 18,
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
-  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 4, gap: 10 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 2, gap: 10 },
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bigEmoji: { fontSize: 32 },
@@ -2840,7 +2840,7 @@ const WSEC = StyleSheet.create({
   chevronWrap: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', marginLeft: 4 },
   chevron: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '900', lineHeight: 14 },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
-  hourCard: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 54, gap: 2 },
+  hourCard: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 54, gap: 2 },
   hourCardNow: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' },
   hourTime: { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 },
   hourEmoji: { fontSize: 20, marginVertical: 2 },
@@ -6040,9 +6040,23 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           {/* TITLE + DATE HEADER */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5, marginBottom: 5 }}>
-                ✦  VEDIC ALMANAC
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5 }}>
+                  ✦  VEDIC ALMANAC
+                </Text>
+                
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowCalendar(true); }}
+                    style={{ backgroundColor: 'rgba(244,63,94,0.12)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(244,63,94,0.35)', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  >
+                    <Text style={{ fontSize: 9 }}>📅</Text>
+                    <Text style={{ fontSize: 7, fontWeight: '800', color: '#fda4af', letterSpacing: 0.8 }}>MONTH</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
               <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 26 }}>
                 {now.toLocaleDateString('en-IN', { weekday: 'long' })}
               </Text>
@@ -6190,34 +6204,33 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
               </View>
             </View>
           )}
-
-          {/* ACTION BUTTONS */}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          {/* ULTRA-PREMIUM ACTION BUTTONS (BOTTOM) */}
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 8, paddingHorizontal: 4 }}>
             <TouchableOpacity
-              activeOpacity={0.82}
+              activeOpacity={0.85}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
-              style={{ flex: 1, borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.38)' }}>
+              style={{ flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.4)', shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8 }}>
               <LinearGradient
-                colors={['rgba(167,139,250,0.16)', 'rgba(96,165,250,0.09)', 'rgba(167,139,250,0.06)']}
+                colors={['rgba(167,139,250,0.22)', 'rgba(96,165,250,0.1)', 'rgba(167,139,250,0.05)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <Text style={{ fontSize: 14 }}>🪐</Text>
-                <Text style={{ fontSize: 9, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.2 }}>
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 12 }}>
+                <Text style={{ fontSize: 18, textShadowColor: 'rgba(167,139,250,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>🪐</Text>
+                <Text style={{ fontSize: 10, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                   ASTRAL SCIENCE
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
-              activeOpacity={0.82}
+              activeOpacity={0.85}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
-              style={{ flex: 1, borderRadius: 13, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,63,94,0.35)' }}>
+              style={{ flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,63,94,0.4)', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8 }}>
               <LinearGradient
-                colors={['rgba(244,63,94,0.14)', 'rgba(244,63,94,0.06)', 'transparent']}
+                colors={['rgba(244,63,94,0.22)', 'rgba(244,63,94,0.1)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <Text style={{ fontSize: 14 }}>📅</Text>
-                <Text style={{ fontSize: 9, fontWeight: '900', color: '#fda4af', letterSpacing: 1.2 }}>
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 12 }}>
+                <Text style={{ fontSize: 18, textShadowColor: 'rgba(244,63,94,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>📅</Text>
+                <Text style={{ fontSize: 10, fontWeight: '900', color: '#fda4af', letterSpacing: 1.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                   COSMIC FESTIVALS
                 </Text>
               </LinearGradient>

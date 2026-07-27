@@ -3137,22 +3137,22 @@ function SoundReelsModal({
 
         {/* Ultra-Modern Action Popup */}
         {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }]}>
             <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
-            <Animated.View style={{ width: W * 0.85, maxWidth: 350, borderRadius: 32, overflow: 'hidden', backgroundColor: 'rgba(20,20,22,0.75)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15 }}>
+            <Animated.View style={{ width: W * 0.85, maxWidth: 320, borderRadius: 28, overflow: 'hidden', backgroundColor: 'rgba(15,15,18,0.85)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15 }}>
               <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 32, alignItems: 'center' }}>
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-                   <Ionicons name="musical-notes-outline" size={28} color="#FFF" />
+              <View style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                   <Ionicons name="musical-notes-outline" size={20} color="#FFF" />
                 </View>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 12, fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.4 }}>Leave Session?</Text>
-                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22 }}>You can minimize the player to continue listening in the background, or stop it entirely.</Text>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.3 }}>Leave Session?</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>You can minimize the player to continue listening in the background.</Text>
               </View>
               
-              <View style={{ paddingHorizontal: 24, paddingBottom: 28, gap: 14 }}>
+              <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 10 }}>
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={() => {
@@ -3162,12 +3162,12 @@ function SoundReelsModal({
                   }}
                 >
                   <LinearGradient
-                    colors={['#0A84FF', '#005BB5']}
+                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', shadowColor: '#0A84FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 12 }}
+                    style={{ paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
                   >
-                    <Ionicons name="chevron-down" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold' }}>Minimize & Keep Playing</Text>
+                    <Ionicons name="chevron-down" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Keep in Background</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -3179,10 +3179,10 @@ function SoundReelsModal({
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255,69,58,0.1)', borderWidth: 1, borderColor: 'rgba(255,69,58,0.25)' }}
+                  style={{ paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255,69,58,0.1)', borderWidth: 1, borderColor: 'rgba(255,69,58,0.2)' }}
                 >
-                  <Ionicons name="power" size={20} color="#FF453A" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '700', fontFamily: 'Nunito_700Bold' }}>Leave Session</Text>
+                  <Ionicons name="close" size={18} color="#FF453A" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 16, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>End Session</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3193,7 +3193,7 @@ function SoundReelsModal({
                   }}
                   style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
                 >
-                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -3848,121 +3848,112 @@ function SleepTabInner() {
 
         <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
         
-        {/* Top Header Bar (Premium Square Edge-to-Edge) - Now Sticky Outside ScrollView */}
+        {/* Ultra Premium Smart Bar (Edge-to-Edge) */}
         <View 
           style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
           onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
         >
-          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(10,15,30,0.1)', paddingBottom: 6, overflow: 'hidden' }}>
-              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'transparent']}
-                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              {/* Bottom shimmer line hinting expansion */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
-              
-              {/* Main row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 0, paddingRight: 14, gap: 10 }}>
-                {/* Back Icon */}
-                {isSearching ? (
-                  <TouchableOpacity onPress={() => {
-                    Keyboard.dismiss();
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setIsSearching(false);
-                    setSearchQuery('');
-                  }} activeOpacity={0.7} style={{ padding: 4, marginRight: 4 }}>
-                    <Ionicons name="arrow-back" size={28} color="rgba(255,255,255,0.95)" />
-                  </TouchableOpacity>
-                ) : null}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(10,15,30,0.15)',
+            borderWidth: 0,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderColor: 'rgba(255,255,255,0.15)',
+            borderRadius: 0,
+            paddingLeft: 16,
+            paddingRight: 10,
+            paddingTop: Platform.OS === 'ios' ? 12 : 16,
+            paddingBottom: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            elevation: 5,
+            overflow: 'hidden'
+          }}>
+            <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <LinearGradient
+              colors={['rgba(255,255,255,0.12)', 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject} pointerEvents="none"
+            />
+            {/* Bottom shimmer line hinting expansion */}
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
 
-                {/* Search Bar (Expands inline) */}
-                <TouchableOpacity
-                  onPress={() => { 
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setIsSearching(true); 
-                  }}
-                  activeOpacity={0.8}
-                  style={isSearching ? {
-                    flex: 1,
+            {isSearching ? (
+              <TouchableOpacity onPress={() => {
+                Keyboard.dismiss();
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setIsSearching(false);
+                setSearchQuery('');
+              }} activeOpacity={0.7} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={24} color="rgba(255,255,255,0.95)" />
+              </TouchableOpacity>
+            ) : (
+              <Ionicons name="search" size={20} color="rgba(255,255,255,0.7)" />
+            )}
+
+            {isSearching ? (
+              <TextInput
+                ref={searchInputRef}
+                style={{ flex: 1, fontSize: 16, color: '#FFF', fontFamily: 'Nunito_400Regular', marginLeft: 8, paddingVertical: 4 }}
+                autoFocus
+                placeholder="Search sounds..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setIsSearching(true);
+                }}
+                activeOpacity={0.8}
+                style={{ flex: 1, marginLeft: 12, paddingVertical: 8, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.2 }}>
+                  Search sounds, ragas...
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isSearching && searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 8 }}>
+                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            )}
+
+            {!isSearching && (
+              <TouchableOpacity 
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} 
+                activeOpacity={0.85} 
+                style={{ marginLeft: 'auto' }}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.08)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ 
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    borderRadius: 12,
-                    paddingHorizontal: 12,
-                    height: 40,
-                  } : {
-                    marginLeft: 'auto',
-                    padding: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 9,
+                    borderRadius: 99,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.3)',
                   }}
                 >
-                  <Ionicons name="search" size={isSearching ? 16 : 24} color="rgba(255,255,255,0.95)" />
-                  {isSearching && (
-                    <TextInput
-                      ref={searchInputRef}
-                      style={{ flex: 1, fontSize: 15, color: '#FFF', fontFamily: 'Nunito_400Regular', marginLeft: 10 }}
-                      autoFocus
-                      placeholder="Search sounds, ragas..."
-                      placeholderTextColor="rgba(255,255,255,0.4)"
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      returnKeyType="search"
-                    />
-                  )}
-                  {isSearching && searchQuery.length > 0 && (
-                     <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-                       <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
-                     </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-
-                {/* Cancel (only visible when searching) */}
-                {isSearching && (
-                  <TouchableOpacity 
-                     onPress={() => {
-                       Keyboard.dismiss();
-                       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                       setIsSearching(false);
-                       setSearchQuery('');
-                     }}
-                     style={{ paddingVertical: 8, paddingLeft: 4 }}
-                  >
-                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Select Sound Premium Button on the right */}
-                {!isSearching && (
-                  <TouchableOpacity 
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} 
-                    activeOpacity={0.8} 
-                    style={{ marginLeft: 6 }}
-                  >
-                    <LinearGradient
-                      colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.1)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ 
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: 14,
-                        paddingVertical: 7,
-                        borderRadius: 24,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.3)',
-                      }}
-                    >
-                      <Ionicons name="musical-notes" size={15} color="#FFF" style={{ marginRight: 6 }} />
-                      <Text style={{ color: '#FFF', fontSize: 13, fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>Select Sound</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+                  <Ionicons name="musical-notes" size={15} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={{ color: '#FFF', fontSize: 13, fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>Select Sound</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
+        </View>
 
         {/* Category Tab Strip - Now Sticky Outside ScrollView */}
         {!isSearching && (

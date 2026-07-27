@@ -66,6 +66,7 @@ type SoundPlayerCtx = {
   clearPendingOpenReels: () => void;
   getPositionMs: () => number;
   seekTo: (positionMs: number) => Promise<void>;
+  setGlobalVolume: (vol: number) => Promise<void>;
 };
 
 const Ctx = createContext<SoundPlayerCtx | null>(null);
@@ -129,8 +130,14 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   // Once-play mode: when true, stop instead of looping when track finishes
   const noLoopRef = useRef(false);
 
-  // Track last automatic update time to avoid polling getStatusAsync
   const lastStatusUpdateRef = useRef<Map<string, number>>(new Map());
+  const globalVolumeRef = useRef(1.0);
+
+  const setGlobalVolume = useCallback(async (vol: number) => {
+    globalVolumeRef.current = vol;
+    const promises = Array.from(mixRefs.current.values()).map(s => s.setVolumeAsync(vol));
+    await Promise.all(promises);
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -179,22 +186,24 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           try {
             await preBuffered.setStatusAsync({
               isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
-              volume: 1.0, progressUpdateIntervalMillis: 500,
+              volume: globalVolumeRef.current,
+              // Increase interval to 1000ms — reduces JS thread callback frequency
+              progressUpdateIntervalMillis: 1000,
               positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0,
             } as any);
             sound = preBuffered;
           } catch {
             try { await preBuffered.unloadAsync(); } catch {}
-            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
+            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
             sound = r.sound;
           }
         } else {
           try { await preBuffered.unloadAsync(); } catch {}
-          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
+          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 1000, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
           sound = r.sound;
         }
       } else {
-        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: 1.0, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 500, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
+        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 1000, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 });
         sound = r.sound;
       }
       if (epoch !== undefined && epoch !== playEpochRef.current) {
@@ -221,14 +230,19 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           if (status.durationMillis != null) {
             const durSecs = Math.round(status.durationMillis / 1000);
             _durationCache.set(meta.id, durSecs);
-            setPlayingDurSecs(prev => prev ?? durSecs);
+            // Only call setState if value is new — avoids needless re-renders
+            setPlayingDurSecs(prev => (prev === durSecs ? prev : durSecs));
           }
           if (status.positionMillis != null) positionMsRef.current = status.positionMillis;
+          // Metering: use native-driver-safe value update via ref only.
+          // Do NOT call Animated.timing here — it runs on JS thread and competes
+          // with the audio buffer, causing audible stutter.
           if ((status as any).metering != null && !isPausedRef.current) {
             const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
             const smoothed = meteringRef.current * 0.38 + raw * 0.62;
             meteringRef.current = smoothed;
-            Animated.timing(meteringAnimRef.current, { toValue: smoothed, duration: 80, useNativeDriver: false }).start();
+            // Update the Animated.Value directly (no animation) — zero JS thread cost
+            meteringAnimRef.current.setValue(smoothed);
           }
           if (
             trimLastMs > 0 &&
@@ -276,7 +290,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       });
       sound.setStatusAsync({ isMeteringEnabled: true } as any).catch(() => {});
       if (trimLastMs > 0) {
-        sound.setStatusAsync({ progressUpdateIntervalMillis: 200 }).catch(() => {});
+        // Higher interval when trimming — still catches end-of-track in time
+        sound.setStatusAsync({ progressUpdateIntervalMillis: 500 }).catch(() => {});
       }
       mixRefs.current.set(meta.id, sound);
       return sound;
@@ -411,7 +426,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }
       const { sound } = await Audio.Sound.createAsync(
         resolvedSrc,
-        { isLooping: true, volume: 1.0, shouldPlay: false },
+        { isLooping: true, volume: globalVolumeRef.current, shouldPlay: false },
       );
       // Only store if slot is still free and not actively playing
       if (!mixRefs.current.has(meta.id) && !preBufferRef.current.has(meta.id)) {
@@ -800,7 +815,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
-      isAudioLoading, audioNetworkError, getPositionMs, seekTo,
+      isAudioLoading, audioNetworkError, getPositionMs, seekTo, setGlobalVolume,
       preBufferSound, cleanPreBuffer,
       moodPhase, preMood,
       requestPlay, confirmMood, skipMood, dismissMoodSheet,
@@ -835,7 +850,7 @@ export function useSoundPlayer(): SoundPlayerCtx {
       openReelsOrPlayer: () => {}, registerReelsOpener: () => {},
       unregisterReelsOpener: () => {},
       pendingOpenReels: 0, clearPendingOpenReels: () => {},
-      getPositionMs: () => 0, seekTo: async () => {},
+      getPositionMs: () => 0, seekTo: async () => {}, setGlobalVolume: async () => {},
     };
   }
   return ctx;

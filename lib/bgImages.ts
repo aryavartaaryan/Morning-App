@@ -55,10 +55,10 @@ export const BG_URLS: Record<string, string> = {
   morning:     'https://images.pexels.com/photos/34491611/pexels-photo-34491611.jpeg',
   morning_2:   'https://images.pexels.com/photos/14469571/pexels-photo-14469571.jpeg?auto=compress&cs=tinysrgb&w=600',
   morning_late: 'https://images.pexels.com/photos/2121062/pexels-photo-2121062.jpeg',
-  morning_late_2: 'https://images.pexels.com/photos/21134472/pexels-photo-21134472.jpeg?auto=compress&cs=tinysrgb&w=600',
+  morning_late_2: 'https://images.pexels.com/photos/6229960/pexels-photo-6229960.jpeg',
   midday_early: 'https://images.pexels.com/photos/14106721/pexels-photo-14106721.jpeg?auto=compress&cs=tinysrgb&w=600',
   midday_early_2: 'https://images.pexels.com/photos/33638423/pexels-photo-33638423.jpeg?auto=compress&cs=tinysrgb&w=600',
-  midday_early_mid: 'https://images.pexels.com/photos/7171831/pexels-photo-7171831.jpeg?auto=compress&cs=tinysrgb&w=600',
+  midday_early_mid: 'https://images.pexels.com/photos/4558590/pexels-photo-4558590.jpeg',
   midday_early_late: 'https://images.pexels.com/photos/37366260/pexels-photo-37366260.jpeg',
   midday:     'https://images.pexels.com/photos/3269583/pexels-photo-3269583.jpeg',
   midday_late: 'https://images.pexels.com/photos/35452047/pexels-photo-35452047.jpeg',
@@ -347,11 +347,14 @@ export async function ensureAllBgsCachedWithProgress(
     await Promise.all(executing);
 
     await store.set(KEYS.bgCacheVersion, JSON.stringify(updatedHashes));
-    // Note: individual download failures are already handled per-image (old file kept, hash not saved).
-    // We do NOT throw an error here to prevent the setup screen from getting stuck.
+    
+    if (hasError) {
+      throw new Error("Some background images failed to download.");
+    }
   } catch (err) {
-    // Swallow silently to prevent unhandled rejection crashes on background calls.
-    console.warn('[bgImages] ensureAllBgsCachedWithProgress ignored error:', err);
+    // Throw error so setup screen shows retry prompt, enforcing full preload.
+    console.warn('[bgImages] ensureAllBgsCachedWithProgress error:', err);
+    throw err;
   }
 }
 

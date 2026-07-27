@@ -1305,27 +1305,12 @@ function CustomTabBar() {
                       styles.label,
                       {
                         color: focused ? focusedColor : unfocusedColor,
-                        fontSize: 11,
                         fontWeight: "900",
                         letterSpacing: 0.2,
                       },
                     ]}
                   >
-                    Nāda
-                  </Text>
-                  <Text
-                    style={[
-                      styles.label,
-                      {
-                        color: focused
-                          ? focusedColor + "88"
-                          : unfocusedColor + "88",
-                        fontWeight: "500",
-                        marginTop: -1,
-                      },
-                    ]}
-                  >
-                    Resonance
+                    Resonate
                   </Text>
                 </View>
               ) : tab.name === "alarms" ? (
@@ -1355,21 +1340,7 @@ function CustomTabBar() {
                       },
                     ]}
                   >
-                    Nada
-                  </Text>
-                  <Text
-                    style={[
-                      styles.label,
-                      {
-                        color: focused
-                          ? focusedColor + "88"
-                          : unfocusedColor + "88",
-                        fontWeight: "500",
-                        marginTop: -1,
-                      },
-                    ]}
-                  >
-                    Steps
+                    Rhythm
                   </Text>
                 </View>
               ) : (

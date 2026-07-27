@@ -43,13 +43,9 @@ import { installCrashShield } from '@/lib/crashShield';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { MoodKey } from '@/components/MoodSheet';
 
-// Prevent the native splash from auto-hiding, then immediately dismiss it.
-// Our custom animated SplashOverlay (rendered below) is the ONLY splash the
-// user sees. The native splash background matches the overlay bg (#04030F)
-// so even the briefest frame is invisible.
-SplashScreen.preventAutoHideAsync().then(() => {
-  SplashScreen.hideAsync().catch(() => {});
-}).catch(() => {});
+// Prevent the native splash from auto-hiding.
+// We dismiss it dynamically when leaving the 'gate' phase to avoid flashes.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Install master crash shield as early as possible (belt-and-suspenders;
 // index.js already calls this first, but this ensures it even in Expo Go / web)
@@ -1506,8 +1502,13 @@ export default function RootLayout() {
     try { return getBgSourceSync('splash'); } catch { return ''; }
   });
 
-  // Native splash is hidden immediately at module level (see top of file).
-  // No additional hide call needed here.
+  // Hide the native splash only when we know what phase we are in.
+  // This prevents the fraction-of-a-second flash on first install.
+  useEffect(() => {
+    if (phase !== 'gate' || showSurvey) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [phase, showSurvey]);
 
   // ── Download gate: runs once fonts are loaded ─────────────────────────────
   // STRATEGY:
@@ -1765,9 +1766,15 @@ export default function RootLayout() {
               )}
               <BodhiNotificationListener />
 
-              {/* NADA animated splash (normal startup) */}
-              {phase === 'splash' && (
-                <SplashOverlay key="naad-splash" onDone={() => setPhase('done')} bgUri={splashBgUri} />
+              {/* NADA animated splash (normal startup and after downloading) */}
+              {(phase === 'splash' || phase === 'downloading_done') && (
+                <SplashOverlay 
+                  key="naad-splash" 
+                  onDone={() => {
+                    setPhase('done');
+                  }} 
+                  bgUri={splashBgUri} 
+                />
               )}
 
               <ScreenErrorBoundary name="Navigation">
@@ -1792,10 +1799,6 @@ export default function RootLayout() {
         </AppErrorBoundary>
 
         {/* ── SETUP OVERLAY — sits on top of the already-mounted Stack ── */}
-        {/* gate: very first open before we know if setup is needed */}
-        {phase === 'gate' && (
-          <SplashOverlay key="naad-splash-gate" onDone={() => {}} bgUri={splashBgUri} />
-        )}
 
         {/* downloading / downloading_done: first-install setup ring */}
         {(phase === 'downloading' || phase === 'downloading_done') && !showSurvey && (

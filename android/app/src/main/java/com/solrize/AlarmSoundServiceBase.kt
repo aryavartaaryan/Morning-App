@@ -8,6 +8,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.*
+import android.util.Log
 import android.widget.Toast
 import java.io.File
 
@@ -785,6 +786,25 @@ abstract class AlarmSoundServiceBase : Service() {
             } catch (e: Exception) {
                 // ignore
             }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // ── COLD-BOOT GUARD: extra layer for the SharedPreferences race ──────
+        // On first app open after phone restart, BootReceiver clears alarm_fired_pending
+        // using .commit() (sync). But if somehow this service was already started by
+        // a stale AlarmManager PendingIntent BEFORE BootReceiver ran, isAlarmActive()
+        // may return false by the time we check here. Stop cleanly instead of
+        // launching the alarm UI for no reason and causing a crash.
+        if (intent != null && !isAlarmActive() && !isAlarmStopping()) {
+            Log.w("AriseAlarm", "${javaClass.simpleName}: started with real intent but isAlarmActive=false — cold-boot phantom, stopping.")
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startForeground(getNotifId(), buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                } else {
+                    startForeground(getNotifId(), buildNotification())
+                }
+            } catch (e: Exception) { /* ignore */ }
             stopSelf()
             return START_NOT_STICKY
         }

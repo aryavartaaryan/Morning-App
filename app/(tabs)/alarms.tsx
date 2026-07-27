@@ -526,7 +526,7 @@ const AutoScrollingCategories = React.memo(() => {
     <View style={{ flexDirection: 'row', alignItems: 'center' }} onLayout={onLayout}>
       {AUTO_SCROLL_CATEGORIES.map((tag, idx) => (
         <View key={`${tag.label}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
-          <Text style={{ fontSize: 20, fontWeight: '600', fontFamily: 'DancingScript_600SemiBold', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', fontFamily: 'DancingScript_600SemiBold', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.8 }}>
             {tag.label}
           </Text>
           <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginLeft: 16 }} />
@@ -1247,7 +1247,7 @@ export default function AlarmsTab() {
           />
           {/* Main title */}
           <Text style={{
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: '600',
             color: '#FFF8F0',
             letterSpacing: 0.5,

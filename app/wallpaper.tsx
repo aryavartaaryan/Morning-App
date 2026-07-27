@@ -208,14 +208,14 @@ export default function WallpaperSettings() {
               if (wallpaperMode !== 'solar') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setWallpaperMode('solar');
-                showToast('☀️ Auto Solar Rhythm activated!', 'success');
+                showToast('☀️ Auto-Solar Mode activated!', 'success');
               }
             }}
             style={[styles.segmentBtn, wallpaperMode === 'solar' && styles.segmentBtnActiveSolar]}
           >
             <Text style={{ fontSize: 14 }}>☀️</Text>
             <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD }]}>
-              Solar
+              Auto-Solar
             </Text>
           </TouchableOpacity>
 
@@ -236,22 +236,6 @@ export default function WallpaperSettings() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => {
-              if (wallpaperMode !== 'video') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setWallpaperMode('video');
-                showToast('✨ Cinemagraph active.', 'info');
-              }
-            }}
-            style={[styles.segmentBtn, wallpaperMode === 'video' && styles.segmentBtnActiveVideo]}
-          >
-            <Text style={{ fontSize: 14 }}>✨</Text>
-            <Text style={[styles.segmentText, wallpaperMode === 'video' && { color: '#60a5fa' }]}>
-              Video
-            </Text>
-          </TouchableOpacity>
         </BlurView>
 
         {/* Mode Description Banner */}
@@ -262,33 +246,14 @@ export default function WallpaperSettings() {
               style={styles.modeDescGradient}
             >
               <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-                <Text style={{ fontSize: 20 }}>☀️</Text>
+                <Text style={{ fontSize: 16 }}>☀️</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: GOLD, marginBottom: 2 }}>
-                  Circadian Solar Sync
+                <Text style={{ fontSize: 11, fontWeight: '700', color: GOLD, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  Auto-Solar Rhythm
                 </Text>
                 <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
                   Your wallpaper shifts dynamically through 40 solar states in sync with the sun's elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        ) : wallpaperMode === 'video' ? (
-          <View style={[styles.modeDesc, { borderColor: 'rgba(96, 165, 250, 0.25)' }]}>
-            <LinearGradient
-              colors={['rgba(96, 165, 250, 0.12)', 'rgba(10, 15, 30, 0.3)']}
-              style={styles.modeDescGradient}
-            >
-              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
-                <Text style={{ fontSize: 20 }}>✨</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#60a5fa', marginBottom: 2 }}>
-                  Calming Video Active
-                </Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
-                  A subtle, relaxing video loop plays continuously in the background for a premium, immersive experience.
                 </Text>
               </View>
             </LinearGradient>
@@ -300,14 +265,14 @@ export default function WallpaperSettings() {
               style={styles.modeDescGradient}
             >
               <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Text style={{ fontSize: 20 }}>📌</Text>
+                <Text style={{ fontSize: 16 }}>📌</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: PURPLE, marginBottom: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: PURPLE, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
                   Pinned Wallpaper Active
                 </Text>
                 <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
-                  Select any theme below to pin it as your permanent background. Tap Auto Solar anytime to re-enable dynamic transitions.
+                  Select any theme below to pin it as your permanent background. Tap Auto-Solar anytime to re-enable dynamic transitions.
                 </Text>
               </View>
             </LinearGradient>
@@ -337,8 +302,8 @@ export default function WallpaperSettings() {
                 >
                   <Text style={{ fontSize: 14 }}>{cat.emoji}</Text>
                   <Text style={{
-                    fontSize: 13,
-                    fontWeight: '800',
+                    fontSize: 11,
+                    fontWeight: '700',
                     color: isSelected ? '#fff' : '#FFFFFF80'
                   }}>
                     {cat.label}
@@ -380,7 +345,7 @@ export default function WallpaperSettings() {
                       }
                     ]}
                   >
-                    <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                    <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden' }}>
                       <AsyncWallpaperImage bgKey={key} />
                       <LinearGradient
                         colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
@@ -453,14 +418,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#fff',
     letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 11,
-    color: '#FFFFFF99',
+    fontSize: 10,
+    color: '#FFFFFF80',
     marginBottom: 2,
     fontWeight: '700',
     letterSpacing: 1.5,
@@ -486,25 +451,25 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   heroContainer: {
-    height: 160,
+    height: 120,
     justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 24,
   },
   heroContent: {
     alignItems: 'center',
   },
   heroTime: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '700',
     color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   heroName: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
     letterSpacing: 0.2,
@@ -513,18 +478,18 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   heroSub: {
-    fontSize: 13,
-    color: '#FFFFFFCC',
-    marginTop: 6,
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#FFFFFF99',
+    marginTop: 4,
+    fontWeight: '400',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   segmentedControl: {
     flexDirection: 'row',
-    borderRadius: 20,
-    padding: 6,
-    marginHorizontal: 16,
+    borderRadius: 99,
+    padding: 4,
+    marginHorizontal: 32,
     marginBottom: 24,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -536,8 +501,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 99,
     backgroundColor: 'transparent',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'transparent',
@@ -555,17 +520,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(96, 165, 250, 0.4)',
   },
   segmentText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#FFFFFF80',
     letterSpacing: 0.3,
   },
   modeDesc: {
     marginHorizontal: 16,
     marginBottom: 32,
-    borderRadius: 24,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   modeDescGradient: {
     padding: 20,
@@ -574,9 +539,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   modeDescIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -584,8 +549,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 99,
     borderWidth: StyleSheet.hairlineWidth,
   },
@@ -608,9 +573,9 @@ const styles = StyleSheet.create({
   gridItem: {
     flex: 1,
     height: 220,
-    borderRadius: 24,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
@@ -626,7 +591,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   timePillText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
@@ -647,8 +612,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   activeStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 8,
+    fontWeight: '700',
     color: '#000',
     letterSpacing: 0.5,
   },
@@ -658,8 +623,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   itemTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
     marginBottom: 3,
     letterSpacing: 0.2,
@@ -668,9 +633,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   itemSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,

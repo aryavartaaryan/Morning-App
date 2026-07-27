@@ -310,7 +310,7 @@ export function getTimedBgKey(
   return 'night';
 }
 
-export type WallpaperMode = 'solar' | 'manual' | 'video';
+export type WallpaperMode = 'solar' | 'manual';
 
 interface BgContextValue {
   bgUri: string | null;
