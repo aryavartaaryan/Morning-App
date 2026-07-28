@@ -81,7 +81,7 @@ export const BG_URLS: Record<string, string> = {
   evening_early_2: 'https://images.pexels.com/photos/5641976/pexels-photo-5641976.jpeg',
   evening:    'https://images.pexels.com/photos/7828546/pexels-photo-7828546.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid2: 'https://images.pexels.com/photos/36396694/pexels-photo-36396694.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_mid2: 'https://images.pexels.com/photos/4105227/pexels-photo-4105227.jpeg',
   night_early_late: 'https://images.pexels.com/photos/36221368/pexels-photo-36221368.jpeg',
   night:      'https://images.pexels.com/photos/18635120/pexels-photo-18635120.jpeg',
   night_late: 'https://images.pexels.com/photos/7607889/pexels-photo-7607889.jpeg',

@@ -878,17 +878,31 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); changeMonth(-1); }} style={{ padding: 10, paddingLeft: 0, opacity: showPicker ? 0 : 1 }} disabled={showPicker}>
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>‹</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setShowPicker(!showPicker); }} style={{ alignItems: 'center', paddingHorizontal: 16 }}>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
-                  {currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: '#f43f5e', letterSpacing: 2, marginBottom: 8 }}>
+                  COSMIC CALENDAR
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 2 }}>
-                    {showPicker ? 'CLOSE NAVIGATOR' : 'COSMIC CALENDAR'}
+                <TouchableOpacity 
+                  onPress={() => { Haptics.selectionAsync(); setShowPicker(!showPicker); }} 
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    paddingHorizontal: 20, paddingVertical: 6,
+                    backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                    borderWidth: 1, borderColor: 'rgba(244, 63, 94, 0.3)',
+                    borderRadius: 24,
+                    shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8
+                  }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
+                    {currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </Text>
-                  <Text style={{ fontSize: 10, color: '#f43f5e', fontWeight: '800' }}>{showPicker ? '↑' : '⌄'}</Text>
-                </View>
-              </TouchableOpacity>
+                  <Text style={{ fontSize: 12, color: '#f43f5e', fontWeight: '900', marginTop: 1 }}>
+                    {showPicker ? '✕' : '⌄'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); changeMonth(1); }} style={{ padding: 10, paddingRight: 0, opacity: showPicker ? 0 : 1 }} disabled={showPicker}>
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>›</Text>
               </TouchableOpacity>

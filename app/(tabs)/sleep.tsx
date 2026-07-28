@@ -3135,61 +3135,72 @@ function SoundReelsModal({
           </View>
         )}
 
-        {/* Ultra-Modern Action Popup */}
+        {/* Ultra-Premium iOS Style Action Popup */}
         {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 34 }]}>
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
-            <Animated.View style={{ width: '92%', maxWidth: 400, gap: 8 }}>
-              {/* Options Group */}
-              <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
-                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-                
-                <View style={{ paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(235,235,245,0.6)', fontFamily: 'Nunito_600SemiBold', textAlign: 'center' }}>Leave Session?</Text>
-                  <Text style={{ fontSize: 13, color: 'rgba(235,235,245,0.6)', fontFamily: 'Nunito_400Regular', textAlign: 'center', marginTop: 2 }}>You can minimize the player to continue listening in the background.</Text>
-                </View>
-                
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowClosePrompt(false);
-                    onClose(isLast);
-                  }}
-                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}
-                >
-                  <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>Keep in Background</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setShowClosePrompt(false);
-                    onStop();
-                    onClose(isLast);
-                  }}
-                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 20, color: '#FF453A', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>End Session</Text>
-                </TouchableOpacity>
+            <Animated.View style={{ 
+              width: 270, 
+              borderRadius: 14, 
+              overflow: 'hidden', 
+              backgroundColor: 'rgba(35,35,35,0.7)', 
+              shadowColor: '#000', 
+              shadowOffset: { width: 0, height: 4 }, 
+              shadowOpacity: 0.3, 
+              shadowRadius: 15, 
+              elevation: 15 
+            }}>
+              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              
+              <View style={{ padding: 20, paddingTop: 20, paddingBottom: 20, alignItems: 'center' }}>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFF', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', letterSpacing: -0.41, marginBottom: 4 }}>Leave Session?</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(235,235,245,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 18, letterSpacing: -0.08 }}>You can minimize the player to continue listening in the background.</Text>
               </View>
               
-              {/* Cancel Button */}
-              <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
-                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowClosePrompt(false);
-                  }}
-                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
+              
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowClosePrompt(false);
+                  onClose(isLast);
+                }}
+                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: -0.41 }}>Keep in Background</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowClosePrompt(false);
+                  onStop();
+                  onClose(isLast);
+                }}
+                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '400', fontFamily: 'Nunito_400Regular', letterSpacing: -0.41 }}>End Session</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowClosePrompt(false);
+                }}
+                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '400', fontFamily: 'Nunito_400Regular', letterSpacing: -0.41 }}>Cancel</Text>
+              </TouchableOpacity>
             </Animated.View>
           </View>
         )}

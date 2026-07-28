@@ -587,7 +587,6 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     });
   };
 
-  const pct = Math.round(Math.min(progress, 1) * 100);
   const SIZE = 280;
   const cx = SIZE / 2;
 
@@ -597,14 +596,23 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const offsetMain = cMain * (1 - Math.min(progress, 1));
 
   const animatedProgress = useRef(new Animated.Value(progress)).current;
+  const [pct, setPct] = useState(Math.round(Math.min(progress, 1) * 100));
+
   useEffect(() => {
     Animated.timing(animatedProgress, {
       toValue: progress,
-      duration: 350,
+      duration: progress === 1 ? 800 : 2500,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false
     }).start();
   }, [progress]);
+
+  useEffect(() => {
+    const listenerId = animatedProgress.addListener(({ value }) => {
+       setPct(Math.round(Math.min(value, 1) * 100));
+    });
+    return () => animatedProgress.removeListener(listenerId);
+  }, [animatedProgress]);
 
   const offsetMainAnim = animatedProgress.interpolate({
     inputRange: [0, 1],
@@ -1599,43 +1607,51 @@ export default function RootLayout() {
           const bgCount   = Object.keys(BG_URLS).length;
           const { TOTAL_SOUND_IMAGES: soundImgCount } = require('@/lib/soundImagePreload');
           const totalFiles = bgCount + soundImgCount;
-          let completedFiles = 0;
+          let maxP = parseFloat(savedProgressRaw || '0') || 0;
+          let bgsDone = 0;
+          let soundsDone = 0;
 
-          const tick = () => {
-            completedFiles++;
-            const p = Math.min(completedFiles / totalFiles, 1);
-            
-            // Only update the UI progress if it surpasses the visually restored progress
-            // so we don't jump backwards to 0 while re-scanning cached files on startup
-            if (p > (parseFloat(savedProgressRaw || '0') || 0) || completedFiles === totalFiles) {
-              if (!cancelled) setDlProgress(p);
-              // Save progress periodically to resume seamlessly
-              if (completedFiles % 3 === 0 || completedFiles === totalFiles) {
-                AsyncStorage.setItem(SETUP_PROGRESS_KEY, p.toString()).catch(() => {});
+          const updateProgress = () => {
+            const p = Math.min((bgsDone + soundsDone) / totalFiles, 1);
+            if (p > maxP || (bgsDone + soundsDone) === totalFiles) {
+              maxP = p;
+              if (!cancelled) setDlProgress(maxP);
+              if ((bgsDone + soundsDone) % 3 === 0 || (bgsDone + soundsDone) === totalFiles) {
+                AsyncStorage.setItem(SETUP_PROGRESS_KEY, maxP.toString()).catch(() => {});
               }
             }
           };
 
           setDlLabel('Preparing the app for you. Listen to the Nada sound till then and calm down...');
-          // Phase 1: BG images (critical — splash depends on these)
-          // Wrapped in its own try-catch so a network failure shows the error UI
-          // rather than crashing the entire setup flow.
-          try {
-            await ensureAllBgsCachedWithProgress(tick);
-          } catch {
-            if (!cancelled) {
-              setDlError(true);
-              setDlLabel('Connection interrupted');
-              return;
+          
+          // Phase 1: BG images
+          let bgSuccess = false;
+          while (!bgSuccess && !cancelled) {
+            try {
+              await ensureAllBgsCachedWithProgress((done) => {
+                bgsDone = done;
+                updateProgress();
+              }, 8);
+              bgSuccess = true;
+            } catch {
+              await new Promise(r => setTimeout(r, 2000));
             }
           }
 
           if (!cancelled) setDlLabel('Preparing your sounds...');
-          // Phase 2: Sound card + reel images (high concurrency for speed)
-          try {
-            await prefetchAllSoundImagesWithProgress(tick, 8);
-          } catch (e) {
-            console.warn('[Setup] Pre-fetch sound error (ignoring):', e);
+          
+          // Phase 2: Sound card + reel images
+          let soundSuccess = false;
+          while (!soundSuccess && !cancelled) {
+            try {
+              await prefetchAllSoundImagesWithProgress((done) => {
+                soundsDone = done;
+                updateProgress();
+              }, 8);
+              soundSuccess = true;
+            } catch {
+              await new Promise(r => setTimeout(r, 2000));
+            }
           }
 
           if (!cancelled) {

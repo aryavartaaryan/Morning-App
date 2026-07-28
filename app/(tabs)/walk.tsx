@@ -26,6 +26,7 @@ import {
   DeviceEventEmitter,
   TextInput,
   PanResponder,
+  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -67,7 +68,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 260;
+const RING_SIZE   = 240;
 const RING_STROKE = 16;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -130,6 +131,7 @@ export default function WalkTab() {
   const [ringDashOffset, setRingDashOffset] = useState(CIRCUMF);
   const [yesterdaySteps, setYesterdaySteps] = useState(0);
   const [weather, setWeather]           = useState<WeatherData | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [summary, setSummary]           = useState<any>(null);
   // Track compact step-session bar visibility for bottom padding
   const [stepBarActive, setStepBarActive] = useState(false);
@@ -442,6 +444,12 @@ export default function WalkTab() {
 
   // ── Launch session ──────────────────────────────────────────────────────────
   const launchSession = (type: 'morning' | 'evening' | 'postmeal') => {
+    if (!summary || summary.weeklyGoal === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setShowOnboarding(true);
+      return;
+    }
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push({
       pathname: '/step-session',
@@ -760,8 +768,12 @@ export default function WalkTab() {
                         opacity: 0.15,
                       }}>
                         <Svg width="100%" height="100%" viewBox="0 0 100 100">
-                          <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="1 3" />
-                          <Circle cx={50} cy={50} r={44} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+                          {/* Premium Outer Bezel / Track */}
+                          <Circle cx={50} cy={50} r={49} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+                          <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.2} strokeDasharray="1 2" />
+                          <Circle cx={50} cy={50} r={46} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.5} strokeDasharray="0.5 4" />
+                          <Circle cx={50} cy={50} r={43} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
+                          
                           <G transform="rotate(45, 50, 50)">
                             <Path d="M50 50 L48 48 L50 15 Z" fill="#7dd3fc" />
                             <Path d="M50 50 L50 15 L52 48 Z" fill="#38bdf8" />
@@ -852,14 +864,14 @@ export default function WalkTab() {
               ) : (
                 <>
                   {weather ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, opacity: 0.95 }}>
-                      <Text style={{ fontSize: 16 }}>{weather.emoji}</Text>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2, opacity: 0.95 }}>
+                      <Text style={{ fontSize: 15 }}>{weather.emoji}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                         {weather.temp}° • {weather.condition}
                       </Text>
                     </View>
                   ) : (
-                    <View style={{ height: 10, marginBottom: 6 }} />
+                    <View style={{ height: 10, marginBottom: 2 }} />
                   )}
                   
                   {/* Badge */}
@@ -872,13 +884,13 @@ export default function WalkTab() {
                   <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} INTENTION</Text>
 
                   {/* Feature 6: Animated mindful quote */}
-                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, opacity: quoteOpacity }}>
+                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', marginTop: 2, letterSpacing: 0.5, opacity: quoteOpacity }}>
                     {QUOTES[quoteIdx]}
                   </Animated.Text>
                   
                   <View style={st.ringDivider} />
                   
-                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 4, alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 0, alignItems: 'center' }}>
                     <View style={{ alignItems: 'center' }}>
                       <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
                       <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>km</Text>
@@ -959,21 +971,21 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#FFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 8, backgroundColor: 'rgba(0,0,0,0.15)' }}
+            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
           >
-            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.05)']}
+              colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.25)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 1)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'transparent']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+                colors={['rgba(255,255,255,0.8)', 'transparent']}
+                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
               />
               
               {/* Animated shimmer sweep */}
@@ -985,14 +997,14 @@ export default function WalkTab() {
                 pointerEvents="none"
               >
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.2)', 'transparent']}
+                  colors={['transparent', 'rgba(255,255,255,0.8)', 'transparent']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={{ flex: 1 }}
                 />
               </Animated.View>
               
-              <View style={{ paddingVertical: 15 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+              <View style={{ paddingVertical: 12 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                   {sessionTitle}
                 </Text>
               </View>
@@ -1001,29 +1013,30 @@ export default function WalkTab() {
 
           {/* Adjust Target Button */}
           <TouchableOpacity
-            style={{ borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6, backgroundColor: 'rgba(0,0,0,0.15)' }}
+            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
             onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
             activeOpacity={0.82}
           >
-            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+              colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+              <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
               
               {/* Top shine */}
               <LinearGradient
-                colors={['rgba(255,255,255,0.08)', 'transparent']}
+                colors={['rgba(255,255,255,0.15)', 'transparent']}
                 start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
               />
 
-              <View style={{ paddingVertical: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                  {summary && summary.weeklyGoal > 0 ? "Adjust Intentions" : "Set Intentions"}
-                </Text>>
+              <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                  Intentions
+                </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -1037,13 +1050,21 @@ export default function WalkTab() {
         visible={showGoalModal}
         currentWeekly={summary?.weeklyGoal ?? 35000}
         selectedSeed={selectedSeed}
-        onSeedSelect={setSelectedSeed}
+        onSeedSelect={(s) => setSelectedSeed(s as any)}
         onClose={() => setShowGoalModal(false)}
         accentColor={ringHex}
         onSave={async (w) => {
           await StepCounter.setWeeklyGoal(w);
           setShowGoalModal(false);
           await refreshStats();
+        }}
+      />
+
+      <OnboardingModal 
+        visible={showOnboarding}
+        onContinue={() => {
+          setShowOnboarding(false);
+          setShowGoalModal(true);
         }}
       />
     </ImageBackground>
@@ -1088,8 +1109,10 @@ function GoalModal({
           />
           <View style={gm.handle} />
           
-          <Text style={gm.title}>Set Intentions</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 24 }}>Set a goal for this walk, and a goal for the week.</Text>
+          <Text style={gm.title}>Prepare Your Walk</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginTop: 8, marginBottom: 24, paddingHorizontal: 20 }}>
+            Set a micro-goal for today's walk to earn generative art, and maintain a weekly habit goal in the background.
+          </Text>
 
           <View style={{ marginBottom: 30, paddingHorizontal: 16 }}>
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>Today's Seed (Optional)</Text>
@@ -1204,7 +1227,7 @@ const BORDER_MOD = 'rgba(255,255,255,0.10)';
 const CARD_MOD   = 'rgba(255,255,255,0.06)';
 
 const gm = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.78)' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,47,73,0.78)' },
   sheet:   { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 42, overflow: 'hidden' },
   handle:  { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   title:   { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' },
@@ -1225,8 +1248,8 @@ const gm = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   noSensorCard: {
-    margin: 20, padding: 24, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.50)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center', gap: 8,
+    margin: 20, padding: 24, borderRadius: 20, backgroundColor: 'rgba(12,74,110,0.4)',
+    borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)', alignItems: 'center', gap: 8,
   },
   noSensorEmoji: { fontSize: 36 },
   noSensorTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
@@ -1249,7 +1272,41 @@ const st = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  ringSteps:   { fontSize: 62, fontWeight: '200', fontVariant: ['tabular-nums'], color: '#ffffff', letterSpacing: -1.5, textShadowColor: 'rgba(255,255,255,0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  ringSteps:   { fontSize: 52, fontWeight: '200', fontVariant: ['tabular-nums'], color: '#ffffff', letterSpacing: -1.5, textShadowColor: 'rgba(255,255,255,0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
   ringLabel:   { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '800', letterSpacing: 2.2, marginTop: -2 },
-  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 6 },
+  ringDivider: { width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Onboarding Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function OnboardingModal({ visible, onContinue }: { visible: boolean; onContinue: () => void }) {
+  if (!visible) return null;
+  return (
+    <Modal transparent visible={visible} animationType="fade">
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <View style={{ width: '100%', maxWidth: 360, backgroundColor: 'rgba(20,20,30,0.85)', borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15 }}>
+          <LinearGradient colors={['rgba(255,255,255,0.12)', 'transparent']} start={{x:0.5, y:0}} end={{x:0.5, y:0.4}} style={StyleSheet.absoluteFillObject} />
+          
+          <View style={{ padding: 32, alignItems: 'center' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(56,189,248,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)' }}>
+              <Ionicons name="leaf" size={28} color="#38bdf8" />
+            </View>
+            
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.5 }}>Plant a Seed & Set Intentions</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+              Before you start your nature walk, set your micro-goal by planting a seed, and establish your weekly habit intention.
+            </Text>
+            
+            <TouchableOpacity onPress={onContinue} activeOpacity={0.8} style={{ width: '100%', borderRadius: 24, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: {width:0, height:4}, shadowOpacity:0.3, shadowRadius: 8 }}>
+              <LinearGradient colors={['#38bdf8', '#0284c7']} style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 1.2 }}>Set Intentions</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}

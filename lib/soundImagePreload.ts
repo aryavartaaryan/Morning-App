@@ -257,7 +257,7 @@ export async function prefetchAllSoundImagesWithProgress(
   await Promise.all(executing);
   
   if (hasError) {
-    console.warn('[soundImagePreload] prefetchAllSoundImagesWithProgress ignored some download errors.');
+    throw new Error('Some sound images failed to download.');
   }
 }
 
