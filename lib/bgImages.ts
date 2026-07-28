@@ -46,7 +46,7 @@ export const BG_URLS: Record<string, string> = {
   brahma:     'https://images.pexels.com/photos/20494584/pexels-photo-20494584.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn:    'https://images.pexels.com/photos/1334116/pexels-photo-1334116.jpeg?auto=compress&cs=tinysrgb&w=600',
   predawn_mid: 'https://images.pexels.com/photos/12348207/pexels-photo-12348207.jpeg?auto=compress&cs=tinysrgb&w=600',
-  sunrise:    'https://images.pexels.com/photos/3952899/pexels-photo-3952899.jpeg?auto=compress&cs=tinysrgb&w=600',
+  sunrise:    'https://images.pexels.com/photos/35753449/pexels-photo-35753449.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise_2:  'https://images.pexels.com/photos/4161253/pexels-photo-4161253.png',
   sunrise_late: 'https://images.pexels.com/photos/6240658/pexels-photo-6240658.jpeg?auto=compress&cs=tinysrgb&w=600',
   sunrise_late_2: 'https://images.pexels.com/photos/9004241/pexels-photo-9004241.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -81,7 +81,7 @@ export const BG_URLS: Record<string, string> = {
   evening_early_2: 'https://images.pexels.com/photos/5641976/pexels-photo-5641976.jpeg',
   evening:    'https://images.pexels.com/photos/7828546/pexels-photo-7828546.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early: 'https://images.pexels.com/photos/6022476/pexels-photo-6022476.jpeg?auto=compress&cs=tinysrgb&w=600',
-  night_early_mid2: 'https://images.pexels.com/photos/16903505/pexels-photo-16903505.jpeg?auto=compress&cs=tinysrgb&w=600',
+  night_early_mid2: 'https://images.pexels.com/photos/36396694/pexels-photo-36396694.jpeg?auto=compress&cs=tinysrgb&w=600',
   night_early_late: 'https://images.pexels.com/photos/36221368/pexels-photo-36221368.jpeg',
   night:      'https://images.pexels.com/photos/18635120/pexels-photo-18635120.jpeg',
   night_late: 'https://images.pexels.com/photos/7607889/pexels-photo-7607889.jpeg',
@@ -301,6 +301,7 @@ export async function ensureAllBgsCachedWithProgress(
     const executing = new Set<Promise<any>>();
 
     for (const [key, url] of entries) {
+      if (hasError) break;
       const p = (async () => {
         const path      = cachePath(key);
         const urlHash   = djb2(url);

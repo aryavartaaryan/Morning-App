@@ -3137,63 +3137,57 @@ function SoundReelsModal({
 
         {/* Ultra-Modern Action Popup */}
         {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 34 }]}>
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
-            <Animated.View style={{ width: W * 0.85, maxWidth: 320, borderRadius: 28, overflow: 'hidden', backgroundColor: 'rgba(15,15,18,0.85)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15 }}>
-              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
-              
-              <View style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}>
-                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
-                   <Ionicons name="musical-notes-outline" size={20} color="#FFF" />
+            <Animated.View style={{ width: '92%', maxWidth: 400, gap: 8 }}>
+              {/* Options Group */}
+              <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
+                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+                
+                <View style={{ paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(235,235,245,0.6)', fontFamily: 'Nunito_600SemiBold', textAlign: 'center' }}>Leave Session?</Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(235,235,245,0.6)', fontFamily: 'Nunito_400Regular', textAlign: 'center', marginTop: 2 }}>You can minimize the player to continue listening in the background.</Text>
                 </View>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 8, fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.3 }}>Leave Session?</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20 }}>You can minimize the player to continue listening in the background.</Text>
-              </View>
-              
-              <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 10 }}>
+                
                 <TouchableOpacity
-                  activeOpacity={0.85}
+                  activeOpacity={0.7}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                     onClose(isLast);
                   }}
+                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}
                 >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
-                  >
-                    <Ionicons name="chevron-down" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Keep in Background</Text>
-                  </LinearGradient>
+                  <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>Keep in Background</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  activeOpacity={0.8}
+                  activeOpacity={0.7}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowClosePrompt(false);
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'rgba(255,69,58,0.1)', borderWidth: 1, borderColor: 'rgba(255,69,58,0.2)' }}
+                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Ionicons name="close" size={18} color="#FF453A" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 16, color: '#FF453A', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>End Session</Text>
+                  <Text style={{ fontSize: 20, color: '#FF453A', fontWeight: '400', fontFamily: 'Nunito_400Regular' }}>End Session</Text>
                 </TouchableOpacity>
-
+              </View>
+              
+              {/* Cancel Button */}
+              <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
+                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                   }}
-                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
+                  style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
+                  <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>

@@ -8,50 +8,56 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { getBloomedSeeds, BloomedSeed } from '@/lib/seedStorage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+function getSeedColors(type: string) {
+  if (type === 'pebble') return { base: 'rgba(52,211,153,0.2)', solid: '#34d399', stroke: 'rgba(52,211,153,0.8)', leaf: 'rgba(52,211,153,0.6)', bloom: '#d1fae5' };
+  if (type === 'epic') return { base: 'rgba(192,132,252,0.2)', solid: '#c084fc', stroke: 'rgba(192,132,252,0.8)', leaf: 'rgba(192,132,252,0.6)', bloom: '#f3e8ff' };
+  if (type === 'calm') return { base: 'rgba(56,189,248,0.2)', solid: '#38bdf8', stroke: 'rgba(56,189,248,0.8)', leaf: 'rgba(56,189,248,0.6)', bloom: '#e0f2fe' };
+  return { base: 'rgba(251,146,60,0.2)', solid: '#fb923c', stroke: 'rgba(251,146,60,0.8)', leaf: 'rgba(251,146,60,0.6)', bloom: '#ffedd5' };
+}
+
+function getSeedTitle(type: string) {
+  if (type === 'pebble') return 'Quick Sprout';
+  if (type === 'epic') return 'Epic Lotus';
+  if (type === 'calm') return 'Seed of Calm';
+  return 'Seed of Vitality';
+}
+
 const { width: W } = Dimensions.get('window');
 
 function RenderSeed({ seed }: { seed: BloomedSeed }) {
   const SZ = 100;
-  const isCalm = seed.type === 'calm';
+  const colors = getSeedColors(seed.type);
   
   return (
     <View style={s.seedCard}>
-      <LinearGradient
-        colors={['rgba(255,255,255,0.05)', 'transparent']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
       <Svg width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
-        {/* Glow base */}
-        <Circle cx={SZ/2} cy={SZ - 20} r={6} fill={isCalm ? 'rgba(56,189,248,0.2)' : 'rgba(251,146,60,0.2)'} />
+        <Circle cx={SZ/2} cy={SZ - 20} r={6} fill={colors.base} />
+        <Circle cx={SZ/2} cy={SZ - 20} r={3} fill={colors.solid} />
         
-        {/* Stem */}
         <Path
           d={`M${SZ/2} ${SZ - 20} Q${SZ/2 + 15} ${SZ/2} ${SZ/2} 20`}
-          stroke={isCalm ? 'rgba(56,189,248,0.8)' : 'rgba(251,146,60,0.8)'}
+          stroke={colors.stroke}
           strokeWidth={2}
           strokeLinecap="round"
           fill="none"
         />
-        {/* Leaves */}
         <Path
           d={`M${SZ/2 + 5} ${SZ/2 + 10} Q${SZ/2 + 20} ${SZ/2 + 5} ${SZ/2 + 20} ${SZ/2 - 5} Q${SZ/2 + 5} ${SZ/2 - 5} ${SZ/2 + 5} ${SZ/2 + 10}`}
-          fill={isCalm ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+          fill={colors.leaf}
         />
         <Path
           d={`M${SZ/2 - 5} ${SZ/2 - 5} Q${SZ/2 - 20} ${SZ/2} ${SZ/2 - 20} ${SZ/2 - 15} Q${SZ/2 - 5} ${SZ/2 - 15} ${SZ/2 - 5} ${SZ/2 - 5}`}
-          fill={isCalm ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+          fill={colors.leaf}
         />
         
-        {/* Bloomed Flower */}
         <Circle
           cx={SZ/2} cy={20} r={10}
-          fill={isCalm ? '#e0f2fe' : '#ffedd5'}
+          fill={colors.bloom}
         />
       </Svg>
       
       <View style={s.seedInfo}>
-        <Text style={s.seedTitle}>{isCalm ? 'Seed of Calm' : 'Seed of Vitality'}</Text>
+        <Text style={s.seedTitle}>{getSeedTitle(seed.type)}</Text>
         <Text style={s.seedDate}>{new Date(seed.date).toLocaleDateString()}</Text>
       </View>
     </View>

@@ -192,7 +192,7 @@ export default function WalkTab() {
   const compassRot = useRef(new Animated.Value(0)).current;
 
   // ── Seed Selection ────────────────────────────────────────────────────────
-  const [selectedSeed, setSelectedSeed] = useState<'none'|'calm'|'vitality'>('none');
+  const [selectedSeed, setSelectedSeed] = useState<'none'|'pebble'|'calm'|'epic'>('none');
 
   // ── Data refresh ────────────────────────────────────────────────────────────
   const refreshStats = useCallback(async () => {
@@ -507,6 +507,8 @@ export default function WalkTab() {
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
+
+
       {/* Top nature glow */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity, pointerEvents: 'none' }]}
@@ -749,6 +751,47 @@ export default function WalkTab() {
                     opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
                   }} />
 
+                  {/* ── Feature 7: CLIPPED BACKGROUND COMPASS ── */}
+                  {compassHeading !== null && (
+                    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+                      <Animated.View style={{
+                        transform: [{ rotate: `${-compassHeading}deg` }],
+                        width: RING_SIZE * 1.5, height: RING_SIZE * 1.5,
+                        opacity: 0.15,
+                      }}>
+                        <Svg width="100%" height="100%" viewBox="0 0 100 100">
+                          <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="1 3" />
+                          <Circle cx={50} cy={50} r={44} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+                          <G transform="rotate(45, 50, 50)">
+                            <Path d="M50 50 L48 48 L50 15 Z" fill="#7dd3fc" />
+                            <Path d="M50 50 L50 15 L52 48 Z" fill="#38bdf8" />
+                            <Path d="M50 50 L52 48 L85 50 Z" fill="#7dd3fc" />
+                            <Path d="M50 50 L85 50 L52 52 Z" fill="#38bdf8" />
+                            <Path d="M50 50 L52 52 L50 85 Z" fill="#7dd3fc" />
+                            <Path d="M50 50 L50 85 L48 52 Z" fill="#38bdf8" />
+                            <Path d="M50 50 L48 52 L15 50 Z" fill="#7dd3fc" />
+                            <Path d="M50 50 L15 50 L48 48 Z" fill="#38bdf8" />
+                          </G>
+                          <Path d="M50 50 L54 46 L95 50 Z" fill="rgba(255,255,255,0.6)" />
+                          <Path d="M50 50 L95 50 L54 54 Z" fill="rgba(255,255,255,0.2)" />
+                          <Path d="M50 50 L54 54 L50 95 Z" fill="rgba(255,255,255,0.6)" />
+                          <Path d="M50 50 L50 95 L46 54 Z" fill="rgba(255,255,255,0.2)" />
+                          <Path d="M50 50 L46 54 L5 50 Z" fill="rgba(255,255,255,0.6)" />
+                          <Path d="M50 50 L5 50 L46 46 Z" fill="rgba(255,255,255,0.2)" />
+                          <Path d="M50 50 L46 46 L50 5 Z" fill="#f87171" opacity={0.9} />
+                          <Path d="M50 50 L50 5 L54 46 Z" fill="#dc2626" opacity={0.8} />
+                          <Circle cx={50} cy={50} r={2} fill="#ffffff" />
+                          
+                          {/* Premium Directional Labels */}
+                          <SvgText x={50} y={11} fill="#f87171" fontSize="5" fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">N</SvgText>
+                          <SvgText x={91} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">E</SvgText>
+                          <SvgText x={50} y={92} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">S</SvgText>
+                          <SvgText x={9} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">W</SvgText>
+                        </Svg>
+                      </Animated.View>
+                    </View>
+                  )}
+
                   {/* Feature 3: Rain droplets inside the glass */}
                   {isRaining && rainAnims.map((ra, i) => (
                     <Animated.View key={i} pointerEvents="none" style={{
@@ -762,51 +805,7 @@ export default function WalkTab() {
                     }} />
                   ))}
 
-                  {/* Feature 7: Compass — small, lives at bottom of disc */}
-                  {compassHeading !== null && (
-                    <View pointerEvents="none" style={{
-                      position: 'absolute',
-                      bottom: 40, left: 0, right: 0,
-                      alignItems: 'center',
-                    }}>
-                      <Animated.View style={{
-                        transform: [{ rotate: `${-compassHeading}deg` }],
-                        width: 60, height: 60,
-                      }}>
-                        <Svg width={60} height={60} viewBox="0 0 60 60">
-                          {/* Outer ticks */}
-                          <Circle cx={30} cy={30} r={28} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={2} strokeDasharray="2 6.79" />
-                          <Circle cx={30} cy={30} r={24} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-                          
-                          {/* Secondary diagonal star (Cyan/Blue) */}
-                          <G transform="rotate(45, 30, 30)">
-                            <Path d="M30 30 L28.5 28.5 L30 12 Z" fill="#7dd3fc" opacity={0.6} />
-                            <Path d="M30 30 L30 12 L31.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
-                            <Path d="M30 30 L31.5 28.5 L48 30 Z" fill="#7dd3fc" opacity={0.6} />
-                            <Path d="M30 30 L48 30 L31.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
-                            <Path d="M30 30 L31.5 31.5 L30 48 Z" fill="#7dd3fc" opacity={0.6} />
-                            <Path d="M30 30 L30 48 L28.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
-                            <Path d="M30 30 L28.5 31.5 L12 30 Z" fill="#7dd3fc" opacity={0.6} />
-                            <Path d="M30 30 L12 30 L28.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
-                          </G>
-                          
-                          {/* Primary N-S-E-W star (Red/White) */}
-                          <Path d="M30 30 L33 27 L54 30 Z" fill="rgba(255,255,255,0.8)" />
-                          <Path d="M30 30 L54 30 L33 33 Z" fill="rgba(255,255,255,0.4)" />
-                          <Path d="M30 30 L33 33 L30 54 Z" fill="rgba(255,255,255,0.8)" />
-                          <Path d="M30 30 L30 54 L27 33 Z" fill="rgba(255,255,255,0.4)" />
-                          <Path d="M30 30 L27 33 L6 30 Z" fill="rgba(255,255,255,0.8)" />
-                          <Path d="M30 30 L6 30 L27 27 Z" fill="rgba(255,255,255,0.4)" />
-                          <Path d="M30 30 L27 27 L30 6 Z" fill="#f87171" opacity={0.95} />
-                          <Path d="M30 30 L30 6 L33 27 Z" fill="#dc2626" opacity={0.9} />
 
-                          {/* Center pivot */}
-                          <Circle cx={30} cy={30} r={2} fill="#ffffff" />
-                        </Svg>
-                      </Animated.View>
-                      <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1, marginTop: 2 }}>N</Text>
-                    </View>
-                  )}
                 </Animated.View>
               </View>
 
@@ -918,10 +917,11 @@ export default function WalkTab() {
           {summary && summary.weeklyGoal > 0 && (
             <View style={{ width: '100%', paddingHorizontal: 32 }}>
               <Animated.View style={{ marginTop: weeklyMargin }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-end' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2, alignItems: 'flex-end' }}>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Intention</Text>
                   <Text style={{ fontSize: 13, fontWeight: '900', color: 'rgba(255,255,255,0.95)' }}>{summary.weeklyGoalPercent}%</Text>
                 </View>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontStyle: 'italic' }}>Your background step goal to build lasting habits.</Text>
                 
                 <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
                   <View style={{ 
@@ -945,7 +945,7 @@ export default function WalkTab() {
           )}
         </Animated.View>
 
-        {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
+          {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
         <Animated.View style={{
           opacity: cardFade,
           transform: [{ translateY: cardSlide }],
@@ -954,31 +954,6 @@ export default function WalkTab() {
           marginTop: btnMarginTop,
           marginBottom: btnMarginBot,
         }}>
-          {/* ── SEED PLANTING UI ────────────────────────────────────── */}
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 6 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>
-              Plant a Seed for your Walk
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
-                onPress={() => { Haptics.selectionAsync(); setSelectedSeed(s => s === 'calm' ? 'none' : 'calm'); }}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 16, backgroundColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.4)' : 'transparent' }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="water-outline" size={24} color={selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.4)'} style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.5)' }}>Seed of Calm</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={() => { Haptics.selectionAsync(); setSelectedSeed(s => s === 'vitality' ? 'none' : 'vitality'); }}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 16, backgroundColor: selectedSeed === 'vitality' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'vitality' ? 'rgba(251,146,60,0.4)' : 'transparent' }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="flame-outline" size={24} color={selectedSeed === 'vitality' ? '#fb923c' : 'rgba(255,255,255,0.4)'} style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: selectedSeed === 'vitality' ? '#fb923c' : 'rgba(255,255,255,0.5)' }}>Seed of Vitality</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           
           {/* Start Nature Walk Button */}
           <TouchableOpacity
@@ -1047,8 +1022,8 @@ export default function WalkTab() {
 
               <View style={{ paddingVertical: 14 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                  {summary && summary.weeklyGoal > 0 ? "Adjust Weekly Intention" : "Set Weekly Intention"}
-                </Text>
+                  {summary && summary.weeklyGoal > 0 ? "Adjust Intentions" : "Set Intentions"}
+                </Text>>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -1061,6 +1036,8 @@ export default function WalkTab() {
       <GoalModal
         visible={showGoalModal}
         currentWeekly={summary?.weeklyGoal ?? 35000}
+        selectedSeed={selectedSeed}
+        onSeedSelect={setSelectedSeed}
         onClose={() => setShowGoalModal(false)}
         accentColor={ringHex}
         onSave={async (w) => {
@@ -1077,9 +1054,9 @@ export default function WalkTab() {
 // Goal modal
 // ─────────────────────────────────────────────────────────────────────────────
 function GoalModal({
-  visible, currentWeekly, onClose, onSave, accentColor
+  visible, currentWeekly, selectedSeed, onSeedSelect, onClose, onSave, accentColor
 }: {
-  visible: boolean; currentWeekly: number; onClose: () => void; onSave: (w: number) => void; accentColor: string;
+  visible: boolean; currentWeekly: number; selectedSeed: string; onSeedSelect: (s: string) => void; onClose: () => void; onSave: (w: number) => void; accentColor: string;
 }) {
   const PRESETS_WEEKLY = [
     { value: 21000, label: 'Foundation' },
@@ -1111,8 +1088,51 @@ function GoalModal({
           />
           <View style={gm.handle} />
           
-          <Text style={gm.title}>Weekly Intention</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Pace your rhythmic journey over 7 days.</Text>
+          <Text style={gm.title}>Set Intentions</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 24 }}>Set a goal for this walk, and a goal for the week.</Text>
+
+          <View style={{ marginBottom: 30, paddingHorizontal: 16 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>Today's Seed (Optional)</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {/* Pebble */}
+              <TouchableOpacity 
+                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'pebble' ? 'none' : 'pebble'); }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'pebble' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'pebble' ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.08)' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="ellipse-outline" size={14} color={selectedSeed === 'pebble' ? '#34d399' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'pebble' ? '#34d399' : 'rgba(255,255,255,0.7)' }}>Pebble</Text>
+              </TouchableOpacity>
+              
+              {/* Calm */}
+              <TouchableOpacity 
+                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'calm' ? 'none' : 'calm'); }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.08)' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="water" size={14} color={selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.7)' }}>Calm</Text>
+              </TouchableOpacity>
+              
+              {/* Epic */}
+              <TouchableOpacity 
+                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'epic' ? 'none' : 'epic'); }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'epic' ? 'rgba(192,132,252,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'epic' ? 'rgba(192,132,252,0.4)' : 'rgba(255,255,255,0.08)' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="rose" size={14} color={selectedSeed === 'epic' ? '#c084fc' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'epic' ? '#c084fc' : 'rgba(255,255,255,0.7)' }}>Epic</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ height: 16, justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
+              {selectedSeed === 'pebble' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>1,500 steps for a quick break 🌱</Text>}
+              {selectedSeed === 'calm' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>3,000 steps to soothe the mind 🌸</Text>}
+              {selectedSeed === 'epic' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>8,000 steps to awaken the body 🌺</Text>}
+              {selectedSeed === 'none' && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>Planting a seed gives you a goal for today's walk.</Text>}
+            </View>
+          </View>
+
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>Weekly Background Steps</Text>
 
           <View style={gm.presets}>
             {PRESETS_WEEKLY.map(p => {

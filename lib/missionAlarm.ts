@@ -376,6 +376,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'indian_sitar_raga',    label: 'Indian Sitar Raga',       icon: '🎶', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/indian-sitar-raga.m4a') },
   { id: 'sitar_summer_raga',    label: 'Summer Healing Raga',     icon: '☀️', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a', category: 'sitar',   isGentle: true },
   { id: 'sitar_radiance',       label: 'Sitar Radiance',          icon: '✨', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-radiance.m4a', category: 'sitar',   isGentle: false },
+  { id: 'naad_raga_sparkle',    label: 'Raga Sparkle',            icon: '✨', audioUrl: 'https://audio.onesutralabs.com/All%20Nada%20Sounds/pixel_perfect_productions-raga-sparkle-437291.m4a', category: 'sitar',   isGentle: true },
   { id: 'sitar_tanpura_sarangi',label: 'Sitar, Tanpura & Sarangi',icon: '🪕', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura-sarangi.m4a') },
   { id: 'sitar_tanpura_bgm',    label: 'Sitar & Tanpura',         icon: '🎼', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura.m4a') },
   { id: 'veena_classical',      label: 'Classical Veena',         icon: '🪗', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a', category: 'sitar',   isGentle: true },

@@ -8,7 +8,7 @@ import {
 } from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder
 } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -824,7 +824,24 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     days.push(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), i));
   }
 
+  const [showPicker, setShowPicker] = React.useState(false);
+  const [pickerMode, setPickerMode] = React.useState<'month' | 'year'>('month');
+
+  // Swipe gesture for calendar grid
+  const panResponder = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (evt, gs) => Math.abs(gs.dx) > 30 && Math.abs(gs.dx) > Math.abs(gs.dy),
+    onPanResponderRelease: (evt, gs) => {
+      if (gs.dx > 60) {
+        changeMonth(-1);
+      } else if (gs.dx < -60) {
+        changeMonth(1);
+      }
+    }
+  }), [currentMonthDate]);
+
   const changeMonth = (offset: number) => {
+    Haptics.selectionAsync();
     setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + offset, 1));
   };
 
@@ -858,18 +875,21 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
           {/* Header */}
           <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 10, paddingLeft: 0 }}>
+              <TouchableOpacity onPress={() => { Haptics.selectionAsync(); changeMonth(-1); }} style={{ padding: 10, paddingLeft: 0, opacity: showPicker ? 0 : 1 }} disabled={showPicker}>
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>‹</Text>
               </TouchableOpacity>
-              <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setShowPicker(!showPicker); }} style={{ alignItems: 'center', paddingHorizontal: 16 }}>
                 <Text style={{ fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
                   {currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 2, marginTop: 4 }}>
-                  COSMIC CALENDAR
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 10, paddingRight: 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#f43f5e', letterSpacing: 2 }}>
+                    {showPicker ? 'CLOSE NAVIGATOR' : 'COSMIC CALENDAR'}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#f43f5e', fontWeight: '800' }}>{showPicker ? '↑' : '⌄'}</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { Haptics.selectionAsync(); changeMonth(1); }} style={{ padding: 10, paddingRight: 0, opacity: showPicker ? 0 : 1 }} disabled={showPicker}>
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 28, fontWeight: '300' }}>›</Text>
               </TouchableOpacity>
             </View>
@@ -893,56 +913,117 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             )}
           </View>
 
-          {/* Calendar Grid Container */}
-          <View style={{ paddingTop: 20 }}>
-            {/* Weekdays */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-              {['SUN','MON','TUE','WED','THU','FRI','SAT'].map((d, i) => (
-                <View key={i} style={{ width: `${100/7}%`, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>{d}</Text>
-                </View>
-              ))}
-            </View>
+          {/* Content Area: Grid or Picker */}
+          {showPicker ? (
+            <View style={{ paddingTop: 20, paddingBottom: 40 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 24, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, alignSelf: 'center', padding: 4 }}>
+                <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPickerMode('month'); }} style={{ paddingHorizontal: 24, paddingVertical: 8, borderRadius: 16, backgroundColor: pickerMode === 'month' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: pickerMode === 'month' ? '#FFF' : 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>MONTH</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPickerMode('year'); }} style={{ paddingHorizontal: 24, paddingVertical: 8, borderRadius: 16, backgroundColor: pickerMode === 'year' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: pickerMode === 'year' ? '#FFF' : 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>YEAR</Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* Grid Days */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
-              {days.map((date, i) => {
-                if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 65 }} />;
-                
-                const isSelected = date.getDate() === selectedDate.getDate() && date.getMonth() === selectedDate.getMonth();
-                const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
-                
-                const dayPanchang = getPanchangData(date);
-                const tithiShort = dayPanchang.tithiName.substring(0, 3).toUpperCase();
-                
-                const festMatch = festivals.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
-                
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    activeOpacity={0.7}
-                    onPress={() => { Haptics.selectionAsync(); setSelectedDate(date); }}
-                    style={{ width: `${100/7}%`, height: 65, alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <View style={{
-                      width: 44, height: 52, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: isSelected ? '#f43f5e' : (isToday ? 'rgba(255,255,255,0.06)' : 'transparent'),
-                    }}>
-                      <Text style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#fff' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.9)') }}>
-                        {date.getDate()}
+              {pickerMode === 'month' ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                    <TouchableOpacity
+                      key={m}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), i, 1));
+                        setShowPicker(false);
+                      }}
+                      style={{
+                        width: '30%', height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: currentMonthDate.getMonth() === i ? '#f43f5e' : 'rgba(255,255,255,0.05)',
+                        borderWidth: 1, borderColor: currentMonthDate.getMonth() === i ? '#f43f5e' : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: currentMonthDate.getMonth() === i ? '900' : '600', color: currentMonthDate.getMonth() === i ? '#FFF' : 'rgba(255,255,255,0.8)' }}>
+                        {m}
                       </Text>
-                      <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.4)'), marginTop: 2, letterSpacing: 0.5 }}>
-                        {tithiShort}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, alignItems: 'center' }} style={{ height: 100 }}>
+                  {Array.from({length: 11}, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                    <TouchableOpacity
+                      key={year}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setCurrentMonthDate(new Date(year, currentMonthDate.getMonth(), 1));
+                        setPickerMode('month'); // Switch back to month selection after picking year
+                      }}
+                      style={{
+                        width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: currentMonthDate.getFullYear() === year ? '#60a5fa' : 'rgba(255,255,255,0.05)',
+                        borderWidth: 1, borderColor: currentMonthDate.getFullYear() === year ? '#60a5fa' : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Text style={{ fontSize: 18, fontWeight: currentMonthDate.getFullYear() === year ? '900' : '600', color: currentMonthDate.getFullYear() === year ? '#FFF' : 'rgba(255,255,255,0.8)' }}>
+                        {year}
                       </Text>
-                      {festMatch && (
-                        <View style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa') }} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
-          </View>
+          ) : (
+            <View style={{ paddingTop: 20 }} {...panResponder.panHandlers}>
+              {/* Weekdays */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                {['SUN','MON','TUE','WED','THU','FRI','SAT'].map((d, i) => (
+                  <View key={i} style={{ width: `${100/7}%`, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>{d}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Grid Days */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+                {days.map((date, i) => {
+                  if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 65 }} />;
+                  
+                  const isSelected = date.getDate() === selectedDate.getDate() && date.getMonth() === selectedDate.getMonth();
+                  const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
+                  
+                  const dayPanchang = getPanchangData(date);
+                  const tithiShort = dayPanchang.tithiName.substring(0, 3).toUpperCase();
+                  
+                  const festMatch = festivals.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
+                  
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      activeOpacity={0.7}
+                      onPress={() => { Haptics.selectionAsync(); setSelectedDate(date); }}
+                      style={{ width: `${100/7}%`, height: 65, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <View style={{
+                        width: 44, height: 52, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: isSelected ? '#f43f5e' : (isToday ? 'rgba(255,255,255,0.06)' : 'transparent'),
+                      }}>
+                        <Text style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#fff' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.9)') }}>
+                          {date.getDate()}
+                        </Text>
+                        <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.4)'), marginTop: 2, letterSpacing: 0.5 }}>
+                          {tithiShort}
+                        </Text>
+                        {festMatch && (
+                          <View style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa') }} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Details Section for Selected Date */}
@@ -2813,7 +2894,7 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 10, marginTop: 2, marginBottom: 4,
+    marginHorizontal: 10, marginTop: 1, marginBottom: 2,
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
@@ -2825,7 +2906,7 @@ const WSEC = StyleSheet.create({
     elevation: 18,
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
-  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 2, gap: 10 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 1, gap: 10 },
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bigEmoji: { fontSize: 32 },
@@ -6038,7 +6119,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         <View style={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 2 }}>
 
           {/* TITLE + DATE HEADER */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <Text style={{ fontSize: 8, fontWeight: '900', color: '#A78BFA', letterSpacing: 2.5 }}>
@@ -6068,7 +6149,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
               </Text>
             </View>
             <View style={{ alignItems: 'center', gap: 4, paddingTop: 4 }}>
-              <MoonSVG tithiNum={moon.tithiNum} size={50} />
+              <MoonSVG tithiNum={moon.tithiNum} size={42} />
               <Text style={{ fontSize: 7.5, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }}>
                 {moon.illumination}% lit
               </Text>
@@ -6111,15 +6192,15 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 }} numberOfLines={1}>
                       {row.value}
                     </Text>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: row.color, marginTop: 2, letterSpacing: 0.3 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 9.5, fontWeight: '800', color: row.color, marginTop: 1, letterSpacing: 0.3 }} numberOfLines={1}>
                       {row.sub.toUpperCase()}
                     </Text>
                     {row.timing && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 }}>
-                        <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }} numberOfLines={1}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 5 }}>
+                        <Text style={{ fontSize: 7.5, fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }} numberOfLines={1}>
                           {row.timing.replace(' - ', '  →  ').toUpperCase()}
                         </Text>
                       </View>
@@ -6449,6 +6530,51 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 // Main Daily Screen
 // ══════════════════════════════════════════════════════════════════════════════
 let isDailyTabFirstLaunch = true;
+
+const AnimatedAlmanacButton = ({ onPress }: { onPress: () => void }) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  return (
+    <View style={{ alignItems: 'center', marginTop: -20, zIndex: 20 }}>
+      {/* Premium glowing pulse background */}
+      <Animated.View style={{ 
+        position: 'absolute', 
+        width: 170, 
+        height: 38, 
+        borderRadius: 20, 
+        backgroundColor: 'rgba(96, 165, 250, 0.4)', 
+        transform: [{ scale: pulseAnim }], 
+        opacity: pulseAnim.interpolate({ inputRange: [1, 1.05], outputRange: [0, 0.6] }) 
+      }} />
+      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.85}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            paddingHorizontal: 24, paddingVertical: 8,
+            backgroundColor: 'rgba(15, 20, 35, 0.95)',
+            borderWidth: 1, borderColor: 'rgba(96, 165, 250, 0.45)',
+            borderRadius: 20,
+            shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8
+          }}
+        >
+          <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
+          <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
 
 function DailyTab() {
   const [liveClock, setLiveClock]           = useState(new Date());
@@ -6801,7 +6927,7 @@ function DailyTab() {
 
         {/* ── Elegant header card — static, non-clickable ── */}
         <View style={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 16, zIndex: 10 }}>
-          <View style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.22)', paddingBottom: 12 }}>
+          <BlurView intensity={60} tint="dark" style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,25,40,0.5)', paddingBottom: 12 }}>
             <LinearGradient
               colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
@@ -6868,7 +6994,7 @@ function DailyTab() {
 
 
             </View>
-          </View>
+          </BlurView>
 
         </View>
 
@@ -6894,23 +7020,7 @@ function DailyTab() {
                   </View>
 
                   {/* Premium Targeted Pull-Down Tab (Moved below Hero Ring) */}
-                  <View style={{ alignItems: 'center', marginTop: -20, zIndex: 20 }}>
-                    <TouchableOpacity
-                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-                      activeOpacity={0.85}
-                      style={{
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        paddingHorizontal: 24, paddingVertical: 8,
-                        backgroundColor: 'rgba(15, 20, 35, 0.95)',
-                        borderWidth: 1, borderColor: 'rgba(96, 165, 250, 0.35)',
-                        borderRadius: 20,
-                        shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8
-                      }}
-                    >
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
-                      <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <AnimatedAlmanacButton onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }} />
 
                   <View style={{ marginTop: 24, alignItems: 'center', width: '100%' }}>
                     <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50 }}>

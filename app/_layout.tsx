@@ -345,7 +345,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
-      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <Image source={require('../assets/images/pexels-8061770.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="contain" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
       
       <View style={{ flex: 1, zIndex: 10 }}>
@@ -621,7 +621,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('../assets/images/setup_splash_full.jpg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <Image source={require('../assets/images/pexels-8061770.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="contain" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}

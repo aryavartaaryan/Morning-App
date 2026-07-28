@@ -2,14 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface BloomedSeed {
   id: string;
-  type: 'calm' | 'vitality';
+  type: 'pebble' | 'calm' | 'epic' | 'vitality'; // Keeping vitality for backward compatibility
   date: number; // timestamp
   steps: number;
 }
 
 const STORAGE_KEY = '@morning_app_seed_garden';
 
-export async function saveBloomedSeed(type: 'calm' | 'vitality', steps: number): Promise<void> {
+export async function saveBloomedSeed(type: 'pebble' | 'calm' | 'epic' | 'vitality', steps: number): Promise<void> {
   try {
     const existingStr = await AsyncStorage.getItem(STORAGE_KEY);
     const existing: BloomedSeed[] = existingStr ? JSON.parse(existingStr) : [];

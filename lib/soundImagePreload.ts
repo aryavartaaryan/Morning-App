@@ -237,6 +237,7 @@ export async function prefetchAllSoundImagesWithProgress(
   const executing = new Set<Promise<any>>();
   
   for (const url of ALL_URLS) {
+    if (hasError) break;
     const p = (async () => {
       await cacheOne(url);
     })().finally(() => {

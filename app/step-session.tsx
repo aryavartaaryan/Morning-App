@@ -33,7 +33,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Line, G, Path } from 'react-native-svg';
+import Svg, { Circle, Line, G, Path, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -83,6 +83,22 @@ const SESSION_META: Record<
   postmeal: { label: 'Post-meal Walk', emoji: '🍽️', color: '#FB923C', goal: 100,  bgTop: '#1A0E08', gradA: '#FB923C', gradB: '#FCD34D' },
 };
 
+const QUOTES = [
+  "Breathe in the morning, exhale the past...",
+  "Your rhythm is the rhythm of nature...",
+  "Every step is a new beginning...",
+  "Walk as if you are kissing the Earth with your feet...",
+  "Quiet the mind, and the soul will speak...",
+  "Let the sky reflect your limitless potential..."
+];
+
+function getSeedColors(type: string) {
+  if (type === 'pebble') return { base: 'rgba(52,211,153,0.2)', solid: '#34d399', stroke: 'rgba(52,211,153,0.8)', leaf: 'rgba(52,211,153,0.6)', bloom: '#d1fae5' };
+  if (type === 'epic') return { base: 'rgba(192,132,252,0.2)', solid: '#c084fc', stroke: 'rgba(192,132,252,0.8)', leaf: 'rgba(192,132,252,0.6)', bloom: '#f3e8ff' };
+  if (type === 'calm') return { base: 'rgba(56,189,248,0.2)', solid: '#38bdf8', stroke: 'rgba(56,189,248,0.8)', leaf: 'rgba(56,189,248,0.6)', bloom: '#e0f2fe' };
+  return { base: 'rgba(251,146,60,0.2)', solid: '#fb923c', stroke: 'rgba(251,146,60,0.8)', leaf: 'rgba(251,146,60,0.6)', bloom: '#ffedd5' };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -96,6 +112,7 @@ function fmtTime(seconds: number): string {
 
 // MemoRing — fully featured with all 7 enhancements
 const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassHeading, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, isSeedPlanting, seedType, seedGrowthAnim }: any) => {
+  const seedColors = getSeedColors(seedType || 'vitality');
   return (
     <View
       style={{ width: RING_SZ, height: RING_SZ, alignItems: 'center', justifyContent: 'center' }}
@@ -184,42 +201,44 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
             }}
           />
 
-          {/* Feature 7: Compass */}
+          {/* ── Feature 7: CLIPPED BACKGROUND COMPASS ── */}
           {compassHeading !== null && (
-            <View pointerEvents="none" style={{ position: 'absolute', bottom: 42, left: 0, right: 0, alignItems: 'center' }}>
-              <Animated.View style={{ transform: [{ rotate: `${-compassHeading}deg` }], width: 60, height: 60 }}>
-                <Svg width={60} height={60} viewBox="0 0 60 60">
-                  {/* Outer ticks */}
-                  <Circle cx={30} cy={30} r={28} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={2} strokeDasharray="2 6.79" />
-                  <Circle cx={30} cy={30} r={24} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-                  
-                  {/* Secondary diagonal star (Cyan/Blue) */}
-                  <G transform="rotate(45, 30, 30)">
-                    <Path d="M30 30 L28.5 28.5 L30 12 Z" fill="#7dd3fc" opacity={0.6} />
-                    <Path d="M30 30 L30 12 L31.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
-                    <Path d="M30 30 L31.5 28.5 L48 30 Z" fill="#7dd3fc" opacity={0.6} />
-                    <Path d="M30 30 L48 30 L31.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
-                    <Path d="M30 30 L31.5 31.5 L30 48 Z" fill="#7dd3fc" opacity={0.6} />
-                    <Path d="M30 30 L30 48 L28.5 31.5 Z" fill="#38bdf8" opacity={0.6} />
-                    <Path d="M30 30 L28.5 31.5 L12 30 Z" fill="#7dd3fc" opacity={0.6} />
-                    <Path d="M30 30 L12 30 L28.5 28.5 Z" fill="#38bdf8" opacity={0.6} />
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+              <Animated.View style={{
+                transform: [{ rotate: `${-compassHeading}deg` }],
+                width: RING_SZ * 1.5, height: RING_SZ * 1.5,
+                opacity: 0.15,
+              }}>
+                <Svg width="100%" height="100%" viewBox="0 0 100 100">
+                  <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="1 3" />
+                  <Circle cx={50} cy={50} r={44} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+                  <G transform="rotate(45, 50, 50)">
+                    <Path d="M50 50 L48 48 L50 15 Z" fill="#7dd3fc" />
+                    <Path d="M50 50 L50 15 L52 48 Z" fill="#38bdf8" />
+                    <Path d="M50 50 L52 48 L85 50 Z" fill="#7dd3fc" />
+                    <Path d="M50 50 L85 50 L52 52 Z" fill="#38bdf8" />
+                    <Path d="M50 50 L52 52 L50 85 Z" fill="#7dd3fc" />
+                    <Path d="M50 50 L50 85 L48 52 Z" fill="#38bdf8" />
+                    <Path d="M50 50 L48 52 L15 50 Z" fill="#7dd3fc" />
+                    <Path d="M50 50 L15 50 L48 48 Z" fill="#38bdf8" />
                   </G>
+                  <Path d="M50 50 L54 46 L95 50 Z" fill="rgba(255,255,255,0.6)" />
+                  <Path d="M50 50 L95 50 L54 54 Z" fill="rgba(255,255,255,0.2)" />
+                  <Path d="M50 50 L54 54 L50 95 Z" fill="rgba(255,255,255,0.6)" />
+                  <Path d="M50 50 L50 95 L46 54 Z" fill="rgba(255,255,255,0.2)" />
+                  <Path d="M50 50 L46 54 L5 50 Z" fill="rgba(255,255,255,0.6)" />
+                  <Path d="M50 50 L5 50 L46 46 Z" fill="rgba(255,255,255,0.2)" />
+                  <Path d="M50 50 L46 46 L50 5 Z" fill="#f87171" opacity={0.9} />
+                  <Path d="M50 50 L50 5 L54 46 Z" fill="#dc2626" opacity={0.8} />
+                  <Circle cx={50} cy={50} r={2} fill="#ffffff" />
                   
-                  {/* Primary N-S-E-W star (Red/White) */}
-                  <Path d="M30 30 L33 27 L54 30 Z" fill="rgba(255,255,255,0.8)" />
-                  <Path d="M30 30 L54 30 L33 33 Z" fill="rgba(255,255,255,0.4)" />
-                  <Path d="M30 30 L33 33 L30 54 Z" fill="rgba(255,255,255,0.8)" />
-                  <Path d="M30 30 L30 54 L27 33 Z" fill="rgba(255,255,255,0.4)" />
-                  <Path d="M30 30 L27 33 L6 30 Z" fill="rgba(255,255,255,0.8)" />
-                  <Path d="M30 30 L6 30 L27 27 Z" fill="rgba(255,255,255,0.4)" />
-                  <Path d="M30 30 L27 27 L30 6 Z" fill="#f87171" opacity={0.95} />
-                  <Path d="M30 30 L30 6 L33 27 Z" fill="#dc2626" opacity={0.9} />
-
-                  {/* Center pivot */}
-                  <Circle cx={30} cy={30} r={2} fill="#ffffff" />
+                  {/* Premium Directional Labels */}
+                  <SvgText x={50} y={11} fill="#f87171" fontSize="5" fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">N</SvgText>
+                  <SvgText x={91} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">E</SvgText>
+                  <SvgText x={50} y={92} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">S</SvgText>
+                  <SvgText x={9} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">W</SvgText>
                 </Svg>
               </Animated.View>
-              <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1, marginTop: 2 }}>N</Text>
             </View>
           )}
 
@@ -228,15 +247,15 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
             <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
               <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
                 {/* The glowing seed base */}
-                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedType === 'calm' ? 'rgba(56,189,248,0.2)' : 'rgba(251,146,60,0.2)'} />
-                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedType === 'calm' ? '#38bdf8' : '#fb923c'} />
+                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedColors.base} />
+                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedColors.solid} />
                 
                 {/* The growing stem and leaves. 
                     Path length is ~200. We will map seedGrowthAnim from 0->1 to strokeDashoffset 200->0 
                 */}
                 <AnimatedPath
                   d={`M${RING_SZ/2} ${RING_SZ - 50} Q${RING_SZ/2 + 30} ${RING_SZ/2} ${RING_SZ/2} 40`}
-                  stroke={seedType === 'calm' ? 'rgba(56,189,248,0.8)' : 'rgba(251,146,60,0.8)'}
+                  stroke={seedColors.stroke}
                   strokeWidth={4}
                   strokeLinecap="round"
                   fill="none"
@@ -249,18 +268,18 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
                 {/* Leaves */}
                 <AnimatedPath
                   d={`M${RING_SZ/2 + 10} ${RING_SZ/2 + 20} Q${RING_SZ/2 + 40} ${RING_SZ/2 + 10} ${RING_SZ/2 + 40} ${RING_SZ/2 - 10} Q${RING_SZ/2 + 10} ${RING_SZ/2 - 10} ${RING_SZ/2 + 10} ${RING_SZ/2 + 20}`}
-                  fill={seedType === 'calm' ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+                  fill={seedColors.leaf}
                   opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] })}
                 />
                 <AnimatedPath
                   d={`M${RING_SZ/2 - 10} ${RING_SZ/2 - 10} Q${RING_SZ/2 - 40} ${RING_SZ/2} ${RING_SZ/2 - 40} ${RING_SZ/2 - 30} Q${RING_SZ/2 - 10} ${RING_SZ/2 - 30} ${RING_SZ/2 - 10} ${RING_SZ/2 - 10}`}
-                  fill={seedType === 'calm' ? 'rgba(56,189,248,0.6)' : 'rgba(251,146,60,0.6)'}
+                  fill={seedColors.leaf}
                   opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [0, 0, 1] })}
                 />
                 {/* Bloom flower (appears at 100%) */}
                 <AnimatedCircle
                   cx={RING_SZ/2} cy={40} r={18}
-                  fill={seedType === 'calm' ? '#e0f2fe' : '#ffedd5'}
+                  fill={seedColors.bloom}
                   opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.99, 1], outputRange: [0, 0, 1] })}
                 />
               </Svg>
@@ -330,7 +349,7 @@ function GlassPulseOverlay() {
 export default function StepSessionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionType, seedType } = useLocalSearchParams<{ sessionType?: string, seedType?: 'none'|'calm'|'vitality' }>();
+  const { sessionType, seedType } = useLocalSearchParams<{ sessionType?: string, seedType?: 'none'|'pebble'|'calm'|'epic'|'vitality' }>();
 
   const type = (sessionType as SessionType | undefined) ?? 'morning';
   let meta = SESSION_META[type] ?? SESSION_META.morning;
@@ -342,12 +361,19 @@ export default function StepSessionScreen() {
     }
   }
 
-  const isSeedPlanting = seedType === 'calm' || seedType === 'vitality';
+  const isSeedPlanting = seedType && seedType !== 'none';
   if (isSeedPlanting) {
+    let goalSteps = 3000;
+    let title = 'Nurturing Seed';
+    if (seedType === 'pebble') { goalSteps = 1500; title = 'Nurturing Quick Sprout'; }
+    else if (seedType === 'epic') { goalSteps = 8000; title = 'Nurturing Epic Lotus'; }
+    else if (seedType === 'calm') { title = 'Nurturing Seed of Calm'; }
+    else if (seedType === 'vitality') { title = 'Nurturing Seed of Vitality'; }
+    
     meta = { 
       ...meta, 
-      label: seedType === 'calm' ? 'Nurturing Seed of Calm' : 'Nurturing Seed of Vitality', 
-      goal: 3000,
+      label: title, 
+      goal: goalSteps,
       emoji: '🌱'
     };
   } else {
@@ -428,7 +454,6 @@ export default function StepSessionScreen() {
   const rippleOpHeart    = useRef(new Animated.Value(0)).current;
 
   // Feature 6: Quote cycling
-  const QUOTES = ['Finding your rhythm...', 'In sync with nature.', 'Every step, a breath.'];
   const [quoteIdx, setQuoteIdx] = useState(0);
   const quoteOpacity = useRef(new Animated.Value(1)).current;
 
@@ -538,13 +563,13 @@ export default function StepSessionScreen() {
             isCurrentlyLookingDown = true;
             setIsLookingDown(true);
             setGlobalVolume(0.4); // Dip the volume to remind them
-            Animated.timing(lookDownAnim, { toValue: 1, duration: 800, useNativeDriver: false }).start();
+            Animated.timing(lookDownAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
           } else if (!lookingDown && isCurrentlyLookingDown && z < 0.4) {
             // Hysteresis: wait until z < 0.4 (phone drops) before recovering
             isCurrentlyLookingDown = false;
             setIsLookingDown(false);
             setGlobalVolume(1.0); // Reward good posture with full volume
-            Animated.timing(lookDownAnim, { toValue: 0, duration: 800, useNativeDriver: false }).start();
+            Animated.timing(lookDownAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start();
           }
         });
       } catch (_) {}
@@ -595,15 +620,15 @@ export default function StepSessionScreen() {
         Animated.delay(i * 600),
         Animated.loop(Animated.sequence([
           Animated.parallel([
-            Animated.timing(ra.y,  { toValue: 120, duration: 2200, easing: Easing.linear, useNativeDriver: false }),
+            Animated.timing(ra.y,  { toValue: 120, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
             Animated.sequence([
-              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: false }),
-              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: false }),
+              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: true }),
             ]),
           ]),
           Animated.parallel([
-            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: false }),
-            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: false }),
+            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: true }),
+            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: true }),
           ]),
         ])),
       ]);
@@ -649,9 +674,7 @@ export default function StepSessionScreen() {
         launchConfetti();
         // Play majestic sound if blooming seed
         if (isSeedPlanting) {
-          if (seedType === 'calm' || seedType === 'vitality') {
-            saveBloomedSeed(seedType, total);
-          }
+          saveBloomedSeed(seedType as any, total);
           // Temporarily play a nice sound or haptic sequence
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 300);
@@ -661,9 +684,12 @@ export default function StepSessionScreen() {
 
       const syncState = () => {
         setSteps(total);
-        Animated.timing(progressAnim, { toValue: CIRCUM - Math.min(1, total / meta.goal) * CIRCUM, duration: 250, useNativeDriver: false }).start();
+        // CRITICAL FIX: Use .setValue() instead of Animated.timing(..., { useNativeDriver: false })
+        // Animating SVG props on the JS thread floods the React Native bridge and directly
+        // causes the audio buffer to starve/stutter (the "stuck then play" bug).
+        progressAnim.setValue(CIRCUM - Math.min(1, total / meta.goal) * CIRCUM);
         if (isSeedPlanting) {
-          Animated.timing(seedGrowthAnim, { toValue: Math.min(1, total / meta.goal), duration: 250, useNativeDriver: false }).start();
+          seedGrowthAnim.setValue(Math.min(1, total / meta.goal));
         }
         lastUpdateRef.current = Date.now();
         syncTimeoutRef.current = null;
@@ -801,6 +827,8 @@ export default function StepSessionScreen() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+
 
       {/* Session-colour aurora aura */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity }]} pointerEvents="none">
@@ -1164,30 +1192,35 @@ export default function StepSessionScreen() {
         color={C}
         gradA={GA}
         gradB={GB}
-        isSeedPlanting={isSeedPlanting}
+        isSeedPlanting={!!isSeedPlanting}
       />
 
-      {/* ── Feature 9: Posture Coach Overlay ────────────────────────────────────── */}
+      {/* ── Feature 9: Posture Coach Overlay (Sleek Top Toast) ────────────────────────────────────── */}
       <Animated.View 
         pointerEvents="none" 
-        style={[
-          StyleSheet.absoluteFill,
-          { opacity: lookDownAnim, alignItems: 'center', justifyContent: 'center' }
-        ]}
+        style={{
+          position: 'absolute',
+          top: insets.top + 16,
+          left: 20,
+          right: 20,
+          opacity: lookDownAnim,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100, // ensure it's on top
+        }}
       >
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)', 'transparent']}
-          style={{ width: '100%', paddingVertical: 60, alignItems: 'center' }}
-        >
-          <Ionicons name="leaf-outline" size={42} color="rgba(255,255,255,0.9)" style={{ marginBottom: 12 }} />
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 0.5, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
-            Look up at the sky.
-          </Text>
-          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', fontWeight: '500', letterSpacing: 0.3 }}>
-            Walk organically. Take a nature bath.
-          </Text>
-        </LinearGradient>
+        <View style={{ width: '100%', borderRadius: 20, overflow: 'hidden', paddingVertical: 14, paddingHorizontal: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <Ionicons name="leaf-outline" size={24} color="rgba(255,255,255,0.9)" style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.5, marginBottom: 2 }}>
+              Eyes on the horizon.
+            </Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', letterSpacing: 0.2 }}>
+              Lift your gaze to open your breathing.
+            </Text>
+          </View>
+        </View>
       </Animated.View>
     </ImageBackground>
   );
@@ -1203,53 +1236,51 @@ function ExitModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 34 }}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
         
-        {/* Solid, slim, elegant modal */}
-        <View style={{ width: '100%', maxWidth: 320, backgroundColor: '#0f172a', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.05)', 'transparent']}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.2 }}
-            style={StyleSheet.absoluteFillObject}
-            pointerEvents="none"
-          />
+        <View style={{ width: '92%', maxWidth: 400, gap: 8 }}>
+          {/* Options Group */}
+          <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            
+            <View style={{ paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(235,235,245,0.6)', textAlign: 'center' }}>
+                {isSeedPlanting ? 'Abandon Seed?' : 'End Session?'}
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(235,235,245,0.6)', textAlign: 'center', marginTop: 2 }}>
+                {isSeedPlanting 
+                  ? 'Your seed is still growing. Minimize to keep tracking steps, or end to discard it.' 
+                  : 'Minimize to keep tracking steps and audio, or end your walk now.'}
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              onPress={onMinimize}
+              activeOpacity={0.7}
+              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '400' }}>Keep in Background</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onEnd}
+              activeOpacity={0.7}
+              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 20, color: '#FF453A', fontWeight: '400' }}>End Session</Text>
+            </TouchableOpacity>
+          </View>
           
-          <View style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}>
-            
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Ionicons name={isSeedPlanting ? "leaf" : "walk"} size={22} color="#fff" style={isSeedPlanting ? {} : { marginLeft: 3 }} />
-            </View>
-            
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.2 }}>
-              {isSeedPlanting ? 'Abandon Seed?' : 'End Session?'}
-            </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 24, lineHeight: 18, paddingHorizontal: 10 }}>
-              {isSeedPlanting 
-                ? 'Your seed is still growing. Minimize to keep tracking steps, or end to discard it.' 
-                : 'Minimize to keep tracking steps and audio, or end your walk now.'}
-            </Text>
-            
-            <View style={{ width: '100%', gap: 10 }}>
-              <TouchableOpacity
-                onPress={onMinimize}
-                style={{ borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>Keep in Background</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={onEnd}
-                style={{ borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: '#fca5a5', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>End Session</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 16, paddingVertical: 12, width: '100%' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
+          {/* Cancel Button */}
+          <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(25,25,25,0.85)' }}>
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.7}
+              style={{ paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 20, color: '#0A84FF', fontWeight: '600' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

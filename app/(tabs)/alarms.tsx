@@ -47,7 +47,7 @@ import { getTabBarClearance } from '@/lib/tabBarSpacing';
 
 const ACCENT = '#F5820A';
 const { width } = Dimensions.get('window');
-const ALARM_CARD_BG = 'transparent'; // iOS style frosted glass
+const ALARM_CARD_BG = 'rgba(20,25,40,0.5)'; // Matching Daily Intention Card
 const MANTRA_TO_WAKE_SOUND: Record<string, string> = {
   gayatri: 'gayatri', lalitha: 'lalitha', shivtandav: 'shiv_tandav',
   bhagya_suktam: 'bhagya_suktam', shiv_sankalpa_suktam: 'shiv_sankalpa_suktam',
