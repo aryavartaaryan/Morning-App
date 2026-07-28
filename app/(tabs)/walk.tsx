@@ -67,7 +67,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 240;
+const RING_SIZE   = Math.min(W * 0.85, 340); // Increased size for elegant data display
 const RING_STROKE = 16;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -121,15 +121,15 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
       {/* Counter-rotate so compass points to real North */}
       <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Deep navy outer bezel fill */}
-          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.85)" />
+          {/* Deep navy outer bezel fill (highly transparent for glassmorphism) */}
+          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.15)" />
           {/* Bezel gradient ring */}
           <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1.5} />
           <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
           {/* Tick marks */}
           {ticks}
-          {/* Inner dial area */}
-          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.7)" />
+          {/* Inner dial area (highly transparent) */}
+          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.1)" />
           <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.3)" strokeWidth={0.8} />
           {/* Dotted inner ring */}
           <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
@@ -691,10 +691,14 @@ export default function WalkTab() {
               style={StyleSheet.absoluteFillObject}
             />
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
-              Do not count calories.. just walk organically.
+              {sacred.type === 'sunrise' ? 'Sunrise Starting.. Meditate Now' :
+               sacred.type === 'sunset' ? 'Sunset Setting.. Meditate Now' :
+               sacred.type === 'zenith' ? 'Mid-Noon Zenith.. Meditate Now' :
+               'Do not count calories.. just walk organically.'}
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center' }}>
-              Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...
+              {sacred.type ? 'Connect with the divinity.. Sync your rhythm with the shifting sky.' :
+               'Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...'}
             </Text>
           </View>
         </Animated.View>
@@ -910,15 +914,6 @@ export default function WalkTab() {
             {/* Centre content */}
             <View style={st.ringCentre}>
               
-              {(isSunset || isSunrise) ? (
-                <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
-                    {isSunset ? 'Sunset setting meditate now..' : 'Sunrise starting meditate now..'}
-                  </Text>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Connect with the divinity..</Text>
-                </View>
-              ) : (
-                <>
                   {weather ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2, opacity: 0.95 }}>
                       <Text style={{ fontSize: 15 }}>{weather.emoji}</Text>
@@ -963,8 +958,10 @@ export default function WalkTab() {
                     </View>
                   </View>
                   
-                  <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginTop: 10 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
+                  <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', marginTop: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                      {Math.round(stats.goalPercent)}% daily planting progress
+                    </Text>
                   </View>
                   
                   {/* Yesterday motivational display */}
@@ -974,43 +971,21 @@ export default function WalkTab() {
                       <Text style={{ fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.9)' }}>{fmtK(yesterdaySteps)} steps</Text>
                     </View>
                   )}
-                </>
-              )}
+                  
+                  {/* Weekly Intention inside ring */}
+                  {summary && summary.weeklyGoal > 0 && (
+                    <View style={{ marginTop: 6, alignItems: 'center', opacity: 0.95, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>WEEKLY INTENTION</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>
+                        {summary.weeklyGoalPercent}% • {summary.weeklySteps > 1000 ? (summary.weeklySteps/1000).toFixed(1)+'k' : summary.weeklySteps} / {summary.weeklyGoal > 1000 ? (summary.weeklyGoal/1000).toFixed(1)+'k' : summary.weeklyGoal}
+                      </Text>
+                    </View>
+                  )}
             </View>
           </View>
 
           </Animated.View>
 
-          {/* ── WEEKLY PROGRESS BAR ───────────────────────────────────────── */}
-          {summary && summary.weeklyGoal > 0 && (
-            <View style={{ width: '100%', paddingHorizontal: 32 }}>
-              <Animated.View style={{ marginTop: weeklyMargin }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2, alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Weekly Intention</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: 'rgba(255,255,255,0.95)' }}>{summary.weeklyGoalPercent}%</Text>
-                </View>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontStyle: 'italic' }}>Your background step goal to build lasting habits.</Text>
-                
-                <View style={{ height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4 }}>
-                  <View style={{ 
-                    position: 'absolute', left: 0, top: 0, bottom: 0, 
-                    width: `${Math.min(100, summary.weeklyGoalPercent)}%`, 
-                    backgroundColor: '#FFFFFF', borderRadius: 5 
-                  }}>
-                    <LinearGradient
-                      colors={['rgba(255,255,255,0.3)', 'transparent']}
-                      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                  </View>
-                </View>
-                
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 8, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 }}>
-                  {summary.weeklySteps.toLocaleString()} <Text style={{fontWeight: '400'}}>of</Text> {summary.weeklyGoal.toLocaleString()} <Text style={{fontWeight: '400'}}>steps</Text>
-                </Text>
-              </Animated.View>
-            </View>
-          )}
         </Animated.View>
 
           {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}

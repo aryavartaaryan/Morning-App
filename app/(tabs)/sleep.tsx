@@ -187,6 +187,7 @@ const NAAD_SOUNDS: NaadSound[] = [
   { id: 'naad_sitar_vibes_ii',         label: 'Sitar Reverie',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NAAD_BASE + 'gskvibes-sitar-4-361900.m4a' } },
   { id: 'naad_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
   { id: 'naad_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
+  { id: 'naad_sitar_tabla_flute_sleep',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Sleep', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
   { id: 'naad_short_classical_sitar',  label: 'Classical Sitar Short',  emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Short Indian classical sitar',                src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-short-sitar-music-classical-indian-404177.m4a' } },
   { id: 'naad_sitar_moonlight',        label: 'Sitar in Moonlight',     emoji: '🌙', cat: 'Ragas', color: '#fcd34d', top: '#1A1400', bot: '#0A0A00', desc: 'Sitar resonating in the moonlit night',      src: { uri: NAAD_BASE + 'nourishedbymusic-sitar-in-the-moonlight-115602.m4a' } },
   { id: 'naad_sitar_holistic',         label: 'Sitar & Holistic',       emoji: '🧘', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Holistic sitar meditation sounds',            src: { uri: NAAD_BASE + 'patrizioyoga-sitar-hand-olistik-sound-project-patrizio-yoga-172195.m4a' } },
@@ -222,6 +223,7 @@ const NAAD_SOUNDS: NaadSound[] = [
   // ── Tabla ──────────────────────────────────────────────────────────────────
   { id: 'naad_tabla_110',              label: 'Tabla 110',              emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Crisp tabla at 110 BPM',                       src: { uri: NAAD_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
   { id: 'naad_tabla_flute_i',          label: 'Awakening Tabla & Flute',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
+  { id: 'naad_tabla_flute_i_sleep',          label: 'Awakening Tabla & Flute',        emoji: '🪘', cat: 'Sleep', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
   { id: 'naad_tabla_flute_ii',         label: 'Tranquil Tabla & Flute',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
   { id: 'naad_tabla_flute_iii',        label: 'Mystic Tabla & Flute',      emoji: '🎶', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Tabla and flute melody III',                  src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-105-262271.m4a' } },
   { id: 'naad_tabla_flute_strings_i',  label: 'Tabla Flute Harmony',  emoji: '🪗', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla, flute and strings blend I',            src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-strings-105-262265.m4a' } },
@@ -1662,79 +1664,188 @@ function sacredDots(cx: number, cy: number, r: number, count: number, angleOffse
   });
 }
 
-function WaveView({ size, color, soundId, active, paused }: {
-  size: number; color: string; soundId: string; active: boolean; paused: boolean;
+function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse1, pulse2, pulse3, pulse4, pulse5 }: {
+  size: number; color: string; colorTop: string; soundId: string; active: boolean; paused: boolean;
+  pulse1: Animated.Value; pulse2: Animated.Value; pulse3: Animated.Value; pulse4: Animated.Value; pulse5: Animated.Value;
 }) {
   const { getMeteringLevel } = useSoundPlayer();
   const [phase, setPhase] = useState(0);
   const rotAnim = useRef(new Animated.Value(0)).current;
+  const audioScaleAnim = useRef(new Animated.Value(1)).current;
+  const colorPulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!active || paused) return;
-    const iv = setInterval(() => setPhase(p => p + 0.05), 36);
+    if (!active || paused) {
+      audioScaleAnim.setValue(1);
+      return;
+    }
+    const iv = setInterval(() => {
+       setPhase(p => p + 0.05);
+       const mLevel = getMeteringLevel();
+       // 1. Audio-Reactive "Breath" Scaling 🫁
+       audioScaleAnim.setValue(1 + mLevel * 0.15); 
+    }, 36);
     return () => clearInterval(iv);
   }, [active, paused]);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(rotAnim, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
+    if (!active) return;
+    const loop1 = Animated.loop(Animated.timing(rotAnim, { toValue: 1, duration: 24000, easing: Easing.linear, useNativeDriver: true }));
+    const loop2 = Animated.loop(Animated.sequence([
+      Animated.timing(colorPulseAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(colorPulseAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+    ]));
+    loop1.start();
+    loop2.start();
+    return () => { loop1.stop(); loop2.stop(); };
+  }, [active]);
 
-  const mLevel = getMeteringLevel();
-  const levelScale = paused ? 0.04 : (0.12 + mLevel * 1.4);
-  const fillY = size * 0.58;
-  const waveA = makeWavePath(size, phase, size * 0.08 * levelScale, size * 0.85, fillY);
-  const waveB = makeWavePath(size, -phase * 0.6 + 1.2, size * 0.06 * levelScale, size * 0.70, fillY + size * 0.03);
-  const waveC = makeWavePath(size, phase * 0.4 + 2.0, size * 0.04 * levelScale, size * 0.55, fillY + size * 0.06);
-  const waveGlass = makeWavePath(size, phase + 0.15, size * 0.015 * levelScale, size * 0.9, fillY - size * 0.01);
-  const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
   const cx = size / 2, cy = size / 2;
-  const outerDots = sacredDots(cx, cy, size * 0.38, 6, phase * 0.3);
-  const innerDots = sacredDots(cx, cy, size * 0.24, 4, -phase * 0.2);
-  const dotR = size * 0.04 * (0.5 + levelScale);
+  const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
+
+  // Aurora plasma waves
+  const mLevel = active && !paused ? getMeteringLevel() : 0;
+  const levelScale = paused ? 0.04 : (0.12 + mLevel * 1.4);
+  const waveSize = size * 0.60;
+  const fillY = waveSize * 0.58;
+  const waveA = makeWavePath(waveSize, phase, waveSize * 0.08 * levelScale, waveSize * 0.85, fillY);
+  const waveB = makeWavePath(waveSize, -phase * 0.6 + 1.2, waveSize * 0.06 * levelScale, waveSize * 0.70, fillY + waveSize * 0.03);
+  const waveC = makeWavePath(waveSize, phase * 0.4 + 2.0, waveSize * 0.04 * levelScale, waveSize * 0.55, fillY + waveSize * 0.06);
+  const waveGlass = makeWavePath(waveSize, phase + 0.15, waveSize * 0.015 * levelScale, waveSize * 0.9, fillY - waveSize * 0.01);
+
+  // 3. Stardust Particle Emitters ✨
+  const particles = Array.from({ length: 24 }).map((_, i) => {
+    const offset = i * (Math.PI * 2 / 24);
+    const speed = 0.5 + (i % 3) * 0.3;
+    const r = ((phase * 15 * speed + i * 20) % (size * 0.5));
+    const angle = offset + phase * 0.15 * (i % 2 === 0 ? 1 : -1);
+    const opacity = Math.max(0, 1 - (r / (size * 0.45)));
+    return { cx: cx + r * Math.cos(angle), cy: cy + r * Math.sin(angle), r: 1.5 + (i % 2), opacity };
+  });
+
+  const sonarRings = [
+    { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
+    { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
+    { anim: pulse3, sm: 0.96, bw: 1.0, oMin: 0.05, oMax: 0.50, sMin: 0.94, sMax: 1.06 },
+  ];
 
   return (
-    <View pointerEvents="none" style={{
+    <Animated.View pointerEvents="none" style={{
       position: 'absolute', width: size, height: size,
-      borderRadius: size / 2, overflow: 'hidden',
-      opacity: paused ? 0.25 : 1,
+      left: (Dimensions.get('window').width - size) / 2,
+      top: (Dimensions.get('window').height - size) / 2 - Dimensions.get('window').height * 0.05,
+      zIndex: 2, alignItems: 'center', justifyContent: 'center',
+      transform: [{ scale: audioScaleAnim }]
     }}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <SvgClipPath id={cid}>
-            <SvgCircle cx={cx} cy={cy} r={size / 2} />
-          </SvgClipPath>
-        </Defs>
-        {/* Aurora plasma waves */}
-        <Path d={waveC} fill={color + '08'} clipPath={`url(#${cid})`} />
-        <Path d={waveB} fill={color + '12'} clipPath={`url(#${cid})`} />
-        <Path d={waveA} fill={color + '1A'} clipPath={`url(#${cid})`} />
-        <Path d={waveGlass} fill="rgba(255,255,255,0.14)" clipPath={`url(#${cid})`} />
-        {/* Outer sacred geometry dots */}
-        {outerDots.map((d, i) => (
-          <SvgCircle key={`od${i}`} cx={d.x} cy={d.y} r={dotR} fill={color + 'CC'} />
-        ))}
-        {/* Inner sacred geometry dots */}
-        {innerDots.map((d, i) => (
-          <SvgCircle key={`id${i}`} cx={d.x} cy={d.y} r={dotR * 0.6} fill={'rgba(255,255,255,0.7)'} />
-        ))}
-        {/* Hairline sacred hexagon */}
-        {sacredDots(cx, cy, size * 0.30, 6, Math.PI / 6 + phase * 0.1).map((d, i, arr) => {
-          const next = arr[(i + 1) % arr.length];
-          return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color + '40'} strokeWidth="0.8" />;
-        })}
-      </Svg>
-      {/* Glossy top crescent */}
-      <View pointerEvents="none" style={{
-        position: 'absolute', top: size * 0.06, left: size * 0.20, right: size * 0.20,
-        height: size * 0.18, borderRadius: size / 2,
-        backgroundColor: 'rgba(255,255,255,0.10)',
-        transform: [{ scaleY: 0.5 }],
+      {/* ── 4. Color Morphing Glows 🎨 ── */}
+      <Animated.View style={{
+        position: 'absolute', width: size * 0.85, height: size * 0.85, borderRadius: size * 0.425,
+        backgroundColor: color, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] }),
+        shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 50,
       }} />
-    </View>
+      <Animated.View style={{
+        position: 'absolute', width: size * 0.85, height: size * 0.85, borderRadius: size * 0.425,
+        backgroundColor: colorTop, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.15] }),
+        shadowColor: colorTop, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 50,
+      }} />
+      <View style={{ position: 'absolute', width: size * 0.95, height: size * 0.95, borderRadius: size * 0.475, backgroundColor: 'rgba(255,255,255,0.03)' }} />
+
+      {/* ── Outer sonar hairline rings ── */}
+      {sonarRings.map((r, i) => {
+        const s = size * r.sm;
+        return (
+          <Animated.View key={`sr${i}`} style={{
+            position: 'absolute', width: s, height: s, borderRadius: s / 2, borderWidth: r.bw * 1.5, borderColor: color,
+            shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20,
+            opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax + 0.15] }),
+            transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
+          }} />
+        );
+      })}
+
+      {/* ── 2. 3D Gyroscopic Illusion Geometry 🌌 ── */}
+      <Animated.View style={{
+        position: 'absolute', width: size, height: size,
+        transform: [
+          { rotateX: '55deg' },
+          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+        ]
+      }}>
+        <Svg width={size} height={size}>
+          {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i, arr) => {
+            const next = arr[(i + 1) % arr.length];
+            return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
+          })}
+          {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i) => (
+            <SvgCircle key={`hd${i}`} cx={d.x} cy={d.y} r={size * 0.022} fill={color} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      <Animated.View style={{
+        position: 'absolute', width: size, height: size,
+        transform: [
+          { rotateX: '45deg' },
+          { rotateY: '-25deg' },
+          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }
+        ]
+      }}>
+        <Svg width={size} height={size}>
+          {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
+            const next = arr[(i + 1) % arr.length];
+            return <Path key={`tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+          })}
+          {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i) => (
+            <SvgCircle key={`td${i}`} cx={d.x} cy={d.y} r={size * 0.016} fill={'rgba(255,255,255,1)'} />
+          ))}
+          {sacredDots(cx, cy, size * 0.30, 8, 0).map((d, i) => (
+            <SvgCircle key={`md${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={color} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      {/* ── 3. Stardust Particle Emitters ✨ ── */}
+      <View style={{ position: 'absolute', width: size, height: size }}>
+        <Svg width={size} height={size}>
+          {particles.map((p, i) => (
+            <SvgCircle key={`p${i}`} cx={p.cx} cy={p.cy} r={p.r} fill="rgba(255,255,255,0.95)" opacity={p.opacity} />
+          ))}
+        </Svg>
+      </View>
+
+      {/* ── Central Aurora Plasma Sphere ── */}
+      <View style={{
+        position: 'absolute', width: waveSize, height: waveSize, borderRadius: waveSize / 2, overflow: 'hidden',
+        opacity: paused ? 0.25 : 1,
+      }}>
+        <Svg width={waveSize} height={waveSize}>
+          <Defs><SvgClipPath id={cid}><SvgCircle cx={waveSize/2} cy={waveSize/2} r={waveSize/2} /></SvgClipPath></Defs>
+          <Path d={waveC} fill={color + '40'} clipPath={`url(#${cid})`} />
+          <Path d={waveB} fill={color + '60'} clipPath={`url(#${cid})`} />
+          <Path d={waveA} fill={color + '90'} clipPath={`url(#${cid})`} />
+          <Path d={waveGlass} fill="rgba(255,255,255,0.35)" clipPath={`url(#${cid})`} />
+        </Svg>
+        <View style={{
+          position: 'absolute', top: waveSize * 0.06, left: waveSize * 0.20, right: waveSize * 0.20,
+          height: waveSize * 0.18, borderRadius: waveSize / 2, backgroundColor: 'rgba(255,255,255,0.10)', transform: [{ scaleY: 0.5 }],
+        }} />
+      </View>
+
+      {/* ── Core inner glow — heartbeat pulse ── */}
+      <Animated.View style={{
+        position: 'absolute', width: size * 0.28, height: size * 0.28, borderRadius: size * 0.14, backgroundColor: color,
+        opacity: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
+        shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 30,
+        transform: [{ scale: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] }) }],
+      }} />
+
+      {/* ── Micro-star white centre pinpoint ── */}
+      <Animated.View style={{
+        position: 'absolute', width: size * 0.06, height: size * 0.06, borderRadius: size * 0.03, backgroundColor: '#FFFFFF',
+        opacity: pulse5.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] }),
+        shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 12,
+      }} />
+    </Animated.View>
   );
 }
 
@@ -2144,135 +2255,20 @@ function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── SACRED SOUND ORB — Sacred Geometry × Aurora Plasma × Audio-Reactive Particles ── */}
-      {(() => {
-        const orbSize = REEL_W * 0.74;
-        const cx = orbSize / 2, cy = orbSize / 2;
-        const ringColor = accentColor || sound.color;
-        const mLevel = isPlaying && !isPaused ? 0.5 : 0.1; // base level, WaveView handles real-time inside
-
-        // Outer sonar rings — hairline, expand outward from centre
-        const sonarRings = [
-          { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
-          { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
-          { anim: pulse3, sm: 0.96, bw: 1.0, oMin: 0.05, oMax: 0.50, sMin: 0.94, sMax: 1.06 },
-        ];
-
-        return (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: orbSize, height: orbSize,
-              left: (REEL_W - orbSize) / 2,
-              top: (REEL_H - orbSize) / 2 - REEL_H * 0.05,
-              zIndex: 2,
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {/* ── Outer sonar / breathing hairline rings ── */}
-            {sonarRings.map((r, i) => {
-              const s = orbSize * r.sm;
-              return (
-                <Animated.View key={`sr${i}`} style={{
-                  position: 'absolute',
-                  width: s, height: s, borderRadius: s / 2,
-                  borderWidth: r.bw,
-                  borderColor: ringColor,
-                  shadowColor: ringColor,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.8,
-                  shadowRadius: 16,
-                  opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
-                  transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
-                }} />
-              );
-            })}
-
-            {/* ── Sacred Geometry SVG layer — orbiting dots + hexagon + inner triangle ── */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: orbSize, height: orbSize,
-              transform: [{
-                rotate: pulse1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '60deg'] })
-              }],
-            }}>
-              <Svg width={orbSize} height={orbSize}>
-                {/* Outer hexagon ring */}
-                {sacredDots(cx, cy, orbSize * 0.38, 6, 0).map((d, i, arr) => {
-                  const next = arr[(i + 1) % arr.length];
-                  return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={ringColor + '60'} strokeWidth="0.8" />;
-                })}
-                {/* Outer hexagon vertex glow dots */}
-                {sacredDots(cx, cy, orbSize * 0.38, 6, 0).map((d, i) => (
-                  <SvgCircle key={`hd${i}`} cx={d.x} cy={d.y} r={orbSize * 0.018} fill={ringColor + 'CC'} />
-                ))}
-              </Svg>
-            </Animated.View>
-
-            {/* Counter-rotating inner sacred geometry */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: orbSize, height: orbSize,
-              transform: [{
-                rotate: pulse2.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-90deg'] })
-              }],
-            }}>
-              <Svg width={orbSize} height={orbSize}>
-                {/* Inner triangle */}
-                {sacredDots(cx, cy, orbSize * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
-                  const next = arr[(i + 1) % arr.length];
-                  return <Path key={`tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.55)'} strokeWidth="0.7" />;
-                })}
-                {/* Inner triangle dots */}
-                {sacredDots(cx, cy, orbSize * 0.22, 3, Math.PI / 6).map((d, i) => (
-                  <SvgCircle key={`td${i}`} cx={d.x} cy={d.y} r={orbSize * 0.013} fill={'rgba(255,255,255,0.9)'} />
-                ))}
-                {/* Mid ring — 8 particle dots */}
-                {sacredDots(cx, cy, orbSize * 0.30, 8, 0).map((d, i) => (
-                  <SvgCircle key={`md${i}`} cx={d.x} cy={d.y} r={orbSize * 0.010} fill={ringColor + '99'} />
-                ))}
-              </Svg>
-            </Animated.View>
-
-            {/* ── Central Aurora Plasma Sphere (WaveView) ── */}
-            <WaveView
-              size={orbSize * 0.60}
-              color={ringColor}
-              soundId={sound.id}
-              active={isActive}
-              paused={isPaused || !isPlaying}
-            />
-
-            {/* ── Core inner glow — heartbeat pulse ── */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: orbSize * 0.28, height: orbSize * 0.28,
-              borderRadius: orbSize * 0.14,
-              backgroundColor: ringColor,
-              opacity: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
-              shadowColor: ringColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1.0,
-              shadowRadius: 30,
-              transform: [{ scale: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] }) }],
-            }} />
-
-            {/* ── Micro-star white centre pinpoint ── */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: orbSize * 0.06, height: orbSize * 0.06,
-              borderRadius: orbSize * 0.03,
-              backgroundColor: '#FFFFFF',
-              opacity: pulse5.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] }),
-              shadowColor: '#FFFFFF',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1.0,
-              shadowRadius: 12,
-            }} />
-          </View>
-        );
-      })()}
+      {/* ── MASTER SACRED SOUND ORB ── */}
+      <MasterSacredOrb
+        size={REEL_W * 0.74}
+        color={accentColor || sound.color}
+        colorTop={sound.top ?? '#000000'}
+        soundId={sound.id}
+        active={isActive}
+        paused={isPaused || !isPlaying}
+        pulse1={pulse1}
+        pulse2={pulse2}
+        pulse3={pulse3}
+        pulse4={pulse4}
+        pulse5={pulse5}
+      />
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
@@ -3205,48 +3201,48 @@ function SoundReelsModal({
           </View>
         )}
 
-        {/* Ultra-Premium Calming Meditation App Style Popup */}
+        {/* Ultra-Modern Calming Meditation App Style Popup */}
         {showClosePrompt && (
           <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,12,0.6)' }]} />
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5,5,10,0.5)' }]} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
             <Animated.View style={{ 
-              width: W * 0.86, 
-              maxWidth: 350, 
-              borderRadius: 32, 
+              width: W * 0.82, 
+              maxWidth: 320, 
+              borderRadius: 36, 
               overflow: 'hidden', 
-              backgroundColor: 'rgba(24,24,28,0.65)', 
+              backgroundColor: 'rgba(20,20,25,0.45)', 
               borderWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.12)', 
+              borderColor: 'rgba(255,255,255,0.08)', 
               shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 24 }, 
-              shadowOpacity: 0.5, 
-              shadowRadius: 40, 
+              shadowOffset: { width: 0, height: 30 }, 
+              shadowOpacity: 0.4, 
+              shadowRadius: 50, 
               elevation: 20 
             }}>
-              <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
+              <View style={{ padding: 36, paddingBottom: 28, alignItems: 'center' }}>
                 <View style={{ 
-                  width: 64, 
-                  height: 64, 
-                  borderRadius: 32, 
-                  backgroundColor: 'rgba(255,255,255,0.06)', 
+                  width: 52, 
+                  height: 52, 
+                  borderRadius: 26, 
+                  backgroundColor: 'rgba(255,255,255,0.03)', 
                   justifyContent: 'center', 
                   alignItems: 'center', 
-                  marginBottom: 20, 
+                  marginBottom: 18, 
                   borderWidth: 1, 
-                  borderColor: 'rgba(255,255,255,0.1)' 
+                  borderColor: 'rgba(255,255,255,0.05)' 
                 }}>
-                  <Ionicons name="sparkles-outline" size={28} color="rgba(255,255,255,0.85)" />
+                  <Ionicons name="moon-outline" size={22} color="rgba(255,255,255,0.7)" />
                 </View>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.4, marginBottom: 8 }}>Leave Session?</Text>
-                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22, paddingHorizontal: 10 }}>You can minimize the player to continue listening in the background.</Text>
+                <Text style={{ fontSize: 20, fontWeight: '400', color: '#FFF', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 8 }}>Session Pause</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20, paddingHorizontal: 12 }}>You can minimize the player to continue listening peacefully in the background.</Text>
               </View>
               
-              <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 12 }}>
+              <View style={{ paddingHorizontal: 28, paddingBottom: 32, gap: 14 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
@@ -3256,11 +3252,11 @@ function SoundReelsModal({
                   }}
                 >
                   <LinearGradient
-                    colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)']}
+                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 18, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
+                    style={{ paddingVertical: 16, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
                   >
-                    <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>Keep in Background</Text>
+                    <Text style={{ fontSize: 14, color: '#FFF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>Keep in Background</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -3272,9 +3268,9 @@ function SoundReelsModal({
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 18, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,92,92,0.1)', borderWidth: 1, borderColor: 'rgba(255,92,92,0.15)' }}
+                  style={{ paddingVertical: 16, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,100,100,0.05)', borderWidth: 1, borderColor: 'rgba(255,100,100,0.1)' }}
                 >
-                  <Text style={{ fontSize: 17, color: '#FF7676', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>End Session</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,140,140,0.9)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>End Session</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3283,9 +3279,9 @@ function SoundReelsModal({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                   }}
-                  style={{ paddingVertical: 14, alignItems: 'center', marginTop: 8 }}
+                  style={{ paddingVertical: 10, alignItems: 'center', marginTop: 4 }}
                 >
-                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 }}>Cancel</Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '500', fontFamily: 'Nunito_500Medium', letterSpacing: 0.2 }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>

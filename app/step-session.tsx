@@ -136,11 +136,11 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.88)" />
+          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.15)" />
           <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.55)" strokeWidth={1.5} />
           <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
           {ticks}
-          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.75)" />
+          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.1)" />
           <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.35)" strokeWidth={0.8} />
           <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
           {/* Diagonal 45° secondary points (sky blue) */}

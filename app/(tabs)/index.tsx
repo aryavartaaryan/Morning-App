@@ -1020,21 +1020,29 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                     >
                       <View style={{
                         width: 44, height: 52, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
-                        backgroundColor: isSelected ? '#f43f5e' : (isToday ? 'rgba(255,255,255,0.06)' : 'transparent'),
+                        backgroundColor: isSelected ? '#fbbf24' : (isToday ? 'rgba(255,255,255,0.06)' : 'transparent'),
                       }}>
-                        <Text style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#fff' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.9)') }}>
+                        <Text style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#1e1b4b' : (isToday ? '#fbbf24' : 'rgba(255,255,255,0.9)') }}>
                           {date.getDate()}
                         </Text>
-                        <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.4)'), marginTop: 2, letterSpacing: 0.5 }}>
+                        <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(30,27,75,0.7)' : (isToday ? '#fbbf24' : 'rgba(255,255,255,0.4)'), marginTop: 2, letterSpacing: 0.5 }}>
                           {tithiShort}
                         </Text>
                         {festMatch && (
-                          <View style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#fff' : (festMatch.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa') }} />
+                          <View style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: isSelected ? '#1e1b4b' : (festMatch.festival.type === 'hindu' ? '#fbbf24' : '#60a5fa') }} />
                         )}
                       </View>
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+              
+              <View style={{ marginTop: 12, alignItems: 'center' }}>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>←</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Swipe to change month</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>→</Text>
+                </View>
               </View>
             </View>
           )}
@@ -1045,7 +1053,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             
             {selFest && (
               <View style={{ marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: selFest.festival.type === 'hindu' ? '#f43f5e' : '#60a5fa', letterSpacing: 1.5, marginBottom: 6 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: selFest.festival.type === 'hindu' ? '#fbbf24' : '#60a5fa', letterSpacing: 1.5, marginBottom: 6 }}>
                   {selFest.festival.type === 'hindu' ? 'COSMIC FESTIVAL' : selFest.festival.type.toUpperCase() + ' OBSERVANCE'}
                 </Text>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 6 }}>{selFest.festival.name.split(' / ')[0]}</Text>
@@ -6300,31 +6308,32 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             </View>
           )}
           {/* ULTRA-PREMIUM ACTION BUTTONS (BOTTOM) */}
-          <View style={{ flexDirection: 'column', gap: 10, marginTop: 12, marginBottom: 8, paddingHorizontal: 4 }}>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 8, paddingHorizontal: 4 }}>
             {/* Primary Action: Cosmic Festivals */}
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
             >
-              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
+                colors={['rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0.05)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 1)' }} />
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(244, 63, 94, 0.3)' }} />
                 
                 {/* Top shine */}
                 <LinearGradient
-                  colors={['rgba(255,255,255,0.8)', 'transparent']}
+                  colors={['rgba(255,255,255,0.4)', 'transparent']}
                   start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
                   style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
                 />
                 
-                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#be123c', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                    COSMIC FESTIVALS
+                <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 16, textShadowColor: 'rgba(244,63,94,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>📅</Text>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#fda4af', letterSpacing: 1, textTransform: 'uppercase' }}>
+                    FESTIVALS
                   </Text>
                 </View>
               </LinearGradient>
@@ -6334,19 +6343,27 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
             >
               <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
+                colors={['rgba(167, 139, 250, 0.25)', 'rgba(96, 165, 250, 0.05)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
-                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="planet-outline" size={14} color="#FFF" />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                    ASTRAL SCIENCE
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.3)' }} />
+                
+                {/* Top shine */}
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.4)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
+                />
+                
+                <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 16, textShadowColor: 'rgba(167,139,250,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>🪐</Text>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#C4B5FD', letterSpacing: 1, textTransform: 'uppercase' }}>
+                    SCIENCE
                   </Text>
                 </View>
               </LinearGradient>
