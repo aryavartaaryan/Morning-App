@@ -993,7 +993,8 @@ export default function WalkTab() {
           opacity: cardFade,
           transform: [{ translateY: cardSlide }],
           paddingHorizontal: 32,
-          gap: 10,
+          flexDirection: 'row',
+          gap: 12,
           marginTop: btnMarginTop,
           marginBottom: btnMarginBot,
         }}>
@@ -1002,7 +1003,7 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+            style={{ flex: 1.4, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
           >
             <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
@@ -1035,7 +1036,7 @@ export default function WalkTab() {
               </Animated.View>
               
               <View style={{ paddingVertical: 12 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                <Text style={{ fontSize: 11, fontWeight: '900', color: '#0369a1', letterSpacing: 0.5, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit>
                   {sessionTitle}
                 </Text>
               </View>
@@ -1044,7 +1045,7 @@ export default function WalkTab() {
 
           {/* Adjust Target Button */}
           <TouchableOpacity
-            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+            style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
             onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
             activeOpacity={0.82}
           >
@@ -1052,7 +1053,7 @@ export default function WalkTab() {
             <LinearGradient
               colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: '100%' }}
             >
               <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
               
@@ -1063,9 +1064,9 @@ export default function WalkTab() {
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
               />
 
-              <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+              <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 4, opacity: 0.9 }} />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} numberOfLines={1} adjustsFontSizeToFit>
                   Intentions
                 </Text>
               </View>
