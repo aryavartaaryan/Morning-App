@@ -232,32 +232,53 @@ export async function prefetchAllSoundImagesWithProgress(
 ): Promise<void> {
   const total = ALL_URLS.length;
   let done = 0;
-  let hasError = false;
-  
+  // Track failures but do NOT break early — continue all images regardless.
+  // This guarantees every sound card image is attempted on first install.
+  const failedUrls: string[] = [];
+
   const executing = new Set<Promise<any>>();
-  
+
   for (const url of ALL_URLS) {
-    if (hasError) break;
     const p = (async () => {
-      await cacheOne(url);
+      try {
+        await cacheOne(url);
+      } catch {
+        failedUrls.push(url);
+      }
     })().finally(() => {
       done += 1;
       onProgress(done, total);
     });
-    
-    const pWrapped = p.catch(() => { hasError = true; });
-    executing.add(pWrapped);
-    const clean = () => executing.delete(pWrapped);
-    pWrapped.then(clean);
-    
+
+    executing.add(p);
+    const clean = () => executing.delete(p);
+    p.then(clean).catch(clean);
+
     if (executing.size >= concurrency) {
       await Promise.race(executing);
     }
   }
   await Promise.all(executing);
-  
-  if (hasError) {
-    throw new Error('Some sound images failed to download.');
+
+  // Retry pass for any failures — gives them a second chance after
+  // the network may have stabilised following a brief glitch.
+  if (failedUrls.length > 0) {
+    console.log(`[soundImagePreload] Retrying ${failedUrls.length} failed images...`);
+    const retryExecuting = new Set<Promise<any>>();
+    for (const url of failedUrls) {
+      // Clear the in-flight entry so cacheOne will attempt it again.
+      delete IN_FLIGHT_DOWNLOADS[url];
+      const p = cacheOne(url).catch(() => {
+        console.warn('[soundImagePreload] Retry also failed for:', url);
+      });
+      retryExecuting.add(p);
+      const clean = () => retryExecuting.delete(p);
+      p.then(clean).catch(clean);
+      if (retryExecuting.size >= 4) {
+        await Promise.race(retryExecuting);
+      }
+    }
+    await Promise.all(retryExecuting);
   }
 }
 

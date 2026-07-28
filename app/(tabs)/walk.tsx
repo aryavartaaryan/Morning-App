@@ -34,6 +34,7 @@ import Svg, { Circle, Line, Text as SvgText, G, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
 import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/StepCounter';
@@ -50,9 +51,7 @@ import { getSacredHourInfo } from '@/lib/solarRingPalette';
 
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
-let Magnetometer: any = null;
 try { Gyroscope = require('expo-sensors').Gyroscope; } catch (_) {}
-try { Magnetometer = require('expo-sensors').Magnetometer; } catch (_) {}
 
 const { width: W } = Dimensions.get('window');
 
@@ -85,6 +84,95 @@ const DEFAULT_STATS: TodayStats = {
   autoSteps: 0, manualSteps: 0, totalSteps: 0, goalSteps: 5000,
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
+
+// ─── Premium Compass Rose ─────────────────────────────────────────────────────
+// A precise, fully visible compass rose rendered inside the progress ring.
+// `heading` = device magnetic heading in degrees (0 = North).
+// The entire SVG counter-rotates by `heading` so North always points to geographic North.
+function CompassRose({ size, heading }: { size: number; heading: number }) {
+  const cx = 50;
+  const cy = 50;
+  // We draw in a 0-100 viewBox then scale to `size`.
+  // Tick marks
+  const ticks: React.JSX.Element[] = [];
+  for (let i = 0; i < 72; i++) {
+    const angle = (i * 5) * Math.PI / 180;
+    const major = i % 9 === 0;   // every 45°
+    const medium = i % 3 === 0;  // every 15°
+    const r1 = 47;
+    const r2 = major ? 42 : medium ? 44 : 45.5;
+    const x1 = cx + r1 * Math.sin(angle);
+    const y1 = cy - r1 * Math.cos(angle);
+    const x2 = cx + r2 * Math.sin(angle);
+    const y2 = cy - r2 * Math.cos(angle);
+    ticks.push(
+      <Line
+        key={i}
+        x1={x1} y1={y1} x2={x2} y2={y2}
+        stroke={major ? 'rgba(255,255,255,0.9)' : medium ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)'}
+        strokeWidth={major ? 1.2 : 0.6}
+        strokeLinecap="round"
+      />
+    );
+  }
+
+  return (
+    <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Counter-rotate so compass points to real North */}
+      <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+          {/* Deep navy outer bezel fill */}
+          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.85)" />
+          {/* Bezel gradient ring */}
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1.5} />
+          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
+          {/* Tick marks */}
+          {ticks}
+          {/* Inner dial area */}
+          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.7)" />
+          <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.3)" strokeWidth={0.8} />
+          {/* Dotted inner ring */}
+          <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
+
+          {/* ── 8-point Compass Rose ── */}
+          {/* Diagonal 45° points (secondary — light blue) */}
+          <G transform="rotate(45, 50, 50)">
+            <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-28} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx} ${cy-28} L${cx+3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx+28} ${cy} L${cx+3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+28} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx} ${cy+28} L${cx-3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx-28} ${cy} L${cx-3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
+          </G>
+
+          {/* Primary cardinal points (E/W/S — white) */}
+          <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx+36} ${cy} L${cx+3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
+          <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+36} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx} ${cy+36} L${cx-3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
+          <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx-36} ${cy} L${cx-3} ${cy-3} Z`} fill="rgba(255,255,255,0.4)" />
+
+          {/* North pointer — RED (prominent) */}
+          <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-36} Z`} fill="#ef4444" opacity={0.95} />
+          <Path d={`M${cx} ${cy} L${cx} ${cy-36} L${cx+3} ${cy-3} Z`} fill="#b91c1c" opacity={0.85} />
+
+          {/* Center pivot */}
+          <Circle cx={cx} cy={cy} r={3} fill="rgba(30,58,100,1)" />
+          <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
+
+          {/* Cardinal labels — stay fixed relative to bezel */}
+          <SvgText x={cx} y={10} fill="#ef4444" fontSize="7" fontWeight="800" textAnchor="middle" alignmentBaseline="middle">N</SvgText>
+          <SvgText x={91} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">E</SvgText>
+          <SvgText x={cx} y={91} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">S</SvgText>
+          <SvgText x={9} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">W</SvgText>
+        </Svg>
+      </View>
+    </View>
+  );
+}
 
 // ── iOS-style glass overlay — identical to sleep.tsx ─────────────────────────
 function GlassPulseOverlay() {
@@ -338,22 +426,25 @@ export default function WalkTab() {
       } catch (_) {}
     }
 
-    // Feature 7: Magnetometer compass
-    let magSub: any = null;
-    if (Magnetometer) {
+    // Feature 7: Highly Accurate Location-based Compass
+    let headingSub: Location.LocationSubscription | null = null;
+    (async () => {
       try {
-        Magnetometer.setUpdateInterval(200);
-        magSub = Magnetometer.addListener(({ x, y }: { x: number; y: number }) => {
-          const heading = Math.round((90 - Math.atan2(y, x) * (180 / Math.PI) + 360) % 360);
-          setCompassHeading(heading);
-        });
-      } catch (_) {}
-    }
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          headingSub = await Location.watchHeadingAsync((data) => {
+            setCompassHeading(Math.round(data.trueHeading !== -1 ? data.trueHeading : data.magHeading));
+          });
+        }
+      } catch (err) {
+        // Location compass failed, ignore.
+      }
+    })();
 
     return () => {
       clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
-      if (magSub)  try { magSub.remove();  } catch (_) {}
+      if (headingSub) headingSub.remove();
     };
   }, []);
 
@@ -759,48 +850,13 @@ export default function WalkTab() {
                     opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
                   }} />
 
-                  {/* ── Feature 7: CLIPPED BACKGROUND COMPASS ── */}
+                  {/* ── Feature 7: Premium Compass Rose (inside inner disc) ── */}
                   {compassHeading !== null && (
-                    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
-                      <Animated.View style={{
-                        transform: [{ rotate: `${-compassHeading}deg` }],
-                        width: RING_SIZE * 1.5, height: RING_SIZE * 1.5,
-                        opacity: 0.15,
-                      }}>
-                        <Svg width="100%" height="100%" viewBox="0 0 100 100">
-                          {/* Premium Outer Bezel / Track */}
-                          <Circle cx={50} cy={50} r={49} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                          <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.2} strokeDasharray="1 2" />
-                          <Circle cx={50} cy={50} r={46} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.5} strokeDasharray="0.5 4" />
-                          <Circle cx={50} cy={50} r={43} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
-                          
-                          <G transform="rotate(45, 50, 50)">
-                            <Path d="M50 50 L48 48 L50 15 Z" fill="#7dd3fc" />
-                            <Path d="M50 50 L50 15 L52 48 Z" fill="#38bdf8" />
-                            <Path d="M50 50 L52 48 L85 50 Z" fill="#7dd3fc" />
-                            <Path d="M50 50 L85 50 L52 52 Z" fill="#38bdf8" />
-                            <Path d="M50 50 L52 52 L50 85 Z" fill="#7dd3fc" />
-                            <Path d="M50 50 L50 85 L48 52 Z" fill="#38bdf8" />
-                            <Path d="M50 50 L48 52 L15 50 Z" fill="#7dd3fc" />
-                            <Path d="M50 50 L15 50 L48 48 Z" fill="#38bdf8" />
-                          </G>
-                          <Path d="M50 50 L54 46 L95 50 Z" fill="rgba(255,255,255,0.6)" />
-                          <Path d="M50 50 L95 50 L54 54 Z" fill="rgba(255,255,255,0.2)" />
-                          <Path d="M50 50 L54 54 L50 95 Z" fill="rgba(255,255,255,0.6)" />
-                          <Path d="M50 50 L50 95 L46 54 Z" fill="rgba(255,255,255,0.2)" />
-                          <Path d="M50 50 L46 54 L5 50 Z" fill="rgba(255,255,255,0.6)" />
-                          <Path d="M50 50 L5 50 L46 46 Z" fill="rgba(255,255,255,0.2)" />
-                          <Path d="M50 50 L46 46 L50 5 Z" fill="#f87171" opacity={0.9} />
-                          <Path d="M50 50 L50 5 L54 46 Z" fill="#dc2626" opacity={0.8} />
-                          <Circle cx={50} cy={50} r={2} fill="#ffffff" />
-                          
-                          {/* Premium Directional Labels */}
-                          <SvgText x={50} y={11} fill="#f87171" fontSize="5" fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">N</SvgText>
-                          <SvgText x={91} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">E</SvgText>
-                          <SvgText x={50} y={92} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">S</SvgText>
-                          <SvgText x={9} y={51} fill="rgba(255,255,255,0.8)" fontSize="4.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle" letterSpacing="0.5">W</SvgText>
-                        </Svg>
-                      </Animated.View>
+                    <View pointerEvents="none" style={[
+                      StyleSheet.absoluteFillObject,
+                      { alignItems: 'center', justifyContent: 'center' },
+                    ]}>
+                      <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassHeading} />
                     </View>
                   )}
 

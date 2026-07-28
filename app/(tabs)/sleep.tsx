@@ -1654,31 +1654,47 @@ const makeWavePath = (W: number, phase: number, amplitude: number, wavelength: n
   return pts.join(' ');
 };
 
+// Sacred geometry dot positions on a ring
+function sacredDots(cx: number, cy: number, r: number, count: number, angleOffset: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (i / count) * Math.PI * 2 + angleOffset;
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+}
+
 function WaveView({ size, color, soundId, active, paused }: {
   size: number; color: string; soundId: string; active: boolean; paused: boolean;
 }) {
   const { getMeteringLevel } = useSoundPlayer();
   const [phase, setPhase] = useState(0);
+  const rotAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     if (!active || paused) return;
     const iv = setInterval(() => setPhase(p => p + 0.05), 36);
     return () => clearInterval(iv);
   }, [active, paused]);
 
-  
-  // Audio-reactive amplitude — quiet = barely visible, loud = liquid waves
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(rotAnim, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
   const mLevel = getMeteringLevel();
   const levelScale = paused ? 0.04 : (0.12 + mLevel * 1.4);
-  // Fill from slightly above center for a half-full glass sphere look
-  const fillY = size * 0.58; 
-  
+  const fillY = size * 0.58;
   const waveA = makeWavePath(size, phase, size * 0.08 * levelScale, size * 0.85, fillY);
   const waveB = makeWavePath(size, -phase * 0.6 + 1.2, size * 0.06 * levelScale, size * 0.70, fillY + size * 0.03);
   const waveC = makeWavePath(size, phase * 0.4 + 2.0, size * 0.04 * levelScale, size * 0.55, fillY + size * 0.06);
-  // Glossy wave crest
   const waveGlass = makeWavePath(size, phase + 0.15, size * 0.015 * levelScale, size * 0.9, fillY - size * 0.01);
-  
   const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
+  const cx = size / 2, cy = size / 2;
+  const outerDots = sacredDots(cx, cy, size * 0.38, 6, phase * 0.3);
+  const innerDots = sacredDots(cx, cy, size * 0.24, 4, -phase * 0.2);
+  const dotR = size * 0.04 * (0.5 + levelScale);
 
   return (
     <View pointerEvents="none" style={{
@@ -1686,34 +1702,35 @@ function WaveView({ size, color, soundId, active, paused }: {
       borderRadius: size / 2, overflow: 'hidden',
       opacity: paused ? 0.25 : 1,
     }}>
-      {/* Frosted glass backing — barely visible hint */}
-      <View pointerEvents="none" style={{
-        position: 'absolute', width: size, height: size,
-        backgroundColor: 'rgba(255,255,255,0.02)',
-      }} />
-
-      {/* Sea-water translucent wave layers — 3 depth planes */}
       <Svg width={size} height={size}>
         <Defs>
           <SvgClipPath id={cid}>
-            <SvgCircle cx={size / 2} cy={size / 2} r={size / 2} />
+            <SvgCircle cx={cx} cy={cy} r={size / 2} />
           </SvgClipPath>
         </Defs>
-        {/* Deep water — ultra transparent */}
-        <Path d={waveC} fill={color + '06'} clipPath={`url(#${cid})`} />
-        {/* Mid water */}
-        <Path d={waveB} fill={color + '0B'} clipPath={`url(#${cid})`} />
-        {/* Surface water */}
-        <Path d={waveA} fill={color + '12'} clipPath={`url(#${cid})`} />
-        {/* Bright glassy crest — delicate white highlight */}
-        <Path d={waveGlass} fill="rgba(255,255,255,0.12)" clipPath={`url(#${cid})`} />
+        {/* Aurora plasma waves */}
+        <Path d={waveC} fill={color + '08'} clipPath={`url(#${cid})`} />
+        <Path d={waveB} fill={color + '12'} clipPath={`url(#${cid})`} />
+        <Path d={waveA} fill={color + '1A'} clipPath={`url(#${cid})`} />
+        <Path d={waveGlass} fill="rgba(255,255,255,0.14)" clipPath={`url(#${cid})`} />
+        {/* Outer sacred geometry dots */}
+        {outerDots.map((d, i) => (
+          <SvgCircle key={`od${i}`} cx={d.x} cy={d.y} r={dotR} fill={color + 'CC'} />
+        ))}
+        {/* Inner sacred geometry dots */}
+        {innerDots.map((d, i) => (
+          <SvgCircle key={`id${i}`} cx={d.x} cy={d.y} r={dotR * 0.6} fill={'rgba(255,255,255,0.7)'} />
+        ))}
+        {/* Hairline sacred hexagon */}
+        {sacredDots(cx, cy, size * 0.30, 6, Math.PI / 6 + phase * 0.1).map((d, i, arr) => {
+          const next = arr[(i + 1) % arr.length];
+          return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color + '40'} strokeWidth="0.8" />;
+        })}
       </Svg>
-      
-      {/* Top crescent glossy highlight */}
+      {/* Glossy top crescent */}
       <View pointerEvents="none" style={{
-        position: 'absolute', top: size * 0.05, left: size * 0.18, right: size * 0.18,
-        height: size * 0.22,
-        borderRadius: size / 2,
+        position: 'absolute', top: size * 0.06, left: size * 0.20, right: size * 0.20,
+        height: size * 0.18, borderRadius: size / 2,
         backgroundColor: 'rgba(255,255,255,0.10)',
         transform: [{ scaleY: 0.5 }],
       }} />
@@ -2127,26 +2144,18 @@ function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── SIGNATURE premium multi-layer pulsing visualizer — filled theme colors ── */}
+      {/* ── SACRED SOUND ORB — Sacred Geometry × Aurora Plasma × Audio-Reactive Particles ── */}
       {(() => {
-        const baseSize = REEL_W * 0.78;  // much larger — signature hero element
+        const orbSize = REEL_W * 0.74;
+        const cx = orbSize / 2, cy = orbSize / 2;
         const ringColor = accentColor || sound.color;
-        const c1 = ringColor;   // primary accent / theme
-        const c2 = sound.color; // sound tint
-        const c3 = '#ffffff';   // white inner glint
+        const mLevel = isPlaying && !isPaused ? 0.5 : 0.1; // base level, WaveView handles real-time inside
 
-        // Each ring: [anim, sizeMult, opacityMin, opacityMax, color, scaleMin, scaleMax, borderWidth, fillOpacity, shadowRadius]
-        const rings: Array<{ anim: Animated.Value; sm: number; oMin: number; oMax: number; color: string; sMin: number; sMax: number; bw: number; fill: number; sr: number }> = [
-          // Outermost — slow, barely visible breath
-          { anim: pulse1, sm: 1.30, oMin: 0.00, oMax: 0.18, color: c1, sMin: 0.90, sMax: 1.10, bw: 0.8, fill: 0.03, sr: 30 },
-          // Second ring — medium breath
-          { anim: pulse2, sm: 1.10, oMin: 0.03, oMax: 0.30, color: c1, sMin: 0.93, sMax: 1.07, bw: 1.2, fill: 0.07, sr: 28 },
-          // Third ring — strong fill, main visual
-          { anim: pulse3, sm: 0.88, oMin: 0.08, oMax: 0.55, color: c2, sMin: 0.95, sMax: 1.05, bw: 1.5, fill: 0.18, sr: 35 },
-          // Fourth ring — tight, vibrant core glow
-          { anim: pulse4, sm: 0.66, oMin: 0.15, oMax: 0.70, color: c1, sMin: 0.97, sMax: 1.03, bw: 2.0, fill: 0.30, sr: 40 },
-          // Innermost heartbeat — bright white-tinted core
-          { anim: pulse5, sm: 0.45, oMin: 0.25, oMax: 0.88, color: c3, sMin: 0.98, sMax: 1.02, bw: 2.0, fill: 0.50, sr: 45 },
+        // Outer sonar rings — hairline, expand outward from centre
+        const sonarRings = [
+          { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
+          { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
+          { anim: pulse3, sm: 0.96, bw: 1.0, oMin: 0.05, oMax: 0.50, sMin: 0.94, sMax: 1.06 },
         ];
 
         return (
@@ -2154,52 +2163,113 @@ function ReelCard({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: baseSize, height: baseSize,
-              left: (REEL_W - baseSize) / 2,
-              top: (REEL_H - baseSize) / 2 - REEL_H * 0.06,
+              width: orbSize, height: orbSize,
+              left: (REEL_W - orbSize) / 2,
+              top: (REEL_H - orbSize) / 2 - REEL_H * 0.05,
               zIndex: 2,
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            {rings.map((r, i) => {
-              const s = baseSize * r.sm;
+            {/* ── Outer sonar / breathing hairline rings ── */}
+            {sonarRings.map((r, i) => {
+              const s = orbSize * r.sm;
               return (
-                <Animated.View
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    width: s, height: s,
-                    borderRadius: s / 2,
-                    backgroundColor: 'transparent',
-                    borderWidth: r.bw,
-                    borderColor: r.color,
-                    shadowColor: r.color,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.95,
-                    shadowRadius: r.sr,
-                    opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
-                    transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
-                  }}
-                >
-                  {/* Vibrant filled theme color — the signature effect */}
-                  <View style={{
-                    ...StyleSheet.absoluteFillObject,
-                    backgroundColor: r.color,
-                    opacity: r.fill,
-                    borderRadius: s / 2,
-                  }} />
-                  {/* Deep glow halo over the fill */}
-                  <View style={{
-                    ...StyleSheet.absoluteFillObject,
-                    borderRadius: s / 2,
-                    shadowColor: r.color,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.80,
-                    shadowRadius: r.sr + 10,
-                  }} />
-                </Animated.View>
+                <Animated.View key={`sr${i}`} style={{
+                  position: 'absolute',
+                  width: s, height: s, borderRadius: s / 2,
+                  borderWidth: r.bw,
+                  borderColor: ringColor,
+                  shadowColor: ringColor,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 16,
+                  opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
+                  transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
+                }} />
               );
             })}
+
+            {/* ── Sacred Geometry SVG layer — orbiting dots + hexagon + inner triangle ── */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: orbSize, height: orbSize,
+              transform: [{
+                rotate: pulse1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '60deg'] })
+              }],
+            }}>
+              <Svg width={orbSize} height={orbSize}>
+                {/* Outer hexagon ring */}
+                {sacredDots(cx, cy, orbSize * 0.38, 6, 0).map((d, i, arr) => {
+                  const next = arr[(i + 1) % arr.length];
+                  return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={ringColor + '60'} strokeWidth="0.8" />;
+                })}
+                {/* Outer hexagon vertex glow dots */}
+                {sacredDots(cx, cy, orbSize * 0.38, 6, 0).map((d, i) => (
+                  <SvgCircle key={`hd${i}`} cx={d.x} cy={d.y} r={orbSize * 0.018} fill={ringColor + 'CC'} />
+                ))}
+              </Svg>
+            </Animated.View>
+
+            {/* Counter-rotating inner sacred geometry */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: orbSize, height: orbSize,
+              transform: [{
+                rotate: pulse2.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-90deg'] })
+              }],
+            }}>
+              <Svg width={orbSize} height={orbSize}>
+                {/* Inner triangle */}
+                {sacredDots(cx, cy, orbSize * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
+                  const next = arr[(i + 1) % arr.length];
+                  return <Path key={`tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.55)'} strokeWidth="0.7" />;
+                })}
+                {/* Inner triangle dots */}
+                {sacredDots(cx, cy, orbSize * 0.22, 3, Math.PI / 6).map((d, i) => (
+                  <SvgCircle key={`td${i}`} cx={d.x} cy={d.y} r={orbSize * 0.013} fill={'rgba(255,255,255,0.9)'} />
+                ))}
+                {/* Mid ring — 8 particle dots */}
+                {sacredDots(cx, cy, orbSize * 0.30, 8, 0).map((d, i) => (
+                  <SvgCircle key={`md${i}`} cx={d.x} cy={d.y} r={orbSize * 0.010} fill={ringColor + '99'} />
+                ))}
+              </Svg>
+            </Animated.View>
+
+            {/* ── Central Aurora Plasma Sphere (WaveView) ── */}
+            <WaveView
+              size={orbSize * 0.60}
+              color={ringColor}
+              soundId={sound.id}
+              active={isActive}
+              paused={isPaused || !isPlaying}
+            />
+
+            {/* ── Core inner glow — heartbeat pulse ── */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: orbSize * 0.28, height: orbSize * 0.28,
+              borderRadius: orbSize * 0.14,
+              backgroundColor: ringColor,
+              opacity: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
+              shadowColor: ringColor,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1.0,
+              shadowRadius: 30,
+              transform: [{ scale: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] }) }],
+            }} />
+
+            {/* ── Micro-star white centre pinpoint ── */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: orbSize * 0.06, height: orbSize * 0.06,
+              borderRadius: orbSize * 0.03,
+              backgroundColor: '#FFFFFF',
+              opacity: pulse5.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] }),
+              shadowColor: '#FFFFFF',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1.0,
+              shadowRadius: 12,
+            }} />
           </View>
         );
       })()}
@@ -2325,32 +2395,32 @@ function ReelCard({
           </View>
         )}
 
-        {/* Title row + playing status badge — sleek premium compact */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1 }}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <MarqueeText
-              style={{ fontSize: 19, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: 'Nunito_700Bold' }}
-              active={isPlaying}
-              duration={8000}
+        {/* Title row + playing status badge — ultra-premium elegant multiline */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+          <View style={{ flex: 1, marginRight: 16 }}>
+            <Text
+              style={{ fontSize: 20, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: 'Nunito_700Bold', lineHeight: 26 }}
+              numberOfLines={3}
             >
               {sound.label}
-            </MarqueeText>
+            </Text>
           </View>
           {isPlaying && (
             <View style={{
               flexDirection: 'row', alignItems: 'center', gap: 5,
               paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
-              backgroundColor: isPaused ? 'rgba(255,255,255,0.06)' : sound.color + '20',
-              borderWidth: 0.8, borderColor: isPaused ? 'rgba(255,255,255,0.12)' : sound.color + '55',
+              backgroundColor: isPaused ? 'rgba(255,255,255,0.06)' : sound.color + '15',
+              borderWidth: 1, borderColor: isPaused ? 'rgba(255,255,255,0.12)' : sound.color + '40',
+              marginTop: 2,
             }}>
-              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.28)' : sound.color }} />
-              <Text style={{ fontSize: 8.5, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.35)' : sound.color, letterSpacing: 1.6 }}>
+              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.35)' : sound.color }} />
+              <Text style={{ fontSize: 8.5, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.45)' : sound.color, letterSpacing: 1.4 }}>
                 {isPaused ? 'PAUSED' : 'PLAYING'}
               </Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginBottom: 10, lineHeight: 15, letterSpacing: 0.1 }} numberOfLines={1}>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14, lineHeight: 18, letterSpacing: 0.1, fontFamily: 'Nunito_400Regular' }} numberOfLines={2}>
           {sound.desc}
         </Text>
 
@@ -3135,72 +3205,89 @@ function SoundReelsModal({
           </View>
         )}
 
-        {/* Ultra-Premium iOS Style Action Popup */}
+        {/* Ultra-Premium Calming Meditation App Style Popup */}
         {showClosePrompt && (
           <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,10,12,0.6)' }]} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
             <Animated.View style={{ 
-              width: 270, 
-              borderRadius: 14, 
+              width: W * 0.86, 
+              maxWidth: 350, 
+              borderRadius: 32, 
               overflow: 'hidden', 
-              backgroundColor: 'rgba(35,35,35,0.7)', 
+              backgroundColor: 'rgba(24,24,28,0.65)', 
+              borderWidth: 1, 
+              borderColor: 'rgba(255,255,255,0.12)', 
               shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 4 }, 
-              shadowOpacity: 0.3, 
-              shadowRadius: 15, 
-              elevation: 15 
+              shadowOffset: { width: 0, height: 24 }, 
+              shadowOpacity: 0.5, 
+              shadowRadius: 40, 
+              elevation: 20 
             }}>
-              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 20, paddingTop: 20, paddingBottom: 20, alignItems: 'center' }}>
-                <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFF', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', letterSpacing: -0.41, marginBottom: 4 }}>Leave Session?</Text>
-                <Text style={{ fontSize: 13, color: 'rgba(235,235,245,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 18, letterSpacing: -0.08 }}>You can minimize the player to continue listening in the background.</Text>
+              <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
+                <View style={{ 
+                  width: 64, 
+                  height: 64, 
+                  borderRadius: 32, 
+                  backgroundColor: 'rgba(255,255,255,0.06)', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  marginBottom: 20, 
+                  borderWidth: 1, 
+                  borderColor: 'rgba(255,255,255,0.1)' 
+                }}>
+                  <Ionicons name="sparkles-outline" size={28} color="rgba(255,255,255,0.85)" />
+                </View>
+                <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.4, marginBottom: 8 }}>Leave Session?</Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22, paddingHorizontal: 10 }}>You can minimize the player to continue listening in the background.</Text>
               </View>
               
-              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
-              
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowClosePrompt(false);
-                  onClose(isLast);
-                }}
-                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 17, color: '#0A84FF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: -0.41 }}>Keep in Background</Text>
-              </TouchableOpacity>
+              <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 12 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowClosePrompt(false);
+                    onClose(isLast);
+                  }}
+                >
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.06)']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={{ paddingVertical: 18, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
+                  >
+                    <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>Keep in Background</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
-              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setShowClosePrompt(false);
+                    onStop();
+                    onClose(isLast);
+                  }}
+                  style={{ paddingVertical: 18, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,92,92,0.1)', borderWidth: 1, borderColor: 'rgba(255,92,92,0.15)' }}
+                >
+                  <Text style={{ fontSize: 17, color: '#FF7676', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>End Session</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setShowClosePrompt(false);
-                  onStop();
-                  onClose(isLast);
-                }}
-                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 17, color: '#FF453A', fontWeight: '400', fontFamily: 'Nunito_400Regular', letterSpacing: -0.41 }}>End Session</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', width: '100%' }} />
-
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowClosePrompt(false);
-                }}
-                style={{ paddingVertical: 13, alignItems: 'center', width: '100%', minHeight: 44, justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 17, color: '#FFF', fontWeight: '400', fontFamily: 'Nunito_400Regular', letterSpacing: -0.41 }}>Cancel</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowClosePrompt(false);
+                  }}
+                  style={{ paddingVertical: 14, alignItems: 'center', marginTop: 8 }}
+                >
+                  <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </Animated.View>
           </View>
         )}

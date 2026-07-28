@@ -6300,34 +6300,55 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             </View>
           )}
           {/* ULTRA-PREMIUM ACTION BUTTONS (BOTTOM) */}
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 8, paddingHorizontal: 4 }}>
+          <View style={{ flexDirection: 'column', gap: 10, marginTop: 12, marginBottom: 8, paddingHorizontal: 4 }}>
+            {/* Primary Action: Cosmic Festivals */}
             <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
-              style={{ flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(167,139,250,0.4)', shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8 }}>
+              activeOpacity={0.82}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+            >
+              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(167,139,250,0.22)', 'rgba(96,165,250,0.1)', 'rgba(167,139,250,0.05)']}
+                colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 12 }}>
-                <Text style={{ fontSize: 18, textShadowColor: 'rgba(167,139,250,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>🪐</Text>
-                <Text style={{ fontSize: 10, fontWeight: '900', color: '#C4B5FD', letterSpacing: 1.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                  ASTRAL SCIENCE
-                </Text>
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 1)' }} />
+                
+                {/* Top shine */}
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.8)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
+                />
+                
+                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#be123c', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    COSMIC FESTIVALS
+                  </Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
 
+            {/* Secondary Action: Astral Science */}
             <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
-              style={{ flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,63,94,0.4)', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8 }}>
+              activeOpacity={0.82}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(244,63,94,0.22)', 'rgba(244,63,94,0.1)', 'transparent']}
+                colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 12 }}>
-                <Text style={{ fontSize: 18, textShadowColor: 'rgba(244,63,94,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>📅</Text>
-                <Text style={{ fontSize: 10, fontWeight: '900', color: '#fda4af', letterSpacing: 1.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                  COSMIC FESTIVALS
-                </Text>
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
+                <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="planet-outline" size={14} color="#FFF" />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    ASTRAL SCIENCE
+                  </Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           </View>

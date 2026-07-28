@@ -344,9 +344,9 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
-      <Image source={require('../assets/images/pexels-8061770.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="contain" />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000000', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
+      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.80)' }]} />
       
       <View style={{ flex: 1, zIndex: 10 }}>
         <Text style={{ fontSize: 36, color: '#bfdbfe', fontFamily: 'Nunito_900Black', marginBottom: 8, letterSpacing: 2 }}>Welcome</Text>
@@ -476,6 +476,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  // Continuously spinning arc to show the ring is actively downloading
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Pulse core glow (slow, deep breathing)
@@ -497,7 +499,11 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       ]).start();
     });
 
-    // (Fade out and audio stop logic moved to separate useEffect below)
+    // Spinning arc — continuous 360° rotation, never stops during download
+    Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: false })
+    ).start();
+
 
     // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
@@ -601,7 +607,9 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   useEffect(() => {
     Animated.timing(animatedProgress, {
       toValue: progress,
-      duration: progress === 1 ? 800 : 2500,
+      // Fast 400ms — ring moves immediately as each file completes.
+      // 2500ms was causing "frozen then sudden jump" visual sticking.
+      duration: progress >= 1 ? 600 : 400,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false
     }).start();
@@ -622,6 +630,16 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   const rInner2 = 95; // slightly larger for glassy core
 
+  // Spinning arc angle (0 → 360°)
+  const spinDeg = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // The spinning arc occupies ~40° of the full circle circumference
+  const spinArcLen = cMain * (40 / 360);
+  const spinArcOffset = cMain - spinArcLen;
+
   // Premium Minimalist Glassy Sky Blue Colors (Matching Home Page)
   const skyBlue = '#60a5fa';
   const softSkyBlue = '#bfdbfe';
@@ -629,8 +647,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('../assets/images/pexels-8061770.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="contain" />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.72)' }]} />
+      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.68)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}
       <View style={{
@@ -753,6 +771,28 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
             />
           </Svg>
 
+          {/* === Spinning outer activity arc — rotates continuously to signal active download === */}
+          <Animated.View style={{
+            position: 'absolute',
+            width: SIZE + 28, height: SIZE + 28,
+            top: -14, left: -14,
+            transform: [{ rotate: spinDeg }],
+          }}>
+            <Svg width={SIZE + 28} height={SIZE + 28} viewBox={`0 0 ${SIZE + 28} ${SIZE + 28}`}>
+              {/* Spinning bright arc — short 40° segment */}
+              <Circle
+                cx={(SIZE + 28) / 2} cy={(SIZE + 28) / 2} r={rMain + 14}
+                fill="none"
+                stroke="#bfdbfe"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray={`${spinArcLen} ${spinArcOffset}`}
+                strokeDashoffset={0}
+                opacity={0.7}
+              />
+            </Svg>
+          </Animated.View>
+
           {/* Percentage Text inside the ring */}
           <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -763,23 +803,11 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
           </View>
         </View>
 
-        {/* Status */}
-        {error ? (
-          <View style={{ alignItems: 'center', height: 80 }}>
-            <Text style={[DS.statusLabel, { color: skyBlue, textTransform: 'uppercase', letterSpacing: 2 }]}>CONNECTION INTERRUPTED</Text>
-            <TouchableOpacity 
-              onPress={onRetry}
-              activeOpacity={0.7}
-              style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'rgba(96,165,250,0.15)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)' }}>
-              <Text style={{ color: skyBlue, fontSize: 12, fontFamily: 'Nunito_700Bold' }}>Tap to Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={{ alignItems: 'center', height: 80 }}>
-            <Text style={[DS.statusLabel, { textTransform: 'uppercase', letterSpacing: 1.5 }]}>{label}</Text>
-            <Text style={DS.setupHint}>First-time setup · Takes about 30 sec</Text>
-          </View>
-        )}
+        {/* Status — only show label, no error/retry (retries happen automatically) */}
+        <View style={{ alignItems: 'center', height: 80 }}>
+          <Text style={[DS.statusLabel, { textTransform: 'uppercase', letterSpacing: 1.5 }]}>{label}</Text>
+          <Text style={DS.setupHint}>First-time setup · Takes about 30 sec</Text>
+        </View>
       </View>
     </Animated.View>
   );
@@ -1601,58 +1629,69 @@ export default function RootLayout() {
             setDlProgress(parseFloat(savedProgressRaw) || 0);
           }
 
-          setDlError(false);
           setPhase('downloading');
 
           const bgCount   = Object.keys(BG_URLS).length;
           const { TOTAL_SOUND_IMAGES: soundImgCount } = require('@/lib/soundImagePreload');
           const totalFiles = bgCount + soundImgCount;
+
+          // maxP: tracks the highest progress ever shown so it never goes backwards
           let maxP = parseFloat(savedProgressRaw || '0') || 0;
-          let bgsDone = 0;
-          let soundsDone = 0;
+          // absolute counts — set from each phase's callback (not accumulated)
+          let bgDoneCount    = 0;
+          let soundDoneCount = 0;
 
           const updateProgress = () => {
-            const p = Math.min((bgsDone + soundsDone) / totalFiles, 1);
-            if (p > maxP || (bgsDone + soundsDone) === totalFiles) {
+            const raw = (bgDoneCount + soundDoneCount) / totalFiles;
+            const p   = Math.min(raw, 1);
+            if (p > maxP) {
               maxP = p;
               if (!cancelled) setDlProgress(maxP);
-              if ((bgsDone + soundsDone) % 3 === 0 || (bgsDone + soundsDone) === totalFiles) {
+              // Persist every 5 files so setup can resume where it left off
+              if ((bgDoneCount + soundDoneCount) % 5 === 0) {
                 AsyncStorage.setItem(SETUP_PROGRESS_KEY, maxP.toString()).catch(() => {});
               }
             }
           };
 
           setDlLabel('Preparing the app for you. Listen to the Nada sound till then and calm down...');
-          
-          // Phase 1: BG images
-          let bgSuccess = false;
-          while (!bgSuccess && !cancelled) {
+
+          // Phase 1: BG images (includes its own internal retry pass for any failures)
+          // bgImages.ts now continues ALL images even on network errors, so we
+          // never need to loop here. Only rethrows if ALL images failed (offline).
+          try {
+            await ensureAllBgsCachedWithProgress((done) => {
+              bgDoneCount = done;
+              updateProgress();
+            }, 12);
+          } catch {
+            // Truly offline — wait and auto-retry silently
+            if (!cancelled) setDlLabel('Reconnecting...');
+            await new Promise(r => setTimeout(r, 3000));
             try {
+              bgDoneCount = 0; // reset for clean progress tracking on retry
               await ensureAllBgsCachedWithProgress((done) => {
-                bgsDone = done;
+                bgDoneCount = done;
                 updateProgress();
-              }, 8);
-              bgSuccess = true;
+              }, 12);
             } catch {
-              await new Promise(r => setTimeout(r, 2000));
+              // Still failed — proceed anyway, background re-download will fill gaps
+              console.warn('[Setup] BG images still incomplete after retry, proceeding.');
             }
           }
 
           if (!cancelled) setDlLabel('Preparing your sounds...');
-          
-          // Phase 2: Sound card + reel images
-          let soundSuccess = false;
-          while (!soundSuccess && !cancelled) {
-            try {
-              await prefetchAllSoundImagesWithProgress((done) => {
-                soundsDone = done;
-                updateProgress();
-              }, 8);
-              soundSuccess = true;
-            } catch {
-              await new Promise(r => setTimeout(r, 2000));
-            }
+
+          // Phase 2: Sound card + reel images (also handles its own internal retry)
+          try {
+            await prefetchAllSoundImagesWithProgress((done) => {
+              soundDoneCount = done;
+              updateProgress();
+            }, 8);
+          } catch (e) {
+            console.warn('[Setup] Sound images error (non-critical):', e);
           }
+
 
           if (!cancelled) {
             setDlProgress(1);
@@ -1822,12 +1861,9 @@ export default function RootLayout() {
             <DownloadScreen
               progress={dlProgress}
               label={dlLabel}
-              error={dlError}
-              onRetry={() => setRetryTrigger(prev => prev + 1)}
               isFadingOut={phase === 'downloading_done'}
               onFadeOutComplete={async () => {
                 setPhase('splash');
-                // Removed aggressive permission popups to allow just-in-time requests.
               }}
             />
             {/* Touch blocker — prevents taps reaching the home page during setup but sits behind DownloadScreen */}

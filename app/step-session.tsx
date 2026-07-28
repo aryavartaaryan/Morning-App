@@ -33,10 +33,11 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Line, G, Path } from 'react-native-svg';
+import Svg, { Circle, Line, G, Path, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { DeviceEventEmitter } from 'react-native';
 
@@ -53,11 +54,11 @@ import { saveBloomedSeed } from '@/lib/seedStorage';
 
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
-let Magnetometer: any = null;
 let Accelerometer: any = null;
+let Magnetometer: any = null;
 try { Gyroscope = require('expo-sensors').Gyroscope; } catch (_) {}
-try { Magnetometer = require('expo-sensors').Magnetometer; } catch (_) {}
 try { Accelerometer = require('expo-sensors').Accelerometer; } catch (_) {}
+try { Magnetometer = require('expo-sensors').Magnetometer; } catch (_) {}
 
 const { width: W, height: H } = Dimensions.get('window');
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
@@ -108,6 +109,73 @@ function fmtTime(seconds: number): string {
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ─── Premium Compass Rose (shared between walk & step-session) ──────────────────
+// Renders a nautical-style compass rose inside the progress ring inner disc.
+function CompassRose({ size, heading }: { size: number; heading: number }) {
+  const cx = 50, cy = 50;
+  const ticks: React.JSX.Element[] = [];
+  for (let i = 0; i < 72; i++) {
+    const angle = (i * 5) * Math.PI / 180;
+    const major = i % 9 === 0;
+    const medium = i % 3 === 0;
+    const r1 = 47;
+    const r2 = major ? 42 : medium ? 44 : 45.5;
+    const x1 = cx + r1 * Math.sin(angle);
+    const y1 = cy - r1 * Math.cos(angle);
+    const x2 = cx + r2 * Math.sin(angle);
+    const y2 = cy - r2 * Math.cos(angle);
+    ticks.push(
+      <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+        stroke={major ? 'rgba(255,255,255,0.9)' : medium ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)'}
+        strokeWidth={major ? 1.2 : 0.6} strokeLinecap="round" />
+    );
+  }
+  return (
+    <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.88)" />
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.55)" strokeWidth={1.5} />
+          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
+          {ticks}
+          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.75)" />
+          <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.35)" strokeWidth={0.8} />
+          <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
+          {/* Diagonal 45° secondary points (sky blue) */}
+          <G transform="rotate(45, 50, 50)">
+            <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-28} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx} ${cy-28} L${cx+3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx+28} ${cy} L${cx+3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+28} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx} ${cy+28} L${cx-3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
+            <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
+            <Path d={`M${cx} ${cy} L${cx-28} ${cy} L${cx-3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
+          </G>
+          {/* E / S / W cardinal (white) */}
+          <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx+36} ${cy} L${cx+3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
+          <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+36} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx} ${cy+36} L${cx-3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
+          <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
+          <Path d={`M${cx} ${cy} L${cx-36} ${cy} L${cx-3} ${cy-3} Z`} fill="rgba(255,255,255,0.4)" />
+          {/* North pointer — RED */}
+          <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-36} Z`} fill="#ef4444" opacity={0.95} />
+          <Path d={`M${cx} ${cy} L${cx} ${cy-36} L${cx+3} ${cy-3} Z`} fill="#b91c1c" opacity={0.85} />
+          {/* Center pivot */}
+          <Circle cx={cx} cy={cy} r={3} fill="rgba(30,58,100,1)" />
+          <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
+          {/* Labels */}
+          <SvgText x={cx} y={10} fill="#ef4444" fontSize="7" fontWeight="800" textAnchor="middle" alignmentBaseline="middle">N</SvgText>
+          <SvgText x={91} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">E</SvgText>
+          <SvgText x={cx} y={91} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">S</SvgText>
+          <SvgText x={9} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">W</SvgText>
+        </Svg>
+      </View>
+    </View>
+  );
 }
 
 // MemoRing — fully featured with all 7 enhancements
@@ -201,6 +269,13 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
             }} />
           ))}
           
+          {/* ── Feature 7: Compass Rose inside inner disc ── */}
+          {compassHeading !== null && (
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+              <CompassRose size={RING_SZ - STROKE - 20} heading={compassHeading} />
+            </View>
+          )}
+
           {/* Feature 8: Premium Gyroscope Glare */}
           <AnimatedLinearGradient
             colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0)']}
@@ -494,6 +569,20 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
     // Feature 2: Liquid leading-edge pulse
+    let headingSub: Location.LocationSubscription | null = null;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          headingSub = await Location.watchHeadingAsync((data) => {
+            setCompassHeading(Math.round(data.trueHeading !== -1 ? data.trueHeading : data.magHeading));
+          });
+        }
+      } catch (err) {
+        // location heading failed
+      }
+    })();
+
     Animated.loop(Animated.sequence([
       Animated.timing(liquidPulse, { toValue: 1.6, duration: 800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       Animated.timing(liquidPulse, { toValue: 1.0, duration: 800, easing: Easing.in(Easing.ease),  useNativeDriver: true }),
@@ -818,49 +907,6 @@ export default function StepSessionScreen() {
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Feature 7: GIANT BACKGROUND COMPASS ── */}
-      {compassHeading !== null && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}>
-          <Animated.View style={{
-            transform: [{ rotate: `${-compassHeading}deg` }],
-            width: W * 1.5, height: W * 1.5,
-            opacity: 0.15, // Subtle premium watermark
-          }}>
-            <Svg width="100%" height="100%" viewBox="0 0 100 100">
-              {/* Outer ticks */}
-              <Circle cx={50} cy={50} r={48} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.5} strokeDasharray="1 3" />
-              <Circle cx={50} cy={50} r={44} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
-              
-              {/* Secondary diagonal star */}
-              <G transform="rotate(45, 50, 50)">
-                <Path d="M50 50 L48 48 L50 15 Z" fill="#7dd3fc" />
-                <Path d="M50 50 L50 15 L52 48 Z" fill="#38bdf8" />
-                <Path d="M50 50 L52 48 L85 50 Z" fill="#7dd3fc" />
-                <Path d="M50 50 L85 50 L52 52 Z" fill="#38bdf8" />
-                <Path d="M50 50 L52 52 L50 85 Z" fill="#7dd3fc" />
-                <Path d="M50 50 L50 85 L48 52 Z" fill="#38bdf8" />
-                <Path d="M50 50 L48 52 L15 50 Z" fill="#7dd3fc" />
-                <Path d="M50 50 L15 50 L48 48 Z" fill="#38bdf8" />
-              </G>
-              
-              {/* Primary N-S-E-W star */}
-              <Path d="M50 50 L54 46 L95 50 Z" fill="rgba(255,255,255,0.6)" />
-              <Path d="M50 50 L95 50 L54 54 Z" fill="rgba(255,255,255,0.2)" />
-              <Path d="M50 50 L54 54 L50 95 Z" fill="rgba(255,255,255,0.6)" />
-              <Path d="M50 50 L50 95 L46 54 Z" fill="rgba(255,255,255,0.2)" />
-              <Path d="M50 50 L46 54 L5 50 Z" fill="rgba(255,255,255,0.6)" />
-              <Path d="M50 50 L5 50 L46 46 Z" fill="rgba(255,255,255,0.2)" />
-              
-              {/* North Pointer (Red) */}
-              <Path d="M50 50 L46 46 L50 5 Z" fill="#f87171" opacity={0.9} />
-              <Path d="M50 50 L50 5 L54 46 Z" fill="#dc2626" opacity={0.8} />
-
-              {/* Center Pivot */}
-              <Circle cx={50} cy={50} r={2} fill="#ffffff" />
-            </Svg>
-          </Animated.View>
-        </View>
-      )}
 
       {/* Session-colour aurora aura */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity }]} pointerEvents="none">
