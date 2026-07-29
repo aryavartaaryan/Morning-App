@@ -221,7 +221,7 @@ const NAAD_SOUNDS: NaadSound[] = [
   { id: 'naad_emotional_flute',        label: 'Emotional Flute',        emoji: '💫', cat: 'Ragas', color: '#86efac', top: '#0A1A10', bot: '#050D08', desc: 'Deep emotional flute journey',                 src: { uri: NAAD_BASE + 'u_iwe3yizfhb-emotional-sad-flute-478667.m4a' } },
   { id: 'naad_flute_rain_ambiance',    label: 'Flute & Rain',           emoji: '🌧️', cat: 'Ragas', color: '#67e8f9', top: '#081820', bot: '#040C10', desc: 'Flute music with soothing rain ambiance',      src: { uri: NAAD_BASE + 'wr_ambiance-flute-music-with-rain-ambiance-370521.m4a' } },
   // ── Tabla ──────────────────────────────────────────────────────────────────
-  { id: 'naad_tabla_110',              label: 'Tabla 110',              emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Crisp tabla at 110 BPM',                       src: { uri: NAAD_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
+  { id: 'naad_tabla_110',              label: 'Ancient Tabla Rhythms',  emoji: '🥁', cat: 'Ragas', color: '#f97316', top: '#1A0800', bot: '#0A0400', desc: 'Traditional Indian percussion for focus',      src: { uri: NAAD_BASE + 'jeremiah7-tabla-110-292145.m4a' } },
   { id: 'naad_tabla_flute_i',          label: 'Awakening Tabla & Flute',        emoji: '🪘', cat: 'Ragas', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
   { id: 'naad_tabla_flute_i_sleep',          label: 'Awakening Tabla & Flute',        emoji: '🪘', cat: 'Sleep', color: '#fb923c', top: '#1A0A00', bot: '#0A0500', desc: 'Tabla and flute melody I',                    src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-103-262273.m4a' } },
   { id: 'naad_tabla_flute_ii',         label: 'Tranquil Tabla & Flute',       emoji: '🎵', cat: 'Ragas', color: '#f59e0b', top: '#1A0E00', bot: '#0A0700', desc: 'Tabla and flute melody II',                   src: { uri: NAAD_BASE + 'jeremiah7-tabla-flute-104-262260.m4a' } },
@@ -3466,9 +3466,9 @@ function SleepTabInner() {
         mass: 0.5,
       }).start();
     }
-    startTransition(() => {
-      setSelectedCat(cat);
-    });
+    // Removed startTransition to prevent React Native concurrent rendering freezes
+    // when switching tabs. Direct state update ensures navigation never hangs.
+    setSelectedCat(cat);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [contentFadeAnim, contentSlideAnim]);
 

@@ -198,47 +198,51 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
           <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
-          <Line x1={cx-28} y1={cy} x2={cx-5} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx+5}  y1={cy} x2={cx+28} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx} y1={cy-28} x2={cx} y2={cy-6}  stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx} y1={cy+6}  x2={cx} y2={cy+28} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx-20} y1={cy-20} x2={cx-14} y2={cy-14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx+14} y1={cy-14} x2={cx+20} y2={cy-20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx-20} y1={cy+20} x2={cx-14} y2={cy+14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx+14} y1={cy+14} x2={cx+20} y2={cy+20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={0.7} />
-          <Circle cx={cx} cy={cy} r={2} fill="#38bdf8" opacity={0.9} />
-          <Path d={`M${cx-26} ${cy-22} L${cx-26} ${cy-26} L${cx-22} ${cy-26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx+22} ${cy-26} L${cx+26} ${cy-26} L${cx+26} ${cy-22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx-26} ${cy+22} L${cx-26} ${cy+26} L${cx-22} ${cy+26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx+22} ${cy+26} L${cx+26} ${cy+26} L${cx+26} ${cy+22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
-      </View>
-
-      {/* ── DIGITAL HEADING READOUT ── */}
-      <View style={{ position: 'absolute', bottom: size * 0.17, alignItems: 'center' }}>
-        <View style={{
-          backgroundColor: 'rgba(0,10,24,0.75)',
-          borderWidth: 1, borderColor: 'rgba(56,189,248,0.45)',
-          borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
-          flexDirection: 'row', alignItems: 'center', gap: 4,
-        }}>
-          <Text style={{ color: '#f87171', fontSize: size * 0.065, fontWeight: '900', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-            {cardinalName}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: size * 0.04 }}>|</Text>
-          <Text style={{ color: '#38bdf8', fontSize: size * 0.065, fontWeight: '700', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-            {String(heading).padStart(3, '0')}°
-          </Text>
-        </View>
       </View>
     </View>
   );
 }
 
+// ── DYNAMIC RING THEMES ────────────────────────────────────────────────────────
+function getRingTheme(hour: number) {
+  if (hour >= 5 && hour < 10) {
+    return { // Morning (Gold/Amber)
+      outer: '#fde68a', mid: '#fcd34d', inner: '#fbbf24', track: 'rgba(251,191,36,0.2)', glow: 'rgba(251,191,36,0.1)',
+      liquid: ['#fbbf24', '#fcd34d', '#ffffff']
+    };
+  } else if (hour >= 10 && hour < 17) {
+    return { // Midday (Cyan/Sky)
+      outer: '#bae6fd', mid: '#7dd3fc', inner: '#38bdf8', track: 'rgba(56,189,248,0.2)', glow: 'rgba(56,189,248,0.1)',
+      liquid: ['#38bdf8', '#7dd3fc', '#ffffff']
+    };
+  } else if (hour >= 17 && hour < 20) {
+    return { // Sunset (Orange/Coral)
+      outer: '#fed7aa', mid: '#fdba74', inner: '#fb923c', track: 'rgba(251,146,60,0.2)', glow: 'rgba(251,146,60,0.1)',
+      liquid: ['#fb923c', '#fdba74', '#ffffff']
+    };
+  } else {
+    return { // Night (Indigo/Violet)
+      outer: '#c7d2fe', mid: '#a5b4fc', inner: '#818cf8', track: 'rgba(129,140,248,0.2)', glow: 'rgba(129,140,248,0.1)',
+      liquid: ['#818cf8', '#a5b4fc', '#ffffff']
+    };
+  }
+}
+
 // MemoRing — fully featured with all 7 enhancements
-const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassHeading, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, isSeedPlanting, seedType, seedGrowthAnim }: any) => {
+const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassHeading, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, isSeedPlanting, seedType, seedGrowthAnim, theme, isHot, isCold }: any) => {
   const seedColors = getSeedColors(seedType || 'vitality');
+  
+  // Heat wave animation
+  const heatAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isHot) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(heatAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
+        Animated.timing(heatAnim, { toValue: 0, duration: 4000, useNativeDriver: true })
+      ])).start();
+    }
+  }, [isHot]);
   
   // Continuous Active Radar Spin
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -311,18 +315,37 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
-          {/* Breath glow */}
+          {/* Breath glow (Theme based) */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: isSunrise || isSunset ? 'rgba(251,191,36,0.1)' : 'rgba(186,230,253,0.1)',
+            backgroundColor: theme.glow,
             opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
           }} />
+
+          {/* Hot weather: Heat wave shimmer overlay */}
+          {isHot && (
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(239,68,68,0.1)', // Subtle red tint
+              opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }),
+              transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }]
+            }} />
+          )}
+          
+          {/* Cold weather: Frost overlay */}
+          {isCold && (
+            <View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              borderWidth: 8, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 200,
+            }} />
+          )}
+
           {/* Feature 3: Rain droplets */}
           {isRaining && rainAnims.map((ra: any, i: number) => (
             <Animated.View key={i} pointerEvents="none" style={{
               position: 'absolute', left: ra.x, top: 0,
               width: 1.5, height: 8, borderRadius: 1,
-              backgroundColor: 'rgba(186,230,253,0.8)',
+              backgroundColor: theme.outer,
               opacity: ra.op, transform: [{ translateY: ra.y }],
             }} />
           ))}
@@ -330,6 +353,7 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           {/* ── Feature 7: Compass Rose inside inner disc ── */}
           {compassHeading !== null && (
             <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+              <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
               <CompassRose size={RING_SZ - STROKE - 20} heading={compassHeading} />
             </View>
           )}
@@ -354,49 +378,6 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
 
 
 
-          {/* Feature 10: Seed Planting (Game) */}
-          {isSeedPlanting && (
-            <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
-              <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-                {/* The glowing seed base */}
-                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedColors.base} />
-                <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedColors.solid} />
-                
-                {/* The growing stem and leaves. 
-                    Path length is ~200. We will map seedGrowthAnim from 0->1 to strokeDashoffset 200->0 
-                */}
-                <AnimatedPath
-                  d={`M${RING_SZ/2} ${RING_SZ - 50} Q${RING_SZ/2 + 30} ${RING_SZ/2} ${RING_SZ/2} 40`}
-                  stroke={seedColors.stroke}
-                  strokeWidth={4}
-                  strokeLinecap="round"
-                  fill="none"
-                  strokeDasharray={200}
-                  strokeDashoffset={seedGrowthAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [200, 0],
-                  })}
-                />
-                {/* Leaves */}
-                <AnimatedPath
-                  d={`M${RING_SZ/2 + 10} ${RING_SZ/2 + 20} Q${RING_SZ/2 + 40} ${RING_SZ/2 + 10} ${RING_SZ/2 + 40} ${RING_SZ/2 - 10} Q${RING_SZ/2 + 10} ${RING_SZ/2 - 10} ${RING_SZ/2 + 10} ${RING_SZ/2 + 20}`}
-                  fill={seedColors.leaf}
-                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] })}
-                />
-                <AnimatedPath
-                  d={`M${RING_SZ/2 - 10} ${RING_SZ/2 - 10} Q${RING_SZ/2 - 40} ${RING_SZ/2} ${RING_SZ/2 - 40} ${RING_SZ/2 - 30} Q${RING_SZ/2 - 10} ${RING_SZ/2 - 30} ${RING_SZ/2 - 10} ${RING_SZ/2 - 10}`}
-                  fill={seedColors.leaf}
-                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [0, 0, 1] })}
-                />
-                {/* Bloom flower (appears at 100%) */}
-                <AnimatedCircle
-                  cx={RING_SZ/2} cy={40} r={18}
-                  fill={seedColors.bloom}
-                  opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.99, 1], outputRange: [0, 0, 1] })}
-                />
-              </Svg>
-            </Animated.View>
-          )}
         </Animated.View>
       </View>
 
@@ -414,15 +395,15 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
       {/* SVG ring layers */}
       <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
         {/* Track */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={3} />
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.track} strokeWidth={3} />
         {/* Wide glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#38bdf8" strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.2} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.2} />
         {/* Mid halo */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#7dd3fc" strokeWidth={7}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.5} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.mid} strokeWidth={7}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.5} />
         {/* Main crisp arc */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#38bdf8" strokeWidth={3}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={1} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={3}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={1} />
         {/* Shimmer sliver */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke="#bae6fd" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.85} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.outer} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.85} />
         {/* Feature 2: Liquid leading-edge droplet */}
         {pct > 0 && pct < 1 && (() => {
           const angle = pct * 360 - 90;
@@ -431,13 +412,52 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           const cy = RING_SZ / 2 + R * Math.sin(rad);
           return (
             <>
-              <Circle cx={cx} cy={cy} r={6}   fill="#38bdf8" opacity={0.25} />
-              <Circle cx={cx} cy={cy} r={3.5} fill="#7dd3fc" opacity={0.7} />
-              <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
+              <Circle cx={cx} cy={cy} r={6}   fill={theme.liquid[0]} opacity={0.25} />
+              <Circle cx={cx} cy={cy} r={3.5} fill={theme.liquid[1]} opacity={0.7} />
+              <Circle cx={cx} cy={cy} r={1.8} fill={theme.liquid[2]} opacity={0.95} />
             </>
           );
         })()}
       </Svg>
+
+      {/* ── Feature 10: Seed Planting (Game) — Rendered on TOP of glass ── */}
+      {isSeedPlanting && (
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+          <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
+            {/* The glowing seed base */}
+            <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedColors.base} />
+            <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedColors.solid} />
+            
+            {/* The growing stem and leaves. Path length is ~200. */}
+            <AnimatedPath
+              d={`M${RING_SZ/2} ${RING_SZ - 50} Q${RING_SZ/2 + 30} ${RING_SZ/2} ${RING_SZ/2} 40`}
+              stroke={seedColors.stroke}
+              strokeWidth={4}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={200}
+              strokeDashoffset={seedGrowthAnim.interpolate({ inputRange: [0, 1], outputRange: [200, 0] })}
+            />
+            {/* Leaves */}
+            <AnimatedPath
+              d={`M${RING_SZ/2 + 10} ${RING_SZ/2 + 20} Q${RING_SZ/2 + 40} ${RING_SZ/2 + 10} ${RING_SZ/2 + 40} ${RING_SZ/2 - 10} Q${RING_SZ/2 + 10} ${RING_SZ/2 - 10} ${RING_SZ/2 + 10} ${RING_SZ/2 + 20}`}
+              fill={seedColors.leaf}
+              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] })}
+            />
+            <AnimatedPath
+              d={`M${RING_SZ/2 - 10} ${RING_SZ/2 - 10} Q${RING_SZ/2 - 40} ${RING_SZ/2} ${RING_SZ/2 - 40} ${RING_SZ/2 - 30} Q${RING_SZ/2 - 10} ${RING_SZ/2 - 30} ${RING_SZ/2 - 10} ${RING_SZ/2 - 10}`}
+              fill={seedColors.leaf}
+              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [0, 0, 1] })}
+            />
+            {/* Bloom flower */}
+            <AnimatedCircle
+              cx={RING_SZ/2} cy={40} r={18}
+              fill={seedColors.bloom}
+              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.99, 1], outputRange: [0, 0, 1] })}
+            />
+          </Svg>
+        </Animated.View>
+      )}
     </View>
   );
 });
@@ -1095,6 +1115,9 @@ export default function StepSessionScreen() {
               isSeedPlanting={isSeedPlanting}
               seedType={seedType}
               seedGrowthAnim={seedGrowthAnim}
+              theme={getRingTheme(new Date().getHours())}
+              isHot={weather?.tempC && weather.tempC > 32}
+              isCold={weather?.tempC && weather.tempC < 10}
             />
 
             {/* Feature 6: Animated quote below ring */}
@@ -1103,35 +1126,47 @@ export default function StepSessionScreen() {
             </Animated.Text>
           
             {/* Inner Content overlay */}
-          <View style={[s.centreBox, { gap: 3 }]}>
-            {/* Badge */}
-            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: C + '20', borderWidth: 1, borderColor: C + '60', marginBottom: 4 }}>
-              <Text style={{ fontSize: 7, fontWeight: '700', color: C, letterSpacing: 1.4 }}>👣  LIVE STEPS</Text>
-            </View>
+          <View style={[s.centreBox, { gap: isSeedPlanting ? 0 : 8, justifyContent: isSeedPlanting ? 'space-between' : 'center', paddingVertical: isSeedPlanting ? 20 : 0 }]}>
+            
+            {/* Badge & Steps */}
             <View style={{ alignItems: 'center' }}>
-              <Animated.Text style={[s.bigSteps, { fontSize: playingId ? 44 : 54, lineHeight: playingId ? 50 : 60, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '80', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
-                {steps.toLocaleString()}
-              </Animated.Text>
-              <Text style={[s.bigStepsUnit, playingId && { fontSize: 10 }]}>STEPS</Text>
-            </View>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{distKm.toFixed(2)} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: '500' }}>km</Text></Text>
-              </View>
-              <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{pace}</Text>
-              </View>
-            </View>
-            
-            {!playingId && (
-              <View style={[s.goalChip, { backgroundColor: C + '18', borderColor: C + '40', marginTop: 4 }]}>
-                <Text style={[s.goalChipTxt, { color: C }]}>
-                  {Math.min(100, Math.round(pct * 100))}% · {meta.goal.toLocaleString()} goal
+              {/* Dynamic Badge */}
+              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: C + '15', borderWidth: 1, borderColor: C + '40', marginBottom: 2 }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: C, letterSpacing: 1.4 }}>
+                  {isSeedPlanting ? meta.label.toUpperCase() : 'LIVE SESSION'}
                 </Text>
               </View>
-            )}
+              
+              <Animated.Text style={[s.bigSteps, { fontSize: isSeedPlanting ? 50 : 62, lineHeight: isSeedPlanting ? 52 : 62, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '60', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
+                {steps.toLocaleString()}
+              </Animated.Text>
+              {!playingId && (
+                <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 2 }}>
+                  OF {meta.goal.toLocaleString()} GOAL
+                </Text>
+              )}
+            </View>
+            
+            {/* ─ Empty Window for Seed Growth ─ */}
+            {isSeedPlanting && <View style={{ flex: 1, minHeight: 80 }} />}
+
+            <View style={{ alignItems: 'center' }}>
+              {/* ─ Divider ─ */}
+              <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 }} />
+
+              {/* ─ km / min / pace row ─ */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{distKm.toFixed(2)}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>km</Text>
+                </View>
+                <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{pace}</Text>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>pace</Text>
+                </View>
+              </View>
+            </View>
 
             {/* Sound Controls */}
             <View style={{ marginTop: playingId ? 4 : 8 }}>

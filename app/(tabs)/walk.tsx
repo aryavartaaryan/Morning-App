@@ -67,10 +67,12 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 240;
-const RING_STROKE = 16;
+const RING_SIZE   = 290;
+const RING_STROKE = 24;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
+const R_INNER     = R_OUTER - 18; // For weekly intention ring
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
+const CIRCUMF_INNER = 2 * Math.PI * R_INNER;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtK(n: number): string { return n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n); }
@@ -191,51 +193,7 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
         <Svg width={size} height={size} viewBox="0 0 100 100">
           {/* Triangle North indicator at top (fixed — always points up) */}
           <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
-
-          {/* Crosshair horizontal line */}
-          <Line x1={cx-28} y1={cy} x2={cx-5} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx+5}  y1={cy} x2={cx+28} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          {/* Crosshair vertical line */}
-          <Line x1={cx} y1={cy-28} x2={cx} y2={cy-6}  stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-          <Line x1={cx} y1={cy+6}  x2={cx} y2={cy+28} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
-
-          {/* 45° diagonal accent lines (short) */}
-          <Line x1={cx-20} y1={cy-20} x2={cx-14} y2={cy-14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx+14} y1={cy-14} x2={cx+20} y2={cy-20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx-20} y1={cy+20} x2={cx-14} y2={cy+14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-          <Line x1={cx+14} y1={cy+14} x2={cx+20} y2={cy+20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
-
-          {/* Inner target rings */}
-          <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={0.7} />
-          <Circle cx={cx} cy={cy} r={2} fill="#38bdf8" opacity={0.9} />
-
-          {/* Corner bracket accents */}
-          <Path d={`M${cx-26} ${cy-22} L${cx-26} ${cy-26} L${cx-22} ${cy-26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx+22} ${cy-26} L${cx+26} ${cy-26} L${cx+26} ${cy-22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx-26} ${cy+22} L${cx-26} ${cy+26} L${cx-22} ${cy+26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d={`M${cx+22} ${cy+26} L${cx+26} ${cy+26} L${cx+26} ${cy+22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
-      </View>
-
-      {/* ── DIGITAL HEADING READOUT (fixed overlay, React Native Text) ── */}
-      <View style={{
-        position: 'absolute', bottom: size * 0.17,
-        alignItems: 'center',
-      }}>
-        <View style={{
-          backgroundColor: 'rgba(0,10,24,0.75)',
-          borderWidth: 1, borderColor: 'rgba(56,189,248,0.45)',
-          borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
-          flexDirection: 'row', alignItems: 'center', gap: 4,
-        }}>
-          <Text style={{ color: '#f87171', fontSize: size * 0.065, fontWeight: '900', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-            {cardinalName}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: size * 0.04 }}>|</Text>
-          <Text style={{ color: '#38bdf8', fontSize: size * 0.065, fontWeight: '700', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
-            {String(heading).padStart(3, '0')}°
-          </Text>
-        </View>
       </View>
     </View>
   );
@@ -265,6 +223,31 @@ function GlassPulseOverlay() {
       />
     </View>
   );
+}
+
+// ── DYNAMIC RING THEMES ────────────────────────────────────────────────────────
+function getRingTheme(hour: number) {
+  if (hour >= 5 && hour < 10) {
+    return { // Morning (Gold/Amber)
+      outer: '#fde68a', mid: '#fcd34d', inner: '#fbbf24', track: 'rgba(251,191,36,0.2)', glow: 'rgba(251,191,36,0.1)',
+      liquid: ['#fbbf24', '#fcd34d', '#ffffff']
+    };
+  } else if (hour >= 10 && hour < 17) {
+    return { // Midday (Cyan/Sky)
+      outer: '#bae6fd', mid: '#7dd3fc', inner: '#38bdf8', track: 'rgba(56,189,248,0.2)', glow: 'rgba(56,189,248,0.1)',
+      liquid: ['#38bdf8', '#7dd3fc', '#ffffff']
+    };
+  } else if (hour >= 17 && hour < 20) {
+    return { // Sunset (Orange/Coral)
+      outer: '#fed7aa', mid: '#fdba74', inner: '#fb923c', track: 'rgba(251,146,60,0.2)', glow: 'rgba(251,146,60,0.1)',
+      liquid: ['#fb923c', '#fdba74', '#ffffff']
+    };
+  } else {
+    return { // Night (Indigo/Violet)
+      outer: '#c7d2fe', mid: '#a5b4fc', inner: '#818cf8', track: 'rgba(129,140,248,0.2)', glow: 'rgba(129,140,248,0.1)',
+      liquid: ['#818cf8', '#a5b4fc', '#ffffff']
+    };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -641,8 +624,8 @@ export default function WalkTab() {
   // ringAnim also uses JS driver consistently
 
   // Interpolated compact values
-  // Ring: scale from 1.0 down to 0.77 (220 → ~170)
-  const ringScale      = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.77] });
+  // Ring: scale from 1.0 down to 0.95 (barely shrinks, preserves size)
+  const ringScale      = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
   // Tagline card: fade out and collapse vertically
   const taglineOpacity = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const taglineHeight  = compactAnim.interpolate({ inputRange: [0, 1], outputRange: [88, 0] });
@@ -707,6 +690,7 @@ export default function WalkTab() {
         ref={walkScrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+          flexGrow: 1,
           paddingBottom: getTabBarClearance(insets.bottom, !!playingId, stepBarActive),
         }}
       >
@@ -923,12 +907,30 @@ export default function WalkTab() {
                     start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
                     style={StyleSheet.absoluteFillObject} />
 
-                  {/* Feature 3: Gentle inner breath glow */}
+                  {/* Feature 3: Gentle inner breath glow (Theme based) */}
                   <Animated.View pointerEvents="none" style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: isSunrise || isSunset ? 'rgba(251,191,36,0.1)' : 'rgba(186,230,253,0.1)',
+                    backgroundColor: theme.glow,
                     opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
                   }} />
+
+                  {/* Hot weather: Heat wave shimmer overlay */}
+                  {isHot && (
+                    <Animated.View pointerEvents="none" style={{
+                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: 'rgba(239,68,68,0.1)', // Subtle red tint
+                      opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }),
+                      transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }]
+                    }} />
+                  )}
+                  
+                  {/* Cold weather: Frost overlay */}
+                  {isCold && (
+                    <View pointerEvents="none" style={{
+                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                      borderWidth: 8, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 200,
+                    }} />
+                  )}
 
                   {/* ── Feature 7: Premium Compass Rose (inside inner disc, semi-transparent) ── */}
                   {compassHeading !== null && (
@@ -936,23 +938,23 @@ export default function WalkTab() {
                       StyleSheet.absoluteFillObject,
                       { alignItems: 'center', justifyContent: 'center', opacity: 0.55 },
                     ]}>
+                      <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
                       <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassHeading} />
                     </View>
                   )}
 
                   {/* Feature 3: Rain droplets inside the glass */}
-                  {isRaining && rainAnims.map((ra, i) => (
+                  {isRaining && rainAnims.map((ra: any, i: number) => (
                     <Animated.View key={i} pointerEvents="none" style={{
                       position: 'absolute',
                       left: ra.x, top: 0,
                       width: 1.5, height: 8,
                       borderRadius: 1,
-                      backgroundColor: 'rgba(186,230,253,0.8)',
+                      backgroundColor: theme.outer, // Matches theme
                       opacity: ra.op,
                       transform: [{ translateY: ra.y }],
                     }} />
                   ))}
-
 
                 </Animated.View>
               </View>
@@ -960,15 +962,23 @@ export default function WalkTab() {
               {/* ── SVG Ring layers ── */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Thin Track */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={3} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={3} />
                 {/* Wide outer glow */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#38bdf8" strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
                 {/* Mid halo */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#7dd3fc" strokeWidth={7} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={7} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
                 {/* Main crisp arc */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#38bdf8" strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
                 {/* Inner shimmer sliver */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="#bae6fd" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
+
+                {/* ── Feature 8: Inner Weekly Intention Ring ── */}
+                {summary && summary.weeklyGoal > 0 && (
+                  <>
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.track} strokeWidth={2} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.mid} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.9} />
+                  </>
+                )}
 
                 {/* Feature 2: Liquid leading-edge droplet */}
                 {stats.goalPercent > 0 && stats.goalPercent < 100 && (() => {
@@ -978,9 +988,9 @@ export default function WalkTab() {
                   const cy = RING_SIZE / 2 + R_OUTER * Math.sin(rad);
                   return (
                     <>
-                      <Circle cx={cx} cy={cy} r={7} fill="#38bdf8" opacity={0.25} />
-                      <Circle cx={cx} cy={cy} r={4} fill="#7dd3fc" opacity={0.7} />
-                      <Circle cx={cx} cy={cy} r={2} fill="#ffffff" opacity={0.95} />
+                      <Circle cx={cx} cy={cy} r={7} fill={theme.liquid[0]} opacity={0.25} />
+                      <Circle cx={cx} cy={cy} r={4} fill={theme.liquid[1]} opacity={0.7} />
+                      <Circle cx={cx} cy={cy} r={2} fill={theme.liquid[2]} opacity={0.95} />
                     </>
                   );
                 })()}
@@ -1015,70 +1025,41 @@ export default function WalkTab() {
                   </View>
 
                   {/* ─ Big step count ─ */}
-                  <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
+                  <Text style={[st.ringSteps, { fontSize: 62 }]}>{fmtK(stats.totalSteps)}</Text>
                   <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
 
                   {/* ─ Mindful quote ─ */}
-                  <Animated.Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginTop: 1, letterSpacing: 0.4, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 8 }}>
+                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 12 }}>
                     {QUOTES[quoteIdx]}
                   </Animated.Text>
 
                   {/* ─ Divider ─ */}
-                  <View style={{ width: 50, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 5 }} />
+                  <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 8 }} />
 
                   {/* ─ km / min / days row ─ */}
-                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>km</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>km</Text>
                     </View>
-                    <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
-                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>min</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>min</Text>
                     </View>
-                    <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{streak}</Text>
-                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>days</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{streak}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>days</Text>
                     </View>
                   </View>
 
-                  {/* ─ Weekly Intention arc bar inside ring ─ */}
+                  {/* ─ Weekly Intention Text inside ring (Arc is drawn in SVG now) ─ */}
                   {summary && summary.weeklyGoal > 0 && (
-                    <View style={{ alignItems: 'center', marginTop: 7 }}>
-                      {/* slim arc bar */}
-                      <View style={{ width: 110, height: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                        <View style={{
-                          position: 'absolute', left: 0, top: 0, bottom: 0,
-                          width: `${Math.min(100, summary.weeklyGoalPercent)}%`,
-                          borderRadius: 3,
-                        }}>
-                          <LinearGradient
-                            colors={['#38bdf8', '#7dd3fc']}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                            style={{ flex: 1 }}
-                          />
-                        </View>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 4 }}>
-                        <Text style={{ fontSize: 7.5, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1, textTransform: 'uppercase' }}>Weekly</Text>
-                        <Text style={{ fontSize: 8, fontWeight: '900', color: '#7dd3fc' }}>{summary.weeklyGoalPercent}%</Text>
-                        <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)' }}>· {(summary.weeklySteps/1000).toFixed(1)}k/{(summary.weeklyGoal/1000).toFixed(0)}k</Text>
-                      </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 4, opacity: 0.9 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.2, textTransform: 'uppercase' }}>Weekly</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '900', color: '#7dd3fc' }}>{summary.weeklyGoalPercent}%</Text>
                     </View>
-                  )}
-
-                  {/* ─ Daily goal % pill ─ */}
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)', marginTop: 5 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
-                  </View>
-
-                  {/* ─ Compass heading tip ─ */}
-                  {compassHeading !== null && (
-                    <Text style={{ fontSize: 7, color: 'rgba(56,189,248,0.8)', fontWeight: '700', letterSpacing: 0.8, marginTop: 3 }}>
-                      {getCardinalLabel(compassHeading)} · {compassHeading}°
-                    </Text>
                   )}
                 </>
               )}
@@ -1090,7 +1071,7 @@ export default function WalkTab() {
 
         </Animated.View>
 
-          {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
+        {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
         <Animated.View style={{
           opacity: cardFade,
           transform: [{ translateY: cardSlide }],
