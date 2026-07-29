@@ -8,7 +8,6 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.*
-import android.util.Log
 import android.widget.Toast
 import java.io.File
 
@@ -44,7 +43,6 @@ import android.widget.TextView
 abstract class AlarmSoundServiceBase : Service() {
 
     companion object {
-        val ALARM_FORCE_STOP = java.util.concurrent.atomic.AtomicBoolean(false)
         /** Intent action: start the hardware vibration pattern from the running service. */
         const val ACTION_START_VIBRATION = "com.solrize.START_ALARM_VIBRATION"
         /** Intent action: stop the hardware vibration pattern from the running service. */
@@ -243,11 +241,11 @@ abstract class AlarmSoundServiceBase : Service() {
             // By NOT re-posting when isAlarmStopping(), the runnable fully dies the
             // moment the user taps Stop. onDestroy() also calls removeCallbacks() as
             // its first action as a belt-and-suspenders guarantee.
-            if (isAlarmStopping() || ALARM_FORCE_STOP.get()) {
+            if (isAlarmStopping()) {
                 return // stop re-posting — runnable dies here
             }
 
-            if (isAlarmActive() && !isAppInForeground() && !isPickerActive() && !ALARM_FORCE_STOP.get()) {
+            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
                 val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
                 val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
                 val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -737,7 +735,6 @@ abstract class AlarmSoundServiceBase : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        ALARM_FORCE_STOP.set(false)
         // ── Vibration control without restarting the service ────────────────
         // JS calls AlarmModule.startAlarmVibration() / stopAlarmVibration()
         // to control vibration during snooze without stopping the FGS.
@@ -777,34 +774,6 @@ abstract class AlarmSoundServiceBase : Service() {
         // Self-stopping here is the single-line fix that prevents phantom
         // post-mission vibration without touching any other alarm path.
         if (intent == null && !isAlarmActive()) {
-            try {
-                if (Build.VERSION.SDK_INT >= 34) {
-                    startForeground(getNotifId(), buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-                } else {
-                    startForeground(getNotifId(), buildNotification())
-                }
-            } catch (e: Exception) {
-                // ignore
-            }
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        // ── COLD-BOOT GUARD: extra layer for the SharedPreferences race ──────
-        // On first app open after phone restart, BootReceiver clears alarm_fired_pending
-        // using .commit() (sync). But if somehow this service was already started by
-        // a stale AlarmManager PendingIntent BEFORE BootReceiver ran, isAlarmActive()
-        // may return false by the time we check here. Stop cleanly instead of
-        // launching the alarm UI for no reason and causing a crash.
-        if (intent != null && !isAlarmActive() && !isAlarmStopping()) {
-            Log.w("AriseAlarm", "${javaClass.simpleName}: started with real intent but isAlarmActive=false — cold-boot phantom, stopping.")
-            try {
-                if (Build.VERSION.SDK_INT >= 34) {
-                    startForeground(getNotifId(), buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-                } else {
-                    startForeground(getNotifId(), buildNotification())
-                }
-            } catch (e: Exception) { /* ignore */ }
             stopSelf()
             return START_NOT_STICKY
         }
@@ -908,7 +877,7 @@ abstract class AlarmSoundServiceBase : Service() {
         // The fix: AlarmModule.stopAlarmSound() writes alarm_stopping=true BEFORE
         // clearing alarm_fired_pending. isAlarmStopping() reads that flag here so
         // we never schedule a restart during normal alarm dismissal.
-        if (isAlarmActive() && !isAlarmStopping() && !ALARM_FORCE_STOP.get()) {
+        if (isAlarmActive() && !isAlarmStopping()) {
             // User swiped the app from recents while alarm is GENUINELY active.
             // START_STICKY alone is ignored by many OEM ROMs (MIUI, ColorOS, OneUI).
             // Belt-and-suspenders: schedule an AlarmManager restart in 1 s so audio
