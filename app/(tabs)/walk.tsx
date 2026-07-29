@@ -333,6 +333,24 @@ export default function WalkTab() {
   const compassTipOpacity = useRef(new Animated.Value(0)).current;
   const compassRot = useRef(new Animated.Value(0)).current;
 
+  // ── Dynamic Theme & Weather Flags ──────────────────────────────────────────
+  const theme = getRingTheme(new Date().getHours());
+  const isHot = weather?.tempC ? weather.tempC > 32 : false;
+  const isCold = weather?.tempC ? weather.tempC < 10 : false;
+  
+  // Heat wave animation
+  const heatAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isHot) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(heatAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
+        Animated.timing(heatAnim, { toValue: 0, duration: 4000, useNativeDriver: true })
+      ])).start();
+    } else {
+      heatAnim.setValue(0);
+    }
+  }, [isHot]);
+
   // ── Seed Selection ────────────────────────────────────────────────────────
   const [selectedSeed, setSelectedSeed] = useState<'none'|'pebble'|'calm'|'epic'>('none');
 

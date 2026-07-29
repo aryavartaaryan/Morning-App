@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Platform, AppState, View, Animated, Dimensions, StyleSheet, Text, NativeModules, Linking, TouchableOpacity, Easing, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
   Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
@@ -41,6 +41,8 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { installCrashToast, ToastLogger } from '@/lib/toastLogger';
 import { installCrashShield } from '@/lib/crashShield';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import type { MoodKey } from '@/components/MoodSheet';
 
 // Prevent the native splash from auto-hiding.
@@ -278,9 +280,79 @@ const SETUP_SUBTITLES = [
   'Your life in New Transformation journey is starting from Today',
   'Just listen the Nada sounds...',
   'नाद — The primordial sound of the universe',
-  'Align your rhythm with the universe\'s wisdom',
+  'Align your rhythm with the universe\\'s wisdom',
   'A new dawn of conscious living awaits you',
 ];
+
+function PremiumSurveyOption({ 
+  label, 
+  isSelected, 
+  onPress,
+  isMultiple = false
+}: { 
+  label: string; 
+  isSelected: boolean; 
+  onPress: () => void;
+  isMultiple?: boolean;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  
+  const handlePressIn = () => {
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+  };
+  
+  const handlePressOut = () => {
+    Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
+  };
+
+  const handlePress = () => {
+    Haptics.selectionAsync().catch(()=>{});
+    onPress();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }], marginBottom: 14, width: '100%' }}>
+      <TouchableOpacity 
+        activeOpacity={1} 
+        onPressIn={handlePressIn} 
+        onPressOut={handlePressOut} 
+        onPress={handlePress}
+        style={{ width: '100%' }}
+      >
+        <BlurView 
+          intensity={isSelected ? 40 : 20} 
+          tint="dark" 
+          style={{ 
+            borderRadius: 20, 
+            overflow: 'hidden', 
+            borderWidth: 1, 
+            borderColor: isSelected ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.08)',
+            backgroundColor: isSelected ? 'rgba(96,165,250,0.12)' : 'rgba(0,0,0,0.3)',
+          }}
+        >
+          <View style={{ paddingVertical: 18, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ 
+              width: 22, height: 22, borderRadius: isMultiple ? 6 : 11, borderWidth: 1.5, 
+              borderColor: isSelected ? '#93c5fd' : 'rgba(255,255,255,0.25)', 
+              marginRight: 16, alignItems: 'center', justifyContent: 'center',
+              backgroundColor: isSelected ? 'rgba(147,197,253,0.15)' : 'transparent'
+            }}>
+              {isSelected && <View style={{ width: 10, height: 10, borderRadius: isMultiple ? 2 : 5, backgroundColor: '#93c5fd' }} />}
+            </View>
+            <Text style={{ 
+              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.65)', 
+              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
+              fontSize: 16,
+              letterSpacing: 0.5
+            }}>
+              {label}
+            </Text>
+          </View>
+        </BlurView>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const [q1, setQ1] = useState<string[]>([]);
@@ -288,11 +360,13 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const [q3, setQ3] = useState<string | null>(null);
   const [q4, setQ4] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
+  const contentTranslate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: false }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, []);
 
   const tags1 = ['Reduce Stress', 'Regain Focus', 'Digital Detox', 'Reduce Brain Fog', 'Reconnect with Nature', 'Improve Sleep'];
@@ -310,32 +384,40 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
     setQ1(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  const goToStep = (newStep: number) => {
-    Animated.timing(contentFade, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+  const goToStep = (newStep: number, direction: 'forward' | 'backward' = 'forward') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(()=>{});
+    Animated.parallel([
+      Animated.timing(contentFade, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(contentTranslate, { toValue: direction === 'forward' ? -20 : 20, duration: 250, easing: Easing.in(Easing.ease), useNativeDriver: true })
+    ]).start(() => {
       setStep(newStep);
-      Animated.timing(contentFade, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+      contentTranslate.setValue(direction === 'forward' ? 20 : -20);
+      Animated.parallel([
+        Animated.timing(contentFade, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(contentTranslate, { toValue: 0, duration: 350, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true })
+      ]).start();
     });
   };
 
   const handleNext = () => {
-    if (step < 3) goToStep(step + 1);
+    if (step < 3) goToStep(step + 1, 'forward');
     else handleComplete();
   };
 
   const handleBack = () => {
-    if (step > 0) goToStep(step - 1);
+    if (step > 0) goToStep(step - 1, 'backward');
   };
 
   const handleSelectSingle = (setter: (val: string) => void, val: string, autoAdvanceStep?: number) => {
     setter(val);
     if (autoAdvanceStep !== undefined) {
-      setTimeout(() => goToStep(autoAdvanceStep), 350);
+      setTimeout(() => goToStep(autoAdvanceStep, 'forward'), 450);
     }
   };
 
   const handleComplete = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
     Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: false }).start(() => {
-      // Intelligently set default intention based on rhythm
       const target = q2 === 'Mostly Sedentary' ? '21000' : q2 === 'Lightly Active' ? '35000' : '50000';
       AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
       AsyncStorage.setItem('sc_intentions', JSON.stringify(q1)).catch(() => {});
@@ -343,115 +425,144 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
     });
   };
 
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Nada?</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>Select all that apply to personalize your journey.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {tags1.map(t => (
+                <PremiumSurveyOption key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} isMultiple={true} />
+              ))}
+            </ScrollView>
+          </View>
+        );
+      case 1:
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>How do you feel upon waking?</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>Understanding your mornings helps us adapt.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {tags3.map(t => (
+                <PremiumSurveyOption key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
+              ))}
+            </ScrollView>
+          </View>
+        );
+      case 2:
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>We\\'ll help you overcome these challenges.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {tags4.map(t => (
+                <PremiumSurveyOption key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
+              ))}
+            </ScrollView>
+          </View>
+        );
+      case 3:
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your current rhythm?</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>To set an achievable wellness goal.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {tags2.map(t => (
+                <PremiumSurveyOption key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
+              ))}
+            </ScrollView>
+          </View>
+        );
+      default: return null;
+    }
+  };
+
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000000', zIndex: 10000, padding: 32, paddingTop: 80, opacity: fadeAnim }]}>
-      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.80)' }]} />
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, opacity: fadeAnim }]}>
+      {/* Dynamic Background Image */}
+      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.8 }} resizeMode="cover" />
+      <LinearGradient
+        colors={['rgba(2,6,23,0.3)', 'rgba(2,6,23,0.85)', '#020617']}
+        style={StyleSheet.absoluteFillObject}
+      />
       
-      <View style={{ flex: 1, zIndex: 10 }}>
-        <Text style={{ fontSize: 36, color: '#bfdbfe', fontFamily: 'Nunito_900Black', marginBottom: 8, letterSpacing: 2 }}>Welcome</Text>
-        <Text style={{ fontSize: 16, color: 'rgba(147,197,253,0.7)', fontFamily: 'DancingScript_600SemiBold', marginBottom: 32, letterSpacing: 1 }}>Begin your conscious journey...</Text>
-        
-        {/* Progress Bar */}
-        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 40 }}>
-          {[0, 1, 2, 3].map(s => (
-            <View key={s} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: s <= step ? '#93c5fd' : 'rgba(255,255,255,0.1)' }} />
-          ))}
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 40 }}>
+          
+          {/* Header & Progress Indicator */}
+          <View style={{ marginBottom: 40 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <Text style={{ fontSize: 18, color: '#bfdbfe', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 1 }}>Nada</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_700Bold', letterSpacing: 2 }}>{step + 1} / 4</Text>
+            </View>
+            <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+              <Animated.View style={{ 
+                width: `${((step + 1) / 4) * 100}%`, 
+                height: '100%', 
+                backgroundColor: '#93c5fd', 
+                borderRadius: 2 
+              }} />
+            </View>
+          </View>
+          
+          {/* Main Content Area */}
+          <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentTranslate }], flex: 1 }}>
+            {renderStep()}
+          </Animated.View>
+          
         </View>
-        
-        <Animated.View style={{ opacity: contentFade, flex: 1 }}>
-          {step === 0 && (
-            <View>
-              <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>What brings you to Nada?</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                {tags1.map(t => {
-                  const isSelected = q1.includes(t);
-                  return (
-                    <TouchableOpacity key={t} onPress={() => toggleQ1(t)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: isSelected ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: isSelected ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
-                      <Text style={{ color: isSelected ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
 
-          {step === 1 && (
-            <View>
-              <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>How do you feel upon waking?</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                {tags3.map(t => (
-                  <TouchableOpacity key={t} onPress={() => handleSelectSingle(setQ3, t, 2)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: q3 === t ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: q3 === t ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
-                    <Text style={{ color: q3 === t ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+        {/* Footer Actions */}
+        <View style={{ paddingHorizontal: 28, paddingBottom: 40, paddingTop: 10 }}>
+          <BlurView intensity={30} tint="dark" style={{ borderRadius: 30, overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.02)', padding: 6 }}>
+              {step > 0 && (
+                <TouchableOpacity 
+                  onPress={handleBack}
+                  activeOpacity={0.7}
+                  style={{ 
+                    paddingVertical: 18, 
+                    paddingHorizontal: 24,
+                    borderRadius: 24, 
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    marginRight: 8
+                  }}>
+                  <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                disabled={!canContinueStep}
+                onPress={handleNext}
+                activeOpacity={0.8}
+                style={{ 
+                  flex: 1,
+                  paddingVertical: 18, 
+                  borderRadius: 24, 
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  backgroundColor: canContinueStep ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.05)'
+                }}>
+                <Text style={{ 
+                  color: canContinueStep ? '#ffffff' : 'rgba(255,255,255,0.3)', 
+                  fontFamily: 'Nunito_800ExtraBold', 
+                  fontSize: 15, 
+                  letterSpacing: 1.5, 
+                  textTransform: 'uppercase',
+                  marginRight: canContinueStep ? 8 : 0
+                }}>
+                  {step === 3 ? 'Begin Journey' : 'Continue'}
+                </Text>
+                {canContinueStep && step < 3 && <Ionicons name="arrow-forward" size={18} color="#ffffff" />}
+              </TouchableOpacity>
             </View>
-          )}
-
-          {step === 2 && (
-            <View>
-              <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>Biggest obstacle to wellness?</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                {tags4.map(t => (
-                  <TouchableOpacity key={t} onPress={() => handleSelectSingle(setQ4, t, 3)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: q4 === t ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: q4 === t ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
-                    <Text style={{ color: q4 === t ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {step === 3 && (
-            <View>
-              <Text style={{ fontSize: 14, color: '#93c5fd', fontFamily: 'Nunito_700Bold', marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>Your Current Rhythm?</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                {tags2.map(t => (
-                  <TouchableOpacity key={t} onPress={() => setQ2(t)} activeOpacity={0.7} style={{ paddingHorizontal: 18, paddingVertical: 12, borderRadius: 24, backgroundColor: q2 === t ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: q2 === t ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)' }}>
-                    <Text style={{ color: q2 === t ? '#93c5fd' : 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', fontSize: 13 }}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-        </Animated.View>
-      </View>
-
-      <View style={{ zIndex: 10, paddingBottom: 40, flexDirection: 'row', gap: 12 }}>
-        {step > 0 && (
-          <TouchableOpacity 
-            onPress={handleBack}
-            activeOpacity={0.8}
-            style={{ 
-              backgroundColor: 'rgba(255,255,255,0.03)', 
-              paddingVertical: 18, 
-              paddingHorizontal: 28,
-              borderRadius: 30, 
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.05)'
-            }}>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_800ExtraBold', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Back</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity 
-          disabled={!canContinueStep}
-          onPress={handleNext}
-          activeOpacity={0.8}
-          style={{ 
-            flex: 1,
-            backgroundColor: canContinueStep ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.03)', 
-            paddingVertical: 18, 
-            borderRadius: 30, 
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: canContinueStep ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.05)'
-          }}>
-          <Text style={{ color: canContinueStep ? '#bfdbfe' : 'rgba(255,255,255,0.2)', fontFamily: 'Nunito_800ExtraBold', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>
-            {step === 3 ? 'Begin Journey' : 'Continue'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          </BlurView>
+        </View>
+      </SafeAreaView>
     </Animated.View>
   );
 }
