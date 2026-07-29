@@ -154,8 +154,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2cb06405-b9ed-4a50-ac1e-811ba4fac830"
+        "projectId": "728df374-8f58-427c-80f5-deb24d76f35f"
       }
-    }
+    },
+    "owner": "missionveda"
   }
 }

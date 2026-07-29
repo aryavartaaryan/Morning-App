@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle } from 'react-native-svg';
+import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
@@ -1664,15 +1664,41 @@ function sacredDots(cx: number, cy: number, r: number, count: number, angleOffse
   });
 }
 
-function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse1, pulse2, pulse3, pulse4, pulse5 }: {
+function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse1, pulse2, pulse3, pulse4, pulse5, onTap }: {
   size: number; color: string; colorTop: string; soundId: string; active: boolean; paused: boolean;
   pulse1: Animated.Value; pulse2: Animated.Value; pulse3: Animated.Value; pulse4: Animated.Value; pulse5: Animated.Value;
+  onTap?: () => void;
 }) {
   const { getMeteringLevel } = useSoundPlayer();
   const [phase, setPhase] = useState(0);
   const rotAnim = useRef(new Animated.Value(0)).current;
   const audioScaleAnim = useRef(new Animated.Value(1)).current;
   const colorPulseAnim = useRef(new Animated.Value(0)).current;
+
+  // 4. Interactive Tactile Parallax (Touch Magic)
+  const tiltX = useRef(new Animated.Value(0)).current;
+  const tiltY = useRef(new Animated.Value(0)).current;
+  
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gs) => {
+        tiltY.setValue(Math.max(-45, Math.min(45, gs.dx / 3)));
+        tiltX.setValue(Math.max(-45, Math.min(45, -gs.dy / 3)));
+      },
+      onPanResponderRelease: (evt, gs) => {
+        Animated.spring(tiltX, { toValue: 0, friction: 4, useNativeDriver: true }).start();
+        Animated.spring(tiltY, { toValue: 0, friction: 4, useNativeDriver: true }).start();
+        if (Math.abs(gs.dx) < 8 && Math.abs(gs.dy) < 8 && onTap) {
+           onTap();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(tiltX, { toValue: 0, friction: 4, useNativeDriver: true }).start();
+        Animated.spring(tiltY, { toValue: 0, friction: 4, useNativeDriver: true }).start();
+      }
+    })
+  ).current;
 
   useEffect(() => {
     if (!active || paused) {
@@ -1682,7 +1708,6 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
     const iv = setInterval(() => {
        setPhase(p => p + 0.05);
        const mLevel = getMeteringLevel();
-       // 1. Audio-Reactive "Breath" Scaling 🫁
        audioScaleAnim.setValue(1 + mLevel * 0.15); 
     }, 36);
     return () => clearInterval(iv);
@@ -1701,19 +1726,14 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
   }, [active]);
 
   const cx = size / 2, cy = size / 2;
-  const cid = `wvc_${soundId.replace(/[^a-z0-9]/gi, '_')}`;
 
-  // Aurora plasma waves
-  const mLevel = active && !paused ? getMeteringLevel() : 0;
-  const levelScale = paused ? 0.04 : (0.12 + mLevel * 1.4);
-  const waveSize = size * 0.60;
-  const fillY = waveSize * 0.58;
-  const waveA = makeWavePath(waveSize, phase, waveSize * 0.08 * levelScale, waveSize * 0.85, fillY);
-  const waveB = makeWavePath(waveSize, -phase * 0.6 + 1.2, waveSize * 0.06 * levelScale, waveSize * 0.70, fillY + waveSize * 0.03);
-  const waveC = makeWavePath(waveSize, phase * 0.4 + 2.0, waveSize * 0.04 * levelScale, waveSize * 0.55, fillY + waveSize * 0.06);
-  const waveGlass = makeWavePath(waveSize, phase + 0.15, waveSize * 0.015 * levelScale, waveSize * 0.9, fillY - waveSize * 0.01);
+  // 5. Progressive Sacred Morphing
+  // Cycle smoothly crossfades 3 sacred geometry states over ~45 seconds
+  const morphCycle = (phase / 20) % 3; 
+  const opA = Math.max(0, 1 - Math.abs(morphCycle - 0) * 1.5, 1 - Math.abs(morphCycle - 3) * 1.5);
+  const opB = Math.max(0, 1 - Math.abs(morphCycle - 1) * 1.5);
+  const opC = Math.max(0, 1 - Math.abs(morphCycle - 2) * 1.5);
 
-  // 3. Stardust Particle Emitters ✨
   const particles = Array.from({ length: 24 }).map((_, i) => {
     const offset = i * (Math.PI * 2 / 24);
     const speed = 0.5 + (i % 3) * 0.3;
@@ -1730,31 +1750,31 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
   ];
 
   return (
-    <Animated.View pointerEvents="none" style={{
+    <Animated.View {...panResponder.panHandlers} style={{
       position: 'absolute', width: size, height: size,
       left: (Dimensions.get('window').width - size) / 2,
       top: (Dimensions.get('window').height - size) / 2 - Dimensions.get('window').height * 0.05,
-      zIndex: 2, alignItems: 'center', justifyContent: 'center',
+      zIndex: 5, alignItems: 'center', justifyContent: 'center',
       transform: [{ scale: audioScaleAnim }]
     }}>
-      {/* ── 4. Color Morphing Glows 🎨 ── */}
+      {/* Glows */}
       <Animated.View style={{
         position: 'absolute', width: size * 0.85, height: size * 0.85, borderRadius: size * 0.425,
-        backgroundColor: color, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] }),
+        backgroundColor: color, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] }),
         shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 50,
-      }} />
+      }} pointerEvents="none" />
       <Animated.View style={{
         position: 'absolute', width: size * 0.85, height: size * 0.85, borderRadius: size * 0.425,
-        backgroundColor: colorTop, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.15] }),
+        backgroundColor: colorTop, opacity: colorPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.25] }),
         shadowColor: colorTop, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 50,
-      }} />
-      <View style={{ position: 'absolute', width: size * 0.95, height: size * 0.95, borderRadius: size * 0.475, backgroundColor: 'rgba(255,255,255,0.03)' }} />
+      }} pointerEvents="none" />
+      <View style={{ position: 'absolute', width: size * 0.95, height: size * 0.95, borderRadius: size * 0.475, backgroundColor: 'rgba(255,255,255,0.03)' }} pointerEvents="none" />
 
-      {/* ── Outer sonar hairline rings ── */}
+      {/* Sonar Rings */}
       {sonarRings.map((r, i) => {
         const s = size * r.sm;
         return (
-          <Animated.View key={`sr${i}`} style={{
+          <Animated.View key={`sr${i}`} pointerEvents="none" style={{
             position: 'absolute', width: s, height: s, borderRadius: s / 2, borderWidth: r.bw * 1.5, borderColor: color,
             shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20,
             opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax + 0.15] }),
@@ -1763,49 +1783,115 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
         );
       })}
 
-      {/* ── 2. 3D Gyroscopic Illusion Geometry 🌌 ── */}
-      <Animated.View style={{
+      {/* ── Parallax Master Container ── */}
+      <Animated.View pointerEvents="none" style={{
         position: 'absolute', width: size, height: size,
         transform: [
-          { rotateX: '55deg' },
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+          { rotateX: tiltX.interpolate({ inputRange: [-45, 45], outputRange: ['-45deg', '45deg'] }) },
+          { rotateY: tiltY.interpolate({ inputRange: [-45, 45], outputRange: ['-45deg', '45deg'] }) },
         ]
       }}>
-        <Svg width={size} height={size}>
-          {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i, arr) => {
-            const next = arr[(i + 1) % arr.length];
-            return <Path key={`hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
-          })}
-          {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i) => (
-            <SvgCircle key={`hd${i}`} cx={d.x} cy={d.y} r={size * 0.022} fill={color} />
-          ))}
-        </Svg>
+        {/* Outer 3D Layer */}
+        <Animated.View style={{
+          position: 'absolute', width: size, height: size,
+          transform: [
+            { rotateX: '55deg' },
+            { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+          ]
+        }}>
+          <Svg width={size} height={size}>
+            {/* State A: Hexagon */}
+            <G opacity={opA}>
+              {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`a_hex${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
+              })}
+              {sacredDots(cx, cy, size * 0.38, 6, 0).map((d, i) => (
+                <SvgCircle key={`a_hd${i}`} cx={d.x} cy={d.y} r={size * 0.022} fill={color} />
+              ))}
+            </G>
+            {/* State B: Lotus (12 overlapping circles) */}
+            <G opacity={opB}>
+               {sacredDots(cx, cy, size * 0.25, 12, 0).map((d, i) => (
+                 <SvgCircle key={`b_lotus${i}`} cx={d.x} cy={d.y} r={size * 0.18} stroke={color} strokeWidth="1.2" fill="none" />
+               ))}
+            </G>
+            {/* State C: 12-Pointed Star (Hex 1) */}
+            <G opacity={opC}>
+              {sacredDots(cx, cy, size * 0.36, 6, 0).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_hex1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
+              })}
+              {sacredDots(cx, cy, size * 0.36, 6, Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_hex2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
+              })}
+            </G>
+          </Svg>
+        </Animated.View>
+
+        {/* Inner 3D Layer */}
+        <Animated.View style={{
+          position: 'absolute', width: size, height: size,
+          transform: [
+            { rotateX: '45deg' },
+            { rotateY: '-25deg' },
+            { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }
+          ]
+        }}>
+          <Svg width={size} height={size}>
+            {/* State A: Triangle */}
+            <G opacity={opA}>
+              {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`a_tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i) => (
+                <SvgCircle key={`a_td${i}`} cx={d.x} cy={d.y} r={size * 0.016} fill={'rgba(255,255,255,1)'} />
+              ))}
+              {sacredDots(cx, cy, size * 0.30, 8, 0).map((d, i) => (
+                <SvgCircle key={`a_md${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={color} />
+              ))}
+            </G>
+            {/* State B: 8-Pointed Star */}
+            <G opacity={opB}>
+              {sacredDots(cx, cy, size * 0.28, 4, 0).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`b_sq1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.28, 4, Math.PI / 4).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`b_sq2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.15, 8, 0).map((d, i) => (
+                <SvgCircle key={`b_td${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={'rgba(255,255,255,1)'} />
+              ))}
+            </G>
+            {/* State C: Sri Yantra Core (simplified overlapping triangles) */}
+            <G opacity={opC}>
+              {sacredDots(cx, cy, size * 0.26, 3, Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_tri1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.20, 3, -Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_tri2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.14, 3, Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_tri3${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+              {sacredDots(cx, cy, size * 0.08, 3, -Math.PI / 6).map((d, i, arr) => {
+                const next = arr[(i + 1) % arr.length];
+                return <Path key={`c_tri4${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
+              })}
+            </G>
+          </Svg>
+        </Animated.View>
       </Animated.View>
 
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotateX: '45deg' },
-          { rotateY: '-25deg' },
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }
-        ]
-      }}>
-        <Svg width={size} height={size}>
-          {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
-            const next = arr[(i + 1) % arr.length];
-            return <Path key={`tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.9)'} strokeWidth="1.2" />;
-          })}
-          {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i) => (
-            <SvgCircle key={`td${i}`} cx={d.x} cy={d.y} r={size * 0.016} fill={'rgba(255,255,255,1)'} />
-          ))}
-          {sacredDots(cx, cy, size * 0.30, 8, 0).map((d, i) => (
-            <SvgCircle key={`md${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={color} />
-          ))}
-        </Svg>
-      </Animated.View>
-
-      {/* ── 3. Stardust Particle Emitters ✨ ── */}
-      <View style={{ position: 'absolute', width: size, height: size }}>
+      {/* ── Stardust Particle Emitters ✨ ── */}
+      <View pointerEvents="none" style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size}>
           {particles.map((p, i) => (
             <SvgCircle key={`p${i}`} cx={p.cx} cy={p.cy} r={p.r} fill="rgba(255,255,255,0.95)" opacity={p.opacity} />
@@ -1813,26 +1899,8 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
         </Svg>
       </View>
 
-      {/* ── Central Aurora Plasma Sphere ── */}
-      <View style={{
-        position: 'absolute', width: waveSize, height: waveSize, borderRadius: waveSize / 2, overflow: 'hidden',
-        opacity: paused ? 0.25 : 1,
-      }}>
-        <Svg width={waveSize} height={waveSize}>
-          <Defs><SvgClipPath id={cid}><SvgCircle cx={waveSize/2} cy={waveSize/2} r={waveSize/2} /></SvgClipPath></Defs>
-          <Path d={waveC} fill={color + '40'} clipPath={`url(#${cid})`} />
-          <Path d={waveB} fill={color + '60'} clipPath={`url(#${cid})`} />
-          <Path d={waveA} fill={color + '90'} clipPath={`url(#${cid})`} />
-          <Path d={waveGlass} fill="rgba(255,255,255,0.35)" clipPath={`url(#${cid})`} />
-        </Svg>
-        <View style={{
-          position: 'absolute', top: waveSize * 0.06, left: waveSize * 0.20, right: waveSize * 0.20,
-          height: waveSize * 0.18, borderRadius: waveSize / 2, backgroundColor: 'rgba(255,255,255,0.10)', transform: [{ scaleY: 0.5 }],
-        }} />
-      </View>
-
       {/* ── Core inner glow — heartbeat pulse ── */}
-      <Animated.View style={{
+      <Animated.View pointerEvents="none" style={{
         position: 'absolute', width: size * 0.28, height: size * 0.28, borderRadius: size * 0.14, backgroundColor: color,
         opacity: pulse4.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
         shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 30,
@@ -1840,7 +1908,7 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
       }} />
 
       {/* ── Micro-star white centre pinpoint ── */}
-      <Animated.View style={{
+      <Animated.View pointerEvents="none" style={{
         position: 'absolute', width: size * 0.06, height: size * 0.06, borderRadius: size * 0.03, backgroundColor: '#FFFFFF',
         opacity: pulse5.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] }),
         shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: 12,
@@ -2080,6 +2148,23 @@ function ReelCard({
     };
   }, [isActive, isPlaying, isPaused, getPositionMs]);
 
+  const handleScreenTap = useCallback(() => {
+    bumpControlsRef.current();
+    if (durationOpen) { setDurationOpen(false); return; }
+    isPlaying ? onToggle() : onPlay();
+    // Instagram flash: scale in, hold, fade out
+    playTapScaleAnim.setValue(0.6);
+    playTapAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(playTapAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
+      Animated.spring(playTapScaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
+    ]).start();
+    if (playTapTimerRef.current) clearTimeout(playTapTimerRef.current);
+    playTapTimerRef.current = setTimeout(() => {
+      Animated.timing(playTapAnim, { toValue: 0, duration: 380, useNativeDriver: true }).start();
+    }, 1100);
+  }, [isPlaying, isPaused, durationOpen]);
+
   useEffect(() => {
     controlsAnim.stopAnimation(() => {
       Animated.timing(controlsAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
@@ -2257,7 +2342,7 @@ function ReelCard({
 
       {/* ── MASTER SACRED SOUND ORB ── */}
       <MasterSacredOrb
-        size={REEL_W * 0.74}
+        size={REEL_W * 0.85}
         color={accentColor || sound.color}
         colorTop={sound.top ?? '#000000'}
         soundId={sound.id}
@@ -2268,27 +2353,13 @@ function ReelCard({
         pulse3={pulse3}
         pulse4={pulse4}
         pulse5={pulse5}
+        onTap={handleScreenTap}
       />
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => {
-          bumpControlsRef.current();
-          if (durationOpen) { setDurationOpen(false); return; }
-          isPlaying ? onToggle() : onPlay();
-          // Instagram flash: scale in, hold, fade out
-          playTapScaleAnim.setValue(0.6);
-          playTapAnim.setValue(0);
-          Animated.parallel([
-            Animated.timing(playTapAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
-            Animated.spring(playTapScaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
-          ]).start();
-          if (playTapTimerRef.current) clearTimeout(playTapTimerRef.current);
-          playTapTimerRef.current = setTimeout(() => {
-            Animated.timing(playTapAnim, { toValue: 0, duration: 380, useNativeDriver: true }).start();
-          }, 1100);
-        }}
+        onPress={handleScreenTap}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
       />
 

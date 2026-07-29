@@ -111,68 +111,126 @@ function fmtTime(seconds: number): string {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-// ─── Premium Compass Rose (shared between walk & step-session) ──────────────────
-// Renders a nautical-style compass rose inside the progress ring inner disc.
+// ─── Modern HUD Navigator Compass ────────────────────────────────────────────
 function CompassRose({ size, heading }: { size: number; heading: number }) {
   const cx = 50, cy = 50;
+
   const ticks: React.JSX.Element[] = [];
   for (let i = 0; i < 72; i++) {
-    const angle = (i * 5) * Math.PI / 180;
-    const major = i % 9 === 0;
-    const medium = i % 3 === 0;
-    const r1 = 47;
-    const r2 = major ? 42 : medium ? 44 : 45.5;
+    const deg = i * 5;
+    const angle = deg * Math.PI / 180;
+    const isMajor  = deg % 90 === 0;
+    const isMedium = deg % 45 === 0;
+    const isMinor5 = deg % 10 === 0;
+    const r1 = 48;
+    const r2 = isMajor ? 41 : isMedium ? 43 : isMinor5 ? 44.5 : 46;
     const x1 = cx + r1 * Math.sin(angle);
     const y1 = cy - r1 * Math.cos(angle);
     const x2 = cx + r2 * Math.sin(angle);
     const y2 = cy - r2 * Math.cos(angle);
     ticks.push(
       <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={major ? 'rgba(255,255,255,0.9)' : medium ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)'}
-        strokeWidth={major ? 1.2 : 0.6} strokeLinecap="round" />
+        stroke={isMajor ? '#38bdf8' : isMedium ? 'rgba(56,189,248,0.7)' : isMinor5 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)'}
+        strokeWidth={isMajor ? 1.8 : isMedium ? 1.2 : 0.7}
+        strokeLinecap="round" />
     );
   }
+
+  const cardinals = [
+    { label: 'N', deg: 0,   color: '#f87171', weight: '900' as const },
+    { label: 'E', deg: 90,  color: '#7dd3fc', weight: '800' as const },
+    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.8)', weight: '700' as const },
+    { label: 'W', deg: 270, color: '#7dd3fc', weight: '800' as const },
+  ];
+  const cardinalEls: React.JSX.Element[] = cardinals.map(({ label, deg: d, color, weight }) => {
+    const rad = d * Math.PI / 180;
+    const x = cx + 37 * Math.sin(rad);
+    const y = cy - 37 * Math.cos(rad);
+    return (
+      <SvgText key={label} x={x} y={y} fill={color} fontSize={label === 'N' ? '7.5' : '5.5'}
+        fontWeight={weight} textAnchor="middle" alignmentBaseline="middle">
+        {label}
+      </SvgText>
+    );
+  });
+
+  const intercardinals = [
+    { label: 'NE', deg: 45 }, { label: 'SE', deg: 135 },
+    { label: 'SW', deg: 225 }, { label: 'NW', deg: 315 },
+  ];
+  const intercardinalEls: React.JSX.Element[] = intercardinals.map(({ label, deg: d }) => {
+    const rad = d * Math.PI / 180;
+    const x = cx + 36 * Math.sin(rad);
+    const y = cy - 36 * Math.cos(rad);
+    return (
+      <SvgText key={label} x={x} y={y} fill="rgba(56,189,248,0.55)" fontSize="3.5"
+        fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
+        {label}
+      </SvgText>
+    );
+  });
+
+  const cardinalName = (() => {
+    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round(heading / 22.5) % 16];
+  })();
+
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+
+      {/* ── ROTATING RING ── */}
+      <View style={{ position: 'absolute', transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.15)" />
-          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.55)" strokeWidth={1.5} />
-          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
+          <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth={1} />
+          <Circle cx={cx} cy={cy} r={48.2} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.4} />
           {ticks}
-          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.1)" />
-          <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.35)" strokeWidth={0.8} />
-          <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
-          {/* Diagonal 45° secondary points (sky blue) */}
-          <G transform="rotate(45, 50, 50)">
-            <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-28} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx} ${cy-28} L${cx+3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx+28} ${cy} L${cx+3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+28} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx} ${cy+28} L${cx-3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx-28} ${cy} L${cx-3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
-          </G>
-          {/* E / S / W cardinal (white) */}
-          <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx+36} ${cy} L${cx+3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
-          <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+36} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx} ${cy+36} L${cx-3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
-          <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx-36} ${cy} L${cx-3} ${cy-3} Z`} fill="rgba(255,255,255,0.4)" />
-          {/* North pointer — RED */}
-          <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-36} Z`} fill="#ef4444" opacity={0.95} />
-          <Path d={`M${cx} ${cy} L${cx} ${cy-36} L${cx+3} ${cy-3} Z`} fill="#b91c1c" opacity={0.85} />
-          {/* Center pivot */}
-          <Circle cx={cx} cy={cy} r={3} fill="rgba(30,58,100,1)" />
-          <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
-          {/* Labels */}
-          <SvgText x={cx} y={10} fill="#ef4444" fontSize="7" fontWeight="800" textAnchor="middle" alignmentBaseline="middle">N</SvgText>
-          <SvgText x={91} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">E</SvgText>
-          <SvgText x={cx} y={91} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">S</SvgText>
-          <SvgText x={9} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">W</SvgText>
+          <Circle cx={cx} cy={cy} r={32} fill="rgba(4,14,32,0.6)" />
+          <Circle cx={cx} cy={cy} r={32} fill="none" stroke="rgba(56,189,248,0.4)" strokeWidth={0.7} />
+          <Circle cx={cx} cy={cy} r={29} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={0.4} strokeDasharray="1.5 3" />
+          {cardinalEls}
+          {intercardinalEls}
+          <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
         </Svg>
+      </View>
+
+      {/* ── FIXED RETICLE ── */}
+      <View style={{ position: 'absolute', width: size, height: size }}>
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+          <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
+          <Line x1={cx-28} y1={cy} x2={cx-5} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx+5}  y1={cy} x2={cx+28} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx} y1={cy-28} x2={cx} y2={cy-6}  stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx} y1={cy+6}  x2={cx} y2={cy+28} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx-20} y1={cy-20} x2={cx-14} y2={cy-14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx+14} y1={cy-14} x2={cx+20} y2={cy-20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx-20} y1={cy+20} x2={cx-14} y2={cy+14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx+14} y1={cy+14} x2={cx+20} y2={cy+20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={0.7} />
+          <Circle cx={cx} cy={cy} r={2} fill="#38bdf8" opacity={0.9} />
+          <Path d={`M${cx-26} ${cy-22} L${cx-26} ${cy-26} L${cx-22} ${cy-26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx+22} ${cy-26} L${cx+26} ${cy-26} L${cx+26} ${cy-22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx-26} ${cy+22} L${cx-26} ${cy+26} L${cx-22} ${cy+26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx+22} ${cy+26} L${cx+26} ${cy+26} L${cx+26} ${cy+22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      </View>
+
+      {/* ── DIGITAL HEADING READOUT ── */}
+      <View style={{ position: 'absolute', bottom: size * 0.17, alignItems: 'center' }}>
+        <View style={{
+          backgroundColor: 'rgba(0,10,24,0.75)',
+          borderWidth: 1, borderColor: 'rgba(56,189,248,0.45)',
+          borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+        }}>
+          <Text style={{ color: '#f87171', fontSize: size * 0.065, fontWeight: '900', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
+            {cardinalName}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: size * 0.04 }}>|</Text>
+          <Text style={{ color: '#38bdf8', fontSize: size * 0.065, fontWeight: '700', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
+            {String(heading).padStart(3, '0')}°
+          </Text>
+        </View>
       </View>
     </View>
   );

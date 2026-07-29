@@ -67,7 +67,7 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = Math.min(W * 0.85, 340); // Increased size for elegant data display
+const RING_SIZE   = 240;
 const RING_STROKE = 16;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -79,96 +79,163 @@ function dayLabel(dateStr: string): string {
   return days[new Date(dateStr + 'T12:00:00').getDay()];
 }
 
+// Returns compass cardinal label for a heading in degrees
+function getCardinalLabel(deg: number): string {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
 // ── Default stats ─────────────────────────────────────────────────────────────
 const DEFAULT_STATS: TodayStats = {
   autoSteps: 0, manualSteps: 0, totalSteps: 0, goalSteps: 5000,
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
 
-// ─── Premium Compass Rose ─────────────────────────────────────────────────────
-// A precise, fully visible compass rose rendered inside the progress ring.
-// `heading` = device magnetic heading in degrees (0 = North).
-// The entire SVG counter-rotates by `heading` so North always points to geographic North.
+// ─── Modern HUD Navigator Compass ────────────────────────────────────────────
+// Ultra-modern tactical/digital compass inspired by aviation HUD systems.
+// The outer degree ring rotates with the device heading.
+// The inner reticle + heading readout remain fixed.
 function CompassRose({ size, heading }: { size: number; heading: number }) {
-  const cx = 50;
-  const cy = 50;
-  // We draw in a 0-100 viewBox then scale to `size`.
-  // Tick marks
+  const cx = 50, cy = 50;
+
+  // Build degree tick marks on the ROTATING ring
   const ticks: React.JSX.Element[] = [];
   for (let i = 0; i < 72; i++) {
-    const angle = (i * 5) * Math.PI / 180;
-    const major = i % 9 === 0;   // every 45°
-    const medium = i % 3 === 0;  // every 15°
-    const r1 = 47;
-    const r2 = major ? 42 : medium ? 44 : 45.5;
+    const deg = i * 5;
+    const angle = deg * Math.PI / 180;
+    const isMajor  = deg % 90 === 0;   // N/E/S/W
+    const isMedium = deg % 45 === 0;   // NE/SE/SW/NW
+    const isMinor5 = deg % 10 === 0;   // every 10°
+    const r1 = 48;
+    const r2 = isMajor ? 41 : isMedium ? 43 : isMinor5 ? 44.5 : 46;
     const x1 = cx + r1 * Math.sin(angle);
     const y1 = cy - r1 * Math.cos(angle);
     const x2 = cx + r2 * Math.sin(angle);
     const y2 = cy - r2 * Math.cos(angle);
     ticks.push(
-      <Line
-        key={i}
-        x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={major ? 'rgba(255,255,255,0.9)' : medium ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)'}
-        strokeWidth={major ? 1.2 : 0.6}
-        strokeLinecap="round"
-      />
+      <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+        stroke={isMajor ? '#38bdf8' : isMedium ? 'rgba(56,189,248,0.7)' : isMinor5 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)'}
+        strokeWidth={isMajor ? 1.8 : isMedium ? 1.2 : 0.7}
+        strokeLinecap="round" />
     );
   }
 
+  // Cardinal label positions on the rotating ring (r=38 from center)
+  const cardinals = [
+    { label: 'N', deg: 0,   color: '#f87171', weight: '900' as const },
+    { label: 'E', deg: 90,  color: '#7dd3fc', weight: '800' as const },
+    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.8)', weight: '700' as const },
+    { label: 'W', deg: 270, color: '#7dd3fc', weight: '800' as const },
+  ];
+  const cardinalEls: React.JSX.Element[] = cardinals.map(({ label, deg: d, color, weight }) => {
+    const rad = d * Math.PI / 180;
+    const x = cx + 37 * Math.sin(rad);
+    const y = cy - 37 * Math.cos(rad);
+    return (
+      <SvgText key={label} x={x} y={y} fill={color} fontSize={label === 'N' ? '7.5' : '5.5'}
+        fontWeight={weight} textAnchor="middle" alignmentBaseline="middle">
+        {label}
+      </SvgText>
+    );
+  });
+
+  // Intercardinal labels
+  const intercardinals = [
+    { label: 'NE', deg: 45 }, { label: 'SE', deg: 135 },
+    { label: 'SW', deg: 225 }, { label: 'NW', deg: 315 },
+  ];
+  const intercardinalEls: React.JSX.Element[] = intercardinals.map(({ label, deg: d }) => {
+    const rad = d * Math.PI / 180;
+    const x = cx + 36 * Math.sin(rad);
+    const y = cy - 36 * Math.cos(rad);
+    return (
+      <SvgText key={label} x={x} y={y} fill="rgba(56,189,248,0.55)" fontSize="3.5"
+        fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
+        {label}
+      </SvgText>
+    );
+  });
+
+  const cardinalName = (() => {
+    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round(heading / 22.5) % 16];
+  })();
+
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Counter-rotate so compass points to real North */}
-      <View style={{ transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+
+      {/* ── ROTATING RING (moves with device heading) ── */}
+      <View style={{ position: 'absolute', transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Deep navy outer bezel fill (highly transparent for glassmorphism) */}
-          <Circle cx={cx} cy={cy} r={49} fill="rgba(10,30,60,0.15)" />
-          {/* Bezel gradient ring */}
-          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1.5} />
-          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(56,189,248,0.2)" strokeWidth={0.5} />
-          {/* Tick marks */}
+          {/* Outer bezel dark fill */}
+          <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
+          {/* Outer glowing ring */}
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth={1} />
+          <Circle cx={cx} cy={cy} r={48.2} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.4} />
+          {/* Degree tick marks */}
           {ticks}
-          {/* Inner dial area (highly transparent) */}
-          <Circle cx={cx} cy={cy} r={41} fill="rgba(6,18,42,0.1)" />
-          <Circle cx={cx} cy={cy} r={41} fill="none" stroke="rgba(56,189,248,0.3)" strokeWidth={0.8} />
-          {/* Dotted inner ring */}
-          <Circle cx={cx} cy={cy} r={37} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.5} strokeDasharray="1 2" />
-
-          {/* ── 8-point Compass Rose ── */}
-          {/* Diagonal 45° points (secondary — light blue) */}
-          <G transform="rotate(45, 50, 50)">
-            <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-28} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx} ${cy-28} L${cx+3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx+28} ${cy} L${cx+3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+28} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx} ${cy+28} L${cx-3} ${cy+3} Z`} fill="#38bdf8" opacity={0.65} />
-            <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-28} ${cy} Z`} fill="#7dd3fc" opacity={0.8} />
-            <Path d={`M${cx} ${cy} L${cx-28} ${cy} L${cx-3} ${cy-3} Z`} fill="#38bdf8" opacity={0.65} />
-          </G>
-
-          {/* Primary cardinal points (E/W/S — white) */}
-          <Path d={`M${cx} ${cy} L${cx+3} ${cy-3} L${cx+36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx+36} ${cy} L${cx+3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
-          <Path d={`M${cx} ${cy} L${cx+3} ${cy+3} L${cx} ${cy+36} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx} ${cy+36} L${cx-3} ${cy+3} Z`} fill="rgba(255,255,255,0.4)" />
-          <Path d={`M${cx} ${cy} L${cx-3} ${cy+3} L${cx-36} ${cy} Z`} fill="rgba(255,255,255,0.85)" />
-          <Path d={`M${cx} ${cy} L${cx-36} ${cy} L${cx-3} ${cy-3} Z`} fill="rgba(255,255,255,0.4)" />
-
-          {/* North pointer — RED (prominent) */}
-          <Path d={`M${cx} ${cy} L${cx-3} ${cy-3} L${cx} ${cy-36} Z`} fill="#ef4444" opacity={0.95} />
-          <Path d={`M${cx} ${cy} L${cx} ${cy-36} L${cx+3} ${cy-3} Z`} fill="#b91c1c" opacity={0.85} />
-
-          {/* Center pivot */}
-          <Circle cx={cx} cy={cy} r={3} fill="rgba(30,58,100,1)" />
-          <Circle cx={cx} cy={cy} r={1.8} fill="#ffffff" opacity={0.95} />
-
-          {/* Cardinal labels — stay fixed relative to bezel */}
-          <SvgText x={cx} y={10} fill="#ef4444" fontSize="7" fontWeight="800" textAnchor="middle" alignmentBaseline="middle">N</SvgText>
-          <SvgText x={91} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">E</SvgText>
-          <SvgText x={cx} y={91} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">S</SvgText>
-          <SvgText x={9} y={cy} fill="rgba(255,255,255,0.9)" fontSize="5.5" fontWeight="700" textAnchor="middle" alignmentBaseline="middle">W</SvgText>
+          {/* Inner bezel separator */}
+          <Circle cx={cx} cy={cy} r={32} fill="rgba(4,14,32,0.6)" />
+          <Circle cx={cx} cy={cy} r={32} fill="none" stroke="rgba(56,189,248,0.4)" strokeWidth={0.7} />
+          <Circle cx={cx} cy={cy} r={29} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={0.4} strokeDasharray="1.5 3" />
+          {/* Cardinal & intercardinal labels (rotate with ring) */}
+          {cardinalEls}
+          {intercardinalEls}
+          {/* N pointer tick (extra long, glowing cyan-red) */}
+          <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
         </Svg>
+      </View>
+
+      {/* ── FIXED RETICLE LAYER (never rotates) ── */}
+      <View style={{ position: 'absolute', width: size, height: size }}>
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+          {/* Triangle North indicator at top (fixed — always points up) */}
+          <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
+
+          {/* Crosshair horizontal line */}
+          <Line x1={cx-28} y1={cy} x2={cx-5} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx+5}  y1={cy} x2={cx+28} y2={cy} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          {/* Crosshair vertical line */}
+          <Line x1={cx} y1={cy-28} x2={cx} y2={cy-6}  stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+          <Line x1={cx} y1={cy+6}  x2={cx} y2={cy+28} stroke="rgba(56,189,248,0.5)" strokeWidth={0.6} />
+
+          {/* 45° diagonal accent lines (short) */}
+          <Line x1={cx-20} y1={cy-20} x2={cx-14} y2={cy-14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx+14} y1={cy-14} x2={cx+20} y2={cy-20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx-20} y1={cy+20} x2={cx-14} y2={cy+14} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+          <Line x1={cx+14} y1={cy+14} x2={cx+20} y2={cy+20} stroke="rgba(56,189,248,0.3)" strokeWidth={0.5} />
+
+          {/* Inner target rings */}
+          <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={0.7} />
+          <Circle cx={cx} cy={cy} r={2} fill="#38bdf8" opacity={0.9} />
+
+          {/* Corner bracket accents */}
+          <Path d={`M${cx-26} ${cy-22} L${cx-26} ${cy-26} L${cx-22} ${cy-26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx+22} ${cy-26} L${cx+26} ${cy-26} L${cx+26} ${cy-22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx-26} ${cy+22} L${cx-26} ${cy+26} L${cx-22} ${cy+26}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={`M${cx+22} ${cy+26} L${cx+26} ${cy+26} L${cx+26} ${cy+22}`} fill="none" stroke="rgba(56,189,248,0.5)" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      </View>
+
+      {/* ── DIGITAL HEADING READOUT (fixed overlay, React Native Text) ── */}
+      <View style={{
+        position: 'absolute', bottom: size * 0.17,
+        alignItems: 'center',
+      }}>
+        <View style={{
+          backgroundColor: 'rgba(0,10,24,0.75)',
+          borderWidth: 1, borderColor: 'rgba(56,189,248,0.45)',
+          borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+        }}>
+          <Text style={{ color: '#f87171', fontSize: size * 0.065, fontWeight: '900', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
+            {cardinalName}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: size * 0.04 }}>|</Text>
+          <Text style={{ color: '#38bdf8', fontSize: size * 0.065, fontWeight: '700', letterSpacing: 0.5, fontVariant: ['tabular-nums'] }}>
+            {String(heading).padStart(3, '0')}°
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -279,6 +346,8 @@ export default function WalkTab() {
 
   // ── Feature 7: Compass heading ─────────────────────────────────────────────
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
+  const [compassTipVisible, setCompassTipVisible] = useState(false);
+  const compassTipOpacity = useRef(new Animated.Value(0)).current;
   const compassRot = useRef(new Animated.Value(0)).current;
 
   // ── Seed Selection ────────────────────────────────────────────────────────
@@ -428,12 +497,23 @@ export default function WalkTab() {
 
     // Feature 7: Highly Accurate Location-based Compass
     let headingSub: Location.LocationSubscription | null = null;
+    let firstReading = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           headingSub = await Location.watchHeadingAsync((data) => {
             setCompassHeading(Math.round(data.trueHeading !== -1 ? data.trueHeading : data.magHeading));
+            if (firstReading) {
+              firstReading = false;
+              // Show the "hold flat" tip briefly
+              setCompassTipVisible(true);
+              Animated.sequence([
+                Animated.timing(compassTipOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+                Animated.delay(3500),
+                Animated.timing(compassTipOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+              ]).start(() => setCompassTipVisible(false));
+            }
           });
         }
       } catch (err) {
@@ -691,14 +771,10 @@ export default function WalkTab() {
               style={StyleSheet.absoluteFillObject}
             />
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
-              {sacred.type === 'sunrise' ? 'Sunrise Starting.. Meditate Now' :
-               sacred.type === 'sunset' ? 'Sunset Setting.. Meditate Now' :
-               sacred.type === 'zenith' ? 'Mid-Noon Zenith.. Meditate Now' :
-               'Do not count calories.. just walk organically.'}
+              Do not count calories.. just walk organically.
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center' }}>
-              {sacred.type ? 'Connect with the divinity.. Sync your rhythm with the shifting sky.' :
-               'Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...'}
+              Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...
             </Text>
           </View>
         </Animated.View>
@@ -854,11 +930,11 @@ export default function WalkTab() {
                     opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
                   }} />
 
-                  {/* ── Feature 7: Premium Compass Rose (inside inner disc) ── */}
+                  {/* ── Feature 7: Premium Compass Rose (inside inner disc, semi-transparent) ── */}
                   {compassHeading !== null && (
                     <View pointerEvents="none" style={[
                       StyleSheet.absoluteFillObject,
-                      { alignItems: 'center', justifyContent: 'center' },
+                      { alignItems: 'center', justifyContent: 'center', opacity: 0.55 },
                     ]}>
                       <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassHeading} />
                     </View>
@@ -911,80 +987,106 @@ export default function WalkTab() {
               </Svg>
             </View>
 
-            {/* Centre content */}
+            {/* Centre content — all data inside the ring */}
             <View style={st.ringCentre}>
-              
+
+              {(isSunset || isSunrise) ? (
+                <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
+                    {isSunset ? 'Sunset · Meditate Now' : 'Sunrise · Meditate Now'}
+                  </Text>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Connect with the divinity</Text>
+                </View>
+              ) : (
+                <>
+                  {/* ─ Top: Weather chip ─ */}
                   {weather ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2, opacity: 0.95 }}>
-                      <Text style={{ fontSize: 15 }}>{weather.emoji}</Text>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.8, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                        {weather.temp}° • {weather.condition}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)' }}>
+                      <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.7 }}>
+                        {weather.temp}° {weather.condition}
                       </Text>
                     </View>
-                  ) : (
-                    <View style={{ height: 10, marginBottom: 2 }} />
-                  )}
-                  
-                  {/* Badge */}
-                  <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.12)', marginBottom: 2 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.5 }}>STEPS TODAY</Text>
+                  ) : <View style={{ height: 22, marginBottom: 4 }} />}
+
+                  {/* ─ Steps Today badge ─ */}
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 1 }}>
+                    <Text style={{ fontSize: 8, fontWeight: '900', color: '#fff', letterSpacing: 1.6, textTransform: 'uppercase' }}>STEPS TODAY</Text>
                   </View>
 
-                  {/* Feature 6: Shimmer step count */}
+                  {/* ─ Big step count ─ */}
                   <Text style={st.ringSteps}>{fmtK(stats.totalSteps)}</Text>
-                  <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} INTENTION</Text>
+                  <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
 
-                  {/* Feature 6: Animated mindful quote */}
-                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', marginTop: 2, letterSpacing: 0.5, opacity: quoteOpacity }}>
+                  {/* ─ Mindful quote ─ */}
+                  <Animated.Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginTop: 1, letterSpacing: 0.4, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 8 }}>
                     {QUOTES[quoteIdx]}
                   </Animated.Text>
-                  
-                  <View style={st.ringDivider} />
-                  
-                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 0, alignItems: 'center' }}>
+
+                  {/* ─ Divider ─ */}
+                  <View style={{ width: 50, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 5 }} />
+
+                  {/* ─ km / min / days row ─ */}
+                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>km</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>km</Text>
                     </View>
-                    <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>min</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
+                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>min</Text>
                     </View>
-                    <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                    <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.2)' }} />
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>{streak}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>days</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{streak}</Text>
+                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontWeight: '600' }}>days</Text>
                     </View>
                   </View>
-                  
-                  <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', marginTop: 10 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                      {Math.round(stats.goalPercent)}% daily planting progress
-                    </Text>
-                  </View>
-                  
-                  {/* Yesterday motivational display */}
-                  {stats.totalSteps === 0 && yesterdaySteps > 0 && (
-                    <View style={{ marginTop: 8, alignItems: 'center', opacity: 0.85 }}>
-                      <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2 }}>YESTERDAY</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.9)' }}>{fmtK(yesterdaySteps)} steps</Text>
-                    </View>
-                  )}
-                  
-                  {/* Weekly Intention inside ring */}
+
+                  {/* ─ Weekly Intention arc bar inside ring ─ */}
                   {summary && summary.weeklyGoal > 0 && (
-                    <View style={{ marginTop: 6, alignItems: 'center', opacity: 0.95, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)' }}>
-                      <Text style={{ fontSize: 8, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>WEEKLY INTENTION</Text>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>
-                        {summary.weeklyGoalPercent}% • {summary.weeklySteps > 1000 ? (summary.weeklySteps/1000).toFixed(1)+'k' : summary.weeklySteps} / {summary.weeklyGoal > 1000 ? (summary.weeklyGoal/1000).toFixed(1)+'k' : summary.weeklyGoal}
-                      </Text>
+                    <View style={{ alignItems: 'center', marginTop: 7 }}>
+                      {/* slim arc bar */}
+                      <View style={{ width: 110, height: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                        <View style={{
+                          position: 'absolute', left: 0, top: 0, bottom: 0,
+                          width: `${Math.min(100, summary.weeklyGoalPercent)}%`,
+                          borderRadius: 3,
+                        }}>
+                          <LinearGradient
+                            colors={['#38bdf8', '#7dd3fc']}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                            style={{ flex: 1 }}
+                          />
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 4 }}>
+                        <Text style={{ fontSize: 7.5, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1, textTransform: 'uppercase' }}>Weekly</Text>
+                        <Text style={{ fontSize: 8, fontWeight: '900', color: '#7dd3fc' }}>{summary.weeklyGoalPercent}%</Text>
+                        <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)' }}>· {(summary.weeklySteps/1000).toFixed(1)}k/{(summary.weeklyGoal/1000).toFixed(0)}k</Text>
+                      </View>
                     </View>
                   )}
+
+                  {/* ─ Daily goal % pill ─ */}
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)', marginTop: 5 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.6 }}>{stats.goalPercent}% complete</Text>
+                  </View>
+
+                  {/* ─ Compass heading tip ─ */}
+                  {compassHeading !== null && (
+                    <Text style={{ fontSize: 7, color: 'rgba(56,189,248,0.8)', fontWeight: '700', letterSpacing: 0.8, marginTop: 3 }}>
+                      {getCardinalLabel(compassHeading)} · {compassHeading}°
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
           </View>
 
           </Animated.View>
+
 
         </Animated.View>
 
@@ -993,8 +1095,7 @@ export default function WalkTab() {
           opacity: cardFade,
           transform: [{ translateY: cardSlide }],
           paddingHorizontal: 32,
-          flexDirection: 'row',
-          gap: 12,
+          gap: 10,
           marginTop: btnMarginTop,
           marginBottom: btnMarginBot,
         }}>
@@ -1003,7 +1104,7 @@ export default function WalkTab() {
           <TouchableOpacity
             onPress={() => launchSession(sessionType)}
             activeOpacity={0.82}
-            style={{ flex: 1.4, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
           >
             <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
             <LinearGradient
@@ -1036,7 +1137,7 @@ export default function WalkTab() {
               </Animated.View>
               
               <View style={{ paddingVertical: 12 }}>
-                <Text style={{ fontSize: 11, fontWeight: '900', color: '#0369a1', letterSpacing: 0.5, textTransform: 'uppercase' }} numberOfLines={1} adjustsFontSizeToFit>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                   {sessionTitle}
                 </Text>
               </View>
@@ -1045,7 +1146,7 @@ export default function WalkTab() {
 
           {/* Adjust Target Button */}
           <TouchableOpacity
-            style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
             onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
             activeOpacity={0.82}
           >
@@ -1053,7 +1154,7 @@ export default function WalkTab() {
             <LinearGradient
               colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: '100%' }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
             >
               <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
               
@@ -1064,9 +1165,9 @@ export default function WalkTab() {
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
               />
 
-              <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 4, opacity: 0.9 }} />
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} numberOfLines={1} adjustsFontSizeToFit>
+              <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
                   Intentions
                 </Text>
               </View>
