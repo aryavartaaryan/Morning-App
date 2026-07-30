@@ -32,18 +32,23 @@ const CX = W / 2;
 const CY = H / 2;
 
 const OM_HIT_URL = 'https://audio.onesutralabs.com/om.mp3';
-const TANPURA_SOUND_ID = 'cdn_new_8';
+const TANPURA_SOUND_ID = 'tanpura_loop';
 
 // ── Terrain Math ────────────────────────────────────────────────────────────
 function getTerrainY(x: number) {
-  // Combining sine waves for hills
+  // A clean mix of Mario-style flat surfaces and mountains.
+  const zone = Math.sin(x / 1200); 
+  
+  let multiplier = 0;
+  if (zone > 0.3) multiplier = 1;
+  else if (zone > -0.3) {
+    // smooth transition between flat and hills
+    const t = (zone + 0.3) / 0.6;
+    multiplier = t * t * (3 - 2 * t);
+  }
+
   const hillWave = Math.sin(x / 400) * 180 + Math.sin(x / 200) * 70 + Math.sin(x / 800) * 300;
-  
-  // Plains multiplier: smoothly transitions between 0 (flat plains) and 1 (full hills)
-  // using a slow sine wave clamped between 0 and 1
-  const plainsMultiplier = Math.max(0, Math.min(1, Math.sin(x / 1500) * 1.5 + 0.2));
-  
-  return (hillWave * plainsMultiplier) + 600;
+  return 600 - (hillWave * multiplier);
 }
 
 function getTerrainSlopeAndAngle(x: number) {
@@ -234,11 +239,8 @@ export default function OrbitPulseGame({
     triggerShake(20);
     setMaxCombo(1);
     
-    // Play Tanpura loop snippet on collision as requested by user
-    const tanpura = ALL_SLEEP_SOUNDS.find(s => s.id === TANPURA_SOUND_ID);
-    if (tanpura) {
-      playSound(tanpura, 3, undefined, 1.0, false);
-    }
+    // Play damage collision hit if desired, but haptics + flash is usually enough
+    // We removed the tanpura loop start here since it is for background.
     
     setHealth(h => {
       const newH = h - 1;
@@ -380,25 +382,32 @@ export default function OrbitPulseGame({
 
     // 6. Render Updates via Native Props
     
-    // Main Terrain Path
+    // Main Terrain Path - Anchored to World Grid to eliminate swimming/noise!
+    const step = 40; 
+    const startWorldX = p.x - PLAYER_X;
+    const offsetX = startWorldX % step;
+    
     const points = [];
-    const step = 25; 
-    for (let lx = 0; lx <= W + 100; lx += step) {
-      const worldX = p.x - PLAYER_X + lx;
-      points.push(`${lx},${getTerrainY(worldX)}`);
+    for (let lx = -step; lx <= W + step * 2; lx += step) {
+      const screenX = lx - offsetX;
+      const worldX = startWorldX + screenX;
+      points.push(`${screenX.toFixed(1)},${getTerrainY(worldX).toFixed(1)}`);
     }
-    const d = `M0,${H * 2} L0,${getTerrainY(p.x - PLAYER_X)} L${points.join(' L')} L${W + 100},${H * 2} Z`;
+    const d = `M${-step},${H * 2} L${points[0]} L${points.join(' L')} L${W + step * 2},${H * 2} Z`;
     terrainPathRef.current?.setNativeProps({ d });
 
-    // Background Parallax Hills
+    // Background Parallax Hills - Anchored to World Grid
     const bgPoints = [];
-    for (let lx = 0; lx <= W + 100; lx += step) {
-      const worldX = (p.x * 0.5) - PLAYER_X + lx; // 0.5 parallax speed
-      // different sine seed for bg hills
+    const bgStartWorldX = (p.x * 0.5) - PLAYER_X;
+    const bgOffsetX = bgStartWorldX % step;
+    
+    for (let lx = -step; lx <= W + step * 2; lx += step) {
+      const screenX = lx - bgOffsetX;
+      const worldX = bgStartWorldX + screenX;
       const bgY = (Math.sin(worldX / 500) * 150 + Math.sin(worldX / 300) * 80) + 500;
-      bgPoints.push(`${lx},${bgY}`);
+      bgPoints.push(`${screenX.toFixed(1)},${bgY.toFixed(1)}`);
     }
-    const bgD = `M0,${H * 2} L0,${(Math.sin(((p.x*0.5) - PLAYER_X) / 500) * 150 + Math.sin(((p.x*0.5) - PLAYER_X) / 300) * 80) + 500} L${bgPoints.join(' L')} L${W + 100},${H * 2} Z`;
+    const bgD = `M${-step},${H * 2} L${bgPoints[0]} L${bgPoints.join(' L')} L${W + step * 2},${H * 2} Z`;
     bgTerrainPathRef.current?.setNativeProps({ d: bgD });
 
     // Build Entity SVGs

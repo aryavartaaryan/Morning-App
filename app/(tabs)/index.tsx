@@ -2644,28 +2644,8 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
   const router = useRouter();
 
   useEffect(() => {
-    let isMounted = true;
-    const tick = () => {
-      if (!isMounted) return; // stop if unmounted
-      try {
-        if (!pausedRef.current && maxPosRef.current > 0) {
-          posRef.current += HES_SCROLL_SPEED * dirRef.current;
-          if (posRef.current >= maxPosRef.current) {
-            posRef.current = maxPosRef.current;
-            dirRef.current = -1;
-          } else if (posRef.current <= 0) {
-            posRef.current = 0;
-            dirRef.current = 1;
-          }
-          scrollRef.current?.scrollTo({ x: posRef.current, animated: false });
-        }
-      } catch { /* scrollTo on unmounted view — silently ignore */ }
-      if (isMounted) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
+    // Auto-scroll loop removed: JS-driven scrollTo at 60fps floods the bridge and hangs navigation.
     return () => {
-      isMounted = false;
-      cancelAnimationFrame(rafRef.current);
       if (resumeTimer.current) { clearTimeout(resumeTimer.current); resumeTimer.current = null; }
     };
   }, []);
@@ -4522,35 +4502,9 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
 
   const allStoryCards = reelItems.map(r => r.storyCard) as HESCard[];
 
-  // Auto-scroll RAF loop — ping-pong left/right horizontal, stops on touch
-  const REEL_SPEED = 0.18;
+  // Auto-scroll loop removed: JS-driven scrollTo at 60fps floods the bridge and hangs navigation.
   useEffect(() => {
-    if (reelItems.length === 0) return;
-    reelDirRef.current = 1;
-    reelPosRef.current = 0;
-    let reelMounted = true;
-    const tick = () => {
-      if (!reelMounted) return; // stop loop after unmount
-      try {
-        if (!reelPausedRef.current && reelMaxPosRef.current > 0) {
-          reelPosRef.current += REEL_SPEED * reelDirRef.current;
-          if (reelPosRef.current >= reelMaxPosRef.current) {
-            reelPosRef.current = reelMaxPosRef.current;
-            reelDirRef.current = -1;
-          } else if (reelPosRef.current <= 0) {
-            reelPosRef.current = 0;
-            reelDirRef.current = 1;
-          }
-          reelScrollRef.current?.scrollTo({ x: reelPosRef.current, animated: false });
-        }
-      } catch { /* scrollTo on unmounted view — silently ignore */ }
-      if (reelMounted) reelRafRef.current = requestAnimationFrame(tick);
-    };
-    reelRafRef.current = requestAnimationFrame(tick);
-    return () => {
-      reelMounted = false;
-      cancelAnimationFrame(reelRafRef.current);
-    };
+    return () => {};
   }, []);
 
   return (
@@ -5454,6 +5408,10 @@ const TRUE_SILVER: AyurvedicPalette = { ring: '#E2E8F0', halo: '#F1F5F9', accent
 // ── Brahma Muhurta — Sacred blue-silver, the most ethereal hour ──────────────────────────
 const BRAHMA_PALETTE: AyurvedicPalette = { ring: '#567898', halo: '#6A8CAC', accent: '#94B0C8' }; // deep sacred steel
 
+const RAIN_PALETTE: AyurvedicPalette = { ring: '#60A5FA', halo: '#93C5FD', accent: '#BFDBFE' }; // Rainy blue
+const SUNNY_PALETTE: AyurvedicPalette = { ring: '#FBBF24', halo: '#FDE68A', accent: '#FEF3C7' }; // Sunny gold
+const SNOW_PALETTE: AyurvedicPalette = { ring: '#E0F2FE', halo: '#F0F9FF', accent: '#FFFFFF' }; // Snow white
+
 function isAfterSunset(nowH: number, solar?: SolarTimes | null): boolean {
   if (!solar) return nowH >= 19 || nowH < 6; // rough fallback
   return nowH > solar.sunset || nowH < solar.sunrise;
@@ -5468,6 +5426,7 @@ function getSolarRingPalette(
   lon?: number | null,
   brahmaActive?: boolean,
   temp?: number | null,
+  weatherCode?: number | null,
 ): AyurvedicPalette {
   // ── 1. Sacred hour override (±15 min sunrise/sunset) ─────────────────────
   const sacred = getSacredHourInfo(nowH, solar);
@@ -5518,7 +5477,22 @@ function getSolarRingPalette(
     basePalette = lerpPalette(DAY_PALETTES, height);
   }
 
-  // ── 5. Temperature Override (Cooling Effect) ────────
+  // ── 5. Weather Override ────────
+  if (weatherCode != null) {
+    const isRain = [51,53,55,61,63,65,80,81,82,95,96,99].includes(weatherCode);
+    const isSnow = [71,73,75].includes(weatherCode);
+    const isSunny = [0,1].includes(weatherCode) && (temp == null || temp >= 22);
+
+    if (isRain) {
+      basePalette = blendPalette(basePalette, RAIN_PALETTE, 0.7);
+    } else if (isSnow) {
+      basePalette = blendPalette(basePalette, SNOW_PALETTE, 0.7);
+    } else if (isSunny) {
+      basePalette = blendPalette(basePalette, SUNNY_PALETTE, 0.7);
+    }
+  }
+
+  // ── 6. Temperature Override (Cooling Effect) ────────
   if (temp != null && temp > 20) {
     const blendFactor = Math.min(1, Math.max(0, (temp - 20) / 15));
     return blendPalette(basePalette, COOLING_BLUE_PALETTE, blendFactor);
@@ -5545,6 +5519,30 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const lunarBreath   = useRef(new Animated.Value(0)).current;
   const fluidRot1     = useRef(new Animated.Value(0)).current;
   const fluidRot2     = useRef(new Animated.Value(0)).current;
+
+  const wCode = weather?.weatherCode;
+  const isRaining = !!(wCode != null && wCode >= 51 && wCode <= 99 && wCode !== 71 && wCode !== 73 && wCode !== 75);
+  const isSnowing = !!(wCode != null && [71,73,75].includes(wCode));
+  const isThunderstorm = !!(wCode != null && [95,96,99].includes(wCode));
+  const isHot = !!(weather?.temp != null && weather.temp >= 35);
+
+  const heatAnim = useRef(new Animated.Value(0)).current;
+  const flashAnim = useRef(new Animated.Value(0)).current;
+
+  const RAIN_COUNT = 5;
+  const rainAnims = useRef(Array.from({ length: RAIN_COUNT }, () => ({
+    y:  new Animated.Value(0),
+    op: new Animated.Value(0),
+    x:  Math.random() * 100 + 50,
+  }))).current;
+
+  const SNOW_COUNT = 8;
+  const snowAnims = useRef(Array.from({ length: SNOW_COUNT }, () => ({
+    y:  new Animated.Value(0),
+    x:  new Animated.Value(Math.random() * 120 + 40),
+    op: new Animated.Value(0),
+    scl: new Animated.Value(Math.random() * 0.5 + 0.5),
+  }))).current;
 
   // ── Inner content cycling state — premium appearance/disappearance ─────────
   const [slideIdx, setSlideIdx] = useState(0);
@@ -5589,6 +5587,77 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
     ])).start();
   }, []);
 
+  useEffect(() => {
+    if (isHot) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(heatAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
+        Animated.timing(heatAnim, { toValue: 0, duration: 4000, useNativeDriver: true })
+      ])).start();
+    }
+  }, [isHot]);
+
+  useEffect(() => {
+    if (isThunderstorm) {
+      Animated.loop(Animated.sequence([
+        Animated.delay(3000 + Math.random() * 4000),
+        Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0.5, duration: 50, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0, duration: 200, useNativeDriver: true })
+      ])).start();
+    }
+  }, [isThunderstorm]);
+
+  useEffect(() => {
+    if (!isRaining) return;
+    const anims = rainAnims.map((ra, i) => {
+      ra.y.setValue(0); ra.op.setValue(0);
+      return Animated.sequence([
+        Animated.delay(i * 600),
+        Animated.loop(Animated.sequence([
+          Animated.parallel([
+            Animated.timing(ra.y,  { toValue: 120, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
+            Animated.sequence([
+              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: true }),
+            ]),
+          ]),
+          Animated.parallel([
+            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: true }),
+            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ]),
+        ])),
+      ]);
+    });
+    anims.forEach(a => a.start());
+    return () => anims.forEach(a => a.stop());
+  }, [isRaining]);
+
+  useEffect(() => {
+    if (!isSnowing) return;
+    const anims = snowAnims.map((sa, i) => {
+      sa.y.setValue(0); sa.op.setValue(0);
+      return Animated.sequence([
+        Animated.delay(i * 400),
+        Animated.loop(Animated.sequence([
+          Animated.parallel([
+            Animated.timing(sa.y,  { toValue: 150, duration: 4000, easing: Easing.linear, useNativeDriver: true }),
+            Animated.sequence([
+              Animated.timing(sa.op, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+              Animated.timing(sa.op, { toValue: 0,   duration: 3200, useNativeDriver: true }),
+            ]),
+          ]),
+          Animated.parallel([
+            Animated.timing(sa.y,  { toValue: 0, duration: 0, useNativeDriver: true }),
+            Animated.timing(sa.op, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ]),
+        ])),
+      ]);
+    });
+    anims.forEach(a => a.start());
+    return () => anims.forEach(a => a.stop());
+  }, [isSnowing]);
+
   // ── Solar-elevation palette — real sun position drives ring colour ──
   const now    = new Date();
   const nowH   = now.getHours() + now.getMinutes() / 60;
@@ -5600,7 +5669,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const gpsLon = weather?.lon ?? null;
   // showBrahma must be declared before getSolarRingPalette so it can be passed as param
   const showBrahma = period?.id === 'night_vata' && brahmaInfo?.status === 'active';
-  const palette   = getSolarRingPalette(nowH, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp);
+  const palette   = getSolarRingPalette(nowH, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp, weather?.weatherCode);
   const ringHex   = palette.ring;
   const haloHex   = palette.halo;
   const accentHex = palette.accent;
@@ -5747,6 +5816,40 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 }} />
               );
             })}
+            {/* ── Hot weather shimmer ── */}
+            {isHot && (
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(239,68,68,0.1)', // Subtle red tint
+                opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }),
+                transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }]
+              }} />
+            )}
+            {/* ── Thunderstorm Flash ── */}
+            {isThunderstorm && (
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: '#FFFFFF',
+                opacity: flashAnim,
+              }} />
+            )}
+            {/* ── Weather Animations ── */}
+            {isRaining && rainAnims.map((ra: any, i: number) => (
+              <Animated.View key={`rain_${i}`} pointerEvents="none" style={{
+                position: 'absolute', left: ra.x, top: 0,
+                width: 1.5, height: 8, borderRadius: 1,
+                backgroundColor: ringHex,
+                opacity: ra.op, transform: [{ translateY: ra.y }],
+              }} />
+            ))}
+            {isSnowing && snowAnims.map((sa: any, i: number) => (
+              <Animated.View key={`snow_${i}`} pointerEvents="none" style={{
+                position: 'absolute', top: 0,
+                width: 4, height: 4, borderRadius: 2,
+                backgroundColor: '#FFFFFF',
+                opacity: sa.op, transform: [{ translateX: sa.x }, { translateY: sa.y }, { scale: sa.scl }],
+              }} />
+            ))}
             {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
             {nightMode && (
               <View pointerEvents="none" style={{
@@ -5783,7 +5886,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
 
           {/* ── Sacred Geometric Yantra Animation — transitions between sacred geometries ── */}
           <View style={{ position: 'absolute', top: -HERO_RS * 0.05, left: -HERO_RS * 0.05, width: HERO_RS * 1.1, height: HERO_RS * 1.1 }}>
-            <HeroGeometricAnimation size={HERO_RS * 1.1} theme={nightMode ? 'dark' : 'light'} />
+            <HeroGeometricAnimation size={HERO_RS * 1.1} theme={nightMode ? 'dark' : 'light'} baseColor={accentHex} />
           </View>
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}

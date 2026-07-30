@@ -188,7 +188,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         
         {/* Elegant Geometric Fusion behind NADA */}
         <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" />
+          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" opacity={0.11} />
         </Animated.View>
 
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
@@ -1958,12 +1958,12 @@ export default function RootLayout() {
                   <Stack.Screen name="soundbath-ringing" options={{ animation: 'fade', gestureEnabled: false }} />
                   <Stack.Screen name="notification-landing" options={{ animation: 'fade', gestureEnabled: false }} />
                   <Stack.Screen name="mission" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
-                  <Stack.Screen name="prakriti-quiz" options={{ animation: 'slide_from_right' }} />
-                  <Stack.Screen name="cosmic-explore" options={{ animation: 'slide_from_right' }} />
-                  <Stack.Screen name="cosmic-science" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="prakriti-quiz" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="cosmic-explore" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="cosmic-science" options={{ animation: 'fade' }} />
                   <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
                   <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
-                  <Stack.Screen name="step-analytics" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="step-analytics" options={{ animation: 'fade' }} />
                 </Stack>
               </ScreenErrorBoundary>
             </BgProvider>
