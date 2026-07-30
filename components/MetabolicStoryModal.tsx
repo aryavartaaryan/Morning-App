@@ -733,11 +733,12 @@ export default function MetabolicStoryModal({
   const goPrev = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (card > 0) setCard(c => c - 1);
-  }, [card]);
+    else onClose();
+  }, [card, onClose]);
 
   const handleNaad = useCallback(() => {
     onClose();
-    setTimeout(() => router.push('/(tabs)/sleep' as never), 100);
+    setTimeout(() => router.push('/(tabs)/sleep' as never), 400);
   }, [router, onClose]);
 
   const handleDeepDive = useCallback(() => {
@@ -745,7 +746,7 @@ export default function MetabolicStoryModal({
     setTimeout(() => router.push({
       pathname: '/metabolic-period' as never,
       params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining) },
-    } as never), 100);
+    } as never), 400);
   }, [router, onClose, period]);
 
   const handleWellness = useCallback(() => {
@@ -753,14 +754,11 @@ export default function MetabolicStoryModal({
     setTimeout(() => router.push({
       pathname: '/ayurvedic-wellness' as never,
       params: { periodId: period.id, periodStart: period.startLabel, periodEnd: period.endLabel, minutesRemaining: String(period.minutesRemaining) },
-    } as never), 100);
+    } as never), 400);
   }, [router, onClose, period]);
 
-  const bgColors = ({
-    kapha: ['#0C2A1C', '#071410'],
-    pitta: ['#2A1206', '#140A04'],
-    vata:  ['#14102C', '#0A0818'],
-  } as Record<string, string[]>)[period.dosha] ?? ['#0F1E3A', '#081428'];
+  // Ultra-premium iOS dark mode
+  const bgColors = ['#000000', '#0a0a0a'];
 
   const LABELS = [
     '◉  LIVE DASHBOARD',

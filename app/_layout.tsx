@@ -44,6 +44,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import type { MoodKey } from '@/components/MoodSheet';
+import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
 
 // Prevent the native splash from auto-hiding.
 // We dismiss it dynamically when leaving the 'gate' phase to avoid flashes.
@@ -140,7 +141,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
            Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
            Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
         ]),
-        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra
+        Animated.delay(3000), // Hold for a full 3 seconds so the user can absorb the mantra
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -185,6 +186,11 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       {/* Center Content */}
       <View style={SS.center}>
         
+        {/* Elegant Geometric Fusion behind NADA */}
+        <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+          <HeroGeometricAnimation size={SW * 0.9} />
+        </Animated.View>
+
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
           <Text style={{ 
@@ -280,7 +286,7 @@ const SETUP_SUBTITLES = [
   'Your life in New Transformation journey is starting from Today',
   'Just listen the Nada sounds...',
   'नाद — The primordial sound of the universe',
-  'Align your rhythm with the universe\\'s wisdom',
+  "Align your rhythm with the universe's wisdom",
   'A new dawn of conscious living awaits you',
 ];
 
@@ -455,7 +461,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         return (
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>We\\'ll help you overcome these challenges.</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>We'll help you overcome these challenges.</Text>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               {tags4.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
@@ -482,7 +488,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, opacity: fadeAnim }]}>
       {/* Dynamic Background Image */}
-      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.8 }} resizeMode="cover" />
+      <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.8 }} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(2,6,23,0.3)', 'rgba(2,6,23,0.85)', '#020617']}
         style={StyleSheet.absoluteFillObject}
@@ -758,7 +764,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
 
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
-      <Image source={require('../assets/images/hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.68)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}

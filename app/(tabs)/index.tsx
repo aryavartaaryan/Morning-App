@@ -927,9 +927,15 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   const [activeFestDetail, setActiveFestDetail] = React.useState<Festival | null>(null);
 
   const flatListRef = React.useRef<FlatList>(null);
+  const yearFlatListRef = React.useRef<FlatList>(null);
   
   const festivals = React.useMemo(() => getYearlyFestivals(currentYear), [currentYear]);
   const monthsData = React.useMemo(() => Array.from({length: 12}, (_, i) => new Date(currentYear, i, 1)), [currentYear]);
+  const yearsData = React.useMemo(() => {
+    const years = [];
+    for (let y = 1950; y <= 2050; y++) years.push(y);
+    return years;
+  }, []);
 
   // Sync year if month changes
   React.useEffect(() => {
@@ -954,6 +960,12 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: currentMonthDate.getMonth(), animated: false });
       }, 50);
+    }
+    if (pickerMode === 'year' && yearFlatListRef.current) {
+      const idx = yearsData.indexOf(currentYear);
+      if (idx !== -1) {
+        setTimeout(() => yearFlatListRef.current?.scrollToIndex({ index: idx, animated: false }), 50);
+      }
     }
   }, [pickerMode, currentYear]);
 
@@ -1017,57 +1029,101 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     );
   };
 
-  const renderYearMode = () => (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingHorizontal: 4 }}>
-         <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setCurrentYear(y => y - 1); }} style={{ padding: 10 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 24, fontWeight: '300' }}>‹</Text>
-         </TouchableOpacity>
-         <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFF' }}>{currentYear}</Text>
-         <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setCurrentYear(y => y + 1); }} style={{ padding: 10 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 24, fontWeight: '300' }}>›</Text>
-         </TouchableOpacity>
-      </View>
+  const renderYearPage = ({ item: yearItem }: { item: number }) => {
+    const mData = Array.from({length: 12}, (_, i) => new Date(yearItem, i, 1));
+    const yFests = getYearlyFestivals(yearItem);
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }} style={{ width: SCREEN_W - 32 }}>
+        <Text style={{ fontSize: 24, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 24, letterSpacing: 2 }}>{yearItem}</Text>
+        {mData.map((monthDate, idx) => {
+           const mFests = yFests.filter(f => f.date.getMonth() === monthDate.getMonth());
+           return (
+             <TouchableOpacity 
+               key={idx} 
+               activeOpacity={0.8}
+               onPress={() => {
+                  Haptics.selectionAsync();
+                  setCurrentYear(yearItem);
+                  setCurrentMonthDate(monthDate);
+                  setPickerMode('month');
+               }}
+               style={{
+                 backgroundColor: 'rgba(255,255,255,0.03)',
+                 borderRadius: 20,
+                 padding: 16,
+                 marginBottom: 12,
+                 borderWidth: 1,
+                 borderColor: 'rgba(255,255,255,0.05)',
+               }}
+             >
+               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: mFests.length > 0 ? 12 : 0 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff' }}>{monthDate.toLocaleString('en-US', { month: 'long' })}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Tap to view month  →</Text>
+               </View>
+               {mFests.map((f, fIdx) => (
+                  <View key={fIdx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                     <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: f.festival.type === 'hindu' ? '#fbbf2415' : '#A78BFA15', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16 }}>{f.festival.emoji}</Text>
+                     </View>
+                     <View>
+                        <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>{f.festival.name.split(' / ')[0]}</Text>
+                        <Text style={{ fontSize: 11, color: f.festival.type === 'hindu' ? '#fbbf24' : '#A78BFA', fontWeight: '600', marginTop: 1 }}>{f.date.getDate()} {f.date.toLocaleString('en-US', { month: 'short' })}</Text>
+                     </View>
+                  </View>
+               ))}
+             </TouchableOpacity>
+           );
+        })}
+      </ScrollView>
+    );
+  };
 
-      {monthsData.map((monthDate, idx) => {
-         const mFests = festivals.filter(f => f.date.getMonth() === monthDate.getMonth());
-         return (
-           <TouchableOpacity 
-             key={idx} 
-             activeOpacity={0.8}
-             onPress={() => {
-                Haptics.selectionAsync();
-                setCurrentMonthDate(monthDate);
-                setPickerMode('month');
-             }}
-             style={{
-               backgroundColor: 'rgba(255,255,255,0.03)',
-               borderRadius: 20,
-               padding: 16,
-               marginBottom: 12,
-               borderWidth: 1,
-               borderColor: 'rgba(255,255,255,0.05)',
-             }}
-           >
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: mFests.length > 0 ? 12 : 0 }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff' }}>{monthDate.toLocaleString('en-US', { month: 'long' })}</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Tap to view month  →</Text>
-             </View>
-             {mFests.map((f, fIdx) => (
-                <View key={fIdx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                   <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: f.festival.type === 'hindu' ? '#fbbf2415' : '#A78BFA15', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 16 }}>{f.festival.emoji}</Text>
-                   </View>
-                   <View>
-                      <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>{f.festival.name.split(' / ')[0]}</Text>
-                      <Text style={{ fontSize: 11, color: f.festival.type === 'hindu' ? '#fbbf24' : '#A78BFA', fontWeight: '600', marginTop: 1 }}>{f.date.getDate()} {f.date.toLocaleString('en-US', { month: 'short' })}</Text>
-                   </View>
-                </View>
-             ))}
-           </TouchableOpacity>
-         );
-      })}
-    </ScrollView>
+  const renderYearMode = () => (
+    <View style={{ flex: 1, justifyContent: 'center' }}>
+      <FlatList
+        ref={yearFlatListRef}
+        data={yearsData}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.toString()}
+        renderItem={renderYearPage}
+        initialScrollIndex={yearsData.indexOf(currentYear) !== -1 ? yearsData.indexOf(currentYear) : 0}
+        getItemLayout={(data, index) => ({ length: SCREEN_W - 32, offset: (SCREEN_W - 32) * index, index })}
+        onMomentumScrollEnd={(e) => {
+           const newIndex = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_W - 32));
+           if (yearsData[newIndex]) {
+              setCurrentYear(yearsData[newIndex]);
+           }
+        }}
+      />
+      {/* Left Arrow for Year */}
+      <TouchableOpacity 
+        style={{ position: 'absolute', left: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+        onPress={() => {
+            const idx = yearsData.indexOf(currentYear);
+            if (idx > 0) {
+                yearFlatListRef.current?.scrollToIndex({ index: idx - 1, animated: true });
+                setCurrentYear(yearsData[idx - 1]);
+            }
+        }}
+      >
+        <Ionicons name="chevron-back" size={24} color="#FFF" style={{ marginLeft: -2 }} />
+      </TouchableOpacity>
+      {/* Right Arrow for Year */}
+      <TouchableOpacity 
+        style={{ position: 'absolute', right: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+        onPress={() => {
+            const idx = yearsData.indexOf(currentYear);
+            if (idx < yearsData.length - 1) {
+                yearFlatListRef.current?.scrollToIndex({ index: idx + 1, animated: true });
+                setCurrentYear(yearsData[idx + 1]);
+            }
+        }}
+      >
+        <Ionicons name="chevron-forward" size={24} color="#FFF" style={{ marginRight: -2 }} />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -1085,7 +1141,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
           <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <TouchableOpacity onPress={() => onClose()} style={{ padding: 10, paddingLeft: 0 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 24, fontWeight: '300' }}>✕</Text>
+                <Ionicons name="arrow-back" size={26} color="rgba(255,255,255,0.9)" />
               </TouchableOpacity>
               
               <View style={{ alignItems: 'center', flex: 1 }}>
@@ -1116,7 +1172,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
           </View>
 
           {pickerMode === 'year' ? (
-             <View style={{ flex: 1, paddingTop: 16 }}>
+             <View style={{ flex: 1, paddingTop: 16, paddingBottom: 32 }}>
                 {renderYearMode()}
              </View>
           ) : (
@@ -1153,7 +1209,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                 </View>
 
                 {/* FlatList for Swiping Months */}
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, justifyContent: 'center' }}>
                   <FlatList
                     ref={flatListRef}
                     data={monthsData}
@@ -1171,13 +1227,27 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                        }
                     }}
                   />
-                  <View style={{ marginTop: 16, marginBottom: 32, alignItems: 'center' }}>
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>←</Text>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Swipe to change month</Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>→</Text>
-                    </View>
-                  </View>
+                  {/* Premium Slideable Icons for Month */}
+                  <TouchableOpacity 
+                    style={{ position: 'absolute', left: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+                    onPress={() => {
+                        const newIdx = Math.max(0, currentMonthDate.getMonth() - 1);
+                        flatListRef.current?.scrollToIndex({ index: newIdx, animated: true });
+                        setCurrentMonthDate(monthsData[newIdx]);
+                    }}
+                  >
+                    <Ionicons name="chevron-back" size={24} color="#FFF" style={{ marginLeft: -2 }} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{ position: 'absolute', right: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+                    onPress={() => {
+                        const newIdx = Math.min(11, currentMonthDate.getMonth() + 1);
+                        flatListRef.current?.scrollToIndex({ index: newIdx, animated: true });
+                        setCurrentMonthDate(monthsData[newIdx]);
+                    }}
+                  >
+                    <Ionicons name="chevron-forward" size={24} color="#FFF" style={{ marginRight: -2 }} />
+                  </TouchableOpacity>
                 </View>
              </View>
           )}
@@ -5463,137 +5533,7 @@ function getSolarRingPalette(
 // Content: sub-pill · header · "about Xh Ym left" · sentence · science label
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Hero Geometric Animation (from Sound Reel) ──
-function sacredDots(cx: number, cy: number, r: number, count: number, angleOffset: number) {
-  return Array.from({ length: count }, (_, i) => {
-    const angle = (i / count) * Math.PI * 2 + angleOffset;
-    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
-  });
-}
-
-function HeroGeometricAnimation({ size, color }: { size: number; color: string }) {
-  const [phase, setPhase] = useState(0);
-  const rotAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const iv = setInterval(() => setPhase(p => p + 0.05), 36);
-    const loop1 = Animated.loop(Animated.timing(rotAnim, { toValue: 1, duration: 24000, easing: Easing.linear, useNativeDriver: true }));
-    loop1.start();
-    return () => { clearInterval(iv); loop1.stop(); };
-  }, []);
-
-  const cx = size / 2, cy = size / 2;
-  const morphCycle = (phase / 20) % 3; 
-  const opA = Math.max(0, 1 - Math.abs(morphCycle - 0) * 1.5, 1 - Math.abs(morphCycle - 3) * 1.5);
-  const opB = Math.max(0, 1 - Math.abs(morphCycle - 1) * 1.5);
-  const opC = Math.max(0, 1 - Math.abs(morphCycle - 2) * 1.5);
-
-  const particles = Array.from({ length: 24 }).map((_, i) => {
-    const offset = i * (Math.PI * 2 / 24);
-    const speed = 0.5 + (i % 3) * 0.3;
-    const r = ((phase * 15 * speed + i * 20) % (size * 0.5));
-    const angle = offset + phase * 0.15 * (i % 2 === 0 ? 1 : -1);
-    const opacity = Math.max(0, 1 - (r / (size * 0.45)));
-    return { cx: cx + r * Math.cos(angle), cy: cy + r * Math.sin(angle), r: 1.5 + (i % 2), opacity };
-  });
-
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, zIndex: 2, alignItems: 'center', justifyContent: 'center' }}>
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotateX: '55deg' },
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
-        ]
-      }}>
-        <Animated.View style={{
-          position: 'absolute', width: size, height: size,
-          transform: [
-            { rotateX: '-60deg' },
-            { rotateY: '30deg' },
-            { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] }) }
-          ]
-        }}>
-          <Svg width={size} height={size}>
-            <SvgG opacity={0.3}>
-              {sacredDots(cx, cy, size * 0.36, 6, 0).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_hex1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
-              })}
-              {sacredDots(cx, cy, size * 0.36, 6, Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_hex2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={color} strokeWidth="1.5" />;
-              })}
-            </SvgG>
-          </Svg>
-        </Animated.View>
-
-        <Animated.View style={{
-          position: 'absolute', width: size, height: size,
-          transform: [
-            { rotateX: '45deg' },
-            { rotateY: '-25deg' },
-            { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }
-          ]
-        }}>
-          <Svg width={size} height={size}>
-            <SvgG opacity={opA}>
-              {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`a_tri${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.22, 3, Math.PI / 6).map((d, i) => (
-                <SvgCircle key={`a_td${i}`} cx={d.x} cy={d.y} r={size * 0.016} fill={'rgba(255,255,255,0.8)'} />
-              ))}
-              {sacredDots(cx, cy, size * 0.30, 8, 0).map((d, i) => (
-                <SvgCircle key={`a_md${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={color} />
-              ))}
-            </SvgG>
-            <SvgG opacity={opB}>
-              {sacredDots(cx, cy, size * 0.28, 4, 0).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`b_sq1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.28, 4, Math.PI / 4).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`b_sq2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.15, 8, 0).map((d, i) => (
-                <SvgCircle key={`b_td${i}`} cx={d.x} cy={d.y} r={size * 0.012} fill={'rgba(255,255,255,0.8)'} />
-              ))}
-            </SvgG>
-            <SvgG opacity={opC}>
-              {sacredDots(cx, cy, size * 0.26, 3, Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_tri1${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.20, 3, -Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_tri2${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.14, 3, Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_tri3${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-              {sacredDots(cx, cy, size * 0.08, 3, -Math.PI / 6).map((d, i, arr) => {
-                const next = arr[(i + 1) % arr.length];
-                return <SvgPath key={`c_tri4${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={'rgba(255,255,255,0.7)'} strokeWidth="1.2" />;
-              })}
-            </SvgG>
-          </Svg>
-        </Animated.View>
-      </Animated.View>
-
-      <View pointerEvents="none" style={{ position: 'absolute', width: size, height: size }}>
-        <Svg width={size} height={size}>
-          {particles.map((p, i) => (
-            <SvgCircle key={`p${i}`} cx={p.cx} cy={p.cy} r={p.r} fill="rgba(255,255,255,0.95)" opacity={p.opacity} />
-          ))}
-        </Svg>
-      </View>
-    </View>
-  );
-}
+// ── Hero Geometric Animation (Imported) ──
 
 function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarTimes }: { period: DoshaPeriod | null; brahmaInfo?: BrahmaMuhurtaInfo | null; weather?: WeatherData | null; onPress?: () => void; compact?: boolean; solarTimes?: SolarTimes | null }) {
   const pulse  = useRef(new Animated.Value(1)).current;
@@ -5666,7 +5606,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
 
-  const HERO_RS  = compact ? 216 : 275;
+  const HERO_RS  = compact ? 238 : 302;
   const HERO_STR = 3; // Elegant slim main arc
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
@@ -5840,7 +5780,6 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          <HeroGeometricAnimation size={HERO_RS} color={accentHex} />
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
@@ -6553,7 +6492,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                 <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={{ fontSize: 16, textShadowColor: 'rgba(244,63,94,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>📅</Text>
                   <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#fda4af', letterSpacing: 1, textTransform: 'uppercase' }}>
-                    FESTIVALS
+                    VEDIC CALENDAR
                   </Text>
                 </View>
               </LinearGradient>

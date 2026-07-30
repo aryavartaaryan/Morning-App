@@ -7,7 +7,7 @@
  * - Premium ring — solid frosted disc inner, not transparent
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,8 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Line, Text as SvgText, G, Path } from 'react-native-svg';
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -41,6 +43,7 @@ import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/Step
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBgContext } from '@/lib/bgContext';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
@@ -51,7 +54,11 @@ import { getSacredHourInfo } from '@/lib/solarRingPalette';
 
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
-try { Gyroscope = require('expo-sensors').Gyroscope; } catch (_) {}
+let Magnetometer: any = null;
+try { 
+  Gyroscope = require('expo-sensors').Gyroscope; 
+  Magnetometer = require('expo-sensors').Magnetometer;
+} catch (_) {}
 
 const { width: W } = Dimensions.get('window');
 
@@ -97,7 +104,7 @@ const DEFAULT_STATS: TodayStats = {
 // Ultra-modern tactical/digital compass inspired by aviation HUD systems.
 // The outer degree ring rotates with the device heading.
 // The inner reticle + heading readout remain fixed.
-function CompassRose({ size, heading }: { size: number; heading: number }) {
+function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
   // Build degree tick marks on the ROTATING ring
@@ -158,16 +165,11 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
     );
   });
 
-  const cardinalName = (() => {
-    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-    return dirs[Math.round(heading / 22.5) % 16];
-  })();
-
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
 
       {/* ── ROTATING RING (moves with device heading) ── */}
-      <View style={{ position: 'absolute', transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+      <Animated.View style={{ position: 'absolute', transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
           {/* Outer bezel dark fill */}
           <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
@@ -186,7 +188,7 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
           {/* N pointer tick (extra long, glowing cyan-red) */}
           <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
         </Svg>
-      </View>
+      </Animated.View>
 
       {/* ── FIXED RETICLE LAYER (never rotates) ── */}
       <View style={{ position: 'absolute', width: size, height: size }}>
@@ -253,7 +255,7 @@ function getRingTheme(hour: number) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function WalkTab() {
   const insets = useSafeAreaInsets();
-  const { playingId } = useSoundPlayer();
+  const { playingId, playSound, stopSound, setGlobalVolume } = useSoundPlayer();
   const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -274,6 +276,15 @@ export default function WalkTab() {
   // Track compact step-session bar visibility for bottom padding
   const [stepBarActive, setStepBarActive] = useState(false);
 
+  // ── Cosmic Bowl Game State ──
+  const [isBowlMode, setIsBowlMode] = useState(false);
+  const isBowlModeRef = useRef(false);
+  const bowlTimerRef = useRef<any>(null);
+  const bowlOpacity = useRef(new Animated.Value(1)).current; // Opacity of the main UI
+  const omVolumeRef = useRef(0);
+  const bowlGameSoundRef = useRef<any>(null); // to keep track of the sound if needed, but we use playSound via context.
+
+  const OM_SOUND_ID = 'med_om_chanting_new';
   const ringAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
   const glowAnim    = useRef(new Animated.Value(0)).current;
@@ -303,6 +314,11 @@ export default function WalkTab() {
     op: new Animated.Value(0),
     x:  Math.random() * 140 + 60,
   }))).current;
+
+  // ── Compass (Sensors) ───────────────────────────────────────────────────
+  const [compassActive, setCompassActive] = useState<boolean>(false);
+  const compassAnim = useRef(new Animated.Value(0)).current;
+  let lastHeading = 0;
 
   // ── Feature 4: Heartbeat press ─────────────────────────────────────────────
   const heartbeatScale = useRef(new Animated.Value(1)).current;
@@ -335,8 +351,8 @@ export default function WalkTab() {
 
   // ── Dynamic Theme & Weather Flags ──────────────────────────────────────────
   const theme = getRingTheme(new Date().getHours());
-  const isHot = weather?.tempC ? weather.tempC > 32 : false;
-  const isCold = weather?.tempC ? weather.tempC < 10 : false;
+  const isHot = weather?.temp ? weather.temp > 32 : false;
+  const isCold = weather?.temp ? weather.temp < 10 : false;
   
   // Heat wave animation
   const heatAnim = useRef(new Animated.Value(0)).current;
@@ -351,8 +367,146 @@ export default function WalkTab() {
     }
   }, [isHot]);
 
-  // ── Seed Selection ────────────────────────────────────────────────────────
-  const [selectedSeed, setSelectedSeed] = useState<'none'|'pebble'|'calm'|'epic'>('none');
+  // ── Mandala Game ────────────────────────────────────────────────────────────
+  const mandalaRot = useRef(new Animated.Value(0)).current;
+  const mandalaScale = useRef(new Animated.Value(1)).current;
+  const lastMandalaRot = useRef(0);
+  
+  // Stale closure fixes for PanResponder
+  const playSoundRef = useRef(playSound);
+  const stopSoundRef = useRef(stopSound);
+  const setGlobalVolRef = useRef(setGlobalVolume);
+  const setIsBowlModeStateRef = useRef(setIsBowlMode);
+  useEffect(() => {
+    playSoundRef.current = playSound;
+    stopSoundRef.current = stopSound;
+    setGlobalVolRef.current = setGlobalVolume;
+    setIsBowlModeStateRef.current = setIsBowlMode;
+  }, [playSound, stopSound, setGlobalVolume, setIsBowlMode]);
+
+  // Memoize the PanResponder so it's not recreated on every single render frame!
+  // Recreating it causes massive garbage collection and ruins 60fps animations.
+  const mandalaPanResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Animated.spring(mandalaScale, { toValue: 1.15, friction: 3, useNativeDriver: true }).start();
+
+      // Start the long-press timer for Cosmic Bowl mode
+      bowlTimerRef.current = setTimeout(() => {
+        isBowlModeRef.current = true;
+        setIsBowlModeStateRef.current(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        
+        // Expand the Mandala fully and fade out the rest of the UI
+        Animated.spring(mandalaScale, { toValue: 1.8, friction: 5, useNativeDriver: true }).start();
+        Animated.timing(bowlOpacity, { toValue: 0, duration: 800, useNativeDriver: true }).start();
+        
+        // Start playing the cosmic OM sound at volume 0 (will ramp up with tracing)
+        const omSound = ALL_SLEEP_SOUNDS.find(s => s.id === OM_SOUND_ID);
+        if (omSound) {
+          setGlobalVolRef.current(0);
+          playSoundRef.current(omSound, 3600, undefined, 0, true);
+        }
+      }, 1000); // 1 second hold activates the game
+
+      heartbeatIntervalRef.current = setInterval(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        rippleScaleHeart.setValue(0.6);
+        rippleOpHeart.setValue(0.6);
+        Animated.parallel([
+          Animated.timing(rippleScaleHeart, { toValue: 1.6, duration: 700, useNativeDriver: true }),
+          Animated.timing(rippleOpHeart,    { toValue: 0,   duration: 700, useNativeDriver: true }),
+        ]).start();
+      }, 800);
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      // If they move too much before the timer hits, cancel the bowl mode entry
+      if (!isBowlModeRef.current && (Math.abs(gestureState.dx) > 20 || Math.abs(gestureState.dy) > 20)) {
+        if (bowlTimerRef.current) clearTimeout(bowlTimerRef.current);
+      }
+
+      if (isBowlModeRef.current) {
+        // --- COSMIC BOWL TRACING LOGIC ---
+        // Calculate angular velocity (simplified by tracking overall movement magnitude)
+        const speed = Math.sqrt(gestureState.vx * gestureState.vx + gestureState.vy * gestureState.vy);
+        
+        // Spin the mandala based on tracing speed
+        const newRot = lastMandalaRot.current + (gestureState.dx + gestureState.dy) / 2;
+        mandalaRot.setValue(newRot);
+        
+        // Ramp volume up based on speed, max out at 1.0
+        let targetVol = Math.min(1, Math.max(0, speed / 3));
+        // Exponential smoothing for the volume to feel natural
+        omVolumeRef.current = omVolumeRef.current * 0.9 + targetVol * 0.1;
+        
+        // If they are moving fast enough, give them haptic friction!
+        if (speed > 0.5) {
+           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        
+        // Update the global volume (our Om sound is playing)
+        setGlobalVolRef.current(omVolumeRef.current);
+
+      } else {
+        // Normal mandala spin
+        const newRot = lastMandalaRot.current + (gestureState.dx / 2);
+        mandalaRot.setValue(newRot);
+      }
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (bowlTimerRef.current) clearTimeout(bowlTimerRef.current);
+
+      if (isBowlModeRef.current) {
+        // Exit Cosmic Bowl Mode
+        isBowlModeRef.current = false;
+        setIsBowlModeStateRef.current(false);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        
+        // Restore UI and Mandala scale
+        Animated.spring(mandalaScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+        Animated.timing(bowlOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+        
+        // Fade out and stop the OM sound
+        setGlobalVolRef.current(0);
+        setTimeout(() => {
+          stopSoundRef.current();
+          setGlobalVolRef.current(1); // Restore global volume for other sounds
+        }, 100);
+
+      } else {
+        // Normal release
+        Animated.spring(mandalaScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+        lastMandalaRot.current += (gestureState.dx / 2);
+        
+        if (Math.abs(gestureState.vx) > 0.5) {
+           Animated.decay(mandalaRot, {
+             velocity: gestureState.vx / 10,
+             deceleration: 0.995,
+             useNativeDriver: true
+           }).start();
+        }
+      }
+    },
+    onPanResponderTerminate: (evt, gestureState) => {
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (bowlTimerRef.current) clearTimeout(bowlTimerRef.current);
+      
+      if (isBowlModeRef.current) {
+         isBowlModeRef.current = false;
+         setIsBowlModeStateRef.current(false);
+         Animated.spring(mandalaScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+         Animated.timing(bowlOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+         setGlobalVolRef.current(0);
+         setTimeout(() => { stopSoundRef.current(); setGlobalVolRef.current(1); }, 100);
+      } else {
+        Animated.spring(mandalaScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+        lastMandalaRot.current += (gestureState.dx / 2);
+      }
+    },
+  }), []);
 
   // ── Data refresh ────────────────────────────────────────────────────────────
   const refreshStats = useCallback(async () => {
@@ -496,36 +650,55 @@ export default function WalkTab() {
       } catch (_) {}
     }
 
-    // Feature 7: Highly Accurate Location-based Compass
-    let headingSub: Location.LocationSubscription | null = null;
+    // Feature 7: Highly Accurate Sensor-based Compass
+    let magSub: any = null;
     let firstReading = true;
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          headingSub = await Location.watchHeadingAsync((data) => {
-            setCompassHeading(Math.round(data.trueHeading !== -1 ? data.trueHeading : data.magHeading));
-            if (firstReading) {
-              firstReading = false;
-              // Show the "hold flat" tip briefly
-              setCompassTipVisible(true);
-              Animated.sequence([
-                Animated.timing(compassTipOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-                Animated.delay(3500),
-                Animated.timing(compassTipOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-              ]).start(() => setCompassTipVisible(false));
-            }
-          });
+    if (Magnetometer) {
+      Magnetometer.setUpdateInterval(50); // very fast 20fps updates
+      magSub = Magnetometer.addListener((data: any) => {
+        let { x, y } = data;
+        // Calculate heading in degrees (0 to 360)
+        let angle = Math.atan2(y, x) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+        
+        // Offset by 90 degrees because of phone portrait orientation
+        angle = (angle + 90) % 360;
+
+        // Ensure we animate the shortest path (no 360 to 0 snap)
+        let diff = angle - lastHeading;
+        if (diff > 180) diff -= 360;
+        else if (diff < -180) diff += 360;
+        
+        let newHeading = lastHeading + diff;
+        
+        Animated.spring(compassAnim, {
+          toValue: newHeading,
+          useNativeDriver: true,
+          tension: 40,
+          friction: 8
+        }).start();
+
+        lastHeading = newHeading;
+        
+        if (!compassActive) setCompassActive(true);
+
+        if (firstReading) {
+          firstReading = false;
+          // Show the "hold flat" tip briefly
+          setCompassTipVisible(true);
+          Animated.sequence([
+            Animated.timing(compassTipOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.delay(3500),
+            Animated.timing(compassTipOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+          ]).start(() => setCompassTipVisible(false));
         }
-      } catch (err) {
-        // Location compass failed, ignore.
-      }
-    })();
+      });
+    }
 
     return () => {
       clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
-      if (headingSub) headingSub.remove();
+      if (magSub) magSub.remove();
     };
   }, []);
 
@@ -625,7 +798,7 @@ export default function WalkTab() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push({
       pathname: '/step-session',
-      params: { sessionType: type, seedType: selectedSeed },
+      params: { sessionType: type },
     } as never);
   };
 
@@ -846,31 +1019,10 @@ export default function WalkTab() {
             </View>
 
             {/* ── ULTRA-PREMIUM SMART FITNESS RING — ALL FEATURES ──────────────── */}
-            {/* Feature 4: Heartbeat long-press PanResponder wrapper */}
+            {/* Feature 4: Heartbeat long-press & Mandala touch PanResponder wrapper */}
             <View
               style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}
-              {...PanResponder.create({
-                onStartShouldSetPanResponder: () => true,
-                onPanResponderGrant: () => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  heartbeatIntervalRef.current = setInterval(() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    // Ripple
-                    rippleScaleHeart.setValue(0.6);
-                    rippleOpHeart.setValue(0.6);
-                    Animated.parallel([
-                      Animated.timing(rippleScaleHeart, { toValue: 1.6, duration: 700, useNativeDriver: true }),
-                      Animated.timing(rippleOpHeart,    { toValue: 0,   duration: 700, useNativeDriver: true }),
-                    ]).start();
-                  }, 800);
-                },
-                onPanResponderRelease: () => {
-                  if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-                },
-                onPanResponderTerminate: () => {
-                  if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-                },
-              }).panHandlers}
+              {...mandalaPanResponder.panHandlers}
             >
               {/* Feature 4: Heartbeat ripple */}
               <Animated.View pointerEvents="none" style={{
@@ -951,13 +1103,13 @@ export default function WalkTab() {
                   )}
 
                   {/* ── Feature 7: Premium Compass Rose (inside inner disc, semi-transparent) ── */}
-                  {compassHeading !== null && (
+                  {compassActive && (
                     <View pointerEvents="none" style={[
                       StyleSheet.absoluteFillObject,
                       { alignItems: 'center', justifyContent: 'center', opacity: 0.55 },
                     ]}>
                       <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
-                      <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassHeading} />
+                      <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassAnim} />
                     </View>
                   )}
 
@@ -980,7 +1132,7 @@ export default function WalkTab() {
               {/* ── SVG Ring layers ── */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Thin Track */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={3} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={1} />
                 {/* Wide outer glow */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
                 {/* Mid halo */}
@@ -1052,126 +1204,183 @@ export default function WalkTab() {
                   </Animated.Text>
 
                   {/* ─ Divider ─ */}
-                  <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 8 }} />
-
-                  {/* ─ km / min / days row ─ */}
-                  <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>km</Text>
-                    </View>
-                    <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>min</Text>
-                    </View>
-                    <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{streak}</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>days</Text>
-                    </View>
-                  </View>
-
-                  {/* ─ Weekly Intention Text inside ring (Arc is drawn in SVG now) ─ */}
-                  {summary && summary.weeklyGoal > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 4, opacity: 0.9 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.2, textTransform: 'uppercase' }}>Weekly</Text>
-                      <Text style={{ fontSize: 10, fontWeight: '900', color: '#7dd3fc' }}>{summary.weeklyGoalPercent}%</Text>
-                    </View>
-                  )}
+                  <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 8, marginBottom: 12 }} />
                 </>
               )}
             </View>
-          </View>
 
+            {/* ── Feature 8: Sacred Geometry Mandala ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ rotate: mandalaRot.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] }) }, { scale: mandalaScale }]
+            }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                {/* 25% Layer - Triangle */}
+                {stats.goalPercent >= 25 && (
+                  <Path
+                    d={`M${RING_SIZE/2} ${RING_SIZE/2 - 60} L${RING_SIZE/2 + 52} ${RING_SIZE/2 + 30} L${RING_SIZE/2 - 52} ${RING_SIZE/2 + 30} Z`}
+                    fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1.5}
+                  />
+                )}
+                {/* 50% Layer - Intersecting Triangle */}
+                {stats.goalPercent >= 50 && (
+                  <Path
+                    d={`M${RING_SIZE/2} ${RING_SIZE/2 + 60} L${RING_SIZE/2 + 52} ${RING_SIZE/2 - 30} L${RING_SIZE/2 - 52} ${RING_SIZE/2 - 30} Z`}
+                    fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1.5}
+                  />
+                )}
+                {/* 75% Layer - Hexagon & Inner Circles */}
+                {stats.goalPercent >= 75 && (
+                  <>
+                    <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={60} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+                    <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={30} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                  </>
+                )}
+                
+                {/* 100% Layer - Lotus Petals */}
+                {stats.goalPercent >= 100 && (
+                  <>
+                    <Path
+                      d={`M${RING_SIZE/2} ${RING_SIZE/2 - 30} Q${RING_SIZE/2 + 40} ${RING_SIZE/2 - 80} ${RING_SIZE/2} ${RING_SIZE/2 - 110} Q${RING_SIZE/2 - 40} ${RING_SIZE/2 - 80} ${RING_SIZE/2} ${RING_SIZE/2 - 30} Z`}
+                      fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.3)" strokeWidth={1}
+                    />
+                    <Path
+                      d={`M${RING_SIZE/2} ${RING_SIZE/2 + 30} Q${RING_SIZE/2 + 40} ${RING_SIZE/2 + 80} ${RING_SIZE/2} ${RING_SIZE/2 + 110} Q${RING_SIZE/2 - 40} ${RING_SIZE/2 + 80} ${RING_SIZE/2} ${RING_SIZE/2 + 30} Z`}
+                      fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.3)" strokeWidth={1}
+                    />
+                  </>
+                )}
+              </Svg>
+            </Animated.View>
+          </View>
           </Animated.View>
 
+          {/* Cosmic Bowl Hint */}
+          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 10, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              Press & Hold to Meditate
+            </Text>
+          </Animated.View>
 
         </Animated.View>
 
-        {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
-        <Animated.View style={{
-          opacity: cardFade,
-          transform: [{ translateY: cardSlide }],
-          paddingHorizontal: 32,
-          gap: 10,
-          marginTop: btnMarginTop,
-          marginBottom: btnMarginBot,
-        }}>
-          
-          {/* Start Nature Walk Button */}
-          <TouchableOpacity
-            onPress={() => launchSession(sessionType)}
-            activeOpacity={0.82}
-            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
-          >
-            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+        {/* ── BOTTOM UI (HIDDEN IN BOWL MODE) ── */}
+        <Animated.View style={{ opacity: bowlOpacity }} pointerEvents={isBowlMode ? 'none' : 'auto'}>
+          {/* ── SLEEK STATS CARD ──────────────────────────────────── */}
+          <Animated.View style={{
+            opacity: cardFade,
+            transform: [{ translateY: cardSlide }],
+            paddingHorizontal: 32,
+            marginTop: 0, 
+            marginBottom: 10,
+          }}>
+            <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}>
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>km</Text>
+                </View>
+                <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>min</Text>
+                </View>
+                <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{streak}</Text>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>days</Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
+          <Animated.View style={{
+            opacity: cardFade,
+            transform: [{ translateY: cardSlide }],
+            paddingHorizontal: 32,
+            gap: 10,
+            marginTop: btnMarginTop,
+            marginBottom: btnMarginBot,
+          }}>
+            
+            {/* Start Nature Walk Button */}
+            <TouchableOpacity
+              onPress={() => launchSession(sessionType)}
+              activeOpacity={0.82}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 1)' }} />
-              
-              {/* Top shine */}
+              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255,255,255,0.8)', 'transparent']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
-              />
-              
-              {/* Animated shimmer sweep */}
-              <Animated.View
-                style={{
-                  position: 'absolute', top: 0, bottom: 0, width: 70,
-                  transform: [{ translateX: shimmerTranslate }],
-                }}
-                pointerEvents="none"
+                colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
               >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 1)' }} />
+                
+                {/* Top shine */}
                 <LinearGradient
-                  colors={['transparent', 'rgba(255,255,255,0.8)', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={{ flex: 1 }}
+                  colors={['rgba(255,255,255,0.8)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
                 />
-              </Animated.View>
-              
-              <View style={{ paddingVertical: 12 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  {sessionTitle}
-                </Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+                
+                {/* Animated shimmer sweep */}
+                <Animated.View
+                  style={{
+                    position: 'absolute', top: 0, bottom: 0, width: 70,
+                    transform: [{ translateX: shimmerTranslate }],
+                  }}
+                  pointerEvents="none"
+                >
+                  <LinearGradient
+                    colors={['transparent', 'rgba(255,255,255,0.8)', 'transparent']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{ flex: 1 }}
+                  />
+                </Animated.View>
+                
+                <View style={{ paddingVertical: 12 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    {sessionTitle}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          {/* Adjust Target Button */}
-          <TouchableOpacity
-            style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
-            onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
-            activeOpacity={0.82}
-          >
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+            {/* Adjust Target Button */}
+            <TouchableOpacity
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+              onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
+              activeOpacity={0.82}
             >
-              <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
-              
-              {/* Top shine */}
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'transparent']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
-              />
+                colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
+                
+                {/* Top shine */}
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.15)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
+                />
 
-              <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                  Intentions
-                </Text>
+                <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                    Intentions
+                  </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
+
+        </Animated.View>
 
         </Animated.View>
 
@@ -1181,8 +1390,6 @@ export default function WalkTab() {
       <GoalModal
         visible={showGoalModal}
         currentWeekly={summary?.weeklyGoal ?? 35000}
-        selectedSeed={selectedSeed}
-        onSeedSelect={(s) => setSelectedSeed(s as any)}
         onClose={() => setShowGoalModal(false)}
         accentColor={ringHex}
         onSave={async (w) => {
@@ -1207,9 +1414,9 @@ export default function WalkTab() {
 // Goal modal
 // ─────────────────────────────────────────────────────────────────────────────
 function GoalModal({
-  visible, currentWeekly, selectedSeed, onSeedSelect, onClose, onSave, accentColor
+  visible, currentWeekly, onClose, onSave, accentColor
 }: {
-  visible: boolean; currentWeekly: number; selectedSeed: string; onSeedSelect: (s: string) => void; onClose: () => void; onSave: (w: number) => void; accentColor: string;
+  visible: boolean; currentWeekly: number; onClose: () => void; onSave: (w: number) => void; accentColor: string;
 }) {
   const PRESETS_WEEKLY = [
     { value: 21000, label: 'Foundation' },
@@ -1243,49 +1450,8 @@ function GoalModal({
           
           <Text style={gm.title}>Prepare Your Walk</Text>
           <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginTop: 8, marginBottom: 24, paddingHorizontal: 20 }}>
-            Set a micro-goal for today's walk to earn generative art, and maintain a weekly habit goal in the background.
+            Just walk and watch the Sacred Mandala evolve on your screen as you hit your weekly habit goal.
           </Text>
-
-          <View style={{ marginBottom: 30, paddingHorizontal: 16 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>Today's Seed (Optional)</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {/* Pebble */}
-              <TouchableOpacity 
-                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'pebble' ? 'none' : 'pebble'); }}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'pebble' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'pebble' ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.08)' }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="ellipse-outline" size={14} color={selectedSeed === 'pebble' ? '#34d399' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
-                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'pebble' ? '#34d399' : 'rgba(255,255,255,0.7)' }}>Pebble</Text>
-              </TouchableOpacity>
-              
-              {/* Calm */}
-              <TouchableOpacity 
-                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'calm' ? 'none' : 'calm'); }}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'calm' ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.08)' }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="water" size={14} color={selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
-                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'calm' ? '#38bdf8' : 'rgba(255,255,255,0.7)' }}>Calm</Text>
-              </TouchableOpacity>
-              
-              {/* Epic */}
-              <TouchableOpacity 
-                onPress={() => { Haptics.selectionAsync(); onSeedSelect(selectedSeed === 'epic' ? 'none' : 'epic'); }}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: selectedSeed === 'epic' ? 'rgba(192,132,252,0.15)' : 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: selectedSeed === 'epic' ? 'rgba(192,132,252,0.4)' : 'rgba(255,255,255,0.08)' }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="rose" size={14} color={selectedSeed === 'epic' ? '#c084fc' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
-                <Text style={{ fontSize: 11, fontWeight: '600', color: selectedSeed === 'epic' ? '#c084fc' : 'rgba(255,255,255,0.7)' }}>Epic</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ height: 16, justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
-              {selectedSeed === 'pebble' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>1,500 steps for a quick break 🌱</Text>}
-              {selectedSeed === 'calm' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>3,000 steps to soothe the mind 🌸</Text>}
-              {selectedSeed === 'epic' && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', fontWeight: '500' }}>8,000 steps to awaken the body 🌺</Text>}
-              {selectedSeed === 'none' && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>Planting a seed gives you a goal for today's walk.</Text>}
-            </View>
-          </View>
 
           <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' }}>Weekly Background Steps</Text>
 

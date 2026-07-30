@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ImageBackground, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ImageBackground, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -39,6 +40,63 @@ const BADGES = [
   { id: 'warrior_21',    emoji: '🏆', name: '21-Day Warrior',     desc: '21 consecutive mornings', sunThreshold: 21, missionThreshold: 21 },
   { id: 'solar_devotee', emoji: '👑', name: 'Solar Devotee',      desc: '30 days before sunrise',  sunThreshold: 30, missionThreshold: 30 },
 ];
+
+const BackgroundMandala = React.memo(() => {
+  const rot = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(rot, {
+        toValue: 1,
+        duration: 40000,
+        easing: Easing.linear,
+        useNativeDriver: true
+      })
+    ).start();
+  }, [rot]);
+
+  const spin = rot.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
+
+  const S_SIZE = 450;
+  const C = S_SIZE / 2;
+
+  const petals = Array.from({ length: 12 }).map((_, i) => {
+    const angle = (i * 30);
+    return (
+      <G key={i} rotation={angle} origin={`${C}, ${C}`}>
+        <Path 
+          d={`M${C} ${C - 40} Q${C + 60} ${C - 100} ${C} ${C - 180} Q${C - 60} ${C - 100} ${C} ${C - 40} Z`}
+          fill="none" 
+          stroke="rgba(255,255,255,0.04)" 
+          strokeWidth="1"
+        />
+        <Circle cx={C} cy={C - 180} r={3} fill="rgba(255,255,255,0.06)" />
+      </G>
+    );
+  });
+
+  return (
+    <Animated.View style={{ 
+      position: 'absolute', 
+      top: -100, 
+      right: -150, 
+      width: S_SIZE, 
+      height: S_SIZE, 
+      transform: [{ rotate: spin }],
+      pointerEvents: 'none' 
+    }}>
+      <Svg width={S_SIZE} height={S_SIZE}>
+        <Circle cx={C} cy={C} r={200} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="4 4" />
+        <Circle cx={C} cy={C} r={170} fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="2" />
+        <Circle cx={C} cy={C} r={100} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+        {petals}
+      </Svg>
+    </Animated.View>
+  );
+});
 
 export default function ReportsTab() {
   const router = useRouter();
@@ -149,6 +207,8 @@ export default function ReportsTab() {
         end={{ x: 0, y: 0.35 }}
         pointerEvents="none"
       />
+
+      <BackgroundMandala />
 
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={S.headerTop}>

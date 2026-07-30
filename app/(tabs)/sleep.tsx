@@ -1119,8 +1119,8 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       indicatorW.setValue(layout.width);
     } else {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
-        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 26, stiffness: 400, mass: 0.5 }),
+        Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, damping: 20, stiffness: 800, mass: 0.2 }),
+        Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, damping: 20, stiffness: 800, mass: 0.2 }),
       ]).start();
     }
   };
@@ -2804,12 +2804,13 @@ function SoundReelsModal({
 }) {
   const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const flatRef = useRef<FlatList>(null);
+  const [reelData, setReelData] = useState(REELS_ALL_SOUNDS);
   const [activeIndex, setActiveIndex] = useState(startIndex);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [catBanner, setCatBanner] = useState<{ text: string; emoji: string; color: string } | null>(null);
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const swipeAnim = useRef(new Animated.Value(0)).current;
-  const prevCatRef = useRef(REELS_ALL_SOUNDS[startIndex]?.cat ?? '');
+  const prevCatRef = useRef(reelData[startIndex]?.cat ?? '');
   const activeIndexRef = useRef(startIndex);
   const playDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Gate: false while FlatList is scrolling to initialScrollIndex so onViewableItemsChanged
@@ -2818,6 +2819,13 @@ function SoundReelsModal({
   // Always-fresh ref so debounce callback reads current playingId, not stale closure
   const playingIdRef = useRef(playingId);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
+
+  // Reset reelData on mount/open just in case
+  useEffect(() => {
+    if (visible) {
+      setReelData(REELS_ALL_SOUNDS);
+    }
+  }, [visible]);
 
   // ── Grid browse state ────────────────────────────────────
   const [gridOpen, setGridOpen] = useState(false);
@@ -2859,7 +2867,7 @@ function SoundReelsModal({
       setActiveIndex(startIndex);
       activeIndexRef.current = startIndex;
       lastAutoPlayedRef.current = null; // allow auto-play to fire for new open
-      prevCatRef.current = REELS_ALL_SOUNDS[startIndex]?.cat ?? '';
+      prevCatRef.current = reelData[startIndex]?.cat ?? '';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // Use scrollToOffset for instant, jank-free positioning — no layout pass needed
       const offset = startIndex * REEL_H;
@@ -2887,24 +2895,24 @@ function SoundReelsModal({
     if (!visible) return;
     const ahead = [activeIndex, activeIndex + 1, activeIndex + 2];
     ahead.forEach(i => {
-      const s = REELS_ALL_SOUNDS[i];
+      const s = reelData[i];
       if (!s) return;
       const rawUri = SOUND_IMAGES[s.id] ?? (s as any).imageUri;
       if (rawUri && !SOUND_BUNDLED_IMAGES[s.id] && !isSoundImageCached(rawUri)) {
         ensureSoundImageCached(rawUri).catch(() => {});
       }
     });
-  }, [activeIndex, visible]);
+  }, [activeIndex, visible, reelData]);
 
   // Pre-buffer AUDIO for adjacent reels — Instagram-style instant playback on swipe.
   // createAsync (~500ms cold) is replaced by a near-instant playAsync() on pre-loaded sounds.
   useEffect(() => {
     if (!visible) return;
     [activeIndex + 1, activeIndex + 2, activeIndex - 1].forEach(i => {
-      const s = REELS_ALL_SOUNDS[i];
+      const s = reelData[i];
       if (s) preBufferSound(s).catch(() => {});
     });
-  }, [activeIndex, visible]);
+  }, [activeIndex, visible, reelData]);
 
   // Release pre-buffered sounds when modal closes (free native audio memory)
   useEffect(() => {
@@ -2927,13 +2935,13 @@ function SoundReelsModal({
     // Skipping until they match prevents sound[old-index] (e.g. rain at index 0) from
     // playing for ~200ms before the intended reel's auto-play fires.
     if (activeIndex !== activeIndexRef.current) return;
-    const sound = REELS_ALL_SOUNDS[activeIndex];
+    const sound = reelData[activeIndex];
     if (!sound) return;
     if (playingIdRef.current !== sound.id && lastAutoPlayedRef.current !== sound.id) {
       lastAutoPlayedRef.current = sound.id;
       onPlaySoundRef.current(sound.id);
     }
-  }, [activeIndex, visible]);
+  }, [activeIndex, visible, reelData]);
 
   // Category banner animation
   const showCatBannerRef = useRef<(cat: string, s: PlayableSoundMeta) => void>(() => {});
@@ -2960,7 +2968,7 @@ function SoundReelsModal({
         activeIndexRef.current = idx;
         setActiveIndex(idx);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // focus-in per reel
-        const sound = REELS_ALL_SOUNDS[idx];
+        const sound = reelData[idx];
         if (sound && sound.cat !== prevCatRef.current) {
           prevCatRef.current = sound.cat;
           showCatBannerRef.current(sound.cat, sound);
@@ -2972,10 +2980,11 @@ function SoundReelsModal({
 
   if (!visible) return null;
 
-  const activeSound = REELS_ALL_SOUNDS[activeIndex];
-  const isLast = activeIndex === REELS_ALL_SOUNDS.length - 1;
+  const activeSound = reelData[activeIndex];
+  const isLast = activeIndex === reelData.length - 1;
   const isFirst = activeIndex === 0;
-  const progress = (activeIndex + 1) / REELS_ALL_SOUNDS.length;
+  // Progress bar repeats for each loop
+  const progress = ((activeIndex % REELS_ALL_SOUNDS.length) + 1) / REELS_ALL_SOUNDS.length;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => setShowClosePrompt(true)}>
@@ -2983,8 +2992,8 @@ function SoundReelsModal({
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
-          data={REELS_ALL_SOUNDS}
-          keyExtractor={(item) => item.id}
+          data={reelData}
+          keyExtractor={(item, index) => item.id + '_' + index}
           showsVerticalScrollIndicator={false}
           pagingEnabled
           bounces={false}
@@ -2999,7 +3008,7 @@ function SoundReelsModal({
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / REEL_H);
-            if (idx !== activeIndexRef.current && idx >= 0 && idx < REELS_ALL_SOUNDS.length) {
+            if (idx !== activeIndexRef.current && idx >= 0 && idx < reelData.length) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
           }}
@@ -3007,7 +3016,7 @@ function SoundReelsModal({
           onMomentumScrollEnd={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / REEL_H);
-            if (idx >= 0 && idx < REELS_ALL_SOUNDS.length && idx !== activeIndexRef.current) {
+            if (idx >= 0 && idx < reelData.length && idx !== activeIndexRef.current) {
               activeIndexRef.current = idx;
               setActiveIndex(idx);
             }
@@ -3025,6 +3034,10 @@ function SoundReelsModal({
           maxToRenderPerBatch={2}
           updateCellsBatchingPeriod={50}
           removeClippedSubviews={true}
+          onEndReached={() => {
+            setReelData(prev => [...prev, ...REELS_ALL_SOUNDS]);
+          }}
+          onEndReachedThreshold={0.8}
           renderItem={({ item, index }) => (
             <ScreenErrorBoundary name={`ReelCard-${item.id}`}>
               <ReelCard
@@ -3039,9 +3052,9 @@ function SoundReelsModal({
                 onStop={onStop}
                 onChangeTimer={onChangeTimer}
                 isFirst={index === 0}
-                isLast={index === REELS_ALL_SOUNDS.length - 1}
+                isLast={index === reelData.length - 1}
                 onPrev={() => index > 0 && flatRef.current?.scrollToIndex({ index: index - 1, animated: true })}
-                onNext={() => index < REELS_ALL_SOUNDS.length - 1 && flatRef.current?.scrollToIndex({ index: index + 1, animated: true })}
+                onNext={() => index < reelData.length - 1 && flatRef.current?.scrollToIndex({ index: index + 1, animated: true })}
               />
             </ScreenErrorBoundary>
           )}
@@ -3275,45 +3288,45 @@ function SoundReelsModal({
         {/* Ultra-Modern Calming Meditation App Style Popup */}
         {showClosePrompt && (
           <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5,5,10,0.5)' }]} />
+            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
             <Animated.View style={{ 
-              width: W * 0.82, 
-              maxWidth: 320, 
-              borderRadius: 36, 
+              width: W * 0.88, 
+              maxWidth: 360, 
+              borderRadius: 40, 
               overflow: 'hidden', 
-              backgroundColor: 'rgba(20,20,25,0.45)', 
+              backgroundColor: 'rgba(25,25,32,0.6)', 
               borderWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.08)', 
-              shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 30 }, 
-              shadowOpacity: 0.4, 
-              shadowRadius: 50, 
+              borderColor: 'rgba(255,255,255,0.15)', 
+              shadowColor: '#FFF', 
+              shadowOffset: { width: 0, height: 0 }, 
+              shadowOpacity: 0.1, 
+              shadowRadius: 30, 
               elevation: 20 
             }}>
-              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 36, paddingBottom: 28, alignItems: 'center' }}>
+              <View style={{ padding: 40, paddingBottom: 32, alignItems: 'center' }}>
                 <View style={{ 
-                  width: 52, 
-                  height: 52, 
-                  borderRadius: 26, 
-                  backgroundColor: 'rgba(255,255,255,0.03)', 
+                  width: 64, 
+                  height: 64, 
+                  borderRadius: 32, 
+                  backgroundColor: 'rgba(255,255,255,0.06)', 
                   justifyContent: 'center', 
                   alignItems: 'center', 
-                  marginBottom: 18, 
+                  marginBottom: 20, 
                   borderWidth: 1, 
-                  borderColor: 'rgba(255,255,255,0.05)' 
+                  borderColor: 'rgba(255,255,255,0.12)' 
                 }}>
-                  <Ionicons name="moon-outline" size={22} color="rgba(255,255,255,0.7)" />
+                  <Ionicons name="moon-outline" size={28} color="rgba(255,255,255,0.9)" />
                 </View>
-                <Text style={{ fontSize: 20, fontWeight: '400', color: '#FFF', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 8 }}>Session Pause</Text>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20, paddingHorizontal: 12 }}>You can minimize the player to continue listening peacefully in the background.</Text>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 10 }}>Session Active</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22, paddingHorizontal: 12 }}>Would you like to keep listening peacefully in the background?</Text>
               </View>
               
-              <View style={{ paddingHorizontal: 28, paddingBottom: 32, gap: 14 }}>
+              <View style={{ paddingHorizontal: 32, paddingBottom: 40, gap: 16 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
@@ -3323,11 +3336,11 @@ function SoundReelsModal({
                   }}
                 >
                   <LinearGradient
-                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)']}
+                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 16, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+                    style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
                   >
-                    <Text style={{ fontSize: 14, color: '#FFF', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>Keep in Background</Text>
+                    <Text style={{ fontSize: 15, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>Keep in Background</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -3339,9 +3352,9 @@ function SoundReelsModal({
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 16, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,100,100,0.05)', borderWidth: 1, borderColor: 'rgba(255,100,100,0.1)' }}
+                  style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,80,80,0.1)', borderWidth: 1, borderColor: 'rgba(255,80,80,0.2)' }}
                 >
-                  <Text style={{ fontSize: 14, color: 'rgba(255,140,140,0.9)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>End Session</Text>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,100,100,1)', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>End Session</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3350,9 +3363,9 @@ function SoundReelsModal({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                   }}
-                  style={{ paddingVertical: 10, alignItems: 'center', marginTop: 4 }}
+                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 6 }}
                 >
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '500', fontFamily: 'Nunito_500Medium', letterSpacing: 0.2 }}>Cancel</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -3447,28 +3460,29 @@ function SleepTabInner() {
 
   const changeCategory = useCallback((cat: Category, dir: number = 0) => {
     // Instant opacity drop then smooth fade in
-    contentFadeAnim.setValue(0.4);
+    contentFadeAnim.setValue(0.6);
     Animated.timing(contentFadeAnim, {
       toValue: 1,
-      duration: 300,
+      duration: 150,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
     }).start();
 
     if (dir !== 0) {
-      // Wider slide offset for a more pronounced, page-like transition
-      contentSlideAnim.setValue(-dir * W * 0.15);
+      // Shorter slide offset for a snappier transition
+      contentSlideAnim.setValue(-dir * W * 0.08);
       Animated.spring(contentSlideAnim, {
         toValue: 0,
         useNativeDriver: true,
-        damping: 24,
-        stiffness: 220,
-        mass: 0.5,
+        damping: 20,
+        stiffness: 400,
+        mass: 0.3,
       }).start();
     }
-    // Removed startTransition to prevent React Native concurrent rendering freezes
-    // when switching tabs. Direct state update ensures navigation never hangs.
-    setSelectedCat(cat);
+    // Defer state update slightly so native animations start before JS thread is blocked
+    setTimeout(() => {
+      setSelectedCat(cat);
+    }, 0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [contentFadeAnim, contentSlideAnim]);
 

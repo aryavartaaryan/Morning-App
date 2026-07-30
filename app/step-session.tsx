@@ -50,7 +50,6 @@ import { getBgSourceSync } from '@/lib/bgImages';
 import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getSolarRingPalette } from '@/lib/solarRingPalette';
 import { fetchWeather } from '@/lib/weather';
-import { saveBloomedSeed } from '@/lib/seedStorage';
 
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
@@ -112,7 +111,7 @@ function fmtTime(seconds: number): string {
 }
 
 // ─── Modern HUD Navigator Compass ────────────────────────────────────────────
-function CompassRose({ size, heading }: { size: number; heading: number }) {
+function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
   const ticks: React.JSX.Element[] = [];
@@ -170,16 +169,11 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
     );
   });
 
-  const cardinalName = (() => {
-    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-    return dirs[Math.round(heading / 22.5) % 16];
-  })();
-
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
 
       {/* ── ROTATING RING ── */}
-      <View style={{ position: 'absolute', transform: [{ rotate: `${-heading}deg` }], width: size, height: size }}>
+      <Animated.View style={{ position: 'absolute', transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
           <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
           <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth={1} />
@@ -192,7 +186,7 @@ function CompassRose({ size, heading }: { size: number; heading: number }) {
           {intercardinalEls}
           <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
         </Svg>
-      </View>
+      </Animated.View>
 
       {/* ── FIXED RETICLE ── */}
       <View style={{ position: 'absolute', width: size, height: size }}>
@@ -230,8 +224,7 @@ function getRingTheme(hour: number) {
 }
 
 // MemoRing — fully featured with all 7 enhancements
-const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassHeading, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, isSeedPlanting, seedType, seedGrowthAnim, theme, isHot, isCold }: any) => {
-  const seedColors = getSeedColors(seedType || 'vitality');
+const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pulseAnim, glowAnim, gyroX, gyroY, isRaining, isSunrise, isSunset, rainAnims, compassActive, compassAnim, liquidPulse, heartbeatIntervalRef, rippleScaleHeart, rippleOpHeart, theme, isHot, isCold }: any) => {
   
   // Heat wave animation
   const heatAnim = useRef(new Animated.Value(0)).current;
@@ -351,10 +344,10 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           ))}
           
           {/* ── Feature 7: Compass Rose inside inner disc ── */}
-          {compassHeading !== null && (
+          {compassActive && (
             <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
-              <CompassRose size={RING_SZ - STROKE - 20} heading={compassHeading} />
+              <CompassRose size={RING_SZ - STROKE - 20} heading={compassAnim} />
             </View>
           )}
 
@@ -395,7 +388,7 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
       {/* SVG ring layers */}
       <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
         {/* Track */}
-        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.track} strokeWidth={3} />
+        <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.track} strokeWidth={1} />
         {/* Wide glow */}
         <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.2} />
         {/* Mid halo */}
@@ -419,45 +412,6 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           );
         })()}
       </Svg>
-
-      {/* ── Feature 10: Seed Planting (Game) — Rendered on TOP of glass ── */}
-      {isSeedPlanting && (
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
-          <Svg width={RING_SZ} height={RING_SZ} viewBox={`0 0 ${RING_SZ} ${RING_SZ}`}>
-            {/* The glowing seed base */}
-            <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={12} fill={seedColors.base} />
-            <Circle cx={RING_SZ/2} cy={RING_SZ - 50} r={6} fill={seedColors.solid} />
-            
-            {/* The growing stem and leaves. Path length is ~200. */}
-            <AnimatedPath
-              d={`M${RING_SZ/2} ${RING_SZ - 50} Q${RING_SZ/2 + 30} ${RING_SZ/2} ${RING_SZ/2} 40`}
-              stroke={seedColors.stroke}
-              strokeWidth={4}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={200}
-              strokeDashoffset={seedGrowthAnim.interpolate({ inputRange: [0, 1], outputRange: [200, 0] })}
-            />
-            {/* Leaves */}
-            <AnimatedPath
-              d={`M${RING_SZ/2 + 10} ${RING_SZ/2 + 20} Q${RING_SZ/2 + 40} ${RING_SZ/2 + 10} ${RING_SZ/2 + 40} ${RING_SZ/2 - 10} Q${RING_SZ/2 + 10} ${RING_SZ/2 - 10} ${RING_SZ/2 + 10} ${RING_SZ/2 + 20}`}
-              fill={seedColors.leaf}
-              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] })}
-            />
-            <AnimatedPath
-              d={`M${RING_SZ/2 - 10} ${RING_SZ/2 - 10} Q${RING_SZ/2 - 40} ${RING_SZ/2} ${RING_SZ/2 - 40} ${RING_SZ/2 - 30} Q${RING_SZ/2 - 10} ${RING_SZ/2 - 30} ${RING_SZ/2 - 10} ${RING_SZ/2 - 10}`}
-              fill={seedColors.leaf}
-              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [0, 0, 1] })}
-            />
-            {/* Bloom flower */}
-            <AnimatedCircle
-              cx={RING_SZ/2} cy={40} r={18}
-              fill={seedColors.bloom}
-              opacity={seedGrowthAnim.interpolate({ inputRange: [0, 0.99, 1], outputRange: [0, 0, 1] })}
-            />
-          </Svg>
-        </Animated.View>
-      )}
     </View>
   );
 });
@@ -492,7 +446,7 @@ function GlassPulseOverlay() {
 export default function StepSessionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionType, seedType } = useLocalSearchParams<{ sessionType?: string, seedType?: 'none'|'pebble'|'calm'|'epic'|'vitality' }>();
+  const { sessionType } = useLocalSearchParams<{ sessionType?: string }>();
 
   const type = (sessionType as SessionType | undefined) ?? 'morning';
   let meta = SESSION_META[type] ?? SESSION_META.morning;
@@ -504,25 +458,7 @@ export default function StepSessionScreen() {
     }
   }
 
-  const isSeedPlanting = seedType && seedType !== 'none';
-  if (isSeedPlanting) {
-    let goalSteps = 3000;
-    let title = 'Nurturing Seed';
-    if (seedType === 'pebble') { goalSteps = 1500; title = 'Nurturing Quick Sprout'; }
-    else if (seedType === 'epic') { goalSteps = 8000; title = 'Nurturing Epic Lotus'; }
-    else if (seedType === 'calm') { title = 'Nurturing Seed of Calm'; }
-    else if (seedType === 'vitality') { title = 'Nurturing Seed of Vitality'; }
-    
-    meta = { 
-      ...meta, 
-      label: title, 
-      goal: goalSteps,
-      emoji: '🌱'
-    };
-  } else {
-    // Always use "The Walk" as the title if not planting a seed
-    meta = { ...meta, label: 'The Walk' };
-  }
+  meta = { ...meta, label: type === 'postmeal' ? 'Shatapavalli (100 Steps)' : 'The Walk' };
 
   const { solarTimes } = useBgContext();
   const now = new Date();
@@ -601,14 +537,16 @@ export default function StepSessionScreen() {
   const quoteOpacity = useRef(new Animated.Value(1)).current;
 
   // Feature 7: Compass
-  const [compassHeading, setCompassHeading] = useState<number | null>(null);
+  const [compassActive, setCompassActive] = useState<boolean>(false);
+  const compassAnim = useRef(new Animated.Value(0)).current;
+  let lastHeading = 0;
   
   // Feature 9: Posture Coach
   const [isLookingDown, setIsLookingDown] = useState(false);
   const lookDownAnim = useRef(new Animated.Value(0)).current;
 
   // Feature 10: Seed Planting
-  const seedGrowthAnim = useRef(new Animated.Value(0)).current;
+
 
   // Confetti particles
   const PARTICLE_COUNT = 32;
@@ -646,20 +584,35 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
-    // Feature 2: Liquid leading-edge pulse
-    let headingSub: Location.LocationSubscription | null = null;
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          headingSub = await Location.watchHeadingAsync((data) => {
-            setCompassHeading(Math.round(data.trueHeading !== -1 ? data.trueHeading : data.magHeading));
-          });
-        }
-      } catch (err) {
-        // location heading failed
-      }
-    })();
+    // Feature 7: Sensor-based Compass
+    let magSub: any = null;
+    if (Magnetometer) {
+      Magnetometer.setUpdateInterval(50);
+      magSub = Magnetometer.addListener((data: any) => {
+        let { x, y } = data;
+        let angle = Math.atan2(y, x) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+        
+        angle = (angle + 90) % 360;
+
+        let diff = angle - lastHeading;
+        if (diff > 180) diff -= 360;
+        else if (diff < -180) diff += 360;
+        
+        let newHeading = lastHeading + diff;
+        
+        Animated.spring(compassAnim, {
+          toValue: newHeading,
+          useNativeDriver: true,
+          tension: 40,
+          friction: 8
+        }).start();
+
+        lastHeading = newHeading;
+        
+        if (!compassActive) setCompassActive(true);
+      });
+    }
 
     Animated.loop(Animated.sequence([
       Animated.timing(liquidPulse, { toValue: 1.6, duration: 800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
@@ -690,47 +643,8 @@ export default function StepSessionScreen() {
       } catch (_) {}
     }
 
-    // Feature 7: Compass — throttled to 500ms, uses ref to avoid setState on every update
-    let magSub: any = null;
-    let lastMagHeading = -1;
-    if (Magnetometer) {
-      try {
-        Magnetometer.setUpdateInterval(500);
-        magSub = Magnetometer.addListener(({ x, y }: { x: number; y: number }) => {
-          const heading = Math.round((90 - Math.atan2(y, x) * (180 / Math.PI) + 360) % 360);
-          // Only setState if heading changed by >5 degrees to avoid constant re-renders
-          if (Math.abs(heading - lastMagHeading) > 5) {
-            lastMagHeading = heading;
-            setCompassHeading(heading);
-          }
-        });
-      } catch (_) {}
-    }
+    // Posture coach removed completely to stop volume dipping issues
 
-    // Feature 9: Posture Coach
-    let accSub: any = null;
-    let isCurrentlyLookingDown = false;
-    if (Accelerometer) {
-      try {
-        Accelerometer.setUpdateInterval(400); // Check posture every 400ms
-        accSub = Accelerometer.addListener(({ z }: { z: number }) => {
-          // z > 0.65 means phone is tilted flat up towards the sky/face
-          const lookingDown = z > 0.65;
-          if (lookingDown && !isCurrentlyLookingDown) {
-            isCurrentlyLookingDown = true;
-            setIsLookingDown(true);
-            setGlobalVolume(0.4); // Dip the volume to remind them
-            Animated.timing(lookDownAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-          } else if (!lookingDown && isCurrentlyLookingDown && z < 0.4) {
-            // Hysteresis: wait until z < 0.4 (phone drops) before recovering
-            isCurrentlyLookingDown = false;
-            setIsLookingDown(false);
-            setGlobalVolume(1.0); // Reward good posture with full volume
-            Animated.timing(lookDownAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start();
-          }
-        });
-      } catch (_) {}
-    }
 
     // Start timer immediately
     timerRef.current = setInterval(() => {
@@ -759,10 +673,7 @@ export default function StepSessionScreen() {
       quoteCycle && clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
       if (magSub)  try { magSub.remove();  } catch (_) {}
-      if (accSub) {
-        try { accSub.remove(); } catch (_) {}
-        setGlobalVolume(1.0);
-      }
+      
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
     };
   }, []);
@@ -826,17 +737,13 @@ export default function StepSessionScreen() {
         }
       }
 
-      if ((type === 'postmeal' || isSeedPlanting) && total >= meta.goal && !doneRef.current) {
+      if (type === 'postmeal' && total >= meta.goal && !doneRef.current) {
         doneRef.current = true;
         launchConfetti();
-        // Play majestic sound if blooming seed
-        if (isSeedPlanting) {
-          saveBloomedSeed(seedType as any, total);
-          // Temporarily play a nice sound or haptic sequence
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 300);
-          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 600);
-        }
+        // Temporarily play a nice sound or haptic sequence
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 300);
+        setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 600);
       }
 
       const syncState = () => {
@@ -845,9 +752,6 @@ export default function StepSessionScreen() {
         // Animating SVG props on the JS thread floods the React Native bridge and directly
         // causes the audio buffer to starve/stutter (the "stuck then play" bug).
         progressAnim.setValue(CIRCUM - Math.min(1, total / meta.goal) * CIRCUM);
-        if (isSeedPlanting) {
-          seedGrowthAnim.setValue(Math.min(1, total / meta.goal));
-        }
         lastUpdateRef.current = Date.now();
         syncTimeoutRef.current = null;
       };
@@ -1107,14 +1011,12 @@ export default function StepSessionScreen() {
               gyroX={gyroX} gyroY={gyroY}
               isRaining={isRaining} isSunrise={isSunrise} isSunset={isSunset}
               rainAnims={rainAnims}
-              compassHeading={compassHeading}
+              compassActive={compassActive}
+              compassAnim={compassAnim}
               liquidPulse={liquidPulse}
               heartbeatIntervalRef={heartbeatIntervalRef}
               rippleScaleHeart={rippleScaleHeart}
               rippleOpHeart={rippleOpHeart}
-              isSeedPlanting={isSeedPlanting}
-              seedType={seedType}
-              seedGrowthAnim={seedGrowthAnim}
               theme={getRingTheme(new Date().getHours())}
               isHot={weather?.tempC && weather.tempC > 32}
               isCold={weather?.tempC && weather.tempC < 10}
@@ -1126,18 +1028,18 @@ export default function StepSessionScreen() {
             </Animated.Text>
           
             {/* Inner Content overlay */}
-          <View style={[s.centreBox, { gap: isSeedPlanting ? 0 : 8, justifyContent: isSeedPlanting ? 'space-between' : 'center', paddingVertical: isSeedPlanting ? 20 : 0 }]}>
+          <View style={[s.centreBox, { gap: 8, justifyContent: 'center', paddingVertical: 0 }]}>
             
             {/* Badge & Steps */}
             <View style={{ alignItems: 'center' }}>
               {/* Dynamic Badge */}
               <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: C + '15', borderWidth: 1, borderColor: C + '40', marginBottom: 2 }}>
                 <Text style={{ fontSize: 9, fontWeight: '800', color: C, letterSpacing: 1.4 }}>
-                  {isSeedPlanting ? meta.label.toUpperCase() : 'LIVE SESSION'}
+                  LIVE SESSION
                 </Text>
               </View>
               
-              <Animated.Text style={[s.bigSteps, { fontSize: isSeedPlanting ? 50 : 62, lineHeight: isSeedPlanting ? 52 : 62, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '60', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
+              <Animated.Text style={[s.bigSteps, { fontSize: 62, lineHeight: 62, color: C, transform: [{ scale: stepBounce }], textShadowColor: C + '60', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 }]}>
                 {steps.toLocaleString()}
               </Animated.Text>
               {!playingId && (
@@ -1146,29 +1048,8 @@ export default function StepSessionScreen() {
                 </Text>
               )}
             </View>
-            
-            {/* ─ Empty Window for Seed Growth ─ */}
-            {isSeedPlanting && <View style={{ flex: 1, minHeight: 80 }} />}
 
-            <View style={{ alignItems: 'center' }}>
-              {/* ─ Divider ─ */}
-              <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 }} />
-
-              {/* ─ km / min / pace row ─ */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{distKm.toFixed(2)}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>km</Text>
-                </View>
-                <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{pace}</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>pace</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Sound Controls */}
+              {/* Sound Controls */}
             <View style={{ marginTop: playingId ? 4 : 8 }}>
               {!playingId ? (
                 <TouchableOpacity 
@@ -1182,7 +1063,7 @@ export default function StepSessionScreen() {
                       style={StyleSheet.absoluteFillObject}
                     />
                     <Ionicons name="musical-notes" size={12} color="#FFFFFF" style={{ marginRight: 5 }} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>SELECT SOUND</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>LISTEN NADA SOUNDS WHILE WALK</Text>
                   </View>
                 </TouchableOpacity>
               ) : (
@@ -1212,6 +1093,28 @@ export default function StepSessionScreen() {
           </View>
         </View>
         </View>
+
+        {/* ── SLEEK STATS CARD ──────────────────────────────────── */}
+        <Animated.View style={{
+          paddingHorizontal: 32,
+          marginTop: -20, // Pulls it closer to the ring
+          marginBottom: 10,
+        }}>
+          <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{distKm.toFixed(2)}</Text>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>km</Text>
+              </View>
+              <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{pace}</Text>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>pace</Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
 
         {/* ── TIMER — frosted glass pill ──────────────────────────────────── */}
         <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 10, overflow: 'hidden' }}>
@@ -1289,7 +1192,7 @@ export default function StepSessionScreen() {
       {confetti && (
         <Animated.View
           style={[StyleSheet.absoluteFillObject, s.overlay, { opacity: confettiOp, zIndex: 100 }]}
-          pointerEvents={isSeedPlanting ? 'auto' : 'none'}
+          pointerEvents="none"
         >
           <LinearGradient
             colors={['rgba(0,0,0,0.92)', 'rgba(5,20,12,0.96)']}
@@ -1313,30 +1216,16 @@ export default function StepSessionScreen() {
             />
           ))}
           <View style={s.celebMsg}>
-            <Text style={s.celebEmoji}>{isSeedPlanting ? '🌺' : '🎉'}</Text>
+            <Text style={s.celebEmoji}>🎉</Text>
             <Text style={[s.celebTitle, { color: C }]}>
-              {isSeedPlanting ? 'Seed Bloomed!' : 'Shatapavalli Complete!'}
+              Shatapavalli Complete!
             </Text>
             <Text style={s.celebBody}>
-              {isSeedPlanting ? 'Your seed has fully grown into a stunning flower.' : '100 steps walked. Agni is awakened.'}
+              100 steps walked. Agni is awakened.
             </Text>
-            {!isSeedPlanting && (
-              <Text style={[s.celebBody, { color: 'rgba(255,255,255,0.35)', marginTop: 4 }]}>
-                Walk no more — rest and digest 🙏
-              </Text>
-            )}
-            
-            {isSeedPlanting && (
-              <TouchableOpacity
-                onPress={() => {
-                  endSession();
-                  router.replace('/garden');
-                }}
-                style={{ marginTop: 24, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 24, backgroundColor: 'rgba(2,132,199,0.3)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)' }}
-              >
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: 0.5 }}>View in Garden</Text>
-              </TouchableOpacity>
-            )}
+            <Text style={[s.celebBody, { color: 'rgba(255,255,255,0.35)', marginTop: 4 }]}>
+              Walk no more — rest and digest 🙏
+            </Text>
           </View>
         </Animated.View>
       )}
@@ -1363,7 +1252,6 @@ export default function StepSessionScreen() {
         color={C}
         gradA={GA}
         gradB={GB}
-        isSeedPlanting={!!isSeedPlanting}
       />
 
       {/* ── Feature 9: Posture Coach Overlay (Sleek Top Toast) ────────────────────────────────────── */}
@@ -1401,62 +1289,94 @@ export default function StepSessionScreen() {
 // Exit Modal — frosted glass
 // ─────────────────────────────────────────────────────────────────────────────
 function ExitModal({
-  visible, onClose, onMinimize, onEnd, color, gradA, gradB, isSeedPlanting
+  visible, onClose, onMinimize, onEnd, color, gradA, gradB
 }: {
-  visible: boolean; onClose: () => void; onMinimize: () => void; onEnd: () => void; color: string; gradA: string; gradB: string; isSeedPlanting: boolean;
+  visible: boolean; onClose: () => void; onMinimize: () => void; onEnd: () => void; color: string; gradA: string; gradB: string;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(8,47,73,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
+      <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
+        <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onClose();
+        }} />
         
-        {/* Solid, slim, elegant modal */}
-        <View style={{ width: '100%', maxWidth: 320, backgroundColor: 'rgba(12,74,110,0.95)', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30, borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)' }}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.05)', 'transparent']}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.2 }}
-            style={StyleSheet.absoluteFillObject}
-            pointerEvents="none"
-          />
+        <Animated.View style={{ 
+          width: '88%', 
+          maxWidth: 360, 
+          borderRadius: 40, 
+          overflow: 'hidden', 
+          backgroundColor: 'rgba(25,25,32,0.6)', 
+          borderWidth: 1, 
+          borderColor: 'rgba(255,255,255,0.15)', 
+          shadowColor: '#FFF', 
+          shadowOffset: { width: 0, height: 0 }, 
+          shadowOpacity: 0.1, 
+          shadowRadius: 30, 
+          elevation: 20 
+        }}>
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
           
-          <View style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}>
-            
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Ionicons name={isSeedPlanting ? "leaf" : "walk"} size={22} color="#fff" style={isSeedPlanting ? {} : { marginLeft: 3 }} />
+          <View style={{ padding: 40, paddingBottom: 32, alignItems: 'center' }}>
+            <View style={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: 32, 
+              backgroundColor: 'rgba(255,255,255,0.06)', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              marginBottom: 20, 
+              borderWidth: 1, 
+              borderColor: 'rgba(255,255,255,0.12)' 
+            }}>
+              <Ionicons name="walk" size={28} color="rgba(255,255,255,0.9)" style={{ marginLeft: 4 }} />
             </View>
-            
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.2 }}>
-              {isSeedPlanting ? 'Abandon Seed?' : 'End Session?'}
-            </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 24, lineHeight: 18, paddingHorizontal: 10 }}>
-              {isSeedPlanting 
-                ? 'Your seed is still growing. Minimize to keep tracking steps, or end to discard it.' 
-                : 'Minimize to keep tracking steps and audio, or end your walk now.'}
-            </Text>
-            
-            <View style={{ width: '100%', gap: 10 }}>
-              <TouchableOpacity
-                onPress={onMinimize}
-                style={{ borderRadius: 16, backgroundColor: 'rgba(56,189,248,0.15)', paddingVertical: 14 }}
-                activeOpacity={0.8}
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFF', textAlign: 'center', letterSpacing: 0.5, marginBottom: 10 }}>Session Active</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 12 }}>Would you like to keep tracking steps and audio in the background?</Text>
+          </View>
+          
+          <View style={{ paddingHorizontal: 32, paddingBottom: 40, gap: 16 }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onMinimize();
+              }}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>Keep in Background</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={onEnd}
-                style={{ borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.1)', paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: '#fca5a5', fontWeight: '600', fontSize: 14, textAlign: 'center', letterSpacing: 0.2 }}>End Session</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 16, paddingVertical: 12, width: '100%' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>Cancel</Text>
+                <Text style={{ fontSize: 15, color: '#FFF', fontWeight: '700', letterSpacing: 0.3 }}>Keep in Background</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onEnd();
+              }}
+              style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,80,80,0.1)', borderWidth: 1, borderColor: 'rgba(255,80,80,0.2)' }}
+            >
+              <Text style={{ fontSize: 15, color: 'rgba(255,100,100,1)', fontWeight: '700', letterSpacing: 0.3 }}>End Session</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onClose();
+              }}
+              style={{ paddingVertical: 12, alignItems: 'center', marginTop: 6 }}
+            >
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.2 }}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
