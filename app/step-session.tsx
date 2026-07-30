@@ -69,7 +69,7 @@ const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SZ = 260; // Larger for live activity feel to fit everything inside
-const STROKE  = 2; // Ultra thin boundary
+const STROKE  = 8;
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
 
@@ -333,7 +333,7 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           {compassActive && (
             <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
-              <CompassRose size={RING_SZ - STROKE - 8} heading={compassAnim} />
+              <CompassRose size={RING_SZ - STROKE - 20} heading={compassAnim} />
             </View>
           )}
 
@@ -376,13 +376,13 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
         {/* Track */}
         <Circle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.track} strokeWidth={1} />
         {/* Wide glow */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.2} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={6} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.15} />
         {/* Mid halo */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.mid} strokeWidth={7}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.5} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.mid} strokeWidth={3}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.35} />
         {/* Main crisp arc */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={3}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={1} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.inner} strokeWidth={2}  strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={1} />
         {/* Shimmer sliver */}
-        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.outer} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.85} />
+        <AnimatedCircle cx={RING_SZ/2} cy={RING_SZ/2} r={R} fill="none" stroke={theme.outer} strokeWidth={1} strokeLinecap="round" strokeDasharray={CIRCUM} strokeDashoffset={progressAnim} transform={`rotate(-90, ${RING_SZ/2}, ${RING_SZ/2})`} opacity={0.75} />
         {/* Feature 2: Liquid leading-edge droplet */}
         {pct > 0 && pct < 1 && (() => {
           const angle = pct * 360 - 90;
@@ -554,8 +554,8 @@ export default function StepSessionScreen() {
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.01, duration: 8000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 8000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.10, duration: 4500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, useNativeDriver: true }),
       ])
     ).start();
 
@@ -572,11 +572,10 @@ export default function StepSessionScreen() {
 
     // Feature 7: Sensor-based Compass (True Compass Heading)
     let headingSub: any = null;
-    let isCompassMounted = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted' && isCompassMounted) {
+        if (status === 'granted') {
           headingSub = await Location.watchHeadingAsync((data) => {
             let angle = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
             if (angle < 0) return; // Invalid reading
@@ -598,10 +597,6 @@ export default function StepSessionScreen() {
             
             if (!compassActive) setCompassActive(true);
           });
-          if (!isCompassMounted && headingSub) {
-            headingSub.remove();
-            headingSub = null;
-          }
         }
       } catch (e) {
         console.log("Compass error", e);
@@ -663,7 +658,6 @@ export default function StepSessionScreen() {
     })();
 
     return () => {
-      isCompassMounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
       quoteCycle && clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
@@ -1052,7 +1046,7 @@ export default function StepSessionScreen() {
         <Animated.View style={{
           paddingHorizontal: 32,
           marginTop: -5,
-          marginBottom: 15,
+          marginBottom: 6,
         }}>
           <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}>
             <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
@@ -1071,7 +1065,7 @@ export default function StepSessionScreen() {
         </Animated.View>
 
         {/* ── TIMER — frosted glass pill ──────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 20, overflow: 'hidden' }}>
+        <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12, overflow: 'hidden' }}>
           <LinearGradient
             colors={['rgba(255,255,255,0.07)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
@@ -1095,7 +1089,7 @@ export default function StepSessionScreen() {
         )}
 
         {/* ── EXTERNAL NADA SOUND CONTROLS (Catchy & Premium) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 12 }}>
+        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 8 }}>
           {!playingId ? (
             <TouchableOpacity 
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsSoundModalVisible(true); }}

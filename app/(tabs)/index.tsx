@@ -5608,7 +5608,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const [rR, rG, rB] = hexToRgb(ringHex);
 
   const HERO_RS  = compact ? 238 : 302;
-  const HERO_STR = 3; // Elegant slim main arc
+  const HERO_STR = 2.5; // Elegant slim main arc
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
   const rem    = period?.minutesRemaining ?? 0;
@@ -5772,9 +5772,9 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               </Animated.View>
             )}
             {/* Wide outer glow — slim and elegant */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+12} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.28 : 0.16} />
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+6} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.20 : 0.12} />
             {/* Mid halo — richer at night */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+4} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.60 : 0.42} />
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+2} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.45 : 0.30} />
             {/* Main crisp arc — elegant slim */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
             {/* Inner highlight sliver — shimmering moonlight edge */}
@@ -5782,7 +5782,9 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           </Svg>
 
           {/* ── Sacred Geometric Yantra Animation — transitions between sacred geometries ── */}
-          <HeroGeometricAnimation size={HERO_RS} theme={nightMode ? 'dark' : 'light'} />
+          <View style={{ position: 'absolute', top: -HERO_RS * 0.05, left: -HERO_RS * 0.05, width: HERO_RS * 1.1, height: HERO_RS * 1.1 }}>
+            <HeroGeometricAnimation size={HERO_RS * 1.1} theme={nightMode ? 'dark' : 'light'} />
+          </View>
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
@@ -7157,25 +7159,25 @@ function DailyTab() {
             <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
 
             {/* Main row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 12 }}>
 
               {/* LEFT: weather emoji + temp + condition */}
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 9 }}>
+              <View style={{ flex: 1.3, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6 }}>
                 {weather ? (
                   <>
-                    <Text style={{ fontSize: 26 }}>{weather.emoji}</Text>
-                    <View>
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+                    <Text style={{ fontSize: 24 }}>{weather.emoji}</Text>
+                    <View style={{ flexShrink: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                         <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 }}>{weather.temp}°</Text>
-                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '600' }}>{weather.condition}</Text>
+                        <Text style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.65)', fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>{weather.condition}</Text>
                       </View>
                       {weather.city ? (
-                        <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.38)', fontWeight: '600', marginTop: 1 }}>{weather.city}</Text>
+                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', fontWeight: '600', marginTop: 1 }} numberOfLines={1}>{weather.city}</Text>
                       ) : null}
                     </View>
                   </>
                 ) : (
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.34)', fontWeight: '600' }}>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: '600' }}>
                     {weatherLoading ? 'Loading weather…' : 'Tap to load weather'}
                   </Text>
                 )}
@@ -7193,9 +7195,9 @@ function DailyTab() {
                    displayName = hP.paksha === 'Shukla' ? 'Full Moon (Purnima)' : 'New Moon (Amavasya)';
                 }
                 return (
-                  <View style={{ flex: 1, alignItems: 'center', gap: 1, paddingHorizontal: 8, borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.10)' }}>
+                  <View style={{ flex: 1, alignItems: 'center', gap: 1, paddingHorizontal: 4, borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.10)' }}>
                     <View style={{ marginBottom: 1 }}><MoonSVG tithiNum={hMoon.tithiNum} size={14} /></View>
-                    <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(196,181,253,0.90)' }} numberOfLines={1}>{displayName}</Text>
+                    <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(196,181,253,0.90)', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{displayName}</Text>
                     <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.3 }}>{hMoon.illumination}% lit</Text>
                   </View>
                 );
@@ -7203,19 +7205,20 @@ function DailyTab() {
 
               {/* RIGHT: solar context */}
               {solarContext ? (
-                <View style={{ flex: 1, alignItems: 'flex-end', gap: 1, paddingRight: 48 }}>
+                <View style={{ flex: 1.1, alignItems: 'flex-end', gap: 1, paddingRight: 40 }}>
                   <Text style={{ fontSize: 7.5, fontWeight: '700', color: 'rgba(255,255,255,0.42)', letterSpacing: 0.5 }}>{solarContext.label1}</Text>
-                  <Text style={{ fontSize: 12.5, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.90)', letterSpacing: -0.2 }}>{solarContext.mainText}</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.90)', letterSpacing: -0.2 }} numberOfLines={1} adjustsFontSizeToFit>{solarContext.mainText}</Text>
                   <Text style={{ fontSize: 7.5, fontWeight: '700', color: solarContext.color, letterSpacing: 0.5 }}>{solarContext.label2}</Text>
                 </View>
               ) : (
-                <View style={{ flex: 1 }} />
+                <View style={{ flex: 1.1 }} />
               )}
 
 
 
             </View>
           </BlurView>
+
 
         </View>
 

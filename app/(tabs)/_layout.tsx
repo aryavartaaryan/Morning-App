@@ -1246,7 +1246,7 @@ function CustomTabBar() {
         { paddingBottom: bottomPad, backgroundColor: 'transparent' },
       ]}
     >
-      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
         colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}

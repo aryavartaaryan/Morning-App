@@ -103,7 +103,7 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
   const hw = S * 0.5;
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2 }}>
+    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2, opacity: 0.75 }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 0 — FLOWER OF LIFE / SEED OF LIFE
