@@ -588,7 +588,7 @@ export default function WalkTab() {
     // pulseAnim uses JS driver to stay consistent with all other JS-driver props on the same views
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.07, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1.02, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
         Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
       ])
     ).start();
@@ -638,47 +638,47 @@ export default function WalkTab() {
     // Feature 7: Highly Accurate Sensor-based Compass
     let magSub: any = null;
     let firstReading = true;
-    if (Magnetometer) {
-      Magnetometer.setUpdateInterval(50); // very fast 20fps updates
-      magSub = Magnetometer.addListener((data: any) => {
-        let { x, y } = data;
-        // Calculate heading in degrees (0 to 360)
-        let angle = Math.atan2(y, x) * (180 / Math.PI);
-        if (angle < 0) angle += 360;
-        
-        // Offset by 90 degrees because of phone portrait orientation
-        angle = (angle + 90) % 360;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          magSub = await Location.watchHeadingAsync((data) => {
+            let angle = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
+            if (angle < 0) return; // Invalid reading
+            
+            let diff = angle - lastHeading;
+            if (diff > 180) diff -= 360;
+            else if (diff < -180) diff += 360;
+            
+            let newHeading = lastHeading + diff;
+            
+            Animated.spring(compassAnim, {
+              toValue: newHeading,
+              useNativeDriver: true,
+              tension: 40,
+              friction: 8
+            }).start();
 
-        // Ensure we animate the shortest path (no 360 to 0 snap)
-        let diff = angle - lastHeading;
-        if (diff > 180) diff -= 360;
-        else if (diff < -180) diff += 360;
-        
-        let newHeading = lastHeading + diff;
-        
-        Animated.spring(compassAnim, {
-          toValue: newHeading,
-          useNativeDriver: true,
-          tension: 40,
-          friction: 8
-        }).start();
+            lastHeading = newHeading;
+            
+            if (!compassActive) setCompassActive(true);
 
-        lastHeading = newHeading;
-        
-        if (!compassActive) setCompassActive(true);
-
-        if (firstReading) {
-          firstReading = false;
-          // Show the "hold flat" tip briefly
-          setCompassTipVisible(true);
-          Animated.sequence([
-            Animated.timing(compassTipOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-            Animated.delay(3500),
-            Animated.timing(compassTipOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-          ]).start(() => setCompassTipVisible(false));
+            if (firstReading) {
+              firstReading = false;
+              // Show the "hold flat" tip briefly
+              setCompassTipVisible(true);
+              Animated.sequence([
+                Animated.timing(compassTipOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+                Animated.delay(3500),
+                Animated.timing(compassTipOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+              ]).start(() => setCompassTipVisible(false));
+            }
+          });
         }
-      });
-    }
+      } catch (e) {
+        console.log("Compass error in walk.tsx", e);
+      }
+    })();
 
     return () => {
       clearInterval(quoteCycle);
@@ -995,7 +995,7 @@ export default function WalkTab() {
             }}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
-              <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim.interpolate({ inputRange: [1, 1.07], outputRange: [0.3, 0.6] }) }]}>
+              <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim.interpolate({ inputRange: [1, 1.02], outputRange: [0.3, 0.5] }) }]}>
                 <LinearGradient
                   colors={['rgba(255,255,255,0.05)', 'transparent']}
                   start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
@@ -1032,11 +1032,11 @@ export default function WalkTab() {
                 }} />
               ))}
 
-              {/* ── Layered aura — slim and elegant pulse glow ── */}
+              {/* ── Layered aura — extremely slim and calming pulse glow ── */}
               {/* Feature 1: Gyroscope parallax on the inner glass disc */}
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 24, height: RING_SIZE + 24, borderRadius: (RING_SIZE + 24) / 2, backgroundColor: 'rgba(56,189,248,0.06)', transform: [{ scale: pulseAnim }], top: -12, left: -12 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 14, height: RING_SIZE + 14, borderRadius: (RING_SIZE + 14) / 2, backgroundColor: 'rgba(56,189,248,0.14)', transform: [{ scale: pulseAnim }], top: -7, left: -7 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 6, height: RING_SIZE + 6, borderRadius: (RING_SIZE + 6) / 2, backgroundColor: 'rgba(56,189,248,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 8, height: RING_SIZE + 8, borderRadius: (RING_SIZE + 8) / 2, backgroundColor: 'rgba(56,189,248,0.03)', transform: [{ scale: pulseAnim }], top: -4, left: -4 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 4, height: RING_SIZE + 4, borderRadius: (RING_SIZE + 4) / 2, backgroundColor: 'rgba(56,189,248,0.06)', transform: [{ scale: pulseAnim }], top: -2, left: -2 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 2, height: RING_SIZE + 2, borderRadius: (RING_SIZE + 2) / 2, backgroundColor: 'rgba(56,189,248,0.1)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
 
               {/* ── Inner zone — moonlit disk with gyro parallax ── */}
               {/* Outer stationary mask so it never breaks the ring boundary */}
@@ -1297,54 +1297,9 @@ export default function WalkTab() {
           </View>
           </Animated.View>
 
-          {/* ── Sacred Portal Button — Press & Hold to Meditate ── */}
-          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 16, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
-            <View
-              style={{ overflow: 'hidden', borderRadius: 99 }}
-              {...mandalaPanResponder.panHandlers}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 8,
-                  paddingHorizontal: 24, paddingVertical: 12,
-                  borderRadius: 99,
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-                }}
-              >
-                <Ionicons name="finger-print" size={16} color="rgba(255,255,255,0.6)" />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase' }}>Hold to enter stillness</Text>
-              </LinearGradient>
-            </View>
-          </Animated.View>
 
-          {/* ── Orbit Pulse Game Launch Button ── */}
-          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 14, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setShowOrbitGame(true);
-              }}
-              style={{ overflow: 'hidden', borderRadius: 30 }}
-            >
-              <LinearGradient
-                colors={['rgba(147,51,234,0.55)', 'rgba(79,32,134,0.4)']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 8,
-                  paddingHorizontal: 22, paddingVertical: 10,
-                  borderRadius: 30,
-                  borderWidth: 1, borderColor: 'rgba(192,132,252,0.35)',
-                }}
-              >
-                <Text style={{ fontSize: 14 }}>🌀</Text>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#e9d5ff', letterSpacing: 1.2, textTransform: 'uppercase' }}>Orbit Pulse</Text>
-                <Text style={{ fontSize: 10, color: 'rgba(233,213,255,0.5)', fontWeight: '600' }}>Sacred Rhythm</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+
+
 
         </Animated.View>
 
@@ -1389,12 +1344,14 @@ export default function WalkTab() {
             marginBottom: btnMarginBot,
           }}>
             
-            {/* Start Nature Walk Button */}
-            <TouchableOpacity
-              onPress={() => launchSession(sessionType)}
-              activeOpacity={0.82}
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
-            >
+            {/* Action Buttons Row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Start Nature Walk Button */}
+              <TouchableOpacity
+                onPress={() => launchSession(sessionType)}
+                activeOpacity={0.82}
+                style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+              >
               <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
                 colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.6)']}
@@ -1431,7 +1388,31 @@ export default function WalkTab() {
                   </Text>
                 </View>
               </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
+
+              {/* Orbit Pulse Game Launch Button (Compact) */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowOrbitGame(true);
+                }}
+                style={{ overflow: 'hidden', borderRadius: 99, shadowColor: '#c084fc', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
+              >
+                <LinearGradient
+                  colors={['rgba(147,51,234,0.7)', 'rgba(79,32,134,0.6)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{
+                    alignItems: 'center', justifyContent: 'center',
+                    paddingHorizontal: 16, height: 44,
+                    borderRadius: 99,
+                    borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
+                  }}
+                >
+                  <Text style={{ fontSize: 16 }}>🌀</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
 
             {/* Adjust Target Button */}
             <TouchableOpacity

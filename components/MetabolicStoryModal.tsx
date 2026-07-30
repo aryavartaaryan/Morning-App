@@ -775,17 +775,20 @@ export default function MetabolicStoryModal({
   ];
 
   return (
-    <Modal visible animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.screen}>
-        <LinearGradient colors={[bgColors[0], bgColors[1]]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFillObject} />
-        <LinearGradient colors={[accent + '22', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.35 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: accent + 'A0' }} />
-
-        {/* Progress bar */}
+        {/* Pure black background for OLED screens */}
+        <View style={StyleSheet.absoluteFillObject} backgroundColor="#000000" />
+        
+        {/* Subtle top glow based on dosha color */}
+        <LinearGradient colors={[accent + '40', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        
+        {/* Elegant top progress bar */}
         <View style={styles.progressRow}>
           {Array.from({ length: TOTAL }).map((_, i) => (
             <View key={i} style={[styles.progressSeg, {
-              backgroundColor: i < card ? accent + 'CC' : i === card ? '#FFFFFFCC' : '#FFFFFF18',
+              backgroundColor: i < card ? '#FFFFFF' : i === card ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+              opacity: i < card ? 0.6 : i === card ? 1 : 1,
             }]} />
           ))}
         </View>
@@ -793,7 +796,7 @@ export default function MetabolicStoryModal({
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.headerLabel, { color: accent }]} numberOfLines={1}>{LABELS[card]}</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.closeBtn}>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={styles.closeBtn}>
             <Text style={styles.closeTxt}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -846,69 +849,73 @@ export default function MetabolicStoryModal({
 const S = StyleSheet.create({
   card: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 20,
     justifyContent: 'center',
   },
   cardLabel: {
-    fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.28)',
-    letterSpacing: 2, marginBottom: 12, textAlign: 'center',
+    fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 2.5, marginBottom: 20, textAlign: 'center',
+    textTransform: 'uppercase',
   },
   infoBox: {
-    borderRadius: 14, borderWidth: 1, padding: 13,
+    borderRadius: 24, borderWidth: 1, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20,
   },
   infoBoxLabel: {
-    fontSize: 9, color: 'rgba(255,255,255,0.32)', fontWeight: '900',
-    letterSpacing: 1.4, marginBottom: 6,
+    fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800',
+    letterSpacing: 1.5, marginBottom: 8, textTransform: 'uppercase',
   },
   infoBoxText: {
-    fontSize: 12.5, color: 'rgba(255,255,255,0.75)', lineHeight: 19,
+    fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 22, fontWeight: '500',
   },
   activeBadge: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, borderWidth: 1,
   },
-  activeBadgeTxt: { fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
+  activeBadgeTxt: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   metricRow: {
-    flexDirection: 'row', borderRadius: 14, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.03)', overflow: 'hidden',
+    flexDirection: 'row', borderRadius: 20, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden',
   },
-  metricCell: { flex: 1, alignItems: 'center', paddingVertical: 13 },
-  metricVal: { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
-  metricLabel: { fontSize: 8, color: 'rgba(255,255,255,0.30)', fontWeight: '700', letterSpacing: 1, marginTop: 2 },
+  metricCell: { flex: 1, alignItems: 'center', paddingVertical: 16 },
+  metricVal: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
+  metricLabel: { fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1.2, marginTop: 4, textTransform: 'uppercase' },
   portalRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 14, borderWidth: 1, padding: 13, overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 20, borderWidth: 1, padding: 16, overflow: 'hidden',
   },
 });
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#14122A' },
-  progressRow: { flexDirection: 'row', paddingHorizontal: 14, paddingTop: 54, gap: 3 },
-  progressSeg: { flex: 1, height: 3, borderRadius: 2 },
+  screen: { flex: 1, backgroundColor: '#000000' },
+  progressRow: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 55, gap: 4, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  progressSeg: { flex: 1, height: 2.5, borderRadius: 1.5 },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 18, paddingTop: 10, paddingBottom: 2, gap: 8,
+    paddingHorizontal: 20, paddingTop: 75, paddingBottom: 10, gap: 10, zIndex: 10,
   },
-  headerLabel: { flex: 1, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
+  headerLabel: { flex: 1, fontSize: 10, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   closeBtn: {
-    width: 30, height: 30, borderRadius: 15, borderWidth: 1,
-    borderColor: '#FFFFFF20', backgroundColor: '#FFFFFF0A',
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
   },
-  closeTxt: { color: '#FFFFFF70', fontSize: 12, fontWeight: '700' },
-  tapZones: { position: 'absolute', top: 110, bottom: 90, left: 0, right: 0, flexDirection: 'row' },
+  closeTxt: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  tapZones: { position: 'absolute', top: 120, bottom: 100, left: 0, right: 0, flexDirection: 'row', zIndex: 5 },
   navBar: {
-    paddingBottom: 38, paddingHorizontal: 20, paddingTop: 12,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    paddingBottom: 45, paddingHorizontal: 24, paddingTop: 30,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: 'rgba(4,4,14,0.88)',
+    zIndex: 10,
   },
   navBtn: {
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: '#FFFFFF15', backgroundColor: '#FFFFFF08',
+    paddingHorizontal: 18, paddingVertical: 12, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  navBtnTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '700' },
-  navBtnAccent: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
-  navBtnAccentTxt: { fontSize: 12, fontWeight: '800' },
+  navBtnTxt: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '800' },
+  navBtnAccent: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, borderWidth: 1 },
+  navBtnAccentTxt: { fontSize: 13, fontWeight: '800' },
 });

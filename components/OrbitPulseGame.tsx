@@ -1,29 +1,18 @@
 /**
- * OrbitPulseGame.tsx — "Orbit Pulse" Sacred Geometry Rhythm Game
+ * OrbitPulseGame.tsx — "Orbital Jump" Hyper-Casual Survival
  * ─────────────────────────────────────────────────────────────────
  * Rules:
- *  - Glowing orbs orbit concentric rings of a live mandala
- *  - A fixed golden "gate" sits at 12-o'clock on each ring
- *  - Tap the gate when the orb passes through it
- *  - Hit window: ±350ms around the perfect moment
- *  - Perfect hit → bloom burst + Om chant surge + haptic
- *  - Miss → ring dims gently, no harsh penalty
- *  - Every 10 hits the mandala blooms a new petal layer
- *  - Background: Tanpura drone (Naad sounds)
- *
- * Performance:
- *  - ALL rotation animations use useNativeDriver: true
- *  - Orbs rotate via container rotation — zero sin/cos on JS thread
- *  - Hit detection via scheduled timeouts, not real-time collision
- *  - Static SVG mandala — never re-renders
+ *  - Player controls a glowing orb fixed at the bottom (6 o'clock).
+ *  - Tap ANYWHERE to jump between the 3 concentric rings (Inner -> Mid -> Outer -> Mid ...).
+ *  - Dark Energy blocks spawn on the rings and rotate towards the player.
+ *  - Dodge the blocks! Score increases the longer you survive.
+ *  - Extremely rich visuals: heavy glows, particle trails, dynamic backgrounds.
  */
 
-import React, {
-  useRef, useState, useEffect, useCallback,
-} from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, Modal, StyleSheet, TouchableOpacity,
-  Animated, Easing, Dimensions, Platform,
+  Animated, Easing, Dimensions, Platform
 } from 'react-native';
 import Svg, { Circle, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
@@ -32,49 +21,30 @@ import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: W, height: H } = Dimensions.get('window');
 const CX = W / 2;
 const CY = H / 2;
 
-// ── Ring configs ────────────────────────────────────────────────────────────
-// Each ring: radius, orbital period (ms), color, unlocks at score N
-const RING_CONFIGS = [
-  { id: 0, r: 72,  period: 3200, color: '#c084fc', unlockAt: 0  },
-  { id: 1, r: 120, period: 2600, color: '#60a5fa', unlockAt: 3  },
-  { id: 2, r: 168, period: 2000, color: '#34d399', unlockAt: 8  },
-  { id: 3, r: 216, period: 1600, color: '#fbbf24', unlockAt: 15 },
-];
+// ── Configuration ────────────────────────────────────────────────────────────
+const RINGS = [80, 140, 200]; // Radii of the 3 rings
+const ORB_SIZE = 24;
+const OBSTACLE_SIZE = 28;
 
-const HIT_WINDOW_MS = 350; // ±350ms around the perfect gate crossing
-const ORB_SIZE = 22;
-
-// Om hit sound (direct URL)
 const OM_HIT_URL = 'https://audio.onesutralabs.com/om.mp3';
-// Tanpura background sound ID in the sound player
-const TANPURA_SOUND_ID = 'cdn_new_8'; // Carnatic Focus Flow (Veena, Flute & Tanpura)
+const TANPURA_SOUND_ID = 'cdn_new_8';
 
-// ── Mandala SVG layers for visual evolution ─────────────────────────────────
-const MANDALA_LEVELS = [1, 2, 3, 4]; // rendered based on score
-
-// ── Types ───────────────────────────────────────────────────────────────────
-type RingState = {
+type Obstacle = {
   id: number;
-  r: number;
-  period: number;
-  color: string;
+  ringIdx: number;
+  angle: number; // 0 to 360 (player is at 0)
   active: boolean;
-  unlockAt: number;
-  gateFlash: Animated.Value;  // 0 = idle, 1 = hit window
-  rotation: Animated.Value;   // 0..1 continuous loop
-  orb: Animated.Value;        // opacity of orb
 };
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Static Mandala Background (pure SVG, no animation state)
-// ──────────────────────────────────────────────────────────────────────────────
-const MandalaBg = React.memo(({ level, ringColors }: { level: number; ringColors: string[] }) => {
-  const L = 360; // SVG canvas size
+// ── Static Rich Mandala Background ───────────────────────────────────────────
+const MandalaBg = React.memo(({ rotation }: { rotation: Animated.Value }) => {
+  const L = 400; // SVG canvas size
   const c = L / 2;
   const petals = (n: number, r: number, color: string, opacity: number) => {
     const els = [];
@@ -93,152 +63,57 @@ const MandalaBg = React.memo(({ level, ringColors }: { level: number; ringColors
     return els;
   };
 
-  return (
-    <Svg
-      width={L} height={L}
-      viewBox={`0 0 ${L} ${L}`}
-      style={{ position: 'absolute', top: CY - L / 2, left: CX - L / 2 }}
-      pointerEvents="none"
-    >
-      <Defs>
-        <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
-          <Stop offset="0%" stopColor="#9333ea" stopOpacity="0.25" />
-          <Stop offset="100%" stopColor="#9333ea" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Circle cx={c} cy={c} r={c} fill="url(#glow)" />
-
-      {/* Outer decorative rings */}
-      <Circle cx={c} cy={c} r={c - 2} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="3 6" />
-      <Circle cx={c} cy={c} r={c - 20} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-
-      {/* Level 1 — inner 6 petals */}
-      {level >= 1 && petals(6, 68, '#c084fc', 0.12)}
-      {/* Level 1 — inner circle */}
-      {level >= 1 && <Circle cx={c} cy={c} r={64} fill="none" stroke="rgba(192,132,252,0.25)" strokeWidth="1" />}
-
-      {/* Level 2 — 12 petals on mid ring */}
-      {level >= 2 && petals(12, 116, '#60a5fa', 0.09)}
-      {level >= 2 && <Circle cx={c} cy={c} r={112} fill="none" stroke="rgba(96,165,250,0.2)" strokeWidth="1" />}
-
-      {/* Level 3 — 18 petals outer mid */}
-      {level >= 3 && petals(18, 164, '#34d399', 0.07)}
-      {level >= 3 && <Circle cx={c} cy={c} r={160} fill="none" stroke="rgba(52,211,153,0.18)" strokeWidth="1" />}
-
-      {/* Level 4 — 24 petals outermost */}
-      {level >= 4 && petals(24, 212, '#fbbf24', 0.06)}
-      {level >= 4 && <Circle cx={c} cy={c} r={208} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth="1" />}
-
-      {/* Center sacred geometry: Star of David variant */}
-      <Path
-        d={`M${c} ${c - 28} L${c + 24} ${c + 14} L${c - 24} ${c + 14} Z`}
-        fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1"
-      />
-      <Path
-        d={`M${c} ${c + 28} L${c + 24} ${c - 14} L${c - 24} ${c - 14} Z`}
-        fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1"
-      />
-      <Circle cx={c} cy={c} r={14} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-      <Circle cx={c} cy={c} r={5} fill="rgba(255,255,255,0.4)" />
-    </Svg>
-  );
-});
-
-// ── Gate component (fixed at 12-o'clock of each ring) ───────────────────────
-const Gate = React.memo(({ r, color, flash }: { r: number; color: string; flash: Animated.Value }) => {
-  const gateY = CY - r;
-  const glowScale = flash.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] });
-  const glowOp    = flash.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
+  const spin = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: CX - 14,
-        top: gateY - 14,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ scale: glowScale }],
-        opacity: glowOp,
-      }}
-    >
-      {/* Outer halo */}
-      <View style={{
-        position: 'absolute',
-        width: 28, height: 28, borderRadius: 14,
-        backgroundColor: color,
-        opacity: 0.2,
-      }} />
-      {/* Inner gem */}
-      <View style={{
-        width: 14, height: 14, borderRadius: 7,
-        backgroundColor: color,
-        shadowColor: color, shadowOpacity: 1, shadowRadius: 8,
-      }} />
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', top: CY - L/2, left: CX - L/2, width: L, height: L, transform: [{ rotate: spin }] }}>
+      <Svg width={L} height={L} viewBox={`0 0 ${L} ${L}`}>
+        <Defs>
+          <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#c084fc" stopOpacity="0.15" />
+            <Stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={c} cy={c} r={c} fill="url(#glow)" />
+
+        {/* 3 Main Rings matching gameplay */}
+        {RINGS.map((r, i) => (
+          <Circle key={`rg-${i}`} cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeDasharray="4 8" />
+        ))}
+
+        {petals(12, 100, '#60a5fa', 0.1)}
+        {petals(24, 180, '#c084fc', 0.1)}
+        
+        {/* Core star */}
+        <Path d={`M${c} ${c - 28} L${c + 24} ${c + 14} L${c - 24} ${c + 14} Z`} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+        <Path d={`M${c} ${c + 28} L${c + 24} ${c - 14} L${c - 24} ${c - 14} Z`} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+      </Svg>
     </Animated.View>
   );
 });
 
-// ── Bloom burst — particle fan on perfect hit ────────────────────────────────
-function BloomBurst({ x, y, color, trigger }: {
-  x: number; y: number; color: string; trigger: number
-}) {
-  const anims = useRef(
-    Array.from({ length: 8 }, () => ({
-      tx: new Animated.Value(0),
-      ty: new Animated.Value(0),
-      op: new Animated.Value(0),
-      sc: new Animated.Value(0),
-    }))
-  ).current;
-
-  useEffect(() => {
-    if (trigger === 0) return;
-    anims.forEach((a, i) => {
-      const angle = (i / 8) * 2 * Math.PI;
-      const dist = 55 + Math.random() * 30;
-      a.tx.setValue(0); a.ty.setValue(0); a.op.setValue(0); a.sc.setValue(0);
-      Animated.parallel([
-        Animated.timing(a.op, { toValue: 1, duration: 80,  useNativeDriver: true }),
-        Animated.timing(a.sc, { toValue: 1, duration: 120, useNativeDriver: true }),
-        Animated.sequence([
-          Animated.timing(a.tx, {
-            toValue: Math.cos(angle) * dist,
-            duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(a.ty, {
-            toValue: Math.sin(angle) * dist,
-            duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.delay(200),
-          Animated.timing(a.op, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-      ]).start();
-    });
-  }, [trigger]);
+// ── Glowing Player Orb with Trail ────────────────────────────────────────────
+function PlayerOrb({ radiusAnim, jumpScale }: { radiusAnim: Animated.Value, jumpScale: Animated.Value }) {
+  const ty = radiusAnim; // Player is always at bottom, so translate Y by radius
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      {anims.map((a, i) => (
-        <Animated.View key={i} style={{
-          position: 'absolute',
-          left: x - 5, top: y - 5,
-          width: 10, height: 10, borderRadius: 5,
-          backgroundColor: color,
-          shadowColor: color, shadowOpacity: 0.9, shadowRadius: 6,
-          transform: [{ translateX: a.tx }, { translateY: a.ty }, { scale: a.sc }],
-          opacity: a.op,
-        }} />
-      ))}
-    </View>
+    <Animated.View style={{
+      position: 'absolute',
+      left: CX - ORB_SIZE/2,
+      top: CY - ORB_SIZE/2,
+      width: ORB_SIZE, height: ORB_SIZE,
+      transform: [
+        { translateY: ty },
+        { scale: jumpScale }
+      ],
+      alignItems: 'center', justifyContent: 'center'
+    }}>
+      {/* Heavy rich glow */}
+      <View style={{ position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: '#38bdf8', opacity: 0.35 }} />
+      <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: '#38bdf8', opacity: 0.6 }} />
+      {/* Solid core */}
+      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 10 }} />
+    </Animated.View>
   );
 }
 
@@ -246,507 +121,327 @@ function BloomBurst({ x, y, color, trigger }: {
 // Main Game Component
 // ──────────────────────────────────────────────────────────────────────────────
 export default function OrbitPulseGame({
-  visible,
-  onClose,
+  visible, onClose,
 }: {
-  visible: boolean;
-  onClose: () => void;
+  visible: boolean; onClose: () => void;
 }) {
   const { playSound, stopSound, setGlobalVolume } = useSoundPlayer();
 
-  // ── Game state ─────────────────────────────────────────────────────────────
-  const [score, setScore]           = useState(0);
-  const [streak, setStreak]         = useState(0);
-  const [peakStreak, setPeakStreak] = useState(0);
-  const [mandalaLevel, setMandalaLevel] = useState(1);
-  const [bloomTrigger, setBloomTrigger] = useState(0);
-  const [bloomPos, setBloomPos]     = useState({ x: CX, y: CY - 72 });
-  const [bloomColor, setBloomColor] = useState('#c084fc');
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [gameOver, setGameOver]   = useState(false);
+  const [score, setScore]         = useState(0);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  
+  const playerRingRef = useRef(0); // 0=Inner, 1=Mid, 2=Outer
+  const jumpDirRef    = useRef(1); // 1 = going outwards, -1 = going inwards
+  const obsIdRef      = useRef(0);
+  const scoreRef      = useRef(0);
+  const reqRef        = useRef<number>(0);
+  const lastTimeRef   = useRef<number>(0);
 
-  const scoreRef     = useRef(0);
-  const streakRef    = useRef(0);
-  const hitWindowRef = useRef<Record<number, boolean>>({});  // ringId → currently in hit window
-  const timersRef    = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const omSoundRef   = useRef<Audio.Sound | null>(null);
-  const isActiveRef  = useRef(false);
+  // Difficulty settings
+  const speedRef = useRef(120); // Degrees per second
+  const spawnRateRef = useRef(1500); // ms between spawns
+  const lastSpawnRef = useRef<number>(0);
 
-  // Animated values
-  const feedbackOp = useRef(new Animated.Value(0)).current;
-  const scoreScale = useRef(new Animated.Value(1)).current;
-  const screenFlash = useRef(new Animated.Value(0)).current;
+  // Animated Values
+  const playerRadiusAnim = useRef(new Animated.Value(RINGS[0])).current;
+  const playerJumpScale  = useRef(new Animated.Value(1)).current;
+  const bgRotation       = useRef(new Animated.Value(0)).current;
+  const screenShakeX     = useRef(new Animated.Value(0)).current;
+  const screenShakeY     = useRef(new Animated.Value(0)).current;
+  
+  const omSoundRef       = useRef<Audio.Sound | null>(null);
 
-  // ── Ring states ─────────────────────────────────────────────────────────────
-  const rings = useRef<RingState[]>(
-    RING_CONFIGS.map(cfg => ({
-      ...cfg,
-      active: cfg.unlockAt === 0,
-      gateFlash: new Animated.Value(0),
-      rotation:  new Animated.Value(0),
-      orb:       new Animated.Value(1),
-    }))
-  ).current;
-
-  // ── Load Om sound ──────────────────────────────────────────────────────────
+  // ── Audio ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) return;
     (async () => {
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: OM_HIT_URL },
-          { shouldPlay: false, volume: 0.8, isLooping: false }
-        );
+        const { sound } = await Audio.Sound.createAsync({ uri: OM_HIT_URL }, { shouldPlay: false, volume: 1.0 });
         omSoundRef.current = sound;
-      } catch (e) {
-        console.log('[OrbitPulse] Om sound load error:', e);
-      }
+      } catch (e) {}
     })();
-    return () => {
-      omSoundRef.current?.unloadAsync().catch(() => {});
-      omSoundRef.current = null;
-    };
+    return () => { omSoundRef.current?.unloadAsync(); };
   }, [visible]);
 
-  // ── Play tanpura background ────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) return;
     const tanpura = ALL_SLEEP_SOUNDS.find(s => s.id === TANPURA_SOUND_ID);
     if (tanpura) {
-      setGlobalVolume(0.4);
-      playSound(tanpura, 3600, undefined, 0.4, true);
+      setGlobalVolume(0.5);
+      playSound(tanpura, 3600, undefined, 0.5, true);
     }
-    return () => {
-      stopSound();
-      setGlobalVolume(1);
-    };
+    return () => { stopSound(); setGlobalVolume(1); };
   }, [visible]);
 
-  // ── Hit Om sound ───────────────────────────────────────────────────────────
-  const playOmHit = useCallback(async () => {
-    try {
-      if (!omSoundRef.current) return;
-      await omSoundRef.current.setPositionAsync(0);
-      await omSoundRef.current.playAsync();
-      setTimeout(() => {
-        omSoundRef.current?.stopAsync().catch(() => {});
-      }, 800);
-    } catch (_) {}
-  }, []);
+  // ── Game Loop (Collision & Movement) ───────────────────────────────────────
+  const gameLoop = useCallback((time: number) => {
+    if (!lastTimeRef.current) lastTimeRef.current = time;
+    const dt = (time - lastTimeRef.current) / 1000; // seconds
+    lastTimeRef.current = time;
 
-  // ── Start orbital rotations (native driver) ────────────────────────────────
-  const startRotations = useCallback(() => {
-    rings.forEach(ring => {
-      ring.rotation.setValue(0);
-      Animated.loop(
-        Animated.timing(ring.rotation, {
-          toValue: 1,
-          duration: ring.period,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ).start();
-    });
-  }, [rings]);
+    if (!isPlaying || gameOver) {
+      reqRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
 
-  // ── Schedule hit windows for each ring ─────────────────────────────────────
-  // The orb passes the gate (12-o'clock) once every `period` ms.
-  // We schedule a window to open at each multiple of period.
-  const scheduleHitWindows = useCallback((ring: RingState) => {
-    if (!ring.active || !isActiveRef.current) return;
+    // 1. Update Score
+    scoreRef.current += dt * 100;
+    setScore(Math.floor(scoreRef.current));
 
-    const scheduleNext = (delay: number) => {
-      const t = setTimeout(() => {
-        if (!isActiveRef.current) return;
-        // Open the hit window
-        hitWindowRef.current[ring.id] = true;
-        // Flash the gate gold
-        Animated.timing(ring.gateFlash, {
-          toValue: 1,
-          duration: 120,
-          useNativeDriver: true,
-        }).start();
+    // 2. Increase Difficulty over time
+    speedRef.current = 120 + (scoreRef.current * 0.05); // Speed increases
+    spawnRateRef.current = Math.max(600, 1500 - (scoreRef.current * 0.3));
 
-        // Close window after 2 * HIT_WINDOW_MS
-        const closeT = setTimeout(() => {
-          hitWindowRef.current[ring.id] = false;
-          // Dim back if no hit
-          Animated.timing(ring.gateFlash, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }).start();
-          // Schedule next
-          scheduleNext(ring.period - HIT_WINDOW_MS);
-        }, HIT_WINDOW_MS * 2);
-        timersRef.current.push(closeT);
-      }, delay);
-      timersRef.current.push(t);
-    };
+    // 3. Spawn Obstacles
+    if (time - lastSpawnRef.current > spawnRateRef.current) {
+      lastSpawnRef.current = time;
+      const newObs: Obstacle = {
+        id: obsIdRef.current++,
+        ringIdx: Math.floor(Math.random() * 3), // Random ring 0,1,2
+        angle: 180, // Spawns at top
+        active: true,
+      };
+      setObstacles(prev => [...prev, newObs]);
+    }
 
-    // First hit window: after one full orbit (with a small offset for the pre-open warning)
-    scheduleNext(ring.period - HIT_WINDOW_MS);
-  }, []);
+    // 4. Move Obstacles & Check Collision
+    let collisionDetected = false;
+    setObstacles(prev => {
+      const pRing = playerRingRef.current;
+      const nextObs: Obstacle[] = [];
+      
+      for (let i = 0; i < prev.length; i++) {
+        let obs = prev[i];
+        if (!obs.active) continue;
 
-  // ── Handle tap on a ring's gate ─────────────────────────────────────────────
-  const handleGateTap = useCallback((ring: RingState) => {
-    if (!isActiveRef.current) return;
-    const isInWindow = hitWindowRef.current[ring.id];
+        // Move obstacle (it travels from 180 down to 0/360)
+        // Let's have it move positively: 180 -> 360 (which is 0)
+        obs.angle += speedRef.current * dt;
 
-    if (isInWindow) {
-      // ✅ PERFECT HIT
-      hitWindowRef.current[ring.id] = false;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        // Collision logic
+        // Player is fixed at angle 360 (or 0)
+        // Hit box: if angle is between 350 and 370 (±10 degrees) and same ring
+        if (obs.ringIdx === pRing && obs.angle >= 350 && obs.angle <= 370) {
+          collisionDetected = true;
+        }
 
-      scoreRef.current += 1;
-      streakRef.current += 1;
-      const newScore  = scoreRef.current;
-      const newStreak = streakRef.current;
-
-      setScore(newScore);
-      setStreak(newStreak);
-      setPeakStreak(p => Math.max(p, newStreak));
-
-      // Unlock next ring
-      const nextRing = rings.find(r => !r.active && r.unlockAt <= newScore);
-      if (nextRing) {
-        nextRing.active = true;
-        scheduleHitWindows(nextRing);
+        // If it passes 380, remove it
+        if (obs.angle < 380) {
+          nextObs.push(obs);
+        }
       }
-
-      // Mandala level up every 10 hits
-      const newLevel = Math.min(4, 1 + Math.floor(newScore / 10));
-      setMandalaLevel(newLevel);
-
-      // Bloom burst
-      setBloomPos({ x: CX, y: CY - ring.r });
-      setBloomColor(ring.color);
-      setBloomTrigger(t => t + 1);
-
-      // Screen flash
-      Animated.sequence([
-        Animated.timing(screenFlash, { toValue: 0.15, duration: 60,  useNativeDriver: true }),
-        Animated.timing(screenFlash, { toValue: 0,    duration: 300, useNativeDriver: true }),
-      ]).start();
-
-      // Score scale pop
-      Animated.sequence([
-        Animated.spring(scoreScale, { toValue: 1.35, useNativeDriver: true, speed: 60, bounciness: 12 }),
-        Animated.spring(scoreScale, { toValue: 1,    useNativeDriver: true, speed: 30, bounciness: 3  }),
-      ]).start();
-
-      // Gate dim
-      Animated.timing(ring.gateFlash, { toValue: 0, duration: 150, useNativeDriver: true }).start();
-
-      // Feedback text
-      const msgs = newStreak >= 10 ? ['🔥 ON FIRE!', '⚡ UNSTOPPABLE!', '💜 DIVINE FLOW!'] :
-                   newStreak >= 5  ? ['✨ PERFECT!', '🌟 GREAT!', '💫 FLOW!'] :
-                                    ['✅ NICE!', '🎯 HIT!', '💜 YES!'];
-      setFeedbackText(msgs[Math.floor(Math.random() * msgs.length)]);
-      setFeedbackVisible(true);
-      feedbackOp.setValue(0);
-      Animated.sequence([
-        Animated.timing(feedbackOp, { toValue: 1, duration: 150, useNativeDriver: true }),
-        Animated.delay(500),
-        Animated.timing(feedbackOp, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => setFeedbackVisible(false));
-
-      // Om hit sound
-      playOmHit();
-
-    } else {
-      // ❌ MISS — very gentle
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      streakRef.current = 0;
-      setStreak(0);
-    }
-  }, [rings, scheduleHitWindows, playOmHit, feedbackOp, scoreScale, screenFlash]);
-
-  // ── Start / stop game ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!visible) return;
-    isActiveRef.current = true;
-    scoreRef.current = 0;
-    streakRef.current = 0;
-    hitWindowRef.current = {};
-    setScore(0); setStreak(0); setMandalaLevel(1);
-
-    // Reset rings
-    rings.forEach(ring => {
-      ring.active = ring.unlockAt === 0;
-      ring.gateFlash.setValue(0);
+      return nextObs;
     });
 
-    startRotations();
-    // Schedule hit windows for initially active rings
-    rings.filter(r => r.active).forEach(r => scheduleHitWindows(r));
+    if (collisionDetected) {
+      triggerGameOver();
+    } else {
+      reqRef.current = requestAnimationFrame(gameLoop);
+    }
+  }, [isPlaying, gameOver]);
 
-    return () => {
-      isActiveRef.current = false;
-      timersRef.current.forEach(t => clearTimeout(t));
-      timersRef.current = [];
-      rings.forEach(r => {
-        r.rotation.stopAnimation();
-        r.gateFlash.setValue(0);
-      });
-    };
-  }, [visible]);
+  useEffect(() => {
+    reqRef.current = requestAnimationFrame(gameLoop);
+    return () => cancelAnimationFrame(reqRef.current);
+  }, [gameLoop]);
+
+  // ── Background continuous rotation ──
+  useEffect(() => {
+    if (visible && !gameOver) {
+      Animated.loop(Animated.timing(bgRotation, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })).start();
+    } else {
+      bgRotation.stopAnimation();
+    }
+  }, [visible, gameOver]);
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  const triggerGameOver = () => {
+    setGameOver(true);
+    setIsPlaying(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    bgRotation.stopAnimation();
+    omSoundRef.current?.playAsync();
+
+    // Intense screen shake
+    Animated.sequence([
+      Animated.timing(screenShakeX, { toValue: 15, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShakeX, { toValue: -15, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShakeX, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShakeX, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShakeX, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleTap = () => {
+    if (gameOver) return;
+    if (!isPlaying) {
+      setIsPlaying(true);
+      lastSpawnRef.current = performance.now();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      return;
+    }
+
+    // Jump logic: ping-pong between 0, 1, 2
+    let nextRing = playerRingRef.current + jumpDirRef.current;
+    if (nextRing > 2) {
+      nextRing = 1;
+      jumpDirRef.current = -1;
+    } else if (nextRing < 0) {
+      nextRing = 1;
+      jumpDirRef.current = 1;
+    }
+    
+    playerRingRef.current = nextRing;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Animate jump radius & squeeze
+    Animated.parallel([
+      Animated.spring(playerRadiusAnim, {
+        toValue: RINGS[nextRing],
+        useNativeDriver: true,
+        tension: 80, friction: 8
+      }),
+      Animated.sequence([
+        Animated.timing(playerJumpScale, { toValue: 1.4, duration: 100, useNativeDriver: true }),
+        Animated.timing(playerJumpScale, { toValue: 1.0, duration: 150, useNativeDriver: true }),
+      ])
+    ]).start();
+  };
+
+  const restartGame = () => {
+    setGameOver(false);
+    setScore(0);
+    scoreRef.current = 0;
+    setObstacles([]);
+    playerRingRef.current = 0;
+    jumpDirRef.current = 1;
+    playerRadiusAnim.setValue(RINGS[0]);
+    speedRef.current = 120;
+    spawnRateRef.current = 1500;
+    lastTimeRef.current = 0;
+    // Don't auto start, wait for tap
+  };
 
   // ──────────────────────────────────────────────────────────────────────────
   // Render
   // ──────────────────────────────────────────────────────────────────────────
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent transparent onRequestClose={onClose}>
-      <View style={s.root}>
-        {/* Dark deep purple background */}
-        <LinearGradient
-          colors={['#0A0014', '#0D0022', '#070012']}
-          style={StyleSheet.absoluteFillObject}
-        />
-        {/* Subtle inner glow */}
-        <LinearGradient
-          colors={['rgba(147,51,234,0.18)', 'transparent']}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.5 }}
-        />
+      <TouchableOpacity activeOpacity={1} onPress={handleTap} style={s.root}>
+        
+        <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: screenShakeX }, { translateY: screenShakeY }] }]}>
+          {/* Deep Rich Background */}
+          <LinearGradient colors={['#030014', '#0A0022', '#000000']} style={StyleSheet.absoluteFillObject} />
+          <LinearGradient colors={['rgba(56,189,248,0.1)', 'transparent']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: H * 0.4 }} />
 
-        {/* Screen flash on hit */}
-        <Animated.View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFillObject, {
-            backgroundColor: '#ffffff',
-            opacity: screenFlash,
-          }]}
-        />
+          {/* Background Mandala */}
+          <MandalaBg rotation={bgRotation} />
 
-        {/* Static Mandala background */}
-        <MandalaBg level={mandalaLevel} ringColors={RING_CONFIGS.map(r => r.color)} />
+          {/* Obstacles rendering */}
+          {obstacles.map(obs => {
+            const rad = RINGS[obs.ringIdx];
+            // Obstacle angle from center
+            // Convert angle to radians. Offset by -90 so 180 is top, 360 is bottom.
+            const angleRad = (obs.angle - 270) * (Math.PI / 180);
+            const ox = CX + rad * Math.cos(angleRad);
+            const oy = CY + rad * Math.sin(angleRad);
 
-        {/* ── Orbital rings (visual track circles) ── */}
-        {RING_CONFIGS.map(cfg => {
-          const ring = rings[cfg.id];
-          if (!ring.active) return null;
-          return (
-            <View key={cfg.id} pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-              <Svg
-                width={W} height={H}
-                style={StyleSheet.absoluteFillObject}
-              >
-                <Circle
-                  cx={CX} cy={CY} r={cfg.r}
-                  fill="none"
-                  stroke={cfg.color}
-                  strokeWidth={1.5}
-                  strokeOpacity={0.25}
-                  strokeDasharray="4 6"
-                />
-              </Svg>
-            </View>
-          );
-        })}
-
-        {/* ── Orbiting orbs (rotated containers — native driver) ── */}
-        {rings.map(ring => {
-          if (!ring.active) return null;
-          const spin = ring.rotation.interpolate({
-            inputRange:  [0, 1],
-            outputRange: ['0deg', '360deg'],
-          });
-          return (
-            <Animated.View
-              key={ring.id}
-              pointerEvents="none"
-              style={{
+            return (
+              <View key={obs.id} pointerEvents="none" style={{
                 position: 'absolute',
-                left: CX - ring.r,
-                top:  CY - ring.r,
-                width:  ring.r * 2,
-                height: ring.r * 2,
-                transform: [{ rotate: spin }],
-              }}
-            >
-              {/* Orb at top of the rotation container (12 o'clock) */}
-              <View style={{
-                position: 'absolute',
-                left: ring.r - ORB_SIZE / 2,
-                top:  -ORB_SIZE / 2,
-                width: ORB_SIZE, height: ORB_SIZE, borderRadius: ORB_SIZE / 2,
-                backgroundColor: ring.color,
-                shadowColor: ring.color,
-                shadowOpacity: 0.9,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 0 },
-              }}>
-                {/* Inner white core */}
-                <View style={{
-                  position: 'absolute',
-                  top: 5, left: 5, right: 5, bottom: 5,
-                  borderRadius: 6,
-                  backgroundColor: 'rgba(255,255,255,0.8)',
-                }} />
-              </View>
-            </Animated.View>
-          );
-        })}
-
-        {/* ── Gates (tap targets — fixed at 12-o'clock per ring) ── */}
-        {rings.map(ring => {
-          if (!ring.active) return null;
-          return (
-            <TouchableOpacity
-              key={ring.id}
-              activeOpacity={1}
-              onPress={() => handleGateTap(ring)}
-              style={{
-                position: 'absolute',
-                left: CX - 30,
-                top:  CY - ring.r - 30,
-                width: 60, height: 60,
+                left: ox - OBSTACLE_SIZE/2,
+                top: oy - OBSTACLE_SIZE/2,
+                width: OBSTACLE_SIZE, height: OBSTACLE_SIZE,
                 alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Gate r={ring.r} color={ring.color} flash={ring.gateFlash} />
+                transform: [{ rotate: `${obs.angle}deg` }] // Point towards center
+              }}>
+                {/* Aggressive Red/Pink Glow */}
+                <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 10, backgroundColor: '#ef4444', opacity: 0.4 }} />
+                {/* Sharp crystal shape */}
+                <View style={{ width: 18, height: 18, backgroundColor: '#f43f5e', transform: [{ rotate: '45deg' }], shadowColor: '#f43f5e', shadowOpacity: 1, shadowRadius: 10 }} />
+              </View>
+            );
+          })}
+
+          {/* Player Orb */}
+          <PlayerOrb radiusAnim={playerRadiusAnim} jumpScale={playerJumpScale} />
+
+          {/* Top HUD */}
+          <View style={s.hudRow} pointerEvents="box-none">
+            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+              <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
-          );
-        })}
 
-        {/* ── Bloom burst particles ── */}
-        <BloomBurst x={bloomPos.x} y={bloomPos.y} color={bloomColor} trigger={bloomTrigger} />
-
-        {/* ── Feedback text ── */}
-        {feedbackVisible && (
-          <Animated.Text style={[s.feedbackText, { opacity: feedbackOp }]}>
-            {feedbackText}
-          </Animated.Text>
-        )}
-
-        {/* ── Top HUD ── */}
-        <View style={s.topHud} pointerEvents="none">
-          {/* Score */}
-          <View style={s.scoreContainer}>
-            <Animated.Text style={[s.scoreNum, { transform: [{ scale: scoreScale }] }]}>
-              {score}
-            </Animated.Text>
-            <Text style={s.scoreLabel}>SCORE</Text>
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '800', letterSpacing: 2 }}>SCORE</Text>
+              <Text style={{ fontSize: 36, fontWeight: '900', color: '#FFF' }}>{score.toLocaleString()}</Text>
+            </View>
           </View>
 
-          {/* Title */}
-          <View style={{ alignItems: 'center' }}>
-            <Text style={s.title}>ORBIT PULSE</Text>
-            <Text style={s.subtitle}>🕉️ Sacred Rhythm</Text>
-          </View>
+          {/* Start Tutorial / Instructions */}
+          {!isPlaying && !gameOver && (
+            <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center' }} pointerEvents="none">
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', alignItems: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.2, shadowRadius: 20 }}>
+                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
+                <Ionicons name="finger-print-outline" size={32} color="#38bdf8" style={{ marginBottom: 12 }} />
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFF', letterSpacing: 2, marginBottom: 8 }}>HOW TO PLAY</Text>
+                
+                <View style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                    1. Tap <Text style={{ color: '#38bdf8', fontWeight: '800' }}>ANYWHERE</Text> to jump.
+                  </Text>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                    2. Bounce between the 3 rings.
+                  </Text>
+                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                    3. Dodge the <Text style={{ color: '#ef4444', fontWeight: '800' }}>RED ENERGY</Text>.
+                  </Text>
+                </View>
 
-          {/* Streak */}
-          <View style={[s.scoreContainer, { alignItems: 'flex-end' }]}>
-            <Text style={[s.scoreNum, { color: streak >= 10 ? '#fbbf24' : streak >= 5 ? '#34d399' : '#c084fc' }]}>
-              {streak >= 5 ? '🔥' : ''}{streak}
-            </Text>
-            <Text style={s.scoreLabel}>STREAK</Text>
-          </View>
-        </View>
-
-        {/* ── Close button ── */}
-        <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 18, lineHeight: 20 }}>✕</Text>
-        </TouchableOpacity>
-
-        {/* ── Bottom HUD ── */}
-        <View style={s.bottomHud} pointerEvents="none">
-          <Text style={s.instructHint}>Tap the glowing gate as the orb passes through</Text>
-          {peakStreak > 0 && (
-            <Text style={s.peakStreak}>🏆 Best Streak: {peakStreak}</Text>
+                <Animated.View style={{ marginTop: 24, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: 'rgba(56,189,248,0.2)', borderRadius: 99, opacity: Math.sin(Date.now() / 200) > 0 ? 1 : 0.6 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#38bdf8', letterSpacing: 1 }}>TAP TO START JUMPING</Text>
+                </Animated.View>
+              </View>
+            </View>
           )}
-        </View>
-      </View>
+
+        </Animated.View>
+
+        {/* Game Over Modal */}
+        {gameOver && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center' }]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#f87171', letterSpacing: 3, marginBottom: 10 }}>COLLISION</Text>
+            <Text style={{ fontSize: 56, fontWeight: '900', color: '#FFF', marginBottom: 30 }}>{score.toLocaleString()}</Text>
+            
+            <TouchableOpacity onPress={restartGame} style={{ backgroundColor: '#38bdf8', paddingHorizontal: 36, paddingVertical: 16, borderRadius: 99, marginBottom: 15, shadowColor: '#38bdf8', shadowOpacity: 0.5, shadowRadius: 15 }}>
+              <Text style={{ color: '#000', fontSize: 18, fontWeight: '900', letterSpacing: 1.5 }}>PLAY AGAIN</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={onClose} style={{ padding: 10 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>RETURN TO WALK</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     </Modal>
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#080012',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topHud: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    left: 24, right: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  scoreContainer: {
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  scoreNum: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -1,
-  },
-  scoreLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  subtitle: {
-    fontSize: 10,
-    color: 'rgba(192,132,252,0.7)',
-    letterSpacing: 1.5,
-    marginTop: 2,
+  root: { flex: 1, backgroundColor: '#000' },
+  hudRow: {
+    position: 'absolute', top: 50, left: 20, right: 20,
+    flexDirection: 'row', alignItems: 'center',
   },
   closeBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 36,
-    right: 20,
-    width: 36, height: 36, borderRadius: 18,
-    overflow: 'hidden',
+    width: 44, height: 44,
+    borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-  },
-  feedbackText: {
-    position: 'absolute',
-    top: H / 2 - 130,
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 1,
-    textShadowColor: '#c084fc',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-    alignSelf: 'center',
-  },
-  bottomHud: {
-    position: 'absolute',
-    bottom: 60,
-    left: 32, right: 32,
-    alignItems: 'center',
-  },
-  instructHint: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
-    textAlign: 'center',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  peakStreak: {
-    fontSize: 12,
-    color: 'rgba(251,191,36,0.6)',
-    fontWeight: '700',
-    letterSpacing: 1,
+    position: 'absolute', left: 0, top: 0, zIndex: 10
   },
 });

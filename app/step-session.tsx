@@ -990,8 +990,8 @@ export default function StepSessionScreen() {
         </View>
 
         {/* ── ULTRA-PREMIUM LIVE RING ───────────────────────────────────────── */}
-        <View style={s.ringWrapper}>
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
+        <View style={[s.ringWrapper, { marginTop: -15, marginBottom: 15 }]}>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             <MemoRing
               RING_SZ={RING_SZ} R={R} STROKE={STROKE} CIRCUM={CIRCUM}
               pct={pct}
@@ -1045,8 +1045,8 @@ export default function StepSessionScreen() {
         {/* ── SLEEK STATS CARD ──────────────────────────────────── */}
         <Animated.View style={{
           paddingHorizontal: 32,
-          marginTop: -20, // Pulls it closer to the ring
-          marginBottom: 10,
+          marginTop: -5,
+          marginBottom: 15,
         }}>
           <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}>
             <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
@@ -1076,57 +1076,6 @@ export default function StepSessionScreen() {
           </Text>
         </View>
 
-        {/* ── EXTERNAL NADA SOUND CONTROLS (Catchy & Premium) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 20 }}>
-          {!playingId ? (
-            <TouchableOpacity 
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsSoundModalVisible(true); }}
-              activeOpacity={0.8}
-            >
-              <View style={{ overflow: 'hidden', borderRadius: 99 }}>
-                <LinearGradient
-                  colors={['rgba(139,92,246,0.35)', 'rgba(56,189,248,0.2)']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    paddingHorizontal: 24, paddingVertical: 14,
-                    borderRadius: 99,
-                    borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
-                  }}
-                >
-                  <Ionicons name="headset-outline" size={20} color="#e9d5ff" />
-                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Listen Naad Sound</Text>
-                </LinearGradient>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ 
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-              backgroundColor: 'rgba(8,47,73,0.5)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', 
-              paddingHorizontal: 18, paddingVertical: 12, borderRadius: 99, 
-              overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 
-            }}>
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
-                <Ionicons name="stop" size={16} color="rgba(255,255,255,0.6)" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
-                style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(56,189,248,0.2)', borderWidth: 1.5, borderColor: 'rgba(186,230,253,0.5)', alignItems: 'center', justifyContent: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.4, shadowRadius: 8 }}
-              >
-                <Ionicons name={isPaused ? "play" : "pause"} size={22} color="#FFF" style={isPaused ? { marginLeft: 3 } : {}} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
-                <Ionicons name="list" size={16} color="rgba(255,255,255,0.8)" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-
         {/* Post-meal progress bar */}
         {type === 'postmeal' && (
           <View style={s.shataBar}>
@@ -1140,23 +1089,23 @@ export default function StepSessionScreen() {
         )}
 
         {/* ── ACTION BUTTONS — ultra smart frosted glass ─────────────────── */}
-        <View style={s.btnRow}>
+        <View style={[s.btnRow, { marginBottom: 24, paddingHorizontal: 12 }]}>
           {/* PAUSE button */}
           <Animated.View style={{ flex: 1, transform: [{ scale: pauseScale }] }}>
             <TouchableOpacity
               onPress={toggleSessionPause}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(12,74,110,0.4)' }}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
             >
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={paused ? ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.05)', 'transparent']}
+                colors={paused ? ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.08)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: paused ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)' }} />
-                <Ionicons name={paused ? 'play' : 'pause'} size={16} color="#FFF" />
-                <Text style={[s.pauseTxt, { color: '#FFF' }]}>
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: paused ? 'rgba(56,189,248,0.6)' : 'rgba(255,255,255,0.2)' }} />
+                <Ionicons name={paused ? 'play-outline' : 'pause-outline'} size={18} color={paused ? '#38bdf8' : '#FFF'} style={paused ? { marginLeft: 2 } : {}} />
+                <Text style={[s.pauseTxt, { color: paused ? '#38bdf8' : '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>
                   {paused ? 'RESUME' : 'PAUSE'}
                 </Text>
               </LinearGradient>
@@ -1168,20 +1117,77 @@ export default function StepSessionScreen() {
             <TouchableOpacity 
               onPress={promptExit}
               activeOpacity={0.82}
-              style={{ borderRadius: 22, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 14, elevation: 5, backgroundColor: 'rgba(12,74,110,0.4)' }}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
             >
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(255,255,255,0.05)', 'transparent']}
+                colors={['rgba(255,255,255,0.08)', 'transparent']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }} />
-                <Ionicons name="stop" size={15} color="#FFF" />
-                <Text style={[s.endTxt, { color: '#FFF' }]}>END</Text>
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
+                <Ionicons name="stop-outline" size={18} color="#FFF" />
+                <Text style={[s.endTxt, { color: '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>END</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* ── EXTERNAL NADA SOUND CONTROLS (Catchy & Premium) ── */}
+        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 20 }}>
+          {!playingId ? (
+            <TouchableOpacity 
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsSoundModalVisible(true); }}
+              activeOpacity={0.8}
+            >
+              <View style={{ overflow: 'hidden', borderRadius: 99 }}>
+                <LinearGradient
+                  colors={['rgba(139,92,246,0.35)', 'rgba(56,189,248,0.2)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    paddingHorizontal: 24, paddingVertical: 12,
+                    borderRadius: 99,
+                    borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
+                  }}
+                >
+                  <Ionicons name="headset-outline" size={18} color="#e9d5ff" />
+                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Listen Naad Sound</Text>
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ 
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+              backgroundColor: 'rgba(8,47,73,0.4)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)', 
+              paddingHorizontal: 16, paddingVertical: 10, borderRadius: 99, 
+              overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5 
+            }}>
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+              
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Ionicons name="stop" size={16} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
+                style={{ width: 52, height: 52, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 }}
+              >
+                <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFillObject} />
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' }} />
+                <Ionicons name={isPaused ? "play" : "pause"} size={22} color="#FFF" style={isPaused ? { marginLeft: 3 } : {}} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Ionicons name="list" size={16} color="rgba(255,255,255,0.9)" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
       </Animated.View>
