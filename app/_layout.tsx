@@ -186,9 +186,9 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* Small Meditative Geometric Anchor above NADA */}
-        <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ translateY: -140 }, { scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.38} theme="dark" splashMode={true} />
+        {/* Elegant Geometric Fusion behind NADA */}
+        <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" />
         </Animated.View>
 
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}

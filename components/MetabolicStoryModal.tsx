@@ -778,7 +778,7 @@ export default function MetabolicStoryModal({
     <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.screen}>
         {/* Pure black background for OLED screens */}
-        <View style={StyleSheet.absoluteFillObject} backgroundColor="#000000" />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000" }]} />
         
         {/* Subtle top glow based on dosha color */}
         <LinearGradient colors={[accent + '40', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />

@@ -100,8 +100,11 @@ export default function WalkTracker() {
   }, []);
 
   // ── Start GPS subscription ───────────────────────────────────────────────────
+  const isGpsActiveRef = useRef(false);
+
   const startGPS = useCallback(async () => {
-    locationSub.current = await Location.watchPositionAsync(
+    isGpsActiveRef.current = true;
+    const sub = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000, distanceInterval: 5 },
       (loc) => {
         const newPt: LatLng = { lat: loc.coords.latitude, lng: loc.coords.longitude };
@@ -115,9 +118,15 @@ export default function WalkTracker() {
         });
       }
     );
+    if (!isGpsActiveRef.current) {
+      sub.remove();
+    } else {
+      locationSub.current = sub;
+    }
   }, []);
 
   const stopGPS = useCallback(() => {
+    isGpsActiveRef.current = false;
     locationSub.current?.remove();
     locationSub.current = null;
   }, []);

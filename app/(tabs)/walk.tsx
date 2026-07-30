@@ -30,7 +30,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Line, Text as SvgText, G, Path } from 'react-native-svg';
+import Svg, { Circle, Line, Text as SvgText, G, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,7 +76,7 @@ const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SIZE   = 290;
-const RING_STROKE = 24;
+const RING_STROKE = 2; // Ultra thin boundary
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const R_INNER     = R_OUTER - 18; // For weekly intention ring
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -109,39 +109,38 @@ const DEFAULT_STATS: TodayStats = {
 function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
-  // Only 4 major ticks at N/E/S/W
+  // Mandala geometric style ticks (Golden)
   const majorTicks = [0, 90, 180, 270].map((deg) => {
+    const angle = deg * Math.PI / 180;
+    const x1 = cx + 46 * Math.sin(angle);
+    const y1 = cy - 46 * Math.cos(angle);
+    const x2 = cx + 38 * Math.sin(angle);
+    const y2 = cy - 38 * Math.cos(angle);
+    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
+      stroke="#fbbf24" // Golden
+      strokeWidth={2} strokeLinecap="round" />;
+  });
+
+  const minorTicks = [45, 135, 225, 315].map((deg) => {
     const angle = deg * Math.PI / 180;
     const x1 = cx + 46 * Math.sin(angle);
     const y1 = cy - 46 * Math.cos(angle);
     const x2 = cx + 40 * Math.sin(angle);
     const y2 = cy - 40 * Math.cos(angle);
     return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke={deg === 0 ? '#f87171' : 'rgba(255,255,255,0.35)'}
-      strokeWidth={deg === 0 ? 2 : 1.2} strokeLinecap="round" />;
-  });
-
-  // 8 minor ticks at 45° intervals
-  const minorTicks = [45, 135, 225, 315].map((deg) => {
-    const angle = deg * Math.PI / 180;
-    const x1 = cx + 46 * Math.sin(angle);
-    const y1 = cy - 46 * Math.cos(angle);
-    const x2 = cx + 43 * Math.sin(angle);
-    const y2 = cy - 43 * Math.cos(angle);
-    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} strokeLinecap="round" />;
+      stroke="rgba(251,191,36,0.6)" strokeWidth={1} strokeLinecap="round" />; // Golden dim
   });
 
   const cardinals = [
-    { label: 'N', deg: 0,   color: '#f87171', fs: '8' },
-    { label: 'E', deg: 90,  color: 'rgba(255,255,255,0.6)', fs: '5.5' },
-    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.45)', fs: '5.5' },
-    { label: 'W', deg: 270, color: 'rgba(255,255,255,0.6)', fs: '5.5' },
+    { label: 'N', deg: 0,   color: '#fbbf24', fs: '8' },
+    { label: 'E', deg: 90,  color: 'rgba(251,191,36,0.8)', fs: '5.5' },
+    { label: 'S', deg: 180, color: 'rgba(251,191,36,0.8)', fs: '5.5' },
+    { label: 'W', deg: 270, color: 'rgba(251,191,36,0.8)', fs: '5.5' },
   ];
   const cardinalEls = cardinals.map(({ label, deg: d, color, fs }) => {
     const rad = d * Math.PI / 180;
-    const x = cx + 33 * Math.sin(rad);
-    const y = cy - 33 * Math.cos(rad);
+    const x = cx + 29 * Math.sin(rad);
+    const y = cy - 29 * Math.cos(rad);
     return (
       <SvgText key={label} x={x} y={y} fill={color} fontSize={fs}
         fontWeight="800" textAnchor="middle" alignmentBaseline="middle">
@@ -152,33 +151,49 @@ function CompassRose({ size, heading }: { size: number; heading: Animated.Value 
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Rotating compass dial */}
+      {/* Heavy Golden Glow Aura */}
+      <View style={{ position: 'absolute', width: size * 0.8, height: size * 0.8, borderRadius: size, backgroundColor: '#fbbf24', opacity: 0.15, shadowColor: '#fbbf24', shadowOpacity: 1, shadowRadius: 30 }} />
+      
+      {/* Rotating geometric mandala dial */}
       <Animated.View style={{
         position: 'absolute',
         transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }],
         width: size, height: size,
       }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Minimal outer ring */}
-          <Circle cx={cx} cy={cy} r={48} fill="rgba(3,8,20,0.85)" />
-          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
-          {/* Inner clean circle */}
-          <Circle cx={cx} cy={cy} r={26} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.5} strokeDasharray="2 5" />
+          <Defs>
+            <RadialGradient id="goldGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#fbbf24" stopOpacity="0.2" />
+              <Stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          {/* Geometric inner structure */}
+          <Circle cx={cx} cy={cy} r={48} fill="url(#goldGlow)" />
+          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(251,191,36,0.3)" strokeWidth={1} strokeDasharray="4 4" />
+          <Circle cx={cx} cy={cy} r={22} fill="none" stroke="rgba(251,191,36,0.2)" strokeWidth={0.5} strokeDasharray="2 4" />
+          
+          <Path d={`M${cx} ${cy-48} L${cx+8} ${cy-22} L${cx} ${cy-16} L${cx-8} ${cy-22} Z`} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={0.5} />
+          <Path d={`M${cx} ${cy+48} L${cx+8} ${cy+22} L${cx} ${cy+16} L${cx-8} ${cy+22} Z`} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={0.5} />
+          <Path d={`M${cx+48} ${cy} L${cx+22} ${cy-8} L${cx+16} ${cy} L${cx+22} ${cy+8} Z`} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={0.5} />
+          <Path d={`M${cx-48} ${cy} L${cx-22} ${cy-8} L${cx-16} ${cy} L${cx-22} ${cy+8} Z`} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={0.5} />
+
           {majorTicks}
           {minorTicks}
           {cardinalEls}
-          {/* North needle tip */}
-          <Path d={`M${cx} ${cy-23} L${cx-3} ${cy+4} L${cx+3} ${cy+4} Z`} fill="rgba(248,113,113,0.75)" />
-          {/* South needle */}
-          <Path d={`M${cx} ${cy+23} L${cx-3} ${cy-4} L${cx+3} ${cy-4} Z`} fill="rgba(255,255,255,0.18)" />
-          {/* Center dot */}
-          <Circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.7)" />
+          
+          {/* North golden pointer tip */}
+          <Path d={`M${cx} ${cy-20} L${cx-4} ${cy} L${cx+4} ${cy} Z`} fill="rgba(251,191,36,0.85)" />
+          {/* South pointer tip */}
+          <Path d={`M${cx} ${cy+20} L${cx-4} ${cy} L${cx+4} ${cy} Z`} fill="rgba(251,191,36,0.3)" />
+          {/* Center core */}
+          <Circle cx={cx} cy={cy} r={3} fill="#fbbf24" />
         </Svg>
       </Animated.View>
+
       {/* Fixed N indicator triangle at top */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Path d={`M${cx} ${cy-47} L${cx-2} ${cy-43} L${cx+2} ${cy-43} Z`} fill="rgba(248,113,113,0.95)" />
+          <Path d={`M${cx} ${cy-49} L${cx-2.5} ${cy-45} L${cx+2.5} ${cy-45} Z`} fill="#fbbf24" />
         </Svg>
       </View>
     </View>
@@ -588,8 +603,8 @@ export default function WalkTab() {
     // pulseAnim uses JS driver to stay consistent with all other JS-driver props on the same views
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.02, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1.01, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
       ])
     ).start();
 
@@ -1093,7 +1108,7 @@ export default function WalkTab() {
                       StyleSheet.absoluteFillObject,
                       { alignItems: 'center', justifyContent: 'center', opacity: 0.7 },
                     ]}>
-                      <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} />
+                      <CompassRose size={RING_SIZE - RING_STROKE - 10} heading={compassAnim} />
                     </View>
                   )}
 

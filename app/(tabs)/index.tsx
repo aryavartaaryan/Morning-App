@@ -2547,18 +2547,18 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
 
   return (
     <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={{ flex: 1, backgroundColor: '#05050E' }}>
         {/* Color glow background */}
         <LinearGradient
-          colors={[card.color + '40', '#000000', '#000000']}
+          colors={[card.color + '38', '#05050E', '#05050E']}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.52 }}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: card.color + 'A0' }} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: card.color + '90' }} />
 
         {/* Segmented progress bar */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 56, gap: 4 }}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 56, gap: 3 }}>
           {cards.map((_, i) => (
             <View key={i} style={{
               flex: 1, height: 3, borderRadius: 2,
@@ -5782,12 +5782,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           </Svg>
 
           {/* ── Sacred Geometric Yantra Animation — transitions between sacred geometries ── */}
-          {(() => {
-             const [r, g, b] = hexToRgb(accentHex);
-             const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-             const geoTheme = luminance > 0.55 ? 'light' : 'dark';
-             return <HeroGeometricAnimation size={HERO_RS} theme={geoTheme} />;
-          })()}
+          <HeroGeometricAnimation size={HERO_RS} theme={nightMode ? 'dark' : 'light'} />
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
@@ -6862,7 +6857,7 @@ function DailyTab() {
 
   // Live clock tick
   useEffect(() => {
-    const t = setInterval(() => setLiveClock(new Date()), 1000);
+    const t = setInterval(() => setLiveClock(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
 

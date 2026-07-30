@@ -2,7 +2,7 @@ import type { PlayableSoundMeta } from './soundPlayerContext';
 
 export const SOUND_IMAGES: Record<string, string> = {
   // ── Rain ──────────────────────────────────────────────────────────────────
-  light_rain:    'https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=600&q=85&auto=format&fit=crop',
+  light_rain:    'https://images.pexels.com/photos/125510/pexels-photo-125510.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   heavy_rain:    'https://images.pexels.com/photos/20894424/pexels-photo-20894424.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   rain_thunder:  'https://images.pexels.com/photos/10901515/pexels-photo-10901515.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   jungle_rain:   'https://images.pexels.com/photos/11924697/pexels-photo-11924697.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
@@ -10,14 +10,14 @@ export const SOUND_IMAGES: Record<string, string> = {
   // ── Ocean ─────────────────────────────────────────────────────────────────
   sea_waves:     'https://images.pexels.com/photos/28760386/pexels-photo-28760386.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   rocky_shore:   'https://images.pexels.com/photos/11670563/pexels-photo-11670563.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  harbor_waves:  'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=600&q=85&auto=format&fit=crop',
+  harbor_waves:  'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   flowing_water: 'https://images.pexels.com/photos/10476320/pexels-photo-10476320.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   // ── Nature ────────────────────────────────────────────────────────────────
   forest_breeze: 'https://images.pexels.com/photos/36171724/pexels-photo-36171724.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   night_forest:  'https://images.pexels.com/photos/19374781/pexels-photo-19374781.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  gentle_wind:   'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=600&q=85&auto=format&fit=crop',
+  gentle_wind:   'https://images.pexels.com/photos/414171/pexels-photo-414171.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   city_night:    'https://images.pexels.com/photos/29236441/pexels-photo-29236441.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  campfire:      'https://images.unsplash.com/photo-1504851149312-7a075b496cc7?w=600&q=85&auto=format&fit=crop',
+  campfire:      'https://images.pexels.com/photos/1687845/pexels-photo-1687845.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   morning_birds: 'https://images.pexels.com/photos/5969492/pexels-photo-5969492.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   spring_birds:  'https://images.pexels.com/photos/31854489/pexels-photo-31854489.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   wanderlust:    'https://images.pexels.com/photos/16004934/pexels-photo-16004934.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
@@ -99,7 +99,7 @@ export const SOUND_IMAGES: Record<string, string> = {
   // ── NADA remote sounds — Sitar ────────────────────────────────────────────
   naad_aar_sitar_classical:    'https://images.pexels.com/photos/5463048/pexels-photo-5463048.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_aar_sitar_flute:        'https://images.pexels.com/photos/16745044/pexels-photo-16745044.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  naad_golden_sitar_432:       'https://images.unsplash.com/photo-1536001716591-f2da0ce56f1e?w=600&q=85&auto=format&fit=crop',
+  naad_golden_sitar_432:       'https://images.pexels.com/photos/16745044/pexels-photo-16745044.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_sitar_vibes_i:          'https://images.pexels.com/photos/38003711/pexels-photo-38003711.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_sitar_vibes_ii:         'https://images.pexels.com/photos/11201251/pexels-photo-11201251.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_sitar_flute_tabla_soft: 'https://images.pexels.com/photos/30945224/pexels-photo-30945224.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
@@ -118,7 +118,7 @@ export const SOUND_IMAGES: Record<string, string> = {
   naad_sitar_raga_jog:         'https://images.pexels.com/photos/355296/pexels-photo-355296.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_sitar_type_beat:        'https://images.pexels.com/photos/11053538/pexels-photo-11053538.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   // ── NADA remote sounds — Flute ────────────────────────────────────────────
-  naad_flute_infinite_sky:     'https://images.unsplash.com/photo-1465439070069-2e6ccb3d36a2?w=600&q=85&auto=format&fit=crop',
+  naad_flute_infinite_sky:     'https://images.pexels.com/photos/531756/pexels-photo-531756.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_whispering_bamboo:      'https://images.pexels.com/photos/1624438/pexels-photo-1624438.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_zen_bamboo_flow:        'https://images.pexels.com/photos/27554037/pexels-photo-27554037.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_zen_bamboo_flow_sleep:  'https://images.pexels.com/photos/27554037/pexels-photo-27554037.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
@@ -135,10 +135,10 @@ export const SOUND_IMAGES: Record<string, string> = {
   naad_himalayan_village_flute_sleep:'https://images.pexels.com/photos/14810188/pexels-photo-14810188.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_relaxing_flute:         'https://images.pexels.com/photos/7831626/pexels-photo-7831626.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_relaxing_flute_sleep:         'https://images.pexels.com/photos/7831626/pexels-photo-7831626.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  naad_wind_mountain_raga:     'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=85&auto=format&fit=crop',
+  naad_wind_mountain_raga:     'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_pure_flute_melody:      'https://images.pexels.com/photos/775201/pexels-photo-775201.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_emotional_flute:        'https://images.pexels.com/photos/1486974/pexels-photo-1486974.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
-  naad_flute_rain_ambiance:    'https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=600&q=85&auto=format&fit=crop',
+  naad_flute_rain_ambiance:    'https://images.pexels.com/photos/7002970/pexels-photo-7002970.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   // ── NADA remote sounds — Tabla ────────────────────────────────────────────
   naad_tabla_110:              'https://images.pexels.com/photos/32749973/pexels-photo-32749973.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',
   naad_tabla_flute_i:          'https://images.pexels.com/photos/30647804/pexels-photo-30647804.jpeg?auto=compress&cs=tinysrgb&w=600&q=85',

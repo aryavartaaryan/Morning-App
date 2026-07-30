@@ -1,12 +1,13 @@
 /**
- * OrbitPulseGame.tsx — "Orbital Jump" Hyper-Casual Survival
+ * OrbitPulseGame.tsx — "Momentum Flow" 2D Physics Game
  * ─────────────────────────────────────────────────────────────────
+ * Ultra-rich graphics, 60FPS high-performance physics loop.
+ * 
  * Rules:
- *  - Player controls a glowing orb fixed at the bottom (6 o'clock).
- *  - Tap ANYWHERE to jump between the 3 concentric rings (Inner -> Mid -> Outer -> Mid ...).
- *  - Dark Energy blocks spawn on the rings and rotate towards the player.
- *  - Dodge the blocks! Score increases the longer you survive.
- *  - Extremely rich visuals: heavy glows, particle trails, dynamic backgrounds.
+ *  - Press and hold the screen to DIVE (gain momentum downhill).
+ *  - Release to launch into the sky.
+ *  - Perfect landings trigger the Om chant and massive speed boosts.
+ *  - Deep parallax mandala background and glowing synth-style hills.
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,7 @@ import {
   View, Text, Modal, StyleSheet, TouchableOpacity,
   Animated, Easing, Dimensions, Platform
 } from 'react-native';
-import Svg, { Circle, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Path, G, Defs, RadialGradient, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -24,27 +25,34 @@ import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: W, height: H } = Dimensions.get('window');
+const PLAYER_X = W * 0.35; // Player is fixed at 35% of the screen width
 const CX = W / 2;
 const CY = H / 2;
-
-// ── Configuration ────────────────────────────────────────────────────────────
-const RINGS = [80, 140, 200]; // Radii of the 3 rings
-const ORB_SIZE = 24;
-const OBSTACLE_SIZE = 28;
 
 const OM_HIT_URL = 'https://audio.onesutralabs.com/om.mp3';
 const TANPURA_SOUND_ID = 'cdn_new_8';
 
-type Obstacle = {
-  id: number;
-  ringIdx: number;
-  angle: number; // 0 to 360 (player is at 0)
-  active: boolean;
-};
+// ── Terrain Math ────────────────────────────────────────────────────────────
+function getTerrainY(x: number) {
+  // A complex sum of sine waves to create beautiful rolling hills
+  const scale = 1.0; // increase for steeper hills
+  const y1 = Math.sin(x / 400) * 180 * scale;
+  const y2 = Math.sin(x / 200) * 70 * scale;
+  const y3 = Math.sin(x / 800) * 300 * scale;
+  return y1 + y2 + y3 + 600; // Base height is 600
+}
 
-// ── Static Rich Mandala Background ───────────────────────────────────────────
-const MandalaBg = React.memo(({ rotation }: { rotation: Animated.Value }) => {
-  const L = 400; // SVG canvas size
+function getTerrainSlopeAndAngle(x: number) {
+  const dx = 1;
+  const dy = getTerrainY(x + dx) - getTerrainY(x - dx);
+  const slope = dy / (dx * 2);
+  const angle = Math.atan(slope);
+  return { slope, angle };
+}
+
+// ── Static Mandala Background (Parallax) ────────────────────────────────────
+const MandalaParallax = React.memo(({ rotation }: { rotation: Animated.Value }) => {
+  const L = 600;
   const c = L / 2;
   const petals = (n: number, r: number, color: string, opacity: number) => {
     const els = [];
@@ -52,11 +60,7 @@ const MandalaBg = React.memo(({ rotation }: { rotation: Animated.Value }) => {
       const a = (i * 360) / n;
       els.push(
         <G key={i} rotation={a} origin={`${c},${c}`}>
-          <Path
-            d={`M${c} ${c - r * 0.3} Q${c + r * 0.55} ${c - r * 0.85} ${c} ${c - r} Q${c - r * 0.55} ${c - r * 0.85} ${c} ${c - r * 0.3} Z`}
-            fill={color}
-            opacity={opacity}
-          />
+          <Path d={`M${c} ${c - r * 0.3} Q${c + r * 0.55} ${c - r * 0.85} ${c} ${c - r} Q${c - r * 0.55} ${c - r * 0.85} ${c} ${c - r * 0.3} Z`} fill={color} opacity={opacity} />
         </G>
       );
     }
@@ -64,58 +68,33 @@ const MandalaBg = React.memo(({ rotation }: { rotation: Animated.Value }) => {
   };
 
   const spin = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spinRev = rotation.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
 
   return (
-    <Animated.View pointerEvents="none" style={{ position: 'absolute', top: CY - L/2, left: CX - L/2, width: L, height: L, transform: [{ rotate: spin }] }}>
-      <Svg width={L} height={L} viewBox={`0 0 ${L} ${L}`}>
-        <Defs>
-          <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#c084fc" stopOpacity="0.15" />
-            <Stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx={c} cy={c} r={c} fill="url(#glow)" />
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {/* Deep Space Background */}
+      <LinearGradient colors={['#030014', '#0f0524', '#1f0d3d']} style={StyleSheet.absoluteFillObject} />
+      
+      {/* Sun / Core */}
+      <View style={{ position: 'absolute', top: H * 0.3, left: CX - 100, width: 200, height: 200, borderRadius: 100, backgroundColor: '#c084fc', opacity: 0.1, shadowColor: '#c084fc', shadowOpacity: 1, shadowRadius: 100 }} />
 
-        {/* 3 Main Rings matching gameplay */}
-        {RINGS.map((r, i) => (
-          <Circle key={`rg-${i}`} cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeDasharray="4 8" />
-        ))}
+      {/* Massive rotating mandala 1 */}
+      <Animated.View style={{ position: 'absolute', top: H * 0.1, left: CX - L/2, width: L, height: L, transform: [{ rotate: spin }] }}>
+        <Svg width={L} height={L} viewBox={`0 0 ${L} ${L}`}>
+          {petals(12, 200, '#60a5fa', 0.08)}
+          {petals(24, 280, '#c084fc', 0.05)}
+        </Svg>
+      </Animated.View>
 
-        {petals(12, 100, '#60a5fa', 0.1)}
-        {petals(24, 180, '#c084fc', 0.1)}
-        
-        {/* Core star */}
-        <Path d={`M${c} ${c - 28} L${c + 24} ${c + 14} L${c - 24} ${c + 14} Z`} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-        <Path d={`M${c} ${c + 28} L${c + 24} ${c - 14} L${c - 24} ${c - 14} Z`} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-      </Svg>
-    </Animated.View>
+      {/* Massive rotating mandala 2 (reverse) */}
+      <Animated.View style={{ position: 'absolute', top: H * 0.2, left: -100, width: L, height: L, transform: [{ rotate: spinRev }] }}>
+        <Svg width={L} height={L} viewBox={`0 0 ${L} ${L}`}>
+          {petals(16, 250, '#38bdf8', 0.06)}
+        </Svg>
+      </Animated.View>
+    </View>
   );
 });
-
-// ── Glowing Player Orb with Trail ────────────────────────────────────────────
-function PlayerOrb({ radiusAnim, jumpScale }: { radiusAnim: Animated.Value, jumpScale: Animated.Value }) {
-  const ty = radiusAnim; // Player is always at bottom, so translate Y by radius
-
-  return (
-    <Animated.View style={{
-      position: 'absolute',
-      left: CX - ORB_SIZE/2,
-      top: CY - ORB_SIZE/2,
-      width: ORB_SIZE, height: ORB_SIZE,
-      transform: [
-        { translateY: ty },
-        { scale: jumpScale }
-      ],
-      alignItems: 'center', justifyContent: 'center'
-    }}>
-      {/* Heavy rich glow */}
-      <View style={{ position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: '#38bdf8', opacity: 0.35 }} />
-      <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: '#38bdf8', opacity: 0.6 }} />
-      {/* Solid core */}
-      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 10 }} />
-    </Animated.View>
-  );
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Main Game Component
@@ -129,30 +108,37 @@ export default function OrbitPulseGame({
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [isPlaying, setIsPlaying] = useState(false);
-  const [gameOver, setGameOver]   = useState(false);
   const [score, setScore]         = useState(0);
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [maxCombo, setMaxCombo]   = useState(1);
+  const [showTutorial, setShowTutorial] = useState(true);
   
-  const playerRingRef = useRef(0); // 0=Inner, 1=Mid, 2=Outer
-  const jumpDirRef    = useRef(1); // 1 = going outwards, -1 = going inwards
-  const obsIdRef      = useRef(0);
-  const scoreRef      = useRef(0);
-  const reqRef        = useRef<number>(0);
-  const lastTimeRef   = useRef<number>(0);
-
-  // Difficulty settings
-  const speedRef = useRef(120); // Degrees per second
-  const spawnRateRef = useRef(1500); // ms between spawns
-  const lastSpawnRef = useRef<number>(0);
-
-  // Animated Values
-  const playerRadiusAnim = useRef(new Animated.Value(RINGS[0])).current;
-  const playerJumpScale  = useRef(new Animated.Value(1)).current;
-  const bgRotation       = useRef(new Animated.Value(0)).current;
-  const screenShakeX     = useRef(new Animated.Value(0)).current;
-  const screenShakeY     = useRef(new Animated.Value(0)).current;
+  // Refs for ultra-fast native manipulation (bypassing React state for 60FPS)
+  const terrainPathRef = useRef<any>(null);
+  const playerRef = useRef<any>(null);
+  const cameraWrapperRef = useRef<any>(null);
+  const trailContainerRef = useRef<any>(null);
   
-  const omSoundRef       = useRef<Audio.Sound | null>(null);
+  const scoreRef = useRef(0);
+  const reqRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+
+  // Physics State
+  const p = useRef({
+    x: 0,
+    y: 100,
+    vx: 300,
+    vy: 0,
+    isGrounded: false,
+    cameraY: 0
+  }).current;
+
+  const inputRef = useRef({ isPressing: false });
+  const bgRotation = useRef(new Animated.Value(0)).current;
+  const screenFlash = useRef(new Animated.Value(0)).current;
+  const screenShake = useRef(new Animated.Value(0)).current;
+  const speedLinesOp = useRef(new Animated.Value(0)).current;
+  
+  const omSoundRef = useRef<Audio.Sound | null>(null);
 
   // ── Audio ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -177,72 +163,159 @@ export default function OrbitPulseGame({
     return () => { stopSound(); setGlobalVolume(1); };
   }, [visible]);
 
-  // ── Game Loop (Collision & Movement) ───────────────────────────────────────
+  // ── Visual FX ──────────────────────────────────────────────────────────────
+  const triggerPerfectLanding = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    omSoundRef.current?.setPositionAsync(0);
+    omSoundRef.current?.playAsync();
+    
+    // Intense visual flash and shake
+    Animated.sequence([
+      Animated.timing(screenFlash, { toValue: 0.4, duration: 50, useNativeDriver: true }),
+      Animated.timing(screenFlash, { toValue: 0, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.timing(screenShake, { toValue: 12, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShake, { toValue: -12, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShake, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShake, { toValue: -8, duration: 40, useNativeDriver: true }),
+      Animated.timing(screenShake, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+    
+    setMaxCombo(c => c + 1);
+  }, []);
+
+  const triggerCrash = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMaxCombo(1);
+    // Subtle red flash
+    Animated.sequence([
+      Animated.timing(screenFlash, { toValue: 0.2, duration: 50, useNativeDriver: true }),
+      Animated.timing(screenFlash, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // ── Physics Engine & Game Loop ──────────────────────────────────────────────
   const gameLoop = useCallback((time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
-    const dt = (time - lastTimeRef.current) / 1000; // seconds
+    const dt = Math.min((time - lastTimeRef.current) / 1000, 0.05); // cap dt to prevent huge jumps
     lastTimeRef.current = time;
 
-    if (!isPlaying || gameOver) {
+    if (!isPlaying) {
       reqRef.current = requestAnimationFrame(gameLoop);
       return;
     }
 
-    // 1. Update Score
-    scoreRef.current += dt * 100;
-    setScore(Math.floor(scoreRef.current));
+    const GRAVITY = 1500;
+    const DIVE_GRAVITY = 5000;
+    const BASE_SPEED = 350;
+    const MAX_SPEED = 2200;
+    const DRAG = 0.99; // Air resistance
+    const FRICTION = 0.995; // Ground friction
 
-    // 2. Increase Difficulty over time
-    speedRef.current = 120 + (scoreRef.current * 0.05); // Speed increases
-    spawnRateRef.current = Math.max(600, 1500 - (scoreRef.current * 0.3));
-
-    // 3. Spawn Obstacles
-    if (time - lastSpawnRef.current > spawnRateRef.current) {
-      lastSpawnRef.current = time;
-      const newObs: Obstacle = {
-        id: obsIdRef.current++,
-        ringIdx: Math.floor(Math.random() * 3), // Random ring 0,1,2
-        angle: 180, // Spawns at top
-        active: true,
-      };
-      setObstacles(prev => [...prev, newObs]);
+    // 1. Apply Forces
+    if (inputRef.current.isPressing) {
+      p.vy += DIVE_GRAVITY * dt;
+    } else {
+      p.vy += GRAVITY * dt;
     }
 
-    // 4. Move Obstacles & Check Collision
-    let collisionDetected = false;
-    setObstacles(prev => {
-      const pRing = playerRingRef.current;
-      const nextObs: Obstacle[] = [];
-      
-      for (let i = 0; i < prev.length; i++) {
-        let obs = prev[i];
-        if (!obs.active) continue;
+    // Horizontal speed slowly naturally decays to base speed if in air or just rolling
+    if (p.vx > BASE_SPEED) {
+      p.vx = p.vx * (p.isGrounded ? FRICTION : DRAG) - (20 * dt);
+      if (p.vx < BASE_SPEED) p.vx = BASE_SPEED;
+    } else if (p.vx < BASE_SPEED) {
+      p.vx += 300 * dt; // recover speed
+    }
 
-        // Move obstacle (it travels from 180 down to 0/360)
-        // Let's have it move positively: 180 -> 360 (which is 0)
-        obs.angle += speedRef.current * dt;
+    // 2. Move Player
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
 
-        // Collision logic
-        // Player is fixed at angle 360 (or 0)
-        // Hit box: if angle is between 350 and 370 (±10 degrees) and same ring
-        if (obs.ringIdx === pRing && obs.angle >= 350 && obs.angle <= 370) {
-          collisionDetected = true;
-        }
+    // 3. Collision Detection with Terrain
+    const groundY = getTerrainY(p.x);
+    const { slope, angle } = getTerrainSlopeAndAngle(p.x);
 
-        // If it passes 380, remove it
-        if (obs.angle < 380) {
-          nextObs.push(obs);
+    if (p.y >= groundY) {
+      // We hit the ground
+      if (!p.isGrounded) {
+        // Landing event
+        // Calculate impact angle difference
+        const velocityAngle = Math.atan2(p.vy, p.vx);
+        const impactDiff = Math.abs(velocityAngle - angle);
+        
+        // If the ground is sloping down, and we dive perfectly into it
+        if (slope > 0 && impactDiff < 0.6 && inputRef.current.isPressing && p.vy > 400) {
+          // PERFECT LANDING! Massive speed boost.
+          p.vx = Math.min(p.vx + p.vy * 0.8, MAX_SPEED);
+          triggerPerfectLanding();
+        } else if (slope < -0.2 && p.vy > 300) {
+          // CRASH (Smashing into a hill upwards)
+          p.vx = BASE_SPEED * 0.5; // Kill speed
+          triggerCrash();
         }
       }
-      return nextObs;
+
+      p.isGrounded = true;
+      p.y = groundY;
+      
+      // Calculate velocity vector along the slope
+      const vMag = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      p.vx = vMag * Math.cos(angle);
+      p.vy = vMag * Math.sin(angle);
+
+      // If pressing while on ground going downhill, accelerate massively
+      if (inputRef.current.isPressing && slope > 0) {
+        p.vx += 1500 * Math.sin(angle) * dt;
+        p.vx = Math.min(p.vx, MAX_SPEED);
+      }
+      
+      // If NOT pressing while going uphill, launch into the air naturally
+      if (!inputRef.current.isPressing && slope < 0) {
+        p.isGrounded = false; 
+      }
+    } else {
+      p.isGrounded = false;
+    }
+
+    // Update score
+    scoreRef.current += (p.vx * dt) / 10;
+    if (Math.floor(scoreRef.current) % 10 === 0) {
+      setScore(Math.floor(scoreRef.current));
+    }
+
+    // Speed lines opacity based on speed
+    const speedRatio = Math.max(0, (p.vx - 800) / (MAX_SPEED - 800));
+    speedLinesOp.setValue(speedRatio);
+
+    // 4. Render Updates via Native Props (Insanely fast, no React renders)
+    // Build the SVG path string for the visible screen width
+    const points = [];
+    const step = 20; // resolution of terrain curve
+    for (let lx = 0; lx <= W + 100; lx += step) {
+      const worldX = p.x - PLAYER_X + lx;
+      points.push(`${lx},${getTerrainY(worldX)}`);
+    }
+    const d = `M0,${H * 2} L0,${getTerrainY(p.x - PLAYER_X)} L${points.join(' L')} L${W + 100},${H * 2} Z`;
+    
+    terrainPathRef.current?.setNativeProps({ d });
+
+    // Smooth Camera Tracking
+    // We want the player to stay roughly in the lower-middle of the screen.
+    const targetCameraY = p.y - H * 0.6;
+    p.cameraY += (targetCameraY - p.cameraY) * 0.1; // Smooth interpolation
+
+    cameraWrapperRef.current?.setNativeProps({
+      style: { transform: [{ translateY: -p.cameraY }] }
     });
 
-    if (collisionDetected) {
-      triggerGameOver();
-    } else {
-      reqRef.current = requestAnimationFrame(gameLoop);
-    }
-  }, [isPlaying, gameOver]);
+    playerRef.current?.setNativeProps({
+      style: { transform: [{ translateY: p.y }] }
+    });
+
+    reqRef.current = requestAnimationFrame(gameLoop);
+  }, [isPlaying, triggerPerfectLanding, triggerCrash]);
 
   useEffect(() => {
     reqRef.current = requestAnimationFrame(gameLoop);
@@ -251,79 +324,29 @@ export default function OrbitPulseGame({
 
   // ── Background continuous rotation ──
   useEffect(() => {
-    if (visible && !gameOver) {
-      Animated.loop(Animated.timing(bgRotation, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })).start();
-    } else {
-      bgRotation.stopAnimation();
+    if (visible) {
+      Animated.loop(Animated.timing(bgRotation, { toValue: 1, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
     }
-  }, [visible, gameOver]);
+  }, [visible]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  const triggerGameOver = () => {
-    setGameOver(true);
-    setIsPlaying(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    bgRotation.stopAnimation();
-    omSoundRef.current?.playAsync();
-
-    // Intense screen shake
-    Animated.sequence([
-      Animated.timing(screenShakeX, { toValue: 15, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShakeX, { toValue: -15, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShakeX, { toValue: 10, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShakeX, { toValue: -10, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShakeX, { toValue: 0, duration: 40, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleTap = () => {
-    if (gameOver) return;
-    if (!isPlaying) {
+  // ── Input Handling ─────────────────────────────────────────────────────────
+  const handlePressIn = () => {
+    if (showTutorial) {
+      setShowTutorial(false);
       setIsPlaying(true);
-      lastSpawnRef.current = performance.now();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      return;
+      lastTimeRef.current = performance.now();
     }
-
-    // Jump logic: ping-pong between 0, 1, 2
-    let nextRing = playerRingRef.current + jumpDirRef.current;
-    if (nextRing > 2) {
-      nextRing = 1;
-      jumpDirRef.current = -1;
-    } else if (nextRing < 0) {
-      nextRing = 1;
-      jumpDirRef.current = 1;
-    }
-    
-    playerRingRef.current = nextRing;
+    inputRef.current.isPressing = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Animate jump radius & squeeze
-    Animated.parallel([
-      Animated.spring(playerRadiusAnim, {
-        toValue: RINGS[nextRing],
-        useNativeDriver: true,
-        tension: 80, friction: 8
-      }),
-      Animated.sequence([
-        Animated.timing(playerJumpScale, { toValue: 1.4, duration: 100, useNativeDriver: true }),
-        Animated.timing(playerJumpScale, { toValue: 1.0, duration: 150, useNativeDriver: true }),
-      ])
-    ]).start();
+    
+    // Squeeze animation
+    playerRef.current?.setNativeProps({ style: { transform: [{ translateY: p.y }, { scaleX: 1.2 }, { scaleY: 0.8 }] } });
   };
 
-  const restartGame = () => {
-    setGameOver(false);
-    setScore(0);
-    scoreRef.current = 0;
-    setObstacles([]);
-    playerRingRef.current = 0;
-    jumpDirRef.current = 1;
-    playerRadiusAnim.setValue(RINGS[0]);
-    speedRef.current = 120;
-    spawnRateRef.current = 1500;
-    lastTimeRef.current = 0;
-    // Don't auto start, wait for tap
+  const handlePressOut = () => {
+    inputRef.current.isPressing = false;
+    // Release animation
+    playerRef.current?.setNativeProps({ style: { transform: [{ translateY: p.y }, { scaleX: 0.9 }, { scaleY: 1.1 }] } });
   };
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -331,100 +354,94 @@ export default function OrbitPulseGame({
   // ──────────────────────────────────────────────────────────────────────────
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent transparent onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={handleTap} style={s.root}>
-        
-        <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: screenShakeX }, { translateY: screenShakeY }] }]}>
-          {/* Deep Rich Background */}
-          <LinearGradient colors={['#030014', '#0A0022', '#000000']} style={StyleSheet.absoluteFillObject} />
-          <LinearGradient colors={['rgba(56,189,248,0.1)', 'transparent']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: H * 0.4 }} />
+      <TouchableOpacity 
+        activeOpacity={1} 
+        onPressIn={handlePressIn} 
+        onPressOut={handlePressOut}
+        style={s.root}
+      >
+        <MandalaParallax rotation={bgRotation} />
 
-          {/* Background Mandala */}
-          <MandalaBg rotation={bgRotation} />
+        {/* Screen Flash (Red for crash, White for perfect) */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFF', opacity: screenFlash, zIndex: 10 }]} />
 
-          {/* Obstacles rendering */}
-          {obstacles.map(obs => {
-            const rad = RINGS[obs.ringIdx];
-            // Obstacle angle from center
-            // Convert angle to radians. Offset by -90 so 180 is top, 360 is bottom.
-            const angleRad = (obs.angle - 270) * (Math.PI / 180);
-            const ox = CX + rad * Math.cos(angleRad);
-            const oy = CY + rad * Math.sin(angleRad);
-
-            return (
-              <View key={obs.id} pointerEvents="none" style={{
-                position: 'absolute',
-                left: ox - OBSTACLE_SIZE/2,
-                top: oy - OBSTACLE_SIZE/2,
-                width: OBSTACLE_SIZE, height: OBSTACLE_SIZE,
-                alignItems: 'center', justifyContent: 'center',
-                transform: [{ rotate: `${obs.angle}deg` }] // Point towards center
-              }}>
-                {/* Aggressive Red/Pink Glow */}
-                <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 10, backgroundColor: '#ef4444', opacity: 0.4 }} />
-                {/* Sharp crystal shape */}
-                <View style={{ width: 18, height: 18, backgroundColor: '#f43f5e', transform: [{ rotate: '45deg' }], shadowColor: '#f43f5e', shadowOpacity: 1, shadowRadius: 10 }} />
-              </View>
-            );
-          })}
-
-          {/* Player Orb */}
-          <PlayerOrb radiusAnim={playerRadiusAnim} jumpScale={playerJumpScale} />
-
-          {/* Top HUD */}
-          <View style={s.hudRow} pointerEvents="box-none">
-            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
-
-            <View style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '800', letterSpacing: 2 }}>SCORE</Text>
-              <Text style={{ fontSize: 36, fontWeight: '900', color: '#FFF' }}>{score.toLocaleString()}</Text>
-            </View>
-          </View>
-
-          {/* Start Tutorial / Instructions */}
-          {!isPlaying && !gameOver && (
-            <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center' }} pointerEvents="none">
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', alignItems: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.2, shadowRadius: 20 }}>
-                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
-                <Ionicons name="finger-print-outline" size={32} color="#38bdf8" style={{ marginBottom: 12 }} />
-                <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFF', letterSpacing: 2, marginBottom: 8 }}>HOW TO PLAY</Text>
-                
-                <View style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
-                    1. Tap <Text style={{ color: '#38bdf8', fontWeight: '800' }}>ANYWHERE</Text> to jump.
-                  </Text>
-                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
-                    2. Bounce between the 3 rings.
-                  </Text>
-                  <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
-                    3. Dodge the <Text style={{ color: '#ef4444', fontWeight: '800' }}>RED ENERGY</Text>.
-                  </Text>
-                </View>
-
-                <Animated.View style={{ marginTop: 24, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: 'rgba(56,189,248,0.2)', borderRadius: 99, opacity: Math.sin(Date.now() / 200) > 0 ? 1 : 0.6 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#38bdf8', letterSpacing: 1 }}>TAP TO START JUMPING</Text>
-                </Animated.View>
-              </View>
-            </View>
-          )}
-
+        {/* Speed Lines (Overlay when moving fast) */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { opacity: speedLinesOp, zIndex: 5 }]}>
+          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(56,189,248,0.15)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.2, left: 0, right: 0, height: 2 }} />
+          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(192,132,252,0.15)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.5, left: 0, right: 0, height: 3 }} />
+          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(56,189,248,0.2)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.8, left: 0, right: 0, height: 2 }} />
         </Animated.View>
 
-        {/* Game Over Modal */}
-        {gameOver && (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center' }]}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#f87171', letterSpacing: 3, marginBottom: 10 }}>COLLISION</Text>
-            <Text style={{ fontSize: 56, fontWeight: '900', color: '#FFF', marginBottom: 30 }}>{score.toLocaleString()}</Text>
-            
-            <TouchableOpacity onPress={restartGame} style={{ backgroundColor: '#38bdf8', paddingHorizontal: 36, paddingVertical: 16, borderRadius: 99, marginBottom: 15, shadowColor: '#38bdf8', shadowOpacity: 0.5, shadowRadius: 15 }}>
-              <Text style={{ color: '#000', fontSize: 18, fontWeight: '900', letterSpacing: 1.5 }}>PLAY AGAIN</Text>
-            </TouchableOpacity>
+        {/* ── Camera Wrapper (Moves up and down to follow player) ── */}
+        <Animated.View ref={cameraWrapperRef} style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: screenShake }] }]}>
+          
+          {/* Dynamic Terrain */}
+          <Svg width={W + 100} height={H * 2} style={{ position: 'absolute', top: 0, left: 0 }}>
+            <Defs>
+              <SvgLinearGradient id="hillGradient" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#38bdf8" stopOpacity="0.4" />
+                <Stop offset="0.1" stopColor="#9333ea" stopOpacity="0.8" />
+                <Stop offset="1" stopColor="#030014" stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
+            {/* The Path is updated 60fps via setNativeProps */}
+            <Path ref={terrainPathRef} fill="url(#hillGradient)" stroke="#60a5fa" strokeWidth="4" />
+          </Svg>
 
-            <TouchableOpacity onPress={onClose} style={{ padding: 10 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>RETURN TO WALK</Text>
-            </TouchableOpacity>
+          {/* Player Orb */}
+          <View ref={playerRef} style={{
+            position: 'absolute',
+            left: PLAYER_X - 12,
+            width: 24, height: 24,
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            {/* Massive rich glow */}
+            <View style={{ position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: '#38bdf8', opacity: 0.2 }} />
+            <View style={{ position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: '#c084fc', opacity: 0.6 }} />
+            {/* Solid core */}
+            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 15 }} />
+          </View>
+        </Animated.View>
+
+        {/* ── Top HUD ── */}
+        <View style={s.hudRow} pointerEvents="box-none">
+          <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+            <Ionicons name="close" size={24} color="#FFF" />
+          </TouchableOpacity>
+
+          <View style={{ alignItems: 'center', flex: 1 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '800', letterSpacing: 2 }}>FLOW SCORE</Text>
+            <Text style={{ fontSize: 36, fontWeight: '900', color: '#FFF' }}>{score.toLocaleString()}</Text>
+            {maxCombo > 1 && (
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#f59e0b', marginTop: 4 }}>x{maxCombo} MULTIPLIER</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Tutorial Overlay */}
+        {showTutorial && (
+          <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center' }} pointerEvents="none">
+            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', alignItems: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.2, shadowRadius: 20 }}>
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <Ionicons name="infinite" size={32} color="#38bdf8" style={{ marginBottom: 12 }} />
+              <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFF', letterSpacing: 2, marginBottom: 8 }}>MOMENTUM FLOW</Text>
+              
+              <View style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                  1. <Text style={{ color: '#38bdf8', fontWeight: '800' }}>PRESS & HOLD</Text> to dive downhill and gain speed.
+                </Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                  2. <Text style={{ color: '#c084fc', fontWeight: '800' }}>RELEASE</Text> on uphill slopes to launch into the sky.
+                </Text>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontWeight: '500' }}>
+                  3. Find the perfect rhythm to unlock the Om.
+                </Text>
+              </View>
+
+              <Animated.View style={{ marginTop: 24, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: 'rgba(56,189,248,0.2)', borderRadius: 99 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#38bdf8', letterSpacing: 1 }}>PRESS ANYWHERE TO BEGIN</Text>
+              </Animated.View>
+            </View>
           </View>
         )}
       </TouchableOpacity>
@@ -436,7 +453,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   hudRow: {
     position: 'absolute', top: 50, left: 20, right: 20,
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', zIndex: 100
   },
   closeBtn: {
     width: 44, height: 44,

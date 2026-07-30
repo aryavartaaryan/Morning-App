@@ -69,7 +69,7 @@ const BG = '#070710';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
 const RING_SZ = 260; // Larger for live activity feel to fit everything inside
-const STROKE  = 14;
+const STROKE  = 2; // Ultra thin boundary
 const R       = (RING_SZ - STROKE) / 2;
 const CIRCUM  = 2 * Math.PI * R;
 
@@ -333,7 +333,7 @@ const MemoRing = React.memo(({ RING_SZ, R, STROKE, CIRCUM, pct, progressAnim, pu
           {compassActive && (
             <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
-              <CompassRose size={RING_SZ - STROKE - 20} heading={compassAnim} />
+              <CompassRose size={RING_SZ - STROKE - 8} heading={compassAnim} />
             </View>
           )}
 
@@ -554,8 +554,8 @@ export default function StepSessionScreen() {
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.10, duration: 4500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.01, duration: 8000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 8000, useNativeDriver: true }),
       ])
     ).start();
 
@@ -572,10 +572,11 @@ export default function StepSessionScreen() {
 
     // Feature 7: Sensor-based Compass (True Compass Heading)
     let headingSub: any = null;
+    let isCompassMounted = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
+        if (status === 'granted' && isCompassMounted) {
           headingSub = await Location.watchHeadingAsync((data) => {
             let angle = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
             if (angle < 0) return; // Invalid reading
@@ -597,6 +598,10 @@ export default function StepSessionScreen() {
             
             if (!compassActive) setCompassActive(true);
           });
+          if (!isCompassMounted && headingSub) {
+            headingSub.remove();
+            headingSub = null;
+          }
         }
       } catch (e) {
         console.log("Compass error", e);
@@ -658,6 +663,7 @@ export default function StepSessionScreen() {
     })();
 
     return () => {
+      isCompassMounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
       quoteCycle && clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
@@ -1088,53 +1094,8 @@ export default function StepSessionScreen() {
           </View>
         )}
 
-        {/* ── ACTION BUTTONS — ultra smart frosted glass ─────────────────── */}
-        <View style={[s.btnRow, { marginBottom: 24, paddingHorizontal: 12 }]}>
-          {/* PAUSE button */}
-          <Animated.View style={{ flex: 1, transform: [{ scale: pauseScale }] }}>
-            <TouchableOpacity
-              onPress={toggleSessionPause}
-              activeOpacity={0.82}
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
-            >
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <LinearGradient
-                colors={paused ? ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.08)', 'transparent']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-              >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: paused ? 'rgba(56,189,248,0.6)' : 'rgba(255,255,255,0.2)' }} />
-                <Ionicons name={paused ? 'play-outline' : 'pause-outline'} size={18} color={paused ? '#38bdf8' : '#FFF'} style={paused ? { marginLeft: 2 } : {}} />
-                <Text style={[s.pauseTxt, { color: paused ? '#38bdf8' : '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>
-                  {paused ? 'RESUME' : 'PAUSE'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* END button */}
-          <View style={{ flex: 1 }}>
-            <TouchableOpacity 
-              onPress={promptExit}
-              activeOpacity={0.82}
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
-            >
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <LinearGradient
-                colors={['rgba(255,255,255,0.08)', 'transparent']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-              >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
-                <Ionicons name="stop-outline" size={18} color="#FFF" />
-                <Text style={[s.endTxt, { color: '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>END</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* ── EXTERNAL NADA SOUND CONTROLS (Catchy & Premium) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 20 }}>
+        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 12 }}>
           {!playingId ? (
             <TouchableOpacity 
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsSoundModalVisible(true); }}
@@ -1188,6 +1149,51 @@ export default function StepSessionScreen() {
               </TouchableOpacity>
             </View>
           )}
+        </View>
+
+        {/* ── ACTION BUTTONS — ultra smart frosted glass ─────────────────── */}
+        <View style={[s.btnRow, { marginBottom: 16, paddingHorizontal: 12 }]}>
+          {/* PAUSE button */}
+          <Animated.View style={{ flex: 1, transform: [{ scale: pauseScale }] }}>
+            <TouchableOpacity
+              onPress={toggleSessionPause}
+              activeOpacity={0.82}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
+            >
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <LinearGradient
+                colors={paused ? ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.08)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: paused ? 'rgba(56,189,248,0.6)' : 'rgba(255,255,255,0.2)' }} />
+                <Ionicons name={paused ? 'play-outline' : 'pause-outline'} size={18} color={paused ? '#38bdf8' : '#FFF'} style={paused ? { marginLeft: 2 } : {}} />
+                <Text style={[s.pauseTxt, { color: paused ? '#38bdf8' : '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>
+                  {paused ? 'RESUME' : 'PAUSE'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* END button */}
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity 
+              onPress={promptExit}
+              activeOpacity={0.82}
+              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, backgroundColor: 'rgba(12,74,110,0.3)' }}
+            >
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <LinearGradient
+                colors={['rgba(255,255,255,0.08)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }} />
+                <Ionicons name="stop-outline" size={18} color="#FFF" />
+                <Text style={[s.endTxt, { color: '#FFF', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' }]}>END</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
       </Animated.View>
