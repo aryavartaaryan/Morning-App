@@ -1,184 +1,312 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, Easing } from 'react-native';
-import Svg, { Circle as SvgCircle, Path as SvgPath, G as SvgG } from 'react-native-svg';
+import Svg, {
+  Circle as SvgCircle, Path as SvgPath, G as SvgG,
+  Defs, RadialGradient as SvgRadialGradient, Stop, Ellipse,
+} from 'react-native-svg';
 
-export function sacredDots(cx: number, cy: number, r: number, count: number, offsetAngle = 0) {
-  return Array.from({ length: count }).map((_, i) => {
-    const a = offsetAngle + (i * Math.PI * 2) / count;
+// ── Utility: N points evenly spaced on a circle ──────────────────────────────
+function pts(cx: number, cy: number, r: number, n: number, offset = 0) {
+  return Array.from({ length: n }, (_, i) => {
+    const a = offset + (i * Math.PI * 2) / n;
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   });
 }
+function poly(points: { x: number; y: number }[], close = true) {
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+  return close ? d + ' Z' : d;
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HeroGeometricAnimation
+// 4 extraordinary sacred geometries cross-fade every ~10 seconds.
+// 100% useNativeDriver — zero JS thread load, no setInterval, no setState.
+// ─────────────────────────────────────────────────────────────────────────────
 export function HeroGeometricAnimation({ size }: { size: number }) {
-  const rotAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const breathAnim = useRef(new Animated.Value(0)).current;
-  const phaseAnim = useRef(new Animated.Value(0)).current;
+  const cx = size / 2, cy = size / 2;
+
+  // ── Rotation drivers ──────────────────────────────────────────────────────
+  const rotA = useRef(new Animated.Value(0)).current; // slow forward
+  const rotB = useRef(new Animated.Value(0)).current; // slower reverse
+  const rotC = useRef(new Animated.Value(0)).current; // very slow forward
+
+  // ── Per-shape opacity ─────────────────────────────────────────────────────
+  const op0 = useRef(new Animated.Value(1)).current; // Seed of Life
+  const op1 = useRef(new Animated.Value(0)).current; // Metatron's Cube
+  const op2 = useRef(new Animated.Value(0)).current; // Sri Yantra
+  const op3 = useRef(new Animated.Value(0)).current; // Shatkona / Star of David
+
+  // ── Scale breath ──────────────────────────────────────────────────────────
+  const breath = useRef(new Animated.Value(0)).current;
+  const pulse  = useRef(new Animated.Value(0)).current; // faster pulse for bindu
 
   useEffect(() => {
-    // Highly performant native-driver animations (NO JS state interval to prevent UI lag)
-    Animated.loop(Animated.timing(rotAnim, { toValue: 1, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
-    
-    // Master timeline: 0 to 400 over 40 seconds (10 seconds per shape)
-    Animated.loop(Animated.timing(phaseAnim, { toValue: 400, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
-    
+    // Rotations — all native thread
+    Animated.loop(Animated.timing(rotA, { toValue: 1, duration: 55000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotB, { toValue: 1, duration: 80000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotC, { toValue: 1, duration: 130000, easing: Easing.linear, useNativeDriver: true })).start();
+
+    // Gentle breathe
     Animated.loop(Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      Animated.timing(breath, { toValue: 1, duration: 6500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(breath, { toValue: 0, duration: 6500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
-    
+
+    // Bindu pulse
     Animated.loop(Animated.sequence([
-      Animated.timing(breathAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(breathAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      Animated.timing(pulse, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
+
+    // Cross-fade: 10s hold, 2s fade — purely native callback chain
+    const HOLD = 9000;
+    const FADE = 2000;
+    const ops = [op0, op1, op2, op3];
+
+    function runCycle(current: number) {
+      const next = (current + 1) % 4;
+      Animated.sequence([
+        Animated.delay(HOLD),
+        Animated.parallel([
+          Animated.timing(ops[current], { toValue: 0, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(ops[next],    { toValue: 1, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ]),
+      ]).start(({ finished }) => { if (finished) runCycle(next); });
+    }
+    runCycle(0);
   }, []);
 
-  const cx = size / 2, cy = size / 2;
-  // Ultra-premium golden palette independent of the dynamic ring color
-  const goldPrimary = '#FDB931';
-  const goldLight = '#FFF5E1';
-  const goldDark = '#B8860B';
+  // ── Interpolated transforms ───────────────────────────────────────────────
+  const r0deg   = rotA.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
+  const r0degR  = rotA.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
+  const r1deg   = rotB.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
+  const r1degR  = rotB.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
+  const r2deg   = rotC.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
+  const sc      = breath.interpolate({ inputRange: [0,1], outputRange: [0.93, 1.07] });
+  const scSm    = breath.interpolate({ inputRange: [0,1], outputRange: [0.97, 1.03] });
+  const bindOp  = pulse.interpolate({ inputRange: [0,1], outputRange: [0.55, 1] });
+  const bindSc  = pulse.interpolate({ inputRange: [0,1], outputRange: [0.75, 1.5] });
+
+  // ── Colour palette — pure gold, independent of ring theme ────────────────
+  const G1 = '#FFD700'; // pure gold
+  const G2 = '#FDB931'; // warm amber gold
+  const G3 = '#FFFBE6'; // near-white gold highlight
+  const G4 = '#B8860B'; // dark gold for depth
+  const GA = 'rgba(253,185,49,'; // gold with alpha prefix
+
+  const S = size;
+  const hw = S * 0.5;
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, zIndex: 2, alignItems: 'center', justifyContent: 'center' }}>
-      
-      {/* 1. SEED OF LIFE / TORUS (Phase 0 - 10s) */}
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
-          { scale: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }
-        ],
-        opacity: phaseAnim.interpolate({ inputRange: [0, 60, 100, 300, 360, 400], outputRange: [1, 1, 0, 0, 0, 1] })
-      }}>
-        <Svg width={size} height={size}>
-          <SvgCircle cx={cx} cy={cy} r={size * 0.38} fill="none" stroke={goldDark} strokeWidth="1" opacity={0.6} />
-          {sacredDots(cx, cy, size * 0.19, 6, 0).map((d, i) => (
-             <SvgCircle key={`sol_${i}`} cx={d.x} cy={d.y} r={size * 0.19} fill="none" stroke={goldPrimary} strokeWidth="0.8" opacity={0.7} />
+    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2 }}>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SHAPE 0 — FLOWER OF LIFE / SEED OF LIFE
+          Overlapping circles creating sacred petal geometry.
+          ══════════════════════════════════════════════════════════════════ */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op0, transform: [{ rotate: r2deg }, { scale: sc }] }}>
+        <Svg width={S} height={S}>
+          {/* Central circle */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.19} fill="none" stroke={G2} strokeWidth="1.2" opacity={0.7} />
+          {/* 6 petal circles */}
+          {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
+            <SvgCircle key={`fol_inner_${i}`} cx={p.x} cy={p.y} r={S*0.19} fill={`${GA}0.04)`} stroke={G2} strokeWidth="1.0" opacity={0.65} />
+          ))}
+          {/* Second ring — 12 more petals */}
+          {pts(hw, hw, S*0.38, 6, Math.PI/6).map((p, i) => (
+            <SvgCircle key={`fol_outer_${i}`} cx={p.x} cy={p.y} r={S*0.19} fill="none" stroke={G4} strokeWidth="0.7" opacity={0.35} />
+          ))}
+          {/* Outer container ring */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.40} fill="none" stroke={G4} strokeWidth="0.8" opacity={0.40} />
+          {/* Inner tight ring */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.07} fill={`${GA}0.15)`} stroke={G3} strokeWidth="1" opacity={0.80} />
+          {/* Petal dot jewels */}
+          {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
+            <SvgCircle key={`fol_jewel_${i}`} cx={p.x} cy={p.y} r={2.8} fill={G3} opacity={0.85} />
           ))}
         </Svg>
       </Animated.View>
 
-      {/* 2. METATRON'S CUBE (Phase 10 - 20s) */}
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotateX: '45deg' },
-          { rotateY: '-20deg' },
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }
-        ],
-        opacity: phaseAnim.interpolate({ inputRange: [0, 60, 100, 160, 200, 400], outputRange: [0, 0, 1, 1, 0, 0] })
-      }}>
-        <Svg width={size} height={size}>
-          <SvgG opacity={0.7}>
-            {/* Inner & Outer Hexagons */}
-            {sacredDots(cx, cy, size * 0.30, 6, 0).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`mc_hex1_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldLight} strokeWidth="1.2" />;
-            })}
-            {sacredDots(cx, cy, size * 0.15, 6, Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`mc_hex2_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldPrimary} strokeWidth="1" />;
-            })}
-            {/* Star Tetrahedron Lines */}
-            {sacredDots(cx, cy, size * 0.30, 3, Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`mc_tri1_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldPrimary} strokeWidth="1" />;
-            })}
-            {sacredDots(cx, cy, size * 0.30, 3, -Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`mc_tri2_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldPrimary} strokeWidth="1" />;
-            })}
-          </SvgG>
+      {/* Counter-rotating outer halo for Flower of Life */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op0, transform: [{ rotate: r0degR }] }}>
+        <Svg width={S} height={S}>
+          {pts(hw, hw, S*0.43, 12, 0).map((p, i) => (
+            <SvgCircle key={`fol_halo_${i}`} cx={p.x} cy={p.y} r={2} fill={G3} opacity={0.20 + (i % 2) * 0.15} />
+          ))}
+          <SvgCircle cx={hw} cy={hw} r={S*0.45} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25}
+            strokeDasharray="4 8" />
         </Svg>
       </Animated.View>
 
-      {/* 3. SRI YANTRA ASCENSION (Phase 20 - 30s) */}
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
-          { scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }
-        ],
-        opacity: phaseAnim.interpolate({ inputRange: [0, 160, 200, 260, 300, 400], outputRange: [0, 0, 1, 1, 0, 0] })
-      }}>
-        <Svg width={size} height={size}>
-          <SvgG opacity={0.8}>
-            {/* Upward Triangles (Shiva) */}
-            {sacredDots(cx, cy, size * 0.26, 3, -Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`sy_u1_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldLight} strokeWidth="1.5" />;
-            })}
-            {sacredDots(cx, cy, size * 0.18, 3, -Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`sy_u2_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldPrimary} strokeWidth="1.2" />;
-            })}
-            {/* Downward Triangles (Shakti) */}
-            {sacredDots(cx, cy, size * 0.30, 3, Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`sy_d1_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldLight} strokeWidth="1.5" />;
-            })}
-            {sacredDots(cx, cy, size * 0.14, 3, Math.PI / 6).map((d, i, arr) => {
-              const next = arr[(i + 1) % arr.length];
-              return <SvgPath key={`sy_d2_${i}`} d={`M${d.x.toFixed(1)} ${d.y.toFixed(1)} L${next.x.toFixed(1)} ${next.y.toFixed(1)}`} stroke={goldPrimary} strokeWidth="1.2" />;
-            })}
-          </SvgG>
+      {/* ══════════════════════════════════════════════════════════════════════
+          SHAPE 1 — METATRON'S CUBE (Full 13-circle pattern)
+          ══════════════════════════════════════════════════════════════════ */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op1, transform: [{ rotate: r1degR }, { scale: sc }] }}>
+        <Svg width={S} height={S}>
+          {/* All 13 Metatron circles */}
+          {[
+            { cx: hw, cy: hw },
+            ...pts(hw, hw, S*0.19, 6, 0),
+            ...pts(hw, hw, S*0.38, 6, 0),
+          ].map((p, i) => (
+            <SvgCircle key={`mc_circ_${i}`} cx={p.x} cy={p.y} r={S*0.19}
+              fill={`${GA}0.03)`} stroke={G2} strokeWidth="0.8" opacity={i === 0 ? 0.7 : 0.45} />
+          ))}
+          {/* Lines connecting all 13 centres (Metatron's Cube lines) */}
+          {(() => {
+            const centers = [{ x: hw, y: hw }, ...pts(hw, hw, S*0.19, 6, 0), ...pts(hw, hw, S*0.38, 6, 0)];
+            const paths: JSX.Element[] = [];
+            centers.forEach((a, i) => centers.forEach((b, j) => {
+              if (j <= i) return;
+              paths.push(<SvgPath key={`mc_ln_${i}_${j}`} d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
+                stroke={G4} strokeWidth="0.5" opacity={0.25} />);
+            }));
+            return paths;
+          })()}
+          {/* Star tetrahedron overlay */}
+          <SvgPath d={poly(pts(hw, hw, S*0.34, 3, -Math.PI/2))} fill={`${GA}0.06)`} stroke={G1} strokeWidth="1.8" opacity={0.8} />
+          <SvgPath d={poly(pts(hw, hw, S*0.34, 3,  Math.PI/2))} fill={`${GA}0.06)`} stroke={G1} strokeWidth="1.8" opacity={0.8} />
+          {/* Outer hexagon */}
+          <SvgPath d={poly(pts(hw, hw, S*0.34, 6, 0))} fill="none" stroke={G3} strokeWidth="1" opacity={0.55} />
+          {/* Dot jewels on hexagon vertices */}
+          {pts(hw, hw, S*0.34, 6, 0).map((p, i) => (
+            <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={3} fill={G3} opacity={0.80} />
+          ))}
         </Svg>
       </Animated.View>
 
-      {/* 4. SHATKONA (Entangled Triangles - Phase 30 - 40s) */}
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [
-          { rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) },
-          { scale: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }
-        ],
-        opacity: phaseAnim.interpolate({ inputRange: [0, 260, 300, 360, 400], outputRange: [0, 0, 1, 1, 0] })
-      }}>
-        <Svg width={size} height={size}>
-          <SvgG opacity={0.9}>
-            {/* Fine outer web / radiating lines */}
-            {sacredDots(cx, cy, size * 0.45, 48, 0).map((d, i) => (
-               <SvgPath key={`sh_ray_${i}`} d={`M${cx} ${cy} L${d.x.toFixed(1)} ${d.y.toFixed(1)}`} stroke={goldLight} strokeWidth="0.5" opacity={0.15} />
-            ))}
-            {/* Upward Triangle */}
-            {(() => {
-              const pts = sacredDots(cx, cy, size * 0.35, 3, -Math.PI / 2);
-              return <SvgPath d={`M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y} L${pts[2].x} ${pts[2].y} Z`} fill="rgba(253,185,49,0.12)" stroke={goldPrimary} strokeWidth="2" />;
-            })()}
-            {/* Downward Triangle */}
-            {(() => {
-              const pts = sacredDots(cx, cy, size * 0.35, 3, Math.PI / 2);
-              return <SvgPath d={`M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y} L${pts[2].x} ${pts[2].y} Z`} fill="rgba(253,185,49,0.12)" stroke={goldPrimary} strokeWidth="2" />;
-            })()}
-            {/* Inner rings */}
-            <SvgCircle cx={cx} cy={cy} r={size * 0.18} fill="none" stroke={goldLight} strokeWidth="1" opacity={0.6} />
-            <SvgCircle cx={cx} cy={cy} r={size * 0.09} fill="none" stroke={goldPrimary} strokeWidth="1" opacity={0.8} />
-          </SvgG>
+      {/* Slow forward counter-layer for Metatron */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op1, transform: [{ rotate: r0deg }] }}>
+        <Svg width={S} height={S}>
+          {/* 6-petal inner star */}
+          {pts(hw, hw, S*0.38, 6, Math.PI/6).map((p, i, arr) => {
+            const n = arr[(i+1)%arr.length];
+            return <SvgPath key={`mc_sp_${i}`} d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
+              stroke={G2} strokeWidth="1" opacity={0.50} />;
+          })}
+          {pts(hw, hw, S*0.44, 12, 0).map((p, i) => (
+            <SvgCircle key={`mc_halo_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.22 + (i%3)*0.12} />
+          ))}
         </Svg>
       </Animated.View>
 
-      {/* Center Bindu (Glowing Core) - Always visible */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          SHAPE 2 — SRI YANTRA (9 interlocked triangles + lotus rings)
+          ══════════════════════════════════════════════════════════════════ */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op2, transform: [{ rotate: r2deg }, { scale: sc }] }}>
+        <Svg width={S} height={S}>
+          {/* Outer ring (Bhupura gate suggestion) */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4} strokeWidth="0.8" opacity={0.40} strokeDasharray="6 6" />
+          {/* 9-triangle Sri Yantra: 4 downward (Shakti) + 5 upward (Shiva) rings */}
+          {/* Shakti (downward) — 4 sizes */}
+          {[S*0.35, S*0.27, S*0.19, S*0.12].map((r, ti) => (
+            <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw, hw, r, 3, Math.PI/6))}
+              fill={`${GA}${[0.07, 0.06, 0.05, 0.04][ti]})`}
+              stroke={G2} strokeWidth={[1.8, 1.5, 1.3, 1.1][ti]}
+              opacity={0.75 + ti * 0.06} />
+          ))}
+          {/* Shiva (upward) — 5 sizes */}
+          {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r, ti) => (
+            <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw, hw, r, 3, -Math.PI/6))}
+              fill={`${GA}${[0.05, 0.05, 0.04, 0.04, 0.03][ti]})`}
+              stroke={G1} strokeWidth={[1.8, 1.5, 1.3, 1.1, 0.9][ti]}
+              opacity={0.75 + ti * 0.06} />
+          ))}
+          {/* Innermost Bindu ring */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.035} fill={G1} opacity={0.90} />
+          {/* 8-petal lotus ring */}
+          {pts(hw, hw, S*0.41, 8, 0).map((p, i) => (
+            <SvgCircle key={`sy_lotus_${i}`} cx={p.x} cy={p.y} r={S*0.05}
+              fill={`${GA}0.06)`} stroke={G4} strokeWidth="0.7" opacity={0.45} />
+          ))}
+          {/* 16-petal lotus ring */}
+          {pts(hw, hw, S*0.41, 16, Math.PI/16).map((p, i) => (
+            <SvgCircle key={`sy_lotus16_${i}`} cx={p.x} cy={p.y} r={S*0.026}
+              fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SHAPE 3 — SHATKONA / STAR OF DAVID (as per your reference image)
+          Two large bold golden triangles entangled, with fine ray web
+          ══════════════════════════════════════════════════════════════════ */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op3, transform: [{ rotate: r0deg }, { scale: scSm }] }}>
+        <Svg width={S} height={S}>
+          {/* Fine radial web — exact like reference image */}
+          {pts(hw, hw, S*0.46, 48, 0).map((p, i) => (
+            <SvgPath key={`sh_ray_${i}`} d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
+              stroke={G3} strokeWidth="0.4" opacity={0.09} />
+          ))}
+          {/* Outer dashed circle */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4} strokeWidth="0.8" opacity={0.40} strokeDasharray="3 5" />
+          {/* Main upward triangle (filled golden glow — like reference) */}
+          <SvgPath d={poly(pts(hw, hw, S*0.38, 3, -Math.PI/2))}
+            fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
+          {/* Main downward triangle (filled golden glow) */}
+          <SvgPath d={poly(pts(hw, hw, S*0.38, 3, Math.PI/2))}
+            fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
+          {/* Hexagram intersection inner highlight */}
+          {pts(hw, hw, S*0.20, 6, 0).map((p, i, arr) => {
+            const n = arr[(i+1)%arr.length];
+            return <SvgPath key={`sh_h_${i}`} d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
+              stroke={G3} strokeWidth="1.2" opacity={0.70} />;
+          })}
+          {/* Vertex jewels on both triangles */}
+          {pts(hw, hw, S*0.38, 3, -Math.PI/2).map((p, i) => (
+            <SvgCircle key={`sh_vup_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.90} />
+          ))}
+          {pts(hw, hw, S*0.38, 3, Math.PI/2).map((p, i) => (
+            <SvgCircle key={`sh_vdn_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.90} />
+          ))}
+          {/* Inner rings */}
+          <SvgCircle cx={hw} cy={hw} r={S*0.12} fill="none" stroke={G2} strokeWidth="1.2" opacity={0.75} />
+          <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G3} strokeWidth="1"   opacity={0.85} />
+        </Svg>
+      </Animated.View>
+
+      {/* Counter-rotation ring for Shatkona */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          opacity: op3, transform: [{ rotate: r1degR }] }}>
+        <Svg width={S} height={S}>
+          {pts(hw, hw, S*0.44, 12, Math.PI/12).map((p, i) => (
+            <SvgCircle key={`sh_orbit_${i}`} cx={p.x} cy={p.y} r={2.2} fill={G3} opacity={0.18 + (i%3)*0.12} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ALWAYS VISIBLE — Orbiting stardust + glowing Bindu
+          ══════════════════════════════════════════════════════════════════ */}
+      <Animated.View style={{ position: 'absolute', width: S, height: S,
+          transform: [{ rotate: r1degR }], opacity: 0.60 }}>
+        <Svg width={S} height={S}>
+          {pts(hw, hw, S*0.44, 24, 0).map((p, i) => (
+            <SvgCircle key={`dust_${i}`} cx={p.x} cy={p.y}
+              r={i % 3 === 0 ? 2.2 : 1.3}
+              fill={G3}
+              opacity={0.15 + (i % 4) * 0.12} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      {/* Bindu — sacred glowing center dot */}
       <Animated.View style={{
-        position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: goldLight,
-        shadowColor: goldPrimary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
-        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }),
-        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.4] }) }]
+        position: 'absolute', width: 9, height: 9, borderRadius: 4.5,
+        backgroundColor: G3,
+        shadowColor: G1, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 14,
+        opacity: bindOp,
+        transform: [{ scale: bindSc }],
       }} />
-
-      {/* Orbiting Stardust Particles - Always visible */}
-      <Animated.View style={{
-        position: 'absolute', width: size, height: size,
-        transform: [{ rotate: rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }],
-        opacity: 0.6
-      }}>
-        <Svg width={size} height={size}>
-          {sacredDots(cx, cy, size * 0.42, 12, 0).map((d, i) => (
-             <SvgCircle key={`dust_${i}`} cx={d.x} cy={d.y} r={1.5 + (i % 2)} fill={goldLight} opacity={0.3 + (i % 3) * 0.25} />
-          ))}
-        </Svg>
-      </Animated.View>
 
     </View>
   );
 }
+
+export { pts as sacredDots };

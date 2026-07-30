@@ -51,6 +51,7 @@ import { DARK_BG_KEYS } from '@/lib/cardTheme';
 import { getBgSourceSync } from '@/lib/bgImages';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import { getSacredHourInfo } from '@/lib/solarRingPalette';
+import OrbitPulseGame from '@/components/OrbitPulseGame';
 
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
@@ -104,62 +105,46 @@ const DEFAULT_STATS: TodayStats = {
 // Ultra-modern tactical/digital compass inspired by aviation HUD systems.
 // The outer degree ring rotates with the device heading.
 // The inner reticle + heading readout remain fixed.
+// ── Slim Smart Compass — minimal, elegant, directionally perfect ──────────────
 function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
-  // Build degree tick marks on the ROTATING ring
-  const ticks: React.JSX.Element[] = [];
-  for (let i = 0; i < 72; i++) {
-    const deg = i * 5;
+  // Only 4 major ticks at N/E/S/W
+  const majorTicks = [0, 90, 180, 270].map((deg) => {
     const angle = deg * Math.PI / 180;
-    const isMajor  = deg % 90 === 0;   // N/E/S/W
-    const isMedium = deg % 45 === 0;   // NE/SE/SW/NW
-    const isMinor5 = deg % 10 === 0;   // every 10°
-    const r1 = 48;
-    const r2 = isMajor ? 41 : isMedium ? 43 : isMinor5 ? 44.5 : 46;
-    const x1 = cx + r1 * Math.sin(angle);
-    const y1 = cy - r1 * Math.cos(angle);
-    const x2 = cx + r2 * Math.sin(angle);
-    const y2 = cy - r2 * Math.cos(angle);
-    ticks.push(
-      <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={isMajor ? '#38bdf8' : isMedium ? 'rgba(56,189,248,0.7)' : isMinor5 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)'}
-        strokeWidth={isMajor ? 1.8 : isMedium ? 1.2 : 0.7}
-        strokeLinecap="round" />
-    );
-  }
-
-  // Cardinal label positions on the rotating ring (r=38 from center)
-  const cardinals = [
-    { label: 'N', deg: 0,   color: '#f87171', weight: '900' as const },
-    { label: 'E', deg: 90,  color: '#7dd3fc', weight: '800' as const },
-    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.8)', weight: '700' as const },
-    { label: 'W', deg: 270, color: '#7dd3fc', weight: '800' as const },
-  ];
-  const cardinalEls: React.JSX.Element[] = cardinals.map(({ label, deg: d, color, weight }) => {
-    const rad = d * Math.PI / 180;
-    const x = cx + 37 * Math.sin(rad);
-    const y = cy - 37 * Math.cos(rad);
-    return (
-      <SvgText key={label} x={x} y={y} fill={color} fontSize={label === 'N' ? '7.5' : '5.5'}
-        fontWeight={weight} textAnchor="middle" alignmentBaseline="middle">
-        {label}
-      </SvgText>
-    );
+    const x1 = cx + 46 * Math.sin(angle);
+    const y1 = cy - 46 * Math.cos(angle);
+    const x2 = cx + 40 * Math.sin(angle);
+    const y2 = cy - 40 * Math.cos(angle);
+    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
+      stroke={deg === 0 ? '#f87171' : 'rgba(255,255,255,0.35)'}
+      strokeWidth={deg === 0 ? 2 : 1.2} strokeLinecap="round" />;
   });
 
-  // Intercardinal labels
-  const intercardinals = [
-    { label: 'NE', deg: 45 }, { label: 'SE', deg: 135 },
-    { label: 'SW', deg: 225 }, { label: 'NW', deg: 315 },
+  // 8 minor ticks at 45° intervals
+  const minorTicks = [45, 135, 225, 315].map((deg) => {
+    const angle = deg * Math.PI / 180;
+    const x1 = cx + 46 * Math.sin(angle);
+    const y1 = cy - 46 * Math.cos(angle);
+    const x2 = cx + 43 * Math.sin(angle);
+    const y2 = cy - 43 * Math.cos(angle);
+    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
+      stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} strokeLinecap="round" />;
+  });
+
+  const cardinals = [
+    { label: 'N', deg: 0,   color: '#f87171', fs: '8' },
+    { label: 'E', deg: 90,  color: 'rgba(255,255,255,0.6)', fs: '5.5' },
+    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.45)', fs: '5.5' },
+    { label: 'W', deg: 270, color: 'rgba(255,255,255,0.6)', fs: '5.5' },
   ];
-  const intercardinalEls: React.JSX.Element[] = intercardinals.map(({ label, deg: d }) => {
+  const cardinalEls = cardinals.map(({ label, deg: d, color, fs }) => {
     const rad = d * Math.PI / 180;
-    const x = cx + 36 * Math.sin(rad);
-    const y = cy - 36 * Math.cos(rad);
+    const x = cx + 33 * Math.sin(rad);
+    const y = cy - 33 * Math.cos(rad);
     return (
-      <SvgText key={label} x={x} y={y} fill="rgba(56,189,248,0.55)" fontSize="3.5"
-        fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
+      <SvgText key={label} x={x} y={y} fill={color} fontSize={fs}
+        fontWeight="800" textAnchor="middle" alignmentBaseline="middle">
         {label}
       </SvgText>
     );
@@ -167,34 +152,33 @@ function CompassRose({ size, heading }: { size: number; heading: Animated.Value 
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-
-      {/* ── ROTATING RING (moves with device heading) ── */}
-      <Animated.View style={{ position: 'absolute', transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }], width: size, height: size }}>
+      {/* Rotating compass dial */}
+      <Animated.View style={{
+        position: 'absolute',
+        transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }],
+        width: size, height: size,
+      }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Outer bezel dark fill */}
-          <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
-          {/* Outer glowing ring */}
-          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth={1} />
-          <Circle cx={cx} cy={cy} r={48.2} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.4} />
-          {/* Degree tick marks */}
-          {ticks}
-          {/* Inner bezel separator */}
-          <Circle cx={cx} cy={cy} r={32} fill="rgba(4,14,32,0.6)" />
-          <Circle cx={cx} cy={cy} r={32} fill="none" stroke="rgba(56,189,248,0.4)" strokeWidth={0.7} />
-          <Circle cx={cx} cy={cy} r={29} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={0.4} strokeDasharray="1.5 3" />
-          {/* Cardinal & intercardinal labels (rotate with ring) */}
+          {/* Minimal outer ring */}
+          <Circle cx={cx} cy={cy} r={48} fill="rgba(3,8,20,0.85)" />
+          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
+          {/* Inner clean circle */}
+          <Circle cx={cx} cy={cy} r={26} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.5} strokeDasharray="2 5" />
+          {majorTicks}
+          {minorTicks}
           {cardinalEls}
-          {intercardinalEls}
-          {/* N pointer tick (extra long, glowing cyan-red) */}
-          <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
+          {/* North needle tip */}
+          <Path d={`M${cx} ${cy-23} L${cx-3} ${cy+4} L${cx+3} ${cy+4} Z`} fill="rgba(248,113,113,0.75)" />
+          {/* South needle */}
+          <Path d={`M${cx} ${cy+23} L${cx-3} ${cy-4} L${cx+3} ${cy-4} Z`} fill="rgba(255,255,255,0.18)" />
+          {/* Center dot */}
+          <Circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.7)" />
         </Svg>
       </Animated.View>
-
-      {/* ── FIXED RETICLE LAYER (never rotates) ── */}
+      {/* Fixed N indicator triangle at top */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Triangle North indicator at top (fixed — always points up) */}
-          <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
+          <Path d={`M${cx} ${cy-47} L${cx-2} ${cy-43} L${cx+2} ${cy-43} Z`} fill="rgba(248,113,113,0.95)" />
         </Svg>
       </View>
     </View>
@@ -264,6 +248,7 @@ export default function WalkTab() {
   const [isAvailable,  setIsAvailable]  = useState(true);
   const [loading,      setLoading]      = useState(true);
   const [showGoalModal,setShowGoalModal]= useState(false);
+  const [showOrbitGame, setShowOrbitGame] = useState(false);
   const [goalInput,    setGoalInput]    = useState('8000');
   const [streak,       setStreak]       = useState(0);
   const [sessionTitle, setSessionTitle] = useState('Start Nature Walk');
@@ -1102,14 +1087,13 @@ export default function WalkTab() {
                     }} />
                   )}
 
-                  {/* ── Feature 7: Premium Compass Rose (inside inner disc, semi-transparent) ── */}
+                  {/* ── Slim Compass — floats semi-transparently in the inner disc ── */}
                   {compassActive && (
                     <View pointerEvents="none" style={[
                       StyleSheet.absoluteFillObject,
-                      { alignItems: 'center', justifyContent: 'center', opacity: 0.55 },
+                      { alignItems: 'center', justifyContent: 'center', opacity: 0.7 },
                     ]}>
-                      <Text style={{ position: 'absolute', bottom: 42, fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5 }}>HOLD FLAT FOR ACCURACY</Text>
-                      <CompassRose size={RING_SIZE - RING_STROKE - 20} heading={compassAnim} />
+                      <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} />
                     </View>
                   )}
 
@@ -1209,58 +1193,157 @@ export default function WalkTab() {
               )}
             </View>
 
-            {/* ── Feature 8: Sacred Geometry Mandala ── */}
+            {/* ── Living Mandala — always spinning sacred geometry ── */}
+            {/* Layer 1: Slow outer rotation (24 petals dodecagram) */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+            }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                {/* Outer dashed ring */}
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={96} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3 9" />
+                {/* 12-petal outer ring */}
+                {[0,30,60,90,120,150,180,210,240,270,300,330].map(deg => {
+                  const a = deg * Math.PI / 180;
+                  const px = RING_SIZE/2 + 80 * Math.sin(a);
+                  const py = RING_SIZE/2 - 80 * Math.cos(a);
+                  return <Circle key={deg} cx={px} cy={py} r={3} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.8} />;
+                })}
+                {/* Outer star lines */}
+                {[0,60,120].map(deg => {
+                  const a1 = deg * Math.PI / 180;
+                  const a2 = (deg + 180) * Math.PI / 180;
+                  return <Line key={deg}
+                    x1={RING_SIZE/2 + 88 * Math.sin(a1)} y1={RING_SIZE/2 - 88 * Math.cos(a1)}
+                    x2={RING_SIZE/2 + 88 * Math.sin(a2)} y2={RING_SIZE/2 - 88 * Math.cos(a2)}
+                    stroke="rgba(255,255,255,0.04)" strokeWidth={0.8} />;
+                })}
+              </Svg>
+            </Animated.View>
+
+            {/* Layer 2: Reverse medium rotation (Star of David + inner hex) */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }],
+            }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={66} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={0.8} />
+                {/* Inner triangles Star of David */}
+                <Path
+                  d={`M${RING_SIZE/2} ${RING_SIZE/2-55} L${RING_SIZE/2+47.6} ${RING_SIZE/2+27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2+27.5} Z`}
+                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9}
+                />
+                <Path
+                  d={`M${RING_SIZE/2} ${RING_SIZE/2+55} L${RING_SIZE/2+47.6} ${RING_SIZE/2-27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2-27.5} Z`}
+                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9}
+                />
+                {/* 6 dots at hexagon vertices */}
+                {[0,60,120,180,240,300].map(deg => {
+                  const a = deg * Math.PI / 180;
+                  return <Circle key={deg}
+                    cx={RING_SIZE/2 + 55 * Math.sin(a)}
+                    cy={RING_SIZE/2 - 55 * Math.cos(a)}
+                    r={2} fill="rgba(255,255,255,0.12)" />;
+                })}
+              </Svg>
+            </Animated.View>
+
+            {/* Layer 3: Fast inner rotation (inner sacred circle + dot ring) */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+            }}>
+              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={34} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.7} strokeDasharray="2 6" />
+                {/* 8 micro-dots inner ring */}
+                {[0,45,90,135,180,225,270,315].map(deg => {
+                  const a = deg * Math.PI / 180;
+                  return <Circle key={deg}
+                    cx={RING_SIZE/2 + 34 * Math.sin(a)}
+                    cy={RING_SIZE/2 - 34 * Math.cos(a)}
+                    r={1.5} fill="rgba(255,255,255,0.15)" />;
+                })}
+                {/* Innermost sacred dot */}
+                <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={4} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
+              </Svg>
+            </Animated.View>
+
+            {/* Draggable rotation layer — user spins this */}
             <Animated.View pointerEvents="none" style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
               alignItems: 'center', justifyContent: 'center',
               transform: [{ rotate: mandalaRot.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] }) }, { scale: mandalaScale }]
             }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                {/* 25% Layer - Triangle */}
                 {stats.goalPercent >= 25 && (
-                  <Path
-                    d={`M${RING_SIZE/2} ${RING_SIZE/2 - 60} L${RING_SIZE/2 + 52} ${RING_SIZE/2 + 30} L${RING_SIZE/2 - 52} ${RING_SIZE/2 + 30} Z`}
-                    fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1.5}
-                  />
+                  <Path d={`M${RING_SIZE/2} ${RING_SIZE/2-50} L${RING_SIZE/2+43} ${RING_SIZE/2+25} L${RING_SIZE/2-43} ${RING_SIZE/2+25} Z`}
+                    fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />
                 )}
-                {/* 50% Layer - Intersecting Triangle */}
                 {stats.goalPercent >= 50 && (
-                  <Path
-                    d={`M${RING_SIZE/2} ${RING_SIZE/2 + 60} L${RING_SIZE/2 + 52} ${RING_SIZE/2 - 30} L${RING_SIZE/2 - 52} ${RING_SIZE/2 - 30} Z`}
-                    fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={1.5}
-                  />
+                  <Path d={`M${RING_SIZE/2} ${RING_SIZE/2+50} L${RING_SIZE/2+43} ${RING_SIZE/2-25} L${RING_SIZE/2-43} ${RING_SIZE/2-25} Z`}
+                    fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />
                 )}
-                {/* 75% Layer - Hexagon & Inner Circles */}
                 {stats.goalPercent >= 75 && (
-                  <>
-                    <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={60} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                    <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={30} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-                  </>
+                  <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={22} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
                 )}
-                
-                {/* 100% Layer - Lotus Petals */}
                 {stats.goalPercent >= 100 && (
-                  <>
-                    <Path
-                      d={`M${RING_SIZE/2} ${RING_SIZE/2 - 30} Q${RING_SIZE/2 + 40} ${RING_SIZE/2 - 80} ${RING_SIZE/2} ${RING_SIZE/2 - 110} Q${RING_SIZE/2 - 40} ${RING_SIZE/2 - 80} ${RING_SIZE/2} ${RING_SIZE/2 - 30} Z`}
-                      fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.3)" strokeWidth={1}
-                    />
-                    <Path
-                      d={`M${RING_SIZE/2} ${RING_SIZE/2 + 30} Q${RING_SIZE/2 + 40} ${RING_SIZE/2 + 80} ${RING_SIZE/2} ${RING_SIZE/2 + 110} Q${RING_SIZE/2 - 40} ${RING_SIZE/2 + 80} ${RING_SIZE/2} ${RING_SIZE/2 + 30} Z`}
-                      fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.3)" strokeWidth={1}
-                    />
-                  </>
+                  <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={6} fill="rgba(255,255,255,0.35)" />
                 )}
               </Svg>
             </Animated.View>
           </View>
           </Animated.View>
 
-          {/* Cosmic Bowl Hint */}
-          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 10, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              Press & Hold to Meditate
-            </Text>
+          {/* ── Sacred Portal Button — Press & Hold to Meditate ── */}
+          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 16, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
+            <View
+              style={{ overflow: 'hidden', borderRadius: 99 }}
+              {...mandalaPanResponder.panHandlers}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  paddingHorizontal: 24, paddingVertical: 12,
+                  borderRadius: 99,
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+                }}
+              >
+                <Ionicons name="finger-print" size={16} color="rgba(255,255,255,0.6)" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 2, textTransform: 'uppercase' }}>Hold to enter stillness</Text>
+              </LinearGradient>
+            </View>
+          </Animated.View>
+
+          {/* ── Orbit Pulse Game Launch Button ── */}
+          <Animated.View style={{ opacity: bowlOpacity, alignItems: 'center', marginTop: 14, pointerEvents: isBowlMode ? 'none' : 'auto' }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setShowOrbitGame(true);
+              }}
+              style={{ overflow: 'hidden', borderRadius: 30 }}
+            >
+              <LinearGradient
+                colors={['rgba(147,51,234,0.55)', 'rgba(79,32,134,0.4)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  paddingHorizontal: 22, paddingVertical: 10,
+                  borderRadius: 30,
+                  borderWidth: 1, borderColor: 'rgba(192,132,252,0.35)',
+                }}
+              >
+                <Text style={{ fontSize: 14 }}>🌀</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#e9d5ff', letterSpacing: 1.2, textTransform: 'uppercase' }}>Orbit Pulse</Text>
+                <Text style={{ fontSize: 10, color: 'rgba(233,213,255,0.5)', fontWeight: '600' }}>Sacred Rhythm</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </Animated.View>
 
         </Animated.View>
@@ -1405,6 +1488,12 @@ export default function WalkTab() {
           setShowOnboarding(false);
           setShowGoalModal(true);
         }}
+      />
+
+      {/* ── Orbit Pulse Sacred Rhythm Game ── */}
+      <OrbitPulseGame
+        visible={showOrbitGame}
+        onClose={() => setShowOrbitGame(false)}
       />
     </ImageBackground>
   );

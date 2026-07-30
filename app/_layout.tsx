@@ -141,7 +141,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
            Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
            Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
         ]),
-        Animated.delay(3000), // Hold for a full 3 seconds so the user can absorb the mantra
+        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra and geometry
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {

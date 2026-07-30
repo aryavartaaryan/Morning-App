@@ -3285,48 +3285,45 @@ function SoundReelsModal({
           </View>
         )}
 
-        {/* Ultra-Modern Calming Meditation App Style Popup */}
+        {/* Ultra-Smart Sleek Minimalist Popup */}
         {showClosePrompt && (
           <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5,5,8,0.85)' }]} />
             <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
             
             <Animated.View style={{ 
-              width: W * 0.88, 
-              maxWidth: 360, 
-              borderRadius: 40, 
+              width: '85%', 
+              maxWidth: 340, 
+              borderRadius: 32, 
               overflow: 'hidden', 
-              backgroundColor: 'rgba(25,25,32,0.6)', 
-              borderWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.15)', 
-              shadowColor: '#FFF', 
-              shadowOffset: { width: 0, height: 0 }, 
-              shadowOpacity: 0.1, 
-              shadowRadius: 30, 
-              elevation: 20 
+              backgroundColor: 'rgba(15,15,18,0.6)', 
+              borderWidth: StyleSheet.hairlineWidth, 
+              borderColor: 'rgba(255,255,255,0.25)', 
+              shadowColor: '#000', 
+              shadowOffset: { width: 0, height: 20 }, 
+              shadowOpacity: 0.8, 
+              shadowRadius: 40, 
+              elevation: 24 
             }}>
               <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
               
-              <View style={{ padding: 40, paddingBottom: 32, alignItems: 'center' }}>
+              <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
                 <View style={{ 
-                  width: 64, 
-                  height: 64, 
-                  borderRadius: 32, 
-                  backgroundColor: 'rgba(255,255,255,0.06)', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
                   marginBottom: 20, 
-                  borderWidth: 1, 
-                  borderColor: 'rgba(255,255,255,0.12)' 
+                  padding: 16,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.08)'
                 }}>
-                  <Ionicons name="moon-outline" size={28} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="pulse" size={26} color="rgba(255,255,255,0.9)" />
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 10 }}>Session Active</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22, paddingHorizontal: 12 }}>Would you like to keep listening peacefully in the background?</Text>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase' }}>Active Soundscape</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20, paddingHorizontal: 10, letterSpacing: 0.3 }}>Seamlessly run this resonance in the background, or conclude your current journey.</Text>
               </View>
               
-              <View style={{ paddingHorizontal: 32, paddingBottom: 40, gap: 16 }}>
+              <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 12 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
@@ -3336,11 +3333,11 @@ function SoundReelsModal({
                   }}
                 >
                   <LinearGradient
-                    colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                    colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.03)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+                    style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' }}
                   >
-                    <Text style={{ fontSize: 15, color: '#FFF', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>Keep in Background</Text>
+                    <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Flow In Background</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -3352,9 +3349,9 @@ function SoundReelsModal({
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,80,80,0.1)', borderWidth: 1, borderColor: 'rgba(255,80,80,0.2)' }}
+                  style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,60,60,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,60,60,0.3)' }}
                 >
-                  <Text style={{ fontSize: 15, color: 'rgba(255,100,100,1)', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>End Session</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,90,90,1)', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Conclude Session</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3363,9 +3360,9 @@ function SoundReelsModal({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                   }}
-                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 6 }}
+                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
                 >
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2 }}>Cancel</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '700', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>

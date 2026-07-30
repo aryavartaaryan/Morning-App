@@ -114,56 +114,42 @@ function fmtTime(seconds: number): string {
 function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
+  // Smarter 72 ticks (navigation zone style)
   const ticks: React.JSX.Element[] = [];
   for (let i = 0; i < 72; i++) {
     const deg = i * 5;
     const angle = deg * Math.PI / 180;
     const isMajor  = deg % 90 === 0;
     const isMedium = deg % 45 === 0;
-    const isMinor5 = deg % 10 === 0;
+    
+    // Make ticks subtle dots or short crisp lines
     const r1 = 48;
-    const r2 = isMajor ? 41 : isMedium ? 43 : isMinor5 ? 44.5 : 46;
+    const r2 = isMajor ? 41 : isMedium ? 44 : 46.5; // much shorter minor ticks
     const x1 = cx + r1 * Math.sin(angle);
     const y1 = cy - r1 * Math.cos(angle);
     const x2 = cx + r2 * Math.sin(angle);
     const y2 = cy - r2 * Math.cos(angle);
     ticks.push(
       <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={isMajor ? '#38bdf8' : isMedium ? 'rgba(56,189,248,0.7)' : isMinor5 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)'}
-        strokeWidth={isMajor ? 1.8 : isMedium ? 1.2 : 0.7}
+        stroke={isMajor ? '#f87171' : isMedium ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)'}
+        strokeWidth={isMajor ? 2 : isMedium ? 1.5 : 0.8}
         strokeLinecap="round" />
     );
   }
 
   const cardinals = [
-    { label: 'N', deg: 0,   color: '#f87171', weight: '900' as const },
-    { label: 'E', deg: 90,  color: '#7dd3fc', weight: '800' as const },
-    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.8)', weight: '700' as const },
-    { label: 'W', deg: 270, color: '#7dd3fc', weight: '800' as const },
+    { label: 'N', deg: 0,   color: '#f87171', fs: '8' },
+    { label: 'E', deg: 90,  color: 'rgba(255,255,255,0.8)', fs: '6' },
+    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.5)', fs: '6' },
+    { label: 'W', deg: 270, color: 'rgba(255,255,255,0.8)', fs: '6' },
   ];
-  const cardinalEls: React.JSX.Element[] = cardinals.map(({ label, deg: d, color, weight }) => {
+  const cardinalEls = cardinals.map(({ label, deg: d, color, fs }) => {
     const rad = d * Math.PI / 180;
-    const x = cx + 37 * Math.sin(rad);
-    const y = cy - 37 * Math.cos(rad);
+    const x = cx + 33 * Math.sin(rad);
+    const y = cy - 33 * Math.cos(rad);
     return (
-      <SvgText key={label} x={x} y={y} fill={color} fontSize={label === 'N' ? '7.5' : '5.5'}
-        fontWeight={weight} textAnchor="middle" alignmentBaseline="middle">
-        {label}
-      </SvgText>
-    );
-  });
-
-  const intercardinals = [
-    { label: 'NE', deg: 45 }, { label: 'SE', deg: 135 },
-    { label: 'SW', deg: 225 }, { label: 'NW', deg: 315 },
-  ];
-  const intercardinalEls: React.JSX.Element[] = intercardinals.map(({ label, deg: d }) => {
-    const rad = d * Math.PI / 180;
-    const x = cx + 36 * Math.sin(rad);
-    const y = cy - 36 * Math.cos(rad);
-    return (
-      <SvgText key={label} x={x} y={y} fill="rgba(56,189,248,0.55)" fontSize="3.5"
-        fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
+      <SvgText key={label} x={x} y={y} fill={color} fontSize={fs}
+        fontWeight="800" textAnchor="middle" alignmentBaseline="middle">
         {label}
       </SvgText>
     );
@@ -171,27 +157,27 @@ function CompassRose({ size, heading }: { size: number; heading: Animated.Value 
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-
       {/* ── ROTATING RING ── */}
       <Animated.View style={{ position: 'absolute', transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }], width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Circle cx={cx} cy={cy} r={49.5} fill="rgba(4,14,32,0.92)" />
-          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth={1} />
-          <Circle cx={cx} cy={cy} r={48.2} fill="none" stroke="rgba(56,189,248,0.15)" strokeWidth={0.4} />
+          <Circle cx={cx} cy={cy} r={49.5} fill="rgba(3,8,20,0.85)" />
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.8} />
           {ticks}
-          <Circle cx={cx} cy={cy} r={32} fill="rgba(4,14,32,0.6)" />
-          <Circle cx={cx} cy={cy} r={32} fill="none" stroke="rgba(56,189,248,0.4)" strokeWidth={0.7} />
-          <Circle cx={cx} cy={cy} r={29} fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth={0.4} strokeDasharray="1.5 3" />
+          {/* Inner ring to contain the navigation zone */}
+          <Circle cx={cx} cy={cy} r={28} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={0.5} strokeDasharray="2 4" />
           {cardinalEls}
-          {intercardinalEls}
-          <Line x1={cx} y1={cy - 48} x2={cx} y2={cy - 40} stroke="#f87171" strokeWidth={2.5} strokeLinecap="round" />
+          {/* N pointer tick (extra long) */}
+          <Path d={`M${cx} ${cy-25} L${cx-3.5} ${cy+5} L${cx+3.5} ${cy+5} Z`} fill="rgba(248,113,113,0.85)" />
+          {/* S needle */}
+          <Path d={`M${cx} ${cy+25} L${cx-3.5} ${cy-5} L${cx+3.5} ${cy-5} Z`} fill="rgba(255,255,255,0.15)" />
+          <Circle cx={cx} cy={cy} r={3} fill="rgba(255,255,255,0.8)" />
         </Svg>
       </Animated.View>
 
       {/* ── FIXED RETICLE ── */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Path d={`M${cx} ${cy-46} L${cx-2.5} ${cy-41} L${cx+2.5} ${cy-41} Z`} fill="rgba(248,113,113,0.9)" />
+          <Path d={`M${cx} ${cy-47} L${cx-3} ${cy-42} L${cx+3} ${cy-42} Z`} fill="rgba(248,113,113,1)" />
         </Svg>
       </View>
     </View>
@@ -584,35 +570,38 @@ export default function StepSessionScreen() {
     Animated.loop(Animated.timing(rot2, { toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rot3, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
 
-    // Feature 7: Sensor-based Compass
-    let magSub: any = null;
-    if (Magnetometer) {
-      Magnetometer.setUpdateInterval(50);
-      magSub = Magnetometer.addListener((data: any) => {
-        let { x, y } = data;
-        let angle = Math.atan2(y, x) * (180 / Math.PI);
-        if (angle < 0) angle += 360;
-        
-        angle = (angle + 90) % 360;
+    // Feature 7: Sensor-based Compass (True Compass Heading)
+    let headingSub: any = null;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          headingSub = await Location.watchHeadingAsync((data) => {
+            let angle = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
+            if (angle < 0) return; // Invalid reading
+            
+            let diff = angle - lastHeading;
+            if (diff > 180) diff -= 360;
+            else if (diff < -180) diff += 360;
+            
+            let newHeading = lastHeading + diff;
+            
+            Animated.spring(compassAnim, {
+              toValue: newHeading,
+              useNativeDriver: true,
+              tension: 40,
+              friction: 8
+            }).start();
 
-        let diff = angle - lastHeading;
-        if (diff > 180) diff -= 360;
-        else if (diff < -180) diff += 360;
-        
-        let newHeading = lastHeading + diff;
-        
-        Animated.spring(compassAnim, {
-          toValue: newHeading,
-          useNativeDriver: true,
-          tension: 40,
-          friction: 8
-        }).start();
-
-        lastHeading = newHeading;
-        
-        if (!compassActive) setCompassActive(true);
-      });
-    }
+            lastHeading = newHeading;
+            
+            if (!compassActive) setCompassActive(true);
+          });
+        }
+      } catch (e) {
+        console.log("Compass error", e);
+      }
+    })();
 
     Animated.loop(Animated.sequence([
       Animated.timing(liquidPulse, { toValue: 1.6, duration: 800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
@@ -672,7 +661,7 @@ export default function StepSessionScreen() {
       if (timerRef.current) clearInterval(timerRef.current);
       quoteCycle && clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
-      if (magSub)  try { magSub.remove();  } catch (_) {}
+      if (headingSub)  try { headingSub.remove();  } catch (_) {}
       
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
     };
@@ -1049,48 +1038,7 @@ export default function StepSessionScreen() {
               )}
             </View>
 
-              {/* Sound Controls */}
-            <View style={{ marginTop: playingId ? 4 : 8 }}>
-              {!playingId ? (
-                <TouchableOpacity 
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }}
-                  activeOpacity={0.8}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
-                    <LinearGradient
-                      colors={['rgba(255,255,255,0.1)', 'transparent']}
-                      start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                    <Ionicons name="musical-notes" size={12} color="#FFFFFF" style={{ marginRight: 5 }} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600', letterSpacing: 0.8 }}>LISTEN NADA SOUNDS WHILE WALK</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(8,47,73,0.4)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 22, gap: 12, overflow: 'hidden', shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.1)', 'transparent']}
-                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 4 }}>
-                    <Ionicons name="stop" size={14} color="rgba(255,255,255,0.45)" />
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
-                    style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Ionicons name={isPaused ? "play" : "pause"} size={16} color="#FFF" style={isPaused ? { marginLeft: 2 } : {}} />
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 4 }}>
-                    <Ionicons name="list" size={16} color="rgba(255,255,255,0.75)" />
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
-          </View>
         </View>
         </View>
 
@@ -1117,7 +1065,7 @@ export default function StepSessionScreen() {
         </Animated.View>
 
         {/* ── TIMER — frosted glass pill ──────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 10, overflow: 'hidden' }}>
+        <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 20, overflow: 'hidden' }}>
           <LinearGradient
             colors={['rgba(255,255,255,0.07)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
@@ -1126,6 +1074,56 @@ export default function StepSessionScreen() {
           <Text style={[s.timer, paused && { color: 'rgba(255,255,255,0.25)' }]}>
             {fmtTime(elapsed)}
           </Text>
+        </View>
+
+        {/* ── EXTERNAL NADA SOUND CONTROLS (Catchy & Premium) ── */}
+        <View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 20 }}>
+          {!playingId ? (
+            <TouchableOpacity 
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsSoundModalVisible(true); }}
+              activeOpacity={0.8}
+            >
+              <View style={{ overflow: 'hidden', borderRadius: 99 }}>
+                <LinearGradient
+                  colors={['rgba(139,92,246,0.35)', 'rgba(56,189,248,0.2)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    paddingHorizontal: 24, paddingVertical: 14,
+                    borderRadius: 99,
+                    borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
+                  }}
+                >
+                  <Ionicons name="headset-outline" size={20} color="#e9d5ff" />
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Listen Naad Sound</Text>
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ 
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+              backgroundColor: 'rgba(8,47,73,0.5)', borderWidth: 1, borderColor: 'rgba(56,189,248,0.4)', 
+              paddingHorizontal: 18, paddingVertical: 12, borderRadius: 99, 
+              overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 
+            }}>
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); stopSound(); }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
+                <Ionicons name="stop" size={16} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); togglePause(); }} 
+                style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(56,189,248,0.2)', borderWidth: 1.5, borderColor: 'rgba(186,230,253,0.5)', alignItems: 'center', justifyContent: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.4, shadowRadius: 8 }}
+              >
+                <Ionicons name={isPaused ? "play" : "pause"} size={22} color="#FFF" style={isPaused ? { marginLeft: 3 } : {}} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSoundModalVisible(true); }} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
+                <Ionicons name="list" size={16} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
 
@@ -1286,7 +1284,7 @@ export default function StepSessionScreen() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Exit Modal — frosted glass
+// Exit Modal — Ultra-Smart Sleek Minimalist Popup
 // ─────────────────────────────────────────────────────────────────────────────
 function ExitModal({
   visible, onClose, onMinimize, onEnd, color, gradA, gradB
@@ -1296,48 +1294,45 @@ function ExitModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
-        <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5,5,8,0.85)' }]} />
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onClose();
         }} />
         
         <Animated.View style={{ 
-          width: '88%', 
-          maxWidth: 360, 
-          borderRadius: 40, 
+          width: '85%', 
+          maxWidth: 340, 
+          borderRadius: 32, 
           overflow: 'hidden', 
-          backgroundColor: 'rgba(25,25,32,0.6)', 
-          borderWidth: 1, 
-          borderColor: 'rgba(255,255,255,0.15)', 
-          shadowColor: '#FFF', 
-          shadowOffset: { width: 0, height: 0 }, 
-          shadowOpacity: 0.1, 
-          shadowRadius: 30, 
-          elevation: 20 
+          backgroundColor: 'rgba(15,15,18,0.6)', 
+          borderWidth: StyleSheet.hairlineWidth, 
+          borderColor: 'rgba(255,255,255,0.25)', 
+          shadowColor: '#000', 
+          shadowOffset: { width: 0, height: 20 }, 
+          shadowOpacity: 0.8, 
+          shadowRadius: 40, 
+          elevation: 24 
         }}>
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
           
-          <View style={{ padding: 40, paddingBottom: 32, alignItems: 'center' }}>
+          <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
             <View style={{ 
-              width: 64, 
-              height: 64, 
-              borderRadius: 32, 
-              backgroundColor: 'rgba(255,255,255,0.06)', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
               marginBottom: 20, 
-              borderWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.12)' 
+              padding: 16,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.08)'
             }}>
-              <Ionicons name="walk" size={28} color="rgba(255,255,255,0.9)" style={{ marginLeft: 4 }} />
+              <Ionicons name="walk" size={26} color="rgba(255,255,255,0.9)" style={{ marginLeft: 3 }} />
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFF', textAlign: 'center', letterSpacing: 0.5, marginBottom: 10 }}>Session Active</Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 12 }}>Would you like to keep tracking steps and audio in the background?</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', textAlign: 'center', letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase' }}>Active Journey</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 20, paddingHorizontal: 10, letterSpacing: 0.3 }}>Keep tracking your steps and audio seamlessly in the background, or conclude your walk.</Text>
           </View>
           
-          <View style={{ paddingHorizontal: 32, paddingBottom: 40, gap: 16 }}>
+          <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 12 }}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
@@ -1346,11 +1341,11 @@ function ExitModal({
               }}
             >
               <LinearGradient
-                colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.03)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+                style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' }}
               >
-                <Text style={{ fontSize: 15, color: '#FFF', fontWeight: '700', letterSpacing: 0.3 }}>Keep in Background</Text>
+                <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }}>Flow In Background</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -1360,9 +1355,9 @@ function ExitModal({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 onEnd();
               }}
-              style={{ paddingVertical: 18, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,80,80,0.1)', borderWidth: 1, borderColor: 'rgba(255,80,80,0.2)' }}
+              style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,60,60,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,60,60,0.3)' }}
             >
-              <Text style={{ fontSize: 15, color: 'rgba(255,100,100,1)', fontWeight: '700', letterSpacing: 0.3 }}>End Session</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,90,90,1)', fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }}>Conclude Walk</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1371,9 +1366,9 @@ function ExitModal({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onClose();
               }}
-              style={{ paddingVertical: 12, alignItems: 'center', marginTop: 6 }}
+              style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
             >
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.2 }}>Cancel</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
