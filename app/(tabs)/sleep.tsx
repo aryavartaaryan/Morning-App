@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -1717,8 +1718,8 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
     if (!active) return;
     const loop1 = Animated.loop(Animated.timing(rotAnim, { toValue: 1, duration: 24000, easing: Easing.linear, useNativeDriver: true }));
     const loop2 = Animated.loop(Animated.sequence([
-      Animated.timing(colorPulseAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      Animated.timing(colorPulseAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(colorPulseAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(colorPulseAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ]));
     loop1.start();
     loop2.start();
@@ -2340,21 +2341,30 @@ function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── MASTER SACRED SOUND ORB ── */}
-      <MasterSacredOrb
-        size={REEL_W * 0.85}
-        color={accentColor || sound.color}
-        colorTop={sound.top ?? '#000000'}
-        soundId={sound.id}
-        active={isActive}
-        paused={isPaused || !isPlaying}
-        pulse1={pulse1}
-        pulse2={pulse2}
-        pulse3={pulse3}
-        pulse4={pulse4}
-        pulse5={pulse5}
-        onTap={handleScreenTap}
-      />
+      {/* ── SACRED GEOMETRY SOUND REELS ── */}
+      <View style={{ position: 'absolute', top: (REEL_H - REEL_W) / 2, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
+        
+        {/* Pulsing Sonar Rings synchronized with audio */}
+        {[
+          { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
+          { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
+          { anim: pulse3, sm: 0.96, bw: 1.0, oMin: 0.05, oMax: 0.50, sMin: 0.94, sMax: 1.06 },
+        ].map((r, i) => {
+          const HERO_RS = Dimensions.get('window').height < 800 ? 238 : 302;
+          const s = HERO_RS * r.sm;
+          const color = accentColor || sound.color || '#fff';
+          return (
+            <Animated.View key={`sr${i}`} pointerEvents="none" style={{
+              position: 'absolute', width: s, height: s, borderRadius: s / 2, borderWidth: r.bw * 1.5, borderColor: color,
+              shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20,
+              opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax + 0.15] }),
+              transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
+            }} />
+          );
+        })}
+
+        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.81} theme="dark" opacity={0.77} speed="slow" />
+      </View>
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity

@@ -75,8 +75,8 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 290;
-const RING_STROKE = 24;
+const RING_SIZE   = 316;
+const RING_STROKE = 6;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const R_INNER     = R_OUTER - 18; // For weekly intention ring
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -101,11 +101,66 @@ const DEFAULT_STATS: TodayStats = {
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
 
+// ─── Vastu Yantra Scanner ──────────────────────────────────────────────────────
+function VastuScanner({ heading }: { heading: Animated.Value }) {
+  const modHeading = Animated.modulo(Animated.add(heading, 36000), 360);
+
+  const zones = [
+    { title: "Facing North (Kubera)", desc: "Optimal for deep focus & wealth creation.", range: [337.5, 360, 0, 22.5], color: "#60a5fa" },
+    { title: "Facing Ishan (NE)", desc: "Sacred corner. Ideal for spiritual practice.", range: [22.5, 67.5], color: "#e879f9" },
+    { title: "Facing East (Surya)", desc: "Optimal for morning meditation & vitality.", range: [67.5, 112.5], color: "#fcd34d" },
+    { title: "Facing Agni (SE)", desc: "Fire element. Good for active energy.", range: [112.5, 157.5], color: "#fb923c" },
+    { title: "Facing South (Yama)", desc: "Align your head here for deep, restorative sleep.", range: [157.5, 202.5], color: "#a78bfa" },
+    { title: "Facing Nairutya (SW)", desc: "Earth element. Ideal for grounding & stability.", range: [202.5, 247.5], color: "#34d399" },
+    { title: "Facing West (Varuna)", desc: "Optimal for evening reflection & letting go.", range: [247.5, 292.5], color: "#94a3b8" },
+    { title: "Facing Vayu (NW)", desc: "Air element. Embracing change & movement.", range: [292.5, 337.5], color: "#38bdf8" },
+  ];
+
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: -75, left: -100, right: -100, alignItems: 'center' }}>
+      {/* ── Premium Title & Instructions ── */}
+      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <Text style={{ fontSize: 11, fontWeight: '800', color: '#c084fc', letterSpacing: 4, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
+          Vastu Energy Scanner
+        </Text>
+        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, marginTop: 4, textTransform: 'uppercase' }}>
+          Rotate device to align your space
+        </Text>
+      </View>
+
+      {zones.map((zone, i) => {
+        let opacity;
+        if (i === 0) {
+          opacity = modHeading.interpolate({
+            inputRange: [0, 22.5, 23, 337, 337.5, 360],
+            outputRange: [1, 1, 0, 0, 1, 1],
+          });
+        } else {
+          const [start, end] = zone.range;
+          const fadeZone = 8;
+          opacity = modHeading.interpolate({
+            inputRange: [start - fadeZone, start, end, end + fadeZone],
+            outputRange: [0, 1, 1, 0],
+            extrapolate: 'clamp'
+          });
+        }
+        
+        return (
+          <Animated.View key={i} style={{ position: 'absolute', top: 40, alignItems: 'center', opacity }}>
+            <Text style={{ fontSize: 13, fontWeight: '900', color: zone.color, letterSpacing: 1, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
+              {zone.title}
+            </Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+              {zone.desc}
+            </Text>
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Modern HUD Navigator Compass ────────────────────────────────────────────
-// Ultra-modern tactical/digital compass inspired by aviation HUD systems.
-// The outer degree ring rotates with the device heading.
-// The inner reticle + heading readout remain fixed.
-// ── Slim Smart Compass — minimal, elegant, directionally perfect ──────────────
 function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
   const cx = 50, cy = 50;
 
@@ -133,10 +188,10 @@ function CompassRose({ size, heading }: { size: number; heading: Animated.Value 
   });
 
   const cardinals = [
-    { label: 'N', deg: 0,   color: '#f87171', fs: '8' },
-    { label: 'E', deg: 90,  color: 'rgba(255,255,255,0.6)', fs: '5.5' },
-    { label: 'S', deg: 180, color: 'rgba(255,255,255,0.45)', fs: '5.5' },
-    { label: 'W', deg: 270, color: 'rgba(255,255,255,0.6)', fs: '5.5' },
+    { label: '✧', deg: 0,   color: '#f87171', fs: '12' },
+    { label: '✧', deg: 90,  color: 'rgba(255,255,255,0.6)', fs: '9' },
+    { label: '✧', deg: 180, color: 'rgba(255,255,255,0.45)', fs: '9' },
+    { label: '✧', deg: 270, color: 'rgba(255,255,255,0.6)', fs: '9' },
   ];
   const cardinalEls = cardinals.map(({ label, deg: d, color, fs }) => {
     const rad = d * Math.PI / 180;
@@ -581,22 +636,22 @@ export default function WalkTab() {
     })();
 
     Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 800, useNativeDriver: false }),
-      Animated.timing(cardSlide, { toValue: 0, duration: 800, easing: Easing.out(Easing.exp), useNativeDriver: false }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(cardSlide, { toValue: 0, duration: 800, easing: Easing.out(Easing.exp), useNativeDriver: true }),
     ]).start();
 
     // pulseAnim uses JS driver to stay consistent with all other JS-driver props on the same views
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.02, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1.02, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.00, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -717,7 +772,7 @@ export default function WalkTab() {
       toValue: stats.goalPercent / 100,
       duration: 1500,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
     const id = ringAnim.addListener(({ value }) => {
       setRingDashOffset(CIRCUMF - value * CIRCUMF);
@@ -736,15 +791,15 @@ export default function WalkTab() {
         Animated.delay(i * 600),
         Animated.loop(Animated.sequence([
           Animated.parallel([
-            Animated.timing(ra.y,  { toValue: 160, duration: 2200, easing: Easing.linear, useNativeDriver: false }),
+            Animated.timing(ra.y,  { toValue: 160, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
             Animated.sequence([
-              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: false }),
-              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: false }),
+              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: true }),
             ]),
           ]),
           Animated.parallel([
-            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: false }),
-            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: false }),
+            Animated.timing(ra.y,  { toValue: 0, duration: 0, useNativeDriver: true }),
+            Animated.timing(ra.op, { toValue: 0, duration: 0, useNativeDriver: true }),
           ]),
         ])),
       ]);
@@ -792,7 +847,7 @@ export default function WalkTab() {
   useEffect(() => {
     Animated.spring(compactAnim, {
       toValue: compactMode ? 1 : 0,
-      useNativeDriver: false,
+      useNativeDriver: true,
       friction: 8,
       tension: 50,
     }).start();
@@ -939,18 +994,18 @@ export default function WalkTab() {
           </View>
         </Animated.View>
 
-        {/* View Analytics Button - sleek premium iOS style */}
+        {/* Vastu Scanner Toggle Button */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 16, zIndex: 10 }}>
           <TouchableOpacity
-            onPress={() => { Haptics.selectionAsync(); router.push('/step-analytics' as never); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setCompassActive(!compassActive); }}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: compassActive ? 'rgba(192,132,252,0.15)' : 'rgba(0, 0, 0, 0.4)',
+              borderWidth: 1, borderColor: compassActive ? 'rgba(192,132,252,0.4)' : 'rgba(255,255,255,0.2)',
               paddingHorizontal: 24, paddingVertical: 10,
               borderRadius: 30,
               overflow: 'hidden',
-              shadowColor: '#000',
+              shadowColor: compassActive ? '#c084fc' : '#000',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -959,9 +1014,10 @@ export default function WalkTab() {
             activeOpacity={0.7}
           >
             <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <Ionicons name="stats-chart" size={14} color="#FFF" />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>View Analytics</Text>
-            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.6)" style={{ marginLeft: 4 }} />
+            <Ionicons name={compassActive ? "scan-outline" : "finger-print-outline"} size={14} color={compassActive ? "#c084fc" : "#FFF"} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: compassActive ? '#c084fc' : '#FFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+              {compassActive ? "Scanning Space..." : "Tap to Scan Space"}
+            </Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -1091,9 +1147,10 @@ export default function WalkTab() {
                   {compassActive && (
                     <View pointerEvents="none" style={[
                       StyleSheet.absoluteFillObject,
-                      { alignItems: 'center', justifyContent: 'center', opacity: 0.7 },
+                      { alignItems: 'center', justifyContent: 'center', opacity: 0.9 },
                     ]}>
                       <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} />
+                      <VastuScanner heading={compassAnim} />
                     </View>
                   )}
 
@@ -1116,15 +1173,15 @@ export default function WalkTab() {
               {/* ── SVG Ring layers ── */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Thin Track */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={1} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={0.5} />
                 {/* Wide outer glow */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={15} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
                 {/* Mid halo */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={7} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
                 {/* Main crisp arc */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.8} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
                 {/* Inner shimmer sliver */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={0.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
 
                 {/* ── Feature 8: Inner Weekly Intention Ring ── */}
                 {summary && summary.weeklyGoal > 0 && (
@@ -1173,14 +1230,7 @@ export default function WalkTab() {
                     </View>
                   ) : <View style={{ height: 22, marginBottom: 4 }} />}
 
-                  {/* ─ Steps Today badge ─ */}
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 1 }}>
-                    <Text style={{ fontSize: 8, fontWeight: '900', color: '#fff', letterSpacing: 1.6, textTransform: 'uppercase' }}>STEPS TODAY</Text>
-                  </View>
-
-                  {/* ─ Big step count ─ */}
-                  <Text style={[st.ringSteps, { fontSize: 62 }]}>{fmtK(stats.totalSteps)}</Text>
-                  <Text style={st.ringLabel}>OF {fmtK(stats.goalSteps)} GOAL</Text>
+                  {/* Data hidden to focus on pure spirituality & rhythm */}
 
                   {/* ─ Mindful quote ─ */}
                   <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 12 }}>
@@ -1305,35 +1355,6 @@ export default function WalkTab() {
 
         {/* ── BOTTOM UI (HIDDEN IN BOWL MODE) ── */}
         <Animated.View style={{ opacity: bowlOpacity }} pointerEvents={isBowlMode ? 'none' : 'auto'}>
-          {/* ── SLEEK STATS CARD ──────────────────────────────────── */}
-          <Animated.View style={{
-            opacity: cardFade,
-            transform: [{ translateY: cardSlide }],
-            paddingHorizontal: 32,
-            marginTop: 0, 
-            marginBottom: 10,
-          }}>
-            <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 14 }}>
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{stats.distanceKm.toFixed(1)}</Text>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>km</Text>
-                </View>
-                <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{stats.activeMinutes}</Text>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>min</Text>
-                </View>
-                <View style={{ width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{streak}</Text>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>days</Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-
           {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
           <Animated.View style={{
             opacity: cardFade,
@@ -1382,8 +1403,8 @@ export default function WalkTab() {
                   />
                 </Animated.View>
                 
-                <View style={{ paddingVertical: 12 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369a1', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                <View style={{ height: 46, justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369a1', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>
                     {sessionTitle}
                   </Text>
                 </View>
@@ -1397,52 +1418,26 @@ export default function WalkTab() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setShowOrbitGame(true);
                 }}
-                style={{ overflow: 'hidden', borderRadius: 99, shadowColor: '#c084fc', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
+                style={{ flex: 1, overflow: 'hidden', borderRadius: 99, shadowColor: '#c084fc', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
               >
                 <LinearGradient
                   colors={['rgba(147,51,234,0.7)', 'rgba(79,32,134,0.6)']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={{
                     alignItems: 'center', justifyContent: 'center',
-                    paddingHorizontal: 16, height: 44,
+                    flexDirection: 'row', gap: 4,
+                    paddingHorizontal: 8, height: 46,
                     borderRadius: 99,
                     borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
                   }}
                 >
-                  <Text style={{ fontSize: 16 }}>🌀</Text>
+                  <Text style={{ fontSize: 14 }}>🌀</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }} numberOfLines={1} adjustsFontSizeToFit>AURA FLOW</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
 
-            {/* Adjust Target Button */}
-            <TouchableOpacity
-              style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
-              onPress={() => { Haptics.selectionAsync(); setShowGoalModal(true); }}
-              activeOpacity={0.82}
-            >
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.05)']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }} />
-                
-                {/* Top shine */}
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.15)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
-                />
-
-                <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="leaf-outline" size={13} color="#ffffff" style={{ marginRight: 6, opacity: 0.9 }} />
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#ffffff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                    Intentions
-                  </Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+            {/* Intentions removed */}
 
         </Animated.View>
 

@@ -115,19 +115,23 @@ export function PremiumRhythmIcon({ size = 24, focused = false }: { size?: numbe
       {/* Inner shadow/glare for 3D sphere effect */}
       <Circle cx="20" cy="19" r="12" fill="url(#rhythmGlare)" />
 
-      {/* Footsteps / Rhythm icon */}
+      {/* Premium Yantra / Sacred Geometry icon */}
       <G opacity={focused ? 1 : 0.7}>
         <Path 
-          d="M15 23 C 13 23, 12 20, 14 17 C 15 15, 17 15, 17 17 C 18 20, 17 23, 15 23 Z" 
-          fill="#FFFFFF" 
+          d="M20 10 L28 24 H12 Z" 
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
         />
-        <Circle cx="15.5" cy="14" r="1.5" fill="#FFFFFF" />
-        
         <Path 
-          d="M24 19 C 22 19, 21 16, 23 13 C 24 11, 26 11, 26 13 C 27 16, 26 19, 24 19 Z" 
-          fill="#FFFFFF" 
+          d="M20 30 L12 16 H28 Z" 
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
         />
-        <Circle cx="24.5" cy="10" r="1.5" fill="#FFFFFF" />
+        <Circle cx="20" cy="20" r="2.5" fill="#FFFFFF" />
       </G>
     </Svg>
   );

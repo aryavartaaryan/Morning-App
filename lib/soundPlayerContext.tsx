@@ -480,6 +480,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const stopSound = useCallback(async (triggerCb = true) => {
+    playEpochRef.current++; // Abort any in-flight playSound/loadAndPlay
     clearTimer();
     clearHeartbeat();
     await stopAllRefs();

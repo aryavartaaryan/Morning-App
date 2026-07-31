@@ -131,15 +131,15 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
     let mounted = true;
     // Initial delay to let the app settle
     const initialDelay = setTimeout(() => {
-      Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: false }).start();
+      Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
 
       Animated.sequence([
         Animated.delay(600),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 800, useNativeDriver: false }),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 800, useNativeDriver: true }),
         Animated.parallel([
-           Animated.timing(mantraOp, { toValue: 1, duration: 1200, useNativeDriver: false }),
-           Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
-           Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+           Animated.timing(mantraOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
+           Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+           Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
         ]),
         Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra and geometry
       ]).start(() => {
@@ -150,10 +150,10 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         
         // Dismiss Splash
         Animated.parallel([
-          Animated.timing(titleOp, { toValue: 0, duration: 800, useNativeDriver: false }),
-          Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: false }),
-          Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: false }),
-          Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: false }),
+          Animated.timing(titleOp, { toValue: 0, duration: 800, useNativeDriver: true }),
+          Animated.timing(titleSc, { toValue: 1.05, duration: 800, useNativeDriver: true }),
+          Animated.timing(screenOp, { toValue: 0, duration: 800, useNativeDriver: true }),
+          Animated.timing(screenSc, { toValue: 0.94, duration: 800, useNativeDriver: true }),
         ]).start(({ finished }) => {
           if (mounted && finished) onDone();
         });
@@ -187,8 +187,8 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       <View style={SS.center}>
         
         {/* Elegant Geometric Fusion behind NADA */}
-        <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" />
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" opacity={0.55} />
         </Animated.View>
 
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
@@ -202,7 +202,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
             textShadowRadius: 12,
             textShadowOffset: { width: 0, height: 0 },
             opacity: 0.95 
-          }}>NADA</Text>
+          }}>SVARA</Text>
           
           <Text style={{ 
             fontSize: 12, 
@@ -222,7 +222,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
               textAlign: 'center', 
               lineHeight: 32 
             }}>
-              Resonate & Transform{'\n'}through the Nada.
+              Resonate & Transform{'\n'}through Svara.
             </Text>
             <Animated.Text style={{ 
               position: 'absolute',
@@ -235,7 +235,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
               lineHeight: 32,
               opacity: shimmerOp 
             }}>
-              Resonate & Transform{'\n'}through the Nada.
+              Resonate & Transform{'\n'}through Svara.
             </Animated.Text>
           </View>
 
@@ -261,7 +261,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: footerOp }]}>NADA  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp }]}>SVARA  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -372,7 +372,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const contentTranslate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, []);
 
   const tags1 = ['Reduce Stress', 'Regain Focus', 'Digital Detox', 'Reduce Brain Fog', 'Reconnect with Nature', 'Improve Sleep'];
@@ -423,7 +423,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
 
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
-    Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: false }).start(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start(() => {
       const target = q2 === 'Mostly Sedentary' ? '21000' : q2 === 'Lightly Active' ? '35000' : '50000';
       AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
       AsyncStorage.setItem('sc_intentions', JSON.stringify(q1)).catch(() => {});
@@ -436,7 +436,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
       case 0:
         return (
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Nada?</Text>
+            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Svara?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>Select all that apply to personalize your journey.</Text>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               {tags1.map(t => (
@@ -500,7 +500,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           {/* Header & Progress Indicator */}
           <View style={{ marginBottom: 40 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <Text style={{ fontSize: 18, color: '#bfdbfe', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 1 }}>Nada</Text>
+              <Text style={{ fontSize: 18, color: '#bfdbfe', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 1 }}>Svara</Text>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_700Bold', letterSpacing: 2 }}>{step + 1} / 4</Text>
             </View>
             <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
@@ -600,8 +600,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     // Pulse core glow (slow, deep breathing)
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -610,25 +610,25 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       Animated.sequence([
         Animated.delay(i * 2500),
         Animated.loop(Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 8000, useNativeDriver: false, easing: Easing.out(Easing.cubic) }),
-          Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 1, duration: 8000, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+          Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
         ])),
       ]).start();
     });
 
     // Spinning arc — continuous 360° rotation, never stops during download
     Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: false })
+      Animated.timing(spinAnim, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true })
     ).start();
 
 
     // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
       Animated.sequence([
-        Animated.timing(subtitleOp, { toValue: 0, duration: 1500, useNativeDriver: false }),
+        Animated.timing(subtitleOp, { toValue: 0, duration: 1500, useNativeDriver: true }),
       ]).start(() => {
         setSubtitleIdx(i => (i + 1) % SETUP_SUBTITLES.length);
-        Animated.timing(subtitleOp, { toValue: 1, duration: 1500, useNativeDriver: false }).start();
+        Animated.timing(subtitleOp, { toValue: 1, duration: 1500, useNativeDriver: true }).start();
       });
     };
     const interval = setInterval(cycleSubtitle, 6000);
@@ -693,8 +693,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       if (soundRef.current) soundRef.current.unloadAsync();
       if (soundRef2.current) soundRef2.current.unloadAsync();
       Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
-        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: false })
+        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true })
       ]).start(() => {
         if (onFadeOutComplete) onFadeOutComplete();
       });
@@ -728,7 +728,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       // 2500ms was causing "frozen then sudden jump" visual sticking.
       duration: progress >= 1 ? 600 : 400,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: false
+      useNativeDriver: true
     }).start();
   }, [progress]);
 
@@ -830,7 +830,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       }} />
 
       <View style={DS.center}>
-        <Text style={[DS.appName, { color: softSkyBlue, textShadowColor: skyBlue }]}>NADA</Text>
+        <Text style={[DS.appName, { color: softSkyBlue, textShadowColor: skyBlue }]}>SVARA</Text>
         <View style={{ height: 60, justifyContent: 'center', marginBottom: 20 }}>
           <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
         </View>

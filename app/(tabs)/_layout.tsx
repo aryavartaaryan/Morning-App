@@ -875,12 +875,12 @@ function GlobalPlayerBar() {
 
 const GP = StyleSheet.create({
   wrap: {
-    marginHorizontal: 32, // slimmer width
-    marginBottom: 24, // floating a bit higher
-    borderRadius: 99, // fully round like a wire
+    marginHorizontal: 38, // slimmer width
+    marginBottom: 20, 
+    borderRadius: 99, 
     overflow: "hidden",
-    borderWidth: 1.5, // strong electric wire border
-    backgroundColor: 'rgba(5,7,12,0.85)',
+    borderWidth: 1.5, 
+    backgroundColor: 'rgba(3,5,10,0.92)',
     elevation: 20,
   },
   accentLine: {
@@ -890,9 +890,9 @@ const GP = StyleSheet.create({
   grad: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8, // very slim
-    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5, // much slimmer
+    gap: 8,
   },
   bodyTap: {
     flex: 1,
@@ -901,22 +901,22 @@ const GP = StyleSheet.create({
     gap: 8,
   },
   emojiBox: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     alignItems: "center",
     justifyContent: "center",
   },
-  emojiTxt: { fontSize: 16 },
+  emojiTxt: { fontSize: 14 },
   infoCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     color: "#fff",
     letterSpacing: 0.2,
     fontFamily: "Nunito_700Bold",
   },
   sub: {
-    fontSize: 11,
+    fontSize: 10,
     color: "rgba(255,255,255,0.7)",
     fontWeight: "600",
     fontFamily: "Nunito_500Medium",
@@ -924,9 +924,9 @@ const GP = StyleSheet.create({
   },
   waveWrap: { marginRight: 6 },
   circleBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: "center",
     justifyContent: "center",
@@ -945,7 +945,9 @@ const GP = StyleSheet.create({
 function GlobalStepTracker() {
   const router = useRouter();
   const path = usePathname();
-  const { playingId, isPaused } = useSoundPlayer();
+  const { playingId, isPaused, togglePause, playingMeta, mixedSounds } = useSoundPlayer();
+  const displayMeta = playingMeta;
+  
   const [active, setActive] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [steps, setSteps] = useState(0);
@@ -1012,11 +1014,6 @@ function GlobalStepTracker() {
       }
     });
 
-    if (shouldShow) {
-      // bar is visible
-    } else {
-      // bar is hidden
-    }
   }, [active, path]);
 
   const endSession = async () => {
@@ -1034,7 +1031,11 @@ function GlobalStepTracker() {
   const durSecs = startMs ? Math.round((nowMs - startMs) / 1000) : 0;
   const mm = Math.floor(durSecs / 60).toString().padStart(2, '0');
   const ss = (durSecs % 60).toString().padStart(2, '0');
-  const accentColor = '#34d399'; // Mint green for steps
+  
+  // Neon Sci-Fi Navy Blue Look
+  const accentColor = '#00E5FF'; // neon cyan
+  const isMix = mixedSounds && mixedSounds.length > 1;
+  const label = isMix ? mixedSounds.map((s) => s.emoji).join(" ") : (displayMeta?.label ?? "");
 
   return (
     <Animated.View
@@ -1043,51 +1044,83 @@ function GlobalStepTracker() {
         {
           transform: [{ translateY: slideAnim }],
           borderColor: accentColor,
-          marginBottom: 12,
+          marginBottom: 16,
           shadowColor: accentColor,
-          shadowOpacity: 0.7,
-          shadowRadius: 14,
+          shadowOpacity: 0.9,
+          shadowRadius: 18,
           shadowOffset: { width: 0, height: 0 },
         }
       ]}
     >
       <LinearGradient
-        colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
+        colors={[`${accentColor}25`, "rgba(3,8,22,0.95)"]} // smart navy blue gradient
         start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
         style={GP.grad}
       >
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2,6,18,0.4)' }]} />
         <TouchableOpacity
-          style={GP.bodyTap}
+          style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             router.navigate("/step-session");
           }}
           activeOpacity={0.8}
         >
-          <View style={GP.emojiBox}>
+          {/* Steps & Timer side */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="footsteps" size={16} color={accentColor} />
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#fff', fontFamily: 'Nunito_900Black', letterSpacing: 0.5 }}>
+                {steps.toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 1, marginTop: -1 }}>
+                {mm}:{ss}
+              </Text>
+            </View>
           </View>
+          
+          {/* Vertical Divider */}
+          <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)' }} />
 
-          <View style={GP.infoCol}>
-            <Text style={GP.name} numberOfLines={1}>
-              {steps.toLocaleString()} steps
-            </Text>
-            <Text style={GP.sub} numberOfLines={1}>
-              {mm}:{ss}
-            </Text>
-          </View>
-
-          <View style={[GP.waveWrap, { flexDirection: 'row', alignItems: 'center' }]}>
-            {playingId && !isPaused && (
-              <Ionicons name="musical-notes" size={12} color={accentColor} style={{ marginRight: 6 }} />
+          {/* Music side */}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {playingId && displayMeta ? (
+              <>
+                <Text style={{ fontSize: 13 }}>{displayMeta.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.2 }} numberOfLines={1}>
+                    {label}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: -1 }}>
+                    <WaveformBars color={displayMeta.color || accentColor} active={!isPaused} />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.2 }}>LIVE</Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '600' }} numberOfLines={1}>
+                  No sound playing
+                </Text>
+              </View>
             )}
-            <Text style={{ color: accentColor, fontSize: 10, fontWeight: '800', opacity: 0.85 }}>
-              LIVE
-            </Text>
           </View>
         </TouchableOpacity>
 
+        {/* Play/Pause Button (if music active) */}
+        {playingId && (
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (togglePause) togglePause();
+            }}
+            style={GP.circleBtn}
+          >
+            <Ionicons name={isPaused ? "play" : "pause"} size={14} color="#FFF" style={{ marginLeft: isPaused ? 2 : 0 }} />
+          </TouchableOpacity>
+        )}
+
+        {/* End Walk Button */}
         <TouchableOpacity onPress={endSession} style={GP.stopBtn}>
           <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>

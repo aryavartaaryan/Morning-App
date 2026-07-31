@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nada",
+    "name": "Svara",
     "slug": "nada-arise",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,11 +23,11 @@
           "processing",
           "location"
         ],
-        "NSUserNotificationsUsageDescription": "Nada uses notifications to ring your wake alarm.",
-        "NSLocationWhenInUseUsageDescription": "Nada tracks your walk distance during your sessions.",
-        "NSMotionUsageDescription": "Nada uses motion sensors to accurately count your walking steps.",
-        "NSHealthShareUsageDescription": "Nada tracks your steps and activity for walk sessions.",
-        "NSHealthUpdateUsageDescription": "Nada logs your walking activity and steps.",
+        "NSUserNotificationsUsageDescription": "Svara uses notifications to ring your wake alarm.",
+        "NSLocationWhenInUseUsageDescription": "Svara tracks your walk distance during your sessions.",
+        "NSMotionUsageDescription": "Svara uses motion sensors to accurately count your walking steps.",
+        "NSHealthShareUsageDescription": "Svara tracks your steps and activity for walk sessions.",
+        "NSHealthUpdateUsageDescription": "Svara logs your walking activity and steps.",
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.solrize.alarm-reschedule"
         ]
@@ -106,26 +106,26 @@
             "./assets/sounds/mantra_alarm.m4a"
           ],
           "androidMode": "default",
-          "androidCollapsedTitle": "Nada",
+          "androidCollapsedTitle": "Svara",
           "iosDisplayInForeground": true
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Nada to access your camera for mission completion."
+          "cameraPermission": "Allow Svara to access your camera for mission completion."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Nada to access your photos for mission completion."
+          "photosPermission": "Allow Svara to access your photos for mission completion."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Nada to show local weather and track your walk."
+          "locationWhenInUsePermission": "Allow Svara to show local weather and track your walk."
         }
       ],
       [

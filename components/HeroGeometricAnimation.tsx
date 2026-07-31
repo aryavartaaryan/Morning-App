@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing } from 'react-native';
 import Svg, {
   Circle as SvgCircle, Path as SvgPath, G as SvgG,
@@ -22,8 +22,11 @@ function poly(points: { x: number; y: number }[], close = true) {
 // 4 extraordinary sacred geometries cross-fade every ~10 seconds.
 // 100% useNativeDriver — zero JS thread load, no setInterval, no setState.
 // ─────────────────────────────────────────────────────────────────────────────
-export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }: { size: number, theme?: 'light' | 'dark', speed?: 'slow' | 'fast' }) {
+export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow', opacity = 0.82 }: { size: number, theme?: 'light' | 'dark', speed?: 'slow' | 'fast', opacity?: number }) {
   const cx = size / 2, cy = size / 2;
+
+  const [activeShape, setActiveShape] = useState(0);
+  const [nextShape, setNextShape] = useState<number | null>(null);
 
   // ── Rotation drivers ──────────────────────────────────────────────────────
   const rotA = useRef(new Animated.Value(0)).current; // slow forward
@@ -41,10 +44,10 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
   const pulse  = useRef(new Animated.Value(0)).current; // faster pulse for bindu
 
   useEffect(() => {
-    // Rotations — all native thread
-    Animated.loop(Animated.timing(rotA, { toValue: 1, duration: 55000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rotB, { toValue: 1, duration: 80000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rotC, { toValue: 1, duration: 130000, easing: Easing.linear, useNativeDriver: true })).start();
+    // Rotations — all native thread (faster, meditative speeds)
+    Animated.loop(Animated.timing(rotA, { toValue: 1, duration: 18000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotB, { toValue: 1, duration: 24000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotC, { toValue: 1, duration: 32000, easing: Easing.linear, useNativeDriver: true })).start();
 
     // Gentle breathe
     Animated.loop(Animated.sequence([
@@ -69,11 +72,19 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
       const next = (current + 1) % 4;
       Animated.sequence([
         Animated.delay(HOLD),
+      ]).start(({ finished }) => {
+        if (!finished) return;
+        setNextShape(next);
         Animated.parallel([
           Animated.timing(ops[current], { toValue: 0, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
           Animated.timing(ops[next],    { toValue: 1, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-      ]).start(({ finished }) => { if (finished) runCycle(next); });
+        ]).start(({ finished }) => {
+          if (!finished) return;
+          setActiveShape(next);
+          setNextShape(null);
+          runCycle(next);
+        });
+      });
     }
     runCycle(0);
   }, []);
@@ -104,12 +115,13 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
   const hw = S * 0.5;
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2, opacity: 0.82 }}>
+    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2, opacity: opacity, justifyContent: 'center', alignItems: 'center' }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 0 — FLOWER OF LIFE / SEED OF LIFE
           Overlapping circles creating sacred petal geometry.
           ══════════════════════════════════════════════════════════════════ */}
+      {(activeShape === 0 || nextShape === 0) && (
       <Animated.View style={{ position: 'absolute', width: S, height: S,
           opacity: op0, transform: [{ rotate: r2deg }, { scale: sc }] }}>
         <Svg width={S} height={S}>
@@ -131,24 +143,19 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
           {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
             <SvgCircle key={`fol_jewel_${i}`} cx={p.x} cy={p.y} r={2.8} fill={G3} opacity={0.85} />
           ))}
-        </Svg>
-      </Animated.View>
-
-      {/* Counter-rotating outer halo for Flower of Life */}
-      <Animated.View style={{ position: 'absolute', width: S, height: S,
-          opacity: op0, transform: [{ rotate: r0degR }] }}>
-        <Svg width={S} height={S}>
+          {/* Outer halo */}
           {pts(hw, hw, S*0.43, 12, 0).map((p, i) => (
             <SvgCircle key={`fol_halo_${i}`} cx={p.x} cy={p.y} r={2} fill={G3} opacity={0.20 + (i % 2) * 0.15} />
           ))}
-          <SvgCircle cx={hw} cy={hw} r={S*0.45} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25}
-            strokeDasharray="4 8" />
+          <SvgCircle cx={hw} cy={hw} r={S*0.45} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25} strokeDasharray="4 8" />
         </Svg>
       </Animated.View>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 1 — METATRON'S CUBE (Full 13-circle pattern)
           ══════════════════════════════════════════════════════════════════ */}
+      {(activeShape === 1 || nextShape === 1) && (
       <Animated.View style={{ position: 'absolute', width: S, height: S,
           opacity: op1, transform: [{ rotate: r1degR }, { scale: sc }] }}>
         <Svg width={S} height={S}>
@@ -181,28 +188,23 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
           {pts(hw, hw, S*0.34, 6, 0).map((p, i) => (
             <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={3} fill={G3} opacity={0.80} />
           ))}
-        </Svg>
-      </Animated.View>
-
-      {/* Slow forward counter-layer for Metatron */}
-      <Animated.View style={{ position: 'absolute', width: S, height: S,
-          opacity: op1, transform: [{ rotate: r0deg }] }}>
-        <Svg width={S} height={S}>
           {/* 6-petal inner star */}
           {pts(hw, hw, S*0.38, 6, Math.PI/6).map((p, i, arr) => {
             const n = arr[(i+1)%arr.length];
-            return <SvgPath key={`mc_sp_${i}`} d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
-              stroke={G2} strokeWidth="1" opacity={0.50} />;
+            return <SvgPath key={`mc_sp_${i}`} d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`} stroke={G2} strokeWidth="1" opacity={0.50} />;
           })}
+          {/* Halo */}
           {pts(hw, hw, S*0.44, 12, 0).map((p, i) => (
             <SvgCircle key={`mc_halo_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.22 + (i%3)*0.12} />
           ))}
         </Svg>
       </Animated.View>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 2 — SRI YANTRA (9 interlocked triangles + lotus rings)
           ══════════════════════════════════════════════════════════════════ */}
+      {(activeShape === 2 || nextShape === 2) && (
       <Animated.View style={{ position: 'absolute', width: S, height: S,
           opacity: op2, transform: [{ rotate: r2deg }, { scale: sc }] }}>
         <Svg width={S} height={S}>
@@ -237,11 +239,13 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
           ))}
         </Svg>
       </Animated.View>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 3 — SHATKONA / STAR OF DAVID (as per your reference image)
           Two large bold golden triangles entangled, with fine ray web
           ══════════════════════════════════════════════════════════════════ */}
+      {(activeShape === 3 || nextShape === 3) && (
       <Animated.View style={{ position: 'absolute', width: S, height: S,
           opacity: op3, transform: [{ rotate: r0deg }, { scale: scSm }] }}>
         <Svg width={S} height={S}>
@@ -276,8 +280,10 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
           <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G3} strokeWidth="1"   opacity={0.85} />
         </Svg>
       </Animated.View>
+      )}
 
       {/* Counter-rotation ring for Shatkona */}
+      {(activeShape === 3 || nextShape === 3) && (
       <Animated.View style={{ position: 'absolute', width: S, height: S,
           opacity: op3, transform: [{ rotate: r1degR }] }}>
         <Svg width={S} height={S}>
@@ -286,6 +292,7 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }:
           ))}
         </Svg>
       </Animated.View>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           ALWAYS VISIBLE — Orbiting stardust + glowing Bindu
