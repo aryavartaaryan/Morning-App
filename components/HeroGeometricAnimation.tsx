@@ -22,97 +22,7 @@ function poly(points: { x: number; y: number }[], close = true) {
 // 4 extraordinary sacred geometries cross-fade every ~10 seconds.
 // 100% useNativeDriver — zero JS thread load, no setInterval, no setState.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function hexToRgb(hex: string) {
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  const r = parseInt(h.substring(0,2), 16);
-  const g = parseInt(h.substring(2,4), 16);
-  const b = parseInt(h.substring(4,6), 16);
-  return `${r},${g},${b}`;
-}
-
-// Sophisticated HSL-based adjustment for ultra-premium look
-function adjustColorForPremium(hex: string, mode: 'lightest' | 'base' | 'brightest' | 'darkAccent', isDark: boolean) {
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  let r = parseInt(h.substring(0,2), 16);
-  let g = parseInt(h.substring(2,4), 16);
-  let b = parseInt(h.substring(4,6), 16);
-
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let hVal = 0, sVal = 0, lVal = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    sVal = lVal > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: hVal = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: hVal = (b - r) / d + 2; break;
-      case b: hVal = (r - g) / d + 4; break;
-    }
-    hVal /= 6;
-  }
-
-  // Adjust for premium look based on theme
-  if (isDark) {
-    // Night Mode: luminous, glowing, ethereal colours
-    if (mode === 'base') {
-      lVal = Math.min(0.65, lVal + 0.1); 
-      sVal = Math.min(0.9, sVal + 0.2); 
-    } else if (mode === 'lightest') {
-      lVal = Math.min(0.85, lVal + 0.3); 
-      sVal = Math.min(1.0, sVal + 0.1);
-    } else if (mode === 'brightest') {
-      lVal = Math.min(0.96, lVal + 0.45); 
-      sVal = Math.max(0, sVal - 0.2); 
-    } else if (mode === 'darkAccent') {
-      lVal = Math.max(0.3, lVal - 0.2); 
-      sVal = Math.min(1.0, sVal + 0.3); 
-    }
-  } else {
-    // Day Mode: deep, rich, metallic contrast against light backgrounds
-    if (mode === 'base') {
-      lVal = Math.max(0.35, lVal - 0.2); 
-      sVal = Math.min(0.9, sVal + 0.2);
-    } else if (mode === 'lightest') {
-      lVal = Math.max(0.45, lVal - 0.1); 
-      sVal = Math.min(1.0, sVal + 0.1);
-    } else if (mode === 'brightest') {
-      lVal = Math.max(0.2, lVal - 0.4); 
-      sVal = Math.min(1.0, sVal + 0.3); 
-    } else if (mode === 'darkAccent') {
-      lVal = Math.max(0.1, lVal - 0.5); 
-      sVal = Math.min(0.8, sVal + 0.1);
-    }
-  }
-
-  let rRes, gRes, bRes;
-  if (sVal === 0) {
-    rRes = gRes = bRes = lVal;
-  } else {
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    const q = lVal < 0.5 ? lVal * (1 + sVal) : lVal + sVal - lVal * sVal;
-    const p = 2 * lVal - q;
-    rRes = hue2rgb(p, q, hVal + 1/3);
-    gRes = hue2rgb(p, q, hVal);
-    bRes = hue2rgb(p, q, hVal - 1/3);
-  }
-
-  const toHex = (x: number) => {
-    const hex = Math.round(x * 255).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
-  };
-  return `#${toHex(rRes)}${toHex(gRes)}${toHex(bRes)}`;
-}
-export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow', baseColor, opacity = 0.75 }: { size: number, theme?: 'light' | 'dark', speed?: 'slow' | 'fast', baseColor?: string, opacity?: number }) {
+export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow' }: { size: number, theme?: 'light' | 'dark', speed?: 'slow' | 'fast' }) {
   const cx = size / 2, cy = size / 2;
 
   // ── Rotation drivers ──────────────────────────────────────────────────────
@@ -179,29 +89,22 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow', b
   const bindOp  = pulse.interpolate({ inputRange: [0,1], outputRange: [0.55, 1] });
   const bindSc  = pulse.interpolate({ inputRange: [0,1], outputRange: [0.75, 1.5] });
 
-  // ── Colour palette — dynamic contrast for elegant UI ─────────────────────
+  // ── Colour palette — True Golden Contrast ─────────────────────────────
   const isDark = theme === 'dark';
   
-  // Default legacy gold colors
-  let G1 = isDark ? '#FFD700' : '#A67C00'; 
-  let G2 = isDark ? '#FDB931' : '#CD7F32'; 
-  let G3 = isDark ? '#FFFBE6' : '#8B6508'; 
-  let G4 = isDark ? '#B8860B' : '#5C4033'; 
-  let GA = isDark ? 'rgba(253,185,49,' : 'rgba(184,134,11,'; 
-
-  if (baseColor) {
-    G1 = adjustColorForPremium(baseColor, 'lightest', isDark);
-    G2 = adjustColorForPremium(baseColor, 'base', isDark);
-    G3 = adjustColorForPremium(baseColor, 'brightest', isDark);
-    G4 = adjustColorForPremium(baseColor, 'darkAccent', isDark);
-    GA = `rgba(${hexToRgb(baseColor)},`;
-  }
+  // Real Golden Palette: strictly golden hues (no copper/bronze)
+  // Dark theme uses Luminous Light Gold. Light theme uses Rich Dark Gold.
+  const G1 = isDark ? '#FFD700' : '#B8860B'; // pure gold vs dark goldenrod
+  const G2 = isDark ? '#FFDF00' : '#996515'; // golden yellow vs antique gold
+  const G3 = isDark ? '#FFF8DC' : '#DAA520'; // cornsilk/white gold vs goldenrod highlight
+  const G4 = isDark ? '#DAA520' : '#8B6508'; // goldenrod depth vs deepest gold
+  const GA = isDark ? 'rgba(255,215,0,' : 'rgba(184,134,11,'; // true gold base rgb for fills
 
   const S = size;
   const hw = S * 0.5;
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2, opacity }}>
+    <View pointerEvents="none" style={{ position: 'absolute', width: S, height: S, zIndex: 2, opacity: 0.82 }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
           SHAPE 0 — FLOWER OF LIFE / SEED OF LIFE
@@ -309,14 +212,14 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow', b
           {/* Shakti (downward) — 4 sizes */}
           {[S*0.35, S*0.27, S*0.19, S*0.12].map((r, ti) => (
             <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw, hw, r, 3, Math.PI/6))}
-              fill={`${GA}${[0.07, 0.06, 0.05, 0.04][ti]})`}
+              fill={`${GA}${[0.04, 0.03, 0.02, 0.02][ti]})`}
               stroke={G2} strokeWidth={[1.8, 1.5, 1.3, 1.1][ti]}
               opacity={0.75 + ti * 0.06} />
           ))}
           {/* Shiva (upward) — 5 sizes */}
           {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r, ti) => (
             <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw, hw, r, 3, -Math.PI/6))}
-              fill={`${GA}${[0.05, 0.05, 0.04, 0.04, 0.03][ti]})`}
+              fill={`${GA}${[0.03, 0.03, 0.02, 0.02, 0.01][ti]})`}
               stroke={G1} strokeWidth={[1.8, 1.5, 1.3, 1.1, 0.9][ti]}
               opacity={0.75 + ti * 0.06} />
           ))}
@@ -349,12 +252,12 @@ export function HeroGeometricAnimation({ size, theme = 'dark', speed = 'slow', b
           ))}
           {/* Outer dashed circle */}
           <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4} strokeWidth="0.8" opacity={0.40} strokeDasharray="3 5" />
-          {/* Main upward triangle (filled golden glow — like reference) */}
+          {/* Main upward triangle (filled golden glow — delicate center) */}
           <SvgPath d={poly(pts(hw, hw, S*0.38, 3, -Math.PI/2))}
-            fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
+            fill={`${GA}0.04)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
           {/* Main downward triangle (filled golden glow) */}
           <SvgPath d={poly(pts(hw, hw, S*0.38, 3, Math.PI/2))}
-            fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
+            fill={`${GA}0.04)`} stroke={G1} strokeWidth="2.5" opacity={0.92} />
           {/* Hexagram intersection inner highlight */}
           {pts(hw, hw, S*0.20, 6, 0).map((p, i, arr) => {
             const n = arr[(i+1)%arr.length];

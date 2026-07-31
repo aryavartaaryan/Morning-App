@@ -25,7 +25,7 @@ import { ALL_SLEEP_SOUNDS } from "@/lib/sleepSoundsData";
 import { useBgContext } from "@/lib/bgContext";
 import { useRef, useEffect, useState, useCallback } from "react";
 import StepCounter from "@/src/modules/StepCounter";
-
+import { PremiumDailyIcon, PremiumSunriseIcon, PremiumRhythmIcon, PremiumSitarIcon } from "@/components/PremiumTabIcons";
 function VeenaIcon({
   size = 23,
   color = "#7A9A7A",
@@ -756,12 +756,6 @@ function GlobalPlayerBar() {
 
   useEffect(() => {
     if (playingId) {
-      LayoutAnimation.configureNext({
-        duration: 400,
-        create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-        update: { type: LayoutAnimation.Types.spring, springDamping: 0.7 },
-        delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      });
       setRendered(true);
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -776,7 +770,6 @@ function GlobalPlayerBar() {
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (finished && !playingIdRef.current) {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           setRendered(false);
         }
       });
@@ -961,8 +954,12 @@ function GlobalStepTracker() {
   const slideAnim = useRef(new Animated.Value(100)).current;
 
 
+  const lastCheckRef = useRef(0);
   // Re-check state on mount or tab change
   const checkState = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastCheckRef.current < 2000) return;
+    lastCheckRef.current = now;
     const running = await StepCounter.isSessionRunning();
     if (running) {
       const liveSteps = await StepCounter.getCurrentSessionSteps();
@@ -1246,7 +1243,9 @@ function CustomTabBar() {
         { paddingBottom: bottomPad, backgroundColor: 'transparent' },
       ]}
     >
-      <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+      {Platform.OS === 'ios' && (
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+      )}
       <LinearGradient
         colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1279,21 +1278,20 @@ function CustomTabBar() {
                 ]}
               >
                 {tab.name === "sleep" ? (
-                  <VeenaIcon
-                    size={20}
-                    color={focused ? focusedColor : unfocusedColor}
-                    filled={focused}
+                  <PremiumSitarIcon
+                    size={26}
+                    focused={focused}
                   />
                 ) : tab.name === "alarms" ? (
-                  <SonicSunriseIcon
-                    size={20}
-                    color={focused ? focusedColor : unfocusedColor}
-                    filled={focused}
-                  />
+                  <PremiumSunriseIcon size={26} focused={focused} />
+                ) : tab.name === "walk" ? (
+                  <PremiumRhythmIcon size={26} focused={focused} />
+                ) : tab.name === "index" ? (
+                  <PremiumDailyIcon size={26} focused={focused} />
                 ) : (
                   <Ionicons
                     name={getTimeTabIcon(tab.name, hour, focused) as any}
-                    size={20}
+                    size={22}
                     color={focused ? focusedColor : unfocusedColor}
                   />
                 )}

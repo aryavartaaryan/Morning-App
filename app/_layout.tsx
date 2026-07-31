@@ -188,7 +188,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         
         {/* Elegant Geometric Fusion behind NADA */}
         <Animated.View style={{ position: 'absolute', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" opacity={0.11} />
+          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" />
         </Animated.View>
 
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
@@ -1063,10 +1063,11 @@ function BodhiNotificationListener() {
         // wasAlarmFired() can stay true on the native side after a completed alarm cycle
         // causing a crash loop where alarm-ringing remounts into a stopped native service.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 5-second window — prevents auto-reopen even if the native
-        // wasAlarmFired() flag is slow to clear after stopAlarmSound() or cancelAlarm().
-        if (handled && Date.now() - Number(handled) < 5000) {
-          // Handled within last 5 seconds = just completed this cycle. Prevent crash loop.
+        // ROOT CAUSE FIX: Extended from 5 seconds to 60 seconds.
+        // The app launch path (cold start) also gets this guard because the very
+        // first app open after alarm dismissal can race the native flag clear.
+        if (handled && Date.now() - Number(handled) < 60_000) {
+          // Handled within last 60 seconds = just completed this cycle. Prevent crash loop.
           alarmRoutedRef.current = true; // suppress future routing this session
           return;
         }
@@ -1091,19 +1092,32 @@ function BodhiNotificationListener() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
-      // Do NOT early-return on alarmRoutedRef here — we first check wasAlarmFired()
-      // and the 30-minute window, THEN decide. A stale alarmRoutedRef=true from a
-      // previous testing cycle must NOT block a genuine new alarm from showing.
-      if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing') || (segments as string[]).includes('mission')) return; // already on alarm/mission screen
+      // CRITICAL BUG FIX: Use segmentsRef.current (always-fresh) instead of
+      // `segments` (stale closure captured at effect creation). When this
+      // async callback fires, segments is the value from the PREVIOUS render.
+      // Using the stale value means we check the wrong current route — the user
+      // may already be on (tabs) (alarm stopped) but the closure still says
+      // wake-alarm-ringing, or vice versa.
+      const freshSegs = segmentsRef.current;
+      if (freshSegs.includes('wake-alarm-ringing') || freshSegs.includes('alarm-ringing') || freshSegs.includes('mission')) return; // already on alarm/mission screen
       getInitialAlarmNotification().then(async (fired) => {
         if (!fired) return;
-        if ((segments as string[]).includes('wake-alarm-ringing') || (segments as string[]).includes('alarm-ringing') || (segments as string[]).includes('mission')) return;
-        // Guard: skip routing if alarm was already handled — prevents crash loop
-        // caused by wasAlarmFired() persisting after a completed alarm cycle.
+        // Re-check with fresh segments after async gap
+        const currentSegs = segmentsRef.current;
+        if (currentSegs.includes('wake-alarm-ringing') || currentSegs.includes('alarm-ringing') || currentSegs.includes('mission')) return;
+        // Guard: skip routing if alarm was already handled — prevents the
+        // reopen loop when music is playing or the user backgrounds/foregrounds
+        // the app after stopping the alarm.
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 5-second window
-        if (handled && Date.now() - Number(handled) < 5000) {
-          // Handled within last 5 seconds = just completed. Prevent crash loop.
+        // ROOT CAUSE FIX: Extended from 5 seconds to 60 seconds.
+        // The 5-second window was too short — music playback, audio session
+        // changes, notification bar interactions, and OEM battery-saver events
+        // can all trigger AppState background→active cycles LONG after the alarm
+        // was dismissed. Each such cycle re-ran this handler, saw wasAlarmFired()
+        // still true (native flag clears async), and re-routed to wake-alarm-ringing.
+        // 60 seconds provides a safe buffer that covers all known OEM edge cases.
+        if (handled && Date.now() - Number(handled) < 60_000) {
+          // Handled within last 60 seconds = just completed. Prevent crash loop.
           alarmRoutedRef.current = true;
           return;
         }
@@ -1115,8 +1129,9 @@ function BodhiNotificationListener() {
         if (alarmRoutedRef.current) return; // double-guard (concurrent call safety)
         const missionId = await AsyncStorage.getItem('onesutra_mission_active_v1').catch(() => null);
         alarmRoutedRef.current = true;
+        const navSegs = segmentsRef.current;
         if (missionId) {
-          if (!(segments as string[]).includes('mission')) {
+          if (!navSegs.includes('mission')) {
             console.log('[Layout] App foregrounded mid-mission → /mission');
             router.push(`/mission?id=${missionId}` as never);
           }
@@ -1127,7 +1142,7 @@ function BodhiNotificationListener() {
       }).catch(() => { });
     });
     return () => sub.remove();
-  }, [segments]);
+  }, []);  // No deps — segmentsRef.current always provides the latest segments inside the callback
 
   // ── When alarm fires while app is already in the FOREGROUND ─────────────────
   // AppState does NOT change when the app is already active, so the listener
@@ -1142,8 +1157,11 @@ function BodhiNotificationListener() {
       if (segmentsRef.current.includes('wake-alarm-ringing') || segmentsRef.current.includes('alarm-ringing')) return;
       (async () => {
         const handled = await AsyncStorage.getItem('onesutra_alarm_handled_v1').catch(() => null);
-        // 5-second window — prevents deep-link from re-opening dismissed alarm
-        if (handled && Date.now() - Number(handled) < 5000) {
+        // ROOT CAUSE FIX: Extended from 5 seconds to 60 seconds — same reason
+        // as the AppState handler above. Deep-links can re-fire from the
+        // BTTF (back-to-the-foreground) notification tap after the alarm was
+        // already stopped but the notification was slow to cancel.
+        if (handled && Date.now() - Number(handled) < 60_000) {
           alarmRoutedRef.current = true; return;
         }
         const fired = await getInitialAlarmNotification().catch(() => false);

@@ -357,6 +357,35 @@ class AlarmModule(private val reactContext: ReactApplicationContext)
         }
     }
 
+    // ── Called by wake-alarm-ringing.tsx on screen unmount ────────────────────
+    // Signals that the JS alarm UI has been dismissed. This resets
+    // alarmScreenLaunched on any running AlarmSoundService so the watchdog
+    // correctly uses the deep-link on the next launchApp() call instead of
+    // REORDER_TO_FRONT (which would land on the home tab instead of the alarm
+    // screen on the next alarm cycle).
+    //
+    // ROOT CAUSE FIX: This function was called from JS but did NOT exist in the
+    // native module — it was a silent no-op. As a result, alarmScreenLaunched
+    // was never reset after the user stopped the alarm, causing the watchdog to
+    // use REORDER_TO_FRONT on any subsequent bring-to-front call in the same
+    // process lifecycle, landing the user on the wrong screen.
+    @ReactMethod
+    fun notifyAlarmUIDismissed(promise: Promise) {
+        try {
+            // Clear alarm_fired_pending as a belt-and-suspenders guarantee.
+            // stopAlarmSound() should have already cleared it, but if the screen
+            // unmounts before stopAlarmSound() finishes (race condition), this
+            // ensures the flag is always false when the UI is gone.
+            reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("alarm_fired_pending", false)
+                .apply()
+            promise.resolve("OK")
+        } catch (e: Exception) {
+            promise.reject("DISMISS_ERROR", e.message, e)
+        }
+    }
+
     // ── Full-screen intent permission (Android 14+) ───────────────────────
     @ReactMethod
     @Suppress("NewApi")

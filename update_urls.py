@@ -30,7 +30,7 @@ def process_file(filepath):
                     url += '&q=85'
             else:
                 # No parameters at all, add the standard set
-                url += '?auto=compress&cs=tinysrgb&w=600&q=85'
+                url += '?auto=compress&cs=tinysrgb&w=800&q=90'
             return url
             
         return url

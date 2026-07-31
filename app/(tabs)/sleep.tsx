@@ -1709,7 +1709,7 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
        setPhase(p => p + 0.05);
        const mLevel = getMeteringLevel();
        audioScaleAnim.setValue(1 + mLevel * 0.15); 
-    }, 36);
+    }, 200);
     return () => clearInterval(iv);
   }, [active, paused]);
 

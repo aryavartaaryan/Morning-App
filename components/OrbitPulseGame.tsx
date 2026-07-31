@@ -1,682 +1,445 @@
 /**
- * OrbitPulseGame.tsx — "Momentum Flow" 2D Physics Game (Level 2)
+ * OrbitPulseGame.tsx — "Prana Pinball" 2D Physics Game
  * ─────────────────────────────────────────────────────────────────
- * Ultra-rich graphics, 60FPS high-performance physics loop.
- * 
- * New Mechanics:
- *  - Procedural Terrain: Hills interleaved with flat plains.
- *  - Tap to Jump / Hold to Dive.
- *  - Collect Prana Orbs (Bonus & Momentum).
- *  - Avoid Void Crystals (Damage & Slowdown).
- *  - 3 Lives & Game Over screen.
- *  - Deep Starry Parallax visual upgrades.
+ * Ultra-premium 60FPS physics using Reanimated UI Thread.
+ * Sacred geometry board, energetic chakra bumpers, fluid mechanics.
  */
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, Modal, StyleSheet, TouchableOpacity,
-  Animated, Easing, Dimensions, Platform
-} from 'react-native';
-import Svg, { Circle, Path, G, Defs, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Dimensions, StyleSheet, Modal, TouchableOpacity, Text } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  useFrameCallback,
+  runOnJS,
+  withTiming,
+  Easing
+} from 'react-native-reanimated';
+import Svg, { Circle, Path, Defs, RadialGradient, Stop, G, Line } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
-import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: W, height: H } = Dimensions.get('window');
-const PLAYER_X = W * 0.35; 
-const CX = W / 2;
-const CY = H / 2;
 
-const OM_HIT_URL = 'https://audio.onesutralabs.com/om.mp3';
-const TANPURA_SOUND_ID = 'tanpura_loop';
+// ── Physics Constants ──
+const BALL_R = 14;
+const GRAVITY = 1800;
+const MAX_VEL = 3000;
+const BOUNCE_DAMP = 0.5;
 
-// ── Terrain Math ────────────────────────────────────────────────────────────
-function getTerrainY(x: number) {
-  // A clean mix of Mario-style flat surfaces and mountains.
-  const zone = Math.sin(x / 1200); 
-  
-  let multiplier = 0;
-  if (zone > 0.3) multiplier = 1;
-  else if (zone > -0.3) {
-    // smooth transition between flat and hills
-    const t = (zone + 0.3) / 0.6;
-    multiplier = t * t * (3 - 2 * t);
-  }
+// Flipper Config
+const L_PIVOT = { x: W * 0.25, y: H - 180 };
+const R_PIVOT = { x: W * 0.75, y: H - 180 };
+const FLIPPER_LEN = W * 0.28;
+const L_ANG_REST = 30;
+const L_ANG_ACT = -35;
+const R_ANG_REST = 150;
+const R_ANG_ACT = 215;
 
-  const hillWave = Math.sin(x / 400) * 180 + Math.sin(x / 200) * 70 + Math.sin(x / 800) * 300;
-  return 600 - (hillWave * multiplier);
+// Chakras (Bumpers)
+const BUMPERS = [
+  { id: 0, x: W * 0.5, y: H * 0.2, r: 35, color: '#c084fc', name: 'Crown' }, // Crown
+  { id: 1, x: W * 0.25, y: H * 0.35, r: 25, color: '#3b82f6', name: 'Third Eye' }, 
+  { id: 2, x: W * 0.75, y: H * 0.35, r: 25, color: '#3b82f6', name: 'Throat' }, 
+  { id: 3, x: W * 0.5, y: H * 0.45, r: 30, color: '#10b981', name: 'Heart' }, 
+  { id: 4, x: W * 0.2, y: H * 0.6, r: 25, color: '#f59e0b', name: 'Solar' }, 
+  { id: 5, x: W * 0.8, y: H * 0.6, r: 25, color: '#f59e0b', name: 'Sacral' }, 
+  { id: 6, x: W * 0.5, y: H * 0.7, r: 20, color: '#ef4444', name: 'Root' }, 
+];
+
+const OM_URL = 'https://audio.onesutralabs.com/om.mp3';
+
+// ── Helpers ──
+function getFlipperCircles(px: number, py: number, angleDeg: number, len: number) {
+  'worklet';
+  const a = angleDeg * (Math.PI / 180);
+  return [
+    { x: px, y: py, r: 18 },
+    { x: px + Math.cos(a) * (len * 0.33), y: py + Math.sin(a) * (len * 0.33), r: 16 },
+    { x: px + Math.cos(a) * (len * 0.66), y: py + Math.sin(a) * (len * 0.66), r: 14 },
+    { x: px + Math.cos(a) * len, y: py + Math.sin(a) * len, r: 12 },
+  ];
 }
-
-function getTerrainSlopeAndAngle(x: number) {
-  const dx = 1;
-  const dy = getTerrainY(x + dx) - getTerrainY(x - dx);
-  const slope = dy / (dx * 2);
-  const angle = Math.atan(slope);
-  return { slope, angle };
-}
-
-// ── Entity Generation ────────────────────────────────────────────────────────
-const ENTITY_SPACING = 700;
-function getEntityAtChunk(chunkIdx: number) {
-  const seed = Math.sin(chunkIdx * 12.9898) * 43758.5453;
-  const rand = seed - Math.floor(seed);
-  
-  if (rand < 0.3) return null; // 30% empty chunk
-  
-  const x = chunkIdx * ENTITY_SPACING + (rand * 300);
-  const ty = getTerrainY(x);
-  
-  if (rand < 0.65) {
-    // Prana Orb (Positive) floating in the air
-    return { id: chunkIdx, type: 'prana', x, y: ty - 120 - (rand * 150), active: true, radius: 25 };
-  } else {
-    // Void Spike (Negative) on the ground
-    return { id: chunkIdx, type: 'void', x, y: ty - 20, active: true, radius: 30 };
-  }
-}
-
-// ── Background Layers ────────────────────────────────────────────────────────
-const StarryBackground = React.memo(({ cameraX, cameraY, spin }: any) => {
-  // Pre-generate stars
-  const stars = useRef(Array.from({ length: 80 }).map(() => ({
-    x: Math.random() * W * 2,
-    y: Math.random() * H * 1.5,
-    r: Math.random() * 2 + 0.5,
-    op: Math.random() * 0.8 + 0.2
-  }))).current;
-
-  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <LinearGradient colors={['#05021a', '#0a0526', '#1a0b38']} style={StyleSheet.absoluteFillObject} />
-      
-      {/* Slow Parallax Stars */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { 
-        transform: [
-          { translateX: cameraX.interpolate({ inputRange: [0, 1000], outputRange: [0, -20] }) },
-          { translateY: cameraY.interpolate({ inputRange: [-1000, 1000], outputRange: [20, -20] }) }
-        ]
-      }]}>
-        <Svg width={W*2} height={H*1.5} style={{ position: 'absolute' }}>
-          {stars.map((s, i) => (
-            <Circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#FFF" opacity={s.op} />
-          ))}
-        </Svg>
-      </Animated.View>
-
-      {/* Massive rotating mandala */}
-      <Animated.View style={{ position: 'absolute', top: H * 0.1, left: CX - 300, width: 600, height: 600, transform: [{ rotate: spin }], opacity: 0.15 }}>
-        <Svg width={600} height={600} viewBox="0 0 600 600">
-           {Array.from({length: 12}).map((_, i) => (
-             <G key={i} rotation={i * 30} origin="300,300">
-               <Path d={`M300 150 Q380 50 300 0 Q220 50 300 150 Z`} fill="#818cf8" />
-             </G>
-           ))}
-        </Svg>
-      </Animated.View>
-    </View>
-  );
-});
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Main Game Component
-// ──────────────────────────────────────────────────────────────────────────────
-export default function OrbitPulseGame({
-  visible, onClose,
-}: {
-  visible: boolean; onClose: () => void;
-}) {
+export default function OrbitPulseGame({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { playSound, stopSound, setGlobalVolume } = useSoundPlayer();
-
-  // ── State ──────────────────────────────────────────────────────────────────
+  
+  // Game State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [gameOver, setGameOver]   = useState(false);
-  const [score, setScore]         = useState(0);
-  const [health, setHealth]       = useState(3);
-  const [maxCombo, setMaxCombo]   = useState(1);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const [gameOver, setGameOver] = useState(false);
+  const [score, setScore] = useState(0);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   
-  // Native Refs
-  const terrainPathRef = useRef<any>(null);
-  const bgTerrainPathRef = useRef<any>(null);
-  const pranaPathRef = useRef<any>(null);
-  const voidPathRef = useRef<any>(null);
-  const playerRef = useRef<any>(null);
-  const cameraWrapperRef = useRef<any>(null);
-  
-  const reqRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
-  const scoreRef = useRef(0);
-
-  // Physics & Entity State
-  const p = useRef({
-    x: 0,
-    y: 100,
-    vx: 350,
-    vy: 0,
-    isGrounded: false,
-    cameraX: 0,
-    cameraY: 0,
-  }).current;
-
-  // Track active entities
-  const activeEntities = useRef<any[]>([]).current;
-  const lastChunkGenerated = useRef(-1);
-
-  const inputRef = useRef({ isPressing: false, pressStartTime: 0 });
-  const bgRotation = useRef(new Animated.Value(0)).current;
-  const cameraXAnim = useRef(new Animated.Value(0)).current;
-  const cameraYAnim = useRef(new Animated.Value(0)).current;
-  const screenFlash = useRef(new Animated.Value(0)).current;
-  const screenFlashColor = useRef('#FFF');
-  const screenShake = useRef(new Animated.Value(0)).current;
-  const speedLinesOp = useRef(new Animated.Value(0)).current;
-  
+  // Audio
   const omSoundRef = useRef<Audio.Sound | null>(null);
 
-  // ── Audio ──────────────────────────────────────────────────────────────────
+  // Shared Values for UI Thread Physics
+  const ballX = useSharedValue(W * 0.9);
+  const ballY = useSharedValue(H * 0.8);
+  const ballVx = useSharedValue(0);
+  const ballVy = useSharedValue(-1500); // initial launch
+  
+  const isSimulating = useSharedValue(false);
+  
+  const leftFlipperAngle = useSharedValue(L_ANG_REST);
+  const rightFlipperAngle = useSharedValue(R_ANG_REST);
+  const leftActive = useSharedValue(false);
+  const rightActive = useSharedValue(false);
+
+  // Bumper glow scales
+  const bumperScales = BUMPERS.map(() => useSharedValue(1));
+
   useEffect(() => {
-    if (!visible) return;
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
-        const { sound } = await Audio.Sound.createAsync({ uri: OM_HIT_URL }, { shouldPlay: false, volume: 1.0 });
-        omSoundRef.current = sound;
-      } catch (e) {}
-    })();
+    if (visible) {
+      Audio.Sound.createAsync({ uri: OM_URL }).then(({ sound }) => { omSoundRef.current = sound; });
+    }
     return () => { omSoundRef.current?.unloadAsync(); };
   }, [visible]);
 
-  useEffect(() => {
-    if (!visible) return;
-    const tanpura = ALL_SLEEP_SOUNDS.find(s => s.id === TANPURA_SOUND_ID);
-    if (tanpura) {
-      setGlobalVolume(0.5);
-      playSound(tanpura, 3600, undefined, 0.5, true);
-    }
-    return () => { stopSound(); setGlobalVolume(1); };
-  }, [visible]);
-
-  // ── Visual FX ──────────────────────────────────────────────────────────────
-  const flashScreen = (color: string, intensity: number, duration: number) => {
-    screenFlashColor.current = color;
-    screenFlash.setValue(intensity);
-    Animated.timing(screenFlash, { toValue: 0, duration, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
-  };
-
-  const triggerShake = (intensity: number) => {
-    Animated.sequence([
-      Animated.timing(screenShake, { toValue: intensity, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShake, { toValue: -intensity, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShake, { toValue: intensity * 0.6, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShake, { toValue: -intensity * 0.6, duration: 40, useNativeDriver: true }),
-      Animated.timing(screenShake, { toValue: 0, duration: 40, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const triggerPerfectLanding = useCallback(() => {
+  const triggerBumperHit = useCallback((id: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    omSoundRef.current?.setPositionAsync(0);
-    omSoundRef.current?.playAsync();
-    flashScreen('#FFF', 0.4, 400);
-    triggerShake(12);
-    setMaxCombo(c => c + 1);
+    setScore(s => s + (id === 0 ? 500 : 100)); // Crown gives 500
+    
+    if (id === 0) {
+       omSoundRef.current?.setPositionAsync(0);
+       omSoundRef.current?.playAsync();
+    }
+    
+    // Animate bumper glow
+    bumperScales[id].value = withSequence(
+      withTiming(1.6, { duration: 100 }),
+      withTiming(1, { duration: 400 })
+    );
   }, []);
 
-  const triggerPranaCollect = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    flashScreen('#34d399', 0.2, 300);
-    scoreRef.current += 500;
-  }, []);
-
-  const triggerDamage = useCallback(() => {
+  const handleGameOver = useCallback(() => {
+    setIsPlaying(false);
+    isSimulating.value = false;
+    setGameOver(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    flashScreen('#ef4444', 0.5, 500);
-    triggerShake(20);
-    setMaxCombo(1);
+  }, []);
+
+  // ── High Performance 60FPS Engine ──
+  useFrameCallback((frameInfo) => {
+    if (!isSimulating.value) return;
     
-    // Play damage collision hit if desired, but haptics + flash is usually enough
-    // We removed the tanpura loop start here since it is for background.
+    // Limit dt to prevent wall clipping on lag spikes
+    const dt = Math.min((frameInfo.timeSincePreviousFrame || 16) / 1000, 0.03);
     
-    setHealth(h => {
-      const newH = h - 1;
-      if (newH <= 0) {
-        setIsPlaying(false);
-        setGameOver(true);
-      }
-      return newH;
-    });
-  }, [playSound]);
-
-  // ── Physics Engine & Game Loop ──────────────────────────────────────────────
-  const gameLoop = useCallback((time: number) => {
-    if (!lastTimeRef.current) lastTimeRef.current = time;
-    const dt = Math.min((time - lastTimeRef.current) / 1000, 0.05);
-    lastTimeRef.current = time;
-
-    if (!isPlaying || gameOver) {
-      reqRef.current = requestAnimationFrame(gameLoop);
-      return;
+    let bx = ballX.value;
+    let by = ballY.value;
+    let vx = ballVx.value;
+    let vy = ballVy.value;
+    
+    vy += GRAVITY * dt;
+    
+    bx += vx * dt;
+    by += vy * dt;
+    
+    // Wall Collisions
+    if (bx < BALL_R) { bx = BALL_R; vx = Math.abs(vx) * BOUNCE_DAMP; }
+    if (bx > W - BALL_R) { bx = W - BALL_R; vx = -Math.abs(vx) * BOUNCE_DAMP; }
+    if (by < BALL_R) { by = BALL_R; vy = Math.abs(vy) * BOUNCE_DAMP; }
+    
+    // Roof Dome Collision (top curved)
+    const domeDistX = bx - W/2;
+    const domeDistY = by - H*0.2;
+    if (domeDistY < 0 && Math.sqrt(domeDistX*domeDistX + domeDistY*domeDistY) > W/2 - BALL_R) {
+        vx = -vx * BOUNCE_DAMP;
+        vy = Math.abs(vy) * BOUNCE_DAMP;
+        by += 5; // push down
     }
 
-    const GRAVITY = 1800;
-    const DIVE_GRAVITY = 5500;
-    const BASE_SPEED = 400;
-    const MAX_SPEED = 2400;
-    const DRAG = 0.99;
-    const FRICTION = 0.995;
-
-    // 1. Apply Forces
-    if (inputRef.current.isPressing) {
-      p.vy += DIVE_GRAVITY * dt;
-    } else {
-      p.vy += GRAVITY * dt;
-    }
-
-    // Decay speed naturally
-    if (p.vx > BASE_SPEED) {
-      p.vx = p.vx * (p.isGrounded ? FRICTION : DRAG) - (20 * dt);
-      if (p.vx < BASE_SPEED) p.vx = BASE_SPEED;
-    } else if (p.vx < BASE_SPEED) {
-      p.vx += 400 * dt; // recover speed
-    }
-
-    // 2. Move Player
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    // 3. Generate Entities
-    const currentChunk = Math.floor(p.x / ENTITY_SPACING);
-    // Generate chunks slightly ahead
-    for (let c = lastChunkGenerated.current + 1; c <= currentChunk + 3; c++) {
-      const ent = getEntityAtChunk(c);
-      if (ent) activeEntities.push(ent);
-      lastChunkGenerated.current = c;
-    }
-
-    // Cleanup old entities behind player
-    for (let i = activeEntities.length - 1; i >= 0; i--) {
-      if (activeEntities[i].x < p.x - W) {
-        activeEntities.splice(i, 1);
-      }
-    }
-
-    // 4. Collision Detection with Entities
-    const PLAYER_R = 15;
-    for (const ent of activeEntities) {
-      if (!ent.active) continue;
-      const dx = p.x - ent.x;
-      const dy = p.y - ent.y;
+    // Bumper Collisions
+    for (let i = 0; i < BUMPERS.length; i++) {
+      const b = BUMPERS[i];
+      const dx = bx - b.x;
+      const dy = by - b.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
       
-      if (dist < PLAYER_R + ent.radius) {
-        ent.active = false; // consume
-        if (ent.type === 'prana') {
-          p.vx = Math.min(p.vx + 200, MAX_SPEED); // boost
-          triggerPranaCollect();
-        } else if (ent.type === 'void') {
-          p.vx = BASE_SPEED * 0.3; // halt speed
-          p.vy = -500; // bounce off
-          p.isGrounded = false;
-          triggerDamage();
-        }
-      }
-    }
-
-    // 5. Collision Detection with Terrain
-    const groundY = getTerrainY(p.x);
-    const { slope, angle } = getTerrainSlopeAndAngle(p.x);
-
-    if (p.y >= groundY) {
-      if (!p.isGrounded) {
-        // Landing event
-        const velocityAngle = Math.atan2(p.vy, p.vx);
-        const impactDiff = Math.abs(velocityAngle - angle);
+      if (dist < BALL_R + b.r) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const dot = vx * nx + vy * ny;
         
-        if (slope > 0 && impactDiff < 0.6 && inputRef.current.isPressing && p.vy > 400) {
-          // PERFECT LANDING
-          p.vx = Math.min(p.vx + p.vy * 0.9, MAX_SPEED);
-          triggerPerfectLanding();
-        } else if (slope < -0.3 && p.vy > 400) {
-          // HARD CRASH INTO UPHILL
-          p.vx = BASE_SPEED * 0.4;
-          triggerShake(8);
-          setMaxCombo(1);
+        if (dot < 0) {
+          // Bounce
+          vx -= 2 * dot * nx;
+          vy -= 2 * dot * ny;
+          // Bumper adds energy
+          vx += nx * 800;
+          vy += ny * 800;
+          
+          runOnJS(triggerBumperHit)(b.id);
+        }
+        
+        bx = b.x + nx * (BALL_R + b.r + 2);
+        by = b.y + ny * (BALL_R + b.r + 2);
+      }
+    }
+    
+    // Flipper Collisions
+    const checkFlipper = (circles: any[], isAct: boolean) => {
+      let hit = false;
+      for (const c of circles) {
+        const dx = bx - c.x;
+        const dy = by - c.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < BALL_R + c.r) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const dot = vx * nx + vy * ny;
+          
+          if (dot < 0) {
+            vx -= 2 * dot * nx;
+            vy -= 2 * dot * ny;
+            if (isAct) {
+              // Huge vertical boost if flipping
+              vy = -1800;
+              vx += (bx > W/2 ? -600 : 600); // push towards center
+            } else {
+              vx *= 0.8;
+              vy *= 0.8;
+            }
+            hit = true;
+          }
+          bx = c.x + nx * (BALL_R + c.r + 2);
+          by = c.y + ny * (BALL_R + c.r + 2);
         }
       }
+      return hit;
+    };
 
-      p.isGrounded = true;
-      p.y = groundY;
-      
-      const vMag = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-      p.vx = vMag * Math.cos(angle);
-      p.vy = vMag * Math.sin(angle);
-
-      // Accelerate downhill if pressing
-      if (inputRef.current.isPressing && slope > 0) {
-        p.vx += 1800 * Math.sin(angle) * dt;
-        p.vx = Math.min(p.vx, MAX_SPEED);
-      }
-      
-      // Launch uphill if released
-      if (!inputRef.current.isPressing && slope < 0) {
-        p.isGrounded = false; 
-      }
-    } else {
-      p.isGrounded = false;
-    }
-
-    // Update score
-    scoreRef.current += (p.vx * dt) / 10;
-    if (Math.floor(scoreRef.current) % 10 === 0) {
-      setScore(Math.floor(scoreRef.current));
-    }
-
-    // Speed lines opacity based on speed
-    const speedRatio = Math.max(0, (p.vx - 800) / (MAX_SPEED - 800));
-    speedLinesOp.setValue(speedRatio);
-
-    // 6. Render Updates via Native Props
+    const lCircles = getFlipperCircles(L_PIVOT.x, L_PIVOT.y, leftFlipperAngle.value, FLIPPER_LEN);
+    const rCircles = getFlipperCircles(R_PIVOT.x, R_PIVOT.y, rightFlipperAngle.value, FLIPPER_LEN);
     
-    // Main Terrain Path - Anchored to World Grid to eliminate swimming/noise!
-    const step = 40; 
-    const startWorldX = p.x - PLAYER_X;
-    const offsetX = startWorldX % step;
-    
-    const points = [];
-    for (let lx = -step; lx <= W + step * 2; lx += step) {
-      const screenX = lx - offsetX;
-      const worldX = startWorldX + screenX;
-      points.push(`${screenX.toFixed(1)},${getTerrainY(worldX).toFixed(1)}`);
+    const hitL = checkFlipper(lCircles, leftActive.value);
+    const hitR = checkFlipper(rCircles, rightActive.value);
+    if (hitL || hitR) {
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
     }
-    const d = `M${-step},${H * 2} L${points[0]} L${points.join(' L')} L${W + step * 2},${H * 2} Z`;
-    terrainPathRef.current?.setNativeProps({ d });
 
-    // Background Parallax Hills - Anchored to World Grid
-    const bgPoints = [];
-    const bgStartWorldX = (p.x * 0.5) - PLAYER_X;
-    const bgOffsetX = bgStartWorldX % step;
-    
-    for (let lx = -step; lx <= W + step * 2; lx += step) {
-      const screenX = lx - bgOffsetX;
-      const worldX = bgStartWorldX + screenX;
-      const bgY = (Math.sin(worldX / 500) * 150 + Math.sin(worldX / 300) * 80) + 500;
-      bgPoints.push(`${screenX.toFixed(1)},${bgY.toFixed(1)}`);
+    // Velocity Clamping
+    const speed = Math.sqrt(vx*vx + vy*vy);
+    if (speed > MAX_VEL) {
+      vx = (vx / speed) * MAX_VEL;
+      vy = (vy / speed) * MAX_VEL;
     }
-    const bgD = `M${-step},${H * 2} L${bgPoints[0]} L${bgPoints.join(' L')} L${W + step * 2},${H * 2} Z`;
-    bgTerrainPathRef.current?.setNativeProps({ d: bgD });
 
-    // Build Entity SVGs
-    let pranaD = '';
-    let voidD = '';
-    for (const ent of activeEntities) {
-      if (!ent.active) continue;
-      const screenX = ent.x - p.x + PLAYER_X;
-      if (screenX < -100 || screenX > W + 100) continue;
-      
-      if (ent.type === 'prana') {
-        const r = ent.radius;
-        // SVG circle path
-        pranaD += `M ${screenX},${ent.y} m -${r},0 a ${r},${r} 0 1,0 ${r*2},0 a ${r},${r} 0 1,0 -${r*2},0 `;
-      } else if (ent.type === 'void') {
-        const r = ent.radius;
-        // Triangle spike
-        voidD += `M ${screenX},${ent.y - r} L ${screenX + r},${ent.y + r} L ${screenX - r},${ent.y + r} Z `;
-      }
+    // Game Over 
+    if (by > H + 50) {
+      runOnJS(handleGameOver)();
     }
-    pranaPathRef.current?.setNativeProps({ d: pranaD });
-    voidPathRef.current?.setNativeProps({ d: voidD });
 
-    // Smooth Camera Tracking
-    const targetCameraY = p.y - H * 0.6;
-    p.cameraY += (targetCameraY - p.cameraY) * 0.1;
-    p.cameraX = p.x;
+    ballX.value = bx;
+    ballY.value = by;
+    ballVx.value = vx;
+    ballVy.value = vy;
+  });
 
-    cameraXAnim.setValue(p.cameraX);
-    cameraYAnim.setValue(p.cameraY);
-
-    cameraWrapperRef.current?.setNativeProps({
-      style: { transform: [{ translateY: -p.cameraY }] }
-    });
-
-    // Player Rotation based on velocity
-    const rot = Math.atan2(p.vy, p.vx) * (180 / Math.PI);
-    
-    playerRef.current?.setNativeProps({
-      style: { transform: [{ translateY: p.y }, { rotate: `${rot}deg` }] }
-    });
-
-    reqRef.current = requestAnimationFrame(gameLoop);
-  }, [isPlaying, gameOver, triggerPerfectLanding, triggerDamage, triggerPranaCollect]);
-
-  useEffect(() => {
-    reqRef.current = requestAnimationFrame(gameLoop);
-    return () => cancelAnimationFrame(reqRef.current);
-  }, [gameLoop]);
-
-  // ── Background continuous rotation ──
-  useEffect(() => {
-    if (visible) {
-      Animated.loop(Animated.timing(bgRotation, { toValue: 1, duration: 40000, easing: Easing.linear, useNativeDriver: true })).start();
-    }
-  }, [visible]);
-
-  // ── Input Handling ─────────────────────────────────────────────────────────
-  const handlePressIn = () => {
-    if (showTutorial) {
-      setShowTutorial(false);
-      setIsPlaying(true);
-      lastTimeRef.current = performance.now();
-    }
-    if (gameOver) return;
-
-    inputRef.current.isPressing = true;
-    inputRef.current.pressStartTime = performance.now();
-    
-    // Squish on press
-    playerRef.current?.setNativeProps({ style: { transform: [{ translateY: p.y }, { scaleX: 1.2 }, { scaleY: 0.8 }] } });
+  // Helper for sequential animation (since withSequence is not available in all RA3 versions reliably without importing)
+  const withSequence = (a1: any, a2: any) => {
+    'worklet';
+    return a1; // Simplified for now, we will handle glow differently via useAnimatedStyle
   };
 
-  const handlePressOut = () => {
-    if (gameOver) return;
-    inputRef.current.isPressing = false;
-    
-    // Tap to JUMP logic
-    const pressDuration = performance.now() - inputRef.current.pressStartTime;
-    if (pressDuration < 200 && p.isGrounded) {
-      p.vy = -1400; // Jump force
-      p.isGrounded = false;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    
-    playerRef.current?.setNativeProps({ style: { transform: [{ translateY: p.y }, { scaleX: 1 }, { scaleY: 1 }] } });
+  // ── Input Controls ──
+  const triggerLeft = (pressed: boolean) => {
+    leftActive.value = pressed;
+    leftFlipperAngle.value = withSpring(pressed ? L_ANG_ACT : L_ANG_REST, { damping: 12, stiffness: 200 });
+    if (pressed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const restartGame = () => {
-    p.x = 0; p.y = 100; p.vx = 400; p.vy = 0; p.isGrounded = false;
-    scoreRef.current = 0;
+  const triggerRight = (pressed: boolean) => {
+    rightActive.value = pressed;
+    rightFlipperAngle.value = withSpring(pressed ? R_ANG_ACT : R_ANG_REST, { damping: 12, stiffness: 200 });
+    if (pressed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const startGame = () => {
     setScore(0);
-    setHealth(3);
-    setMaxCombo(1);
-    activeEntities.length = 0;
-    lastChunkGenerated.current = -1;
     setGameOver(false);
+    
+    // Launch sequence
+    ballX.value = W - 30;
+    ballY.value = H - 100;
+    ballVx.value = -300;
+    ballVy.value = -2500;
+    
     setIsPlaying(true);
-    lastTimeRef.current = performance.now();
+    isSimulating.value = true;
   };
 
-  const handleClosePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleClose = () => {
+    isSimulating.value = false;
     setIsPlaying(false);
     setShowQuitConfirm(true);
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── Animated Styles ──
+  const ballStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: ballX.value - BALL_R },
+      { translateY: ballY.value - BALL_R }
+    ]
+  }));
+
+  const lFlipperStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: L_PIVOT.x },
+      { translateY: L_PIVOT.y },
+      { rotate: `${leftFlipperAngle.value}deg` },
+      { translateX: -L_PIVOT.x },
+      { translateY: -L_PIVOT.y }
+    ]
+  }));
+
+  const rFlipperStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: R_PIVOT.x },
+      { translateY: R_PIVOT.y },
+      { rotate: `${rightFlipperAngle.value}deg` },
+      { translateX: -R_PIVOT.x },
+      { translateY: -R_PIVOT.y }
+    ]
+  }));
+
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent transparent onRequestClose={onClose}>
-      <TouchableOpacity 
-        activeOpacity={1} 
-        onPressIn={handlePressIn} 
-        onPressOut={handlePressOut}
-        style={s.root}
-      >
-        <StarryBackground cameraX={cameraXAnim} cameraY={cameraYAnim} spin={bgRotation} />
-
-        {/* Screen Flash */}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: screenFlashColor.current, opacity: screenFlash, zIndex: 10 }]} />
-
-        {/* Speed Lines */}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { opacity: speedLinesOp, zIndex: 5 }]}>
-          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(56,189,248,0.25)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.2, left: 0, right: 0, height: 2 }} />
-          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(192,132,252,0.25)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.5, left: 0, right: 0, height: 3 }} />
-          <LinearGradient colors={['rgba(255,255,255,0.0)', 'rgba(56,189,248,0.3)', 'rgba(255,255,255,0.0)']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', top: H*0.8, left: 0, right: 0, height: 2 }} />
-        </Animated.View>
-
-        {/* ── Camera Wrapper ── */}
-        <Animated.View ref={cameraWrapperRef} style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: screenShake }] }]}>
+      <View style={s.root}>
+        {/* Deep Space Background */}
+        <LinearGradient colors={['#020010', '#0a0520', '#1a053a']} style={StyleSheet.absoluteFillObject} />
+        
+        {/* Sacred Geometry Board (Mandala Lines) */}
+        <Svg width={W} height={H} style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <Defs>
+            <RadialGradient id="glow" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0%" stopColor="#c084fc" stopOpacity="0.4" />
+              <Stop offset="100%" stopColor="#000" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          {/* Decorative glowing dome */}
+          <Path d={`M0 ${H*0.3} Q ${W/2} ${-H*0.1} ${W} ${H*0.3}`} fill="none" stroke="rgba(192,132,252,0.3)" strokeWidth="2" />
+          <Path d={`M${W*0.1} ${H*0.35} Q ${W/2} ${H*0.1} ${W*0.9} ${H*0.35}`} fill="none" stroke="rgba(56,189,248,0.3)" strokeWidth="1" />
           
-          {/* Background Hills Layer */}
-          <Svg width={W + 100} height={H * 2} style={{ position: 'absolute', top: 0, left: 0, opacity: 0.4 }}>
-            <Defs>
-              <SvgLinearGradient id="bgHillGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#818cf8" stopOpacity="0.6" />
-                <Stop offset="1" stopColor="#1e1b4b" stopOpacity="1" />
-              </SvgLinearGradient>
-            </Defs>
-            <Path ref={bgTerrainPathRef} fill="url(#bgHillGrad)" />
-          </Svg>
+          {/* Launch Tube */}
+          <Line x1={W-15} y1={H} x2={W-15} y2={H*0.4} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+        </Svg>
 
-          {/* Main Terrain Layer */}
-          <Svg width={W + 100} height={H * 2} style={{ position: 'absolute', top: 0, left: 0 }}>
-            <Defs>
-              <SvgLinearGradient id="hillGradient" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#38bdf8" stopOpacity="0.7" />
-                <Stop offset="0.15" stopColor="#6d28d9" stopOpacity="0.9" />
-                <Stop offset="1" stopColor="#020010" stopOpacity="1" />
-              </SvgLinearGradient>
-              <SvgLinearGradient id="pranaGrad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor="#34d399" stopOpacity="1" />
-                <Stop offset="1" stopColor="#10b981" stopOpacity="0.4" />
-              </SvgLinearGradient>
-            </Defs>
-            
-            {/* Terrain Body */}
-            <Path ref={terrainPathRef} fill="url(#hillGradient)" stroke="#60a5fa" strokeWidth="6" strokeLinecap="round" />
-            
-            {/* Entities */}
-            <Path ref={pranaPathRef} fill="url(#pranaGrad)" />
-            <Path ref={voidPathRef} fill="#ef4444" stroke="#7f1d1d" strokeWidth="2" />
-          </Svg>
+        {/* ── BUMPERS (CHAKRAS) ── */}
+        {BUMPERS.map((b, i) => {
+           const scaleStyle = useAnimatedStyle(() => ({
+              transform: [{ scale: bumperScales[i].value }]
+           }));
+           return (
+             <Animated.View key={i} style={[
+                { position: 'absolute', left: b.x - b.r, top: b.y - b.r, width: b.r*2, height: b.r*2, borderRadius: b.r, backgroundColor: b.color, alignItems: 'center', justifyContent: 'center' },
+                scaleStyle
+             ]}>
+                <View style={{ width: '100%', height: '100%', borderRadius: 99, borderWidth: 2, borderColor: '#FFF', opacity: 0.8 }} />
+                <View style={{ position: 'absolute', width: b.r*4, height: b.r*4, borderRadius: b.r*2, backgroundColor: b.color, opacity: 0.3 }} />
+             </Animated.View>
+           )
+        })}
 
-          {/* Player Orb */}
-          <View ref={playerRef} style={{
-            position: 'absolute',
-            left: PLAYER_X - 12,
-            width: 24, height: 24,
-            alignItems: 'center', justifyContent: 'center'
-          }}>
-            {/* Massive rich glow */}
-            <View style={{ position: 'absolute', width: 90, height: 90, borderRadius: 45, backgroundColor: '#38bdf8', opacity: 0.25 }} />
-            <View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: '#c084fc', opacity: 0.8 }} />
-            {/* Solid core */}
-            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 20 }} />
-          </View>
+        {/* ── FLIPPERS ── */}
+        <Animated.View style={[s.flipperWrap, lFlipperStyle]}>
+           <LinearGradient colors={['#fff', '#60a5fa']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', left: L_PIVOT.x - 18, top: L_PIVOT.y - 12, width: FLIPPER_LEN + 30, height: 24, borderRadius: 12, shadowColor: '#60a5fa', shadowOpacity: 1, shadowRadius: 20 }} />
         </Animated.View>
 
-        {/* ── Top HUD ── */}
+        <Animated.View style={[s.flipperWrap, rFlipperStyle]}>
+           <LinearGradient colors={['#60a5fa', '#fff']} start={{x:0, y:0}} end={{x:1, y:0}} style={{ position: 'absolute', left: R_PIVOT.x - 12 - FLIPPER_LEN, top: R_PIVOT.y - 12, width: FLIPPER_LEN + 30, height: 24, borderRadius: 12, shadowColor: '#60a5fa', shadowOpacity: 1, shadowRadius: 20 }} />
+        </Animated.View>
+
+        {/* ── THE ORB (PRANA) ── */}
+        <Animated.View style={[s.ball, ballStyle]}>
+           <View style={{ width: BALL_R*4, height: BALL_R*4, borderRadius: BALL_R*2, backgroundColor: '#FFF', opacity: 0.4, position: 'absolute', left: -BALL_R*1.5, top: -BALL_R*1.5 }} />
+        </Animated.View>
+
+        {/* ── TOUCH ZONES ── */}
+        {isPlaying && !gameOver && (
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+            <TouchableOpacity activeOpacity={1} onPressIn={() => triggerLeft(true)} onPressOut={() => triggerLeft(false)} style={{ position: 'absolute', left: 0, top: H*0.2, bottom: 0, width: W/2 }} />
+            <TouchableOpacity activeOpacity={1} onPressIn={() => triggerRight(true)} onPressOut={() => triggerRight(false)} style={{ position: 'absolute', right: 0, top: H*0.2, bottom: 0, width: W/2 }} />
+          </View>
+        )}
+
+        {/* ── HUD ── */}
         <View style={s.hudRow} pointerEvents="box-none">
-          <TouchableOpacity onPress={handleClosePress} style={s.closeBtn}>
+          <TouchableOpacity onPress={handleClose} style={s.closeBtn}>
             <Ionicons name="close" size={24} color="#FFF" />
           </TouchableOpacity>
-
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '800', letterSpacing: 2 }}>FLOW SCORE</Text>
-            <Text style={{ fontSize: 40, fontWeight: '900', color: '#FFF', textShadowColor: '#38bdf8', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }}>{score.toLocaleString()}</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '800', letterSpacing: 2 }}>FLOW SCORE</Text>
+            <Text style={{ fontSize: 44, fontWeight: '900', color: '#FFF', textShadowColor: '#c084fc', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 }}>{score.toLocaleString()}</Text>
           </View>
-
-          <View style={{ width: 60, alignItems: 'flex-end' }}>
-             <Text style={{ color: '#ef4444', fontWeight: '900', fontSize: 16 }}>
-               {Array.from({length: health}).map(() => '❤️').join('')}
-             </Text>
-          </View>
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Tutorial Overlay */}
-        {showTutorial && (
-          <View style={{ position: 'absolute', top: CY - 120, left: 20, right: 20, alignItems: 'center' }} pointerEvents="none">
-            <View style={{ backgroundColor: 'rgba(10,5,30,0.8)', padding: 24, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(56,189,248,0.5)', alignItems: 'center', shadowColor: '#38bdf8', shadowOpacity: 0.3, shadowRadius: 30 }}>
-              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <Ionicons name="infinite" size={36} color="#38bdf8" style={{ marginBottom: 12 }} />
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: 2, marginBottom: 16 }}>MOMENTUM FLOW 2.0</Text>
-              
-              <View style={{ gap: 14, alignItems: 'flex-start', width: '100%' }}>
-                <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600' }}>
-                  👇 <Text style={{ color: '#38bdf8', fontWeight: '800' }}>PRESS & HOLD</Text> to dive downhill.
-                </Text>
-                <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600' }}>
-                  👆 <Text style={{ color: '#c084fc', fontWeight: '800' }}>TAP QUICKLY</Text> to Jump!
-                </Text>
-                <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600' }}>
-                  🟢 <Text style={{ color: '#34d399', fontWeight: '800' }}>COLLECT PRANA</Text> for massive boosts.
-                </Text>
-                <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600' }}>
-                  🔴 <Text style={{ color: '#ef4444', fontWeight: '800' }}>AVOID VOID CRYSTALS</Text> or lose health.
-                </Text>
-              </View>
-
-              <Animated.View style={{ marginTop: 28, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: 'rgba(56,189,248,0.2)', borderRadius: 99, borderWidth: 1, borderColor: '#38bdf8' }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: '#38bdf8', letterSpacing: 1.5 }}>TAP TO BEGIN</Text>
-              </Animated.View>
+        {/* ── START SCREEN ── */}
+        {!isPlaying && !gameOver && !showQuitConfirm && (
+          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="aperture" size={60} color="#c084fc" style={{ marginBottom: 20 }} />
+            <Text style={{ fontSize: 28, fontWeight: '900', color: '#FFF', letterSpacing: 4, marginBottom: 12 }}>PRANA PINBALL</Text>
+            <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginHorizontal: 40, marginBottom: 40 }}>
+              Keep the energy flowing. Hit the chakras. Awaken the mandala.
+            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: 20, marginBottom: 40 }}>
+               <View style={{ alignItems: 'center' }}><Text style={{ color: '#60a5fa', fontWeight: '800', fontSize: 18 }}>👈 TAP LEFT</Text></View>
+               <View style={{ alignItems: 'center' }}><Text style={{ color: '#60a5fa', fontWeight: '800', fontSize: 18 }}>TAP RIGHT 👉</Text></View>
             </View>
+
+            <TouchableOpacity onPress={startGame} style={{ paddingHorizontal: 40, paddingVertical: 18, backgroundColor: '#c084fc', borderRadius: 99, shadowColor: '#c084fc', shadowOpacity: 0.5, shadowRadius: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFF', letterSpacing: 2 }}>AWAKEN</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Game Over Overlay */}
+        {/* ── GAME OVER ── */}
         {gameOver && (
-          <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center', zIndex: 100 }}>
-            <View style={{ backgroundColor: 'rgba(20,5,5,0.9)', padding: 32, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', alignItems: 'center' }}>
-              <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <Text style={{ fontSize: 32, fontWeight: '900', color: '#ef4444', letterSpacing: 4, marginBottom: 12 }}>GAME OVER</Text>
-              <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 24 }}>Final Score: <Text style={{ color: '#FFF' }}>{score.toLocaleString()}</Text></Text>
-              
-              <TouchableOpacity onPress={restartGame} style={{ paddingHorizontal: 32, paddingVertical: 14, backgroundColor: '#ef4444', borderRadius: 99, marginBottom: 12, width: '100%', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFF', letterSpacing: 1 }}>PLAY AGAIN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={onClose} style={{ paddingHorizontal: 32, paddingVertical: 14, backgroundColor: 'transparent', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', width: '100%', alignItems: 'center' }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.5)' }}>QUIT GAME</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Quit Confirmation Overlay */}
-        {showQuitConfirm && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', zIndex: 100 }]}>
             <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={{ backgroundColor: 'rgba(10,5,30,0.85)', padding: 32, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(192,132,252,0.5)', alignItems: 'center', shadowColor: '#c084fc', shadowOpacity: 0.3, shadowRadius: 30, width: '85%' }}>
-              <Ionicons name="moon" size={40} color="#c084fc" style={{ marginBottom: 16 }} />
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>LEAVING THE FLOW?</Text>
-              <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', fontWeight: '500', textAlign: 'center', marginBottom: 32, lineHeight: 24 }}>Your cosmic journey will be paused. Are you sure you want to exit?</Text>
+            <View style={{ backgroundColor: 'rgba(10,5,30,0.9)', padding: 40, borderRadius: 32, borderWidth: 1, borderColor: '#38bdf8', alignItems: 'center' }}>
+              <Text style={{ fontSize: 32, fontWeight: '900', color: '#38bdf8', letterSpacing: 4, marginBottom: 12 }}>FLOW BROKEN</Text>
+              <Text style={{ fontSize: 20, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 30 }}>Energy Gathered: <Text style={{ color: '#FFF' }}>{score.toLocaleString()}</Text></Text>
               
-              <View style={{ width: '100%', gap: 12 }}>
-                <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowQuitConfirm(false); setIsPlaying(true); lastTimeRef.current = performance.now(); }} style={{ paddingVertical: 16, backgroundColor: '#c084fc', borderRadius: 99, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFF', letterSpacing: 1 }}>STAY IN FLOW</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onClose(); }} style={{ paddingVertical: 16, backgroundColor: 'transparent', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.5)' }}>END SESSION</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity onPress={startGame} style={{ paddingHorizontal: 32, paddingVertical: 16, backgroundColor: '#38bdf8', borderRadius: 99, width: '100%', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#000', letterSpacing: 1 }}>PLAY AGAIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={{ paddingHorizontal: 32, paddingVertical: 16, backgroundColor: 'transparent', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', width: '100%', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: 'rgba(255,255,255,0.7)' }}>EXIT GAME</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
-      </TouchableOpacity>
+        {/* ── QUIT CONFIRM ── */}
+        {showQuitConfirm && (
+          <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={{ backgroundColor: 'rgba(10,5,30,0.85)', padding: 32, borderRadius: 32, borderWidth: 1, borderColor: '#c084fc', alignItems: 'center', width: '85%' }}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12 }}>LEAVING THE FLOW?</Text>
+              <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: 32 }}>Your cosmic journey will be paused.</Text>
+              
+              <TouchableOpacity onPress={() => { setShowQuitConfirm(false); isSimulating.value = true; setIsPlaying(true); }} style={{ paddingVertical: 16, backgroundColor: '#c084fc', borderRadius: 99, alignItems: 'center', width: '100%', marginBottom: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFF', letterSpacing: 1 }}>RESUME</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={{ paddingVertical: 16, backgroundColor: 'transparent', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', width: '100%' }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.5)' }}>END SESSION</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+      </View>
     </Modal>
   );
 }
@@ -692,4 +455,15 @@ const s = StyleSheet.create({
     borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
+  flipperWrap: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    pointerEvents: 'none'
+  },
+  ball: {
+    position: 'absolute', left: 0, top: 0,
+    width: BALL_R * 2, height: BALL_R * 2,
+    borderRadius: BALL_R,
+    backgroundColor: '#FFF',
+    shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 15,
+  }
 });

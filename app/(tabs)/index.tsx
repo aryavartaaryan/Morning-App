@@ -3784,7 +3784,8 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
   // Live clock
   const [now, setNow] = useState(new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+    // Update once per minute — seconds display is cosmetic, no need for 1s ticks
+    const t = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
 
@@ -5521,27 +5522,38 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const fluidRot2     = useRef(new Animated.Value(0)).current;
 
   const wCode = weather?.weatherCode;
-  const isRaining = !!(wCode != null && wCode >= 51 && wCode <= 99 && wCode !== 71 && wCode !== 73 && wCode !== 75);
-  const isSnowing = !!(wCode != null && [71,73,75].includes(wCode));
-  const isThunderstorm = !!(wCode != null && [95,96,99].includes(wCode));
-  const isHot = !!(weather?.temp != null && weather.temp >= 35);
+  // Accurate weather classification per WMO codes
+  const isThunderstorm = !!(wCode != null && [95, 96, 99].includes(wCode));
+  const isSnowing      = !!(wCode != null && [71, 73, 75, 77, 85, 86].includes(wCode));
+  const isDrizzling    = !!(wCode != null && !isThunderstorm && !isSnowing && [51, 53, 55, 56, 57].includes(wCode));
+  const isHeavyRain   = !!(wCode != null && !isThunderstorm && !isSnowing && !isDrizzling && [63, 65, 81, 82].includes(wCode));
+  const isRaining      = !!(wCode != null && !isThunderstorm && !isSnowing && !isDrizzling && !isHeavyRain && [61, 80].includes(wCode));
+  const isSunnyClear   = !!(wCode != null && wCode === 0);
+  const isHot          = !!(weather?.temp != null && weather.temp >= 35);
 
-  const heatAnim = useRef(new Animated.Value(0)).current;
+  const heatAnim  = useRef(new Animated.Value(0)).current;
   const flashAnim = useRef(new Animated.Value(0)).current;
+  const stormTint = useRef(new Animated.Value(0)).current;
+  const sunrayRot = useRef(new Animated.Value(0)).current;
 
-  const RAIN_COUNT = 5;
-  const rainAnims = useRef(Array.from({ length: RAIN_COUNT }, () => ({
+  // Rain drops — different configs per intensity
+  const RAIN_COUNT = isHeavyRain || isThunderstorm ? 28 : isDrizzling ? 10 : 18;
+  const rainAnims = useRef(Array.from({ length: 28 }, (_, i) => ({
     y:  new Animated.Value(0),
     op: new Animated.Value(0),
-    x:  Math.random() * 100 + 50,
+    x:  Math.floor(Math.random() * 240 + 30), // fixed x per drop
+    speed: 900 + Math.floor(Math.random() * 500), // varied fall speed ms
+    delay: Math.floor(i * 220),
   }))).current;
 
-  const SNOW_COUNT = 8;
-  const snowAnims = useRef(Array.from({ length: SNOW_COUNT }, () => ({
-    y:  new Animated.Value(0),
-    x:  new Animated.Value(Math.random() * 120 + 40),
-    op: new Animated.Value(0),
-    scl: new Animated.Value(Math.random() * 0.5 + 0.5),
+  const SNOW_COUNT = 20;
+  const snowAnims = useRef(Array.from({ length: SNOW_COUNT }, (_, i) => ({
+    y:   new Animated.Value(0),
+    x:   new Animated.Value(Math.floor(Math.random() * 220 + 30)),
+    op:  new Animated.Value(0),
+    scl: new Animated.Value(Math.random() * 0.6 + 0.7),
+    drift: new Animated.Value(0),
+    delay: Math.floor(i * 180),
   }))).current;
 
   // ── Inner content cycling state — premium appearance/disappearance ─────────
@@ -5590,36 +5602,59 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   useEffect(() => {
     if (isHot) {
       Animated.loop(Animated.sequence([
-        Animated.timing(heatAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
-        Animated.timing(heatAnim, { toValue: 0, duration: 4000, useNativeDriver: true })
+        Animated.timing(heatAnim, { toValue: 1, duration: 3000, useNativeDriver: true }),
+        Animated.timing(heatAnim, { toValue: 0, duration: 3000, useNativeDriver: true })
       ])).start();
     }
   }, [isHot]);
 
+  // Sunny day sunray rotation
   useEffect(() => {
-    if (isThunderstorm) {
-      Animated.loop(Animated.sequence([
-        Animated.delay(3000 + Math.random() * 4000),
-        Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 0.5, duration: 50, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 0, duration: 200, useNativeDriver: true })
-      ])).start();
-    }
-  }, [isThunderstorm]);
+    if (!isSunnyClear) return;
+    Animated.loop(Animated.timing(sunrayRot, { toValue: 1, duration: 30000, easing: Easing.linear, useNativeDriver: true })).start();
+  }, [isSunnyClear]);
 
   useEffect(() => {
-    if (!isRaining) return;
-    const anims = rainAnims.map((ra, i) => {
+    if (!isThunderstorm) return;
+    // Storm tint — dark blue-grey pulse for stormy atmosphere
+    Animated.loop(Animated.sequence([
+      Animated.timing(stormTint, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      Animated.timing(stormTint, { toValue: 0.4, duration: 2000, useNativeDriver: true }),
+    ])).start();
+    // Lightning flash — random double-flash every 3-6 seconds
+    const doFlash = () => {
+      Animated.sequence([
+        Animated.delay(2500 + Math.random() * 3500),
+        Animated.timing(flashAnim, { toValue: 1,   duration: 60,  useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0,   duration: 80,  useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0.7, duration: 40,  useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0,   duration: 150, useNativeDriver: true }),
+      ]).start(() => doFlash());
+    };
+    doFlash();
+  }, [isThunderstorm]);
+
+  // Rain / drizzle / heavy rain animation
+  useEffect(() => {
+    const active = isRaining || isDrizzling || isHeavyRain || isThunderstorm;
+    if (!active) return;
+    const isHeavy = isHeavyRain || isThunderstorm;
+    const dropH   = isHeavy ? 18 : isDrizzling ? 6 : 12;  // drop length px
+    const dropW   = isHeavy ? 2.5 : isDrizzling ? 1 : 1.8; // drop width px
+    const maxOp   = isHeavy ? 0.95 : isDrizzling ? 0.55 : 0.8;
+    const fallDur = isHeavy ? 700 : isDrizzling ? 1800 : 1100; // ms to fall full height
+    const count   = isHeavy ? 28 : isDrizzling ? 10 : 18;
+    const anims = rainAnims.slice(0, count).map((ra, i) => {
       ra.y.setValue(0); ra.op.setValue(0);
       return Animated.sequence([
-        Animated.delay(i * 600),
+        Animated.delay(ra.delay % 3000),
         Animated.loop(Animated.sequence([
           Animated.parallel([
-            Animated.timing(ra.y,  { toValue: 120, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(ra.y,  { toValue: HERO_RS + 20, duration: fallDur, easing: Easing.linear, useNativeDriver: true }),
             Animated.sequence([
-              Animated.timing(ra.op, { toValue: 0.7, duration: 300, useNativeDriver: true }),
-              Animated.timing(ra.op, { toValue: 0,   duration: 1900, useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: maxOp, duration: 100,           useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: maxOp, duration: fallDur - 200, useNativeDriver: true }),
+              Animated.timing(ra.op, { toValue: 0,     duration: 100,           useNativeDriver: true }),
             ]),
           ]),
           Animated.parallel([
@@ -5631,20 +5666,26 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
     });
     anims.forEach(a => a.start());
     return () => anims.forEach(a => a.stop());
-  }, [isRaining]);
+  }, [isRaining, isDrizzling, isHeavyRain, isThunderstorm]);
 
   useEffect(() => {
     if (!isSnowing) return;
     const anims = snowAnims.map((sa, i) => {
-      sa.y.setValue(0); sa.op.setValue(0);
+      sa.y.setValue(0); sa.op.setValue(0); sa.drift.setValue(0);
       return Animated.sequence([
-        Animated.delay(i * 400),
+        Animated.delay(sa.delay % 4000),
         Animated.loop(Animated.sequence([
           Animated.parallel([
-            Animated.timing(sa.y,  { toValue: 150, duration: 4000, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(sa.y,     { toValue: HERO_RS + 10, duration: 5000, easing: Easing.linear, useNativeDriver: true }),
+            // drift left-right for realistic snowfall
+            Animated.loop(Animated.sequence([
+              Animated.timing(sa.drift, { toValue: 10,  duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+              Animated.timing(sa.drift, { toValue: -10, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+            ])),
             Animated.sequence([
-              Animated.timing(sa.op, { toValue: 0.8, duration: 800, useNativeDriver: true }),
-              Animated.timing(sa.op, { toValue: 0,   duration: 3200, useNativeDriver: true }),
+              Animated.timing(sa.op, { toValue: 0.95, duration: 600,  useNativeDriver: true }),
+              Animated.timing(sa.op, { toValue: 0.95, duration: 3800, useNativeDriver: true }),
+              Animated.timing(sa.op, { toValue: 0,    duration: 600,  useNativeDriver: true }),
             ]),
           ]),
           Animated.parallel([
@@ -5816,38 +5857,83 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 }} />
               );
             })}
-            {/* ── Hot weather shimmer ── */}
+            {/* ── Sunny day sunrays — slow rotating golden rays from center ── */}
+            {isSunnyClear && (
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', width: HERO_RS, height: HERO_RS,
+                top: 0, left: 0,
+                opacity: 0.22,
+                transform: [{ rotate: sunrayRot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+              }}>
+                {[0, 30, 60, 90, 120, 150, 210, 240, 270, 300, 330].map((deg, i) => (
+                  <View key={`ray_${i}`} pointerEvents="none" style={{
+                    position: 'absolute',
+                    width: 2, height: HERO_RS * 0.42,
+                    backgroundColor: '#FFE066',
+                    top: HERO_RS * 0.08,
+                    left: HERO_RS / 2 - 1,
+                    transformOrigin: `1px ${HERO_RS * 0.42}px`,
+                    transform: [{ rotate: `${deg}deg` }, { translateY: HERO_RS * 0.04 }],
+                    borderRadius: 1,
+                  }} />
+                ))}
+              </Animated.View>
+            )}
+            {/* ── Hot weather shimmer — orange heat haze ── */}
             {isHot && (
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(239,68,68,0.1)', // Subtle red tint
-                opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }),
-                transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }]
+                backgroundColor: 'rgba(239,100,20,0.15)',
+                opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.9] }),
+                transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }]
               }} />
             )}
-            {/* ── Thunderstorm Flash ── */}
+            {/* ── Thunderstorm: dark blue-grey storm atmosphere tint ── */}
             {isThunderstorm && (
               <Animated.View pointerEvents="none" style={{
                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'rgba(15,25,80,0.55)',
+                opacity: stormTint,
+              }} />
+            )}
+            {/* ── Thunderstorm: white lightning flash ── */}
+            {isThunderstorm && (
+              <Animated.View pointerEvents="none" style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: '#E8F0FF',
                 opacity: flashAnim,
               }} />
             )}
-            {/* ── Weather Animations ── */}
-            {isRaining && rainAnims.map((ra: any, i: number) => (
-              <Animated.View key={`rain_${i}`} pointerEvents="none" style={{
-                position: 'absolute', left: ra.x, top: 0,
-                width: 1.5, height: 8, borderRadius: 1,
-                backgroundColor: ringHex,
-                opacity: ra.op, transform: [{ translateY: ra.y }],
-              }} />
-            ))}
+            {/* ── Rain / Drizzle / Heavy Rain drops ── */}
+            {(isRaining || isDrizzling || isHeavyRain || isThunderstorm) && rainAnims.slice(0, isHeavyRain || isThunderstorm ? 28 : isDrizzling ? 10 : 18).map((ra: any, i: number) => {
+              const isHeavy = isHeavyRain || isThunderstorm;
+              return (
+                <Animated.View key={`rain_${i}`} pointerEvents="none" style={{
+                  position: 'absolute',
+                  left: ra.x,
+                  top: 0,
+                  width: isHeavy ? 2.5 : isDrizzling ? 1 : 1.8,
+                  height: isHeavy ? 18 : isDrizzling ? 6 : 12,
+                  borderRadius: 2,
+                  backgroundColor: isThunderstorm ? '#A8C8FF' : isSnowing ? '#FFFFFF' : '#AADDFF',
+                  shadowColor: isThunderstorm ? '#6699FF' : '#AADDFF',
+                  shadowOpacity: 0.9,
+                  shadowRadius: 2,
+                  opacity: ra.op,
+                  transform: [{ translateY: ra.y }, { skewX: isHeavy ? '-12deg' : '-6deg' }],
+                }} />
+              );
+            })}
+            {/* ── Snowflakes ── */}
             {isSnowing && snowAnims.map((sa: any, i: number) => (
               <Animated.View key={`snow_${i}`} pointerEvents="none" style={{
                 position: 'absolute', top: 0,
-                width: 4, height: 4, borderRadius: 2,
+                left: sa.x,
+                width: 6, height: 6, borderRadius: 3,
                 backgroundColor: '#FFFFFF',
-                opacity: sa.op, transform: [{ translateX: sa.x }, { translateY: sa.y }, { scale: sa.scl }],
+                shadowColor: '#FFFFFF', shadowOpacity: 1, shadowRadius: 4,
+                opacity: sa.op,
+                transform: [{ translateX: sa.drift }, { translateY: sa.y }, { scale: sa.scl }],
               }} />
             ))}
             {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
@@ -5886,7 +5972,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
 
           {/* ── Sacred Geometric Yantra Animation — transitions between sacred geometries ── */}
           <View style={{ position: 'absolute', top: -HERO_RS * 0.05, left: -HERO_RS * 0.05, width: HERO_RS * 1.1, height: HERO_RS * 1.1 }}>
-            <HeroGeometricAnimation size={HERO_RS * 1.1} theme={nightMode ? 'dark' : 'light'} baseColor={accentHex} />
+            <HeroGeometricAnimation size={HERO_RS * 1.1} theme={nightMode ? 'dark' : 'light'} />
           </View>
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}

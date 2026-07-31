@@ -245,7 +245,21 @@ abstract class AlarmSoundServiceBase : Service() {
                 return // stop re-posting — runnable dies here
             }
 
-            if (isAlarmActive() && !isAppInForeground() && !isPickerActive()) {
+            // ROOT CAUSE FIX: Also stop re-posting when alarm is no longer active.
+            // The comment below SAID "re-post only when alarm is genuinely active"
+            // but the actual postDelayed() call had NO such guard — it re-posted
+            // unconditionally every 200 ms, including after the alarm was fully
+            // stopped and alarm_fired_pending was cleared. This created an infinite
+            // background polling loop that kept reading SharedPreferences, calling
+            // isAlarmActive(), and isAppInForeground() long after the alarm ended.
+            // When music was playing and the app went background→active, this loop
+            // was still running, saw !isAppInForeground()=true for a brief moment,
+            // and called launchApp() — reopening the app unexpectedly.
+            if (!isAlarmActive()) {
+                return // alarm fully stopped — runnable dies here, onDestroy() will also call removeCallbacks()
+            }
+
+            if (!isAppInForeground() && !isPickerActive()) {
                 val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
                 val isLocked = try { km.isKeyguardLocked } catch (_: Exception) { false }
                 val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -255,7 +269,7 @@ abstract class AlarmSoundServiceBase : Service() {
                     launchApp()
                 }
             }
-            // Re-post only when alarm is genuinely active and NOT stopping
+            // Re-post — alarm is still active and not stopping
             bringToFrontHandler.postDelayed(this, 200)
         }
     }
@@ -937,17 +951,46 @@ abstract class AlarmSoundServiceBase : Service() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
 
-        // Clear the alarm_stopping flag now that the service has fully stopped.
-        // This must happen in onDestroy() — NOT in AlarmModule.stopAlarmSound() —
-        // because stopService() is asynchronous: clearing it there left a window
-        // where watchdogs could fire before onDestroy() ran, causing the freeze.
+        // ROOT CAUSE FIX: Clear alarm_fired_pending in onDestroy().
+        //
+        // alarm_fired_pending is the native source-of-truth for wasAlarmFired().
+        // stopAlarmSound() sets it to false BEFORE calling stopService(), which
+        // is correct for the normal stop path. However, two edge cases caused it
+        // to remain true long after the alarm was dismissed:
+        //
+        // EDGE CASE 1 — START_STICKY mid-alarm restart:
+        //   Android restarts this service after OEM kill. onStartCommand(null)
+        //   runs → markAlarmActive() sets alarm_fired_pending=true again. When
+        //   the user then stops the alarm from the second service instance,
+        //   stopAlarmSound() clears it and calls stopService(). But if the OS
+        //   delivers another START_STICKY restart before onDestroy() runs, the
+        //   flag can flip true→false→true multiple times.
+        //
+        // EDGE CASE 2 — App closed while music is playing:
+        //   When background music (Sound Bath) is active, the app goes through
+        //   background→active transitions with every audio session event. If
+        //   alarm_fired_pending is still true (from the morning alarm that was
+        //   "stopped" but whose service hadn't fully died), every background→
+        //   active transition triggers the AppState handler in _layout.tsx to
+        //   re-route to /wake-alarm-ringing — the root cause of the continuous
+        //   reopening the user observed.
+        //
+        // THE FIX: onDestroy() is the definitive, guaranteed end-of-life for
+        // the service. Clearing alarm_fired_pending here ensures wasAlarmFired()
+        // always returns false once the service has completely stopped.
+        // alarm_stopping is already cleared below; we add alarm_fired_pending too.
         try {
             getSharedPreferences(AlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("alarm_stopping", false).apply()
+                .edit()
+                .putBoolean("alarm_fired_pending", false)
+                .putBoolean("alarm_stopping", false)
+                .apply()
         } catch (_: Exception) {}
         try {
             getSharedPreferences(HabitAlarmModule.PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean("alarm_stopping", false).apply()
+                .edit()
+                .putBoolean("alarm_stopping", false)
+                .apply()
         } catch (_: Exception) {}
 
         super.onDestroy()
