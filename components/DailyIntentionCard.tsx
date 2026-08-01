@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     top: -20, // Perfectly balanced between the top header and hero ring
     left: 20,
     right: 20,
-    zIndex: 100,
+    zIndex: 100, elevation: 100,
     alignItems: 'center',
   },
   homeCardWrapper: {

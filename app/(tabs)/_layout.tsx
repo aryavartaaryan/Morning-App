@@ -1426,7 +1426,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingTop: 4,
     zIndex: 100,
-    elevation: 20,
+    elevation: 100,
     overflow: "hidden",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.06)",

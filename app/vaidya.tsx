@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
   descInput: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 11, color: Colors.text, fontSize: 13, minHeight: 64, marginBottom: 14, textAlignVertical: 'top' },
   analyzeBtn: { backgroundColor: Colors.gold, borderRadius: Radius.full, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
   analyzeBtnText: { color: '#0A0A0F', fontSize: Font.sizes.base, fontWeight: '900', letterSpacing: 0.3 },
-  backBtn: { alignItems: 'center', padding: 8 },
+  backBtn: { alignItems: 'center', padding: 8, zIndex: 100, elevation: 100 },
   backBtnText: { color: Colors.textMuted, fontSize: Font.sizes.sm },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 8 },
   loadingText: { fontSize: Font.sizes.md, fontWeight: '700', color: Colors.text },

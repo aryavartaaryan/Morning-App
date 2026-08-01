@@ -320,6 +320,7 @@ const S = StyleSheet.create({
   skipBtn: {
     flex: 0.35, paddingVertical: 16, alignItems: 'center',
     borderRadius: 18, borderWidth: 1, borderColor: '#FFFFFF12',
+  zIndex: 100, elevation: 100,
   },
   skipTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF35' },
   shareBtn:      { flex: 1, borderRadius: 18, overflow: 'hidden' },

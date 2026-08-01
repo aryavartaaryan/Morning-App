@@ -673,7 +673,7 @@ export default function AyurvedicSciencePage() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={R.header}>
-          <TouchableOpacity onPress={() => router.back()} style={R.backBtn}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={R.backBtn}>
             <Text style={{ color: '#FFFFFF70', fontSize: 20, lineHeight: 24 }}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -722,7 +722,7 @@ export default function AyurvedicSciencePage() {
           <NatureSection />
 
           {/* Back-link button */}
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             onPress={() => router.back()}
             activeOpacity={0.8}
             style={R.backLinkBtn}
@@ -752,6 +752,7 @@ const R = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center',
+  zIndex: 100, elevation: 100,
   },
   headerSub: { fontSize: 8, fontWeight: '700', color: '#FFFFFF40', letterSpacing: 1.4 },
   headerTitle: { fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 },

@@ -159,7 +159,7 @@ export default function WallpaperSettings() {
       {/* Top Header */}
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.back();

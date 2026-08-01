@@ -382,7 +382,7 @@ export default function DoshaExplorePage() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* HEADER */}
         <View style={S.hdr}>
-          <TouchableOpacity onPress={() => router.back()} style={S.back} activeOpacity={0.7}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.back} activeOpacity={0.7}>
             <Text style={S.backTxt}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>

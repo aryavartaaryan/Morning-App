@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal,
   TextInput, Alert, Animated, Dimensions, NativeModules, Platform,
   ToastAndroid, ImageBackground, Linking, ActionSheetIOS, StatusBar, Easing,
+  BackHandler,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -609,10 +610,15 @@ export default function AlarmsTab() {
 
   useFocusEffect(useCallback(() => {
     alarmScrollRef.current?.scrollTo({ y: 0, animated: false });
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.navigate('/(tabs)');
+      return true;
+    });
     return () => {
+      sub.remove();
       stopPreview().catch(() => {});
     };
-  }, []));
+  }, [router]));
 
   useEffect(() => {
     (async () => {

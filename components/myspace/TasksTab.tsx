@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     reportOverlay: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 100, backgroundColor: Colors.bg, padding: 16, paddingTop: 20,
+        zIndex: 100, elevation: 100, backgroundColor: Colors.bg, padding: 16, paddingTop: 20,
     },
     carryWrap: {
         marginHorizontal: 16, marginBottom: 24,

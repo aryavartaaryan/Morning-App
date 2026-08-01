@@ -277,7 +277,7 @@ export default function CosmicSciencePage() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.backBtn}>
             <Text style={{ color: '#FFFFFF70', fontSize: 20 }}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -413,7 +413,7 @@ export default function CosmicSciencePage() {
           </View>
 
           {/* Back */}
-          <TouchableOpacity onPress={() => router.back()} style={S.backLink}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.backLink}>
             <Text style={{ fontSize: 16 }}>←</Text>
             <View style={{ flex: 1 }}>
               <Text style={S.backLinkTitle}>Return to your cosmic day</Text>
@@ -429,7 +429,7 @@ export default function CosmicSciencePage() {
 
 const S = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
-  backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', zIndex: 100, elevation: 100 },
   headerSup: { fontSize: 7.5, fontWeight: '800', color: '#FFFFFF35', letterSpacing: 1.5 },
   headerTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.2 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },

@@ -677,7 +677,7 @@ const cs = StyleSheet.create({
   mealBtnSnap: { width: 54, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.09)' },
   mealBtnSnapTxt: { fontSize: 20 },
   // SKIP
-  skipBtn: { alignItems: 'center', paddingVertical: 9, marginBottom: 4, marginTop: -4 },
+  skipBtn: { alignItems: 'center', paddingVertical: 9, marginBottom: 4, marginTop: -4, zIndex: 100, elevation: 100 },
   skipBtnAlt: { width: 48, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)' },
   skipBtnTxt: { fontSize: 10, color: 'rgba(255,255,255,0.25)', fontWeight: '700', letterSpacing: 0.3 },
 });

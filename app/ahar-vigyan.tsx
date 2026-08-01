@@ -212,7 +212,7 @@ export default function AyurvedaExplorerScreen() {
 
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={S.hdr}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.backBtn} activeOpacity={0.7}>
             <Text style={S.backIcon}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -539,7 +539,7 @@ export default function AyurvedaExplorerScreen() {
 const S = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#05050F' },
   hdr:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 12, gap: 12 },
-  backBtn:   { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0E', borderWidth: 1, borderColor: '#FFFFFF20', alignItems: 'center', justifyContent: 'center' },
+  backBtn:   { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0E', borderWidth: 1, borderColor: '#FFFFFF20', alignItems: 'center', justifyContent: 'center', zIndex: 100, elevation: 100 },
   backIcon:  { fontSize: 20, color: '#FFFFFFEE', fontWeight: '200' },
   hdrCap:    { fontSize: 8, fontWeight: '900', color: '#FFFFFF45', letterSpacing: 2, marginBottom: 2 },
   hdrTitle:  { fontSize: 22, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: -0.5 },

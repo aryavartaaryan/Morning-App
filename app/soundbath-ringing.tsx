@@ -14,6 +14,7 @@ import { Audio } from 'expo-av';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
 import { playAlarmAudio, stopAlarmAudio } from '@/lib/alarmAudio';
 import { WAKE_SOUNDS } from '@/lib/missionAlarm';
 import { stopAlarmVibration, startNativeLockTask, stopNativeLockTask } from '@/lib/nativeAlarm';
@@ -53,38 +54,28 @@ export default function SoundBathRingingScreen() {
   const { stopSound: stopAmbientSound, dismissMoodSheet } = useSoundPlayer();
 
   // ── Animations ────────────────────────────────────────────────────────────
-  const outerScale   = useSharedValue(1);
-  const outerOpacity = useSharedValue(0.30);
-  const innerScale   = useSharedValue(1);
   const btnScale     = useSharedValue(1);
-  const rotVal       = useSharedValue(0);
+  // Outer glow bloom — slow deep pulse for the geometry zone
+  const glowBloom    = useSharedValue(0.6);
 
-  const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: outerScale.value }], opacity: outerOpacity.value }));
-  const innerStyle = useAnimatedStyle(() => ({ transform: [{ scale: innerScale.value }] }));
   const btnStyle   = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
-  const rotStyle   = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotVal.value}deg` }] }));
-  const rotRevStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `-${rotVal.value}deg` }] }));
+  const gloomStyle = useAnimatedStyle(() => ({ opacity: glowBloom.value }));
 
   useEffect(() => {
-    outerScale.value = withRepeat(
-      withSequence(withTiming(1.35, { duration: 1400, easing: Easing.inOut(Easing.ease) }), withTiming(1, { duration: 1400 })), -1,
-    );
-    outerOpacity.value = withRepeat(
-      withSequence(withTiming(0.70, { duration: 1400 }), withTiming(0.20, { duration: 1400 })), -1,
-    );
-    innerScale.value = withRepeat(
-      withSequence(withTiming(1.10, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1,
-    );
     btnScale.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 900 }), withTiming(1, { duration: 900 })), -1,
     );
-    rotVal.value = withRepeat(withTiming(360, { duration: 25000, easing: Easing.linear }), -1, false);
+    // Deep slow bloom behind geometry
+    glowBloom.value = withRepeat(
+      withSequence(
+        withTiming(1.0, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      ), -1,
+    );
+    // Waveform shimmer — no-op (bars are static, drives no animated value)
     return () => {
-      cancelAnimation(outerScale);
-      cancelAnimation(outerOpacity);
-      cancelAnimation(innerScale);
       cancelAnimation(btnScale);
-      cancelAnimation(rotVal);
+      cancelAnimation(glowBloom);
     };
   }, []);
 
@@ -311,72 +302,162 @@ export default function SoundBathRingingScreen() {
     <ImageBackground
       source={bgImage ? { uri: bgImage } : undefined}
       style={S.screen}
-      imageStyle={{ opacity: 0.68 }}
+      imageStyle={{ opacity: 0.45 }}
     >
-      {/* Full-screen touch interceptor — blocks center/right nav buttons from closing screen */}
+      {/* Full-screen touch interceptor */}
       <View style={StyleSheet.absoluteFillObject} />
-
       <StatusBar hidden />
 
-      {/* Dark gradient overlay — heavier at top & bottom so text is readable */}
+      {/* ── Deep cinematic dark overlay — ink-black vignette environment ── */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.88)']}
-        locations={[0, 0.18, 0.55, 1]}
+        colors={[
+          'rgba(0,0,0,0.90)',
+          'rgba(0,0,0,0.50)',
+          'rgba(0,0,0,0.15)',
+          'rgba(0,0,0,0.15)',
+          'rgba(0,0,0,0.60)',
+          'rgba(0,0,0,0.96)',
+        ]}
+        locations={[0, 0.12, 0.30, 0.62, 0.84, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* Subtle ambient colour wash matching the accent */}
-      <View style={[S.ambientGlow, { backgroundColor: accent + '0E' }]} pointerEvents="none" />
+      {/* ── Radial vignette — deep acoustic dark surround ── */}
+      <LinearGradient
+        colors={['transparent', accent + '08', 'transparent']}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+
+      {/* ── Accent colour bloom behind geometry zone ── */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          gloomStyle,
+          { backgroundColor: accent + '06' },
+        ]}
+      />
 
       {/* ── TOP: time + sound chip ── */}
       <View style={S.topArea}>
         <Text style={S.clockText}>{timeStr}</Text>
-        <View style={[S.chip, { borderColor: accent + '55', backgroundColor: 'rgba(0,0,0,0.40)' }]}>
-          <View style={[S.liveDot, { backgroundColor: accent }]} />
-          <Text style={{ fontSize: 13 }}>{wakeSound.icon}</Text>
+        <View style={[S.chip, { borderColor: accent + '60', backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+          {/* Animated live-dot with deeper glow */}
+          <Animated.View style={[S.liveDot, gloomStyle, { backgroundColor: accent, shadowColor: accent, shadowRadius: 8, shadowOpacity: 1 }]} />
+          <Text style={{ fontSize: 14 }}>{wakeSound.icon}</Text>
           <Text style={[S.chipLabel, { color: accent }]}>{label}</Text>
         </View>
       </View>
 
-      {/* ── CENTER: pulsing orb (non-interactive) ── */}
+      {/* ── CENTER: Sacred Resonance Geometry Zone ── */}
       <View style={S.orbWrap} pointerEvents="none">
-        <Animated.View style={[S.outerRing, outerStyle, { borderColor: accent + '40' }]} />
-        <View style={[S.midRing, { borderColor: accent + '20' }]} />
-        <Animated.View style={[S.innerCircle, innerStyle, { backgroundColor: accent + '18', borderColor: accent + '50' }]}>
-          <Text style={S.orbIcon}>{wakeSound.icon}</Text>
-        </Animated.View>
+
+        {/* Deep ambient bloom circle behind geometry */}
+        <Animated.View style={[
+          S.ambientBloom,
+          gloomStyle,
+          {
+            backgroundColor: accent + '12',
+            shadowColor: accent,
+            shadowOpacity: 0.55,
+            shadowRadius: 80,
+          },
+        ]} />
+
+        {/* Outer acoustic boundary ring — very faint */}
+        <View style={[S.outerBoundary, { borderColor: accent + '18' }]} />
+        <View style={[S.midBoundary,   { borderColor: accent + '10' }]} />
+
+        {/* ── Sacred Resonance Geometry — sound variant ── */}
+        <View style={S.geometryZone}>
+          <HeroGeometricAnimation
+            size={300}
+            variant="sound"
+            accentColor={accent}
+            opacity={0.88}
+          />
+        </View>
+
+        {/* Sound icon — small, centered, floating above geometry */}
+        <View style={S.soundIconWrap}>
+          <Text style={S.soundIconText}>{wakeSound.icon}</Text>
+        </View>
+
+        {/* ── Waveform shimmer bars — sound visualizer at bottom of orb zone ── */}
+        <View style={[S.waveformRow]} pointerEvents="none">
+          {Array.from({ length: 18 }, (_, i) => {
+            const centerDist = Math.abs(i - 8.5) / 8.5;
+            const baseH = 4 + (1 - centerDist) * 20;
+            return (
+              <View
+                key={`wbar_${i}`}
+                style={[
+                  S.waveBar,
+                  {
+                    height: baseH + (i % 3) * 4,
+                    backgroundColor: accent,
+                    opacity: 0.25 + (1 - centerDist) * 0.35,
+                    borderRadius: 2,
+                  },
+                ]}
+              />
+            );
+          })}
+        </View>
       </View>
 
-      {/* ── BOTTOM: category hint + finish button ── */}
+      {/* ── BOTTOM: premium category + dismiss ── */}
       <View style={S.bottomArea}>
-        <Text style={[S.categoryHint, { color: accent + 'BB' }]}>
-          {wakeSound.category === 'mantra' ? '🕉  Mantra  ·  Sound Bath' : '🌿  Ambient  ·  Sound Bath'}
-        </Text>
 
+        {/* Category chip — elegant pill */}
+        <View style={[S.categoryChip, { borderColor: accent + '35' }]}>
+          <Text style={[S.categoryDot, { color: accent }]}>
+            {wakeSound.category === 'mantra' ? '🕉' : '🌿'}
+          </Text>
+          <Text style={[S.categoryHint, { color: accent + 'CC' }]}>
+            {wakeSound.category === 'mantra' ? 'Mantra  ·  Resonance' : 'Ambient  ·  Sound Bath'}
+          </Text>
+        </View>
+
+        {/* Dismiss button — premium glassmorphism */}
         <Animated.View style={[{ width: '100%' }, btnStyle]}>
           <TouchableOpacity
             style={[S.dismissBtn, { shadowColor: accent }]}
             onPress={handleDismiss}
-            activeOpacity={0.84}
+            activeOpacity={0.80}
           >
+            {/* Multi-layer glassmorphism fill */}
             <LinearGradient
-              colors={[accent + '40', accent + '10']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]}
+              colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'rgba(0,0,0,0.20)']}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              style={[StyleSheet.absoluteFillObject, { borderRadius: 26 }]}
             />
-            <Text style={S.dismissIcon}>✦</Text>
-            <View style={{ marginLeft: 10 }}>
-              <Text style={S.dismissTxt}>Finish Listening</Text>
-              <Text style={S.dismissSub}>tap to stop sound · close</Text>
+            <LinearGradient
+              colors={[accent + '30', accent + '08']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={[StyleSheet.absoluteFillObject, { borderRadius: 26 }]}
+            />
+            {/* Top glass highlight */}
+            <View style={S.dismissGlassHighlight} />
+
+            <View style={S.dismissInner}>
+              <View style={[S.dismissIconWrap, { borderColor: accent + '60', shadowColor: accent }]}>
+                <Text style={S.dismissIconText}>✦</Text>
+              </View>
+              <View style={{ marginLeft: 14, flex: 1 }}>
+                <Text style={S.dismissTxt}>Finish Listening</Text>
+                <Text style={S.dismissSub}>Tap to stop · Return to app</Text>
+              </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Lock indicator — mirrors habit alarm locked state */}
+        {/* Lock indicator */}
         <View style={S.lockBar}>
-          <Text style={S.lockBarTxt}>🔒  Dismiss only by tapping above</Text>
+          <Text style={S.lockBarTxt}>🔒  Screen locked while listening</Text>
         </View>
       </View>
     </ImageBackground>
@@ -384,34 +465,128 @@ export default function SoundBathRingingScreen() {
 }
 
 const S = StyleSheet.create({
-  screen:       { flex: 1, backgroundColor: '#02040C' },
-  ambientGlow:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  screen: { flex: 1, backgroundColor: '#020409' },
 
-  // Top
-  topArea:      { paddingTop: 64, alignItems: 'center', gap: 14 },
-  chip:         { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 24, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.03)' },
-  liveDot:      { width: 8, height: 8, borderRadius: 4 },
-  chipLabel:    { fontSize: 12, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' },
-  clockText:    { fontSize: 72, fontWeight: '200', color: '#FFFFFF', letterSpacing: -2 },
-
-  // Center orb
-  orbWrap:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  outerRing:    { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 1 },
-  midRing:      { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1 },
-  innerCircle:  { width: 140, height: 140, borderRadius: 70, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  orbIcon:      { fontSize: 54 },
-
-  // Bottom
-  bottomArea:   { paddingHorizontal: 32, paddingBottom: 56, alignItems: 'center', gap: 16 },
-  categoryHint: { fontSize: 11, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' },
-  dismissBtn:   {
-    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 28, paddingVertical: 24, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
-    shadowOpacity: 0.6, shadowRadius: 32, elevation: 15, shadowOffset: { width: 0, height: 10 },
+  // ── Top ──────────────────────────────────────────────────────────────────
+  topArea: {
+    paddingTop: 58, alignItems: 'center', gap: 16,
   },
-  dismissIcon:  { fontSize: 22, color: '#FFFFFF' },
-  dismissTxt:   { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.5 },
-  dismissSub:   { fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#FFFFFF80', letterSpacing: 0.8, marginTop: 4, textTransform: 'uppercase' },
-  lockBar:      { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  lockBarTxt:   { fontSize: 10, color: '#FFFFFF50', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' },
+  clockText: {
+    fontSize: 76, fontWeight: '100', color: '#FFFFFF',
+    letterSpacing: -3,
+    textShadowColor: 'rgba(255,255,255,0.1)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderRadius: 28,
+    paddingHorizontal: 20, paddingVertical: 11,
+    backgroundColor: 'rgba(0,0,0,0.50)',
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5 },
+  chipLabel: {
+    fontSize: 11, fontFamily: 'Nunito_800ExtraBold',
+    letterSpacing: 2.2, textTransform: 'uppercase',
+  },
+
+  // ── Geometry zone ────────────────────────────────────────────────────────
+  orbWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  ambientBloom: {
+    position: 'absolute',
+    width: 340, height: 340, borderRadius: 170,
+  },
+  outerBoundary: {
+    position: 'absolute', width: 340, height: 340,
+    borderRadius: 170, borderWidth: 1,
+  },
+  midBoundary: {
+    position: 'absolute', width: 260, height: 260,
+    borderRadius: 130, borderWidth: 0.8,
+  },
+  geometryZone: {
+    width: 300, height: 300,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  soundIconWrap: {
+    position: 'absolute',
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.40)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  soundIconText: { fontSize: 24 },
+  waveformRow: {
+    position: 'absolute', bottom: -40,
+    flexDirection: 'row', alignItems: 'flex-end',
+    gap: 3, paddingHorizontal: 20,
+  },
+  waveBar: {
+    width: 3, minHeight: 4,
+  },
+
+  // ── Bottom ───────────────────────────────────────────────────────────────
+  bottomArea: {
+    paddingHorizontal: 28, paddingBottom: 52,
+    alignItems: 'center', gap: 18,
+  },
+  categoryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 28,
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  categoryDot:  { fontSize: 14 },
+  categoryHint: {
+    fontSize: 11, fontFamily: 'Nunito_800ExtraBold',
+    letterSpacing: 2.5, textTransform: 'uppercase',
+  },
+
+  // Dismiss button — glassmorphism premium
+  dismissBtn: {
+    width: '100%',
+    borderRadius: 26, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+    shadowOpacity: 0.5, shadowRadius: 40, elevation: 100, zIndex: 100,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  dismissGlassHighlight: {
+    position: 'absolute', top: 0, left: 20, right: 20, height: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 1,
+  },
+  dismissInner: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 22, paddingHorizontal: 28,
+  },
+  dismissIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    shadowOpacity: 0.8, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dismissIconText: { fontSize: 18, color: '#FFFFFF' },
+  dismissTxt: {
+    fontSize: 17, fontFamily: 'Nunito_800ExtraBold',
+    color: '#FFFFFF', letterSpacing: 0.3,
+  },
+  dismissSub: {
+    fontSize: 10, fontFamily: 'Nunito_700Bold',
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 1.2, marginTop: 3, textTransform: 'uppercase',
+  },
+
+  // Lock bar
+  lockBar: {
+    alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 7,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  lockBarTxt: {
+    fontSize: 9, color: 'rgba(255,255,255,0.30)',
+    fontFamily: 'Nunito_700Bold', letterSpacing: 1.2, textTransform: 'uppercase',
+  },
 });

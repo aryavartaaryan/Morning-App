@@ -299,7 +299,7 @@ const s = StyleSheet.create({
     elevation: 8,
   },
   ctaText: { color: '#0A0A0F', fontSize: 16, fontWeight: '900', letterSpacing: 0.3 },
-  dismissBtn: { alignItems: 'center', paddingVertical: 10 },
+  dismissBtn: { alignItems: 'center', paddingVertical: 10, zIndex: 100, elevation: 100 },
   dismissText: { fontSize: 13, fontWeight: '600' },
   footer: {
     fontSize: 9,

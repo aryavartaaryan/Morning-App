@@ -516,7 +516,7 @@ export default function AyurvedicWellnessScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* ── Header ── */}
         <View style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.backBtn}>
             <Text style={{ color: '#FFFFFF70', fontSize: 20, lineHeight: 24 }}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -744,6 +744,7 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center',
+  zIndex: 100, elevation: 100,
   },
   headerSub: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.28)', letterSpacing: 2 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 },

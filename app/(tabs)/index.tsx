@@ -970,6 +970,43 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     }
   }, [pickerMode, currentYear]);
 
+  const MiniMonthGrid = ({ monthDate, festivalsData }: { monthDate: Date, festivalsData: any[] }) => {
+    const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+    const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
+    const days = Array(firstDayOfWeek).fill(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
+
+    return (
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setCurrentMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+          setPickerMode('month');
+        }}
+        style={{ width: (SCREEN_W - 32 - 32) / 3, marginBottom: 20 }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '800', color: '#fbbf24', marginBottom: 8, paddingLeft: 2 }}>
+          {monthDate.toLocaleString('en-US', { month: 'short' })}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 3, rowGap: 3 }}>
+          {days.map((date, i) => {
+            if (!date) return <View key={i} style={{ width: 10, height: 10 }} />;
+            const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
+            const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
+            return (
+              <View key={i} style={{ 
+                width: 10, height: 10, borderRadius: 2,
+                backgroundColor: festMatch ? (festMatch.festival.type === 'hindu' ? '#fbbf24' : '#60a5fa') : (isToday ? '#f43f5e' : 'rgba(255,255,255,0.1)'),
+                borderWidth: isToday ? 1 : 0, borderColor: '#FFF'
+              }} />
+            );
+          })}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect, isYearMode = false }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void, isYearMode?: boolean }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
@@ -1048,22 +1085,18 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     const mData = Array.from({length: 12}, (_, i) => new Date(yearItem, i, 1));
     const yFests = getYearlyFestivals(yearItem);
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }} style={{ width: SCREEN_W - 32 }}>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 24, letterSpacing: 2 }}>{yearItem}</Text>
-        {mData.map((monthDate, idx) => (
-           <MonthGrid 
-             key={idx} 
-             monthDate={monthDate} 
-             festivalsData={yFests} 
-             selDate={selectedDate} 
-             onDateSelect={(d: Date) => {
-                setSelectedDate(d);
-                setCurrentMonthDate(new Date(d.getFullYear(), d.getMonth(), 1));
-             }} 
-             isYearMode={true} 
-           />
-        ))}
-      </ScrollView>
+      <View style={{ width: SCREEN_W - 32, alignItems: 'center', paddingTop: 20 }}>
+        <Text style={{ fontSize: 28, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 28, letterSpacing: 4 }}>{yearItem}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 }}>
+          {mData.map((monthDate, idx) => (
+             <MiniMonthGrid 
+               key={idx} 
+               monthDate={monthDate} 
+               festivalsData={yFests} 
+             />
+          ))}
+        </View>
+      </View>
     );
   };
 
@@ -5182,7 +5215,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
 // Sleep Sounds pulsing entry button — home screen shortcut to Sleep tab
 // ══════════════════════════════════════════════════════════════════════════════
 function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaMuhurtaInfo['status'] | null): string {
-  if (!period) return 'Listen Nada Sounds & Heal';
+  if (!period) return 'Listen to Healing Sounds';
 
   const getDurationMinutes = () => {
     const deltaH = (period.endH - period.startH + 24) % 24;
@@ -5192,7 +5225,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
 
   switch (period.id) {
     case 'night_vata':
-      if (brahmaStatus === 'active') return 'Listen Nada Sounds & Meditate';
+      if (brahmaStatus === 'active') return 'Listen to Healing Sounds & Meditate';
       return 'Listen & Drift Toward Dawn';
     case 'morning_kapha_early':
     case 'morning_kapha':
@@ -5212,7 +5245,7 @@ function getSleepButtonLabel(period?: DoshaPeriod | null, brahmaStatus?: BrahmaM
     case 'night_pitta':
       return 'Listen to Sounds & Sleep Deep';
     default:
-      return 'Listen Nada Sounds & Heal';
+      return 'Listen to Healing Sounds';
   }
 }
 
@@ -5225,63 +5258,101 @@ function SleepSoundsButton({
 }) {
   const router = useRouter();
   const label = getSleepButtonLabel(period, brahmaStatus);
-  // Breathing glow + press scale for a calm, premium feel
+  
   const glowAnim  = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(0)).current;
+  const wave1Anim = useRef(new Animated.Value(0)).current;
+  const wave2Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim,  { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(glowAnim,  { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim,  { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim,  { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
     loop.start();
-    return () => loop.stop();
+
+    const wave1Loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(wave1Anim, { toValue: 1, duration: 4000, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(wave1Anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    const wave2Loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(wave2Anim, { toValue: 1, duration: 4000, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(wave2Anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+
+    wave1Loop.start();
+    const t = setTimeout(() => { wave2Loop.start(); }, 2000);
+
+    return () => {
+      loop.stop();
+      wave1Loop.stop();
+      wave2Loop.stop();
+      clearTimeout(t);
+    };
   }, []);
 
-  const btnScale   = pressAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.98] });
-  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.14, 0.32] });
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.38] });
+  const calmPulse = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] });
+  const btnScale = pressAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] });
+  
+  const wave1Scale = wave1Anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] });
+  const wave1Opac = wave1Anim.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.3, 0] });
+  
+  const wave2Scale = wave2Anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] });
+  const wave2Opac = wave2Anim.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.3, 0] });
+
   return (
     <TouchableOpacity
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate({ pathname: '/(tabs)/sleep', params: { openReel: '1' } } as never); }}
-      onPressIn={() => { Animated.timing(pressAnim, { toValue: 1, duration: 90, useNativeDriver: true }).start(); }}
-      onPressOut={() => { Animated.timing(pressAnim, { toValue: 0, duration: 140, useNativeDriver: true }).start(); }}
-      activeOpacity={0.80}
-      style={{ height: '100%' }}
+      onPressIn={() => { Animated.timing(pressAnim, { toValue: 1, duration: 100, useNativeDriver: true }).start(); }}
+      onPressOut={() => { Animated.timing(pressAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(); }}
+      activeOpacity={0.9}
+      style={{ justifyContent: 'center', alignItems: 'center' }}
     >
-      <Animated.View style={{
-        height: '100%', minHeight: 56,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        paddingHorizontal: 22,
-        borderRadius: 28, overflow: 'hidden',
-        backgroundColor: 'rgba(6,15,40,0.44)',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
-        shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.20, shadowRadius: 22,
-        elevation: 8,
-        transform: [{ scale: btnScale }],
-      }}>
-        {/* Soft breathing glow layer */}
-        <Animated.View pointerEvents="none" style={{
-          position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-          borderRadius: 28,
-          backgroundColor: 'rgba(0,212,184,0.26)',
-          opacity: glowOpacity,
-        }} />
-        <LinearGradient
-          colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'transparent']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject} />
-        {/* Soundwave icon */}
-        <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8 }}>
-          <SvgPath d="M4 12v0.01" stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
-          <SvgPath d="M7 10v4"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
-          <SvgPath d="M10 7v10"  stroke="#4FD1C5" strokeWidth="2.2" strokeLinecap="round" />
-          <SvgPath d="M13 9v6"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
-          <SvgPath d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
-          <SvgPath d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
-        </Svg>
-        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.35 }}>{label}</Text>
+      <Animated.View style={{ transform: [{ scale: calmPulse }, { scale: btnScale }], justifyContent: 'center', alignItems: 'center' }}>
+        
+        {/* Radiating Sound Waves */}
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#7CE3D8', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#7CE3D8', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
+
+        <View style={{
+          height: 48,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+          paddingHorizontal: 32,
+          borderRadius: 24, overflow: 'hidden',
+          backgroundColor: 'rgba(6,15,40,0.55)',
+          borderWidth: 1.2, borderColor: 'rgba(255,255,255,0.30)',
+          shadowColor: '#7CE3D8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 18,
+          elevation: 10,
+        }}>
+          {/* Soft breathing glow layer */}
+          <Animated.View pointerEvents="none" style={{
+            position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+            backgroundColor: 'rgba(0,212,184,0.35)',
+            opacity: glowOpacity,
+          }} />
+          <LinearGradient
+            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject} />
+            
+          {/* Soundwave icon */}
+          <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 10 }}>
+            <SvgPath d="M4 12v0.01" stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+            <SvgPath d="M7 10v4"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+            <SvgPath d="M10 7v10"  stroke="#4FD1C5" strokeWidth="2.2" strokeLinecap="round" />
+            <SvgPath d="M13 9v6"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
+            <SvgPath d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
+            <SvgPath d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
+          </Svg>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.6 }}>{label}</Text>
+        </View>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -6014,9 +6085,9 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Sacred Geometric Yantra Animation — transitions between sacred geometries ── */}
+          {/* ── Sacred Geometric Yantra Animation — palette-driven, fits inside ring glass ── */}
           <View pointerEvents="none" style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center' }}>
-            <HeroGeometricAnimation size={HERO_RS * 0.81} theme={nightMode ? 'dark' : 'light'} opacity={0.77} />
+            <HeroGeometricAnimation size={HERO_RS - 12} variant="home" accentColor={ringHex} opacity={0.92} />
           </View>
 
           {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
@@ -6079,29 +6150,31 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               {/* ── PERSISTENT TOP: Always visible ── */}
               
               {/* Elegant US-Targeted Catchy Title */}
-              <View style={{ 
+              <Animated.View style={{ 
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
                 gap: 6, 
-                marginBottom: compact ? 4 : 6 
+                marginBottom: compact ? 4 : 6,
+                opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.65, 1] }),
+                transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.03] }) }]
               }}>
                 <View style={{ height: 1, width: 12, backgroundColor: accentHex, opacity: 0.8 }} />
                 <Text style={{ 
-                  fontSize: compact ? 8 : 9.5, 
-                  fontWeight: '800', 
-                  color: 'rgba(255,255,255,0.85)', 
-                  letterSpacing: 3, 
+                  fontSize: compact ? 9 : 10.5, 
+                  fontWeight: '900', 
+                  color: 'rgba(255,255,255,0.95)', 
+                  letterSpacing: 3.5, 
                   textTransform: 'uppercase',
                   textAlign: 'center',
-                  textShadowColor: 'rgba(0,0,0,0.8)', 
-                  textShadowOffset: { width: 0, height: 1 }, 
-                  textShadowRadius: 6 
+                  textShadowColor: accentHex, 
+                  textShadowOffset: { width: 0, height: 0 }, 
+                  textShadowRadius: 8
                 }}>
                   Current Circadian Hour
                 </Text>
                 <View style={{ height: 1, width: 12, backgroundColor: accentHex, opacity: 0.8 }} />
-              </View>
+              </Animated.View>
 
               {/* Header — the phase name (e.g. Creative Peak) */}
               <Text
@@ -6156,7 +6229,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                         <Text style={{ fontSize: compact ? 22 : 28, marginBottom: compact ? 5 : 6, textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{slide.emoji}</Text>
 
                         {/* Title */}
-                        <Text style={{ fontSize: compact ? 12 : 14, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8, letterSpacing: -0.2, lineHeight: compact ? 16 : 20, marginBottom: compact ? 3 : 5 }} numberOfLines={3}>{slide.title}</Text>
+                        <Text style={{ fontSize: slide.title === 'Energy Dip Phase' ? (compact ? 10.5 : 12) : (compact ? 12 : 14), fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8, letterSpacing: -0.2, lineHeight: slide.title === 'Energy Dip Phase' ? (compact ? 14 : 16) : (compact ? 16 : 20), marginBottom: compact ? 3 : 5 }} numberOfLines={3}>{slide.title}</Text>
 
                         {/* Sub detail */}
                         {slide.sub ? (
@@ -6194,7 +6267,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               width: HERO_RS,
               height: HERO_RS,
               borderRadius: HERO_RS / 2,
-              zIndex: 100,
+              zIndex: 100, elevation: 100,
             }}
           />
 
@@ -6314,7 +6387,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                   transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.35} />
               </Svg>
               <View style={{ position: 'absolute', top: 0, left: 0, width: RING_S, height: RING_S, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 17, fontWeight: '900', color: accentColor, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{remStr}</Text>
+                <Text style={{ fontSize: 15.5, fontWeight: '900', color: accentColor, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{remStr}</Text>
                 <Text style={{ fontSize: 5.5, fontWeight: '700', color: '#FFFFFF50', letterSpacing: 0.6, marginTop: 1 }}>LEFT</Text>
               </View>
             </View>
@@ -6403,16 +6476,16 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
         )}
       </Animated.View>
 
-      {/* ── NADA SOUNDS SUGGESTION — contextual nudge for every phase ── */}
+      {/* ── SOUNDSCAPES SUGGESTION — contextual nudge for every phase ── */}
       {(() => {
         const NAAD_MAP: Record<string, { badge: string; title: string; sub: string }> = {
-          night_vata:     { badge: '✦  SACRED DAWN · NADA SOUNDS',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient Nada frequencies deepen stillness without effort. Just press play and breathe.' },
-          morning_kapha_early:  { badge: '✦  EARLY RITUAL · NADA SOUNDS', title: 'Ground & align your nervous system',               sub: 'Anchor your morning in 5 minutes. Healing frequencies ease you into the day.' },
-          morning_kapha:  { badge: '✦  MORNING RITUAL · NADA SOUNDS', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
-          midday_pitta:   { badge: '✦  DEEP FOCUS · NADA SOUNDS',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
-          afternoon_vata: { badge: '✦  CREATIVE PEAK · NADA SOUNDS',  title: 'Try Nada Sounds — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
-          evening_kapha:  { badge: '✦  WIND-DOWN · NADA SOUNDS',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
-          night_pitta:    { badge: '✦  DEEP SLEEP · NADA SOUNDS',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
+          night_vata:     { badge: '✦  SACRED DAWN · SOUNDSCAPES',    title: 'Meditate or just listen — let sound guide you', sub: 'The pre-dawn veil is thin. Ancient sound frequencies deepen stillness without effort. Just press play and breathe.' },
+          morning_kapha_early:  { badge: '✦  EARLY RITUAL · SOUNDSCAPES', title: 'Ground & align your nervous system',               sub: 'Anchor your morning in 5 minutes. Healing frequencies ease you into the day.' },
+          morning_kapha:  { badge: '✦  MORNING RITUAL · SOUNDSCAPES', title: 'Meditate, move or simply listen',               sub: 'Ground your morning in 5 minutes. Healing frequencies anchor your mind before the world rushes in.' },
+          midday_pitta:   { badge: '✦  DEEP FOCUS · SOUNDSCAPES',     title: 'Tune in, block out, go deep',                   sub: 'Harmonic frequencies build a focus bubble around you. No meditation needed — just listen while you work.' },
+          afternoon_vata: { badge: '✦  CREATIVE PEAK · SOUNDSCAPES',  title: 'Try Soundscapes — see what sparks',             sub: 'Just hit play — no ritual, no pressure. Ancient frequencies tuned to your creative peak often surprise you.' },
+          evening_kapha:  { badge: '✦  WIND-DOWN · SOUNDSCAPES',      title: 'Signal your body: the day is done',             sub: 'Soft healing tones tell your nervous system to let go. Play quietly, breathe slowly, feel the shift.' },
+          night_pitta:    { badge: '✦  DEEP SLEEP · SOUNDSCAPES',     title: 'Set a timer, press play, close your eyes',      sub: 'Ancient frequencies quiet the thinking mind and guide you into deep restorative sleep. No effort required.' },
         };
         const naad = NAAD_MAP[period.id];
         if (!naad) return null;
@@ -6761,26 +6834,25 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
-              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
+              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#ffffff', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2, backgroundColor: 'rgba(255,255,255,0.03)' }}
             >
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0.05)']}
+                colors={['rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.04)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(244, 63, 94, 0.3)' }} />
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 0.5, borderColor: 'rgba(255, 255, 255, 0.25)' }} />
                 
                 {/* Top shine */}
                 <LinearGradient
-                  colors={['rgba(255,255,255,0.4)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
+                  colors={['rgba(255,255,255,0.35)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 10, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
                 />
                 
-                <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 16, textShadowColor: 'rgba(244,63,94,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>📅</Text>
-                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#fda4af', letterSpacing: 1, textTransform: 'uppercase' }}>
+                <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#ffffff', letterSpacing: 1.8, textTransform: 'uppercase' }}>
                     VEDIC CALENDAR
                   </Text>
                 </View>
@@ -6791,26 +6863,25 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any); }}
-              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#8b5cf6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
+              style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#ffffff', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2, backgroundColor: 'rgba(255,255,255,0.03)' }}
             >
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
-                colors={['rgba(167, 139, 250, 0.25)', 'rgba(96, 165, 250, 0.05)']}
+                colors={['rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.04)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
               >
-                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.3)' }} />
+                <View style={{ position: 'absolute', inset: 0, borderRadius: 99, borderWidth: 0.5, borderColor: 'rgba(255, 255, 255, 0.25)' }} />
                 
                 {/* Top shine */}
                 <LinearGradient
-                  colors={['rgba(255,255,255,0.4)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
+                  colors={['rgba(255,255,255,0.35)', 'transparent']}
+                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 10, borderTopLeftRadius: 99, borderTopRightRadius: 99 }}
                 />
                 
-                <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 16, textShadowColor: 'rgba(167,139,250,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 }}>🪐</Text>
-                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#C4B5FD', letterSpacing: 1, textTransform: 'uppercase' }}>
+                <View style={{ paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#ffffff', letterSpacing: 1.8, textTransform: 'uppercase' }}>
                     SCIENCE
                   </Text>
                 </View>

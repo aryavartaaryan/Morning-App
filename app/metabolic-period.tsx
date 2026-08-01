@@ -719,6 +719,7 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
+  zIndex: 100, elevation: 100,
   },
   backTxt: {
     color: 'rgba(255,255,255,0.80)',

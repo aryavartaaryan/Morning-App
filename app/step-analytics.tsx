@@ -208,7 +208,7 @@ export default function StepAnalyticsScreen() {
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <View style={[st.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn}>
+        <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={st.backBtn}>
           <LinearGradient
             colors={['rgba(255,255,255,0.08)', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
@@ -563,6 +563,7 @@ const st = StyleSheet.create({
     backgroundColor: 'rgba(12,24,48,0.7)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  zIndex: 100, elevation: 100,
   },
   // Sleeker elegant header
   title: { fontSize: 26, fontWeight: '700', color: '#fff', letterSpacing: 0.2, fontFamily: 'DancingScript_600SemiBold', textShadowColor: CYAN + '50', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },

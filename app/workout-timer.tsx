@@ -99,7 +99,7 @@ export default function WorkoutTimer() {
   if (phase === 'select') return (
     <LinearGradient colors={['#0A0A0F', '#1A0A0A', '#0A0A0F']} style={s.full}>
       <StatusBar barStyle="light-content" />
-      <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+      <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.backBtn} onPress={() => router.back()}>
         <Text style={s.backTxt}>← Back</Text>
       </TouchableOpacity>
 
@@ -139,7 +139,7 @@ export default function WorkoutTimer() {
   if (phase === 'running' || phase === 'paused') return (
     <LinearGradient colors={['#0A0A0F', '#1A0A0A', '#0A0A0F']} style={s.full}>
       <StatusBar barStyle="light-content" />
-      <TouchableOpacity style={s.backBtn} onPress={() => {
+      <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.backBtn} onPress={() => {
         if (phase === 'running') pause();
         Alert.alert('End workout?', 'Leave without saving?', [
           { text: 'Stay', style: 'cancel', onPress: () => phase === 'running' ? resume() : undefined },
@@ -230,7 +230,7 @@ export default function WorkoutTimer() {
           <Text style={s.saveTxt}>{saving ? 'Saving...' : 'SAVE WORKOUT'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.skipBtn} onPress={() => router.back()}>
+        <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.skipBtn} onPress={() => router.back()}>
           <Text style={s.skipTxt}>Skip & close</Text>
         </TouchableOpacity>
       </View>
@@ -286,6 +286,6 @@ const s = StyleSheet.create({
   feelLabel: { fontSize: 11, fontWeight: '700', color: Colors.textSub },
   saveBtn: { borderRadius: Radius.full, paddingVertical: 16, paddingHorizontal: 48, alignSelf: 'stretch', alignItems: 'center', marginBottom: Spacing.sm },
   saveTxt: { color: '#fff', fontSize: Font.sizes.base, fontWeight: '900', letterSpacing: 1 },
-  skipBtn: { paddingVertical: 8 },
+  skipBtn: { paddingVertical: 8, zIndex: 100, elevation: 100 },
   skipTxt: { color: Colors.textMuted, fontSize: Font.sizes.sm, fontWeight: '600' },
 });

@@ -229,7 +229,7 @@ export default function AlarmSoundLibraryModal({
 
         {/* Confirmation Dialog Overlay */}
         {confirmSound && (
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim, zIndex: 100, justifyContent: 'center', alignItems: 'center' }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim, zIndex: 100, elevation: 100, justifyContent: 'center', alignItems: 'center' }]}>
             <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
               <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={cancelSelection} />
             </BlurView>

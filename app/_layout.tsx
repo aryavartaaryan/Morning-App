@@ -181,14 +181,39 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         isLooping
         isMuted
       />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.78)' }]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
+      {/* Deep cosmic vignette: radial darkening from edges */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,6,0.30)' }]} />
       
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* Elegant Geometric Fusion behind NADA */}
+        {/* Cosmic Nebula Glow — deep indigo radiance behind geometry */}
+        <Animated.View style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center',
+          opacity: titleOp,
+        }}>
+          {/* Outer nebula bloom */}
+          <View style={{
+            width: SW * 1.1, height: SW * 1.1,
+            borderRadius: SW * 0.55,
+            backgroundColor: 'rgba(30,20,90,0.32)',
+            position: 'absolute',
+          }} />
+          {/* Inner deep core */}
+          <View style={{
+            width: SW * 0.65, height: SW * 0.65,
+            borderRadius: SW * 0.325,
+            backgroundColor: 'rgba(55,30,140,0.22)',
+            position: 'absolute',
+          }} />
+        </Animated.View>
+
+        {/* Cosmic Geometric Animation — grand layered universe */}
         <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.8} theme="dark" speed="fast" opacity={0.55} />
+          <HeroGeometricAnimation size={SW * 0.92} variant="splash" opacity={0.55} />
         </Animated.View>
 
         {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
@@ -304,7 +329,7 @@ function PremiumSurveyOption({
   const scale = useRef(new Animated.Value(1)).current;
   
   const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
   };
   
   const handlePressOut = () => {
@@ -317,39 +342,30 @@ function PremiumSurveyOption({
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale }], marginBottom: 14, width: '100%' }}>
+    <Animated.View style={{ transform: [{ scale }], marginRight: 10, marginBottom: 12 }}>
       <TouchableOpacity 
         activeOpacity={1} 
         onPressIn={handlePressIn} 
         onPressOut={handlePressOut} 
         onPress={handlePress}
-        style={{ width: '100%' }}
       >
         <BlurView 
-          intensity={isSelected ? 40 : 20} 
-          tint="dark" 
+          intensity={isSelected ? 60 : 20} 
+          tint={isSelected ? "light" : "dark"} 
           style={{ 
-            borderRadius: 20, 
+            borderRadius: 24, 
             overflow: 'hidden', 
             borderWidth: 1, 
-            borderColor: isSelected ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.08)',
-            backgroundColor: isSelected ? 'rgba(96,165,250,0.12)' : 'rgba(0,0,0,0.3)',
+            borderColor: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
+            backgroundColor: isSelected ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.4)',
           }}
         >
-          <View style={{ paddingVertical: 18, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ 
-              width: 22, height: 22, borderRadius: isMultiple ? 6 : 11, borderWidth: 1.5, 
-              borderColor: isSelected ? '#93c5fd' : 'rgba(255,255,255,0.25)', 
-              marginRight: 16, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: isSelected ? 'rgba(147,197,253,0.15)' : 'transparent'
-            }}>
-              {isSelected && <View style={{ width: 10, height: 10, borderRadius: isMultiple ? 2 : 5, backgroundColor: '#93c5fd' }} />}
-            </View>
+          <View style={{ paddingVertical: 12, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ 
-              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.65)', 
-              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
-              fontSize: 16,
-              letterSpacing: 0.5
+              color: isSelected ? '#000000' : 'rgba(255,255,255,0.85)', 
+              fontFamily: isSelected ? 'Nunito_800ExtraBold' : 'Nunito_600SemiBold', 
+              fontSize: 15,
+              letterSpacing: 0.3
             }}>
               {label}
             </Text>
@@ -437,8 +453,8 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         return (
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Svara?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>Select all that apply to personalize your journey.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Select all that apply to personalize your journey.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
               {tags1.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} isMultiple={true} />
               ))}
@@ -449,8 +465,8 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         return (
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>How do you feel upon waking?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>Understanding your mornings helps us adapt.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Understanding your mornings helps us adapt.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
               {tags3.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
               ))}
@@ -461,8 +477,8 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         return (
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>We'll help you overcome these challenges.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>We'll help you overcome these challenges.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
               {tags4.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
               ))}
@@ -473,8 +489,8 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         return (
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your current rhythm?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28 }}>To set an achievable wellness goal.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>To set an achievable wellness goal.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
               {tags2.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
               ))}
@@ -486,7 +502,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 10000, opacity: fadeAnim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 100, elevation: 10000, opacity: fadeAnim }]}>
       {/* Dynamic Background Image */}
       <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.8 }} resizeMode="cover" />
       <LinearGradient

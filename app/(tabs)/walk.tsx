@@ -27,6 +27,7 @@ import {
   TextInput,
   PanResponder,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,6 +38,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
 import StepCounter, { type TodayStats, type DailyData } from '@/src/modules/StepCounter';
@@ -102,138 +104,291 @@ const DEFAULT_STATS: TodayStats = {
 };
 
 // ─── Vastu Yantra Scanner ──────────────────────────────────────────────────────
-function VastuScanner({ heading }: { heading: Animated.Value }) {
+type VastuDir = { label: string; range: [number, number]; };
+
+type VastuActivity = 'sleep' | 'eat' | 'meditate' | 'work' | 'exercise' | 'study' | 'relax';
+
+const VASTU_DATA: Record<VastuActivity, { icon: string; label: string; dirs: VastuDir[]; targetColor: string; reason: string; searchingText: string }> = {
+  sleep: { 
+    icon: '🛏️', label: 'Sleep Architecture', 
+    dirs: [ { label: 'South', range: [157.5, 202.5] }, { label: 'East', range: [67.5, 112.5] } ],
+    targetColor: '#a78bfa', 
+    reason: "Optimize your sleep architecture. Align your body with the Earth's geomagnetic lines to naturally lower cortisol, reduce sleep latency, and maximize deep REM sleep.",
+    searchingText: "Put your head in the direction pointed by Vastu Scanner for deep sleep optimization"
+  },
+  eat: { 
+    icon: '🍽️', label: 'Eat', 
+    dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
+    targetColor: '#fcd34d', 
+    reason: "Align with the solar axis to optimize your digestive fire and enhance metabolic rhythm.",
+    searchingText: "Face the direction pointed by Vastu Scanner for mindful nourishment"
+  },
+  meditate: { 
+    icon: '🧘', label: 'Meditate', 
+    dirs: [ { label: 'North-East', range: [22.5, 67.5] }, { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
+    targetColor: '#e879f9', 
+    reason: "Minimize electromagnetic interference and unlock deep nervous system rest for spiritual clarity.",
+    searchingText: "Face the direction pointed by Vastu Scanner for profound inner peace"
+  },
+  work: { 
+    icon: '💼', label: 'WFH Desk Optimizer', 
+    dirs: [ { label: 'North', range: [337.5, 22.5] }, { label: 'East', range: [67.5, 112.5] } ],
+    targetColor: '#60a5fa', 
+    reason: "Biohack your workspace orientation. Align your desk to the magnetic North to optimize Alpha brainwaves, increase deep focus, and reduce workflow friction.",
+    searchingText: "Face the direction pointed by Vastu Scanner to enter peak flow state"
+  },
+  exercise: { 
+    icon: '🏃', label: 'Exercise', 
+    dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
+    targetColor: '#f87171', 
+    reason: "Sync with the solar alignment to boost vitality, energy flow, and your natural circadian rhythm.",
+    searchingText: "Face the direction pointed by Vastu Scanner for dynamic energy"
+  },
+  study: { 
+    icon: '💻', label: 'Study', 
+    dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
+    targetColor: '#34d399', 
+    reason: "Harness magnetic alignment to support mental retention and reduce spatial disorientation.",
+    searchingText: "Face the direction pointed by Vastu Scanner for crystal clear focus"
+  },
+  relax: { 
+    icon: '🛁', label: 'Relax', 
+    dirs: [ { label: 'West', range: [247.5, 292.5] } ],
+    targetColor: '#94a3b8', 
+    reason: "Embrace the sunset energy to naturally trigger your parasympathetic rest and digest state.",
+    searchingText: "Face the direction pointed by Vastu Scanner to unwind and release"
+  }
+};
+
+function createOpacity(ranges: [number, number][], isSearching: boolean) {
+  const inputRange = [];
+  const outputRange = [];
+  for (let i = 0; i <= 360; i++) {
+    let fadeVal = 0;
+    for (const [s, e] of ranges) {
+      if (s > e) {
+        if (i >= s || i <= e) { fadeVal = 1; break; }
+        if (i >= s - 8 && i < s) fadeVal = Math.max(fadeVal, (i - (s - 8)) / 8);
+        if (i > e && i <= e + 8) fadeVal = Math.max(fadeVal, 1 - (i - e) / 8);
+      } else {
+        if (i >= s && i <= e) { fadeVal = 1; break; }
+        if (i >= s - 8 && i < s) fadeVal = Math.max(fadeVal, (i - (s - 8)) / 8);
+        if (i > e && i <= e + 8) fadeVal = Math.max(fadeVal, 1 - (i - e) / 8);
+      }
+    }
+    inputRange.push(i);
+    outputRange.push(isSearching ? 1 - fadeVal : fadeVal);
+  }
+  return { inputRange, outputRange };
+}
+
+function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, selectedActivity: VastuActivity | null }) {
   const modHeading = Animated.modulo(Animated.add(heading, 36000), 360);
 
-  const zones = [
-    { title: "Facing North (Kubera)", desc: "Optimal for deep focus & wealth creation.", range: [337.5, 360, 0, 22.5], color: "#60a5fa" },
-    { title: "Facing Ishan (NE)", desc: "Sacred corner. Ideal for spiritual practice.", range: [22.5, 67.5], color: "#e879f9" },
-    { title: "Facing East (Surya)", desc: "Optimal for morning meditation & vitality.", range: [67.5, 112.5], color: "#fcd34d" },
-    { title: "Facing Agni (SE)", desc: "Fire element. Good for active energy.", range: [112.5, 157.5], color: "#fb923c" },
-    { title: "Facing South (Yama)", desc: "Align your head here for deep, restorative sleep.", range: [157.5, 202.5], color: "#a78bfa" },
-    { title: "Facing Nairutya (SW)", desc: "Earth element. Ideal for grounding & stability.", range: [202.5, 247.5], color: "#34d399" },
-    { title: "Facing West (Varuna)", desc: "Optimal for evening reflection & letting go.", range: [247.5, 292.5], color: "#94a3b8" },
-    { title: "Facing Vayu (NW)", desc: "Air element. Embracing change & movement.", range: [292.5, 337.5], color: "#38bdf8" },
-  ];
-
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: -75, left: -100, right: -100, alignItems: 'center' }}>
-      {/* ── Premium Title & Instructions ── */}
-      <View style={{ alignItems: 'center', marginBottom: 20 }}>
-        <Text style={{ fontSize: 11, fontWeight: '800', color: '#c084fc', letterSpacing: 4, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
+  if (!selectedActivity) {
+    return (
+      <View pointerEvents="none" style={{ position: 'absolute', top: -75, left: -100, right: -100, alignItems: 'center' }}>
+        <Text style={{ fontSize: 11, fontWeight: '800', color: '#c084fc', letterSpacing: 3, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, marginBottom: 4 }}>
           Vastu Energy Scanner
         </Text>
-        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, marginTop: 4, textTransform: 'uppercase' }}>
-          Rotate device to align your space
+        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+          Select an intention above
         </Text>
       </View>
+    );
+  }
 
-      {zones.map((zone, i) => {
-        let opacity;
-        if (i === 0) {
-          opacity = modHeading.interpolate({
-            inputRange: [0, 22.5, 23, 337, 337.5, 360],
-            outputRange: [1, 1, 0, 0, 1, 1],
-          });
-        } else {
-          const [start, end] = zone.range;
-          const fadeZone = 8;
-          opacity = modHeading.interpolate({
-            inputRange: [start - fadeZone, start, end, end + fadeZone],
-            outputRange: [0, 1, 1, 0],
-            extrapolate: 'clamp'
-          });
-        }
-        
+  const data = VASTU_DATA[selectedActivity];
+  const allRanges = data.dirs.map(d => d.range);
+  const searchingConfig = createOpacity(allRanges, true);
+  const searchingOpacity = modHeading.interpolate(searchingConfig);
+
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: -85, left: -120, right: -120, alignItems: 'center' }}>
+      {/* Aligned State */}
+      {data.dirs.map((dir, idx) => {
+        const dirConfig = createOpacity([dir.range], false);
+        const opacity = modHeading.interpolate(dirConfig);
         return (
-          <Animated.View key={i} style={{ position: 'absolute', top: 40, alignItems: 'center', opacity }}>
-            <Text style={{ fontSize: 13, fontWeight: '900', color: zone.color, letterSpacing: 1, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
-              {zone.title}
+          <Animated.View key={idx} style={{ position: 'absolute', alignItems: 'center', opacity }}>
+            <Text style={{ fontSize: 14, fontWeight: '900', color: data.targetColor, letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+              Facing {dir.label} — Aligned
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-              {zone.desc}
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginTop: 6, textAlign: 'center', paddingHorizontal: 20, lineHeight: 14, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+              {data.reason}
             </Text>
           </Animated.View>
         );
       })}
+
+      {/* Searching State */}
+      <Animated.View style={{ 
+        position: 'absolute', top: 10, alignItems: 'center', 
+        opacity: searchingOpacity 
+      }}>
+        <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, textAlign: 'center', paddingHorizontal: 20 }}>
+          {data.searchingText}
+        </Text>
+        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+          (Target: {data.dirs.map(d => d.label).join(' or ')})
+        </Text>
+      </Animated.View>
     </View>
   );
 }
 
 // ─── Modern HUD Navigator Compass ────────────────────────────────────────────
-function CompassRose({ size, heading }: { size: number; heading: Animated.Value }) {
+function CompassRose({ size, heading, selectedActivity }: { size: number; heading: Animated.Value; selectedActivity: VastuActivity | null }) {
   const cx = 50, cy = 50;
 
-  // Only 4 major ticks at N/E/S/W
-  const majorTicks = [0, 90, 180, 270].map((deg) => {
-    const angle = deg * Math.PI / 180;
-    const x1 = cx + 46 * Math.sin(angle);
-    const y1 = cy - 46 * Math.cos(angle);
-    const x2 = cx + 40 * Math.sin(angle);
-    const y2 = cy - 40 * Math.cos(angle);
-    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke={deg === 0 ? '#f87171' : 'rgba(255,255,255,0.35)'}
-      strokeWidth={deg === 0 ? 2 : 1.2} strokeLinecap="round" />;
-  });
+  // Continuous animation values
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const rotAnim = useRef(new Animated.Value(0)).current;
 
-  // 8 minor ticks at 45° intervals
-  const minorTicks = [45, 135, 225, 315].map((deg) => {
-    const angle = deg * Math.PI / 180;
-    const x1 = cx + 46 * Math.sin(angle);
-    const y1 = cy - 46 * Math.cos(angle);
-    const x2 = cx + 43 * Math.sin(angle);
-    const y2 = cy - 43 * Math.cos(angle);
-    return <Line key={deg} x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} strokeLinecap="round" />;
-  });
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ])
+    ).start();
 
-  const cardinals = [
-    { label: '✧', deg: 0,   color: '#f87171', fs: '12' },
-    { label: '✧', deg: 90,  color: 'rgba(255,255,255,0.6)', fs: '9' },
-    { label: '✧', deg: 180, color: 'rgba(255,255,255,0.45)', fs: '9' },
-    { label: '✧', deg: 270, color: 'rgba(255,255,255,0.6)', fs: '9' },
+    Animated.loop(
+      Animated.timing(rotAnim, { toValue: 1, duration: 45000, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+  }, []);
+
+  const spin1 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spin2 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] });
+  const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.9] });
+
+  // Authentic Sri Yantra interlocking triangles
+  const shivaTriangles = [
+    "M 50,12 L 85,78 L 15,78 Z",
+    "M 50,26 L 75,64 L 25,64 Z",
+    "M 50,38 L 65,56 L 35,56 Z",
+    "M 50,45 L 56,51 L 44,51 Z"
   ];
-  const cardinalEls = cardinals.map(({ label, deg: d, color, fs }) => {
-    const rad = d * Math.PI / 180;
-    const x = cx + 33 * Math.sin(rad);
-    const y = cy - 33 * Math.cos(rad);
-    return (
-      <SvgText key={label} x={x} y={y} fill={color} fontSize={fs}
-        fontWeight="800" textAnchor="middle" alignmentBaseline="middle">
-        {label}
-      </SvgText>
-    );
-  });
+  const shaktiTriangles = [
+    "M 50,88 L 15,22 L 85,22 Z",
+    "M 50,74 L 25,36 L 75,36 Z",
+    "M 50,62 L 35,44 L 65,44 Z",
+    "M 50,55 L 44,49 L 56,49 Z"
+  ];
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Rotating compass dial */}
+      
+      {/* The main dial rotates with the phone's compass heading */}
       <Animated.View style={{
         position: 'absolute',
         transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }],
         width: size, height: size,
       }}>
-        <Svg width={size} height={size} viewBox="0 0 100 100">
-          {/* Minimal outer ring */}
-          <Circle cx={cx} cy={cy} r={48} fill="rgba(3,8,20,0.85)" />
-          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={0.8} />
-          {/* Inner clean circle */}
-          <Circle cx={cx} cy={cy} r={26} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.5} strokeDasharray="2 5" />
-          {majorTicks}
-          {minorTicks}
-          {cardinalEls}
-          {/* North needle tip */}
-          <Path d={`M${cx} ${cy-23} L${cx-3} ${cy+4} L${cx+3} ${cy+4} Z`} fill="rgba(248,113,113,0.75)" />
-          {/* South needle */}
-          <Path d={`M${cx} ${cy+23} L${cx-3} ${cy-4} L${cx+3} ${cy-4} Z`} fill="rgba(255,255,255,0.18)" />
-          {/* Center dot */}
-          <Circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.7)" />
+        {/* Base Background */}
+        <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
+          <Circle cx={cx} cy={cy} r={48} fill="rgba(5, 8, 18, 0.9)" />
+          {/* Subtle outer grid lines */}
+          <Circle cx={cx} cy={cy} r={46} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} strokeDasharray="1 3" />
+          <Circle cx={cx} cy={cy} r={42} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.2} />
+        </Svg>
+
+        {/* Slow rotating outer mandala ring (Clockwise) */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* 16 Lotus petals representation (simplified via arcs) */}
+            {Array.from({ length: 16 }).map((_, i) => {
+              const a = (i * 360) / 16;
+              return (
+                <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
+                  <Path d={`M 50,8 Q 55,18 50,22 Q 45,18 50,8 Z`} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.15)" strokeWidth={0.3} />
+                </G>
+              );
+            })}
+          </Svg>
+        </Animated.View>
+
+        {/* Slow rotating inner mandala ring (Counter-clockwise) */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* 8 Lotus petals */}
+            {Array.from({ length: 8 }).map((_, i) => {
+              const a = (i * 360) / 8;
+              return (
+                <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
+                  <Path d={`M 50,22 Q 58,32 50,38 Q 42,32 50,22 Z`} fill="rgba(255,215,0,0.03)" stroke="rgba(255,215,0,0.25)" strokeWidth={0.4} />
+                </G>
+              );
+            })}
+          </Svg>
+        </Animated.View>
+
+        {/* Pulsing Core Sri Yantra Triangles */}
+        <Animated.View style={{ 
+          position: 'absolute', width: size, height: size, 
+          transform: [{ scale: pulseScale }],
+          opacity: pulseOp
+        }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* Shiva Triangles (Upward) */}
+            {shivaTriangles.map((d, i) => (
+              <Path key={`shiva-${i}`} d={d} fill="rgba(255,255,255,0.015)" stroke="rgba(167, 139, 250, 0.45)" strokeWidth={0.3} />
+            ))}
+            {/* Shakti Triangles (Downward) */}
+            {shaktiTriangles.map((d, i) => (
+              <Path key={`shakti-${i}`} d={d} fill="rgba(255,255,255,0.015)" stroke="rgba(244, 114, 182, 0.45)" strokeWidth={0.3} />
+            ))}
+            {/* Bindu (Center Dot) */}
+            <Circle cx={cx} cy={cy} r={1.5} fill="#fcd34d" />
+            <Circle cx={cx} cy={cy} r={3} fill="none" stroke="rgba(252,211,77,0.5)" strokeWidth={0.5} />
+          </Svg>
+        </Animated.View>
+
+        {/* Target Arc for Vastu Activity */}
+        <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
+          {selectedActivity && (() => {
+            const data = VASTU_DATA[selectedActivity];
+            const r = 48;
+            return data.dirs.map((dir, i) => {
+              let [startAngle, endAngle] = dir.range;
+              if (startAngle > endAngle) endAngle += 360; 
+              const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+              const startX = cx + r * Math.sin(startAngle * Math.PI / 180);
+              const startY = cy - r * Math.cos(startAngle * Math.PI / 180);
+              const endX = cx + r * Math.sin(endAngle * Math.PI / 180);
+              const endY = cy - r * Math.cos(endAngle * Math.PI / 180);
+              
+              return (
+                <G key={i}>
+                  <Path 
+                    d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
+                    fill="none" 
+                    stroke={data.targetColor} 
+                    strokeWidth={1.5} 
+                    strokeLinecap="round" 
+                  />
+                  {/* Subtle glow layer for arc */}
+                  <Path 
+                    d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
+                    fill="none" 
+                    stroke={data.targetColor} 
+                    strokeWidth={4}
+                    strokeOpacity={0.3}
+                    strokeLinecap="round" 
+                  />
+                </G>
+              );
+            });
+          })()}
         </Svg>
       </Animated.View>
-      {/* Fixed N indicator triangle at top */}
+
+      {/* Fixed Alignment Indicator at top (Ultra-thin glowing diamond/triangle) */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Path d={`M${cx} ${cy-47} L${cx-2} ${cy-43} L${cx+2} ${cy-43} Z`} fill="rgba(248,113,113,0.95)" />
+          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="rgba(255,255,255,0.9)" />
+          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
         </Svg>
       </View>
     </View>
@@ -298,6 +453,10 @@ export default function WalkTab() {
   const router = useRouter();
 
   // ── State ──────────────────────────────────────────────────────────────────
+  const [selectedActivity, setSelectedActivity] = useState<VastuActivity | null>(null);
+  const selectedActivityRef = useRef<VastuActivity | null>(null);
+  useEffect(() => { selectedActivityRef.current = selectedActivity; }, [selectedActivity]);
+  const [energizeModalVisible, setEnergizeModalVisible] = useState(false);
   const [stats,        setStats]        = useState<TodayStats>(DEFAULT_STATS);
   const [weekData,     setWeekData]     = useState<DailyData[]>([]);
   const [isAvailable,  setIsAvailable]  = useState(true);
@@ -384,7 +543,6 @@ export default function WalkTab() {
   const quoteOpacity                = useRef(new Animated.Value(1)).current;
 
   // ── Feature 7: Compass heading ─────────────────────────────────────────────
-  const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [compassTipVisible, setCompassTipVisible] = useState(false);
   const compassTipOpacity = useRef(new Animated.Value(0)).current;
   const compassRot = useRef(new Animated.Value(0)).current;
@@ -584,7 +742,12 @@ export default function WalkTab() {
     walkScrollRef.current?.scrollTo({ y: 0, animated: false });
     // Run daily reset check every time the tab is focused
     StepCounter.maybeResetForNewDay().then(() => refreshStats());
-  }, [refreshStats]));
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.navigate('/(tabs)');
+      return true;
+    });
+    return () => sub.remove();
+  }, [refreshStats, router]));
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -693,6 +856,7 @@ export default function WalkTab() {
     // Feature 7: Highly Accurate Sensor-based Compass
     let magSub: any = null;
     let firstReading = true;
+    let lastHapticTime = 0;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -715,8 +879,30 @@ export default function WalkTab() {
             }).start();
 
             lastHeading = newHeading;
-            
-            if (!compassActive) setCompassActive(true);
+
+            // Lock-on Haptic Logic using ref to avoid stale closures and state updates
+            const currentActivity = selectedActivityRef.current;
+            if (currentActivity) {
+              const data = VASTU_DATA[currentActivity];
+              const modAngle = (newHeading % 360 + 360) % 360;
+              let isAligned = false;
+              
+              for (const dir of data.dirs) {
+                const [s, e] = dir.range;
+                if (s > e) {
+                  if (modAngle >= s || modAngle <= e) isAligned = true;
+                } else {
+                  if (modAngle >= s && modAngle <= e) isAligned = true;
+                }
+              }
+
+              if (isAligned && !wasAlignedRef.current) {
+                wasAlignedRef.current = true;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              } else if (!isAligned) {
+                wasAlignedRef.current = false;
+              }
+            }
 
             if (firstReading) {
               firstReading = false;
@@ -741,6 +927,9 @@ export default function WalkTab() {
       if (magSub) magSub.remove();
     };
   }, []);
+
+  // Haptic Lock-on logic moved inside watchHeadingAsync callback
+  const wasAlignedRef = useRef(false);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
@@ -843,7 +1032,8 @@ export default function WalkTab() {
   };
 
   // ── Compact mode: smoothly shrink UI when a floating bar is visible ──────────
-  const compactMode = stepBarActive || !!playingId;
+  // Disabled as per user request: there is enough free space at the bottom, so we don't need to push elements up.
+  const compactMode = false;
   useEffect(() => {
     Animated.spring(compactAnim, {
       toValue: compactMode ? 1 : 0,
@@ -948,10 +1138,10 @@ export default function WalkTab() {
                   textAlign: 'center',
                   marginBottom: 4,
                 }}>
-                  Align your Rhythm
+                  Vastu Yantra
                 </Text>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, fontWeight: '500', textTransform: 'uppercase' }}>
-                  {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  Sacred Space & Energy Scanner
                 </Text>
               </View>
               <View style={{ flex: 1, alignItems: 'flex-end', paddingTop: 4 }}>
@@ -963,41 +1153,11 @@ export default function WalkTab() {
           </Animated.View>
         </Animated.View>
 
-        {/* ── TAGLINE CARD — hides smoothly in compact mode ────────────────── */}
-        <Animated.View style={{
-          opacity: taglineOpacity,
-          height: taglineHeight,
-          overflow: 'hidden',
-          paddingHorizontal: 24,
-          marginBottom: 4,
-        }}>
-          <View style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.3)', // iOS dark glass
-            borderRadius: 20,
-            padding: 16,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-            alignItems: 'center',
-            overflow: 'hidden',
-          }}>
-            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient
-              colors={['rgba(255,255,255,0.05)', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3, marginBottom: 6, textAlign: 'center' }}>
-              Do not count calories.. just walk organically.
-            </Text>
-            <Text style={{ fontSize: 11, fontWeight: '400', color: 'rgba(255,255,255,0.65)', lineHeight: 16, textAlign: 'center' }}>
-              Sync your body with nature by barefoot walking on natural clean surfaces if condition optimum, or just walk with shoes and take a nature bath...
-            </Text>
-          </View>
-        </Animated.View>
 
-        {/* Vastu Scanner Toggle Button */}
+        {/* Vastu Scanner Toggle Button & Pills */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 16, zIndex: 10 }}>
           <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setCompassActive(!compassActive); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setCompassActive(!compassActive); if(compassActive) setSelectedActivity(null); }}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 8,
               backgroundColor: compassActive ? 'rgba(192,132,252,0.15)' : 'rgba(0, 0, 0, 0.4)',
@@ -1019,6 +1179,27 @@ export default function WalkTab() {
               {compassActive ? "Scanning Space..." : "Tap to Scan Space"}
             </Text>
           </TouchableOpacity>
+
+          {compassActive && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16, width: '100%' }} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+              {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => (
+                <TouchableOpacity
+                  key={act}
+                  onPress={() => { Haptics.selectionAsync(); setSelectedActivity(act); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    backgroundColor: selectedActivity === act ? `${VASTU_DATA[act].targetColor}30` : 'rgba(0,0,0,0.4)',
+                    borderWidth: 1, borderColor: selectedActivity === act ? VASTU_DATA[act].targetColor : 'rgba(255,255,255,0.15)',
+                    paddingHorizontal: 16, paddingVertical: 8,
+                    borderRadius: 20,
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>{VASTU_DATA[act].icon}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: selectedActivity === act ? VASTU_DATA[act].targetColor : '#FFF', textTransform: 'uppercase', letterSpacing: 1 }}>{VASTU_DATA[act].label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </Animated.View>
 
         {/* ── NO SENSOR WARNING ───────────────────────────────────────────── */}
@@ -1149,8 +1330,8 @@ export default function WalkTab() {
                       StyleSheet.absoluteFillObject,
                       { alignItems: 'center', justifyContent: 'center', opacity: 0.9 },
                     ]}>
-                      <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} />
-                      <VastuScanner heading={compassAnim} />
+                      <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} selectedActivity={selectedActivity} />
+                      <VastuScanner heading={compassAnim} selectedActivity={selectedActivity} />
                     </View>
                   )}
 
@@ -1365,13 +1546,13 @@ export default function WalkTab() {
             marginBottom: btnMarginBot,
           }}>
             
-            {/* Action Buttons Row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Action Buttons Column */}
+            <View style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, width: '100%' }}>
               {/* Start Nature Walk Button */}
               <TouchableOpacity
                 onPress={() => launchSession(sessionType)}
                 activeOpacity={0.82}
-                style={{ flex: 1, borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
+                style={{ borderRadius: 99, overflow: 'hidden', shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, backgroundColor: 'rgba(255,255,255,0.75)' }}
               >
               <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
@@ -1403,7 +1584,7 @@ export default function WalkTab() {
                   />
                 </Animated.View>
                 
-                <View style={{ height: 46, justifyContent: 'center', paddingHorizontal: 4 }}>
+                <View style={{ height: 40, justifyContent: 'center', paddingHorizontal: 4 }}>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369a1', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>
                     {sessionTitle}
                   </Text>
@@ -1418,21 +1599,46 @@ export default function WalkTab() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setShowOrbitGame(true);
                 }}
-                style={{ flex: 1, overflow: 'hidden', borderRadius: 99, shadowColor: '#c084fc', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
+                style={{ overflow: 'hidden', borderRadius: 99, shadowColor: '#ea580c', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
               >
                 <LinearGradient
-                  colors={['rgba(147,51,234,0.7)', 'rgba(79,32,134,0.6)']}
+                  colors={['rgba(249,115,22,0.85)', 'rgba(194,65,12,0.8)']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={{
                     alignItems: 'center', justifyContent: 'center',
                     flexDirection: 'row', gap: 4,
-                    paddingHorizontal: 8, height: 46,
+                    paddingHorizontal: 12, height: 40,
                     borderRadius: 99,
-                    borderWidth: 1, borderColor: 'rgba(192,132,252,0.4)',
+                    borderWidth: 1, borderColor: 'rgba(251,146,60,0.5)',
                   }}
                 >
                   <Text style={{ fontSize: 14 }}>🌀</Text>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }} numberOfLines={1} adjustsFontSizeToFit>AURA FLOW</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Energize Launch Button */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setEnergizeModalVisible(true);
+                }}
+                style={{ overflow: 'hidden', borderRadius: 99, shadowColor: '#f472b6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}
+              >
+                <LinearGradient
+                  colors={['rgba(244,114,182,0.85)', 'rgba(219,39,119,0.8)']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{
+                    alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'row', gap: 4,
+                    paddingHorizontal: 12, height: 40,
+                    borderRadius: 99,
+                    borderWidth: 1, borderColor: 'rgba(249,168,212,0.5)',
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>⚡</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }} numberOfLines={1} adjustsFontSizeToFit>ENERGIZE</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1470,6 +1676,11 @@ export default function WalkTab() {
       <OrbitPulseGame
         visible={showOrbitGame}
         onClose={() => setShowOrbitGame(false)}
+      />
+
+      <EnergizeModal
+        visible={energizeModalVisible}
+        onClose={() => setEnergizeModalVisible(false)}
       />
     </ImageBackground>
   );
@@ -1668,6 +1879,134 @@ function OnboardingModal({ visible, onContinue }: { visible: boolean; onContinue
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Energize Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function EnergizeModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const playEnergy = async (id: string, uri: string) => {
+    try {
+      if (playingId === id) {
+        if (soundRef.current) {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+        setPlayingId(null);
+        return;
+      }
+      
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      }
+      
+      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      soundRef.current = sound;
+      setPlayingId(id);
+      
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingId(null);
+          soundRef.current = null;
+        }
+      });
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <View style={{ flex: 1, padding: 24, paddingTop: 100, alignItems: 'center' }}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (soundRef.current) soundRef.current.unloadAsync();
+            onClose();
+          }} 
+          style={{ position: 'absolute', top: 60, right: 24, padding: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 24 }}
+        >
+          <Ionicons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(56,189,248,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)' }}>
+          <Ionicons name="flash" size={28} color="#38bdf8" />
+        </View>
+
+        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 1.5, textAlign: 'center' }}>
+          Energize Your Soul
+        </Text>
+        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 16, textAlign: 'center', lineHeight: 22, paddingHorizontal: 10 }}>
+          Feeling burnt out? Reconnect with ancient cosmic frequencies to rapidly recharge your energy reserves at any time of the day.
+        </Text>
+
+        <View style={{ width: '100%', marginTop: 50, gap: 24 }}>
+          {/* Universal Male Energy */}
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => playEnergy('male', 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/YTMP3GG_YouTube_VISHNU-SAHASRANAMAM-Madhubanti-Bagchi-_-_Media_7uOgqaPhZ8g_009_128k.mp3')}
+            style={{ 
+              width: '100%', padding: 24, borderRadius: 24, 
+              backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1, borderColor: playingId === 'male' ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)',
+              alignItems: 'center', flexDirection: 'row',
+              shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: playingId === 'male' ? 0.3 : 0, shadowRadius: 12,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#38bdf8', letterSpacing: 0.5, marginBottom: 4 }}>
+                Universal Male Energy
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                Vishnu Sahasranama • Grounding & Flow
+              </Text>
+            </View>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'male' ? '#0284c7' : '#38bdf8', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={playingId === 'male' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'male' ? 0 : 2 }} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Universal Female Energy */}
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => playEnergy('female', 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3')}
+            style={{ 
+              width: '100%', padding: 24, borderRadius: 24, 
+              backgroundColor: 'rgba(244, 114, 182, 0.1)', borderWidth: 1, borderColor: playingId === 'female' ? '#f472b6' : 'rgba(244, 114, 182, 0.2)',
+              alignItems: 'center', flexDirection: 'row',
+              shadowColor: '#f472b6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: playingId === 'female' ? 0.3 : 0, shadowRadius: 12,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#f472b6', letterSpacing: 0.5, marginBottom: 4 }}>
+                Universal Female Energy
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                Lalitha Sahasranama • Creative Vitality
+              </Text>
+            </View>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'female' ? '#be185d' : '#f472b6', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={playingId === 'female' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'female' ? 0 : 2 }} />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>

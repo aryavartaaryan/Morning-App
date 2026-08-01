@@ -1195,7 +1195,7 @@ export default function StepSessionScreen() {
       {/* ── CONFETTI / CELEBRATION OVERLAY ──────────────────────────────────── */}
       {confetti && (
         <Animated.View
-          style={[StyleSheet.absoluteFillObject, s.overlay, { opacity: confettiOp, zIndex: 100 }]}
+          style={[StyleSheet.absoluteFillObject, s.overlay, { opacity: confettiOp, zIndex: 100, elevation: 100 }]}
           pointerEvents="none"
         >
           <LinearGradient
@@ -1269,7 +1269,7 @@ export default function StepSessionScreen() {
           opacity: lookDownAnim,
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 100, // ensure it's on top
+          zIndex: 100, elevation: 100, // ensure it's on top
         }}
       >
         <View style={{ width: '100%', borderRadius: 20, overflow: 'hidden', paddingVertical: 14, paddingHorizontal: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.2)', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(12,74,110,0.4)' }}>

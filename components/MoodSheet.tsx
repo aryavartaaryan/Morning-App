@@ -167,7 +167,7 @@ const MS = StyleSheet.create({
   moodBtn:      { width: '22%', paddingVertical: 12, alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF10', backgroundColor: '#FFFFFF05', gap: 4 },
   moodEmoji:    { fontSize: 28 },
   moodLabel:    { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
-  skipBtn:      { borderRadius: 99, paddingVertical: 7, paddingHorizontal: 24, alignItems: 'center', borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF06' },
+  skipBtn:      { borderRadius: 99, paddingVertical: 7, paddingHorizontal: 24, alignItems: 'center', borderWidth: 1, borderColor: '#FFFFFF12', backgroundColor: '#FFFFFF06', zIndex: 100, elevation: 100 },
   skipTxt:      { fontSize: 13, fontWeight: '700', color: '#FFFFFF40' },
   doneBtn:      { borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1 },
   doneTxt:      { fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },

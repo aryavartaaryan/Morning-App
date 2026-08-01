@@ -18,7 +18,7 @@ export function ScreenHeader({ title, subtitle, showBack = false, right, accent 
       <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
       <View style={styles.row}>
         {showBack && (
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
         )}
@@ -36,7 +36,7 @@ export function ScreenHeader({ title, subtitle, showBack = false, right, accent 
 const styles = StyleSheet.create({
   container: { paddingTop: 56, paddingHorizontal: Spacing.md, backgroundColor: Colors.bg },
   row: { flexDirection: 'row', alignItems: 'center', paddingBottom: Spacing.sm, gap: 10 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', marginRight: 4, zIndex: 100, elevation: 100 },
   backIcon: { color: Colors.text, fontSize: 18, marginTop: -1 },
   title: { fontSize: Font.sizes.xl, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
   subtitle: { fontSize: Font.sizes.sm, color: Colors.textMuted, marginTop: 2 },

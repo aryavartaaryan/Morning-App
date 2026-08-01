@@ -314,7 +314,7 @@ const S = StyleSheet.create({
 
   bottomArea:    { paddingHorizontal: 28, paddingBottom: 52, alignItems: 'center', gap: 14 },
   hintText:      { fontSize: 11, color: '#FFFFFF28', textAlign: 'center', fontWeight: '500', letterSpacing: 0.3 },
-  dismissBtn:    { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 20, paddingVertical: 20, shadowOpacity: 0.35, shadowRadius: 18, elevation: 8 },
+  dismissBtn:    { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 20, paddingVertical: 20, shadowOpacity: 0.35, shadowRadius: 18, zIndex: 100, elevation: 100 },
   dismissIcon:   { fontSize: 18 },
   dismissTxt:    { fontSize: 16, fontWeight: '900', color: '#000000CC', letterSpacing: 0.2 },
 });

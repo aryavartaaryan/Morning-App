@@ -644,7 +644,7 @@ const S = StyleSheet.create({
   commitQuestion:   { fontSize: 12, color: '#FFFFFF30', textAlign: 'center', fontWeight: '600', letterSpacing: 0.4, marginBottom: 6 },
   commitBtn:        { borderRadius: 20, paddingVertical: 22, alignItems: 'center', shadowColor: ACCENT, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 },
   commitBtnTxt:     { fontSize: 16, fontWeight: '900', color: '#001A0A', letterSpacing: 0.2 },
-  skipBtn:          { alignItems: 'center', paddingVertical: 12 },
+  skipBtn:          { alignItems: 'center', paddingVertical: 12, zIndex: 100, elevation: 100 },
   skipTxt:          { fontSize: 12, color: '#FFFFFF18', fontWeight: '600' },
   lockBar:          { alignSelf: 'center', marginBottom: 14, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFFFFF04', borderRadius: 99, borderWidth: 1, borderColor: '#FFFFFF08' },
   lockBarTxt:       { fontSize: 9, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 0.5 },

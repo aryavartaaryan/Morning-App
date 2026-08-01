@@ -45,7 +45,7 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 // ── Terrain Math (Worklets) ────────────────────────────────────────────────
 const getTerrainY = (x: number) => {
   'worklet';
-  const hillWave = Math.sin(x / 400) * 100 + Math.sin(x / 200) * 40 + Math.sin(x / 1000) * 100;
+  const hillWave = Math.sin(x / 600) * 50 + Math.sin(x / 400) * 20 + Math.sin(x / 1200) * 60;
   return hillWave + 600;
 };
 
@@ -310,10 +310,10 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     
     const dt = Math.min((frameInfo.timeSincePreviousFrame ?? 16) / 1000, 0.05);
 
-    const GRAVITY = 1200;
-    const DIVE_GRAVITY = 3500;
-    const BASE_SPEED = 250;
-    const MAX_SPEED = 1600;
+    const GRAVITY = 1000;
+    const DIVE_GRAVITY = 2500;
+    const BASE_SPEED = 200;
+    const MAX_SPEED = 600;
     const DRAG = 0.99;
     const FRICTION = 0.995;
 
@@ -346,7 +346,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
               consumedEntities.value = map;
               
               if (ent.type === 'prana') {
-                 pvx.value = Math.min(pvx.value + 200, MAX_SPEED);
+                 pvx.value = Math.min(pvx.value + 100, MAX_SPEED);
                  auraScale.value = withTiming(Math.min(auraScale.value + 0.15, 2.5), { duration: 300 });
                  runOnJS(triggerPranaJS)();
               } else {
@@ -409,7 +409,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     speedLinesOp.value = Math.max(0, (pvx.value - 800) / (MAX_SPEED - 800));
 
     // Smooth Camera Tracking
-    const targetCameraY = py.value - H * 0.6;
+    const targetCameraY = py.value - H * 0.75;
     cameraY.value += (targetCameraY - cameraY.value) * 0.1;
     cameraX.value = px.value;
 
@@ -446,14 +446,14 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
       const duration = Date.now() - pressStartTime.value;
       if (duration < 250 && isGrounded.value) {
         // Native Tap Jump! Zero JS latency.
-        pvy.value = -800; 
+        pvy.value = -1000; 
         isGrounded.value = false;
         runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       }
     });
 
   const restartGame = () => {
-    px.value = 0; py.value = 100; pvx.value = 250; pvy.value = 0;
+    px.value = 0; py.value = 100; pvx.value = 200; pvy.value = 0;
     auraScale.value = 1;
     isGrounded.value = false;
     consumedEntities.value = {};
@@ -531,7 +531,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     const baseScale = auraScale.value;
     return {
       transform: [
-        { translateY: py.value },
+        { translateY: py.value - 15 },
         { rotate: `${rot}deg` },
         { scaleX: (isPressing.value ? 1.2 : 1) * baseScale },
         { scaleY: (isPressing.value ? 0.8 : 1) * baseScale }
@@ -650,7 +650,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
 
             {/* Game Over Overlay */}
             {gameOver && (
-              <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center', zIndex: 100 }}>
+              <View style={{ position: 'absolute', top: CY - 100, left: 40, right: 40, alignItems: 'center', zIndex: 100, elevation: 100 }}>
                 <View style={{ backgroundColor: 'rgba(20,5,5,0.9)', padding: 32, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', alignItems: 'center' }}>
                   <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
                   <Text style={{ fontSize: 32, fontWeight: '900', color: '#ef4444', letterSpacing: 4, marginBottom: 12 }}>GAME OVER</Text>
@@ -697,7 +697,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0f0c29' },
   hudRow: {
     position: 'absolute', top: 50, left: 20, right: 20,
-    flexDirection: 'row', alignItems: 'flex-start', zIndex: 100
+    flexDirection: 'row', alignItems: 'flex-start', zIndex: 100, elevation: 100
   },
   closeBtn: {
     width: 44, height: 44,

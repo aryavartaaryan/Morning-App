@@ -220,7 +220,7 @@ export default function WalkTracker() {
   if (phase === 'idle') return (
     <LinearGradient colors={['#0A0A0F', '#0A1A12', '#0A0A0F']} style={s.full}>
       <StatusBar barStyle="light-content" />
-      <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+      <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.backBtn} onPress={() => router.back()}>
         <Text style={s.backTxt}>← Back</Text>
       </TouchableOpacity>
       <View style={s.center}>
@@ -270,7 +270,7 @@ export default function WalkTracker() {
   if (phase === 'running' || phase === 'paused') return (
     <LinearGradient colors={['#0A0A0F', '#0A1A12', '#0A0A0F']} style={s.full}>
       <StatusBar barStyle="light-content" />
-      <TouchableOpacity style={s.backBtn} onPress={() => {
+      <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.backBtn} onPress={() => {
         if (phase === 'running') pauseWalk();
         Alert.alert('End walk?', 'Your progress will be lost.', [
           { text: 'Stay', style: 'cancel', onPress: () => phase === 'running' ? resumeWalk() : undefined },
@@ -395,7 +395,7 @@ export default function WalkTracker() {
           <Text style={s.saveTxt}>{saving ? 'Saving...' : 'SAVE WALK'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.skipBtn} onPress={() => router.back()}>
+        <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={s.skipBtn} onPress={() => router.back()}>
           <Text style={s.skipTxt}>Skip & close</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -463,6 +463,6 @@ const s = StyleSheet.create({
   feelLabel: { fontSize: 11, fontWeight: '700', color: Colors.textSub },
   saveBtn: { borderRadius: Radius.full, paddingVertical: 16, paddingHorizontal: 48, alignSelf: 'stretch', alignItems: 'center', marginBottom: Spacing.sm },
   saveTxt: { color: '#fff', fontSize: Font.sizes.base, fontWeight: '900', letterSpacing: 1 },
-  skipBtn: { paddingVertical: 8 },
+  skipBtn: { paddingVertical: 8, zIndex: 100, elevation: 100 },
   skipTxt: { color: Colors.textMuted, fontSize: Font.sizes.sm, fontWeight: '600' },
 });

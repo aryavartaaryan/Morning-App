@@ -160,7 +160,7 @@ export default function DailyCheckInScreen() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         {/* Header */}
         <LinearGradient colors={[Colors.gold + '12', Colors.bg]} style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -286,7 +286,7 @@ export default function DailyCheckInScreen() {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
-  backBtn: { width: 60, paddingVertical: 4 },
+  backBtn: { width: 60, paddingVertical: 4, zIndex: 100, elevation: 100 },
   backText: { color: Colors.textMuted, fontSize: Font.sizes.sm, fontWeight: '600' },
   headerTitle: { fontSize: Font.sizes.base, fontWeight: '800', color: Colors.text },
   headerSub: { fontSize: Font.sizes.xs, color: Colors.gold, marginTop: 2, fontWeight: '600' },

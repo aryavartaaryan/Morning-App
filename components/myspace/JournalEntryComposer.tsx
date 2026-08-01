@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     promptText: { fontSize: 14, color: Colors.text, lineHeight: 22, fontStyle: 'italic' },
-    backBtn: { marginTop: 10, alignSelf: 'flex-start' },
+    backBtn: { marginTop: 10, alignSelf: 'flex-start', zIndex: 100, elevation: 100 },
     backBtnText: { fontSize: 12, color: '#2A9D8F', fontWeight: '700' },
     textInput: {
         minHeight: 200,

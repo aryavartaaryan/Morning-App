@@ -234,7 +234,7 @@ export default function CosmicDailyPage() {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14 }}>
-          <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: GLASS, borderWidth: 1, borderColor: BORDER }}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: GLASS, borderWidth: 1, borderColor: BORDER, zIndex: 100, elevation: 100 }}>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.70)', fontWeight: '700' }}>‹</Text>
             <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.60)', letterSpacing: 0.8 }}>BACK</Text>
           </TouchableOpacity>

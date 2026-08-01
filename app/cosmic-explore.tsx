@@ -120,7 +120,7 @@ export default function CosmicExploreScreen() {
       {/* ── Custom Header ── */}
       <SafeAreaView edges={['top']} style={S.headerSafe}>
         <View style={S.header}>
-          <TouchableOpacity onPress={() => router.back()} style={S.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} style={S.backBtn} activeOpacity={0.7}>
             <Text style={S.backIcon}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -629,7 +629,7 @@ const S = StyleSheet.create({
   headerDivider: { height: 1, backgroundColor: '#FFFFFF08', marginHorizontal: 16 },
   headerCap:     { fontSize: 8, fontWeight: '900', color: '#FFFFFF30', letterSpacing: 2, marginBottom: 3 },
   headerTitle:   { fontSize: 19, fontWeight: '900', color: '#fff' },
-  backBtn:       { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF15', alignItems: 'center', justifyContent: 'center' },
+  backBtn:       { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FFFFFF0A', borderWidth: 1, borderColor: '#FFFFFF15', alignItems: 'center', justifyContent: 'center', zIndex: 100, elevation: 100 },
   backIcon:      { color: '#fff', fontSize: 18, marginTop: -1 },
   scoreBadge:    { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 6 },
   scoreBadgeNum: { fontSize: 14, fontWeight: '900' },

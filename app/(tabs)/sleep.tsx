@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Image as ExpoImage } from 'expo-image';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -1950,7 +1951,7 @@ function ReelCard({
   const { accentColor, solarTimes } = useBgContext();
   const isNight = checkIsNightTime(solarTimes);
   const activeDurationOptions = isNight ? REEL_DURATION_OPTIONS : REEL_DURATION_OPTIONS.filter(o => o.id !== 'night');
-  const { playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo } = useSoundPlayer();
+  const { playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim } = useSoundPlayer();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -2048,49 +2049,40 @@ function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
-  // ── 5 staggered pulse loops — premium signature visual, each ring has its own cosmic rhythm ──
+  // ── Sync premium outer waves strictly to live audio beats ─────────────────
   useEffect(() => {
-    const loops: Animated.CompositeAnimation[] = [];
+    const waves = [pulse1, pulse2, pulse3, pulse4, pulse5];
     if (!isActive || !isPlaying || isPaused) {
-      [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => { p.stopAnimation(); p.setValue(0); });
+      waves.forEach(p => { p.stopAnimation(); p.setValue(0); });
       return;
     }
-    // Ring 1 — outermost — deep cosmic exhale (slowest, most ethereal)
-    pulse1.setValue(0);
-    const l1 = Animated.loop(Animated.sequence([
-      Animated.timing(pulse1, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse1, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])); l1.start(); loops.push(l1);
-    // Ring 2 — second breath, offset 500ms for wave cascade
-    pulse2.setValue(0);
-    const l2 = Animated.loop(Animated.sequence([
-      Animated.delay(500),
-      Animated.timing(pulse2, { toValue: 1, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse2, { toValue: 0, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])); l2.start(); loops.push(l2);
-    // Ring 3 — mid, main fill ring — strong visual presence
-    pulse3.setValue(0);
-    const l3 = Animated.loop(Animated.sequence([
-      Animated.delay(900),
-      Animated.timing(pulse3, { toValue: 1, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse3, { toValue: 0, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])); l3.start(); loops.push(l3);
-    // Ring 4 — inner pulse, vivid core glow
-    pulse4.setValue(0);
-    const l4 = Animated.loop(Animated.sequence([
-      Animated.delay(1200),
-      Animated.timing(pulse4, { toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse4, { toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])); l4.start(); loops.push(l4);
-    // Ring 5 — innermost heartbeat — fastest, most intense
-    pulse5.setValue(0);
-    const l5 = Animated.loop(Animated.sequence([
-      Animated.delay(1600),
-      Animated.timing(pulse5, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse5, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ])); l5.start(); loops.push(l5);
-    return () => { loops.forEach(l => l.stop()); [pulse1, pulse2, pulse3, pulse4, pulse5].forEach(p => p.stopAnimation()); };
-  }, [isActive, isPlaying, isPaused]);
+
+    let lastLevel = 0;
+    let waveIndex = 0;
+    
+    // Listen directly to the high-frequency live audio metering stream
+    const listenerId = meteringAnim.addListener(({ value }) => {
+      // Trigger a wave release on sudden volume increases (beats)
+      // Only strictly when live sound is pushing, creating true synchronization
+      if (value > 0.15 && value - lastLevel > 0.08) {
+        const anim = waves[waveIndex];
+        waveIndex = (waveIndex + 1) % 5;
+        anim.setValue(0);
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 3500, // beautiful long release time
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true
+        }).start();
+      }
+      lastLevel = value;
+    });
+
+    return () => {
+      meteringAnim.removeListener(listenerId);
+      waves.forEach(p => p.stopAnimation());
+    };
+  }, [isActive, isPlaying, isPaused, meteringAnim, pulse1, pulse2, pulse3, pulse4, pulse5]);
 
   // ── Scrubber drag state & Stall Detection ──────────────────────────────────
   const isDragging = useRef(false);
@@ -2309,10 +2301,13 @@ function ReelCard({
             StyleSheet.absoluteFillObject,
             { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
           ]}>
-            <Image
-              source={finalSource}
+            <ExpoImage
+              source={finalSource as any}
               style={{ width: REEL_W, height: REEL_H }}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={0}
+              cachePolicy="memory-disk"
+              priority="high"
               onError={() => setImgLoadFailed(true)}
             />
           </Animated.View>
@@ -2344,7 +2339,7 @@ function ReelCard({
       {/* ── SACRED GEOMETRY SOUND REELS ── */}
       <View style={{ position: 'absolute', top: (REEL_H - REEL_W) / 2, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
         
-        {/* Pulsing Sonar Rings synchronized with audio */}
+        {/* Live Audio Synced Rings */}
         {[
           { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
           { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
@@ -2353,17 +2348,42 @@ function ReelCard({
           const HERO_RS = Dimensions.get('window').height < 800 ? 238 : 302;
           const s = HERO_RS * r.sm;
           const color = accentColor || sound.color || '#fff';
+          
+          // Pure wave releasing effect (since we now trigger 0->1 exactly on beat)
+          const liveScale = r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] });
+          // Opacity drops to 0 at the end of the wave to disappear cleanly
+          const liveOpacity = r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, r.oMax + 0.15, r.oMin, 0] });
+
           return (
             <Animated.View key={`sr${i}`} pointerEvents="none" style={{
               position: 'absolute', width: s, height: s, borderRadius: s / 2, borderWidth: r.bw * 1.5, borderColor: color,
               shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20,
-              opacity: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax + 0.15] }),
-              transform: [{ scale: r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }],
+              opacity: liveOpacity,
+              transform: [{ scale: liveScale }],
             }} />
           );
         })}
 
-        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.81} theme="dark" opacity={0.77} speed="slow" />
+        {/* iOS style darker filter behind the geometric animation */}
+        <View style={{
+          position: 'absolute',
+          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.81,
+          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.81,
+          borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.81) / 2,
+          backgroundColor: 'rgba(0, 0, 0, 0.45)', // iOS style darker theme
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.08)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.5,
+          shadowRadius: 24,
+        }}>
+          {Platform.OS === 'ios' && (
+            <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFillObject, { borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.81) / 2, overflow: 'hidden' }]} />
+          )}
+        </View>
+
+        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.81} theme="dark" opacity={0.77} speed="slow" audioMetering={meteringAnim} />
       </View>
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
@@ -3521,10 +3541,6 @@ function SleepTabInner() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        if (showReels) {
-          setShowReels(false);
-          return true;
-        }
         if (catSheetOpen) {
           setCatSheetOpen(false);
           return true;
@@ -4137,7 +4153,7 @@ function SleepTabInner() {
 
         {/* Category Tab Strip - Now Sticky Outside ScrollView */}
         {!isSearching && (
-          <View style={{ zIndex: 100 }}>
+          <View style={{ zIndex: 100, elevation: 100 }}>
             <CategoryTabStrip
               selectedCat={selectedCat}
               onSelect={changeCategory}
@@ -4168,13 +4184,13 @@ function SleepTabInner() {
             <View style={{
               width: '100%',
               paddingHorizontal: 24,
-              paddingVertical: 32,
+              paddingVertical: 16,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
-              marginTop: 16,
-              marginBottom: 16,
-              gap: 12,
+              marginTop: 8,
+              marginBottom: 8,
+              gap: 8,
             }}>
               {/* Main title */}
               <Text style={[heroTextStyle, { marginBottom: 4 }]}>
