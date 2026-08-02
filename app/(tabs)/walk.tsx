@@ -31,7 +31,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Line, Text as SvgText, G, Path } from 'react-native-svg';
+import Svg, { Circle, Line, Text as SvgText, G, Path, Defs, LinearGradient as SvgLinearGradient, RadialGradient, Stop, Polygon } from 'react-native-svg';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -211,10 +211,22 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
         const opacity = modHeading.interpolate(dirConfig);
         return (
           <Animated.View key={idx} style={{ position: 'absolute', alignItems: 'center', opacity }}>
-            <Text style={{ fontSize: 14, fontWeight: '900', color: data.targetColor, letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
-              Facing {dir.label} — Aligned
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <View style={{ height: 1, width: 24, backgroundColor: data.targetColor, marginRight: 8, opacity: 0.8 }} />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: data.targetColor, letterSpacing: 2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
+                Zone Pointed: {dir.label}
+              </Text>
+              <View style={{ height: 1, width: 24, backgroundColor: data.targetColor, marginLeft: 8, opacity: 0.8 }} />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8, textAlign: 'center', paddingHorizontal: 10 }}>
+              {selectedActivity === 'sleep' ? `Sleep by facing head in this direction` :
+               selectedActivity === 'meditate' ? `Meditate facing this direction` :
+               selectedActivity === 'eat' ? `Eat facing this direction` :
+               selectedActivity === 'work' ? `Work facing this direction` :
+               selectedActivity === 'exercise' ? `Exercise facing this direction` :
+               `Aligned in this direction`}
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginTop: 6, textAlign: 'center', paddingHorizontal: 20, lineHeight: 14, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 8, textAlign: 'center', paddingHorizontal: 30, lineHeight: 14, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
               {data.reason}
             </Text>
           </Animated.View>
@@ -226,11 +238,15 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
         position: 'absolute', top: 10, alignItems: 'center', 
         opacity: searchingOpacity 
       }}>
-        <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, textAlign: 'center', paddingHorizontal: 20 }}>
-          {data.searchingText}
+        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fcd34d', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, textAlign: 'center', paddingHorizontal: 20 }}>
+          {selectedActivity === 'sleep' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to place your head` :
+           selectedActivity === 'meditate' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to meditate` :
+           selectedActivity === 'eat' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to eat` :
+           selectedActivity === 'work' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to work` :
+           `Find ${data.dirs.map(d=>d.label).join(' or ')}`}
         </Text>
-        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-          (Target: {data.dirs.map(d => d.label).join(' or ')})
+        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+          {data.searchingText}
         </Text>
       </Animated.View>
     </View>
@@ -260,8 +276,8 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
 
   const spin1 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const spin2 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
-  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] });
-  const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.9] });
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] });
+  const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 
   // Authentic Sri Yantra interlocking triangles
   const shivaTriangles = [
@@ -276,6 +292,7 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
     "M 50,62 L 35,44 L 65,44 Z",
     "M 50,55 L 44,49 L 56,49 Z"
   ];
+  const bhupuraPath = "M 15,15 L 42,15 L 42,8 L 58,8 L 58,15 L 85,15 L 85,42 L 92,42 L 92,58 L 85,58 L 85,85 L 58,85 L 58,92 L 42,92 L 42,85 L 15,85 L 15,58 L 8,58 L 8,42 L 15,42 Z";
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -286,38 +303,64 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }],
         width: size, height: size,
       }}>
-        {/* Base Background */}
+        {/* Base Background & Gradients */}
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
-          <Circle cx={cx} cy={cy} r={48} fill="rgba(5, 8, 18, 0.9)" />
+          <Defs>
+            <RadialGradient id="goldGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#ffdf00" stopOpacity="0.5" />
+              <Stop offset="50%" stopColor="#d4af37" stopOpacity="0.15" />
+              <Stop offset="100%" stopColor="#996515" stopOpacity="0" />
+            </RadialGradient>
+            <SvgLinearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#ffdf00" />
+              <Stop offset="50%" stopColor="#d4af37" />
+              <Stop offset="100%" stopColor="#ffec8b" />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="goldLineReverse" x1="100%" y1="100%" x2="0%" y2="0%">
+              <Stop offset="0%" stopColor="#ffdf00" />
+              <Stop offset="50%" stopColor="#d4af37" />
+              <Stop offset="100%" stopColor="#996515" />
+            </SvgLinearGradient>
+            <RadialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="70%" stopColor="rgba(5, 8, 18, 0.9)" />
+              <Stop offset="100%" stopColor="rgba(5, 8, 18, 0.4)" />
+            </RadialGradient>
+          </Defs>
+          
+          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow)" />
           {/* Subtle outer grid lines */}
-          <Circle cx={cx} cy={cy} r={46} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} strokeDasharray="1 3" />
-          <Circle cx={cx} cy={cy} r={42} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.2} />
+          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(255,223,0,0.15)" strokeWidth={0.5} strokeDasharray="1 3" />
+          <Circle cx={cx} cy={cy} r={44} fill="none" stroke="url(#goldLine)" strokeWidth={0.3} />
+          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.1} />
         </Svg>
 
-        {/* Slow rotating outer mandala ring (Clockwise) */}
+        {/* Slow rotating outer mandala ring (Clockwise) - Shodashadala (16 Petals) */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* 16 Lotus petals representation (simplified via arcs) */}
+            {/* Bhupura (Outer Square with gates) */}
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.4} />
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.2} scale={0.96} origin={`${cx}, ${cy}`} />
+            
             {Array.from({ length: 16 }).map((_, i) => {
               const a = (i * 360) / 16;
               return (
                 <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,8 Q 55,18 50,22 Q 45,18 50,8 Z`} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.15)" strokeWidth={0.3} />
+                  <Path d={`M 50,8 Q 54,16 50,23 Q 46,16 50,8 Z`} fill="rgba(255,223,0,0.03)" stroke="url(#goldLine)" strokeWidth={0.3} />
                 </G>
               );
             })}
           </Svg>
         </Animated.View>
 
-        {/* Slow rotating inner mandala ring (Counter-clockwise) */}
+        {/* Slow rotating inner mandala ring (Counter-clockwise) - Ashtadala (8 Petals) */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* 8 Lotus petals */}
+            <Circle cx={cx} cy={cy} r={23} fill="none" stroke="url(#goldLine)" strokeWidth={0.5} />
             {Array.from({ length: 8 }).map((_, i) => {
               const a = (i * 360) / 8;
               return (
                 <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,22 Q 58,32 50,38 Q 42,32 50,22 Z`} fill="rgba(255,215,0,0.03)" stroke="rgba(255,215,0,0.25)" strokeWidth={0.4} />
+                  <Path d={`M 50,23 Q 57,32 50,39 Q 43,32 50,23 Z`} fill="rgba(212,175,55,0.08)" stroke="url(#goldLineReverse)" strokeWidth={0.5} />
                 </G>
               );
             })}
@@ -331,17 +374,17 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
           opacity: pulseOp
         }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
+            <Circle cx={cx} cy={cy} r={39} fill="url(#goldGlow)" />
             {/* Shiva Triangles (Upward) */}
             {shivaTriangles.map((d, i) => (
-              <Path key={`shiva-${i}`} d={d} fill="rgba(255,255,255,0.015)" stroke="rgba(167, 139, 250, 0.45)" strokeWidth={0.3} />
+              <Path key={`shiva-${i}`} d={d} fill="rgba(255,223,0,0.04)" stroke="url(#goldLine)" strokeWidth={0.4} />
             ))}
             {/* Shakti Triangles (Downward) */}
             {shaktiTriangles.map((d, i) => (
-              <Path key={`shakti-${i}`} d={d} fill="rgba(255,255,255,0.015)" stroke="rgba(244, 114, 182, 0.45)" strokeWidth={0.3} />
+              <Path key={`shakti-${i}`} d={d} fill="rgba(255,223,0,0.04)" stroke="url(#goldLineReverse)" strokeWidth={0.4} />
             ))}
-            {/* Bindu (Center Dot) */}
-            <Circle cx={cx} cy={cy} r={1.5} fill="#fcd34d" />
-            <Circle cx={cx} cy={cy} r={3} fill="none" stroke="rgba(252,211,77,0.5)" strokeWidth={0.5} />
+            <Circle cx={cx} cy={cy} r={1.5} fill="#ffdf00" />
+            <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="url(#goldLine)" strokeWidth={0.6} />
           </Svg>
         </Animated.View>
 
@@ -365,7 +408,7 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
                     d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
                     fill="none" 
                     stroke={data.targetColor} 
-                    strokeWidth={1.5} 
+                    strokeWidth={1.8} 
                     strokeLinecap="round" 
                   />
                   {/* Subtle glow layer for arc */}
@@ -373,8 +416,8 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
                     d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
                     fill="none" 
                     stroke={data.targetColor} 
-                    strokeWidth={4}
-                    strokeOpacity={0.3}
+                    strokeWidth={5}
+                    strokeOpacity={0.35}
                     strokeLinecap="round" 
                   />
                 </G>
@@ -387,8 +430,8 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
       {/* Fixed Alignment Indicator at top (Ultra-thin glowing diamond/triangle) */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="rgba(255,255,255,0.9)" />
-          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="url(#goldLine)" />
+          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="none" stroke="rgba(255,223,0,0.6)" strokeWidth={1} />
         </Svg>
       </View>
     </View>
@@ -1917,7 +1960,10 @@ function EnergizeModal({ visible, onClose }: { visible: boolean; onClose: () => 
         await soundRef.current.unloadAsync();
       }
       
-      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri }, 
+        { shouldPlay: true, positionMillis: id === 'male' ? 5000 : 0 }
+      );
       soundRef.current = sound;
       setPlayingId(id);
       
@@ -1935,80 +1981,73 @@ function EnergizeModal({ visible, onClose }: { visible: boolean; onClose: () => 
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <View style={{ flex: 1, padding: 24, paddingTop: 100, alignItems: 'center' }}>
-        <TouchableOpacity 
-          onPress={() => {
-            if (soundRef.current) soundRef.current.unloadAsync();
-            onClose();
-          }} 
-          style={{ position: 'absolute', top: 60, right: 24, padding: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 24 }}
-        >
-          <Ionicons name="close" size={24} color="#fff" />
+    <Modal visible={visible} transparent animationType="slide">
+      <TouchableOpacity activeOpacity={1} style={{ flex: 1, justifyContent: 'flex-end' }} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1}>
+          <BlurView intensity={70} tint="dark" style={{ borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 32, paddingBottom: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(5, 8, 18, 0.5)' }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', alignSelf: 'center', marginBottom: 24 }} />
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: 1 }}>Energize</Text>
+              <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20 }}>
+                <Ionicons name="close" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 32, lineHeight: 20 }}>
+              Select a cosmic frequency to recharge. You can close this panel to meditate on the Yantra while listening.
+            </Text>
+
+            {/* Universal Male Energy */}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => playEnergy('male', 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/YTMP3GG_YouTube_VISHNU-SAHASRANAMAM-Madhubanti-Bagchi-_-_Media_7uOgqaPhZ8g_009_128k.mp3')}
+              style={{ 
+                width: '100%', padding: 20, borderRadius: 24, marginBottom: 16,
+                backgroundColor: playingId === 'male' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                borderWidth: 1, borderColor: playingId === 'male' ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                alignItems: 'center', flexDirection: 'row',
+              }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'male' ? '#0284c7' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                <Ionicons name={playingId === 'male' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'male' ? 0 : 2 }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: playingId === 'male' ? '#38bdf8' : '#fff', letterSpacing: 0.5, marginBottom: 4 }}>
+                  Universal Male Energy
+                </Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' }}>
+                  Vishnu Sahasranama • Grounding
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Universal Female Energy */}
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => playEnergy('female', 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3')}
+              style={{ 
+                width: '100%', padding: 20, borderRadius: 24, 
+                backgroundColor: playingId === 'female' ? 'rgba(244, 114, 182, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                borderWidth: 1, borderColor: playingId === 'female' ? '#f472b6' : 'rgba(255, 255, 255, 0.1)',
+                alignItems: 'center', flexDirection: 'row',
+              }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'female' ? '#be185d' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                <Ionicons name={playingId === 'female' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'female' ? 0 : 2 }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: playingId === 'female' ? '#f472b6' : '#fff', letterSpacing: 0.5, marginBottom: 4 }}>
+                  Universal Female Energy
+                </Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' }}>
+                  Lalitha Sahasranama • Vitality
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </BlurView>
         </TouchableOpacity>
-
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(56,189,248,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(56,189,248,0.3)' }}>
-          <Ionicons name="flash" size={28} color="#38bdf8" />
-        </View>
-
-        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 1.5, textAlign: 'center' }}>
-          Energize Your Soul
-        </Text>
-        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 16, textAlign: 'center', lineHeight: 22, paddingHorizontal: 10 }}>
-          Feeling burnt out? Reconnect with ancient cosmic frequencies to rapidly recharge your energy reserves at any time of the day.
-        </Text>
-
-        <View style={{ width: '100%', marginTop: 50, gap: 24 }}>
-          {/* Universal Male Energy */}
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            onPress={() => playEnergy('male', 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/YTMP3GG_YouTube_VISHNU-SAHASRANAMAM-Madhubanti-Bagchi-_-_Media_7uOgqaPhZ8g_009_128k.mp3')}
-            style={{ 
-              width: '100%', padding: 24, borderRadius: 24, 
-              backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1, borderColor: playingId === 'male' ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)',
-              alignItems: 'center', flexDirection: 'row',
-              shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: playingId === 'male' ? 0.3 : 0, shadowRadius: 12,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#38bdf8', letterSpacing: 0.5, marginBottom: 4 }}>
-                Universal Male Energy
-              </Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
-                Vishnu Sahasranama • Grounding & Flow
-              </Text>
-            </View>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'male' ? '#0284c7' : '#38bdf8', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={playingId === 'male' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'male' ? 0 : 2 }} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Universal Female Energy */}
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            onPress={() => playEnergy('female', 'https://ik.imagekit.io/rcsesr4xf/Lalitha-Sahasranamam.mp3')}
-            style={{ 
-              width: '100%', padding: 24, borderRadius: 24, 
-              backgroundColor: 'rgba(244, 114, 182, 0.1)', borderWidth: 1, borderColor: playingId === 'female' ? '#f472b6' : 'rgba(244, 114, 182, 0.2)',
-              alignItems: 'center', flexDirection: 'row',
-              shadowColor: '#f472b6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: playingId === 'female' ? 0.3 : 0, shadowRadius: 12,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#f472b6', letterSpacing: 0.5, marginBottom: 4 }}>
-                Universal Female Energy
-              </Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
-                Lalitha Sahasranama • Creative Vitality
-              </Text>
-            </View>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: playingId === 'female' ? '#be185d' : '#f472b6', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={playingId === 'female' ? "pause" : "play"} size={22} color="#fff" style={{ marginLeft: playingId === 'female' ? 0 : 2 }} />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 }

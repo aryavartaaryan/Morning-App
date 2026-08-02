@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ImageBackground, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ImageBackground, Dimensions, TouchableOpacity, Animated, Easing , BackHandler } from "react-native";
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter , useFocusEffect } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
@@ -100,6 +100,16 @@ const BackgroundMandala = React.memo(() => {
 
 export default function ReportsTab() {
   const router = useRouter();
+  
+  useFocusEffect(useCallback(() => {
+    const onBackPress = () => {
+      router.navigate('/(tabs)');
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]));
+
   const [settings, setSettings]         = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [mission, setMission]           = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const [entries, setEntries]           = useState<AlarmEntry[]>([]);

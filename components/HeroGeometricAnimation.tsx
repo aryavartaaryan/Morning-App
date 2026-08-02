@@ -191,11 +191,14 @@ export function HeroGeometricAnimation({
     
     let lastLevel = 0;
     let waveIndex = 0;
+    let lastWaveTime = 0;
     const waves = [ripple1, ripple2, ripple3];
     
     const listenerId = audioMetering.addListener(({ value }) => {
+      const now = Date.now();
       // Trigger a wave release on sudden volume increases (beats)
-      if (value > 0.15 && value - lastLevel > 0.08) {
+      if (value > 0.02 && value > lastLevel && (now - lastWaveTime > 800)) {
+        lastWaveTime = now;
         const anim = waves[waveIndex];
         waveIndex = (waveIndex + 1) % 3;
         anim.setValue(0);
@@ -354,12 +357,12 @@ export function HeroGeometricAnimation({
       }}>
         <Svg width={S} height={S}>
           {/* Central circle */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.19} fill="none" stroke={G2} strokeWidth="1.4" opacity={variant === 'sound' ? 0.55 : 0.70} />
+          <SvgCircle cx={hw} cy={hw} r={S*0.19} fill="none" stroke={G2} strokeWidth="2.0" opacity={variant === 'sound' ? 0.55 : 0.90} />
           {/* 6 petal circles */}
           {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
             <SvgCircle key={`fol_inner_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-              fill={`${GA}${variant === 'sound' ? '0.06' : '0.04'})`}
-              stroke={G2} strokeWidth="1.0" opacity={variant === 'sound' ? 0.50 : 0.65} />
+              fill={`${GA}${variant === 'sound' ? '0.06' : '0.10'})`}
+              stroke={G2} strokeWidth="1.6" opacity={variant === 'sound' ? 0.50 : 0.85} />
           ))}
           {/* Second ring — 12 more petals */}
           {pts(hw, hw, S*0.38, 6, Math.PI/6).map((p, i) => (
@@ -411,9 +414,9 @@ export function HeroGeometricAnimation({
             ...pts(hw, hw, S*0.38, 6, 0),
           ].map((p, i) => (
             <SvgCircle key={`mc_circ_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-              fill={`${GA}${variant === 'sound' ? '0.05' : '0.03'})`}
-              stroke={G2} strokeWidth="0.8"
-              opacity={i === 0 ? 0.75 : 0.45} />
+              fill={`${GA}${variant === 'sound' ? '0.05' : '0.08'})`}
+              stroke={G2} strokeWidth="1.4"
+              opacity={i === 0 ? 0.90 : 0.65} />
           ))}
           {/* Lines connecting all 13 centres */}
           {(() => {
@@ -429,9 +432,9 @@ export function HeroGeometricAnimation({
           })()}
           {/* Star tetrahedron overlay */}
           <SvgPath d={poly(pts(hw, hw, S*0.34, 3, -Math.PI/2))}
-            fill={`${GA}0.07)`} stroke={G1} strokeWidth="1.8" opacity={0.82} />
+            fill={`${GA}0.12)`} stroke={G1} strokeWidth="2.2" opacity={0.95} />
           <SvgPath d={poly(pts(hw, hw, S*0.34, 3,  Math.PI/2))}
-            fill={`${GA}0.07)`} stroke={G1} strokeWidth="1.8" opacity={0.82} />
+            fill={`${GA}0.12)`} stroke={G1} strokeWidth="2.2" opacity={0.95} />
           {/* Outer hexagon */}
           <SvgPath d={poly(pts(hw, hw, S*0.34, 6, 0))} fill="none" stroke={G3} strokeWidth="1" opacity={0.55} />
           {/* Dot jewels on hexagon vertices */}

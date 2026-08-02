@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { Gyroscope } from 'expo-sensors';
 import { store, KEYS } from '@/lib/storage';
 import { useSoundPlayer, type PlayableSoundMeta } from '@/lib/soundPlayerContext';
 import { getSolarTimes, getSunElevation, type SolarTimes } from '@/lib/solar';
@@ -364,6 +365,20 @@ function SettingSunSVG({ size = 26 }: { size?: number }) {
 // ── Festival Detail Modal ──────────────────────────────────────────────────
 function FestivalDetailModal({ festival, onClose }: { festival: Festival; onClose: () => void }) {
   const [activeTab, setActiveTab] = React.useState<'spiritual' | 'science' | 'cultural'>('spiritual');
+  const [gyro, setGyro] = React.useState({ x: 0, y: 0 });
+  const pan = React.useRef(new Animated.ValueXY()).current;
+  const touchScale = React.useRef(new Animated.Value(1)).current;
+
+  const panResponder = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => Animated.spring(touchScale, { toValue: 1.05, useNativeDriver: true }).start(),
+    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderRelease: () => {
+      Animated.spring(touchScale, { toValue: 1, useNativeDriver: true }).start();
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+    }
+  }), []);
+
   const glowColor = festival.type === 'hindu' ? '#fbbf24' : festival.type === 'buddhist' ? '#a78bfa' : festival.type === 'muslim' ? '#34d399' : festival.type === 'jewish' ? '#60a5fa' : '#e2e8f0';
   const typeLabel = festival.type === 'hindu' ? 'COSMIC FESTIVAL' : festival.type === 'buddhist' ? 'BUDDHIST OBSERVANCE' : festival.type === 'jain' ? 'JAIN FESTIVAL' : festival.type === 'muslim' ? 'ISLAMIC OBSERVANCE' : festival.type === 'jewish' ? 'JEWISH FESTIVAL' : festival.type === 'christian' ? 'CHRISTIAN OBSERVANCE' : 'GLOBAL OBSERVANCE';
 
@@ -5636,6 +5651,38 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const fluidRot1     = useRef(new Animated.Value(0)).current;
   const fluidRot2     = useRef(new Animated.Value(0)).current;
 
+  // Parallax Gyroscope
+  const gyroX = useRef(new Animated.Value(0)).current;
+  const gyroY = useRef(new Animated.Value(0)).current;
+
+  // Magnetic Touch Physics
+  const pan = useRef(new Animated.ValueXY()).current;
+  const touchScale = useRef(new Animated.Value(1)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+        Animated.spring(touchScale, { toValue: 0.96, useNativeDriver: true }).start();
+      },
+      onPanResponderMove: (e, gestureState) => {
+        // Faintly track finger (10% pull)
+        pan.setValue({ x: gestureState.dx * 0.1, y: gestureState.dy * 0.1 });
+      },
+      onPanResponderRelease: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Animated.spring(touchScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }).start();
+        if (onPress) onPress();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(touchScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
+
   const wCode = weather?.weatherCode;
   // Accurate weather classification per WMO codes
   const isThunderstorm = !!(wCode != null && [95, 96, 99].includes(wCode));
@@ -5712,6 +5759,17 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
       Animated.timing(lunarBreath, { toValue: 1, duration: 4000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       Animated.timing(lunarBreath, { toValue: 0, duration: 4000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
     ])).start();
+
+    // Gyroscope listeners
+    Gyroscope.setUpdateInterval(50);
+    const subscription = Gyroscope.addListener((data) => {
+      Animated.spring(gyroX, { toValue: -data.y * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
+      Animated.spring(gyroY, { toValue: -data.x * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
+    });
+
+    return () => {
+      subscription && subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -5913,7 +5971,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
       <View style={{ width: MOON_RS, height: MOON_RS, alignItems: 'center', justifyContent: 'center' }}>
 
           {/* Inner hero ring container — centered in wrapper */}
-          <View style={{ width: HERO_RS, height: HERO_RS }}>
+          <Animated.View 
+            {...panResponder.panHandlers}
+            style={{ 
+              width: HERO_RS, height: HERO_RS,
+              transform: [{ scale: touchScale }]
+            }}
+          >
 
           {/* ── Layered aura — slim and elegant glow ── */}
           <Animated.View style={{ position: 'absolute', width: HERO_RS + 24, height: HERO_RS + 24, borderRadius: (HERO_RS + 24) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.06)`, transform: [{ scale: pulse }], top: -12, left: -12 }} />
@@ -5921,15 +5985,16 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           <Animated.View style={{ position: 'absolute', width: HERO_RS + 6, height: HERO_RS + 6, borderRadius: (HERO_RS + 6) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.24)`, transform: [{ scale: pulse }], top: -3, left: -3 }} />
           <View style={{ position: 'absolute', width: HERO_RS + 2, height: HERO_RS + 2, borderRadius: (HERO_RS + 2) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.14)`, top: -1, left: -1 }} />
 
-          {/* ── Inner zone — moonlit disk: transparent glass at night, center attraction ── */}
+          {/* ── Inner zone — moonlit disk: frosted glass lens ── */}
           <View style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-            backgroundColor: `rgba(${rR},${rG},${rB},0.10)`,
+            backgroundColor: `rgba(${rR},${rG},${rB},0.08)`,
             overflow: 'hidden',
           }}>
+            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
             {/* Inner fill gradient: true silver luminosity like the day */}
             <LinearGradient
-              colors={[`${accentHex}18`, `${ringHex}0C`, 'transparent', `${ringHex}08`]}
+              colors={[`${accentHex}18`, `${ringHex}08`, 'transparent', `${ringHex}08`]}
               start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
 
@@ -6063,8 +6128,34 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             )}
           </View>
 
+          {/* ── Gyroscope Stardust Particles ── */}
+          <Animated.View pointerEvents="none" style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            transform: [{ translateX: gyroX }, { translateY: gyroY }]
+          }}>
+            <Svg width={HERO_RS} height={HERO_RS}>
+              {Array.from({ length: 14 }).map((_, i) => {
+                const angle = (i * Math.PI * 2) / 14 + (i % 2 === 0 ? 0.2 : -0.2);
+                const radius = HERO_R + 12 + (i % 3) * 6;
+                const x = HERO_RS / 2 + Math.cos(angle) * radius;
+                const y = HERO_RS / 2 + Math.sin(angle) * radius;
+                return (
+                  <SvgCircle key={`star_${i}`} cx={x} cy={y} r={1.2 + (i % 2) * 0.8} fill="#FFFFFF" opacity={0.3 + (i % 4) * 0.15} />
+                );
+              })}
+            </Svg>
+          </Animated.View>
+
           {/* ── SVG ring — 4 layers: track → wide glow → halo → main arc → sliver ── */}
           <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
+            <Defs>
+              <SvgLinearGradient id="heroMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+                 <Stop offset="0%" stopColor={ringHex} stopOpacity="1" />
+                 <Stop offset="40%" stopColor="#FFFFFF" stopOpacity="0.8" />
+                 <Stop offset="70%" stopColor={accentHex} stopOpacity="0.9" />
+                 <Stop offset="100%" stopColor={haloHex} stopOpacity="1" />
+              </SvgLinearGradient>
+            </Defs>
             {/* Track */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}38`} strokeWidth={HERO_STR} />
             {/* Cooling glow effect for silver periods (Evening Kapha & Night Vata) */}
@@ -6079,19 +6170,27 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+6} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.20 : 0.12} />
             {/* Mid halo — richer at night */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+2} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.45 : 0.30} />
-            {/* Main crisp arc — elegant slim */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
+            {/* Main crisp arc — elegant slim with metallic sweep */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
             {/* Inner highlight sliver — shimmering moonlight edge */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Sacred Geometric Yantra Animation — palette-driven, fits inside ring glass ── */}
-          <View pointerEvents="none" style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center' }}>
+          {/* ── Sacred Geometric Yantra Animation — magnetically tracks finger ── */}
+          <Animated.View pointerEvents="none" style={{ 
+            position: 'absolute', width: HERO_RS, height: HERO_RS, 
+            alignItems: 'center', justifyContent: 'center',
+            transform: [{ translateX: pan.x }, { translateY: pan.y }]
+          }}>
             <HeroGeometricAnimation size={HERO_RS - 12} variant="home" accentColor={ringHex} opacity={0.92} />
-          </View>
+          </Animated.View>
 
-          {/* ── Center content — cycles elegantly between phase anchor and body rhythm slides ── */}
-          <View style={{ position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26 }}>
+          {/* ── Center content — text and info ── */}
+          <Animated.View style={{ 
+            position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, 
+            alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26,
+            transform: [{ translateX: pan.x }, { translateY: pan.y }]
+          }}>
 
           {/* ── SACRED HOUR MODE: sunrise / sunset replaces everything ── */}
           {sacredHour.type !== null ? (
@@ -6179,16 +6278,16 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               {/* Header — the phase name (e.g. Creative Peak) */}
               <Text
                 style={{ 
-                  fontSize: compact ? 22 : 28, 
-                  fontWeight: '900', 
+                  fontSize: compact ? 20 : 25, 
+                  fontWeight: '400', 
                   color: '#FFFFFF', 
                   textAlign: 'center', 
-                  fontFamily: 'Nunito_900Black', 
-                  textShadowColor: 'rgba(0,0,0,0.95)', 
-                  textShadowOffset: { width: 0, height: 2 }, 
-                  textShadowRadius: 16, 
-                  letterSpacing: -0.5, 
-                  lineHeight: compact ? 26 : 34, 
+                  fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
+                  textShadowColor: 'rgba(0,0,0,0.85)', 
+                  textShadowOffset: { width: 0, height: 1 }, 
+                  textShadowRadius: 10, 
+                  letterSpacing: 1.2, 
+                  lineHeight: compact ? 24 : 30, 
                   marginBottom: compact ? 6 : 8 
                 }}
                 numberOfLines={2}
@@ -6254,7 +6353,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               )}
             </>
           )}
-          </View>
+          </Animated.View>
 
           {/* ── Exact hit area overlay for Stories (only the inner ring) ── */}
           <TouchableOpacity
@@ -6271,8 +6370,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           />
 
-          </View>
-
+          </Animated.View>
 
       </View>
     </View>

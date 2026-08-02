@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
   Alert, Modal, Platform, Linking, ImageBackground, Dimensions,
   Animated,
-} from 'react-native';
+  BackHandler } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -74,7 +74,7 @@ function SectionHeader({ label }: { label: string; }) {
 }
 const sec = StyleSheet.create({
   row:   { marginHorizontal: 24, marginTop: 32, marginBottom: 10 },
-  label: { fontSize: 13, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
+  label: { fontSize: 11, letterSpacing: 2.5, color: 'rgba(255,255,255,0.45)', fontWeight: '700' },
 });
 
 // ─── Glass card ──────────────────────────────────────────────────────────────
@@ -124,8 +124,8 @@ const tog = StyleSheet.create({
   content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 16 },
   border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
   icon:   { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  title:  { fontSize: 16, color: '#fff', fontWeight: '500', letterSpacing: 0.3 },
-  sub:    { fontSize: 13, color: 'rgba(235,235,245,0.6)', marginTop: 4, lineHeight: 18, letterSpacing: 0.1 },
+  title:  { fontSize: 14, color: '#fff', fontWeight: '600', letterSpacing: 0.5 },
+  sub:    { fontSize: 11.5, color: 'rgba(235,235,245,0.55)', marginTop: 4, lineHeight: 16, letterSpacing: 0.2 },
 });
 
 function WallpaperPicker() {
@@ -199,10 +199,10 @@ const wp = StyleSheet.create({
   card: { marginHorizontal: 16, marginTop: 4, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(20,20,20,0.4)' },
   previewImg: { height: 240, width: '100%', justifyContent: 'flex-end' },
   previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20 },
-  previewTime: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
-  previewName: { fontSize: 22, color: '#fff', fontWeight: '700', letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
+  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 },
+  previewName: { fontSize: 17, color: '#fff', fontWeight: '800', letterSpacing: 0.6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
   previewBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.15)' },
-  previewBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  previewBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
 });
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
@@ -294,6 +294,17 @@ const perm = StyleSheet.create({
 
 // ─── Main Settings Screen ────────────────────────────────────────────────────
 export default function SettingsTab() {
+  const router = useRouter();
+  
+  useFocusEffect(useCallback(() => {
+    const onBackPress = () => {
+      router.navigate('/(tabs)');
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]));
+
   const scrollRef = useRef<ScrollView>(null);
   const [settings,  setSettings]  = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [mission,   setMission]   = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
@@ -413,7 +424,7 @@ export default function SettingsTab() {
 const S = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#000000' },
   header:  { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 },
-  headerTitle: { fontSize: 34, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
 
   tagPill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   tagTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },

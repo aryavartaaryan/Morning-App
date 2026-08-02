@@ -1221,7 +1221,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
 
       {/* ── Row: tabs ── */}
-      <View style={{ marginHorizontal: 16, marginVertical: 8, backgroundColor: 'rgba(10,15,30,0.5)', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', padding: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+      <View style={{ marginHorizontal: 0, marginVertical: 0, backgroundColor: 'rgba(10,15,30,0.4)', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 6, paddingHorizontal: 4, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative' }}>
           {/* ── Glowing sliding pill background ── */}
           <Animated.View
@@ -2059,12 +2059,15 @@ function ReelCard({
 
     let lastLevel = 0;
     let waveIndex = 0;
+    let lastWaveTime = 0;
     
     // Listen directly to the high-frequency live audio metering stream
     const listenerId = meteringAnim.addListener(({ value }) => {
-      // Trigger a wave release on sudden volume increases (beats)
-      // Only strictly when live sound is pushing, creating true synchronization
-      if (value > 0.15 && value - lastLevel > 0.08) {
+      const now = Date.now();
+      // Trigger a wave release on any volume increase, debounced by 800ms
+      // This is incredibly reliable for all sound types (ambient, music, etc.)
+      if (value > 0.02 && value > lastLevel && (now - lastWaveTime > 800)) {
+        lastWaveTime = now;
         const anim = waves[waveIndex];
         waveIndex = (waveIndex + 1) % 5;
         anim.setValue(0);
@@ -2367,9 +2370,9 @@ function ReelCard({
         {/* iOS style darker filter behind the geometric animation */}
         <View style={{
           position: 'absolute',
-          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.81,
-          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.81,
-          borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.81) / 2,
+          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
+          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
+          borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2,
           backgroundColor: 'rgba(0, 0, 0, 0.45)', // iOS style darker theme
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -2379,12 +2382,101 @@ function ReelCard({
           shadowRadius: 24,
         }}>
           {Platform.OS === 'ios' && (
-            <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFillObject, { borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.81) / 2, overflow: 'hidden' }]} />
+            <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFillObject, { borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2, overflow: 'hidden' }]} />
           )}
         </View>
 
-        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.81} theme="dark" opacity={0.77} speed="slow" audioMetering={meteringAnim} />
+        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} theme="dark" opacity={0.85} speed="slow" audioMetering={meteringAnim} />
       </View>
+
+      {/* ── Modern Top Player Bar (Timing / Scrubber) ── */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute', top: Math.max(insets.top + 8, 48), left: 0, right: 0,
+          paddingHorizontal: 24,
+          zIndex: 8, opacity: controlsAnim,
+        }}
+      >
+        {/* ── Real-time scrubber — only visible when track duration is known ── */}
+        {trackDurMs > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+                {fmtTimer(playingDurationSecs ?? 0)}
+              </Text>
+            </View>
+            <View
+              style={{ height: 36, justifyContent: 'center' }}
+              {...scrubPan.panHandlers}
+              hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
+              collapsable={false}
+            >
+              <View style={{
+                height: isScrubbing ? 6 : 4,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.25)',
+                width: TRACK_W,
+                overflow: 'visible',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2,
+              }}>
+                <Animated.View style={{
+                  position: 'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  borderRadius: 3,
+                  backgroundColor: sound.color || '#fff',
+                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4,
+                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, TRACK_W],
+                    extrapolate: 'clamp',
+                  }),
+                }} />
+              </View>
+              {(() => {
+                const ms = isScrubbing ? scrubPositionMs : positionMs;
+                const dur = trackDurMsRef.current;
+                const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
+                const thumbLeft = thumbFrac * TRACK_W;
+                const thumbSize = isScrubbing ? 22 : 16;
+                return (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      top: (36 - thumbSize) / 2,
+                      left: thumbLeft - thumbSize / 2,
+                      width: thumbSize,
+                      height: thumbSize,
+                      borderRadius: thumbSize / 2,
+                      backgroundColor: '#FFFFFF',
+                      shadowColor: sound.color || '#000',
+                      shadowOpacity: 0.95,
+                      shadowRadius: isScrubbing ? 12 : 8,
+                      shadowOffset: { width: 0, height: 0 },
+                      elevation: 8,
+                      transform: [{ scale: isScrubbing ? 1.15 : 1 }],
+                    }}
+                  />
+                );
+              })()}
+            </View>
+          </View>
+        ) : (
+          /* Looping ambient sound — subtle shimmer bar */
+          <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 }}>
+            <Animated.View style={{
+              position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
+              backgroundColor: sound.color ? sound.color + 'A0' : 'rgba(255,255,255,0.6)',
+              shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4,
+              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
+            }} />
+          </View>
+        )}
+      </Animated.View>
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
@@ -2521,93 +2613,7 @@ function ReelCard({
           {sound.desc}
         </Text>
 
-        {/* ── Real-time scrubber — only visible when track duration is known ── */}
-        {trackDurMs > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.60)', letterSpacing: 0.3 }}>
-                {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
-              </Text>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.28)', letterSpacing: 0.3 }}>
-                {fmtTimer(playingDurationSecs ?? 0)}
-              </Text>
-            </View>
-            {/*
-              Crash-proof Instagram-style scrubber:
-              ─ Fill uses Animated.View `width` (JS driver, safe in FlatList)
-              ─ Thumb is a plain `View` with JS-computed `left` via scrubPositionMs
-                so it NEVER mixes native/JS drivers on the same animated node.
-              ─ panHandlers on outer View captures locationX relative to the track.
-            */}
-            <View
-              style={{ height: 36, justifyContent: 'center' }}
-              {...scrubPan.panHandlers}
-              hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
-              collapsable={false}
-            >
-              {/* Track rail */}
-              <View style={{
-                height: isScrubbing ? 5 : 3,
-                borderRadius: 3,
-                backgroundColor: 'rgba(255,255,255,0.14)',
-                width: TRACK_W,
-                overflow: 'visible',
-              }}>
-                {/* Filled portion — Animated.View with JS-driver `width` only */}
-                <Animated.View style={{
-                  position: 'absolute',
-                  left: 0, top: 0, bottom: 0,
-                  borderRadius: 3,
-                  backgroundColor: sound.color,
-                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, TRACK_W],
-                    extrapolate: 'clamp',
-                  }),
-                }} />
-              </View>
-              {/* Thumb — plain View, position derived from scrubPositionMs/positionMs state.
-                  Using a regular View avoids ANY animated node driver conflict. */}
-              {(() => {
-                const ms = isScrubbing ? scrubPositionMs : positionMs;
-                const dur = trackDurMsRef.current;
-                const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
-                const thumbLeft = thumbFrac * TRACK_W;
-                const thumbSize = isScrubbing ? 20 : 14;
-                return (
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      // Vertically center on track (32px height, track is 3–5px)
-                      top: (36 - thumbSize) / 2,
-                      left: thumbLeft - thumbSize / 2,
-                      width: thumbSize,
-                      height: thumbSize,
-                      borderRadius: thumbSize / 2,
-                      backgroundColor: '#FFFFFF',
-                      shadowColor: sound.color,
-                      shadowOpacity: isScrubbing ? 0.95 : 0.80,
-                      shadowRadius: isScrubbing ? 10 : 6,
-                      shadowOffset: { width: 0, height: 0 },
-                      elevation: 8,
-                      transform: [{ scale: isScrubbing ? 1.2 : 1 }],
-                    }}
-                  />
-                );
-              })()}
-            </View>
-          </View>
-        ) : (
-          /* Looping ambient sound — subtle shimmer bar, JS-driver width */
-          <View style={{ height: 2, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 16 }}>
-            <Animated.View style={{
-              position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
-              backgroundColor: sound.color + '60',
-              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
-            }} />
-          </View>
-        )}
+
 
         {/* ── Single Duration Pill — Calm-style clean control ── */}
         {(() => {
