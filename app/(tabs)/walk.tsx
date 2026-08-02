@@ -211,23 +211,23 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
         const opacity = modHeading.interpolate(dirConfig);
         return (
           <Animated.View key={idx} style={{ position: 'absolute', alignItems: 'center', opacity }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <View style={{ height: 1, width: 24, backgroundColor: data.targetColor, marginRight: 8, opacity: 0.8 }} />
-              <Text style={{ fontSize: 11, fontWeight: '800', color: data.targetColor, letterSpacing: 2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
-                Zone Pointed: {dir.label}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <View style={{ height: 1.5, width: 24, backgroundColor: data.targetColor, marginRight: 8, shadowColor: data.targetColor, shadowOpacity: 0.8, shadowRadius: 4 }} />
+              <Text style={{ fontSize: 10, fontWeight: '900', color: data.targetColor, letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                You have reached correct direction
               </Text>
-              <View style={{ height: 1, width: 24, backgroundColor: data.targetColor, marginLeft: 8, opacity: 0.8 }} />
+              <View style={{ height: 1.5, width: 24, backgroundColor: data.targetColor, marginLeft: 8, shadowColor: data.targetColor, shadowOpacity: 0.8, shadowRadius: 4 }} />
             </View>
-            <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8, textAlign: 'center', paddingHorizontal: 10 }}>
-              {selectedActivity === 'sleep' ? `Sleep by facing head in this direction` :
+            <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8, textAlign: 'center', paddingHorizontal: 10 }}>
+              {selectedActivity === 'sleep' ? `Put your head in this direction and sleep` :
                selectedActivity === 'meditate' ? `Meditate facing this direction` :
                selectedActivity === 'eat' ? `Eat facing this direction` :
                selectedActivity === 'work' ? `Work facing this direction` :
                selectedActivity === 'exercise' ? `Exercise facing this direction` :
                `Aligned in this direction`}
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 8, textAlign: 'center', paddingHorizontal: 30, lineHeight: 14, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-              {data.reason}
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#fcd34d', marginTop: 8, textTransform: 'uppercase', letterSpacing: 2, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 }}>
+              Zone: {dir.label}
             </Text>
           </Animated.View>
         );
@@ -239,13 +239,13 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
         opacity: searchingOpacity 
       }}>
         <Text style={{ fontSize: 12, fontWeight: '800', color: '#fcd34d', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, textAlign: 'center', paddingHorizontal: 20 }}>
-          {selectedActivity === 'sleep' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to place your head` :
-           selectedActivity === 'meditate' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to meditate` :
-           selectedActivity === 'eat' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to eat` :
-           selectedActivity === 'work' ? `Find ${data.dirs.map(d=>d.label).join(' or ')} to work` :
-           `Find ${data.dirs.map(d=>d.label).join(' or ')}`}
+          {selectedActivity === 'sleep' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to place your head...` :
+           selectedActivity === 'meditate' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to meditate...` :
+           selectedActivity === 'eat' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to eat...` :
+           selectedActivity === 'work' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to work...` :
+           `Searching ${data.dirs.map(d=>d.label).join(' or ')}...`}
         </Text>
-        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
           {data.searchingText}
         </Text>
       </Animated.View>
@@ -307,45 +307,45 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
           <Defs>
             <RadialGradient id="goldGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#ffdf00" stopOpacity="0.5" />
-              <Stop offset="50%" stopColor="#d4af37" stopOpacity="0.15" />
-              <Stop offset="100%" stopColor="#996515" stopOpacity="0" />
+              <Stop offset="0%" stopColor="#ffdf00" stopOpacity="0.8" />
+              <Stop offset="50%" stopColor="#d4af37" stopOpacity="0.3" />
+              <Stop offset="100%" stopColor="#996515" stopOpacity="0.05" />
             </RadialGradient>
             <SvgLinearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#ffdf00" />
-              <Stop offset="50%" stopColor="#d4af37" />
-              <Stop offset="100%" stopColor="#ffec8b" />
+              <Stop offset="0%" stopColor="#ffec8b" />
+              <Stop offset="50%" stopColor="#ffd700" />
+              <Stop offset="100%" stopColor="#daa520" />
             </SvgLinearGradient>
             <SvgLinearGradient id="goldLineReverse" x1="100%" y1="100%" x2="0%" y2="0%">
-              <Stop offset="0%" stopColor="#ffdf00" />
-              <Stop offset="50%" stopColor="#d4af37" />
-              <Stop offset="100%" stopColor="#996515" />
+              <Stop offset="0%" stopColor="#ffec8b" />
+              <Stop offset="50%" stopColor="#ffd700" />
+              <Stop offset="100%" stopColor="#daa520" />
             </SvgLinearGradient>
             <RadialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="70%" stopColor="rgba(5, 8, 18, 0.9)" />
-              <Stop offset="100%" stopColor="rgba(5, 8, 18, 0.4)" />
+              <Stop offset="60%" stopColor="rgba(2, 4, 10, 0.98)" />
+              <Stop offset="100%" stopColor="rgba(2, 4, 10, 0.7)" />
             </RadialGradient>
           </Defs>
           
           <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow)" />
           {/* Subtle outer grid lines */}
-          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(255,223,0,0.15)" strokeWidth={0.5} strokeDasharray="1 3" />
-          <Circle cx={cx} cy={cy} r={44} fill="none" stroke="url(#goldLine)" strokeWidth={0.3} />
-          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.1} />
+          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(255,223,0,0.3)" strokeWidth={0.8} strokeDasharray="1 3" />
+          <Circle cx={cx} cy={cy} r={44} fill="none" stroke="url(#goldLine)" strokeWidth={0.6} />
+          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.4} />
         </Svg>
 
         {/* Slow rotating outer mandala ring (Clockwise) - Shodashadala (16 Petals) */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
             {/* Bhupura (Outer Square with gates) */}
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.4} />
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.2} scale={0.96} origin={`${cx}, ${cy}`} />
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.4} scale={0.96} origin={`${cx}, ${cy}`} />
             
             {Array.from({ length: 16 }).map((_, i) => {
               const a = (i * 360) / 16;
               return (
                 <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,8 Q 54,16 50,23 Q 46,16 50,8 Z`} fill="rgba(255,223,0,0.03)" stroke="url(#goldLine)" strokeWidth={0.3} />
+                  <Path d={`M 50,8 Q 54,16 50,23 Q 46,16 50,8 Z`} fill="rgba(255,223,0,0.12)" stroke="url(#goldLine)" strokeWidth={0.6} />
                 </G>
               );
             })}
@@ -355,12 +355,12 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         {/* Slow rotating inner mandala ring (Counter-clockwise) - Ashtadala (8 Petals) */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            <Circle cx={cx} cy={cy} r={23} fill="none" stroke="url(#goldLine)" strokeWidth={0.5} />
+            <Circle cx={cx} cy={cy} r={23} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
             {Array.from({ length: 8 }).map((_, i) => {
               const a = (i * 360) / 8;
               return (
                 <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,23 Q 57,32 50,39 Q 43,32 50,23 Z`} fill="rgba(212,175,55,0.08)" stroke="url(#goldLineReverse)" strokeWidth={0.5} />
+                  <Path d={`M 50,23 Q 57,32 50,39 Q 43,32 50,23 Z`} fill="rgba(212,175,55,0.2)" stroke="url(#goldLineReverse)" strokeWidth={0.8} />
                 </G>
               );
             })}
@@ -377,14 +377,14 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
             <Circle cx={cx} cy={cy} r={39} fill="url(#goldGlow)" />
             {/* Shiva Triangles (Upward) */}
             {shivaTriangles.map((d, i) => (
-              <Path key={`shiva-${i}`} d={d} fill="rgba(255,223,0,0.04)" stroke="url(#goldLine)" strokeWidth={0.4} />
+              <Path key={`shiva-${i}`} d={d} fill="rgba(255,223,0,0.15)" stroke="url(#goldLine)" strokeWidth={0.8} />
             ))}
             {/* Shakti Triangles (Downward) */}
             {shaktiTriangles.map((d, i) => (
-              <Path key={`shakti-${i}`} d={d} fill="rgba(255,223,0,0.04)" stroke="url(#goldLineReverse)" strokeWidth={0.4} />
+              <Path key={`shakti-${i}`} d={d} fill="rgba(255,223,0,0.15)" stroke="url(#goldLineReverse)" strokeWidth={0.8} />
             ))}
-            <Circle cx={cx} cy={cy} r={1.5} fill="#ffdf00" />
-            <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="url(#goldLine)" strokeWidth={0.6} />
+            <Circle cx={cx} cy={cy} r={2} fill="#ffdf00" />
+            <Circle cx={cx} cy={cy} r={4.5} fill="none" stroke="url(#goldLine)" strokeWidth={1} />
           </Svg>
         </Animated.View>
 
@@ -786,7 +786,7 @@ export default function WalkTab() {
     // Run daily reset check every time the tab is focused
     StepCounter.maybeResetForNewDay().then(() => refreshStats());
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.navigate('/(tabs)');
+      router.navigate('/');
       return true;
     });
     return () => sub.remove();
