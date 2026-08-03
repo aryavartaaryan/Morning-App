@@ -245,7 +245,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   {
     id: 'sitar_morning',
     label: 'Calm Raga',
-    icon: '🎸',
+    icon: '🪕',
     audioUrl: '',
     category: 'gentle',
     isGentle: true,
@@ -371,7 +371,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   },
   // ── Sitar ──────────────────────────────────────────────────────────────────────
   { id: 'space_sitar',          label: 'Space Sitar',             icon: '🪐', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/space-sitar.m4a') },
-  { id: 'sitar_long',           label: 'Sitar Meditation',        icon: '🎸', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-long.m4a') },
+  { id: 'sitar_long',           label: 'Sitar Meditation',        icon: '🪕', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-long.m4a') },
   { id: 'sitar_tabla_bells',    label: 'Sitar, Tabla & Bells',    icon: '🎵', audioUrl: '', category: 'sitar',   isGentle: false, bundledAsset: require('../assets/sounds/sitar-tabla-bells.m4a') },
   { id: 'indian_sitar_raga',    label: 'Indian Sitar Raga',       icon: '🎶', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/indian-sitar-raga.m4a') },
   { id: 'sitar_summer_raga',    label: 'Summer Healing Raga',     icon: '☀️', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a', category: 'sitar',   isGentle: true },
@@ -380,7 +380,7 @@ export const WAKE_SOUNDS: WakeSound[] = [
   { id: 'sitar_tanpura_sarangi',label: 'Sitar, Tanpura & Sarangi',icon: '🪕', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura-sarangi.m4a') },
   { id: 'sitar_tanpura_bgm',    label: 'Sitar & Tanpura',         icon: '🎼', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-tanpura.m4a') },
   { id: 'veena_classical',      label: 'Classical Veena',         icon: '🪗', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a', category: 'sitar',   isGentle: true },
-  { id: 'sitar_calm',            label: 'Calm Sitar',              icon: '🎸', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-calm.m4a') },
+  { id: 'sitar_calm',            label: 'Calm Sitar',              icon: '🪕', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/sitar-calm.m4a') },
   { id: 'veena_raga',            label: 'Veena Raga Kanaad',       icon: '🪗', audioUrl: '', category: 'sitar',   isGentle: true,  bundledAsset: require('../assets/sounds/veena-raga.m4a') },
   // ── Flute ──────────────────────────────────────────────────────────────────────
   { id: 'andean_flute',         label: 'Andean Flute',            icon: '🏔️', audioUrl: '', category: 'flute',   isGentle: true,  bundledAsset: require('../assets/sounds/andean-flute.m4a') },
@@ -451,7 +451,7 @@ export const SLEEP_SOUNDS: SleepSound[] = [
   { id: 'sl_spring_birds',    label: 'Spring Birds',      icon: '🌸',  bundledAsset: require('../assets/sounds/spring-birds-morning.m4a') },
   { id: 'sl_forest_birds',    label: 'Forest Birds',      icon: '🌳',  bundledAsset: require('../assets/sounds/forest-birds-spring.m4a') },
   { id: 'sl_morning_flute',   label: 'Light Meditation Tone', icon: '🎶',  bundledAsset: require('../assets/sounds/morning-flute.m4a') },
-  { id: 'sl_sitar',           label: 'Calm Raga',         icon: '🎸',  bundledAsset: require('../assets/sounds/sitar-morning.m4a') },
+  { id: 'sl_sitar',           label: 'Calm Raga',         icon: '🪕',  bundledAsset: require('../assets/sounds/sitar-morning.m4a') },
   { id: 'sl_432hz',           label: '432 Hz Bells',      icon: '🔔',  bundledAsset: require('../assets/sounds/432hz-healing-bells.m4a') },
   { id: 'sl_wanderlust',      label: 'Wanderlust Breeze', icon: '🌬️',  bundledAsset: require('../assets/sounds/mixkit-wind-blowing-ambience-2658.m4a') },
   { id: 'sl_campfire',        label: 'Forest Campfire',   icon: '🔥',  bundledAsset: require('../assets/sounds/forest-campfire.m4a') },

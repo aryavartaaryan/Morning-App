@@ -315,80 +315,78 @@ const SETUP_SUBTITLES = [
   'A new dawn of conscious living awaits you',
 ];
 
-function PremiumSurveyOption({ 
-  label, 
-  isSelected, 
-  onPress,
-  isMultiple = false
-}: { 
-  label: string; 
-  isSelected: boolean; 
-  onPress: () => void;
-  isMultiple?: boolean;
-}) {
+function PremiumSurveyChip({ label, isSelected, onPress }: { label: string, isSelected: boolean, onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
   
-  const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
-  };
-  
-  const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
-  };
-
-  const handlePress = () => {
-    Haptics.selectionAsync().catch(()=>{});
-    onPress();
-  };
+  const handlePressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
+  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }], marginBottom: 12, width: '100%' }}>
-      <TouchableOpacity 
-        activeOpacity={0.9} 
-        onPressIn={handlePressIn} 
-        onPressOut={handlePressOut} 
-        onPress={handlePress}
-      >
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity activeOpacity={0.9} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => { Haptics.selectionAsync().catch(()=>{}); onPress(); }}>
         <BlurView 
-          intensity={20} 
+          intensity={isSelected ? 20 : 10} 
+          tint="dark" 
+          style={{ 
+            borderRadius: 24, 
+            overflow: 'hidden', 
+            borderWidth: 1, 
+            borderColor: isSelected ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.1)',
+            backgroundColor: isSelected ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
+          }}
+        >
+          <View style={{ paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
+            {isSelected && <Ionicons name="checkmark" size={16} color="#ffffff" style={{ marginRight: 6 }} />}
+            <Text style={{ 
+              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', 
+              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_500Medium', 
+              fontSize: 14,
+            }}>
+              {label}
+            </Text>
+          </View>
+        </BlurView>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+function PremiumSurveyRow({ label, isSelected, onPress }: { label: string, isSelected: boolean, onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  
+  const handlePressIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
+  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View style={{ transform: [{ scale }], width: '100%' }}>
+      <TouchableOpacity activeOpacity={0.9} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => { Haptics.selectionAsync().catch(()=>{}); onPress(); }}>
+        <BlurView 
+          intensity={isSelected ? 20 : 10} 
           tint="dark" 
           style={{ 
             borderRadius: 16, 
             overflow: 'hidden', 
             borderWidth: 1, 
-            borderColor: isSelected ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)',
-            backgroundColor: isSelected ? 'rgba(96,165,250,0.15)' : 'rgba(0,0,0,0.3)',
+            borderColor: isSelected ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.08)',
+            backgroundColor: isSelected ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
           }}
         >
-          <View style={{ paddingVertical: 18, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ 
-              color: isSelected ? '#bfdbfe' : 'rgba(255,255,255,0.85)', 
-              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
+              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', 
+              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_500Medium', 
               fontSize: 15,
-              letterSpacing: 0.2
             }}>
               {label}
             </Text>
-            {isMultiple && (
-              <View style={{ 
-                width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, 
-                borderColor: isSelected ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                backgroundColor: isSelected ? '#60a5fa' : 'transparent',
-                alignItems: 'center', justifyContent: 'center'
-              }}>
-                {isSelected && <Ionicons name="checkmark" size={16} color="#020617" />}
-              </View>
-            )}
-            {!isMultiple && (
-              <View style={{ 
-                width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, 
-                borderColor: isSelected ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                backgroundColor: 'transparent',
-                alignItems: 'center', justifyContent: 'center'
-              }}>
-                {isSelected && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#60a5fa' }} />}
-              </View>
-            )}
+            <View style={{ 
+              width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, 
+              borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.3)',
+              backgroundColor: 'transparent',
+              alignItems: 'center', justifyContent: 'center'
+            }}>
+              {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ffffff' }} />}
+            </View>
           </View>
         </BlurView>
       </TouchableOpacity>
@@ -474,11 +472,11 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Svara?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Select all that apply to personalize your journey.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
               {tags1.map(t => (
-                <PremiumSurveyOption key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} isMultiple={true} />
+                <PremiumSurveyChip key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} />
               ))}
-            </ScrollView>
+            </View>
           </View>
         );
       case 1:
@@ -486,11 +484,11 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>How do you feel upon waking?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Understanding your mornings helps us adapt.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={{ gap: 12, marginTop: 8 }}>
               {tags3.map(t => (
-                <PremiumSurveyOption key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
+                <PremiumSurveyRow key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
               ))}
-            </ScrollView>
+            </View>
           </View>
         );
       case 2:
@@ -498,11 +496,11 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>We'll help you overcome these challenges.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={{ gap: 12, marginTop: 8 }}>
               {tags4.map(t => (
-                <PremiumSurveyOption key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
+                <PremiumSurveyRow key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
               ))}
-            </ScrollView>
+            </View>
           </View>
         );
       case 3:
@@ -510,11 +508,11 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your current rhythm?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>To set an achievable wellness goal.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={{ gap: 12, marginTop: 8 }}>
               {tags2.map(t => (
-                <PremiumSurveyOption key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
+                <PremiumSurveyRow key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
               ))}
-            </ScrollView>
+            </View>
           </View>
         );
       default: return null;

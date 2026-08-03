@@ -105,7 +105,7 @@ const ALARM_SOUNDS = [
   { id: 'med_saraswati_shloka',    label: 'Wisdom Awakening (Saraswati Shloka)',          emoji: '📚', cat: 'Stotra', color: '#c084fc', audioUrl: 'https://pub-0d083e39b57f47e8b2398292a67eef84.r2.dev/Meditations/%E0%A4%B8%E0%A4%B0%E0%A4%B8%E0%A4%B5%E0%A4%A4%20%E0%A4%B6%E0%A4%B2%E0%A4%95%20%20%20Rekha%20Bharadwaj%20%20Saraswati%20Shloka%20%20%E0%A4%A8%E0%A4%B5%E0%A4%B0%E0%A4%A4%E0%A4%B0%20%E0%A4%B8%E0%A4%AA%E0%A4%B6%E0%A4%B2%20%20Times%20Music%20Spiritual.mp3' as string | null },
   { id: 'bhagya_suktam',           label: 'Hymn of Fortune (Bhagya Suktam)',          emoji: '🌟', cat: 'Stotra', color: '#fbbf24', audioUrl: 'https://audio.onesutralabs.com/sounds-large/bhagya-suktam.m4a' as string | null },
   // ── Sitar & Flute (Ragas from Sleep Page) ──────────────────────────────────
-  { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🎸', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
+  { id: 'sitar_long',              label: 'Sitar Meditation',       emoji: '🪕', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'sitar_tabla_bells',       label: 'Sitar, Tabla & Bells',   emoji: '🎵', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
   { id: 'indian_sitar_raga',       label: 'Indian Sitar Raga',      emoji: '🎶', cat: 'Sitar & Flute', color: '#fb923c', audioUrl: null as string | null },
   { id: 'sitar_summer_raga',       label: 'Summer Healing Raga',    emoji: '☀️', cat: 'Sitar & Flute', color: '#fde68a', audioUrl: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a' as string | null },
@@ -113,7 +113,7 @@ const ALARM_SOUNDS = [
   { id: 'sitar_tanpura_sarangi',   label: 'Sitar, Tanpura & Sarangi', emoji: '🪕', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'sitar_tanpura_bgm',       label: 'Sitar & Tanpura',        emoji: '🎼', cat: 'Sitar & Flute', color: '#fbbf24', audioUrl: null as string | null },
   { id: 'veena_classical',         label: 'Classical Veena',        emoji: '🪗', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: 'https://audio.onesutralabs.com/sounds-large/veena-classical.m4a' as string | null },
-  { id: 'sitar_calm',              label: 'Calm Sitar',             emoji: '🎸', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
+  { id: 'sitar_calm',              label: 'Calm Sitar',             emoji: '🪕', cat: 'Sitar & Flute', color: '#fcd34d', audioUrl: null as string | null },
   { id: 'veena_raga',              label: 'Veena Raga Kanaad',      emoji: '🪗', cat: 'Sitar & Flute', color: '#f59e0b', audioUrl: null as string | null },
   { id: 'andean_flute',            label: 'Andean Flute',           emoji: '🏔️', cat: 'Sitar & Flute', color: '#6ee7b7', audioUrl: null as string | null },
   { id: 'quena_flute',             label: 'Canyon Quena',           emoji: '🏜️', cat: 'Sitar & Flute', color: '#86efac', audioUrl: null as string | null },

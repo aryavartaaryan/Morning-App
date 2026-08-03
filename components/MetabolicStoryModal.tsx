@@ -639,7 +639,7 @@ function Card8Naad({ period, accent, onNaad, onDeepDive, onWellness }: {
   const w = WELLNESS[period.id];
   const NAAD_ICONS: Record<string, string> = {
     morning_birds: '🐦', spring_birds: '🌸', forest_breeze: '🌳', morning_flute: '🎶',
-    sitar: '🎸', hz_432: '🔔', singing_bowl: '🔮', indian_beats: '🥁',
+    sitar: '🪕', hz_432: '🔔', singing_bowl: '🔮', indian_beats: '🥁',
     sitar_tabla_bells: '🎵', flowing_water: '💧', gentle_wind: '🌬️', sea_waves: '🌊',
     wanderlust: '🌬️', spiritual_journey: '🌌', tibetan_bowl: '🫙', tibetan_dreams: '🧘',
     night_forest: '🦗', reincarnation_tones: '♾️', night_jungle_chiangmai: '🦟',

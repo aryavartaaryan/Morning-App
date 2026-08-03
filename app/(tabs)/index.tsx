@@ -5890,7 +5890,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
 
-  const HERO_RS  = compact ? 238 : 302;
+  const HERO_RS  = compact ? 274 : 347;
   const HERO_STR = 2.5; // Elegant slim main arc
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
@@ -5979,21 +5979,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Floating Hardware Shadow (Ultra-Premium Depth) ── */}
-          <View pointerEvents="none" style={{
-            position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-            borderWidth: 15, borderColor: '#000000',
-            shadowColor: '#000000', shadowOffset: { width: 0, height: 35 }, shadowOpacity: 0.9, shadowRadius: 40,
-            elevation: 24, // High elevation for Android
-          }} />
-
           {/* ── Inner zone — minimalist Apple/iOS dark glass ── */}
           <View style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
             overflow: 'hidden',
           }}>
-            <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
+            <BlurView intensity={75} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
             {/* Inner fill gradient: true silver luminosity like the day */}
             <LinearGradient
               colors={[`${accentHex}18`, `${ringHex}08`, 'transparent', `${ringHex}08`]}
@@ -6096,14 +6088,11 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Sacred Geometric Yantra Animation — purely stationary tracking ── */}
+          {/* ── Sacred Geometric Yantra Animation — strictly stationary tracking ── */}
           <Animated.View pointerEvents="none" style={{ 
             position: 'absolute', width: HERO_RS, height: HERO_RS, 
             alignItems: 'center', justifyContent: 'center',
-            transform: [
-              { translateX: pan.x.interpolate({ inputRange: [-100, 100], outputRange: [-20, 20] }) }, 
-              { translateY: pan.y.interpolate({ inputRange: [-100, 100], outputRange: [-20, 20] }) }
-            ]
+            transform: [{ translateX: pan.x }, { translateY: pan.y }]
           }}>
             <HeroGeometricAnimation size={(HERO_RS - 12) * 0.45} variant="minimal" accentColor="#FFD700" opacity={0.92} />
           </Animated.View>
@@ -6112,10 +6101,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           <Animated.View style={{ 
             position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, 
             alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26,
-            transform: [
-              { translateX: pan.x.interpolate({ inputRange: [-100, 100], outputRange: [-45, 45] }) }, 
-              { translateY: pan.y.interpolate({ inputRange: [-100, 100], outputRange: [-45, 45] }) }
-            ]
+            transform: [{ translateX: pan.x }, { translateY: pan.y }]
           }}>
 
           {/* ── SACRED HOUR MODE: sunrise / sunset replaces everything ── */}
@@ -7618,7 +7604,7 @@ function DailyTab() {
             ) : (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 }}>
                   <DailyIntentionCard />
-                  <View style={{ paddingTop: 34, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <View style={{ paddingTop: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {todayFest && (
                       <TouchableOpacity 
                         activeOpacity={0.8}

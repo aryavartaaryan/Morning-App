@@ -78,7 +78,7 @@ const SLEEP_SOUNDS = [
   { id: 'singing_bowl',    label: 'Deep Singing Bowl',emoji: '🔮', cat: 'Meditations',  color: '#a78bfa', top: '#10082A' as const, bot: '#080515' as const, desc: 'Deep resonance for meditation',       src: { uri: 'https://audio.onesutralabs.com/sounds-large/singing-bowl-deep.m4a' } },
   { id: 'tibetan_bowl',    label: 'Tibetan Bowl',     emoji: '🫙', cat: 'Meditations',  color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Ancient healing bowl tones',          src: require('../../assets/sounds/tibetan-bowl.m4a') },
   { id: 'morning_flute',   label: 'Light Meditation Tone', emoji: '🎶', cat: 'Meditations',  color: '#6ee7b7', top: '#082018' as const, bot: '#04100C' as const, desc: 'Gentle tones for a peaceful dawn',       src: require('../../assets/sounds/morning-flute.m4a') },
-  { id: 'sitar',           label: 'Calm Raga',        emoji: '🎸', cat: 'Meditations',  color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Classical raga to ease the mind',     src: require('../../assets/sounds/sitar-morning.m4a') },
+  { id: 'sitar',           label: 'Calm Raga',        emoji: '🪕', cat: 'Meditations',  color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Classical raga to ease the mind',     src: require('../../assets/sounds/sitar-morning.m4a') },
   { id: 'indian_beats',    label: 'Indian Beats',     emoji: '🥁', cat: 'Meditations',  color: '#fb923c', top: '#1A0A00' as const, bot: '#0A0500' as const, desc: 'Rhythmic tabla & percussion',         src: require('../../assets/sounds/indian-beats.m4a') },
   // ── Sacred additions ────────────────────────────────────────────────────────
   { id: 'tibetan_dreams',     label: 'Tibetan Dreams',        emoji: '🧘', cat: 'Meditations' as const, color: '#818cf8', top: '#0C0822' as const, bot: '#060411' as const, desc: 'Deep Himalayan soundscape',              src: require('../../assets/sounds/tibetan-dreams.m4a') },
@@ -87,7 +87,7 @@ const SLEEP_SOUNDS = [
   // ── Nature addition ─────────────────────────────────────────────────────────
   { id: 'night_jungle_chiangmai', label: 'Night Jungle',      emoji: '🦟', cat: 'Nature'  as const, color: '#4ade80', top: '#061A08' as const, bot: '#030C04' as const, desc: 'Wild night in Chiangmai jungle',         src: { uri: 'https://audio.onesutralabs.com/sounds-large/night-jungle-chiangmai.m4a' } },
   // ── Sitar ───────────────────────────────────────────────────────────────────
-  { id: 'sitar_long',          label: 'Sitar Meditation',     emoji: '🎸', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Long classical raga session',            src: require('../../assets/sounds/sitar-long.m4a') },
+  { id: 'sitar_long',          label: 'Sitar Meditation',     emoji: '🪕', cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Long classical raga session',            src: require('../../assets/sounds/sitar-long.m4a') },
 
   { id: 'indian_sitar_raga',   label: 'Indian Sitar Raga',    emoji: '🎶', cat: 'Ragas'   as const, color: '#fb923c', top: '#1A0E00' as const, bot: '#0A0700' as const, desc: 'Classical Indian raga melody',           src: require('../../assets/sounds/indian-sitar-raga.m4a') },
   { id: 'sitar_summer_raga',   label: '432Hz Healing Raga',  emoji: '☀️', cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Mango season raga at 432 Hz',            src: { uri: 'https://audio.onesutralabs.com/sounds-large/sitar-summer-raga.m4a' } },
@@ -126,7 +126,7 @@ const SLEEP_SOUNDS = [
   { id: 'world_ambient',       label: 'World Ambient',         emoji: '🌍', cat: 'Ragas'   as const, color: '#a78bfa', top: '#100830' as const, bot: '#080418' as const, desc: 'Global ambient soundscape',              src: { uri: 'https://audio.onesutralabs.com/sounds-large/world-ambient.m4a' } },
   { id: 'heaven_tune',         label: 'Heaven Tune',           emoji: '✨',  cat: 'Ragas'   as const, color: '#fde68a', top: '#1A1600' as const, bot: '#0A0B00' as const, desc: 'Traditional heavenly melody',            src: { uri: 'https://audio.onesutralabs.com/sounds-large/heaven-tune.m4a' } },
   // ── Sitar additions ────────────────────────────────────────────────────────
-  { id: 'sitar_calm',          label: 'Calm Sitar',            emoji: '🎸',  cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Soft sitar for deep relaxation',         src: require('../../assets/sounds/sitar-calm.m4a') },
+  { id: 'sitar_calm',          label: 'Calm Sitar',            emoji: '🪕',  cat: 'Ragas'   as const, color: '#fcd34d', top: '#1A1200' as const, bot: '#0A0900' as const, desc: 'Soft sitar for deep relaxation',         src: require('../../assets/sounds/sitar-calm.m4a') },
   { id: 'veena_raga',          label: 'Veena Raga Kanaad',     emoji: '🪗',  cat: 'Ragas'   as const, color: '#f59e0b', top: '#1A1000' as const, bot: '#0A0800' as const, desc: 'Raga Kanaad on veena with mridangam',   src: require('../../assets/sounds/veena-raga.m4a') },
   // ── Flute additions ────────────────────────────────────────────────────────
   { id: 'bansuri_forest',      label: 'Bansuri Forest',        emoji: '🌿',  cat: 'Ragas'   as const, color: '#34d399', top: '#081A0C' as const, bot: '#040C06' as const, desc: 'Bansuri flute echoing through a forest', src: { uri: 'https://audio.onesutralabs.com/sounds-large/bansuri-forest.m4a' } },
@@ -185,7 +185,7 @@ const NAAD_SOUNDS: NaadSound[] = [
   // ── Sitar ──────────────────────────────────────────────────────────────────
   { id: 'naad_aar_sitar_classical',    label: 'Indian Classical Sitar', emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Classical Indian sitar melody',              src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-296790.m4a' } },
   { id: 'naad_aar_sitar_flute',        label: 'Sitar & Flute',          emoji: '🎵', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sitar and bansuri flute interplay',          src: { uri: NAAD_BASE + 'aar_music-indian-classical-music-sitar-flute-298975.m4a' } },
-  { id: 'naad_sitar_vibes_i',          label: 'Sitar Resonance',          emoji: '🎸', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NAAD_BASE + 'gskvibes-sitar-2-361895.m4a' } },
+  { id: 'naad_sitar_vibes_i',          label: 'Sitar Resonance',          emoji: '🪕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Soulful sitar groove',                        src: { uri: NAAD_BASE + 'gskvibes-sitar-2-361895.m4a' } },
   { id: 'naad_sitar_vibes_ii',         label: 'Sitar Reverie',         emoji: '🎶', cat: 'Ragas', color: '#fb923c', top: '#1A0C00', bot: '#0A0600', desc: 'Meditative sitar flow',                       src: { uri: NAAD_BASE + 'gskvibes-sitar-4-361900.m4a' } },
   { id: 'naad_sitar_flute_tabla_soft', label: 'Sitar Flute Tabla',      emoji: '🎼', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Soft Indian classical trio',                  src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-flute-tabla-soft-sounds-white-noise-413706.m4a' } },
   { id: 'naad_sitar_tabla_flute',      label: 'Sitar Tabla Blend',      emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Indian sitar tabla fusion',                   src: { uri: NAAD_BASE + 'kalsstockmedia-free-soul-indian-sitar-tabla-flute-396347.m4a' } },
@@ -198,7 +198,7 @@ const NAAD_SOUNDS: NaadSound[] = [
   { id: 'naad_raga_sparkle',           label: 'Raga Sparkle',           emoji: '✨', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NAAD_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
   { id: 'naad_raga_sparkle_sleep',     label: 'Raga Sparkle',           emoji: '✨', cat: 'Sleep', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Sparkling Indian raga melody',                src: { uri: NAAD_BASE + 'pixel_perfect_productions-raga-sparkle-437291.m4a' } },
   { id: 'naad_sitar_temple',           label: 'Sitar in the Temple',    emoji: '🛕', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Sacred sitar resonating in a temple',        src: { uri: NAAD_BASE + 'playlistsons-sitar-in-the-temple-of-rats-430832.m4a' } },
-  { id: 'naad_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🎸', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NAAD_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
+  { id: 'naad_indian_sitar_tune',      label: 'Indian Sitar Tune',      emoji: '🪕', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Traditional Indian sitar tune',               src: { uri: NAAD_BASE + 'rungstudiorecords-indian-sitar-tune-391626.m4a' } },
   { id: 'naad_sitar_bhagesri',         label: 'Sitar Bhagesri Raga',    emoji: '🪕', cat: 'Ragas', color: '#fbbf24', top: '#1A1200', bot: '#0A0900', desc: 'Raga Bhagesri on sitar and guitar',           src: { uri: NAAD_BASE + 'saseendran-sitar-amp-guitar-bhagesri-374594.m4a' } },
   { id: 'naad_sitar_raga_jog',         label: 'Sitar Raga Jog',         emoji: '🎵', cat: 'Ragas', color: '#f97316', top: '#1A0E00', bot: '#0A0700', desc: 'Classical Raga Jog on sitar',                 src: { uri: NAAD_BASE + 'saseendran-sitar-melody-raga-jog-364969.m4a' } },
   { id: 'naad_sitar_type_beat',        label: 'Sitar Type Beat',        emoji: '🎶', cat: 'Ragas', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', desc: 'Smooth lo-fi sitar beat',                     src: { uri: NAAD_BASE + 'u_67ccao27gv-sitar-type-beat-322065.m4a' } },
@@ -452,6 +452,85 @@ export const ALL_SOUNDS_LIST: any[] = [
   // CDN / remote long-form tracks (streamed, not downloaded)
   ...ALL_SLEEP_SOUNDS.filter(s => s.id.startsWith('cdn_') || s.id.startsWith('nc_') || s.id.startsWith('med_')),
 ];
+
+
+// ─── Sonic Therapy Collections ───────────────────────────────────────────────
+export type SonicCollection = {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  imageUri: string;
+  themeColor: string;
+  soundIds: string[];
+};
+
+export const SONIC_COLLECTIONS: SonicCollection[] = [
+  {
+    id: 'shiva_resonance',
+    title: 'Shiva Resonance',
+    subtitle: 'COSMIC CALM',
+    description: 'Vibrations of the Adiyogi. Dissolve stress and tune into deep, unshakeable stillness.',
+    imageUri: 'https://images.pexels.com/photos/8695034/pexels-photo-8695034.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#818cf8',
+    soundIds: ['naad_shiv_kailash', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'mantra_shivtandav', 'stotra_shiv_sankalpa', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala']
+  },
+  {
+    id: 'divine_devi',
+    title: 'Divine Devi',
+    subtitle: 'NURTURING ENERGY',
+    description: 'The supreme feminine energy. Soothing chants to restore emotional balance and grace.',
+    imageUri: 'https://images.pexels.com/photos/6325998/pexels-photo-6325998.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#f472b6',
+    soundIds: ['mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini']
+  },
+  {
+    id: 'vishnu_krishna',
+    title: 'Vishnu & Krishna',
+    subtitle: 'PRESERVATION & JOY',
+    description: 'Mantras and flutes of the preserver. Cultivate inner peace and joyous calm before sleep.',
+    imageUri: 'https://images.pexels.com/photos/13598583/pexels-photo-13598583.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#38bdf8',
+    soundIds: ['naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'cdn_auspicious_mantras']
+  },
+  {
+    id: 'ganesha_blessings',
+    title: 'Ganesha Blessings',
+    subtitle: 'REMOVING OBSTACLES',
+    description: 'Clear the mental clutter of the day and rest easy under the protection of Ganesha.',
+    imageUri: 'https://images.pexels.com/photos/5418306/pexels-photo-5418306.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#f97316',
+    soundIds: ['stotra_bhagya']
+  },
+  {
+    id: 'himalayan_echoes',
+    title: 'Himalayan Echoes',
+    subtitle: 'ANCIENT MOUNTAINS',
+    description: 'Deep singing bowls and winds from the highest peaks to ground your energy.',
+    imageUri: 'https://images.pexels.com/photos/2583852/pexels-photo-2583852.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#a78bfa',
+    soundIds: ['tibetan_dreams', 'singing_bowl', 'tibetan_bowl', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep', 'hz_432']
+  },
+  {
+    id: 'monsoon_slumber',
+    title: 'Monsoon Slumber',
+    subtitle: 'NATURES WASH',
+    description: 'Let the rhythm of falling water cleanse your thoughts and carry you to sleep.',
+    imageUri: 'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#60a5fa',
+    soundIds: ['light_rain', 'heavy_rain', 'rain_thunder', 'jungle_rain', 'flowing_water', 'cdn_monsoon_megh', 'cdn_monsoon_temple']
+  },
+  {
+    id: 'the_raga_series',
+    title: 'The Raga Series',
+    subtitle: 'CLASSICAL THERAPY',
+    description: 'Intricate Indian string instruments scientifically designed to slow your brainwaves.',
+    imageUri: 'https://images.pexels.com/photos/7382218/pexels-photo-7382218.jpeg?auto=compress&cs=tinysrgb&w=600',
+    themeColor: '#fbbf24',
+    soundIds: ['sitar_radiance', 'veena_raga', 'tanpura_mystic', 'sitar_tanpura_sarangi', 'sitar_calm', 'naad_sitar_moonlight', 'cdn_yaman_mental', 'cdn_bhimpalasi']
+  },
+];
+
 
 // ─── Solar-aware section label map ────────────────────────────────────────
 const PERIOD_SECTION_LABELS: Record<string, { title: string; icon: string; isNight: boolean }> = {
@@ -1641,7 +1720,7 @@ const _findSleepSoundSrc = (id: string, fallbackSrc: any): any => {
 const REEL_MIX_SOUNDS: PlayableSoundMeta[] = [
   { id: 'morning_birds', label: 'Birds',  emoji: '🐦', color: '#fde68a', top: '#1A1400', bot: '#0A0A00', cat: 'Birds',  desc: 'Dawn chorus',   src: _findSleepSoundSrc('morning_birds', require('../../assets/sounds/morning-birds-loop.m4a')), imageUri: SOUND_IMAGES['morning_birds'] },
   { id: 'andean_flute',  label: 'Flute',  emoji: '🏔️', color: '#6ee7b7', top: '#081A10', bot: '#040C08', cat: 'Ragas',  desc: 'Andean melody', src: _findSleepSoundSrc('andean_flute',  require('../../assets/sounds/andean-flute.m4a')),  imageUri: SOUND_IMAGES['andean_flute'] },
-  { id: 'sitar_long',    label: 'Sitar',  emoji: '🎸', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: _findSleepSoundSrc('sitar_long',    require('../../assets/sounds/sitar-long.m4a')),    imageUri: SOUND_IMAGES['sitar_long'] },
+  { id: 'sitar_long',    label: 'Sitar',  emoji: '🪕', color: '#f59e0b', top: '#1A1000', bot: '#0A0800', cat: 'Ragas',  desc: 'Sitar raga',    src: _findSleepSoundSrc('sitar_long',    require('../../assets/sounds/sitar-long.m4a')),    imageUri: SOUND_IMAGES['sitar_long'] },
   { id: 'sea_waves',     label: 'Ocean',  emoji: '🌊', color: '#38bdf8', top: '#0A2030', bot: '#04101A', cat: 'Nature', desc: 'Sea waves',     src: _findSleepSoundSrc('sea_waves',     require('../../assets/sounds/mixkit-close-sea-waves-loop-1195.m4a')),     imageUri: SOUND_IMAGES['sea_waves'] },
 ];
 
@@ -2360,7 +2439,7 @@ function ReelCard({
       />
 
       {/* ── SACRED GEOMETRY SOUND REELS ── */}
-      <View style={{ position: 'absolute', top: (REEL_H - REEL_W) / 2, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 40, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
         
         {/* Live Audio Synced Rings */}
         {[
@@ -2448,7 +2527,7 @@ function ReelCard({
       <Animated.View
         style={{
           position: 'absolute', 
-          bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 24, 48) : Math.max(insets.bottom + 24, 32), 
+          bottom: Platform.OS === 'android' ? 16 : 16, 
           left: 16, right: 16,
           zIndex: 8, opacity: controlsAnim,
           backgroundColor: 'rgba(8, 10, 14, 0.85)',
@@ -2813,8 +2892,8 @@ function SoundReelsModal({
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
   onOpenLibrary?: (category: string) => void;
 }) {
-  const insets = useSafeAreaInsets();
   const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
+  const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList>(null);
   const [reelData, setReelData] = useState(REELS_ALL_SOUNDS);
   const [activeIndex, setActiveIndex] = useState(startIndex);
@@ -2977,6 +3056,10 @@ function SoundReelsModal({
     if (viewableItems?.length > 0) {
       const idx = viewableItems[0].index;
       if (idx != null && idx !== activeIndexRef.current) {
+        // INSTANT PAUSE: Synchronously kill the previous audio the moment the view changes,
+        // eliminating the millisecond leakage that occurs while waiting for React to render.
+        onStopSilentRef.current();
+        
         activeIndexRef.current = idx;
         setActiveIndex(idx);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // focus-in per reel
@@ -3022,6 +3105,8 @@ function SoundReelsModal({
             const idx = Math.round(y / REEL_H);
             if (idx !== activeIndexRef.current && idx >= 0 && idx < reelData.length) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // INSTANT PAUSE: Cut the audio precisely when the swipe crosses the 50% mark
+              onStopSilentRef.current();
             }
           }}
           scrollEventThrottle={150}
@@ -3344,7 +3429,8 @@ function SoundReelsModal({
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
-                    onClose(isLast);
+                    // Defer unmount of Modal to avoid Android touch swallowing race condition
+                    setTimeout(() => onClose(isLast), 50);
                   }}
                 >
                   <LinearGradient
@@ -3362,7 +3448,8 @@ function SoundReelsModal({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowClosePrompt(false);
                     onStop();
-                    onClose(isLast);
+                    // Defer unmount of Modal to avoid Android touch swallowing race condition
+                    setTimeout(() => onClose(isLast), 50);
                   }}
                   style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A0C0C', borderWidth: 1, borderColor: 'rgba(255,60,60,0.2)' }}
                 >
@@ -3389,6 +3476,98 @@ function SoundReelsModal({
   );
 }
 
+
+// ─── Sonic Collections UI ──────────────────────────────────────────────────
+const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
+  return (
+    <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+      <View style={{ marginBottom: 16, marginTop: 8 }}>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', fontFamily: 'Nunito_700Bold' }}>Sonic Therapies</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Curated programs for deep healing</Text>
+      </View>
+      <View style={{ gap: 16 }}>
+        {SONIC_COLLECTIONS.map(col => (
+          <TouchableOpacity key={col.id} activeOpacity={0.85} onPress={() => onSelectCollection(col.id)} style={{ width: '100%', height: 180, borderRadius: 24, overflow: 'hidden' }}>
+            <Image source={{ uri: col.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']} style={StyleSheet.absoluteFillObject} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} />
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: col.themeColor, letterSpacing: 1.5, marginBottom: 4 }}>{col.subtitle}</Text>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6 }}>{col.title}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }} numberOfLines={2}>{col.description}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const SonicCollectionDetail = memo(function SonicCollectionDetail({
+  collection, onClose, playingId, isPaused, sessionSecs, onPressSound
+}: {
+  collection: SonicCollection;
+  onClose: () => void;
+  playingId: string | null;
+  isPaused: boolean;
+  sessionSecs: number;
+  onPressSound: (id: string) => void;
+}) {
+  const sounds = collection.soundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
+  
+  return (
+    <Modal visible={true} animationType="slide" transparent={false} onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: '#04040E' }}>
+        <View style={{ height: H * 0.35, width: '100%', position: 'relative' }}>
+          <Image source={{ uri: collection.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <LinearGradient colors={['rgba(4,4,14,0.3)', 'rgba(4,4,14,0.7)', '#04040E']} style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.2 }]} />
+          
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+            <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-down" size={24} color="#fff" />
+            </TouchableOpacity>
+          </SafeAreaView>
+          
+          <View style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: collection.themeColor, letterSpacing: 2, marginBottom: 4 }}>{collection.subtitle}</Text>
+            <Text style={{ fontSize: 32, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8 }}>{collection.title}</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 20 }}>{collection.description}</Text>
+          </View>
+        </View>
+        
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>{sounds.length} THERAPIES</Text>
+          {sounds.map((sound: any) => {
+            const isPlaying = playingId === sound.id;
+            return (
+              <TouchableOpacity key={sound.id} activeOpacity={0.7} onPress={() => onPressSound(sound.id)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: isPlaying ? collection.themeColor + '15' : 'rgba(255,255,255,0.03)', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: isPlaying ? collection.themeColor + '40' : 'transparent' }}>
+                <View style={{ width: 50, height: 50, borderRadius: 12, backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 24 }}>{sound.emoji || '🎵'}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 16 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: isPlaying ? collection.themeColor : '#fff', marginBottom: 4, fontFamily: 'Nunito_700Bold' }} numberOfLines={1}>{sound.label}</Text>
+                  {sound.desc && <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }} numberOfLines={1}>{sound.desc}</Text>}
+                </View>
+                {isPlaying ? (
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: collection.themeColor, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name={isPaused ? "play" : "pause"} size={16} color="#000" />
+                  </View>
+                ) : (
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="play" size={16} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+});
+
+
 function SleepTabInner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -3398,6 +3577,7 @@ function SleepTabInner() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryInitialCat, setLibraryInitialCat] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<TextInput>(null);
 
@@ -3526,6 +3706,10 @@ function SleepTabInner() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        // Prevent bypassing the Modal's own Android back handler
+        if (showReels) {
+          return false;
+        }
         if (catSheetOpen) {
           setCatSheetOpen(false);
           return true;
@@ -4136,7 +4320,7 @@ function SleepTabInner() {
           </View>
         </View>
 
-        {/* Category Tab Strip - Now Sticky Outside ScrollView */}
+        
         {!isSearching && (
           <View style={{ zIndex: 100, elevation: 100 }}>
             <CategoryTabStrip
@@ -4266,19 +4450,7 @@ function SleepTabInner() {
           </View>
         ) : (
         <>
-        <ScreenErrorBoundary name="CategoryRows">
-          <CategoryRows
-            playingId={playingId}
-            isPaused={isPaused}
-            sessionSecs={sessionSecs}
-            onPress={handleSoundCardTap}
-            selectedCat={selectedCat}
-            onSelectCat={changeCategory}
-            resetKey={rowsResetKey}
-            natureLabel={natureCategoryLabel}
-            activePeriodId={currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key]}
-          />
-        </ScreenErrorBoundary>
+        <SonicCollections onSelectCollection={setActiveCollectionId} />
 
 
         {/* ── Sleep Cycles ── */}
@@ -4388,7 +4560,19 @@ function SleepTabInner() {
         </FlingGestureHandler>
 
       </Animated.ScrollView>
-        </Animated.View>
+        
+      {activeCollectionId && (
+        <SonicCollectionDetail 
+          collection={SONIC_COLLECTIONS.find(c => c.id === activeCollectionId)!} 
+          onClose={() => setActiveCollectionId(null)}
+          playingId={playingId}
+          isPaused={isPaused}
+          sessionSecs={sessionSecs}
+          onPressSound={handleSoundCardTap}
+        />
+      )}
+    
+</Animated.View>
 
       </View>{/* end content area */}
 

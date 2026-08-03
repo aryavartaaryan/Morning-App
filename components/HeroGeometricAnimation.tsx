@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing } from 'react-native';
 import Svg, {
-  Circle as SvgCircle, Path as SvgPath, G as SvgG, G,
+  Circle as SvgCircle, Path as SvgPath, G as SvgG,
   Defs, RadialGradient as SvgRadialGradient, LinearGradient, Stop, Ellipse, Line as SvgLine,
 } from 'react-native-svg';
 
@@ -144,46 +144,18 @@ export function HeroGeometricAnimation({
     // home: slow meditative
     // splash: fast cycling during brief window (layered approach, all visible)
     const HOLD = variant === 'sound'  ? 14000
-               : variant === 'splash' ? 1200
+               : variant === 'splash' ? 3000
                : speed === 'fast'     ? 1000
                :                        9000;
     const FADE = variant === 'sound'  ? 3000
-               : variant === 'splash' ? 800
+               : variant === 'splash' ? 1500
                : speed === 'fast'     ? 600
                :                        2000;
 
     const ops = [op0, op1, op2, op3];
 
-    // Splash shows all shapes simultaneously at partial opacity — don't cycle
-    if (variant === 'splash') {
-      // Cosmic interwoven breath: dynamic undulating opacity for each layer
-      op0.setValue(0.85);
-      op1.setValue(0.55);
-      op2.setValue(0.75);
-      op3.setValue(0.40);
-
-      Animated.loop(Animated.sequence([
-        Animated.timing(op0, { toValue: 0.45, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(op0, { toValue: 0.85, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-
-      Animated.loop(Animated.sequence([
-        Animated.timing(op1, { toValue: 0.85, duration: 5500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(op1, { toValue: 0.55, duration: 5500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-
-      Animated.loop(Animated.sequence([
-        Animated.timing(op2, { toValue: 0.45, duration: 6800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(op2, { toValue: 0.75, duration: 6800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-
-      Animated.loop(Animated.sequence([
-        Animated.timing(op3, { toValue: 0.70, duration: 4800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(op3, { toValue: 0.40, duration: 4800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-
-      return;
-    }
+    // Splash used to show all shapes simultaneously, but this caused severe lag and visual noise.
+    // Now it cycles elegantly like the other variants, but with a tighter, grander timing.
 
     // Minimal shows a single majestic static shape (Sri Yantra) that just breathes
     if (variant === 'minimal') {
@@ -365,17 +337,17 @@ export function HeroGeometricAnimation({
         <Animated.View style={{
           position: 'absolute', width: S * 1.1, height: S * 1.1,
           top: -S * 0.05, left: -S * 0.05,
-          opacity: 0.18,
+          opacity: 0.15,
           transform: [{ rotate: r3deg }],
         }}>
           <Svg width={S * 1.1} height={S * 1.1}>
-            {/* Stardust spiral arms */}
-            {pts(S * 0.55, S * 0.55, S * 0.48, 72, 0).map((p, i) => (
+            {/* Stardust spiral arms - reduced to 24 for noise-free and lag-free premium feel */}
+            {pts(S * 0.55, S * 0.55, S * 0.48, 24, 0).map((p, i) => (
               <SvgCircle key={`cosmos_${i}`}
                 cx={p.x} cy={p.y}
-                r={i % 5 === 0 ? 2.5 : i % 3 === 0 ? 1.6 : 0.9}
+                r={i % 5 === 0 ? 3.0 : i % 3 === 0 ? 2.0 : 1.2}
                 fill={i % 7 === 0 ? spG1 : i % 4 === 0 ? spG2 : spG3}
-                opacity={0.12 + (i % 6) * 0.08}
+                opacity={0.15 + (i % 6) * 0.10}
               />
             ))}
           </Svg>
@@ -457,12 +429,14 @@ export function HeroGeometricAnimation({
           {/* Lines connecting all 13 centres */}
           {(() => {
             const centers = [{ x: hw, y: hw }, ...pts(hw, hw, S*0.19, 6, 0), ...pts(hw, hw, S*0.38, 6, 0)];
-            let d = '';
+            const paths: any[] = [];
             centers.forEach((a, i) => centers.forEach((b, j) => {
               if (j <= i) return;
-              d += `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)} `;
+              paths.push(<SvgPath key={`mc_ln_${i}_${j}`}
+                d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
+                stroke={G4} strokeWidth="0.5" opacity={0.25} />);
             }));
-            return <SvgPath d={d} stroke={G4} strokeWidth="0.5" opacity={0.25} />;
+            return paths;
           })()}
           {/* Star tetrahedron overlay */}
           <SvgPath d={poly(pts(hw, hw, S*0.34, 3, -Math.PI/2))}
@@ -520,15 +494,15 @@ export function HeroGeometricAnimation({
           </Defs>
 
           {/* ── 1. The Physical Drop Shadow Layer (Creates the 3D Depth) ── */}
-          <G x="0" y="3" opacity="0.5">
-            {(() => {
-              let d = '';
-              [S*0.35, S*0.27, S*0.19, S*0.12].forEach(r => d += poly(pts(hw, hw, r, 3, Math.PI/6), true) + ' ');
-              [S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].forEach(r => d += poly(pts(hw, hw, r, 3, -Math.PI/6), true) + ' ');
-              return <SvgPath d={d} fill="none" stroke="#000000" strokeWidth="1.8" strokeLinejoin="round" />;
-            })()}
+          <SvgG x="0" y="3" opacity="0.5">
+            {[S*0.35, S*0.27, S*0.19, S*0.12].map((r, ti) => (
+              <SvgPath key={`sy_d_shadow_${ti}`} d={poly(pts(hw, hw, r, 3, Math.PI/6))} fill="none" stroke="#000000" strokeWidth={[2.2, 1.8, 1.6, 1.4][ti]} strokeLinejoin="round" />
+            ))}
+            {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r, ti) => (
+              <SvgPath key={`sy_u_shadow_${ti}`} d={poly(pts(hw, hw, r, 3, -Math.PI/6))} fill="none" stroke="#000000" strokeWidth={[2.2, 1.8, 1.6, 1.4, 1.1][ti]} strokeLinejoin="round" />
+            ))}
             <SvgCircle cx={hw} cy={hw} r={S*0.035} fill="#000000" />
-          </G>
+          </SvgG>
 
           {/* ── 2. The Golden Metallic Foreground Layer ── */}
           {/* Outer ring */}
@@ -586,13 +560,12 @@ export function HeroGeometricAnimation({
       }}>
         <Svg width={S} height={S}>
           {/* Fine radial web */}
-          {(() => {
-            let d = '';
-            pts(hw, hw, S*0.46, 48, 0).forEach(p => {
-              d += `M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)} `;
-            });
-            return <SvgPath d={d} stroke={G3} strokeWidth="0.4" opacity={variant === 'sound' ? 0.06 : 0.09} />;
-          })()}
+          {pts(hw, hw, S*0.46, 48, 0).map((p, i) => (
+            <SvgPath key={`sh_ray_${i}`}
+              d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
+              stroke={G3} strokeWidth="0.4"
+              opacity={variant === 'sound' ? 0.06 : 0.09} />
+          ))}
           {/* Outer dashed circle */}
           <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4}
             strokeWidth="0.8" opacity={0.40} strokeDasharray="3 5" />
@@ -603,7 +576,12 @@ export function HeroGeometricAnimation({
           <SvgPath d={poly(pts(hw, hw, S*0.38, 3, Math.PI/2))}
             fill={`${GA}0.05)`} stroke={G1} strokeWidth="2.5" opacity={0.94} />
           {/* Hexagram intersection inner highlight */}
-          <SvgPath d={poly(pts(hw, hw, S*0.20, 6, 0))} fill="none" stroke={G3} strokeWidth="1.2" opacity={0.70} />
+          {pts(hw, hw, S*0.20, 6, 0).map((p, i, arr) => {
+            const n = arr[(i+1)%arr.length];
+            return <SvgPath key={`sh_h_${i}`}
+              d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
+              stroke={G3} strokeWidth="1.2" opacity={0.70} />;
+          })}
           {/* Vertex jewels */}
           {pts(hw, hw, S*0.38, 3, -Math.PI/2).map((p, i) => (
             <SvgCircle key={`sh_vup_${i}`} cx={p.x} cy={p.y} r={5} fill={G3} opacity={0.92} />
@@ -640,14 +618,15 @@ export function HeroGeometricAnimation({
       <Animated.View style={{
           position: 'absolute', width: S, height: S,
           transform: [{ rotate: r1degR }],
-          opacity: variant === 'sound' ? 0.45 : variant === 'splash' ? 0.70 : 0.60,
+          opacity: variant === 'sound' ? 0.45 : variant === 'splash' ? 0.60 : 0.60,
       }}>
         <Svg width={S} height={S}>
-          {pts(hw, hw, S*0.44, variant === 'splash' ? 36 : 24, 0).map((p, i) => (
+          {/* Reduced points for cleaner UI and better performance */}
+          {pts(hw, hw, S*0.44, variant === 'splash' ? 16 : 16, 0).map((p, i) => (
             <SvgCircle key={`dust_${i}`} cx={p.x} cy={p.y}
-              r={i % 3 === 0 ? 2.4 : 1.4}
+              r={i % 3 === 0 ? 2.5 : 1.5}
               fill={G3}
-              opacity={0.12 + (i % 4) * 0.11} />
+              opacity={0.15 + (i % 4) * 0.15} />
           ))}
         </Svg>
       </Animated.View>
@@ -657,14 +636,14 @@ export function HeroGeometricAnimation({
         <Animated.View style={{
             position: 'absolute', width: S, height: S,
             transform: [{ rotate: r3deg }],
-            opacity: 0.40,
+            opacity: 0.35,
         }}>
           <Svg width={S} height={S}>
-            {pts(hw, hw, S*0.36, 24, Math.PI/12).map((p, i) => (
+            {pts(hw, hw, S*0.36, 12, Math.PI/12).map((p, i) => (
               <SvgCircle key={`dust2_${i}`} cx={p.x} cy={p.y}
-                r={i % 4 === 0 ? 2 : 1}
+                r={i % 4 === 0 ? 2.2 : 1.2}
                 fill={spG2}
-                opacity={0.10 + (i % 5) * 0.09} />
+                opacity={0.15 + (i % 5) * 0.10} />
             ))}
           </Svg>
         </Animated.View>
