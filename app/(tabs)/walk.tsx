@@ -204,7 +204,7 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
   const searchingOpacity = modHeading.interpolate(searchingConfig);
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: -85, left: -120, right: -120, alignItems: 'center' }}>
+    <View pointerEvents="none" style={{ position: 'absolute', top: '50%', marginTop: -220, left: -120, right: -120, alignItems: 'center' }}>
       {/* Aligned State */}
       {data.dirs.map((dir, idx) => {
         const dirConfig = createOpacity([dir.range], false);
@@ -220,10 +220,10 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
             </View>
             <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8, textAlign: 'center', paddingHorizontal: 10 }}>
               {selectedActivity === 'sleep' ? `Put your head in this direction and sleep` :
-               selectedActivity === 'meditate' ? `Meditate facing this direction` :
-               selectedActivity === 'eat' ? `Eat facing this direction` :
-               selectedActivity === 'work' ? `Work facing this direction` :
-               selectedActivity === 'exercise' ? `Exercise facing this direction` :
+               selectedActivity === 'meditate' ? `Put your face in this direction to meditate` :
+               selectedActivity === 'eat' ? `Put your face in this direction to have the meal` :
+               selectedActivity === 'work' ? `Put your face in this direction to work` :
+               selectedActivity === 'exercise' ? `Put your face in this direction to exercise` :
                `Aligned in this direction`}
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '800', color: '#fcd34d', marginTop: 8, textTransform: 'uppercase', letterSpacing: 2, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 }}>
@@ -276,6 +276,8 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
 
   const spin1 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const spin2 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
+  const spin3 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+  const spin4 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '0deg'] });
   const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] });
   const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 
@@ -334,12 +336,40 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
           <Circle cx={cx} cy={cy} r={43} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.4} />
         </Svg>
 
-        {/* Slow rotating outer mandala ring (Clockwise) - Shodashadala (16 Petals) */}
+        {/* Extremely slow background grid (Octagram/16-pointed star mesh) */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin3 }] }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <G key={`sq-${i}`} rotation={i * 22.5} origin={`${cx}, ${cy}`}>
+                <Path d="M 22 22 L 78 22 L 78 78 L 22 78 Z" fill="none" stroke="rgba(255,223,0,0.15)" strokeWidth={0.3} />
+                <Path d="M 26 26 L 74 26 L 74 74 L 26 74 Z" fill="none" stroke="rgba(255,223,0,0.08)" strokeWidth={0.2} />
+              </G>
+            ))}
+          </Svg>
+        </Animated.View>
+
+        {/* Slow rotating outermost 32-petal lotus */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin4 }] }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {Array.from({ length: 32 }).map((_, i) => {
+              const a = (i * 360) / 32;
+              return (
+                <G key={`petal32-${i}`} rotation={a} origin={`${cx}, ${cy}`}>
+                  <Path d={`M 50,2 Q 52,6 50,10 Q 48,6 50,2 Z`} fill="rgba(255,223,0,0.06)" stroke="url(#goldLineReverse)" strokeWidth={0.3} />
+                </G>
+              );
+            })}
+          </Svg>
+        </Animated.View>
+
+        {/* Slow rotating outer mandala ring (Clockwise) - Shodashadala (16 Petals) & Bhupura */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* Bhupura (Outer Square with gates) */}
+            {/* Bhupura (Outer Square with gates) - 4 concentric layers for extreme detail */}
             <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.4} scale={0.96} origin={`${cx}, ${cy}`} />
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.5} scale={0.96} origin={`${cx}, ${cy}`} />
+            <Path d={bhupuraPath} fill="none" stroke="rgba(255,223,0,0.4)" strokeWidth={0.3} scale={0.92} origin={`${cx}, ${cy}`} />
+            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.2} scale={1.04} origin={`${cx}, ${cy}`} />
             
             {Array.from({ length: 16 }).map((_, i) => {
               const a = (i * 360) / 16;
@@ -352,10 +382,18 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
           </Svg>
         </Animated.View>
 
-        {/* Slow rotating inner mandala ring (Counter-clockwise) - Ashtadala (8 Petals) */}
+        {/* Slow rotating inner mandala ring (Counter-clockwise) - Ashtadala (8 Petals) & Manvasra (14 Triangles) */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* 14-Triangle geometric mesh behind the petals */}
+            {Array.from({ length: 14 }).map((_, i) => (
+              <G key={`tri14-${i}`} rotation={(i * 360) / 14} origin={`${cx}, ${cy}`}>
+                <Path d={`M 50,15 L 62,35 L 38,35 Z`} fill="rgba(255,223,0,0.04)" stroke="url(#goldLine)" strokeWidth={0.4} />
+              </G>
+            ))}
+            
             <Circle cx={cx} cy={cy} r={23} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
+            <Circle cx={cx} cy={cy} r={21} fill="none" stroke="rgba(255,223,0,0.3)" strokeWidth={0.3} strokeDasharray="2 2" />
             {Array.from({ length: 8 }).map((_, i) => {
               const a = (i * 360) / 8;
               return (
@@ -786,7 +824,7 @@ export default function WalkTab() {
     // Run daily reset check every time the tab is focused
     StepCounter.maybeResetForNewDay().then(() => refreshStats());
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.navigate('/');
+      router.navigate('/(tabs)');
       return true;
     });
     return () => sub.remove();
@@ -1271,7 +1309,7 @@ export default function WalkTab() {
             {/* Inner zone - fixed premium frosted glass disc */}
             <View style={{
               position: 'absolute', top: 12, left: 12, width: RING_SIZE - 24, height: RING_SIZE - 24, borderRadius: (RING_SIZE - 24) / 2,
-              overflow: 'hidden', borderWidth: 1, borderColor: `rgba(255,255,255,0.15)`
+              overflow: 'hidden'
             }}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
@@ -1397,21 +1435,21 @@ export default function WalkTab() {
               {/* ── SVG Ring layers ── */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Thin Track */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={0.5} />
-                {/* Wide outer glow */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
-                {/* Mid halo */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
-                {/* Main crisp arc */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.8} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
-                {/* Inner shimmer sliver */}
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={0.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={0.2} />
+                {/* Wide outer glow - made extremely thin */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
+                {/* Mid halo - made extremely thin */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={0.4} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
+                {/* Main crisp arc - made extremely thin */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
+                {/* Inner shimmer sliver - made extremely thin */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
 
                 {/* ── Feature 8: Inner Weekly Intention Ring ── */}
                 {summary && summary.weeklyGoal > 0 && (
                   <>
-                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.track} strokeWidth={2} />
-                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.mid} strokeWidth={3} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.9} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.track} strokeWidth={0.3} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.mid} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.9} />
                   </>
                 )}
 
@@ -1584,13 +1622,13 @@ export default function WalkTab() {
             opacity: cardFade,
             transform: [{ translateY: cardSlide }],
             paddingHorizontal: 32,
-            gap: 10,
+            gap: 8,
             marginTop: btnMarginTop,
             marginBottom: btnMarginBot,
           }}>
             
             {/* Action Buttons Column */}
-            <View style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, width: '100%' }}>
+            <View style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%' }}>
               {/* Start Nature Walk Button */}
               <TouchableOpacity
                 onPress={() => launchSession(sessionType)}
@@ -1627,7 +1665,7 @@ export default function WalkTab() {
                   />
                 </Animated.View>
                 
-                <View style={{ height: 40, justifyContent: 'center', paddingHorizontal: 4 }}>
+                <View style={{ height: 36, justifyContent: 'center', paddingHorizontal: 4 }}>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369a1', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>
                     {sessionTitle}
                   </Text>
@@ -1650,7 +1688,7 @@ export default function WalkTab() {
                   style={{
                     alignItems: 'center', justifyContent: 'center',
                     flexDirection: 'row', gap: 4,
-                    paddingHorizontal: 12, height: 40,
+                    paddingHorizontal: 12, height: 36,
                     borderRadius: 99,
                     borderWidth: 1, borderColor: 'rgba(251,146,60,0.5)',
                   }}
@@ -1675,7 +1713,7 @@ export default function WalkTab() {
                   style={{
                     alignItems: 'center', justifyContent: 'center',
                     flexDirection: 'row', gap: 4,
-                    paddingHorizontal: 12, height: 40,
+                    paddingHorizontal: 12, height: 36,
                     borderRadius: 99,
                     borderWidth: 1, borderColor: 'rgba(249,168,212,0.5)',
                   }}

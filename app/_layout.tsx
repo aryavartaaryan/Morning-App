@@ -168,7 +168,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
 
   return (
     <Animated.View
-      pointerEvents="none"
+      pointerEvents="auto"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
     >
       {/* Background Video matching Setup Screen */}
@@ -329,7 +329,7 @@ function PremiumSurveyOption({
   const scale = useRef(new Animated.Value(1)).current;
   
   const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
   };
   
   const handlePressOut = () => {
@@ -342,33 +342,53 @@ function PremiumSurveyOption({
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale }], marginRight: 10, marginBottom: 12 }}>
+    <Animated.View style={{ transform: [{ scale }], marginBottom: 12, width: '100%' }}>
       <TouchableOpacity 
-        activeOpacity={1} 
+        activeOpacity={0.9} 
         onPressIn={handlePressIn} 
         onPressOut={handlePressOut} 
         onPress={handlePress}
       >
         <BlurView 
-          intensity={isSelected ? 60 : 20} 
-          tint={isSelected ? "light" : "dark"} 
+          intensity={20} 
+          tint="dark" 
           style={{ 
-            borderRadius: 24, 
+            borderRadius: 16, 
             overflow: 'hidden', 
             borderWidth: 1, 
-            borderColor: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
-            backgroundColor: isSelected ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.4)',
+            borderColor: isSelected ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.08)',
+            backgroundColor: isSelected ? 'rgba(96,165,250,0.15)' : 'rgba(0,0,0,0.3)',
           }}
         >
-          <View style={{ paddingVertical: 12, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ paddingVertical: 18, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ 
-              color: isSelected ? '#000000' : 'rgba(255,255,255,0.85)', 
-              fontFamily: isSelected ? 'Nunito_800ExtraBold' : 'Nunito_600SemiBold', 
+              color: isSelected ? '#bfdbfe' : 'rgba(255,255,255,0.85)', 
+              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
               fontSize: 15,
-              letterSpacing: 0.3
+              letterSpacing: 0.2
             }}>
               {label}
             </Text>
+            {isMultiple && (
+              <View style={{ 
+                width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, 
+                borderColor: isSelected ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                backgroundColor: isSelected ? '#60a5fa' : 'transparent',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                {isSelected && <Ionicons name="checkmark" size={16} color="#020617" />}
+              </View>
+            )}
+            {!isMultiple && (
+              <View style={{ 
+                width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, 
+                borderColor: isSelected ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                backgroundColor: 'transparent',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                {isSelected && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#60a5fa' }} />}
+              </View>
+            )}
           </View>
         </BlurView>
       </TouchableOpacity>
@@ -391,10 +411,10 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
     Animated.timing(fadeAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, []);
 
-  const tags1 = ['Reduce Stress', 'Regain Focus', 'Digital Detox', 'Reduce Brain Fog', 'Reconnect with Nature', 'Improve Sleep'];
-  const tags2 = ['Mostly Sedentary', 'Lightly Active', 'Very Active'];
-  const tags3 = ['Groggy & Tired', 'Rushed & Anxious', 'Rested but Slow', 'Energized'];
-  const tags4 = ['Lack of Time', 'Inconsistent Motivation', 'High Stress', 'Poor Sleep'];
+  const tags1 = ['Manage Daily Stress', 'Improve Sleep Quality', 'Boost Morning Energy', 'Find Mental Clarity', 'Build Healthy Habits', 'Digital Mindfulness'];
+  const tags2 = ['Desk Bound (Mostly Sedentary)', 'Lightly Active (Occasional Walks)', 'Highly Active (Regular Workouts)'];
+  const tags3 = ['Groggy & Exhausted', 'Anxious & Rushed', 'Okay, but Need Coffee', 'Rested & Ready'];
+  const tags4 = ['Always Short on Time', 'High Stress & Burnout', 'Doomscrolling/Screen Time', 'Inconsistent Sleep', 'Lack of Motivation'];
 
   const canContinueStep = 
     (step === 0 && q1.length > 0) ||
@@ -440,7 +460,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
     Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start(() => {
-      const target = q2 === 'Mostly Sedentary' ? '21000' : q2 === 'Lightly Active' ? '35000' : '50000';
+      const target = q2 === 'Desk Bound (Mostly Sedentary)' ? '21000' : q2 === 'Lightly Active (Occasional Walks)' ? '35000' : '50000';
       AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
       AsyncStorage.setItem('sc_intentions', JSON.stringify(q1)).catch(() => {});
       onComplete();
@@ -454,7 +474,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Svara?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Select all that apply to personalize your journey.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {tags1.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} isMultiple={true} />
               ))}
@@ -466,7 +486,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>How do you feel upon waking?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Understanding your mornings helps us adapt.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {tags3.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
               ))}
@@ -478,7 +498,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>We'll help you overcome these challenges.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {tags4.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
               ))}
@@ -490,7 +510,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your current rhythm?</Text>
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>To set an achievable wellness goal.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {tags2.map(t => (
                 <PremiumSurveyOption key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
               ))}

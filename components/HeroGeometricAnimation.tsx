@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing } from 'react-native';
 import Svg, {
-  Circle as SvgCircle, Path as SvgPath, G as SvgG,
-  Defs, RadialGradient as SvgRadialGradient, Stop, Ellipse, Line as SvgLine,
+  Circle as SvgCircle, Path as SvgPath, G as SvgG, G,
+  Defs, RadialGradient as SvgRadialGradient, LinearGradient, Stop, Ellipse, Line as SvgLine,
 } from 'react-native-svg';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ function poly(points: { x: number; y: number }[], close = true) {
 
 interface HeroGeometricAnimationProps {
   size: number;
-  /** 'home' = hero ring (palette-driven), 'sound' = sound reel, 'splash' = splash screen */
-  variant?: 'home' | 'sound' | 'splash';
+  /** 'home' = hero ring (palette-driven), 'sound' = sound reel, 'splash' = splash screen, 'minimal' = static single geometry */
+  variant?: 'home' | 'sound' | 'splash' | 'minimal';
   /** @deprecated use variant. kept for backward compat */
   theme?: 'light' | 'dark';
   /** @deprecated use variant. kept for backward compat */
@@ -90,10 +90,10 @@ export function HeroGeometricAnimation({
 
   useEffect(() => {
     // ── Rotation speeds per variant ──────────────────────────────────────────
-    const SPEED_A = variant === 'sound' ? 30000 : variant === 'splash' ? 14000 : 18000;
-    const SPEED_B = variant === 'sound' ? 40000 : variant === 'splash' ? 20000 : 24000;
-    const SPEED_C = variant === 'sound' ? 50000 : variant === 'splash' ? 28000 : 32000;
-    const SPEED_D = variant === 'sound' ? 22000 : variant === 'splash' ? 10000 : 26000;
+    const SPEED_A = variant === 'minimal' ? 900000 : variant === 'sound' ? 30000 : variant === 'splash' ? 14000 : 9000;
+    const SPEED_B = variant === 'minimal' ? 900000 : variant === 'sound' ? 40000 : variant === 'splash' ? 20000 : 12000;
+    const SPEED_C = variant === 'minimal' ? 900000 : variant === 'sound' ? 50000 : variant === 'splash' ? 28000 : 16000;
+    const SPEED_D = variant === 'minimal' ? 900000 : variant === 'sound' ? 22000 : variant === 'splash' ? 10000 : 13000;
 
     Animated.loop(Animated.timing(rotA, { toValue: 1, duration: SPEED_A, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rotB, { toValue: 1, duration: SPEED_B, easing: Easing.linear, useNativeDriver: true })).start();
@@ -156,11 +156,42 @@ export function HeroGeometricAnimation({
 
     // Splash shows all shapes simultaneously at partial opacity — don't cycle
     if (variant === 'splash') {
-      // All visible at once at different opacities — cosmic layered look
-      op0.setValue(1);
-      op1.setValue(0.65);
-      op2.setValue(0.45);
-      op3.setValue(0.30);
+      // Cosmic interwoven breath: dynamic undulating opacity for each layer
+      op0.setValue(0.85);
+      op1.setValue(0.55);
+      op2.setValue(0.75);
+      op3.setValue(0.40);
+
+      Animated.loop(Animated.sequence([
+        Animated.timing(op0, { toValue: 0.45, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(op0, { toValue: 0.85, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+
+      Animated.loop(Animated.sequence([
+        Animated.timing(op1, { toValue: 0.85, duration: 5500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(op1, { toValue: 0.55, duration: 5500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+
+      Animated.loop(Animated.sequence([
+        Animated.timing(op2, { toValue: 0.45, duration: 6800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(op2, { toValue: 0.75, duration: 6800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+
+      Animated.loop(Animated.sequence([
+        Animated.timing(op3, { toValue: 0.70, duration: 4800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(op3, { toValue: 0.40, duration: 4800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+
+      return;
+    }
+
+    // Minimal shows a single majestic static shape (Sri Yantra) that just breathes
+    if (variant === 'minimal') {
+      op0.setValue(0);
+      op1.setValue(0);
+      op2.setValue(1);
+      op3.setValue(0);
+      setActiveShape(2);
       return;
     }
 
@@ -185,7 +216,7 @@ export function HeroGeometricAnimation({
     runCycle(0);
   }, []);
 
-  // ── Sync ripples to live audio beats ───────────────────────────────────────
+  // ── High-Sensitivity Real-Time Beat Detector ───────────────────────────────
   useEffect(() => {
     if (!audioMetering || variant !== 'sound') return;
     
@@ -196,15 +227,20 @@ export function HeroGeometricAnimation({
     
     const listenerId = audioMetering.addListener(({ value }) => {
       const now = Date.now();
-      // Trigger a wave release on sudden volume increases (beats)
-      if (value > 0.02 && value > lastLevel && (now - lastWaveTime > 800)) {
+      
+      // Sensitive beat detection: sudden volume jump > 0.03, max 3 waves per second
+      const isBeat = value - lastLevel > 0.03 && (now - lastWaveTime > 250);
+      const isFallback = (now - lastWaveTime > 2800);
+
+      if (isBeat || isFallback) {
         lastWaveTime = now;
         const anim = waves[waveIndex];
         waveIndex = (waveIndex + 1) % 3;
         anim.setValue(0);
+        
         Animated.timing(anim, {
           toValue: 1,
-          duration: 3500,
+          duration: isFallback ? 4000 : 2500,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true
         }).start();
@@ -234,13 +270,13 @@ export function HeroGeometricAnimation({
   const bindOp = pulse.interpolate({ inputRange: [0,1], outputRange: [0.45, 1] });
   const bindSc = pulse.interpolate({ inputRange: [0,1], outputRange: [0.70, 1.6] });
 
-  // Sound ripple interpolations
+  // Sound ripple interpolations - perfectly synced
   const rip1Scale = ripple1.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip1Op    = ripple1.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.40, 0.15, 0] });
+  const rip1Op = ripple1.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.70, 0.15, 0] });
   const rip2Scale = ripple2.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip2Op    = ripple2.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.30, 0.10, 0] });
+  const rip2Op = ripple2.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.60, 0.10, 0] });
   const rip3Scale = ripple3.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip3Op    = ripple3.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.22, 0.07, 0] });
+  const rip3Op = ripple3.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.50, 0.07, 0] });
 
   // ── Colour palettes per variant ───────────────────────────────────────────
 
@@ -421,14 +457,12 @@ export function HeroGeometricAnimation({
           {/* Lines connecting all 13 centres */}
           {(() => {
             const centers = [{ x: hw, y: hw }, ...pts(hw, hw, S*0.19, 6, 0), ...pts(hw, hw, S*0.38, 6, 0)];
-            const paths: any[] = [];
+            let d = '';
             centers.forEach((a, i) => centers.forEach((b, j) => {
               if (j <= i) return;
-              paths.push(<SvgPath key={`mc_ln_${i}_${j}`}
-                d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
-                stroke={G4} strokeWidth="0.5" opacity={0.25} />);
+              d += `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)} `;
             }));
-            return paths;
+            return <SvgPath d={d} stroke={G4} strokeWidth="0.5" opacity={0.25} />;
           })()}
           {/* Star tetrahedron overlay */}
           <SvgPath d={poly(pts(hw, hw, S*0.34, 3, -Math.PI/2))}
@@ -461,7 +495,7 @@ export function HeroGeometricAnimation({
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          SHAPE 2 — SRI YANTRA (9 interlocked triangles + lotus rings)
+          SHAPE 2 — SRI YANTRA (3D Ultra-Premium Carved Metal)
           ════════════════════════════════════════════════════════════════════ */}
       {showShape(2) && (
       <Animated.View style={{
@@ -470,26 +504,57 @@ export function HeroGeometricAnimation({
           transform: [{ rotate: r2deg }, { scale: sc }],
       }}>
         <Svg width={S} height={S}>
+          <Defs>
+            <LinearGradient id="syMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#FFF7D6" />
+              <Stop offset="20%" stopColor="#F9D423" />
+              <Stop offset="50%" stopColor="#F83600" stopOpacity="0.8" />
+              <Stop offset="80%" stopColor="#F9D423" />
+              <Stop offset="100%" stopColor="#FFF7D6" />
+            </LinearGradient>
+            <LinearGradient id="syMetalG" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#FFDF00" />
+              <Stop offset="50%" stopColor="#D4AF37" />
+              <Stop offset="100%" stopColor="#996515" />
+            </LinearGradient>
+          </Defs>
+
+          {/* ── 1. The Physical Drop Shadow Layer (Creates the 3D Depth) ── */}
+          <G x="0" y="3" opacity="0.5">
+            {(() => {
+              let d = '';
+              [S*0.35, S*0.27, S*0.19, S*0.12].forEach(r => d += poly(pts(hw, hw, r, 3, Math.PI/6), true) + ' ');
+              [S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].forEach(r => d += poly(pts(hw, hw, r, 3, -Math.PI/6), true) + ' ');
+              return <SvgPath d={d} fill="none" stroke="#000000" strokeWidth="1.8" strokeLinejoin="round" />;
+            })()}
+            <SvgCircle cx={hw} cy={hw} r={S*0.035} fill="#000000" />
+          </G>
+
+          {/* ── 2. The Golden Metallic Foreground Layer ── */}
           {/* Outer ring */}
           <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4}
             strokeWidth="0.8" opacity={0.40}
             strokeDasharray={variant === 'splash' ? '8 4' : '6 6'} />
+          
           {/* Shakti (downward) — 4 sizes */}
           {[S*0.35, S*0.27, S*0.19, S*0.12].map((r, ti) => (
             <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw, hw, r, 3, Math.PI/6))}
-              fill={`${GA}${[0.05, 0.04, 0.03, 0.02][ti]})`}
-              stroke={G2} strokeWidth={[1.8, 1.5, 1.3, 1.1][ti]}
-              opacity={0.75 + ti * 0.06} />
+              fill={`${GA}${[0.06, 0.05, 0.04, 0.03][ti]})`}
+              stroke="url(#syMetalG)" strokeWidth={[2.2, 1.8, 1.6, 1.4][ti]} strokeLinejoin="round"
+              opacity={0.85 + ti * 0.05} />
           ))}
+          
           {/* Shiva (upward) — 5 sizes */}
           {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r, ti) => (
             <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw, hw, r, 3, -Math.PI/6))}
-              fill={`${GA}${[0.04, 0.03, 0.02, 0.02, 0.01][ti]})`}
-              stroke={G1} strokeWidth={[1.8, 1.5, 1.3, 1.1, 0.9][ti]}
-              opacity={0.75 + ti * 0.06} />
+              fill={`${GA}${[0.05, 0.04, 0.03, 0.03, 0.02][ti]})`}
+              stroke="url(#syMetalG)" strokeWidth={[2.2, 1.8, 1.6, 1.4, 1.1][ti]} strokeLinejoin="round"
+              opacity={0.85 + ti * 0.05} />
           ))}
+          
           {/* Innermost Bindu ring */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.035} fill={G1} opacity={0.92} />
+          <SvgCircle cx={hw} cy={hw} r={S*0.035} fill="url(#syMetalG)" opacity={1} />
+          
           {/* 8-petal lotus ring */}
           {pts(hw, hw, S*0.41, 8, 0).map((p, i) => (
             <SvgCircle key={`sy_lotus_${i}`} cx={p.x} cy={p.y} r={S*0.05}
@@ -500,6 +565,7 @@ export function HeroGeometricAnimation({
             <SvgCircle key={`sy_lotus16_${i}`} cx={p.x} cy={p.y} r={S*0.026}
               fill="none" stroke={G4} strokeWidth="0.5" opacity={0.28} />
           ))}
+          
           {/* Splash: extra cosmic ring */}
           {variant === 'splash' && (
             <SvgCircle cx={hw} cy={hw} r={S*0.46} fill="none" stroke={spG2}
@@ -520,12 +586,13 @@ export function HeroGeometricAnimation({
       }}>
         <Svg width={S} height={S}>
           {/* Fine radial web */}
-          {pts(hw, hw, S*0.46, 48, 0).map((p, i) => (
-            <SvgPath key={`sh_ray_${i}`}
-              d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
-              stroke={G3} strokeWidth="0.4"
-              opacity={variant === 'sound' ? 0.06 : 0.09} />
-          ))}
+          {(() => {
+            let d = '';
+            pts(hw, hw, S*0.46, 48, 0).forEach(p => {
+              d += `M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)} `;
+            });
+            return <SvgPath d={d} stroke={G3} strokeWidth="0.4" opacity={variant === 'sound' ? 0.06 : 0.09} />;
+          })()}
           {/* Outer dashed circle */}
           <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4}
             strokeWidth="0.8" opacity={0.40} strokeDasharray="3 5" />
@@ -536,12 +603,7 @@ export function HeroGeometricAnimation({
           <SvgPath d={poly(pts(hw, hw, S*0.38, 3, Math.PI/2))}
             fill={`${GA}0.05)`} stroke={G1} strokeWidth="2.5" opacity={0.94} />
           {/* Hexagram intersection inner highlight */}
-          {pts(hw, hw, S*0.20, 6, 0).map((p, i, arr) => {
-            const n = arr[(i+1)%arr.length];
-            return <SvgPath key={`sh_h_${i}`}
-              d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
-              stroke={G3} strokeWidth="1.2" opacity={0.70} />;
-          })}
+          <SvgPath d={poly(pts(hw, hw, S*0.20, 6, 0))} fill="none" stroke={G3} strokeWidth="1.2" opacity={0.70} />
           {/* Vertex jewels */}
           {pts(hw, hw, S*0.38, 3, -Math.PI/2).map((p, i) => (
             <SvgCircle key={`sh_vup_${i}`} cx={p.x} cy={p.y} r={5} fill={G3} opacity={0.92} />

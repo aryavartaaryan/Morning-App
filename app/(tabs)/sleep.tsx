@@ -1221,7 +1221,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
 
       {/* ── Row: tabs ── */}
-      <View style={{ marginHorizontal: 0, marginVertical: 0, backgroundColor: 'rgba(10,15,30,0.4)', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 6, paddingHorizontal: 4, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+      <View style={{ marginHorizontal: 0, marginVertical: 0, backgroundColor: 'rgba(10,15,30,0.4)', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 4, paddingHorizontal: 4, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative' }}>
           {/* ── Glowing sliding pill background ── */}
           <Animated.View
@@ -1256,7 +1256,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   onSelect(cat);
                 }}
                 activeOpacity={0.60}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 8, gap: 4 }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 4, gap: 2 }}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   tabLayouts.current[cat] = { x, width };
@@ -1266,14 +1266,14 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                 {cat === 'Birds' || cat === 'Meditations' ? (
                   <MaterialCommunityIcons
                     name={catIcon}
-                    size={22}
+                    size={20}
                     color={isActive ? catColor : 'rgba(255,255,255,0.5)'}
                     style={isActive ? { textShadowColor: catColor, textShadowRadius: 8 } : {}}
                   />
                 ) : (
                   <Ionicons
                     name={catIcon}
-                    size={22}
+                    size={20}
                     color={isActive ? catColor : 'rgba(255,255,255,0.5)'}
                     style={isActive ? { textShadowColor: catColor, textShadowRadius: 8 } : {}}
                   />
@@ -1281,7 +1281,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                 <Text
                   numberOfLines={1}
                   style={{
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: isActive ? '800' : '600',
                     fontFamily: isActive ? 'Nunito_800ExtraBold' : 'Nunito_600SemiBold',
                     color: isActive ? catColor : 'rgba(255,255,255,0.5)',
@@ -2049,7 +2049,7 @@ function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
-  // ── Sync premium outer waves strictly to live audio beats ─────────────────
+  // ── High-Sensitivity Real-Time Beat Detector ───────────────────────────────
   useEffect(() => {
     const waves = [pulse1, pulse2, pulse3, pulse4, pulse5];
     if (!isActive || !isPlaying || isPaused) {
@@ -2061,19 +2061,24 @@ function ReelCard({
     let waveIndex = 0;
     let lastWaveTime = 0;
     
-    // Listen directly to the high-frequency live audio metering stream
     const listenerId = meteringAnim.addListener(({ value }) => {
       const now = Date.now();
-      // Trigger a wave release on any volume increase, debounced by 800ms
-      // This is incredibly reliable for all sound types (ambient, music, etc.)
-      if (value > 0.02 && value > lastLevel && (now - lastWaveTime > 800)) {
+      
+      // Extremely sensitive beat detection: sudden volume jump > 0.03, max 3 waves per second
+      const isBeat = value - lastLevel > 0.03 && (now - lastWaveTime > 250);
+      // Soft fallback for continuous presence if no beats for 1.8s
+      const isFallback = (now - lastWaveTime > 1800);
+
+      if (isBeat || isFallback) {
         lastWaveTime = now;
         const anim = waves[waveIndex];
         waveIndex = (waveIndex + 1) % 5;
         anim.setValue(0);
+        
+        // Fast snap outward, smooth fade
         Animated.timing(anim, {
           toValue: 1,
-          duration: 3500, // beautiful long release time
+          duration: isFallback ? 4000 : 2500, 
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true
         }).start();
@@ -2187,8 +2192,8 @@ function ReelCard({
 
   // glowBreathAnim kept (declared above) but its solo effect is replaced by the 5-ring pulse system
 
-  // Progress bar: track width = full reel width minus horizontal padding (24 each side)
-  const TRACK_W = REEL_W - 48;
+  // Progress bar: track width for the new inset Smart Dock (REEL_W - card margin(16) - dock margin(32) - dock padding(40))
+  const TRACK_W = REEL_W - 88;
   const trackDurMs = (playingDurationSecs ?? 0) * 1000;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
   useEffect(() => {
@@ -2295,7 +2300,22 @@ function ReelCard({
   ).current;
 
   return (
-    <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#000' }}>
+    <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#020305' }}>
+      {/* ── THE PREMIUM TINDER CARD ── */}
+      <View style={{
+        flex: 1,
+        marginTop: Platform.OS === 'ios' ? insets.top + 8 : insets.top + 24,
+        marginBottom: Platform.OS === 'ios' ? insets.bottom + 12 : insets.bottom + 24,
+        marginHorizontal: 8,
+        borderRadius: 40,
+        overflow: 'hidden',
+        backgroundColor: '#0A0C10',
+        shadowColor: sound.color || '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.35,
+        shadowRadius: 30,
+        elevation: 10,
+      }}>
 
       {/* ── FULL-SCREEN background image with Ken Burns zoom/pan ── */}
       {finalSource ? (
@@ -2344,18 +2364,18 @@ function ReelCard({
         
         {/* Live Audio Synced Rings */}
         {[
-          { anim: pulse1, sm: 1.32, bw: 0.6, oMin: 0.00, oMax: 0.22, sMin: 0.85, sMax: 1.15 },
-          { anim: pulse2, sm: 1.15, bw: 0.8, oMin: 0.02, oMax: 0.35, sMin: 0.90, sMax: 1.10 },
-          { anim: pulse3, sm: 0.96, bw: 1.0, oMin: 0.05, oMax: 0.50, sMin: 0.94, sMax: 1.06 },
-        ].map((r, i) => {
+          { anim: pulse1, sm: 1.35, bw: 1.0, oMin: 0.00, oMax: 0.85, sMin: 0.85, sMax: 1.30 },
+          { anim: pulse2, sm: 1.18, bw: 1.2, oMin: 0.02, oMax: 0.95, sMin: 0.90, sMax: 1.20 },
+          { anim: pulse3, sm: 0.98, bw: 1.5, oMin: 0.05, oMax: 1.00, sMin: 0.94, sMax: 1.12 },
+          { anim: pulse4, sm: 1.35, bw: 1.0, oMin: 0.00, oMax: 0.85, sMin: 0.85, sMax: 1.30 },
+          { anim: pulse5, sm: 1.18, bw: 1.2, oMin: 0.02, oMax: 0.95, sMin: 0.90, sMax: 1.20 },
+        ].slice(0, 5).map((r, i) => {
           const HERO_RS = Dimensions.get('window').height < 800 ? 238 : 302;
           const s = HERO_RS * r.sm;
           const color = accentColor || sound.color || '#fff';
           
-          // Pure wave releasing effect (since we now trigger 0->1 exactly on beat)
           const liveScale = r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] });
-          // Opacity drops to 0 at the end of the wave to disappear cleanly
-          const liveOpacity = r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, r.oMax + 0.15, r.oMin, 0] });
+          const liveOpacity = r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, r.oMax, r.oMin, 0] });
 
           return (
             <Animated.View key={`sr${i}`} pointerEvents="none" style={{
@@ -2386,97 +2406,10 @@ function ReelCard({
           )}
         </View>
 
-        <HeroGeometricAnimation size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} theme="dark" opacity={0.85} speed="slow" audioMetering={meteringAnim} />
+        <HeroGeometricAnimation variant="sound" size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} theme="dark" opacity={0.85} speed="slow" audioMetering={meteringAnim} />
       </View>
 
-      {/* ── Modern Top Player Bar (Timing / Scrubber) ── */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute', top: Math.max(insets.top + 8, 48), left: 0, right: 0,
-          paddingHorizontal: 24,
-          zIndex: 8, opacity: controlsAnim,
-        }}
-      >
-        {/* ── Real-time scrubber — only visible when track duration is known ── */}
-        {trackDurMs > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
-              </Text>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                {fmtTimer(playingDurationSecs ?? 0)}
-              </Text>
-            </View>
-            <View
-              style={{ height: 36, justifyContent: 'center' }}
-              {...scrubPan.panHandlers}
-              hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
-              collapsable={false}
-            >
-              <View style={{
-                height: isScrubbing ? 6 : 4,
-                borderRadius: 3,
-                backgroundColor: 'rgba(255,255,255,0.25)',
-                width: TRACK_W,
-                overflow: 'visible',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2,
-              }}>
-                <Animated.View style={{
-                  position: 'absolute',
-                  left: 0, top: 0, bottom: 0,
-                  borderRadius: 3,
-                  backgroundColor: sound.color || '#fff',
-                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4,
-                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, TRACK_W],
-                    extrapolate: 'clamp',
-                  }),
-                }} />
-              </View>
-              {(() => {
-                const ms = isScrubbing ? scrubPositionMs : positionMs;
-                const dur = trackDurMsRef.current;
-                const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
-                const thumbLeft = thumbFrac * TRACK_W;
-                const thumbSize = isScrubbing ? 22 : 16;
-                return (
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      top: (36 - thumbSize) / 2,
-                      left: thumbLeft - thumbSize / 2,
-                      width: thumbSize,
-                      height: thumbSize,
-                      borderRadius: thumbSize / 2,
-                      backgroundColor: '#FFFFFF',
-                      shadowColor: sound.color || '#000',
-                      shadowOpacity: 0.95,
-                      shadowRadius: isScrubbing ? 12 : 8,
-                      shadowOffset: { width: 0, height: 0 },
-                      elevation: 8,
-                      transform: [{ scale: isScrubbing ? 1.15 : 1 }],
-                    }}
-                  />
-                );
-              })()}
-            </View>
-          </View>
-        ) : (
-          /* Looping ambient sound — subtle shimmer bar */
-          <View style={{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 }}>
-            <Animated.View style={{
-              position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
-              backgroundColor: sound.color ? sound.color + 'A0' : 'rgba(255,255,255,0.6)',
-              shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4,
-              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W] }),
-            }} />
-          </View>
-        )}
-      </Animated.View>
+
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
@@ -2511,33 +2444,86 @@ function ReelCard({
         </View>
       </Animated.View>
 
-      {/* ── Premium bottom player bar ── */}
+      {/* ── Ultra-Premium Bottom Player Bar ── */}
       <Animated.View
-        pointerEvents="box-none"
         style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          paddingHorizontal: 24,
-          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 8, 48) : Math.max(insets.bottom + 8, 18),
+          position: 'absolute', 
+          bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 24, 48) : Math.max(insets.bottom + 24, 32), 
+          left: 16, right: 16,
           zIndex: 8, opacity: controlsAnim,
+          backgroundColor: 'rgba(8, 10, 14, 0.85)',
+          borderRadius: 32,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.08)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 15
         }}
       >
-        {/* ── Duration picker sheet — Calm-style, floats above the pill ── */}
+        <LinearGradient
+          colors={[sound.color ? sound.color + '15' : 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.01)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: 32 }]}
+        />
+
+        {/* 1. Header: Title + Timer Pill */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+          {/* Title & Desc */}
+          <View style={{ flex: 1, paddingRight: 16 }}>
+            <Text style={{ 
+              fontSize: 15, 
+              fontWeight: '700', 
+              color: 'rgba(255,255,255,0.95)', 
+              fontFamily: 'Nunito_700Bold', 
+              marginBottom: 4, 
+              letterSpacing: 0.3, 
+              lineHeight: 20,
+              textShadowColor: 'rgba(0,0,0,0.6)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 4
+            }}>
+              {sound.label}
+            </Text>
+            <Text style={{ 
+              fontSize: 11, 
+              color: 'rgba(255,255,255,0.45)', 
+              fontFamily: 'Nunito_400Regular', 
+              lineHeight: 16,
+              letterSpacing: 0.2
+            }}>
+              {sound.desc}
+            </Text>
+          </View>
+
+          {/* Timer Pill */}
+          {(() => {
+            const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
+            return (
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 14, paddingVertical: 10, borderRadius: 99,
+                  backgroundColor: durationOpen ? sound.color + '25' : 'rgba(255,255,255,0.06)',
+                  borderWidth: 1, borderColor: durationOpen ? sound.color + '50' : 'rgba(255,255,255,0.1)'
+                }}
+              >
+                <Ionicons name={opt.icon} size={14} color={durationOpen ? sound.color : 'rgba(255,255,255,0.8)'} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: durationOpen ? '#FFF' : 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })()}
+        </View>
+
+        {/* ── Duration picker sheet (Inline expansion) ── */}
         {durationOpen && (
           <View style={{
-            marginBottom: 10,
-            backgroundColor: 'rgba(6,7,18,0.97)',
-            borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
-            overflow: 'hidden',
-            shadowColor: '#000', shadowOpacity: 0.85, shadowRadius: 30,
-            shadowOffset: { width: 0, height: 10 }, elevation: 28,
+            marginBottom: 20,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+            overflow: 'hidden'
           }}>
-            {/* Subtle top tint */}
-            <LinearGradient
-              colors={[sound.color + '20', 'transparent']}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { height: 60 }]}
-            />
-            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.22)', letterSpacing: 2.8, textAlign: 'center', paddingTop: 16, paddingBottom: 10 }}>STOP AFTER</Text>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)', letterSpacing: 2, textAlign: 'center', paddingTop: 16, paddingBottom: 8 }}>SESSION LENGTH</Text>
             {activeDurationOptions.map((opt, idx) => {
               const isSelected = selectedDurationId === opt.id;
               const isFirst = idx === 0;
@@ -2550,110 +2536,98 @@ function ReelCard({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     onChangeTimer(opt.secs);
                   }}
-                  activeOpacity={0.72}
+                  activeOpacity={0.7}
                   style={{
                     flexDirection: 'row', alignItems: 'center',
-                    paddingHorizontal: 20, paddingVertical: 13, gap: 14,
-                    backgroundColor: isSelected ? sound.color + '18' : 'transparent',
-                    borderTopWidth: isFirst ? 0 : 0.5,
-                    borderTopColor: 'rgba(255,255,255,0.06)',
+                    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+                    backgroundColor: isSelected ? sound.color + '15' : 'transparent',
+                    borderTopWidth: isFirst ? 0 : StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.04)',
                   }}
                 >
-                  <View style={{
-                    width: 36, height: 36, borderRadius: 18,
-                    backgroundColor: isSelected ? sound.color + '28' : 'rgba(255,255,255,0.05)',
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: isSelected ? 1 : 0,
-                    borderColor: isSelected ? sound.color + '60' : 'transparent',
-                  }}>
-                    <Ionicons name={opt.icon} size={17} color={isSelected ? sound.color : 'rgba(255,255,255,0.40)'} />
-                  </View>
+                  <Ionicons name={opt.icon} size={16} color={isSelected ? sound.color : 'rgba(255,255,255,0.3)'} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: isSelected ? '700' : '400', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.82)', letterSpacing: -0.1 }}>{opt.label}</Text>
-                    <Text style={{ fontSize: 11, color: isSelected ? sound.color + 'AA' : 'rgba(255,255,255,0.28)', marginTop: 1 }}>{opt.sub}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>{opt.label}</Text>
                   </View>
                   {isSelected && (
-                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: sound.color + '30', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="checkmark" size={13} color={sound.color} />
-                    </View>
+                    <Ionicons name="checkmark-circle" size={16} color={sound.color} />
                   )}
                 </TouchableOpacity>
               );
             })}
-            <View style={{ height: 10 }} />
           </View>
         )}
 
-        {/* Title row + playing status badge — ultra-premium elegant multiline */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
-          <View style={{ flex: 1, marginRight: 16 }}>
-            <Text
-              style={{ fontSize: 20, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.2, fontFamily: 'Nunito_700Bold', lineHeight: 26 }}
-              numberOfLines={3}
+        {/* 2. Scrubber / Progress */}
+        {trackDurMs > 0 ? (
+          <View>
+            <View
+              style={{ height: 20, justifyContent: 'center', marginHorizontal: -4, marginBottom: 8 }}
+              {...scrubPan.panHandlers}
+              hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+              collapsable={false}
             >
-              {sound.label}
-            </Text>
-          </View>
-          {isPlaying && (
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
-              backgroundColor: isPaused ? 'rgba(255,255,255,0.06)' : sound.color + '15',
-              borderWidth: 1, borderColor: isPaused ? 'rgba(255,255,255,0.12)' : sound.color + '40',
-              marginTop: 2,
-            }}>
-              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isPaused ? 'rgba(255,255,255,0.35)' : sound.color }} />
-              <Text style={{ fontSize: 8.5, fontWeight: '700', color: isPaused ? 'rgba(255,255,255,0.45)' : sound.color, letterSpacing: 1.4 }}>
-                {isPaused ? 'PAUSED' : 'PLAYING'}
+              <View style={{
+                height: isScrubbing ? 6 : 4,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                width: TRACK_W + 8,
+                overflow: 'visible',
+              }}>
+                <Animated.View style={{
+                  position: 'absolute', left: 0, top: 0, bottom: 0,
+                  borderRadius: 3,
+                  backgroundColor: sound.color || '#fff',
+                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
+                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                    inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                  }),
+                }} />
+              </View>
+              {(() => {
+                const ms = isScrubbing ? scrubPositionMs : positionMs;
+                const dur = trackDurMsRef.current;
+                const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
+                const thumbLeft = thumbFrac * (TRACK_W + 8);
+                const thumbSize = isScrubbing ? 18 : 12;
+                return (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      top: (20 - thumbSize) / 2,
+                      left: thumbLeft - thumbSize / 2,
+                      width: thumbSize, height: thumbSize,
+                      borderRadius: thumbSize / 2,
+                      backgroundColor: '#FFFFFF',
+                      shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+                      elevation: 10,
+                      transform: [{ scale: isScrubbing ? 1.15 : 1 }],
+                    }}
+                  />
+                );
+              })()}
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
+                {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
+              </Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.2)', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
+                {fmtTimer(playingDurationSecs ?? 0)}
               </Text>
             </View>
-          )}
-        </View>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14, lineHeight: 18, letterSpacing: 0.1, fontFamily: 'Nunito_400Regular' }} numberOfLines={2}>
-          {sound.desc}
-        </Text>
-
-
-
-        {/* ── Single Duration Pill — Calm-style clean control ── */}
-        {(() => {
-          const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
-          return (
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
-              activeOpacity={0.78}
-              style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                gap: 8, alignSelf: 'center',
-                paddingHorizontal: 22, paddingVertical: 11, borderRadius: 99,
-                backgroundColor: durationOpen ? sound.color + '22' : 'rgba(255,255,255,0.08)',
-                borderWidth: 1,
-                borderColor: durationOpen ? sound.color + '70' : 'rgba(255,255,255,0.14)',
-                marginBottom: 12,
-                overflow: 'hidden',
-              }}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.02)']}
-                start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Ionicons
-                name={opt.icon}
-                size={15}
-                color={durationOpen ? sound.color : 'rgba(255,255,255,0.70)'}
-              />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: durationOpen ? '#FFFFFF' : 'rgba(255,255,255,0.85)', letterSpacing: 0.1 }}>
-                {opt.label}
-              </Text>
-              <Ionicons
-                name={durationOpen ? 'chevron-down' : 'chevron-up'}
-                size={12}
-                color={durationOpen ? sound.color + 'BB' : 'rgba(255,255,255,0.30)'}
-              />
-            </TouchableOpacity>
-          );
-        })()}
+          </View>
+        ) : (
+          /* Looping ambient sound — sleek shimmer bar */
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: -4 }}>
+            <Animated.View style={{
+              position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
+              backgroundColor: sound.color ? sound.color + 'A0' : 'rgba(255,255,255,0.5)',
+              shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
+              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8] }),
+            }} />
+          </View>
+        )}
+      </Animated.View>
 
         {/* Swipe hint */}
         {isActive && !isLast && (
@@ -2662,7 +2636,6 @@ function ReelCard({
             <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, marginTop: 1, textTransform: 'uppercase' }}>Swipe up for next</Text>
           </Animated.View>
         )}
-      </Animated.View>
 
       {/* ── Loading overlay — appears after 380ms while remote audio is buffering ── */}
       {isActive && showLoadingOverlay && (
@@ -2765,6 +2738,8 @@ function ReelCard({
           </View>
         </View>
       )}
+
+      </View>
     </View>
   );
 }
@@ -2838,6 +2813,7 @@ function SoundReelsModal({
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
   onOpenLibrary?: (category: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const flatRef = useRef<FlatList>(null);
   const [reelData, setReelData] = useState(REELS_ALL_SOUNDS);
@@ -3323,43 +3299,46 @@ function SoundReelsModal({
 
         {/* Ultra-Smart Sleek Minimalist Popup */}
         {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'center', alignItems: 'center' }]}>
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5,5,8,0.85)' }]} />
-            <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowClosePrompt(false)} />
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'flex-end' }]}>
+            {/* Pure black ultra-fast backdrop, NO BlurView to ensure zero lag */}
+            <TouchableOpacity 
+              style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.85)' }]} 
+              activeOpacity={1} 
+              onPress={() => setShowClosePrompt(false)} 
+            />
             
             <Animated.View style={{ 
-              width: '85%', 
-              maxWidth: 340, 
-              borderRadius: 32, 
+              width: '100%', 
+              borderTopLeftRadius: 36,
+              borderTopRightRadius: 36,
               overflow: 'hidden', 
-              backgroundColor: 'rgba(15,15,18,0.6)', 
-              borderWidth: StyleSheet.hairlineWidth, 
-              borderColor: 'rgba(255,255,255,0.25)', 
+              backgroundColor: '#0A0A0A', // Pure dark color requested by user
+              borderTopWidth: 1, 
+              borderColor: 'rgba(255,255,255,0.08)', 
               shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 20 }, 
-              shadowOpacity: 0.8, 
-              shadowRadius: 40, 
-              elevation: 24 
+              shadowOffset: { width: 0, height: -10 }, 
+              shadowOpacity: 0.5, 
+              shadowRadius: 20, 
+              elevation: 24,
+              paddingBottom: insets.bottom + 16
             }}>
-              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
               
               <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
                 <View style={{ 
                   marginBottom: 20, 
-                  padding: 16,
-                  borderRadius: 20,
-                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  padding: 18,
+                  borderRadius: 24,
+                  backgroundColor: '#121212',
                   borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.08)'
+                  borderColor: 'rgba(255,255,255,0.05)'
                 }}>
-                  <Ionicons name="pulse" size={26} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="pulse" size={28} color="rgba(255,255,255,0.95)" />
                 </View>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFF', fontFamily: 'Nunito_700Bold', textAlign: 'center', letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase' }}>Active Soundscape</Text>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 20, paddingHorizontal: 10, letterSpacing: 0.3 }}>Seamlessly run this resonance in the background, or conclude your current journey.</Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFF', fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 12 }}>Active Soundscape</Text>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontFamily: 'Nunito_500Medium', lineHeight: 22, paddingHorizontal: 16 }}>Seamlessly run this resonance in the background, or conclude your current journey.</Text>
               </View>
               
-              <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 12 }}>
+              <View style={{ paddingHorizontal: 24, paddingBottom: 8, gap: 12 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => {
@@ -3369,11 +3348,11 @@ function SoundReelsModal({
                   }}
                 >
                   <LinearGradient
-                    colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.03)']}
+                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' }}
+                    style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
                   >
-                    <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Flow In Background</Text>
+                    <Text style={{ fontSize: 14, color: '#FFF', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>Flow In Background</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -3385,9 +3364,9 @@ function SoundReelsModal({
                     onStop();
                     onClose(isLast);
                   }}
-                  style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,60,60,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,60,60,0.3)' }}
+                  style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A0C0C', borderWidth: 1, borderColor: 'rgba(255,60,60,0.2)' }}
                 >
-                  <Text style={{ fontSize: 12, color: 'rgba(255,90,90,1)', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Conclude Session</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,80,80,1)', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>Conclude Session</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3396,9 +3375,9 @@ function SoundReelsModal({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowClosePrompt(false);
                   }}
-                  style={{ paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
+                  style={{ paddingVertical: 14, alignItems: 'center', marginTop: 4 }}
                 >
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '700', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cancel</Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '700', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -4065,8 +4044,8 @@ function SleepTabInner() {
             borderRadius: 0,
             paddingLeft: 16,
             paddingRight: 10,
-            paddingTop: Platform.OS === 'ios' ? 12 : 16,
-            paddingBottom: 10,
+            paddingTop: Platform.OS === 'ios' ? 8 : 10,
+            paddingBottom: 8,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.2,
@@ -4115,9 +4094,9 @@ function SleepTabInner() {
                   setIsSearching(true);
                 }}
                 activeOpacity={0.8}
-                style={{ flex: 1, marginLeft: 12, paddingVertical: 8, justifyContent: 'center' }}
+                style={{ flex: 1, marginLeft: 12, paddingVertical: 4, justifyContent: 'center' }}
               >
-                <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.2 }}>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.2 }}>
                   Search sounds, ragas...
                 </Text>
               </TouchableOpacity>
@@ -4142,8 +4121,8 @@ function SleepTabInner() {
                   style={{ 
                     flexDirection: 'row',
                     alignItems: 'center',
-                    paddingHorizontal: 16,
-                    paddingVertical: 9,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
                     borderRadius: 99,
                     borderWidth: 1,
                     borderColor: 'rgba(255,255,255,0.3)',

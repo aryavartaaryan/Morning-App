@@ -473,6 +473,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       // setOnPlaybackStatusUpdate(null) call and the actual native nulling.
       unloadedIdsRef.current.add(id);
       try { snd.setOnPlaybackStatusUpdate(null); } catch {}
+      // FIRE INSTANT PAUSE (non-blocking) so audio cuts instantly during rapid reel swipes
+      snd.pauseAsync().catch(() => {});
     }
     await Promise.all(entries.map(async ([, snd]) => {
       try { await snd.stopAsync(); await snd.unloadAsync(); } catch {}

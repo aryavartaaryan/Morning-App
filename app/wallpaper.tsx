@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Animated, StatusBar, Image
-} from 'react-native';
+, BackHandler } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter , useFocusEffect } from "expo-router";
 import {
   useBgContext,
   BG_KEYS, BG_META, type BgKey, getTimedBgKey
@@ -74,6 +74,15 @@ const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' =
 
 export default function WallpaperSettings() {
   const router = useRouter();
+  useFocusEffect(useCallback(() => {
+    const onBackPress = () => {
+      router.navigate('/(tabs)');
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]));
+
   const {
     wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey,
     bgKey, allBgUris, solarTimes, bgUri
@@ -162,7 +171,7 @@ export default function WallpaperSettings() {
           <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.back();
+              router.navigate('/(tabs)');
             }}
             style={styles.backButton}
           >
@@ -418,17 +427,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '300',
     color: '#fff',
-    letterSpacing: 0.3,
+    letterSpacing: 1.5,
   },
   headerSubtitle: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#FFFFFF80',
     marginBottom: 2,
-    fontWeight: '700',
-    letterSpacing: 1.5,
+    fontWeight: '600',
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
   toastBanner: {
@@ -461,18 +470,18 @@ const styles = StyleSheet.create({
   },
   heroTime: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '500',
     color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 2,
+    letterSpacing: 3,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   heroName: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '300',
     color: '#fff',
     textAlign: 'center',
-    letterSpacing: 0.2,
+    letterSpacing: 1.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
@@ -481,9 +490,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#FFFFFF99',
     marginTop: 4,
-    fontWeight: '400',
+    fontWeight: '300',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -521,9 +530,9 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#FFFFFF80',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   modeDesc: {
     marginHorizontal: 16,
@@ -592,9 +601,9 @@ const styles = StyleSheet.create({
   },
   timePillText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '500',
     color: '#fff',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   activeStatusPill: {
     position: 'absolute',
@@ -624,10 +633,10 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#fff',
     marginBottom: 3,
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -635,7 +644,7 @@ const styles = StyleSheet.create({
   itemSub: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
+    fontWeight: '400',
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,

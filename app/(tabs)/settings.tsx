@@ -73,8 +73,8 @@ function SectionHeader({ label }: { label: string; }) {
   );
 }
 const sec = StyleSheet.create({
-  row:   { marginHorizontal: 24, marginTop: 32, marginBottom: 10 },
-  label: { fontSize: 11, letterSpacing: 2.5, color: 'rgba(255,255,255,0.45)', fontWeight: '700' },
+  row:   { marginHorizontal: 26, marginTop: 36, marginBottom: 12 },
+  label: { fontSize: 10, letterSpacing: 3.5, color: 'rgba(255,255,255,0.4)', fontWeight: '500', textTransform: 'uppercase' },
 });
 
 // ─── Glass card ──────────────────────────────────────────────────────────────
@@ -87,12 +87,17 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
 }
 const glass = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
 });
 
@@ -123,9 +128,9 @@ const tog = StyleSheet.create({
   row:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
   content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 16 },
   border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
-  icon:   { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  title:  { fontSize: 14, color: '#fff', fontWeight: '600', letterSpacing: 0.5 },
-  sub:    { fontSize: 11.5, color: 'rgba(235,235,245,0.55)', marginTop: 4, lineHeight: 16, letterSpacing: 0.2 },
+  icon:   { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 16, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  title:  { fontSize: 14, color: '#fff', fontWeight: '300', letterSpacing: 0.8 },
+  sub:    { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, lineHeight: 16, letterSpacing: 0.4 },
 });
 
 function WallpaperPicker() {
@@ -196,13 +201,13 @@ function WallpaperPicker() {
 }
 
 const wp = StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(20,20,20,0.4)' },
+  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 24, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(20,20,20,0.6)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 8 },
   previewImg: { height: 240, width: '100%', justifyContent: 'flex-end' },
-  previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 20 },
-  previewTime: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 },
-  previewName: { fontSize: 17, color: '#fff', fontWeight: '800', letterSpacing: 0.6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
-  previewBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.15)' },
-  previewBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
+  previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 24 },
+  previewTime: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6 },
+  previewName: { fontSize: 18, color: '#fff', fontWeight: '300', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
+  previewBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 24, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)' },
+  previewBtnTxt: { color: '#fff', fontSize: 11, fontWeight: '500', letterSpacing: 1.5 },
 });
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
@@ -284,11 +289,11 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
   );
 }
 const perm = StyleSheet.create({
-  row:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.15)', marginLeft: 34 },
-  dot:    { width: 6, height: 6, borderRadius: 3, marginRight: 10 },
-  label:  { flex: 1, fontSize: 14, letterSpacing: 0.1 },
-  fixBtn: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', paddingVertical: 14, alignItems: 'center' },
+  row:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', marginLeft: 28 },
+  dot:    { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
+  label:  { flex: 1, fontSize: 13, letterSpacing: 0.4, fontWeight: '300' },
+  fixBtn: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, alignItems: 'center' },
 });
 
 
@@ -424,7 +429,7 @@ export default function SettingsTab() {
 const S = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#000000' },
   header:  { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
+  headerTitle: { fontSize: 28, fontWeight: '300', color: '#fff', letterSpacing: 1.5 },
 
   tagPill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   tagTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },

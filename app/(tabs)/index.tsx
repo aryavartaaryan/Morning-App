@@ -5979,19 +5979,21 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Layered aura — slim and elegant glow ── */}
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 24, height: HERO_RS + 24, borderRadius: (HERO_RS + 24) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.06)`, transform: [{ scale: pulse }], top: -12, left: -12 }} />
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 14, height: HERO_RS + 14, borderRadius: (HERO_RS + 14) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.14)`, transform: [{ scale: pulse }], top: -7, left: -7 }} />
-          <Animated.View style={{ position: 'absolute', width: HERO_RS + 6, height: HERO_RS + 6, borderRadius: (HERO_RS + 6) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.24)`, transform: [{ scale: pulse }], top: -3, left: -3 }} />
-          <View style={{ position: 'absolute', width: HERO_RS + 2, height: HERO_RS + 2, borderRadius: (HERO_RS + 2) / 2, backgroundColor: `rgba(${hR},${hG},${hB},0.14)`, top: -1, left: -1 }} />
+          {/* ── Floating Hardware Shadow (Ultra-Premium Depth) ── */}
+          <View pointerEvents="none" style={{
+            position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
+            borderWidth: 15, borderColor: '#000000',
+            shadowColor: '#000000', shadowOffset: { width: 0, height: 35 }, shadowOpacity: 0.9, shadowRadius: 40,
+            elevation: 24, // High elevation for Android
+          }} />
 
-          {/* ── Inner zone — moonlit disk: frosted glass lens ── */}
+          {/* ── Inner zone — minimalist Apple/iOS dark glass ── */}
           <View style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-            backgroundColor: `rgba(${rR},${rG},${rB},0.08)`,
             overflow: 'hidden',
           }}>
-            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
             {/* Inner fill gradient: true silver luminosity like the day */}
             <LinearGradient
               colors={[`${accentHex}18`, `${ringHex}08`, 'transparent', `${ringHex}08`]}
@@ -6037,85 +6039,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 }} />
               );
             })}
-            {/* ── Sunny day sunrays — slow rotating golden rays from center ── */}
-            {isSunnyClear && (
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', width: HERO_RS, height: HERO_RS,
-                top: 0, left: 0,
-                opacity: 0.22,
-                transform: [{ rotate: sunrayRot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-              }}>
-                {[0, 30, 60, 90, 120, 150, 210, 240, 270, 300, 330].map((deg, i) => (
-                  <View key={`ray_${i}`} pointerEvents="none" style={{
-                    position: 'absolute',
-                    width: 2, height: HERO_RS * 0.42,
-                    backgroundColor: '#FFE066',
-                    top: HERO_RS * 0.08,
-                    left: HERO_RS / 2 - 1,
-                    transformOrigin: `1px ${HERO_RS * 0.42}px`,
-                    transform: [{ rotate: `${deg}deg` }, { translateY: HERO_RS * 0.04 }],
-                    borderRadius: 1,
-                  }} />
-                ))}
-              </Animated.View>
-            )}
-            {/* ── Hot weather shimmer — orange heat haze ── */}
-            {isHot && (
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(239,100,20,0.15)',
-                opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.9] }),
-                transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }]
-              }} />
-            )}
-            {/* ── Thunderstorm: dark blue-grey storm atmosphere tint ── */}
-            {isThunderstorm && (
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(15,25,80,0.55)',
-                opacity: stormTint,
-              }} />
-            )}
-            {/* ── Thunderstorm: white lightning flash ── */}
-            {isThunderstorm && (
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: '#E8F0FF',
-                opacity: flashAnim,
-              }} />
-            )}
-            {/* ── Rain / Drizzle / Heavy Rain drops ── */}
-            {(isRaining || isDrizzling || isHeavyRain || isThunderstorm) && rainAnims.slice(0, isHeavyRain || isThunderstorm ? 28 : isDrizzling ? 10 : 18).map((ra: any, i: number) => {
-              const isHeavy = isHeavyRain || isThunderstorm;
-              return (
-                <Animated.View key={`rain_${i}`} pointerEvents="none" style={{
-                  position: 'absolute',
-                  left: ra.x,
-                  top: 0,
-                  width: isHeavy ? 2.5 : isDrizzling ? 1 : 1.8,
-                  height: isHeavy ? 18 : isDrizzling ? 6 : 12,
-                  borderRadius: 2,
-                  backgroundColor: isThunderstorm ? '#A8C8FF' : isSnowing ? '#FFFFFF' : '#AADDFF',
-                  shadowColor: isThunderstorm ? '#6699FF' : '#AADDFF',
-                  shadowOpacity: 0.9,
-                  shadowRadius: 2,
-                  opacity: ra.op,
-                  transform: [{ translateY: ra.y }, { skewX: isHeavy ? '-12deg' : '-6deg' }],
-                }} />
-              );
-            })}
-            {/* ── Snowflakes ── */}
-            {isSnowing && snowAnims.map((sa: any, i: number) => (
-              <Animated.View key={`snow_${i}`} pointerEvents="none" style={{
-                position: 'absolute', top: 0,
-                left: sa.x,
-                width: 6, height: 6, borderRadius: 3,
-                backgroundColor: '#FFFFFF',
-                shadowColor: '#FFFFFF', shadowOpacity: 1, shadowRadius: 4,
-                opacity: sa.op,
-                transform: [{ translateX: sa.drift }, { translateY: sa.y }, { scale: sa.scl }],
-              }} />
-            ))}
+            {/* ── Weather animations have been removed to keep the dark glass lens perfectly clean and minimalist ── */}
             {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
             {nightMode && (
               <View pointerEvents="none" style={{
@@ -6166,30 +6090,32 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 </Svg>
               </Animated.View>
             )}
-            {/* Wide outer glow — slim and elegant */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={ringHex} strokeWidth={HERO_STR+6} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.20 : 0.12} />
-            {/* Mid halo — richer at night */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={haloHex} strokeWidth={HERO_STR+2} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.45 : 0.30} />
-            {/* Main crisp arc — elegant slim with metallic sweep */}
+            {/* Main crisp arc — elegant slim with metallic sweep ONLY */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
             {/* Inner highlight sliver — shimmering moonlight edge */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Sacred Geometric Yantra Animation — magnetically tracks finger ── */}
+          {/* ── Sacred Geometric Yantra Animation — purely stationary tracking ── */}
           <Animated.View pointerEvents="none" style={{ 
             position: 'absolute', width: HERO_RS, height: HERO_RS, 
             alignItems: 'center', justifyContent: 'center',
-            transform: [{ translateX: pan.x }, { translateY: pan.y }]
+            transform: [
+              { translateX: pan.x.interpolate({ inputRange: [-100, 100], outputRange: [-20, 20] }) }, 
+              { translateY: pan.y.interpolate({ inputRange: [-100, 100], outputRange: [-20, 20] }) }
+            ]
           }}>
-            <HeroGeometricAnimation size={HERO_RS - 12} variant="home" accentColor={ringHex} opacity={0.92} />
+            <HeroGeometricAnimation size={(HERO_RS - 12) * 0.45} variant="minimal" accentColor="#FFD700" opacity={0.92} />
           </Animated.View>
 
           {/* ── Center content — text and info ── */}
           <Animated.View style={{ 
             position: 'absolute', top: 0, left: 0, width: HERO_RS, height: HERO_RS, 
             alignItems: 'center', justifyContent: 'center', paddingHorizontal: compact ? 20 : 26,
-            transform: [{ translateX: pan.x }, { translateY: pan.y }]
+            transform: [
+              { translateX: pan.x.interpolate({ inputRange: [-100, 100], outputRange: [-45, 45] }) }, 
+              { translateY: pan.y.interpolate({ inputRange: [-100, 100], outputRange: [-45, 45] }) }
+            ]
           }}>
 
           {/* ── SACRED HOUR MODE: sunrise / sunset replaces everything ── */}
