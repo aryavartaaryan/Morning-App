@@ -105,6 +105,8 @@ export function isAfterSunset(nowH: number, solar?: SolarTimes | null): boolean 
   return nowH > solar.sunset || nowH < solar.sunrise;
 }
 
+const IOS_MIDNIGHT_PALETTE: AyurvedicPalette = { ring: '#141928', halo: '#1E2538', accent: '#FFFFFF' };
+
 export function getSolarRingPalette(
   nowH: number,
   solarNoon: number,
@@ -115,49 +117,13 @@ export function getSolarRingPalette(
   temp?: number | null,
 ): AyurvedicPalette {
   const sacred = getSacredHourInfo(nowH, solar);
+  
+  // 1. Dynamic Sun-Like Colors ONLY during exact sacred solar windows
   if (sacred.type === 'sunrise') return lerpPalette(SUNRISE_PALETTES, sacred.progress);
   if (sacred.type === 'sunset')  return lerpPalette(SUNSET_PALETTES,  sacred.progress);
   if (sacred.type === 'zenith')  return lerpPalette(ZENITH_PALETTES,  sacred.progress);
 
-  let elevation: number;
-  if (lat != null && lon != null) {
-    elevation = getSunElevation(lat, lon);
-  } else if (solar) {
-    const sr = solar.sunrise;
-    const ss = solar.sunset;
-    const dayLen = ss - sr;
-    if (nowH < sr || nowH > ss) {
-      const distFromHorizon = nowH < sr ? sr - nowH : nowH - ss;
-      elevation = -Math.min(18, distFromHorizon * 4);
-    } else {
-      const fracDay = (nowH - sr) / dayLen;
-      elevation = Math.sin(fracDay * Math.PI) * 65;
-    }
-  } else {
-    const fracDay = (nowH - 6) / 12;
-    if (fracDay <= 0 || fracDay >= 1) {
-      elevation = -10;
-    } else {
-      elevation = Math.sin(fracDay * Math.PI) * 60;
-    }
-  }
-
-  let basePalette: AyurvedicPalette;
-  if (elevation <= 0) {
-    if (brahmaActive) {
-      basePalette = BRAHMA_PALETTE;
-    } else {
-      basePalette = TRUE_SILVER;
-    }
-  } else {
-    const height = Math.min(1, elevation / 55);
-    basePalette = lerpPalette(DAY_PALETTES, height);
-  }
-
-  if (temp != null && temp > 20) {
-    const blendFactor = Math.min(1, Math.max(0, (temp - 20) / 15));
-    return blendPaletteNoGreen(basePalette, COOLING_BLUE_PALETTE, blendFactor);
-  }
-
-  return basePalette;
+  // 2. Default Premium Theme (matches the iOS frosted glass Daily Intention Card)
+  // We completely bypass the legacy elevation and temperature colors to maintain a pristine, unified UI.
+  return IOS_MIDNIGHT_PALETTE;
 }

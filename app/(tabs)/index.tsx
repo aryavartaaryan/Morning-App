@@ -5324,7 +5324,7 @@ function SleepSoundsButton({
 
   return (
     <TouchableOpacity
-      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate({ pathname: '/(tabs)/sleep', params: { openReel: '1' } } as never); }}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
       onPressIn={() => { Animated.timing(pressAnim, { toValue: 1, duration: 100, useNativeDriver: true }).start(); }}
       onPressOut={() => { Animated.timing(pressAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(); }}
       activeOpacity={0.9}
@@ -5333,40 +5333,46 @@ function SleepSoundsButton({
       <Animated.View style={{ transform: [{ scale: calmPulse }, { scale: btnScale }], justifyContent: 'center', alignItems: 'center' }}>
         
         {/* Radiating Sound Waves */}
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#7CE3D8', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#7CE3D8', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 36, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 36, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
 
         <View style={{
-          height: 48,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-          paddingHorizontal: 32,
-          borderRadius: 24, overflow: 'hidden',
-          backgroundColor: 'rgba(6,15,40,0.55)',
-          borderWidth: 1.2, borderColor: 'rgba(255,255,255,0.30)',
-          shadowColor: '#7CE3D8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 18,
-          elevation: 10,
+          borderRadius: 99, overflow: 'hidden',
+          backgroundColor: 'rgba(10,15,25,0.4)',
+          borderWidth: 1.5, borderColor: 'rgba(128,255,255,0.4)',
+          shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12,
+          elevation: 8,
         }}>
-          {/* Soft breathing glow layer */}
-          <Animated.View pointerEvents="none" style={{
-            position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-            backgroundColor: 'rgba(0,212,184,0.35)',
-            opacity: glowOpacity,
-          }} />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          
           <LinearGradient
-            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)', 'transparent']}
+            colors={['rgba(128,255,255,0.25)', 'rgba(0,212,184,0.05)', 'transparent', 'rgba(128,255,255,0.15)']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject} />
-            
-          {/* Soundwave icon */}
-          <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 10 }}>
-            <SvgPath d="M4 12v0.01" stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
-            <SvgPath d="M7 10v4"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
-            <SvgPath d="M10 7v10"  stroke="#4FD1C5" strokeWidth="2.2" strokeLinecap="round" />
-            <SvgPath d="M13 9v6"   stroke="#7CE3D8" strokeOpacity="0.95" strokeWidth="2" strokeLinecap="round" />
-            <SvgPath d="M16 11v2"  stroke="#9BE8E0" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" />
-            <SvgPath d="M19 12v0.01" stroke="#BAFAF0" strokeOpacity="0.75" strokeWidth="2" strokeLinecap="round" />
-          </Svg>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.6 }}>{label}</Text>
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}
+          >
+            {/* Soft breathing glow layer */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+              backgroundColor: 'rgba(128,255,255,0.2)',
+              opacity: glowOpacity,
+            }} />
+
+            {/* Soundwave icon */}
+            <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8, zIndex: 1 }}>
+              <SvgPath d="M4 12v0.01" stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
+              <SvgPath d="M7 10v4"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
+              <SvgPath d="M10 7v10"  stroke="#80FFFF" strokeWidth="2.2" strokeLinecap="round" />
+              <SvgPath d="M13 9v6"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
+              <SvgPath d="M16 11v2"  stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
+              <SvgPath d="M19 12v0.01" stroke="#80FFFF" strokeOpacity="0.6" strokeWidth="2" strokeLinecap="round" />
+            </Svg>
+
+            <View style={{ height: 36, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#80FFFF', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', textShadowColor: '#80FFFF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4 }}>
+                {label}
+              </Text>
+            </View>
+          </LinearGradient>
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -5883,10 +5889,15 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const gpsLon = weather?.lon ?? null;
   // showBrahma must be declared before getSolarRingPalette so it can be passed as param
   const showBrahma = period?.id === 'night_vata' && brahmaInfo?.status === 'active';
-  const palette   = getSolarRingPalette(nowH, solarNoon, solarTimes, gpsLat, gpsLon, showBrahma, weather?.temp, weather?.weatherCode);
-  const ringHex   = palette.ring;
-  const haloHex   = palette.halo;
-  const accentHex = palette.accent;
+  
+  const { accentColor: appAccent } = useBgContext();
+  
+  // Premium Bubble Effect: Use app theme color with neon/sky blue highlights for a calming effect
+  const baseColor = appAccent || '#00D4B8';
+  const ringHex   = baseColor;
+  const haloHex   = '#80FFFF'; // Sky blue / cyan neon glow
+  const accentHex = baseColor;
+  
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
 
@@ -5979,17 +5990,33 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Inner zone — minimalist Apple/iOS dark glass ── */}
+          {/* ── Inner zone — minimalist Apple/iOS dark glass (Matches Intention Card) ── */}
           <View style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
             overflow: 'hidden',
+            borderWidth: 1.5,
+            borderColor: `${haloHex}40`,
+            shadowColor: haloHex,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.5,
+            shadowRadius: 20,
           }}>
-            <BlurView intensity={75} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
-            {/* Inner fill gradient: true silver luminosity like the day */}
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,15,25,0.4)' }]} />
+            
+            {/* ── Sacred Geometric Yantra as Background Watermark ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: HERO_RS, height: HERO_RS,
+              alignItems: 'center', justifyContent: 'center',
+              transform: [{ translateX: pan.x }, { translateY: pan.y }]
+            }}>
+              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.55} variant="minimal" accentColor={haloHex} opacity={0.15} />
+            </Animated.View>
+
+            {/* Bubble inner glow (Premium Neon / Sky Blue) */}
             <LinearGradient
-              colors={[`${accentHex}18`, `${ringHex}08`, 'transparent', `${ringHex}08`]}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+              colors={[`${haloHex}25`, `${ringHex}05`, 'transparent', `${haloHex}15`]}
+              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
               style={StyleSheet.absoluteFillObject} />
 
             {/* ── Fluid Effect ── */}
@@ -6067,13 +6094,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <Defs>
               <SvgLinearGradient id="heroMetal" x1="0%" y1="0%" x2="100%" y2="100%">
                  <Stop offset="0%" stopColor={ringHex} stopOpacity="1" />
-                 <Stop offset="40%" stopColor="#FFFFFF" stopOpacity="0.8" />
-                 <Stop offset="70%" stopColor={accentHex} stopOpacity="0.9" />
-                 <Stop offset="100%" stopColor={haloHex} stopOpacity="1" />
+                 <Stop offset="30%" stopColor="#FFFFFF" stopOpacity="0.9" />
+                 <Stop offset="60%" stopColor={haloHex} stopOpacity="0.9" />
+                 <Stop offset="100%" stopColor={ringHex} stopOpacity="1" />
               </SvgLinearGradient>
             </Defs>
             {/* Track */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}38`} strokeWidth={HERO_STR} />
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}20`} strokeWidth={HERO_STR} />
             {/* Cooling glow effect for silver periods (Evening Kapha & Night Vata) */}
             {nightMode && (
               <Animated.View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, opacity: coolingGlow }}>
@@ -6088,14 +6115,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
           </Svg>
 
-          {/* ── Sacred Geometric Yantra Animation — strictly stationary tracking ── */}
-          <Animated.View pointerEvents="none" style={{ 
-            position: 'absolute', width: HERO_RS, height: HERO_RS, 
-            alignItems: 'center', justifyContent: 'center',
-            transform: [{ translateX: pan.x }, { translateY: pan.y }]
-          }}>
-            <HeroGeometricAnimation size={(HERO_RS - 12) * 0.45} variant="minimal" accentColor="#FFD700" opacity={0.92} />
-          </Animated.View>
+          {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
 
           {/* ── Center content — text and info ── */}
           <Animated.View style={{ 

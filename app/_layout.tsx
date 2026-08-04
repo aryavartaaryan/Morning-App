@@ -169,115 +169,108 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
   return (
     <Animated.View
       pointerEvents="auto"
-      style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }] }]}
+      style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }], backgroundColor: '#020617' }]}
     >
-      {/* Background Video matching Setup Screen */}
-      <View style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, backgroundColor: '#020617' }} />
+      {/* Absolute minimal background gradient or solid color. We'll use a very subtle radial darkness. */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#020617' }]} />
+      
+      {/* Background Video (Subtle Texture) */}
       <Video 
         source={require('../assets/videos/splash.mp4')}
-        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.85 }}
+        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.15 }}
         resizeMode={ResizeMode.COVER}
         shouldPlay
         isLooping
         isMuted
       />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
-      {/* Deep cosmic vignette: radial darkening from edges */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,6,0.30)' }]} />
       
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.75)' }]} />
+
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* Cosmic Nebula Glow — deep indigo radiance behind geometry */}
+        {/* Subtle Cosmic Glow — single pristine white/silver glow */}
         <Animated.View style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
           alignItems: 'center', justifyContent: 'center',
           opacity: titleOp,
         }}>
-          {/* Outer nebula bloom */}
           <View style={{
-            width: SW * 1.1, height: SW * 1.1,
-            borderRadius: SW * 0.55,
-            backgroundColor: 'rgba(30,20,90,0.32)',
-            position: 'absolute',
-          }} />
-          {/* Inner deep core */}
-          <View style={{
-            width: SW * 0.65, height: SW * 0.65,
-            borderRadius: SW * 0.325,
-            backgroundColor: 'rgba(55,30,140,0.22)',
+            width: SW * 1.2, height: SW * 1.2,
+            borderRadius: SW * 0.6,
+            backgroundColor: 'rgba(255,255,255,0.02)',
             position: 'absolute',
           }} />
         </Animated.View>
 
-        {/* Cosmic Geometric Animation — grand layered universe */}
+        {/* Cosmic Geometric Animation — let it breathe cleanly without video behind it */}
         <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 0.92} variant="splash" opacity={0.55} />
+          <HeroGeometricAnimation size={SW * 1.0} variant="splash" opacity={0.65} />
         </Animated.View>
 
-        {/* The Native-Matching "NADA" Text combined with message, styled like Setup Screen */}
+        {/* Ultra Premium "NADA" Text */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
           <Text style={{ 
             fontSize: 42, 
-            fontFamily: 'Nunito_900Black', 
-            color: '#bfdbfe', 
-            letterSpacing: 16, 
-            textShadowColor: '#60a5fa',
-            textShadowRadius: 12,
-            textShadowOffset: { width: 0, height: 0 },
-            opacity: 0.95 
+            fontFamily: 'Nunito_300Light', 
+            color: '#ffffff', 
+            letterSpacing: 24, 
+            opacity: 0.95,
+            paddingLeft: 24 // To balance the high letter spacing
           }}>SVARA</Text>
           
           <Text style={{ 
-            fontSize: 12, 
-            color: '#60a5fa', 
-            fontFamily: 'Nunito_800ExtraBold', 
-            letterSpacing: 8, 
-            marginTop: 6,
-            opacity: 0.85
+            fontSize: 10, 
+            color: '#a1a1aa', 
+            fontFamily: 'Nunito_400Regular', 
+            letterSpacing: 14, 
+            marginTop: 14,
+            opacity: 0.80,
+            paddingLeft: 14
           }}>THE RESONANCE</Text>
           
-          <View style={{ marginTop: 56, alignItems: 'center', position: 'relative' }}>
+          {/* Subtle Cursive touch */}
+          <View style={{ marginTop: 64, alignItems: 'center', position: 'relative' }}>
             <Text style={{ 
-              fontSize: 22, 
-              color: 'rgba(255,255,255,0.7)', 
+              fontSize: 19, 
+              color: 'rgba(255,255,255,0.4)', 
               fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1, 
+              letterSpacing: 1.5, 
               textAlign: 'center', 
-              lineHeight: 32 
+              lineHeight: 30 
             }}>
               Resonate & Transform{'\n'}through Svara.
             </Text>
             <Animated.Text style={{ 
               position: 'absolute',
               top: 0, left: 0, right: 0, bottom: 0,
-              fontSize: 22, 
+              fontSize: 19, 
               color: '#ffffff', 
               fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1, 
+              letterSpacing: 1.5, 
               textAlign: 'center', 
-              lineHeight: 32,
+              lineHeight: 30,
               opacity: shimmerOp 
             }}>
               Resonate & Transform{'\n'}through Svara.
             </Animated.Text>
           </View>
 
-          {/* Mantra with translation - Ultra Premium Layout */}
-          <Animated.View style={{ marginTop: 36, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 20 }}>
-            {/* Devanagari Script - Large, elegant, slightly transparent anchor */}
-            <Text style={{ fontSize: 20, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 32, marginBottom: 14, fontWeight: '400', letterSpacing: 2, textShadowColor: 'rgba(255, 255, 255, 0.2)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }}>
+          {/* Mantra - Ultra Premium Layout (Cleaner, softer, silver) */}
+          <Animated.View style={{ marginTop: 42, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 20 }}>
+            {/* Devanagari Script - Muted but elegant */}
+            <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 32, marginBottom: 14, fontWeight: '300', letterSpacing: 4 }}>
               असतो मा सद्गमय ।{'\n'}तमसो मा ज्योतिर्गमय ।{'\n'}मृत्योर्मा अमृतं गमय ॥
             </Text>
             
             {/* Transliteration */}
-            <Text style={{ fontSize: 13, color: '#bfdbfe', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.95, letterSpacing: 1 }}>
+            <Text style={{ fontSize: 12, color: '#e4e4e7', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.80, letterSpacing: 1.5 }}>
               "Asato Ma Sadgamaya, Tamaso Ma Jyotir Gamaya,{'\n'}Mrityor Ma Amritam Gamaya"
             </Text>
             
             {/* Translation */}
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 18, marginTop: 12, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'Nunito_300Light', textAlign: 'center', lineHeight: 18, marginTop: 14, letterSpacing: 2, textTransform: 'uppercase' }}>
               Lead us from the unreal to the real,{'\n'}from darkness to light, from death to immortality.
             </Text>
           </Animated.View>
@@ -286,7 +279,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: footerOp }]}>SVARA  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp, color: 'rgba(255,255,255,0.3)', letterSpacing: 8 }]}>SVARA  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }

@@ -20,11 +20,14 @@ ios_src/
 # the uploaded macOS-compiled binaries → build fails on Linux.
 node_modules/
 
-# Android local build caches — not needed for EAS remote build
+# Android native project — EAS Build uses this folder directly (non-CNG mode).
+# Adding /android here would strip native code; we KEEP it so EAS uses our
+# committed native project. Build cache folders are excluded individually below.
 android/app/build/
 android/build/
 android/.gradle/
 android/.kotlin/
+android/.cxx/
 
 # Expo local cache
 .expo/
