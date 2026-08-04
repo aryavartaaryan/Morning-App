@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing } from 'react-native';
 import Svg, {
   Circle as SvgCircle, Path as SvgPath, G as SvgG,
-  Defs, RadialGradient as SvgRadialGradient, LinearGradient, Stop, Ellipse, Line as SvgLine,
+  Defs, LinearGradient, Stop, Line as SvgLine, Text as SvgText,
 } from 'react-native-svg';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -17,38 +17,55 @@ function poly(points: { x: number; y: number }[], close = true) {
   return close ? d + ' Z' : d;
 }
 
+// ── Mathematical soul of each sacred shape ────────────────────────────────────
+export const SHAPE_MATH: Array<{ title: string; eq1: string; eq2: string; insight: string }> = [
+  {
+    title: 'Flower of Life',
+    eq1:   'φ = (1 + √5) / 2',
+    eq2:   '≈ 1.6180339887…',
+    insight: 'Golden Ratio · Universal Growth',
+  },
+  {
+    title: "Metatron's Cube",
+    eq1:   'V − E + F = 2',
+    eq2:   '5 Platonic Solids Within',
+    insight: "Euler's Polyhedron Formula",
+  },
+  {
+    title: 'Śrī Yantra',
+    eq1:   '∑ = 9△ ∩ 43 sub-△',
+    eq2:   'sin 60° = √3 / 2',
+    insight: 'Bindu  →  ∞',
+  },
+  {
+    title: 'Shatkona',
+    eq1:   'e^(iπ) + 1 = 0',
+    eq2:   '6 × 60° = 360°',
+    insight: "Euler's Identity · Perfect Symmetry",
+  },
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HeroGeometricAnimation
 //
-// variant = 'home'   → Ultra-slow, deeply meditative sacred geometry.
-//                      All calming shapes (Flower of Life, Metatron, Lotus,
-//                      Shatkona). Colors 100% accent-driven. No harsh tones.
-//                      Breath: 14s inhale / exhale. Rotation: 25s–60s.
+// 4 sacred shapes, each rendered as 3-4 independently rotating Animated.View
+// layers using 6 prime-spaced rotation drivers (rotA–rotF at 18–48s).
+// This creates genuine multi-axis mandala movement visible at meditative pace.
 //
-// variant = 'sound'  → Resonance / acoustic deep environment.
-//                      Concentric waveform rings, mandala breathing with sound.
-//
-// variant = 'splash' → Cosmic / galactic awakening.
-//                      Golden palette, dramatic. Universe being born.
-//
-// variant = 'minimal' → Single static Flower of Life, pure breath.
-//
-// 100% useNativeDriver — zero JS thread load.
+// onShapeChange: fires when the active shape transitions — used by the parent
+// to display the matching mathematical equation.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface HeroGeometricAnimationProps {
   size: number;
-  /** 'home' = hero ring (palette-driven), 'sound' = sound reel, 'splash' = splash screen, 'minimal' = static single geometry */
   variant?: 'home' | 'sound' | 'splash' | 'minimal';
-  /** @deprecated use variant. kept for backward compat */
   theme?: 'light' | 'dark';
-  /** @deprecated use variant. kept for backward compat */
   speed?: 'slow' | 'fast';
   opacity?: number;
-  /** For 'home' variant: pass the solar palette ring color hex e.g. '#FFD700' */
   accentColor?: string;
-  /** Live audio metering level [0-1] to sync animations to the beat */
   audioMetering?: Animated.Value;
+  /** Called with the new shape index (0-3) when shape transitions complete */
+  onShapeChange?: (shapeIndex: number) => void;
 }
 
 export function HeroGeometricAnimation({
@@ -59,119 +76,103 @@ export function HeroGeometricAnimation({
   opacity = 0.82,
   accentColor,
   audioMetering,
+  onShapeChange,
 }: HeroGeometricAnimationProps) {
-  const cx = size / 2, cy = size / 2;
   const hw = size / 2;
   const S  = size;
 
-  // ── Shape cycling state ───────────────────────────────────────────────────
+  // ── Shape cycling ─────────────────────────────────────────────────────────
   const [activeShape, setActiveShape] = useState(0);
   const [nextShape,   setNextShape]   = useState<number | null>(null);
 
-  // ── Rotation drivers ───────────────────────────────────────────────────────
-  const rotA = useRef(new Animated.Value(0)).current;
-  const rotB = useRef(new Animated.Value(0)).current;
-  const rotC = useRef(new Animated.Value(0)).current;
-  const rotD = useRef(new Animated.Value(0)).current;
+  // ── 6 independent rotation drivers ────────────────────────────────────────
+  const rotA = useRef(new Animated.Value(0)).current; // CW  22s
+  const rotB = useRef(new Animated.Value(0)).current; // CCW 34s
+  const rotC = useRef(new Animated.Value(0)).current; // CW  48s
+  const rotD = useRef(new Animated.Value(0)).current; // CW  18s (fastest)
+  const rotE = useRef(new Animated.Value(0)).current; // CW  42s (slowest)
+  const rotF = useRef(new Animated.Value(0)).current; // CCW 28s
 
-  // ── Per-shape opacity ──────────────────────────────────────────────────────
+  // ── Per-shape opacity ─────────────────────────────────────────────────────
   const op0 = useRef(new Animated.Value(1)).current;
   const op1 = useRef(new Animated.Value(0)).current;
   const op2 = useRef(new Animated.Value(0)).current;
   const op3 = useRef(new Animated.Value(0)).current;
 
-  // ── Scale breath + pulse ───────────────────────────────────────────────────
-  const breath  = useRef(new Animated.Value(0)).current;
-  const pulse   = useRef(new Animated.Value(0)).current;
+  // ── Breath + pulse ────────────────────────────────────────────────────────
+  const breath = useRef(new Animated.Value(0)).current;
+  const pulse  = useRef(new Animated.Value(0)).current;
+
+  // ── Sound ripples ─────────────────────────────────────────────────────────
   const ripple1 = useRef(new Animated.Value(0)).current;
   const ripple2 = useRef(new Animated.Value(0)).current;
   const ripple3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // ── HOME: ultra-slow meditative rotations ─────────────────────────────
-    // Each axis rotates at a different, prime-number-spaced pace so they
-    // never perfectly align — creating an ever-changing mandala pattern.
-    const SPEED_A = variant === 'minimal' ? 900000 : variant === 'sound' ? 30000 : variant === 'splash' ? 14000 : 55000;
-    const SPEED_B = variant === 'minimal' ? 900000 : variant === 'sound' ? 40000 : variant === 'splash' ? 20000 : 37000;
-    const SPEED_C = variant === 'minimal' ? 900000 : variant === 'sound' ? 50000 : variant === 'splash' ? 28000 : 62000;
-    const SPEED_D = variant === 'minimal' ? 900000 : variant === 'sound' ? 22000 : variant === 'splash' ? 10000 : 44000;
+    const isHome   = variant === 'home' || variant === 'minimal';
+    const isSound  = variant === 'sound';
+    const isSplash = variant === 'splash';
 
-    Animated.loop(Animated.timing(rotA, { toValue: 1, duration: SPEED_A, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rotB, { toValue: 1, duration: SPEED_B, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rotC, { toValue: 1, duration: SPEED_C, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(rotD, { toValue: 1, duration: SPEED_D, easing: Easing.linear, useNativeDriver: true })).start();
+    // Meditative but clearly visible rotation speeds
+    const SA = isHome ? 22000 : isSound ? 18000 : 8000;
+    const SB = isHome ? 34000 : isSound ? 28000 : 12000;
+    const SC = isHome ? 48000 : isSound ? 38000 : 18000;
+    const SD = isHome ? 18000 : isSound ? 14000 : 6000;
+    const SE = isHome ? 42000 : isSound ? 50000 : 22000;
+    const SF = isHome ? 28000 : isSound ? 22000 : 10000;
 
-    // ── HOME breath: deeply slow — 14s inhale, 14s exhale ────────────────
-    const BREATH_RANGE = variant === 'home'    ? [0.97, 1.03]   // ultra-gentle sway
-                       : variant === 'sound'   ? [0.88, 1.12]
-                       : variant === 'minimal' ? [0.95, 1.05]
-                       :                         [0.90, 1.10];  // splash
-    const BREATH_DUR   = variant === 'home'    ? 14000
-                       : variant === 'sound'   ? 8000
-                       : variant === 'splash'  ? 6000
-                       : variant === 'minimal' ? 12000
-                       :                         10000;
+    Animated.loop(Animated.timing(rotA, { toValue: 1, duration: SA, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotB, { toValue: 1, duration: SB, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotC, { toValue: 1, duration: SC, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotD, { toValue: 1, duration: SD, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotE, { toValue: 1, duration: SE, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(rotF, { toValue: 1, duration: SF, easing: Easing.linear, useNativeDriver: true })).start();
 
+    // Breath
+    const BREATH_DUR = isHome ? 11000 : isSound ? 8000 : 6000;
     Animated.loop(Animated.sequence([
       Animated.timing(breath, { toValue: 1, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(breath, { toValue: 0, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
 
-    // ── Bindu pulse — slow, gentle ────────────────────────────────────────
-    const PULSE_DUR = variant === 'home' ? 5000 : variant === 'sound' ? 3200 : 2200;
+    // Bindu pulse
+    const PULSE_DUR = isHome ? 4000 : 3200;
     Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: PULSE_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: PULSE_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
 
-    // ── Sound variant: concentric ripple rings from center ────────────────
-    if (variant === 'sound') {
-      if (!audioMetering) {
-        const startRipple = (anim: Animated.Value, delay: number) => {
-          Animated.sequence([
-            Animated.delay(delay),
-            Animated.loop(Animated.sequence([
-              Animated.timing(anim, { toValue: 1, duration: 4500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
-            ])),
-          ]).start();
-        };
-        startRipple(ripple1, 0);
-        startRipple(ripple2, 1500);
-        startRipple(ripple3, 3000);
-      }
+    // Sound ripples
+    if (isSound && !audioMetering) {
+      const startRipple = (anim: Animated.Value, delay: number) => {
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.loop(Animated.sequence([
+            Animated.timing(anim, { toValue: 1, duration: 4500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ])),
+        ]).start();
+      };
+      startRipple(ripple1, 0);
+      startRipple(ripple2, 1500);
+      startRipple(ripple3, 3000);
     }
 
-    // ── Shape cross-fade cycle ────────────────────────────────────────────
-    // HOME: very long hold (16s) + slow crossfade (3s) = deeply meditative
-    const HOLD = variant === 'sound'    ? 14000
-               : variant === 'splash'  ? 3000
-               : variant === 'home'    ? 16000
-               : speed === 'fast'      ? 1000
-               :                         9000;
-    const FADE = variant === 'sound'   ? 3000
-               : variant === 'splash'  ? 1500
-               : variant === 'home'    ? 3500
-               : speed === 'fast'      ? 600
-               :                         2000;
+    // Shape cycling
+    const HOLD = isHome ? 14000 : isSound ? 12000 : isSplash ? 3000 : 9000;
+    const FADE = isHome ? 3000  : isSound ? 3000  : isSplash ? 1200 : 2000;
+    const ops  = [op0, op1, op2, op3];
 
-    const ops = [op0, op1, op2, op3];
-
-    // Minimal: single static Flower of Life, just breathes
     if (variant === 'minimal') {
-      op0.setValue(1);
-      op1.setValue(0);
-      op2.setValue(0);
-      op3.setValue(0);
+      op0.setValue(1); op1.setValue(0); op2.setValue(0); op3.setValue(0);
       setActiveShape(0);
+      onShapeChange?.(0);
       return;
     }
 
     function runCycle(current: number) {
       const next = (current + 1) % 4;
-      Animated.sequence([
-        Animated.delay(HOLD),
-      ]).start(({ finished }) => {
+      Animated.delay(HOLD).start(({ finished }) => {
         if (!finished) return;
         setNextShape(next);
         Animated.parallel([
@@ -181,6 +182,7 @@ export function HeroGeometricAnimation({
           if (!finished) return;
           setActiveShape(next);
           setNextShape(null);
+          onShapeChange?.(next);
           runCycle(next);
         });
       });
@@ -188,476 +190,392 @@ export function HeroGeometricAnimation({
     runCycle(0);
   }, []);
 
-  // ── High-Sensitivity Real-Time Beat Detector ───────────────────────────────
+  // Beat detector
   useEffect(() => {
     if (!audioMetering || variant !== 'sound') return;
-    
-    let lastLevel = 0;
-    let waveIndex = 0;
-    let lastWaveTime = 0;
+    let lastLevel = 0, waveIndex = 0, lastWaveTime = 0;
     const waves = [ripple1, ripple2, ripple3];
-    
     const listenerId = audioMetering.addListener(({ value }) => {
       const now = Date.now();
-      const isBeat = value - lastLevel > 0.03 && (now - lastWaveTime > 250);
-      const isFallback = (now - lastWaveTime > 2800);
-
-      if (isBeat || isFallback) {
+      if ((value - lastLevel > 0.03 && now - lastWaveTime > 250) || now - lastWaveTime > 2800) {
         lastWaveTime = now;
-        const anim = waves[waveIndex];
-        waveIndex = (waveIndex + 1) % 3;
+        const anim = waves[waveIndex]; waveIndex = (waveIndex + 1) % 3;
         anim.setValue(0);
-        Animated.timing(anim, {
-          toValue: 1,
-          duration: isFallback ? 4000 : 2500,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true
-        }).start();
+        Animated.timing(anim, { toValue: 1, duration: 2500, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
       }
       lastLevel = value;
     });
-    
-    return () => {
-      audioMetering.removeListener(listenerId);
-    };
-  }, [audioMetering, variant, ripple1, ripple2, ripple3]);
+    return () => audioMetering.removeListener(listenerId);
+  }, [audioMetering, variant]);
 
-  // ── Interpolated transforms ───────────────────────────────────────────────
-  const r0deg  = rotA.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
-  const r0degR = rotA.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
-  const r1deg  = rotB.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
-  const r1degR = rotB.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
-  const r2deg  = rotC.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
-  const r3deg  = rotD.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
-  const r3degR = rotD.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
+  // ── Rotation interpolations ───────────────────────────────────────────────
+  const CW  = (r: Animated.Value) => r.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
+  const CCW = (r: Animated.Value) => r.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
 
-  const breathRange = variant === 'home'    ? [0.97, 1.03]
-                    : variant === 'minimal'  ? [0.95, 1.05]
-                    : variant === 'sound'    ? [0.88, 1.12]
-                    :                          [0.90, 1.10];
-  const sc    = breath.interpolate({ inputRange: [0,1], outputRange: [breathRange[0], breathRange[1]] });
-  const scSm  = breath.interpolate({ inputRange: [0,1], outputRange: [0.97, 1.03] });
-  const bindOp = pulse.interpolate({ inputRange: [0,1], outputRange: [0.35, 0.90] });
-  const bindSc = pulse.interpolate({ inputRange: [0,1], outputRange: [0.65, 1.5] });
+  const cwA = CW(rotA);  // 22s
+  const cwC = CW(rotC);  // 48s — slowest forward
+  const cwD = CW(rotD);  // 18s — fastest visible
+  const cwE = CW(rotE);  // 42s
+  const ccwB = CCW(rotB); // 34s
+  const ccwF = CCW(rotF); // 28s
 
-  // Sound ripple interpolations
-  const rip1Scale = ripple1.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip1Op = ripple1.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.70, 0.15, 0] });
-  const rip2Scale = ripple2.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip2Op = ripple2.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.60, 0.10, 0] });
-  const rip3Scale = ripple3.interpolate({ inputRange: [0,1], outputRange: [0.05, 0.95] });
-  const rip3Op = ripple3.interpolate({ inputRange: [0, 0.1, 0.6, 1], outputRange: [0, 0.50, 0.07, 0] });
+  const sc     = breath.interpolate({ inputRange: [0,1], outputRange: variant === 'home' ? [0.97,1.03] : [0.90,1.10] });
+  const scSlow = breath.interpolate({ inputRange: [0,1], outputRange: [0.985,1.015] });
+  const bindOp = pulse.interpolate({ inputRange: [0,1], outputRange: [0.28, 0.95] });
+  const bindSc = pulse.interpolate({ inputRange: [0,1], outputRange: [0.55, 1.6] });
 
-  // ── Colour palettes per variant ───────────────────────────────────────────
+  const rip1Scale = ripple1.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
+  const rip1Op    = ripple1.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.70,0.15,0] });
+  const rip2Scale = ripple2.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
+  const rip2Op    = ripple2.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.60,0.10,0] });
+  const rip3Scale = ripple3.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
+  const rip3Op    = ripple3.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.50,0.07,0] });
 
-  // HOME: 100% accent-driven. Soft, cool, meditative tones. No harsh golds or reds.
+  // ── Colour palette ────────────────────────────────────────────────────────
   const homeBase = accentColor ?? '#80FFFF';
-  const homeG1 = homeBase;
-  const homeG2 = homeBase + 'CC';          // slightly transparent
-  const homeG3 = '#FFFFFF';                // pure white for jewel dots
-  const homeG4 = homeBase + '55';          // very faint for subtle rings
-  const homeGA = `rgba(${hexToRgbStr(homeBase)},`;
+  const G1 = variant === 'splash' ? '#FFD700' : variant === 'sound' ? (accentColor ?? '#38bdf8') : homeBase;
+  const G2 = variant === 'splash' ? '#FDB931' : variant === 'sound' ? blendHex(G1,'#a78bfa',0.4) : G1+'CC';
+  const G3 = '#FFFFFF';
+  const G4 = variant === 'splash' ? '#B8860B80' : G1+'44';
+  const GA = `rgba(${hexToRgbStr(G1)},`;
 
-  // SOUND: Deep resonance. Teal-purple-bioluminescent.
-  const soundBase = accentColor ?? '#38bdf8';
-  const sG1 = soundBase;
-  const sG2 = blendHex(soundBase, '#a78bfa', 0.4);
-  const sG3 = '#e0f2fe';
-  const sG4 = blendHex(soundBase, '#1e1b4b', 0.5);
-  const sGA = `rgba(${hexToRgbStr(soundBase)},`;
+  const show = (idx: number) => variant === 'splash' || activeShape === idx || nextShape === idx;
 
-  // SPLASH: Warm celestial gold.
-  const spG1 = '#FFD700';
-  const spG2 = '#FDB931';
-  const spG3 = '#FFFFFF';
-  const spG4 = '#B8860B';
-  const spGA = 'rgba(255,215,0,';
-
-  // Pick active palette
-  const G1 = variant === 'sound' ? sG1 : variant === 'splash' ? spG1 : homeG1;
-  const G2 = variant === 'sound' ? sG2 : variant === 'splash' ? spG2 : homeG2;
-  const G3 = variant === 'sound' ? sG3 : variant === 'splash' ? spG3 : homeG3;
-  const G4 = variant === 'sound' ? sG4 : variant === 'splash' ? spG4 : homeG4;
-  const GA = variant === 'sound' ? sGA : variant === 'splash' ? spGA : homeGA;
-
-  // Shape visibility helpers
-  const showShape = (idx: number) =>
-    variant === 'splash' || activeShape === idx || nextShape === idx;
+  // Rotating layer helper
+  const RL = ({
+    rot, children, op = op0, extraStyle = {},
+  }: {
+    rot: Animated.AnimatedInterpolation<string>;
+    children: React.ReactNode;
+    op?: Animated.Value;
+    extraStyle?: object;
+  }) => (
+    <Animated.View
+      style={[{ position:'absolute', width:S, height:S }, extraStyle, { transform:[{rotate:rot}] }]}
+    >
+      {children}
+    </Animated.View>
+  );
 
   return (
     <View
       pointerEvents="none"
-      style={{
-        position: 'absolute', width: S, height: S, zIndex: 2,
-        opacity: opacity,
-        justifyContent: 'center', alignItems: 'center',
-      }}
+      style={{ position:'absolute', width:S, height:S, zIndex:2, opacity, justifyContent:'center', alignItems:'center' }}
     >
+      {/* ── Sound ripples ── */}
+      {variant === 'sound' && (<>
+        <Animated.View style={{ position:'absolute', width:S, height:S, borderRadius:S/2, borderWidth:1.5, borderColor:G1+'80', transform:[{scale:rip1Scale}], opacity:rip1Op }} />
+        <Animated.View style={{ position:'absolute', width:S, height:S, borderRadius:S/2, borderWidth:1,   borderColor:G2+'60', transform:[{scale:rip2Scale}], opacity:rip2Op }} />
+        <Animated.View style={{ position:'absolute', width:S, height:S, borderRadius:S/2, borderWidth:0.8, borderColor:G3+'40', transform:[{scale:rip3Scale}], opacity:rip3Op }} />
+      </>)}
 
-      {/* ════════════════════════════════════════════════════════════════════════
-          SOUND variant: acoustic ripple rings
-          ════════════════════════════════════════════════════════════════════ */}
-      {variant === 'sound' && (
-        <>
-          <Animated.View style={{
-            position: 'absolute', width: S, height: S,
-            borderRadius: S / 2,
-            borderWidth: 1.5,
-            borderColor: G1 + '80',
-            transform: [{ scale: rip1Scale }],
-            opacity: rip1Op,
-          }} />
-          <Animated.View style={{
-            position: 'absolute', width: S, height: S,
-            borderRadius: S / 2,
-            borderWidth: 1,
-            borderColor: G2 + '60',
-            transform: [{ scale: rip2Scale }],
-            opacity: rip2Op,
-          }} />
-          <Animated.View style={{
-            position: 'absolute', width: S, height: S,
-            borderRadius: S / 2,
-            borderWidth: 0.8,
-            borderColor: G3 + '40',
-            transform: [{ scale: rip3Scale }],
-            opacity: rip3Op,
-          }} />
-        </>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          SPLASH variant: cosmic nebula background layer
-          ════════════════════════════════════════════════════════════════════ */}
+      {/* ── Splash nebula ── */}
       {variant === 'splash' && (
-        <Animated.View style={{
-          position: 'absolute', width: S * 1.1, height: S * 1.1,
-          top: -S * 0.05, left: -S * 0.05,
-          opacity: 0.15,
-          transform: [{ rotate: r3deg }],
-        }}>
-          <Svg width={S * 1.1} height={S * 1.1}>
-            {pts(S * 0.55, S * 0.55, S * 0.48, 24, 0).map((p, i) => (
-              <SvgCircle key={`cosmos_${i}`}
-                cx={p.x} cy={p.y}
-                r={i % 5 === 0 ? 3.0 : i % 3 === 0 ? 2.0 : 1.2}
-                fill={i % 7 === 0 ? spG1 : i % 4 === 0 ? spG2 : spG3}
-                opacity={0.15 + (i % 6) * 0.10}
-              />
-            ))}
-          </Svg>
-        </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          SHAPE 0 — FLOWER OF LIFE
-          Pure sacred geometry. Meditative, balanced, timeless.
-          ════════════════════════════════════════════════════════════════════ */}
-      {showShape(0) && (
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          opacity: op0,
-          transform: [{ rotate: r2deg }, { scale: sc }],
-      }}>
-        <Svg width={S} height={S}>
-          {/* Central circle */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.19} fill="none" stroke={G2} strokeWidth="1.5" opacity={0.90} />
-          {/* 6 petal circles */}
-          {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
-            <SvgCircle key={`fol_inner_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-              fill={`${GA}0.06)`}
-              stroke={G2} strokeWidth="1.2" opacity={0.80} />
-          ))}
-          {/* Second ring — 6 more petals, very faint */}
-          {pts(hw, hw, S*0.38, 6, Math.PI/6).map((p, i) => (
-            <SvgCircle key={`fol_outer_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-              fill="none" stroke={G4} strokeWidth="0.6" opacity={0.25} />
-          ))}
-          {/* Outer container ring */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.40} fill="none" stroke={G4}
-            strokeWidth="0.7" opacity={0.35} />
-          {/* Subtle innermost ring */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.06} fill={`${GA}0.15)`} stroke={G2} strokeWidth="0.8" opacity={0.70} />
-          {/* Petal dot jewels — small, elegant */}
-          {pts(hw, hw, S*0.19, 6, 0).map((p, i) => (
-            <SvgCircle key={`fol_jewel_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.75} />
-          ))}
-          {/* Outer halo dots — very subtle */}
-          {pts(hw, hw, S*0.42, 12, 0).map((p, i) => (
-            <SvgCircle key={`fol_halo_${i}`} cx={p.x} cy={p.y} r={1.8}
-              fill={G3} opacity={0.12 + (i % 2) * 0.10} />
-          ))}
-          {/* Outermost breathable dashed ring */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4}
-            strokeWidth="0.4" opacity={0.18} strokeDasharray="4 8" />
-        </Svg>
-      </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          SHAPE 1 — METATRON'S CUBE
-          The architect of the universe. All 5 Platonic solids within.
-          ════════════════════════════════════════════════════════════════════ */}
-      {showShape(1) && (
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          opacity: op1,
-          transform: [{ rotate: r1degR }, { scale: sc }],
-      }}>
-        <Svg width={S} height={S}>
-          {/* All 13 Metatron circles */}
-          {[
-            { x: hw, y: hw },
-            ...pts(hw, hw, S*0.19, 6, 0),
-            ...pts(hw, hw, S*0.38, 6, 0),
-          ].map((p, i) => (
-            <SvgCircle key={`mc_circ_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-              fill={`${GA}0.04)`}
-              stroke={G2} strokeWidth="1.0"
-              opacity={i === 0 ? 0.85 : 0.55} />
-          ))}
-          {/* Lines connecting all 13 centres — elegant mesh */}
-          {(() => {
-            const centers = [{ x: hw, y: hw }, ...pts(hw, hw, S*0.19, 6, 0), ...pts(hw, hw, S*0.38, 6, 0)];
-            const paths: any[] = [];
-            centers.forEach((a, i) => centers.forEach((b, j) => {
-              if (j <= i) return;
-              paths.push(<SvgPath key={`mc_ln_${i}_${j}`}
-                d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
-                stroke={G4} strokeWidth="0.4" opacity={0.20} />);
-            }));
-            return paths;
-          })()}
-          {/* Star tetrahedron — the heart of Metatron */}
-          <SvgPath d={poly(pts(hw, hw, S*0.34, 3, -Math.PI/2))}
-            fill={`${GA}0.08)`} stroke={G1} strokeWidth="1.8" opacity={0.90} />
-          <SvgPath d={poly(pts(hw, hw, S*0.34, 3,  Math.PI/2))}
-            fill={`${GA}0.08)`} stroke={G1} strokeWidth="1.8" opacity={0.90} />
-          {/* Outer hexagon */}
-          <SvgPath d={poly(pts(hw, hw, S*0.34, 6, 0))} fill="none" stroke={G3} strokeWidth="0.8" opacity={0.45} />
-          {/* Dot jewels on hexagon vertices */}
-          {pts(hw, hw, S*0.34, 6, 0).map((p, i) => (
-            <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={2.8} fill={G3} opacity={0.75} />
-          ))}
-          {/* Subtle halo */}
-          {pts(hw, hw, S*0.43, 12, 0).map((p, i) => (
-            <SvgCircle key={`mc_halo_${i}`} cx={p.x} cy={p.y} r={1.8}
-              fill={G3} opacity={0.14 + (i%3)*0.08} />
-          ))}
-        </Svg>
-      </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          SHAPE 2 — LOTUS MANDALA (replaces Sri Yantra for home variant)
-          Meditative 8-petal and 16-petal lotus.
-          For sound/splash: keeps Sri Yantra.
-          ════════════════════════════════════════════════════════════════════ */}
-      {showShape(2) && (
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          opacity: op2,
-          transform: [{ rotate: r0deg }, { scale: sc }],
-      }}>
-        <Svg width={S} height={S}>
-          {variant === 'home' || variant === 'minimal' ? (
-            // ── LOTUS MANDALA — calm, elegant, meditative ──
-            <>
-              {/* Outermost dashed halo ring */}
-              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4}
-                strokeWidth="0.5" opacity={0.20} strokeDasharray="3 7" />
-
-              {/* 16-petal outer lotus */}
-              {pts(hw, hw, S*0.38, 16, 0).map((p, i) => {
-                const angle = (i * Math.PI * 2) / 16;
-                const tipX  = hw + Math.cos(angle) * S * 0.44;
-                const tipY  = hw + Math.sin(angle) * S * 0.44;
-                return (
-                  <SvgPath key={`lotus16_${i}`}
-                    d={`M${hw} ${hw} Q${p.x.toFixed(1)} ${p.y.toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q${p.x.toFixed(1)} ${p.y.toFixed(1)} ${hw} ${hw}`}
-                    fill={`${GA}0.05)`} stroke={G4} strokeWidth="0.5" opacity={0.35} />
-                );
-              })}
-
-              {/* 8-petal inner lotus — more defined */}
-              {pts(hw, hw, S*0.26, 8, Math.PI/8).map((p, i) => {
-                const angle = Math.PI/8 + (i * Math.PI * 2) / 8;
-                const tipX  = hw + Math.cos(angle) * S * 0.34;
-                const tipY  = hw + Math.sin(angle) * S * 0.34;
-                return (
-                  <SvgPath key={`lotus8_${i}`}
-                    d={`M${hw} ${hw} Q${p.x.toFixed(1)} ${p.y.toFixed(1)} ${tipX.toFixed(1)} ${tipY.toFixed(1)} Q${p.x.toFixed(1)} ${p.y.toFixed(1)} ${hw} ${hw}`}
-                    fill={`${GA}0.12)`} stroke={G2} strokeWidth="1.0" opacity={0.80} />
-                );
-              })}
-
-              {/* Inner petal ring dots */}
-              {pts(hw, hw, S*0.34, 8, Math.PI/8).map((p, i) => (
-                <SvgCircle key={`lotus8_tip_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.70} />
-              ))}
-
-              {/* Core circles */}
-              <SvgCircle cx={hw} cy={hw} r={S*0.16} fill={`${GA}0.10)`} stroke={G2} strokeWidth="1.2" opacity={0.75} />
-              <SvgCircle cx={hw} cy={hw} r={S*0.08} fill={`${GA}0.18)`} stroke={G2} strokeWidth="1.0" opacity={0.85} />
-
-              {/* Outer ring of jewel dots */}
-              {pts(hw, hw, S*0.42, 8, 0).map((p, i) => (
-                <SvgCircle key={`lotus_jewel_${i}`} cx={p.x} cy={p.y} r={2.0} fill={G3} opacity={0.55} />
-              ))}
-            </>
-          ) : (
-            // ── SRI YANTRA for sound / splash variants ──
-            <>
-              <Defs>
-                <LinearGradient id="syMetalG" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%"   stopColor={G1} />
-                  <Stop offset="50%"  stopColor={G3} />
-                  <Stop offset="100%" stopColor={G2} />
-                </LinearGradient>
-              </Defs>
-              <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4}
-                strokeWidth="0.8" opacity={0.40} strokeDasharray="6 6" />
-              {[S*0.35, S*0.27, S*0.19, S*0.12].map((r, ti) => (
-                <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw, hw, r, 3, Math.PI/6))}
-                  fill={`${GA}0.05)`}
-                  stroke="url(#syMetalG)" strokeWidth={[2.0, 1.6, 1.4, 1.2][ti]} strokeLinejoin="round"
-                  opacity={0.80} />
-              ))}
-              {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r, ti) => (
-                <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw, hw, r, 3, -Math.PI/6))}
-                  fill={`${GA}0.04)`}
-                  stroke="url(#syMetalG)" strokeWidth={[2.0, 1.6, 1.4, 1.2, 1.0][ti]} strokeLinejoin="round"
-                  opacity={0.80} />
-              ))}
-              <SvgCircle cx={hw} cy={hw} r={S*0.035} fill={G1} opacity={0.90} />
-              {pts(hw, hw, S*0.41, 8, 0).map((p, i) => (
-                <SvgCircle key={`sy_lotus_${i}`} cx={p.x} cy={p.y} r={S*0.05}
-                  fill={`${GA}0.07)`} stroke={G4} strokeWidth="0.7" opacity={0.45} />
-              ))}
-            </>
-          )}
-        </Svg>
-      </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          SHAPE 3 — SHATKONA (Star of David / Merkaba)
-          Union of masculine and feminine, fire and water.
-          ════════════════════════════════════════════════════════════════════ */}
-      {showShape(3) && (
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          opacity: op3,
-          transform: [{ rotate: r0deg }, { scale: scSm }],
-      }}>
-        <Svg width={S} height={S}>
-          {/* Very fine radial web — barely visible */}
-          {pts(hw, hw, S*0.44, 36, 0).map((p, i) => (
-            <SvgPath key={`sh_ray_${i}`}
-              d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
-              stroke={G3} strokeWidth="0.3"
-              opacity={0.06} />
-          ))}
-          {/* Outer dashed circle */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.43} fill="none" stroke={G4}
-            strokeWidth="0.7" opacity={0.30} strokeDasharray="3 5" />
-          {/* Upward triangle */}
-          <SvgPath d={poly(pts(hw, hw, S*0.36, 3, -Math.PI/2))}
-            fill={`${GA}0.06)`} stroke={G1} strokeWidth="2.0" opacity={0.90} />
-          {/* Downward triangle */}
-          <SvgPath d={poly(pts(hw, hw, S*0.36, 3, Math.PI/2))}
-            fill={`${GA}0.06)`} stroke={G1} strokeWidth="2.0" opacity={0.90} />
-          {/* Hexagram inner hexagon */}
-          {pts(hw, hw, S*0.19, 6, 0).map((p, i, arr) => {
-            const n = arr[(i+1)%arr.length];
-            return <SvgPath key={`sh_h_${i}`}
-              d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
-              stroke={G3} strokeWidth="1.0" opacity={0.60} />;
-          })}
-          {/* Vertex jewels */}
-          {pts(hw, hw, S*0.36, 3, -Math.PI/2).map((p, i) => (
-            <SvgCircle key={`sh_vup_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.85} />
-          ))}
-          {pts(hw, hw, S*0.36, 3, Math.PI/2).map((p, i) => (
-            <SvgCircle key={`sh_vdn_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.85} />
-          ))}
-          {/* Inner rings */}
-          <SvgCircle cx={hw} cy={hw} r={S*0.11} fill="none" stroke={G2} strokeWidth="1.0" opacity={0.65} />
-          <SvgCircle cx={hw} cy={hw} r={S*0.055} fill="none" stroke={G3} strokeWidth="0.8"   opacity={0.75} />
-        </Svg>
-      </Animated.View>
-      )}
-
-      {/* Counter-rotation ring for Shatkona — adds life */}
-      {showShape(3) && (
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          opacity: op3,
-          transform: [{ rotate: r1degR }],
-      }}>
-        <Svg width={S} height={S}>
-          {pts(hw, hw, S*0.43, 12, Math.PI/12).map((p, i) => (
-            <SvgCircle key={`sh_orbit_${i}`} cx={p.x} cy={p.y} r={2.0}
-              fill={G3} opacity={0.12 + (i%3)*0.08} />
-          ))}
-        </Svg>
-      </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          ALWAYS VISIBLE — Slow orbiting stardust ring
-          Very subtle — just a whisper of movement at the outer edge.
-          ════════════════════════════════════════════════════════════════════ */}
-      <Animated.View style={{
-          position: 'absolute', width: S, height: S,
-          transform: [{ rotate: r1degR }],
-          opacity: variant === 'sound' ? 0.40 : variant === 'splash' ? 0.55 : 0.45,
-      }}>
-        <Svg width={S} height={S}>
-          {pts(hw, hw, S*0.44, 16, 0).map((p, i) => (
-            <SvgCircle key={`dust_${i}`} cx={p.x} cy={p.y}
-              r={i % 4 === 0 ? 2.2 : 1.3}
-              fill={G3}
-              opacity={0.10 + (i % 4) * 0.08} />
-          ))}
-        </Svg>
-      </Animated.View>
-
-      {/* Splash: second stardust ring */}
-      {variant === 'splash' && (
-        <Animated.View style={{
-            position: 'absolute', width: S, height: S,
-            transform: [{ rotate: r3deg }],
-            opacity: 0.30,
-        }}>
+        <RL rot={cwC} extraStyle={{opacity:0.15}}>
           <Svg width={S} height={S}>
-            {pts(hw, hw, S*0.36, 12, Math.PI/12).map((p, i) => (
-              <SvgCircle key={`dust2_${i}`} cx={p.x} cy={p.y}
-                r={i % 4 === 0 ? 2.0 : 1.0}
-                fill={spG2}
-                opacity={0.12 + (i % 5) * 0.08} />
+            {pts(S*0.5,S*0.5,S*0.47,28,0).map((p,i)=>(
+              <SvgCircle key={`cosmos_${i}`} cx={p.x} cy={p.y}
+                r={i%5===0?3:i%3===0?2:1.2}
+                fill={i%7===0?'#FFD700':i%4===0?'#FDB931':'#FFF'}
+                opacity={0.15+(i%6)*0.10} />
             ))}
           </Svg>
+        </RL>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SHAPE 0 — FLOWER OF LIFE
+          Layers: outer halo (CW slow), 6 petals (CCW medium), inner core (CW fast)
+          Formula: φ = (1+√5)/2
+          ════════════════════════════════════════════════════════════════ */}
+      {show(0) && (
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op0, transform:[{scale:sc}] }}>
+          {/* Outer halo ring + 24 dots — CW slowest */}
+          <RL rot={cwE}>
+            <Svg width={S} height={S}>
+              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.30} strokeDasharray="4 9" />
+              {pts(hw,hw,S*0.43,24,0).map((p,i)=>(
+                <SvgCircle key={`f0_h_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.4} fill={G3} opacity={0.10+(i%4)*0.07} />
+              ))}
+              <SvgCircle cx={hw} cy={hw} r={S*0.38} fill="none" stroke={G4} strokeWidth="0.4" opacity={0.18} />
+              {pts(hw,hw,S*0.38,12,Math.PI/12).map((p,i)=>(
+                <SvgCircle key={`f0_h2_${i}`} cx={p.x} cy={p.y} r={1.6} fill={G3} opacity={0.14+(i%3)*0.07} />
+              ))}
+            </Svg>
+          </RL>
+          {/* 6-petal flower — CCW medium */}
+          <RL rot={ccwF}>
+            <Svg width={S} height={S}>
+              <SvgCircle cx={hw} cy={hw} r={S*0.19} fill="none" stroke={G2} strokeWidth="1.5" opacity={0.92} />
+              {pts(hw,hw,S*0.19,6,0).map((p,i)=>(
+                <SvgCircle key={`f0_p_${i}`} cx={p.x} cy={p.y} r={S*0.19}
+                  fill={`${GA}0.07)`} stroke={G2} strokeWidth="1.2" opacity={0.84} />
+              ))}
+              {pts(hw,hw,S*0.38,6,Math.PI/6).map((p,i)=>(
+                <SvgCircle key={`f0_op_${i}`} cx={p.x} cy={p.y} r={S*0.19}
+                  fill="none" stroke={G4} strokeWidth="0.5" opacity={0.20} />
+              ))}
+              {pts(hw,hw,S*0.19,6,0).map((p,i)=>(
+                <SvgCircle key={`f0_tj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.82} />
+              ))}
+            </Svg>
+          </RL>
+          {/* Inner core — CW fastest */}
+          <RL rot={cwD}>
+            <Svg width={S} height={S}>
+              <SvgCircle cx={hw} cy={hw} r={S*0.07} fill={`${GA}0.18)`} stroke={G2} strokeWidth="1.0" opacity={0.75} />
+              {pts(hw,hw,S*0.12,6,0).map((p,i)=>(
+                <SvgCircle key={`f0_ij_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.72} />
+              ))}
+              <SvgCircle cx={hw} cy={hw} r={S*0.09} fill="none" stroke={G2} strokeWidth="0.7" opacity={0.50} strokeDasharray="3 4" />
+            </Svg>
+          </RL>
         </Animated.View>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════════
-          Bindu — the sacred glowing center point
-          The primordial dot from which all creation emerges.
-          For home: very soft, subtle, calming.
-          ════════════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════
+          SHAPE 1 — METATRON'S CUBE
+          Layers: outer orbit (CW slow), 13 circles (CCW med),
+                  mesh lines (CW slow), star tetrahedron (CCW fast)
+          Formula: V − E + F = 2
+          ════════════════════════════════════════════════════════════════ */}
+      {show(1) && (
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op1, transform:[{scale:sc}] }}>
+          {/* Outer orbit — CW slowest */}
+          <RL rot={cwE}>
+            <Svg width={S} height={S}>
+              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.4" opacity={0.20} strokeDasharray="3 8" />
+              {pts(hw,hw,S*0.44,18,0).map((p,i)=>(
+                <SvgCircle key={`mc_o_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.5} fill={G3} opacity={0.12+(i%4)*0.08} />
+              ))}
+            </Svg>
+          </RL>
+          {/* 13 circles — CCW medium */}
+          <RL rot={ccwB}>
+            <Svg width={S} height={S}>
+              {[{x:hw,y:hw},...pts(hw,hw,S*0.19,6,0),...pts(hw,hw,S*0.38,6,0)].map((p,i)=>(
+                <SvgCircle key={`mc_c_${i}`} cx={p.x} cy={p.y} r={S*0.19}
+                  fill={`${GA}0.04)`} stroke={G2} strokeWidth="1.0" opacity={i===0?0.90:0.58} />
+              ))}
+              <SvgPath d={poly(pts(hw,hw,S*0.34,6,0))} fill="none" stroke={G3} strokeWidth="0.8" opacity={0.42} />
+            </Svg>
+          </RL>
+          {/* Mesh lines — CW slow */}
+          <RL rot={cwC}>
+            <Svg width={S} height={S}>
+              {(()=>{
+                const c=[{x:hw,y:hw},...pts(hw,hw,S*0.19,6,0),...pts(hw,hw,S*0.38,6,0)];
+                return c.flatMap((a,i)=>c.filter((_,j)=>j>i).map((b,j)=>(
+                  <SvgPath key={`mc_l_${i}_${j}`}
+                    d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
+                    stroke={G4} strokeWidth="0.35" opacity={0.18} />
+                )));
+              })()}
+            </Svg>
+          </RL>
+          {/* Star tetrahedron + vertex jewels — CCW fast */}
+          <RL rot={ccwF}>
+            <Svg width={S} height={S}>
+              <SvgPath d={poly(pts(hw,hw,S*0.34,3,-Math.PI/2))}
+                fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
+              <SvgPath d={poly(pts(hw,hw,S*0.34,3, Math.PI/2))}
+                fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
+              {pts(hw,hw,S*0.34,6,0).map((p,i)=>(
+                <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.82} />
+              ))}
+            </Svg>
+          </RL>
+        </Animated.View>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SHAPE 2 — ŚRĪ YANTRA (ENHANCED — multi-layer rotation)
+          Classic: 9 interlocking triangles. Enhanced with:
+          • Outer bhūpura (square ground) — CW slowest
+          • Two full triangle sets counter-rotating independently
+          • Inner bindu surrounded by 3 orbiting rings
+          • 8-petal + 16-petal lotus rings (CCW)
+          Formula: ∑ = 9△ ∩ 43 sub-△
+          ════════════════════════════════════════════════════════════════ */}
+      {show(2) && (
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op2, transform:[{scale:sc}] }}>
+
+          {/* Layer 1: outer rings + lotus 16 + 8 — CCW slowest */}
+          <RL rot={ccwB}>
+            <Svg width={S} height={S}>
+              {/* Outer dashed circle */}
+              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.28} strokeDasharray="5 8" />
+              {/* 16-petal outer lotus */}
+              {pts(hw,hw,S*0.41,16,0).map((p,i)=>(
+                <SvgCircle key={`sy_l16_${i}`} cx={p.x} cy={p.y} r={S*0.05}
+                  fill={`${GA}0.06)`} stroke={G4} strokeWidth="0.6" opacity={0.40} />
+              ))}
+              {/* 8-petal inner lotus */}
+              {pts(hw,hw,S*0.41,8,Math.PI/8).map((p,i)=>(
+                <SvgCircle key={`sy_l8_${i}`} cx={p.x} cy={p.y} r={S*0.04}
+                  fill={`${GA}0.08)`} stroke={G2} strokeWidth="0.7" opacity={0.50} />
+              ))}
+              {/* 16 outer jewels */}
+              {pts(hw,hw,S*0.44,16,Math.PI/16).map((p,i)=>(
+                <SvgCircle key={`sy_oj_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.15+(i%4)*0.08} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 2: Shakti (downward) triangles — CCW medium */}
+          <RL rot={ccwF}>
+            <Svg width={S} height={S}>
+              {[S*0.35, S*0.27, S*0.19, S*0.12].map((r,ti)=>(
+                <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw,hw,r,3,Math.PI/6))}
+                  fill={`${GA}${[0.07,0.06,0.05,0.04][ti]})`}
+                  stroke={G2} strokeWidth={[2.2,1.8,1.5,1.2][ti]} strokeLinejoin="round"
+                  opacity={0.88+ti*0.04} />
+              ))}
+              {/* Shakti vertex jewels */}
+              {pts(hw,hw,S*0.35,3,Math.PI/6).map((p,i)=>(
+                <SvgCircle key={`sy_dvj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.78} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 3: Shiva (upward) triangles — CW medium */}
+          <RL rot={cwA}>
+            <Svg width={S} height={S}>
+              {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r,ti)=>(
+                <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw,hw,r,3,-Math.PI/6))}
+                  fill={`${GA}${[0.06,0.05,0.04,0.03,0.02][ti]})`}
+                  stroke={G1} strokeWidth={[2.2,1.8,1.5,1.2,1.0][ti]} strokeLinejoin="round"
+                  opacity={0.88+ti*0.04} />
+              ))}
+              {/* Shiva vertex jewels */}
+              {pts(hw,hw,S*0.38,3,-Math.PI/6).map((p,i)=>(
+                <SvgCircle key={`sy_uvj_${i}`} cx={p.x} cy={p.y} r={3.5} fill={G3} opacity={0.80} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 4: inner bindu concentric rings + shadow — CW fast */}
+          <RL rot={cwD}>
+            <Svg width={S} height={S}>
+              {/* Drop shadow offset */}
+              <SvgG x="0" y="2" opacity="0.35">
+                <SvgCircle cx={hw} cy={hw} r={S*0.036} fill="black" />
+              </SvgG>
+              {/* Three tight inner rings */}
+              <SvgCircle cx={hw} cy={hw} r={S*0.10} fill="none" stroke={G2} strokeWidth="0.8" opacity={0.55} strokeDasharray="2 4" />
+              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G2} strokeWidth="0.9" opacity={0.65} />
+              <SvgCircle cx={hw} cy={hw} r={S*0.036} fill={G1} opacity={0.95} />
+              {/* 6 tight orbit dots */}
+              {pts(hw,hw,S*0.08,6,0).map((p,i)=>(
+                <SvgCircle key={`sy_id_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.65} />
+              ))}
+            </Svg>
+          </RL>
+
+        </Animated.View>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SHAPE 3 — SHATKONA (ENHANCED — 4 independently rotating layers)
+          Two triangles counter-rotate against each other. Inner hexagon
+          and radial web rotate on separate axes. Creates the Merkaba effect.
+          Formula: e^(iπ) + 1 = 0
+          ════════════════════════════════════════════════════════════════ */}
+      {show(3) && (
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op3, transform:[{scale:scSlow}] }}>
+
+          {/* Layer 1: radial web + outer ring + orbit dots — CW slowest */}
+          <RL rot={cwE}>
+            <Svg width={S} height={S}>
+              {pts(hw,hw,S*0.44,48,0).map((p,i)=>(
+                <SvgPath key={`sh_r_${i}`}
+                  d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
+                  stroke={G3} strokeWidth="0.3" opacity={0.055} />
+              ))}
+              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.6" opacity={0.28} strokeDasharray="3 7" />
+              {pts(hw,hw,S*0.44,12,Math.PI/12).map((p,i)=>(
+                <SvgCircle key={`sh_od_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.6} fill={G3} opacity={0.12+(i%4)*0.09} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 2: UPWARD triangle — CCW medium — Shiva/fire/masculine */}
+          <RL rot={ccwB}>
+            <Svg width={S} height={S}>
+              <SvgPath d={poly(pts(hw,hw,S*0.36,3,-Math.PI/2))}
+                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.4" opacity={0.94} />
+              {pts(hw,hw,S*0.36,3,-Math.PI/2).map((p,i)=>(
+                <SvgCircle key={`sh_utj_${i}`} cx={p.x} cy={p.y} r={5.0} fill={G3} opacity={0.90} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 3: DOWNWARD triangle — CW fast — counter-rotates vs Layer 2 */}
+          <RL rot={cwA}>
+            <Svg width={S} height={S}>
+              <SvgPath d={poly(pts(hw,hw,S*0.36,3, Math.PI/2))}
+                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.4" opacity={0.94} />
+              {pts(hw,hw,S*0.36,3, Math.PI/2).map((p,i)=>(
+                <SvgCircle key={`sh_dtj_${i}`} cx={p.x} cy={p.y} r={5.0} fill={G3} opacity={0.90} />
+              ))}
+            </Svg>
+          </RL>
+
+          {/* Layer 4: inner hexagon + inner jewels + inner rings — CCW slowest */}
+          <RL rot={ccwF}>
+            <Svg width={S} height={S}>
+              {pts(hw,hw,S*0.19,6,0).map((p,i,arr)=>{
+                const n=arr[(i+1)%arr.length];
+                return <SvgPath key={`sh_h_${i}`}
+                  d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
+                  stroke={G3} strokeWidth="1.2" opacity={0.65} />;
+              })}
+              {pts(hw,hw,S*0.19,6,0).map((p,i)=>(
+                <SvgCircle key={`sh_ij_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.72} />
+              ))}
+              {/* Mid-orbit 12 dots */}
+              {pts(hw,hw,S*0.28,12,0).map((p,i)=>(
+                <SvgCircle key={`sh_mj_${i}`} cx={p.x} cy={p.y} r={1.5} fill={G3} opacity={0.18+(i%4)*0.08} />
+              ))}
+              <SvgCircle cx={hw} cy={hw} r={S*0.12} fill="none" stroke={G2} strokeWidth="1.0" opacity={0.68} />
+              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G3} strokeWidth="0.9" opacity={0.78} />
+            </Svg>
+          </RL>
+
+        </Animated.View>
+      )}
+
+      {/* ── Always-visible dual counter-rotating stardust rings ── */}
+      <Animated.View style={{ position:'absolute', width:S, height:S, opacity: variant==='sound'?0.35:0.45, transform:[{rotate:cwC}] }}>
+        <Svg width={S} height={S}>
+          {pts(hw,hw,S*0.44,20,0).map((p,i)=>(
+            <SvgCircle key={`da_${i}`} cx={p.x} cy={p.y}
+              r={i%5===0?2.5:i%3===0?1.8:1.2} fill={G3} opacity={0.07+(i%5)*0.06} />
+          ))}
+        </Svg>
+      </Animated.View>
+      <Animated.View style={{ position:'absolute', width:S, height:S, opacity: variant==='splash'?0.40:0.30, transform:[{rotate:ccwB}] }}>
+        <Svg width={S} height={S}>
+          {pts(hw,hw,S*0.34,16,Math.PI/16).map((p,i)=>(
+            <SvgCircle key={`db_${i}`} cx={p.x} cy={p.y}
+              r={i%4===0?2.0:1.0} fill={G3} opacity={0.06+(i%4)*0.05} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      {/* ── Bindu — the sacred center point ── */}
       <Animated.View style={{
-        position: 'absolute',
-        width: variant === 'sound' ? 12 : variant === 'home' ? 7 : 9,
-        height: variant === 'sound' ? 12 : variant === 'home' ? 7 : 9,
-        borderRadius: variant === 'sound' ? 6 : variant === 'home' ? 3.5 : 4.5,
+        position:'absolute',
+        width: variant==='sound' ? 13 : 8,
+        height: variant==='sound' ? 13 : 8,
+        borderRadius: 7,
         backgroundColor: G3,
         shadowColor: G1,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: variant === 'home' ? 0.8 : 1,
-        shadowRadius: variant === 'sound' ? 20 : variant === 'splash' ? 18 : 12,
+        shadowOffset: {width:0, height:0},
+        shadowOpacity: 0.98,
+        shadowRadius: variant==='sound' ? 22 : 14,
         opacity: bindOp,
-        transform: [{ scale: bindSc }],
+        transform: [{scale: bindSc}],
       }} />
 
     </View>
@@ -665,25 +583,17 @@ export function HeroGeometricAnimation({
 }
 
 // ── Palette utilities ─────────────────────────────────────────────────────────
-/** Convert '#RRGGBB' → 'r,g,b' string for rgba() */
 function hexToRgbStr(hex: string): string {
-  const clean = hex.replace('#', '');
-  if (clean.length < 6) return '255,255,255';
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return '255,255,255';
+  const c = hex.replace('#','');
+  if (c.length < 6) return '255,255,255';
+  const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  if (isNaN(r)||isNaN(g)||isNaN(b)) return '255,255,255';
   return `${r},${g},${b}`;
 }
-
-/** Blend two hex colors. t=0 → c1, t=1 → c2 */
 function blendHex(c1: string, c2: string, t: number): string {
   const p1 = hexToRgbStr(c1).split(',').map(Number);
   const p2 = hexToRgbStr(c2).split(',').map(Number);
-  const r = Math.round(p1[0] + (p2[0] - p1[0]) * t);
-  const g = Math.round(p1[1] + (p2[1] - p1[1]) * t);
-  const b = Math.round(p1[2] + (p2[2] - p1[2]) * t);
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+  return '#'+[0,1,2].map(i=>Math.round(p1[i]+(p2[i]-p1[i])*t).toString(16).padStart(2,'0')).join('');
 }
 
 export { pts as sacredDots };

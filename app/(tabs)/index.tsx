@@ -35,11 +35,11 @@ import { getCardBg, getCardBgLight } from '@/lib/cardTheme';
 import { getBgSource, getBgSourceSync } from '@/lib/bgImages';
 import AppBackground from '@/components/AppBackground';
 import { Font } from '@/constants/theme';
-import Svg, { Circle as SvgCircle, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop, G as SvgG } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop, G as SvgG, Line as SvgLine } from 'react-native-svg';
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import MetabolicStoryModal from '@/components/MetabolicStoryModal';
 import CosmicStoryModal from '@/components/CosmicStoryModal';
-import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
+import { HeroGeometricAnimation, SHAPE_MATH } from '@/components/HeroGeometricAnimation';
 import { getTodayWakeLog, getStreak, markCardShown, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
 import { ToastLogger } from '@/lib/toastLogger';
 import { ScreenErrorBoundary, withScreenBoundary } from '@/components/ScreenErrorBoundary';
@@ -5901,7 +5901,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
 
-  const HERO_RS  = compact ? 274 : 347;
+  const HERO_RS  = compact ? 244 : 309;
   const HERO_STR = 2.5; // Elegant slim main arc
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
@@ -5910,6 +5910,17 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const prog   = period ? Math.min(1, Math.max(0, (durM - rem) / durM)) : 0;
   // "Xh Ym left" — friendly, no 'about'
   const remStr = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m left` : `${rem}m left`;
+
+  // ── Sacred geometry: track which shape is currently showing ──────────────
+  const [geoShape, setGeoShape] = React.useState(0);
+  const eqFade = useRef(new Animated.Value(1)).current;
+  const handleShapeChange = React.useCallback((idx: number) => {
+    Animated.sequence([
+      Animated.timing(eqFade, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.timing(eqFade, { toValue: 1, duration: 800, useNativeDriver: true }),
+    ]).start();
+    setTimeout(() => setGeoShape(idx), 600);
+  }, []);
 
   // ── Hero content per phase ──
   const heroContent = period ? getHeroRingContent(period.id, showBrahma) : null;
@@ -6010,7 +6021,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               alignItems: 'center', justifyContent: 'center',
               transform: [{ translateX: pan.x }, { translateY: pan.y }]
             }}>
-              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.82} variant="home" accentColor={haloHex} opacity={0.65} />
+              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.82} variant="home" accentColor={haloHex} opacity={0.65} onShapeChange={handleShapeChange} />
             </Animated.View>
 
             {/* Bubble inner glow (Premium Neon / Sky Blue) */}
@@ -6089,7 +6100,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             </Svg>
           </Animated.View>
 
-          {/* ── SVG ring — 4 layers: track → wide glow → halo → main arc → sliver ── */}
+          {/* ── SVG ring — precision compass instrument design ── */}
           <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
             <Defs>
               <SvgLinearGradient id="heroMetal" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -6099,9 +6110,32 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                  <Stop offset="100%" stopColor={ringHex} stopOpacity="1" />
               </SvgLinearGradient>
             </Defs>
-            {/* Track */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}20`} strokeWidth={HERO_STR} />
-            {/* Cooling glow effect for silver periods (Evening Kapha & Night Vata) */}
+
+            {/* ── Inner precision counter-ring — rotates slowly CCW ── */}
+            {Array.from({ length: 72 }).map((_, i) => {
+              const a = (i * Math.PI * 2) / 72 - Math.PI / 2;
+              const isMajor = i % 6 === 0;
+              const innerR = HERO_R - HERO_STR - (isMajor ? 10 : 5);
+              const outerR = HERO_R - HERO_STR - 2;
+              return (
+                <SvgLine key={`tick_${i}`}
+                  x1={HERO_RS/2 + Math.cos(a)*innerR}
+                  y1={HERO_RS/2 + Math.sin(a)*innerR}
+                  x2={HERO_RS/2 + Math.cos(a)*outerR}
+                  y2={HERO_RS/2 + Math.sin(a)*outerR}
+                  stroke={isMajor ? accentHex+'CC' : accentHex+'44'}
+                  strokeWidth={isMajor ? 1.2 : 0.6}
+                />
+              );
+            })}
+
+            {/* Track ring */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}18`} strokeWidth={HERO_STR} />
+
+            {/* Outer ghost ring — precision instrument second rail */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R + 6} fill="none" stroke={`${accentHex}18`} strokeWidth={0.7} />
+
+            {/* Cooling glow (night mode) */}
             {nightMode && (
               <Animated.View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, opacity: coolingGlow }}>
                 <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
@@ -6109,10 +6143,26 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 </Svg>
               </Animated.View>
             )}
-            {/* Main crisp arc — elegant slim with metallic sweep ONLY */}
+
+            {/* Main crisp arc — metallic sweep */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
-            {/* Inner highlight sliver — shimmering moonlight edge */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.85 : 0.75} />
+            {/* Inner neon sliver */}
+            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.88 : 0.78} />
+
+            {/* ── Glowing particle at the arc leading edge ── */}
+            {prog > 0.01 && prog < 0.999 && (() => {
+              const angle = (prog * 2 * Math.PI) - Math.PI / 2;
+              const px = HERO_RS/2 + Math.cos(angle) * HERO_R;
+              const py = HERO_RS/2 + Math.sin(angle) * HERO_R;
+              return (<>
+                {/* Outer glow */}
+                <SvgCircle cx={px} cy={py} r={7} fill={accentHex} opacity={0.18} />
+                {/* Mid glow */}
+                <SvgCircle cx={px} cy={py} r={4} fill={accentHex} opacity={0.42} />
+                {/* Bright core */}
+                <SvgCircle cx={px} cy={py} r={2.2} fill="#FFFFFF" opacity={0.96} />
+              </>);
+            })()}
           </Svg>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
@@ -6181,55 +6231,141 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               {/* ── Phase name — clean, large, meditative ── */}
               <Animated.View style={{
                 alignItems: 'center',
-                opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.75, 1] }),
+                opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.80, 1] }),
               }}>
-                {/* Phase micro-label */}
-                <Text style={{
-                  fontSize: compact ? 7 : 8,
-                  fontWeight: '900',
-                  color: `${accentHex}CC`,
-                  letterSpacing: 3,
-                  textAlign: 'center',
-                  marginBottom: compact ? 10 : 14,
-                  textShadowColor: 'rgba(0,0,0,0.9)',
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 4,
-                }}>
-                  {heroContent.sciLabel ? '◎  BODY RHYTHM' : '◎  NOW'}
-                </Text>
 
-                {/* Main phase name — the only hero text */}
+                {/* BODY RHYTHM — catchy, premium, glowing badge */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginBottom: compact ? 12 : 16,
+                  paddingHorizontal: compact ? 10 : 14,
+                  paddingVertical: compact ? 4 : 5,
+                  borderRadius: 99,
+                  borderWidth: 1,
+                  borderColor: `${accentHex}60`,
+                  backgroundColor: 'rgba(0,0,0,0.45)',
+                }}>
+                  {/* Live pulse dot */}
+                  <Animated.View style={{
+                    width: 5, height: 5, borderRadius: 2.5,
+                    backgroundColor: accentHex,
+                    shadowColor: accentHex,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 1,
+                    shadowRadius: 5,
+                    opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.6, 1] }),
+                  }} />
+                  <Text style={{
+                    fontSize: compact ? 9 : 11,
+                    fontWeight: '900',
+                    color: '#FFFFFF',
+                    letterSpacing: compact ? 2.5 : 3,
+                    textTransform: 'uppercase',
+                    textShadowColor: accentHex,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 8,
+                  }}>
+                    {heroContent.sciLabel ? 'Body Rhythm' : 'Now'}
+                  </Text>
+                </View>
+
+                {/* Main phase name — the hero text */}
                 <Text
                   style={{
-                    fontSize: compact ? 22 : 28,
-                    fontWeight: '300',
+                    fontSize: compact ? 21 : 27,
+                    fontWeight: '400',
                     color: '#FFFFFF',
                     textAlign: 'center',
                     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-                    textShadowColor: 'rgba(0,0,0,0.95)',
+                    textShadowColor: 'rgba(0,0,0,0.98)',
                     textShadowOffset: { width: 0, height: 2 },
-                    textShadowRadius: 14,
-                    letterSpacing: 1.5,
-                    lineHeight: compact ? 28 : 36,
+                    textShadowRadius: 16,
+                    letterSpacing: 1.2,
+                    lineHeight: compact ? 27 : 34,
                     marginBottom: compact ? 10 : 14,
                   }}
                   numberOfLines={2}
                 >{heroContent.header}</Text>
 
-                {/* Thin golden divider */}
-                <View style={{ height: 0.7, width: compact ? 44 : 56, backgroundColor: `${accentHex}80`, marginBottom: compact ? 10 : 14 }} />
+                {/* Divider — glowing accent line */}
+                <View style={{
+                  height: 1,
+                  width: compact ? 48 : 60,
+                  backgroundColor: accentHex,
+                  opacity: 0.55,
+                  marginBottom: compact ? 10 : 14,
+                  shadowColor: accentHex,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.9,
+                  shadowRadius: 4,
+                }} />
 
-                {/* Time remaining — subtle, below divider */}
+                {/* Time remaining */}
                 <Text style={{
                   fontSize: compact ? 10 : 12,
-                  fontWeight: '600',
-                  color: 'rgba(255,255,255,0.60)',
+                  fontWeight: '700',
+                  color: 'rgba(255,255,255,0.75)',
                   textAlign: 'center',
-                  letterSpacing: 1,
+                  letterSpacing: 1.2,
                   textShadowColor: 'rgba(0,0,0,0.95)',
                   textShadowOffset: { width: 0, height: 1 },
                   textShadowRadius: 6,
                 }}>{remStr}</Text>
+
+                {/* ── Mathematical equation for current sacred shape ── */}
+                <Animated.View style={{
+                  marginTop: compact ? 12 : 16,
+                  alignItems: 'center',
+                  opacity: eqFade,
+                }}>
+                  {/* Thin rule */}
+                  <View style={{ height: 0.5, width: compact ? 80 : 100, backgroundColor: `${accentHex}40`, marginBottom: compact ? 6 : 8 }} />
+                  {/* Shape name */}
+                  <Text style={{
+                    fontSize: compact ? 7 : 8.5,
+                    fontWeight: '700',
+                    color: `${accentHex}AA`,
+                    letterSpacing: 1.8,
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                    marginBottom: 4,
+                  }}>{SHAPE_MATH[geoShape]?.title}</Text>
+                  {/* Primary equation */}
+                  <Text style={{
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: '700',
+                    color: '#FFFFFF',
+                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                    textAlign: 'center',
+                    letterSpacing: 0.5,
+                    textShadowColor: accentHex,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 10,
+                    marginBottom: 2,
+                  }}>{SHAPE_MATH[geoShape]?.eq1}</Text>
+                  {/* Secondary equation */}
+                  <Text style={{
+                    fontSize: compact ? 9 : 10.5,
+                    fontWeight: '500',
+                    color: 'rgba(255,255,255,0.60)',
+                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                    textAlign: 'center',
+                    letterSpacing: 0.3,
+                    marginBottom: 3,
+                  }}>{SHAPE_MATH[geoShape]?.eq2}</Text>
+                  {/* Insight tagline */}
+                  <Text style={{
+                    fontSize: compact ? 7 : 8,
+                    fontWeight: '600',
+                    color: `${accentHex}88`,
+                    letterSpacing: 1.2,
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                  }}>{SHAPE_MATH[geoShape]?.insight}</Text>
+                </Animated.View>
               </Animated.View>
             </>
           )}
@@ -7570,9 +7706,9 @@ function DailyTab() {
                 </TouchableOpacity>
               </View>
             ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 100 }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 60 }}>
                   <DailyIntentionCard />
-                  <View style={{ paddingTop: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <View style={{ paddingTop: 6, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     {todayFest && (
                       <TouchableOpacity 
                         activeOpacity={0.8}
