@@ -1,14 +1,14 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, StatusBar, Image
-, BackHandler } from "react-native";
+  StatusBar, Image, BackHandler, ImageBackground
+} from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter , useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import {
   useBgContext,
   BG_KEYS, BG_META, type BgKey, getTimedBgKey
@@ -27,14 +27,10 @@ function AsyncWallpaperImage({ bgKey }: { bgKey: string }) {
     return () => { mounted = false; };
   }, [bgKey]);
 
-  if (!imgUri || imgUri.length < 5) return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#1e293b' }]} />;
+  if (!imgUri || imgUri.length < 5) return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#06060A' }]} />;
   
   return (
-    <Image
-      source={{ uri: imgUri }}
-      style={StyleSheet.absoluteFillObject}
-      resizeMode="cover"
-    />
+    <Image source={{ uri: imgUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
   );
 }
 
@@ -50,44 +46,21 @@ const CATEGORIES = [
 ] as const;
 
 const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' => {
-  if ([
-    'brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_2', 'sunrise_late', 'sunrise_late_2',
-    'morning_early', 'morning_early_late', 'morning', 'morning_2', 'morning_late', 'morning_late_2'
-  ].includes(key)) {
-    return 'morning';
-  }
-  if ([
-    'midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late',
-    'midday', 'midday_late', 'midday_late_2',
-    'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'afternoon_late_2'
-  ].includes(key)) {
-    return 'day';
-  }
-  if ([
-    'sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_part2', 'sandhya_late_mid', 'sandhya_late_mid_2',
-    'sandhya_late_2', 'sandhya_late_3', 'evening_early', 'evening_early_2', 'evening'
-  ].includes(key)) {
-    return 'sunset';
-  }
+  if (['brahma', 'predawn', 'predawn_mid', 'sunrise', 'sunrise_2', 'sunrise_late', 'sunrise_late_2', 'morning_early', 'morning_early_late', 'morning', 'morning_2', 'morning_late', 'morning_late_2'].includes(key)) return 'morning';
+  if (['midday_early', 'midday_early_2', 'midday_early_mid', 'midday_early_late', 'midday', 'midday_late', 'midday_late_2', 'afternoon', 'afternoon_first_late', 'afternoon_mid', 'afternoon_late', 'afternoon_late_2'].includes(key)) return 'day';
+  if (['sandhya', 'sandhya_mid', 'sandhya_late', 'sandhya_late_part2', 'sandhya_late_mid', 'sandhya_late_mid_2', 'sandhya_late_2', 'sandhya_late_3', 'evening_early', 'evening_early_2', 'evening'].includes(key)) return 'sunset';
   return 'night';
 };
 
 export default function WallpaperSettings() {
   const router = useRouter();
   useFocusEffect(useCallback(() => {
-    const onBackPress = () => {
-      router.navigate('/(tabs)');
-      return true;
-    };
+    const onBackPress = () => { router.navigate('/(tabs)/settings'); return true; };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [router]));
 
-  const {
-    wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey,
-    bgKey, allBgUris, solarTimes, bgUri
-  } = useBgContext();
-
+  const { wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey, bgKey, allBgUris, solarTimes } = useBgContext();
   const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
   const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'info' }>({ visible: false, message: '', type: 'success' });
@@ -104,11 +77,8 @@ export default function WallpaperSettings() {
     for (let m = 4 * 60; m < 28 * 60; m++) {
       const h = (m / 60) % 24;
       const key = getTimedBgKey(h, solarTimes) as BgKey;
-      if (!map[key]) {
-        map[key] = { start: (m/60), end: (m/60) };
-      } else {
-        map[key]!.end = (m/60);
-      }
+      if (!map[key]) map[key] = { start: (m/60), end: (m/60) };
+      else map[key]!.end = (m/60);
     }
     const fmt = (hr: number) => {
       let hh = Math.floor(hr);
@@ -118,37 +88,26 @@ export default function WallpaperSettings() {
       const ampm = hh >= 12 ? 'PM' : 'AM';
       const dispH = hh % 12 === 0 ? 12 : hh % 12;
       const dispM = mm.toString().padStart(2, '0');
-      if (dispM === '00') return `${dispH} ${ampm}`;
-      return `${dispH}:${dispM} ${ampm}`;
+      return dispM === '00' ? `${dispH} ${ampm}` : `${dispH}:${dispM} ${ampm}`;
     };
     const res: Partial<Record<BgKey, string>> = {};
     for (const k of BG_KEYS) {
-      if (map[k]) {
-        res[k] = `${fmt(map[k]!.start)}–${fmt(map[k]!.end)}`;
-      }
+      if (map[k]) res[k] = `${fmt(map[k]!.start)}–${fmt(map[k]!.end)}`;
     }
     setDynamicTimes(res);
   }, [solarTimes]);
 
   const showToast = (msg: string, type: 'success' | 'info' = 'success') => {
     setToast({ visible: true, message: msg, type });
-    setTimeout(() => {
-      if (isMounted.current) {
-        setToast(prev => ({ ...prev, visible: false }));
-      }
-    }, 2500);
+    setTimeout(() => { if (isMounted.current) setToast(prev => ({ ...prev, visible: false })); }, 2500);
   };
 
   const activeBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
   const activeMeta  = BG_META[activeBgKey as BgKey] ?? BG_META.morning;
+  const rawActiveUri = allBgUris[activeBgKey as BgKey];
+  const activeUri   = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
 
-  // Filter keys based on current category selection
-  const filteredKeys = BG_KEYS.filter(key => {
-    if (activeCategory === 'all') return true;
-    return getCategoryOfKey(key) === activeCategory;
-  });
-
-  // Split filtered keys into rows of 2 for grid layout
+  const filteredKeys = BG_KEYS.filter(key => activeCategory === 'all' || getCategoryOfKey(key) === activeCategory);
   const gridRows: BgKey[][] = [];
   for (let i = 0; i < filteredKeys.length; i += 2) {
     gridRows.push(filteredKeys.slice(i, i + 2) as BgKey[]);
@@ -158,163 +117,90 @@ export default function WallpaperSettings() {
     <View style={styles.screen}>
       <AppBackground />
       <StatusBar barStyle="light-content" />
-      {/* Immersive glass overlay to keep UI legible over any background */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.85)', '#060A18']}
-        locations={[0, 0.4, 0.9]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <LinearGradient colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)', '#000000']} style={StyleSheet.absoluteFillObject} />
 
-      {/* Top Header */}
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate('/(tabs)');
-            }}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.navigate('/(tabs)/settings'); }} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={styles.headerSubtitle}>PREMIUM THEMES</Text>
             <Text style={styles.headerTitle}>Wallpaper</Text>
           </View>
-          <View style={{ width: 44 }} /> {/* Balance for back button */}
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Custom Toast Banner */}
         {toast.visible && (
-          <View style={[styles.toastBanner, {
-            borderColor: toast.type === 'success' ? 'rgba(251, 191, 36, 0.5)' : 'rgba(167, 139, 250, 0.5)',
-            shadowColor: toast.type === 'success' ? GOLD : PURPLE,
-          }]}>
-            <Text style={{ fontSize: 14 }}>{toast.type === 'success' ? '✨' : '📌'}</Text>
+          <View style={[styles.toastBanner, { borderColor: toast.type === 'success' ? GOLD : PURPLE }]}>
             <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{toast.message}</Text>
           </View>
         )}
       </SafeAreaView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60 }}
-      >
-        {/* Active Wallpaper Hero */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+        
+        {/* Cinematic Hero */}
         <View style={styles.heroContainer}>
-          <View style={styles.heroContent}>
-            <Text style={styles.heroTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
-            <Text style={styles.heroName}>{activeMeta.emoji}  {activeMeta.label}</Text>
-            <Text style={styles.heroSub}>{activeMeta.sub}</Text>
+          <View style={styles.heroCard}>
+            <ImageBackground source={activeUri ? { uri: activeUri } : undefined} style={StyleSheet.absoluteFillObject} resizeMode="cover">
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']} style={StyleSheet.absoluteFillObject} />
+              <View style={styles.heroContent}>
+                <View style={styles.heroTag}>
+                  <Text style={styles.heroTagText}>{wallpaperMode === 'solar' ? 'AUTO-SOLAR MODE' : 'PINNED THEME'}</Text>
+                </View>
+                <Text style={styles.heroName}>{activeMeta.emoji} {activeMeta.label}</Text>
+                <Text style={styles.heroTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
+              </View>
+            </ImageBackground>
           </View>
         </View>
 
-        {/* Segmented Mode Selector */}
-        <BlurView intensity={20} tint="light" style={styles.segmentedControl}>
+        {/* Sleek Mode Selector */}
+        <BlurView intensity={30} tint="dark" style={styles.segmentedControl}>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
               if (wallpaperMode !== 'solar') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setWallpaperMode('solar');
-                showToast('☀️ Auto-Solar Mode activated!', 'success');
+                showToast('☀️ Auto-Solar Mode activated', 'success');
               }
             }}
             style={[styles.segmentBtn, wallpaperMode === 'solar' && styles.segmentBtnActiveSolar]}
           >
             <Text style={{ fontSize: 14 }}>☀️</Text>
-            <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD }]}>
-              Auto-Solar
-            </Text>
+            <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD, fontWeight: '700' }]}>Auto-Solar</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
               if (wallpaperMode !== 'manual') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setWallpaperMode('manual');
-                showToast('📌 Pinned Mode active.', 'info');
+                showToast('📌 Pinned Mode active', 'info');
               }
             }}
             style={[styles.segmentBtn, wallpaperMode === 'manual' && styles.segmentBtnActiveManual]}
           >
             <Text style={{ fontSize: 14 }}>📌</Text>
-            <Text style={[styles.segmentText, wallpaperMode === 'manual' && { color: PURPLE }]}>
-              Pinned
-            </Text>
+            <Text style={[styles.segmentText, wallpaperMode === 'manual' && { color: PURPLE, fontWeight: '700' }]}>Pinned</Text>
           </TouchableOpacity>
-
         </BlurView>
 
-        {/* Mode Description Banner */}
-        {wallpaperMode === 'solar' ? (
-          <View style={[styles.modeDesc, { borderColor: 'rgba(251, 191, 36, 0.25)' }]}>
-            <LinearGradient
-              colors={['rgba(251, 191, 36, 0.12)', 'rgba(10, 15, 30, 0.3)']}
-              style={styles.modeDescGradient}
-            >
-              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-                <Text style={{ fontSize: 16 }}>☀️</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: GOLD, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                  Auto-Solar Rhythm
-                </Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
-                  Your wallpaper shifts dynamically through 40 solar states in sync with the sun's elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        ) : (
-          <View style={[styles.modeDesc, { borderColor: 'rgba(167, 139, 250, 0.25)' }]}>
-            <LinearGradient
-              colors={['rgba(167, 139, 250, 0.12)', 'rgba(10, 15, 30, 0.3)']}
-              style={styles.modeDescGradient}
-            >
-              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Text style={{ fontSize: 16 }}>📌</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: PURPLE, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                  Pinned Wallpaper Active
-                </Text>
-                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
-                  Select any theme below to pin it as your permanent background. Tap Auto-Solar anytime to re-enable dynamic transitions.
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        )}
-
-        {/* Category Filter Tabs */}
-        <View style={{ marginBottom: 16 }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
-          >
+        {/* Dynamic Category Tabs */}
+        <View style={{ marginBottom: 24 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
             {CATEGORIES.map(cat => {
               const isSelected = activeCategory === cat.id;
               return (
                 <TouchableOpacity
                   key={cat.id}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setActiveCategory(cat.id as any);
-                  }}
-                  style={[
-                    styles.categoryTab,
-                    isSelected ? styles.categoryTabActive : styles.categoryTabInactive
-                  ]}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveCategory(cat.id as any); }}
+                  style={[styles.categoryTab, isSelected && styles.categoryTabActive]}
                 >
                   <Text style={{ fontSize: 14 }}>{cat.emoji}</Text>
-                  <Text style={{
-                    fontSize: 11,
-                    fontWeight: '700',
-                    color: isSelected ? '#fff' : '#FFFFFF80'
-                  }}>
+                  <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#000' : '#FFFFFF80', letterSpacing: 0.5 }}>
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
@@ -323,7 +209,7 @@ export default function WallpaperSettings() {
           </ScrollView>
         </View>
 
-        {/* 2-Column Grid */}
+        {/* Innovative Cards */}
         <View style={styles.gridContainer}>
           {gridRows.map((rowKeys, rowIndex) => (
             <View key={rowIndex} style={styles.gridRow}>
@@ -339,63 +225,35 @@ export default function WallpaperSettings() {
                       if (wallpaperMode === 'solar') {
                         setWallpaperMode('manual');
                         setManualBgKey(key as BgKey);
-                        showToast('📌 Pinned Mode activated!', 'success');
+                        showToast('📌 Pinned Mode activated', 'success');
                       } else {
                         setManualBgKey(key as BgKey);
-                        showToast('📌 Pinned wallpaper updated!', 'success');
+                        showToast('📌 Theme pinned', 'success');
                       }
                     }}
                     activeOpacity={0.85}
-                    style={[
-                      styles.gridItem,
-                      active && {
-                        borderColor: wallpaperMode === 'solar' ? GOLD : PURPLE,
-                        borderWidth: 2,
-                      }
-                    ]}
+                    style={[styles.gridItem, active && { borderColor: wallpaperMode === 'solar' ? GOLD : PURPLE, borderWidth: 2 }]}
                   >
-                    <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden' }}>
-                      <AsyncWallpaperImage bgKey={key} />
-                      <LinearGradient
-                        colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
-                        locations={[0, 0.4, 1]}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-
-                      {/* Time Pill */}
-                      <BlurView intensity={40} tint="dark" style={styles.timePill}>
-                        <Text style={styles.timePillText}>
-                          {dynamicTimes[key] || meta.time}
-                        </Text>
-                      </BlurView>
-
-                      {/* Selection Status Overlay */}
-                      {active && (
-                        <View style={[
-                          styles.activeStatusPill,
-                          { backgroundColor: wallpaperMode === 'solar' ? GOLD : PURPLE }
-                        ]}>
-                          <Ionicons name="checkmark-sharp" size={14} color="#000" />
-                          <Text style={styles.activeStatusText}>
-                            {wallpaperMode === 'solar' ? 'ACTIVE' : 'PINNED'}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Content Overlay */}
-                      <View style={styles.itemContent}>
-                        <Text numberOfLines={1} style={styles.itemTitle}>
-                          {meta.emoji} {meta.label}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.itemSub}>
-                          {meta.sub}
-                        </Text>
+                    <AsyncWallpaperImage bgKey={key} />
+                    <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']} style={StyleSheet.absoluteFillObject} />
+                    
+                    <BlurView intensity={40} tint="dark" style={styles.timePill}>
+                      <Text style={styles.timePillText}>{dynamicTimes[key] || meta.time}</Text>
+                    </BlurView>
+                    
+                    {active && (
+                      <View style={[styles.activeIndicator, { backgroundColor: wallpaperMode === 'solar' ? GOLD : PURPLE }]}>
+                        <Ionicons name="checkmark-sharp" size={14} color="#000" />
                       </View>
+                    )}
+
+                    <View style={styles.itemContent}>
+                      <Text numberOfLines={1} style={styles.itemTitle}>{meta.emoji} {meta.label}</Text>
+                      <Text numberOfLines={1} style={styles.itemSub}>{meta.sub}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
-              {/* Placeholder for odd number of items */}
               {rowKeys.length === 1 && <View style={{ flex: 1 }} />}
             </View>
           ))}
@@ -407,246 +265,38 @@ export default function WallpaperSettings() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#060A18' },
+  screen: { flex: 1, backgroundColor: '#000' },
   safeArea: { zIndex: 10 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: '#fff',
-    letterSpacing: 1.5,
-  },
-  headerSubtitle: {
-    fontSize: 9,
-    color: '#FFFFFF80',
-    marginBottom: 2,
-    fontWeight: '600',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  toastBanner: {
-    position: 'absolute',
-    top: 70,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-    borderRadius: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 999,
-  },
-  heroContainer: {
-    height: 120,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  heroContent: {
-    alignItems: 'center',
-  },
-  heroTime: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 3,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  heroName: {
-    fontSize: 24,
-    fontWeight: '300',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: 1.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  heroSub: {
-    fontSize: 11,
-    color: '#FFFFFF99',
-    marginTop: 4,
-    fontWeight: '300',
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderRadius: 99,
-    padding: 4,
-    marginHorizontal: 32,
-    marginBottom: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    overflow: 'hidden',
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 99,
-    backgroundColor: 'transparent',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
-  },
-  segmentBtnActiveSolar: {
-    backgroundColor: 'rgba(251, 191, 36, 0.2)',
-    borderColor: 'rgba(251, 191, 36, 0.4)',
-  },
-  segmentBtnActiveManual: {
-    backgroundColor: 'rgba(167, 139, 250, 0.2)',
-    borderColor: 'rgba(167, 139, 250, 0.4)',
-  },
-  segmentBtnActiveVideo: {
-    backgroundColor: 'rgba(96, 165, 250, 0.2)',
-    borderColor: 'rgba(96, 165, 250, 0.4)',
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#FFFFFF80',
-    letterSpacing: 0.5,
-  },
-  modeDesc: {
-    marginHorizontal: 16,
-    marginBottom: 32,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  modeDescGradient: {
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  modeDescIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categoryTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 99,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  categoryTabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  categoryTabInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  gridContainer: {
-    paddingHorizontal: 16,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  gridItem: {
-    flex: 1,
-    height: 220,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  timePill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    overflow: 'hidden',
-  },
-  timePillText: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: '#fff',
-    letterSpacing: 1,
-  },
-  activeStatusPill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  activeStatusText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#000',
-    letterSpacing: 0.5,
-  },
-  itemContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 16,
-  },
-  itemTitle: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: '#fff',
-    marginBottom: 3,
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  itemSub: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '400',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: 1, fontFamily: 'Nunito_700Bold' },
+  headerSubtitle: { fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 2, fontWeight: '800', letterSpacing: 2.5, textTransform: 'uppercase' },
+  toastBanner: { position: 'absolute', top: 70, alignSelf: 'center', backgroundColor: 'rgba(10, 10, 15, 0.95)', borderRadius: 24, paddingVertical: 14, paddingHorizontal: 24, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8, zIndex: 999 },
+  
+  heroContainer: { paddingHorizontal: 16, marginBottom: 24, marginTop: 8 },
+  heroCard: { width: '100%', height: 260, borderRadius: 32, overflow: 'hidden', backgroundColor: '#111', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  heroContent: { flex: 1, justifyContent: 'flex-end', padding: 24, alignItems: 'center' },
+  heroTag: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  heroTagText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 2 },
+  heroName: { fontSize: 32, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0, fontFamily: 'Nunito_800ExtraBold', marginBottom: 4 },
+  heroTime: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_400Regular' },
+  
+  segmentedControl: { flexDirection: 'row', borderRadius: 20, padding: 4, marginHorizontal: 16, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  segmentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 16 },
+  segmentBtnActiveSolar: { backgroundColor: 'rgba(251, 191, 36, 0.15)' },
+  segmentBtnActiveManual: { backgroundColor: 'rgba(167, 139, 250, 0.15)' },
+  segmentText: { fontSize: 13, fontWeight: '500', color: '#FFFFFF60', letterSpacing: 0.5, fontFamily: 'Nunito_600SemiBold' },
+  
+  categoryTab: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  categoryTabActive: { backgroundColor: '#fff', borderColor: '#fff' },
+  
+  gridContainer: { paddingHorizontal: 16 },
+  gridRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
+  gridItem: { flex: 1, height: 260, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: '#0A0A0F' },
+  timePill: { position: 'absolute', top: 12, left: 12, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
+  timePillText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 1 },
+  activeIndicator: { position: 'absolute', top: 12, right: 12, width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 3 },
+  itemContent: { flex: 1, justifyContent: 'flex-end', padding: 16 },
+  itemTitle: { fontSize: 14, fontWeight: '700', color: '#fff', marginBottom: 2, letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' },
+  itemSub: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular' },
 });

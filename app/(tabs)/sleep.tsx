@@ -3449,160 +3449,200 @@ function SoundReelsModal({
 }
 
 
-// ─── Sonic Collections UI ──────────────────────────────────────────────────
-// Map collection IDs to a single premium Ionicons icon name
-// Single premium icon used across all collections for consistency
-const COLLECTION_PREMIUM_ICON = 'musical-notes';
+// ─── Cinematic Collection Card ──────────────────────────────────────────────
+const CinematicCollectionCard = memo(function CinematicCollectionCard({
+  collection,
+  onPress
+}: {
+  collection: SonicCollection;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
 
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }], marginBottom: 18 }}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress();
+        }}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={{
+          width: '100%',
+          height: 170,
+          borderRadius: 28,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.06)',
+          backgroundColor: '#0A0A0C'
+        }}
+      >
+        <Image 
+          source={{ uri: collection.imageUri }} 
+          style={StyleSheet.absoluteFillObject} 
+          resizeMode="cover" 
+        />
+        {/* Cinematic Gradient: dark on left, fade to transparent on right */}
+        <LinearGradient
+          colors={['#000000', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.3)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        {/* Bottom subtle dark wash for text legibility */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.6)']}
+          style={StyleSheet.absoluteFillObject}
+        />
+        {/* Subtle colour wash */}
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.12 }]} />
+        
+        {/* Content */}
+        <View style={{ flex: 1, padding: 22, justifyContent: 'space-between', width: '85%' }}>
+          {/* Top badge */}
+          <View style={{ alignSelf: 'flex-start' }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              borderRadius: 99,
+              paddingHorizontal: 10, paddingVertical: 5,
+              borderWidth: 1, borderColor: collection.themeColor + '40',
+            }}>
+              <Ionicons name="sparkles" size={11} color={collection.themeColor} />
+              <Text style={{ fontSize: 9, fontWeight: '800', color: collection.themeColor, letterSpacing: 1.5, fontFamily: 'Nunito_800ExtraBold', textTransform: 'uppercase' }}>
+                {collection.subtitle}
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom text */}
+          <View>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 4, letterSpacing: -0.5 }}>
+              {collection.title}
+            </Text>
+            <Text style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.65)', lineHeight: 18 }} numberOfLines={2}>
+              {collection.description}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6 }}>
+              <Ionicons name="headset-outline" size={14} color="rgba(255,255,255,0.4)" />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>
+                {collection.soundIds.length} TRACKS
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+// ─── Sonic Collections UI ──────────────────────────────────────────────────
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-      <View style={{ marginBottom: 20, marginTop: 8 }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -0.3 }}>Sonic Therapies</Text>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4, letterSpacing: 0.2 }}>Curated programs for deep healing</Text>
+      <View style={{ marginBottom: 24, marginTop: 12 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: -0.4 }}>Sonic Therapies</Text>
+        <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 4, letterSpacing: 0.2 }}>Curated programs for deep healing</Text>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-        {SONIC_COLLECTIONS.map(col => {
-          const soundCount = col.soundIds.length;
-          return (
-            <TouchableOpacity key={col.id} activeOpacity={0.88} onPress={() => onSelectCollection(col.id)}
-              style={{ width: '48%', height: 230, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: col.themeColor + '30', marginBottom: 14 }}>
-              {/* Background image */}
-              <Image source={{ uri: col.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-              {/* Dark gradient overlay */}
-              <LinearGradient
-                colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.95)']}
-                locations={[0, 0.45, 1]}
-                style={StyleSheet.absoluteFillObject}
-              />
-              {/* Subtle colour wash */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.10 }]} />
-
-              {/* Top row — premium icon badge */}
-              <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  backgroundColor: 'rgba(0,0,0,0.50)',
-                  borderRadius: 99,
-                  paddingHorizontal: 10, paddingVertical: 6,
-                  borderWidth: 1, borderColor: col.themeColor + '50',
-                  shadowColor: col.themeColor, shadowOpacity: 0.55, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
-                  elevation: 4,
-                  flexShrink: 1
-                }}>
-                  <Ionicons name={COLLECTION_PREMIUM_ICON as any} size={11} color={col.themeColor} />
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: col.themeColor, letterSpacing: 1, fontFamily: 'Nunito_800ExtraBold', flexShrink: 1 }} numberOfLines={1}>{col.subtitle}</Text>
-                </View>
-              </View>
-
-              {/* Bottom content */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 4, letterSpacing: -0.2 }} numberOfLines={2}>{col.title}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 10, lineHeight: 15 }} numberOfLines={2}>{col.description}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                    <Ionicons name="headset-outline" size={10} color="rgba(255,255,255,0.7)" />
-                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 0.5 }}>{soundCount} TRACKS</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+      <View>
+        {SONIC_COLLECTIONS.map(col => (
+          <CinematicCollectionCard key={col.id} collection={col} onPress={() => onSelectCollection(col.id)} />
+        ))}
       </View>
     </View>
   );
 });
 
-// ─── Therapy Sound Card (2-column grid card with image) ─────────────────────
-const TherapySoundCard = memo(function TherapySoundCard({
-  sound, isPlaying, isPaused, themeColor, onPress,
+// ─── Detail Sound Row ────────────────────────────────────────────────────────
+const DetailSoundRow = memo(function DetailSoundRow({
+  sound,
+  isPlaying,
+  isPaused,
+  themeColor,
+  onPress
 }: {
-  sound: any; isPlaying: boolean; isPaused: boolean; themeColor: string; onPress: () => void;
+  sound: any;
+  isPlaying: boolean;
+  isPaused: boolean;
+  themeColor: string;
+  onPress: () => void;
 }) {
-  const [imgLoadFailed, setImgLoadFailed] = useState(false);
-  const [, forceUpdate] = useState(0);
-  useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceUpdate(n => n + 1); }), []);
-
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
-  const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
+  const rawUri = SOUND_IMAGES[sound.id] ?? sound.imageUri;
   const imgUri = !imgBundled ? (rawUri ? getLocalSoundImageUri(rawUri) : undefined) : undefined;
-  const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
-  const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
-
-  const cardW = Math.floor((W - 16 * 2 - 12) / 2);
-  const cardH = Math.round(cardW * 1.25);
-
-  const pulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (isPlaying && !isPaused) {
-      const loop = Animated.loop(Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.03, duration: 2000, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 2000, useNativeDriver: true }),
-      ]));
-      loop.start();
-      return () => loop.stop();
-    }
-    pulse.setValue(1);
-  }, [isPlaying, isPaused]);
+  const finalSource = imgBundled ?? (imgUri ? { uri: imgUri } : (rawUri ? { uri: rawUri } : undefined));
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={{ width: cardW }}>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 20,
+        backgroundColor: isPlaying ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+        borderWidth: 1,
+        borderColor: isPlaying ? themeColor + '60' : 'rgba(255,255,255,0.04)',
+        marginBottom: 10,
+      }}
+    >
+      {/* Thumbnail */}
+      <View style={{ width: 64, height: 64, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111' }}>
+        {finalSource && <Image source={finalSource} style={{ width: '100%', height: '100%' }} resizeMode="cover" />}
+        {isPlaying && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }]}>
+            <Ionicons name={isPaused ? "play" : "stats-chart"} size={24} color={themeColor} />
+          </View>
+        )}
+      </View>
+      
+      {/* Details */}
+      <View style={{ flex: 1, marginLeft: 14 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: isPlaying ? themeColor : '#FFF', fontFamily: 'Nunito_700Bold', marginBottom: 4 }} numberOfLines={1}>
+          {sound.label}
+        </Text>
+        {sound.desc ? (
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>
+            {sound.desc}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Play Icon */}
+      {!isPlaying && (
         <View style={{
-          width: cardW, height: cardH, borderRadius: 20, overflow: 'hidden',
-          borderWidth: isPlaying ? 1.5 : 1,
-          borderColor: isPlaying ? themeColor + '90' : 'rgba(255,255,255,0.09)',
+          width: 36, height: 36, borderRadius: 18,
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          alignItems: 'center', justifyContent: 'center',
+          marginLeft: 10
         }}>
-          {/* Gradient base */}
-          <LinearGradient colors={[sound.top ?? '#0A0818', sound.bot ?? '#050410']} style={StyleSheet.absoluteFillObject} />
-          {/* Image */}
-          {finalSource && (
-            <Image source={finalSource} style={{ width: '100%', height: '100%', position: 'absolute' }} resizeMode="cover"
-              onError={() => setImgLoadFailed(true)} />
-          )}
-          {/* Gradient scrim */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.88)']}
-            locations={[0, 0.5, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
-          {/* Colour tint if playing */}
-          {isPlaying && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor + '18' }]} />}
-
-          {/* Play/Pause button — top right */}
-          <View style={{
-            position: 'absolute', top: 10, right: 10,
-            width: 32, height: 32, borderRadius: 16,
-            backgroundColor: isPlaying ? themeColor + '30' : 'rgba(0,0,0,0.45)',
-            borderWidth: 1, borderColor: isPlaying ? themeColor + '80' : 'rgba(255,255,255,0.18)',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={13} color={isPlaying ? themeColor : '#FFFFFFCC'} />
-          </View>
-
-          {/* Label + desc — bottom overlay */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 11, paddingBottom: 11, paddingTop: 6 }}>
-            <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', lineHeight: 16, letterSpacing: 0.1 }}
-              numberOfLines={2}>{sound.label}</Text>
-            {sound.desc && (
-              <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.52)', marginTop: 2, letterSpacing: 0.1 }}
-                numberOfLines={1}>{sound.desc}</Text>
-            )}
-          </View>
-
-          {/* Playing wave indicator — bottom right */}
-          {isPlaying && (
-            <View style={{ position: 'absolute', bottom: 10, right: 10 }}>
-              <Ionicons name="stats-chart" size={12} color={themeColor} />
-            </View>
-          )}
+          <Ionicons name="play" size={16} color="rgba(255,255,255,0.6)" style={{ marginLeft: 2 }} />
         </View>
-      </Animated.View>
+      )}
     </TouchableOpacity>
   );
 });
 
+// ─── Sonic Collection Detail Modal ───────────────────────────────────────────
 const SonicCollectionDetail = memo(function SonicCollectionDetail({
   collection, onClose, playingId, isPaused, sessionSecs, onPressSound
 }: {
@@ -3613,52 +3653,65 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   sessionSecs: number;
   onPressSound: (id: string) => void;
 }) {
-  const sounds = collection.soundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
-  const iconName: any = COLLECTION_PREMIUM_ICON;
+  const rawSounds = collection.soundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
+  
+  // Remove duplicate sounds that point to the same audio link
+  const uniqueSounds: any[] = [];
+  const seenLinks = new Set();
+  for (const s of rawSounds) {
+    const link = s.uri || s.id;
+    if (!seenLinks.has(link)) {
+      seenLinks.add(link);
+      uniqueSounds.push(s);
+    }
+  }
+  const sounds = uniqueSounds;
 
   return (
     <Modal visible={true} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#04040E' }}>
+      <View style={{ flex: 1, backgroundColor: '#04040A' }}>
         {/* ── Hero Header ── */}
-        <View style={{ height: H * 0.38, width: '100%' }}>
+        <View style={{ height: H * 0.40, width: '100%' }}>
           <Image source={{ uri: collection.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-          <LinearGradient colors={['rgba(4,4,14,0.25)', 'rgba(4,4,14,0.65)', '#04040E']} style={StyleSheet.absoluteFillObject} />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.18 }]} />
+          <LinearGradient colors={['rgba(4,4,10,0.2)', 'rgba(4,4,10,0.8)', '#04040A']} style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.15 }]} />
 
           {/* Back button */}
-          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4 }}>
-            <TouchableOpacity onPress={onClose} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 }}>
+            <TouchableOpacity onPress={onClose} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
               <Ionicons name="chevron-down" size={16} color="#fff" />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_700Bold' }}>All Therapies</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.9)', fontFamily: 'Nunito_700Bold' }}>Close</Text>
             </TouchableOpacity>
           </SafeAreaView>
 
           {/* Hero text */}
-          <View style={{ position: 'absolute', bottom: 28, left: 24, right: 24 }}>
-            {/* Icon + subtitle pill */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: collection.themeColor + '28', borderWidth: 1, borderColor: collection.themeColor + '60', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={iconName} size={16} color={collection.themeColor} />
+          <View style={{ position: 'absolute', bottom: 32, left: 24, right: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: collection.themeColor + '30', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="sparkles" size={14} color={collection.themeColor} />
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: collection.themeColor, letterSpacing: 2, fontFamily: 'Nunito_800ExtraBold' }}>{collection.subtitle}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: collection.themeColor, letterSpacing: 2, fontFamily: 'Nunito_800ExtraBold', textTransform: 'uppercase' }}>{collection.subtitle}</Text>
             </View>
-            <Text style={{ fontSize: 34, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: -0.5 }}>{collection.title}</Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 21 }}>{collection.description}</Text>
+            <Text style={{ fontSize: 36, fontWeight: '800', color: '#fff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: -0.8 }}>{collection.title}</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 22, fontFamily: 'Nunito_400Regular' }}>{collection.description}</Text>
           </View>
         </View>
 
-        {/* ── Sound Grid ── */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 22, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-          {/* Track count */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-            <Ionicons name="headset-outline" size={14} color="rgba(255,255,255,0.4)" />
-            <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }}>{sounds.length} SONIC THERAPIES</Text>
+        {/* ── Sound List ── */}
+        <View style={{ flex: 1 }}>
+          {/* Header row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, fontFamily: 'Nunito_700Bold' }}>{sounds.length} TRACKS</Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            </View>
           </View>
 
-          {/* 2-column grid */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
             {sounds.map((sound: any) => (
-              <TherapySoundCard
+              <DetailSoundRow
                 key={sound.id}
                 sound={sound}
                 isPlaying={playingId === sound.id}
@@ -3667,8 +3720,8 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
               />
             ))}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
