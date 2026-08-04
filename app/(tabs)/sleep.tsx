@@ -2407,7 +2407,7 @@ function ReelCard({
       />
 
       {/* ── SACRED GEOMETRY SOUND REELS ── */}
-      <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 40, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 80, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
         
         {/* Live Audio Synced Rings */}
         {[
@@ -2495,13 +2495,13 @@ function ReelCard({
       <Animated.View
         style={{
           position: 'absolute', 
-          bottom: Platform.OS === 'android' ? 16 : 16, 
-          left: 16, right: 16,
+          bottom: 0, 
+          left: 0, right: 0,
           zIndex: 8, opacity: controlsAnim,
           backgroundColor: 'rgba(8, 10, 14, 0.85)',
-          borderRadius: 32,
+          borderRadius: 0,
           padding: 20,
-          borderWidth: 1,
+          borderTopWidth: 1,
           borderColor: 'rgba(255,255,255,0.08)',
           shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 15
         }}
@@ -2509,7 +2509,7 @@ function ReelCard({
         <LinearGradient
           colors={[sound.color ? sound.color + '15' : 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.01)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: 32 }]}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: 0 }]}
         />
 
         {/* 1. Header: Title + Timer Pill */}
@@ -4455,7 +4455,7 @@ function SleepTabInner() {
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
-              marginTop: -10,
+              marginTop: 40,
               marginBottom: 4,
               gap: 8,
             }}>
@@ -4664,6 +4664,7 @@ function SleepTabInner() {
         initialCategory={libraryInitialCat}
         onClose={() => setLibraryOpen(false)}
         sounds={ALL_SOUNDS_LIST}
+        collections={SONIC_COLLECTIONS}
         playingId={playingId}
         onPlaySound={(id) => {
           setLibraryOpen(false);

@@ -6004,13 +6004,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,15,25,0.4)' }]} />
             
-            {/* ── Sacred Geometric Yantra as Background Watermark ── */}
+            {/* ── Sacred Geometric Yantra — CENTREPIECE MEDITATION VISUAL ── */}
             <Animated.View pointerEvents="none" style={{
               position: 'absolute', width: HERO_RS, height: HERO_RS,
               alignItems: 'center', justifyContent: 'center',
               transform: [{ translateX: pan.x }, { translateY: pan.y }]
             }}>
-              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.55} variant="minimal" accentColor={haloHex} opacity={0.15} />
+              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.82} variant="home" accentColor={haloHex} opacity={0.65} />
             </Animated.View>
 
             {/* Bubble inner glow (Premium Neon / Sky Blue) */}
@@ -6178,111 +6178,59 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             </>
           ) : (
             <>
-              {/* ── PERSISTENT TOP: Always visible ── */}
-              
-              {/* Elegant US-Targeted Catchy Title */}
-              <Animated.View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: 6, 
-                marginBottom: compact ? 4 : 6,
-                opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.65, 1] }),
-                transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.03] }) }]
+              {/* ── Phase name — clean, large, meditative ── */}
+              <Animated.View style={{
+                alignItems: 'center',
+                opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.75, 1] }),
               }}>
-                <View style={{ height: 1, width: 12, backgroundColor: accentHex, opacity: 0.8 }} />
-                <Text style={{ 
-                  fontSize: compact ? 9 : 10.5, 
-                  fontWeight: '900', 
-                  color: 'rgba(255,255,255,0.95)', 
-                  letterSpacing: 3.5, 
-                  textTransform: 'uppercase',
+                {/* Phase micro-label */}
+                <Text style={{
+                  fontSize: compact ? 7 : 8,
+                  fontWeight: '900',
+                  color: `${accentHex}CC`,
+                  letterSpacing: 3,
                   textAlign: 'center',
-                  textShadowColor: accentHex, 
-                  textShadowOffset: { width: 0, height: 0 }, 
-                  textShadowRadius: 8
+                  marginBottom: compact ? 10 : 14,
+                  textShadowColor: 'rgba(0,0,0,0.9)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 4,
                 }}>
-                  Current Circadian Hour
+                  {heroContent.sciLabel ? '◎  BODY RHYTHM' : '◎  NOW'}
                 </Text>
-                <View style={{ height: 1, width: 12, backgroundColor: accentHex, opacity: 0.8 }} />
+
+                {/* Main phase name — the only hero text */}
+                <Text
+                  style={{
+                    fontSize: compact ? 22 : 28,
+                    fontWeight: '300',
+                    color: '#FFFFFF',
+                    textAlign: 'center',
+                    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                    textShadowColor: 'rgba(0,0,0,0.95)',
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 14,
+                    letterSpacing: 1.5,
+                    lineHeight: compact ? 28 : 36,
+                    marginBottom: compact ? 10 : 14,
+                  }}
+                  numberOfLines={2}
+                >{heroContent.header}</Text>
+
+                {/* Thin golden divider */}
+                <View style={{ height: 0.7, width: compact ? 44 : 56, backgroundColor: `${accentHex}80`, marginBottom: compact ? 10 : 14 }} />
+
+                {/* Time remaining — subtle, below divider */}
+                <Text style={{
+                  fontSize: compact ? 10 : 12,
+                  fontWeight: '600',
+                  color: 'rgba(255,255,255,0.60)',
+                  textAlign: 'center',
+                  letterSpacing: 1,
+                  textShadowColor: 'rgba(0,0,0,0.95)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 6,
+                }}>{remStr}</Text>
               </Animated.View>
-
-              {/* Header — the phase name (e.g. Creative Peak) */}
-              <Text
-                style={{ 
-                  fontSize: compact ? 20 : 25, 
-                  fontWeight: '400', 
-                  color: '#FFFFFF', 
-                  textAlign: 'center', 
-                  fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
-                  textShadowColor: 'rgba(0,0,0,0.85)', 
-                  textShadowOffset: { width: 0, height: 1 }, 
-                  textShadowRadius: 10, 
-                  letterSpacing: 1.2, 
-                  lineHeight: compact ? 24 : 30, 
-                  marginBottom: compact ? 6 : 8 
-                }}
-                numberOfLines={2}
-              >{heroContent.header}</Text>
-
-              {/* Time remaining — pure white, always visible */}
-              <Text style={{ fontSize: compact ? 11 : 13, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10, marginBottom: compact ? 8 : 12 }}>{remStr}</Text>
-
-              {/* Thin divider */}
-              <View style={{ height: 0.6, width: compact ? 40 : 52, backgroundColor: 'rgba(255,255,255,0.30)', marginBottom: compact ? 8 : 12 }} />
-
-              {/* ── ANIMATED MIDDLE: fixed height so nothing jumps ── */}
-              <View style={{ height: compact ? 65 : 85, justifyContent: 'center', width: '100%' }}>
-                <Animated.View style={{ alignItems: 'center', opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}>
-                  {slideIdx === 0 ? (
-                    // ── ANCHOR SLIDE: sentence + science ──
-                    <>
-                      {/* Sentence */}
-                      <Text style={{ fontSize: compact ? 9 : 10.5, fontWeight: '600', color: '#FFFFFF', textAlign: 'center', lineHeight: compact ? 13 : 15.5, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6, marginBottom: compact ? 4 : 6 }} numberOfLines={3}>{heroContent.sentence}</Text>
-
-                      {/* Science label */}
-                      <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '700', color: '#FFFFFFDD', textAlign: 'center', lineHeight: compact ? 11 : 12, letterSpacing: 0.2, textShadowColor: 'rgba(0,0,0,0.99)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }} numberOfLines={2}>{'🔬 '}{heroContent.sciLabel}</Text>
-                    </>
-                  ) : (() => {
-                    // ── CYCLING INSIGHTS SLIDE ──
-                    const slide = bodySlides[(slideIdx - 1) % bodySlides.length];
-                    if (!slide) return null;
-                    const isAvoid = slide.label.includes('PAUSE');
-                    const slideAccent = isAvoid ? '#f87171' : accentHex;
-                    return (
-                      <>
-                        {/* Slide label badge */}
-                        <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 0.8, borderColor: `${slideAccent}70`, marginBottom: compact ? 5 : 7 }}>
-                          <Text style={{ fontSize: compact ? 5.5 : 6.5, fontWeight: '900', color: slideAccent, letterSpacing: 1.4 }} numberOfLines={1}>{slide.label}</Text>
-                        </View>
-
-                        {/* Emoji */}
-                        <Text style={{ fontSize: compact ? 22 : 28, marginBottom: compact ? 5 : 6, textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{slide.emoji}</Text>
-
-                        {/* Title */}
-                        <Text style={{ fontSize: slide.title === 'Energy Dip Phase' ? (compact ? 10.5 : 12) : (compact ? 12 : 14), fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8, letterSpacing: -0.2, lineHeight: slide.title === 'Energy Dip Phase' ? (compact ? 14 : 16) : (compact ? 16 : 20), marginBottom: compact ? 3 : 5 }} numberOfLines={3}>{slide.title}</Text>
-
-                        {/* Sub detail */}
-                        {slide.sub ? (
-                          <>
-                            <View style={{ height: 0.6, width: compact ? 34 : 44, backgroundColor: `${slideAccent}40`, marginBottom: compact ? 4 : 6 }} />
-                            <Text style={{ fontSize: compact ? 8.5 : 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.80)', textAlign: 'center', lineHeight: compact ? 12 : 14, letterSpacing: 0.1, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{slide.sub}</Text>
-                          </>
-                        ) : null}
-                      </>
-                    );
-                  })()}
-                </Animated.View>
-              </View>
-
-              {/* Dot indicator (persistent below the middle area) */}
-              {totalSlides > 1 && (
-                <View style={{ flexDirection: 'row', gap: 4, marginTop: compact ? 4 : 6 }}>
-                  {Array.from({ length: totalSlides }).map((_, i) => (
-                    <View key={i} style={{ width: slideIdx === i ? 10 : 4, height: 3, borderRadius: 1.5, backgroundColor: slideIdx === i ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.22)' }} />
-                  ))}
-                </View>
-              )}
             </>
           )}
           </Animated.View>
@@ -7648,16 +7596,112 @@ function DailyTab() {
                     <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
                   </View>
 
-                  {/* Premium Targeted Pull-Down Tab (Moved below Hero Ring) */}
-                  <AnimatedAlmanacButton onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }} />
+                  {/* ── Frosted Glass Circadian Card ── */}
+                  {currentPeriod && (() => {
+                    const acts = currentPeriod.activities.slice(0, 2);
+                    const avoids = currentPeriod.avoidances.slice(0, 2);
+                    return (
+                      <View style={{ marginHorizontal: 24, marginTop: -8, width: '100%', paddingHorizontal: 0, alignSelf: 'center' }}>
+                        <View style={{
+                          borderRadius: 24,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255,255,255,0.12)',
+                          overflow: 'hidden',
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 8 },
+                          shadowOpacity: 0.4,
+                          shadowRadius: 20,
+                          elevation: 12,
+                        }}>
+                          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+                          <LinearGradient
+                            colors={[`${accentColor}18`, 'rgba(8,12,28,0.85)']}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFillObject}
+                          />
+                          {/* Top accent line */}
+                          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: `${accentColor}50` }} />
 
-                  <View style={{ marginTop: 24, alignItems: 'center', width: '100%' }}>
-                    <View style={{ paddingHorizontal: 20, alignSelf: 'center', height: 50 }}>
-                      <SleepSoundsButton
-                        period={currentPeriod}
-                        brahmaStatus={brahmaInfo?.status ?? null}
-                      />
-                    </View>
+                          <View style={{ padding: 16 }}>
+                            {/* Phase label */}
+                            <Text style={{ fontSize: 6.5, fontWeight: '900', color: `${accentColor}BB`, letterSpacing: 2.2, marginBottom: 12, textAlign: 'center' }}>
+                              CURRENT CIRCADIAN HOUR  ·  {currentPeriod.startLabel}–{currentPeriod.endLabel}
+                            </Text>
+
+                            {/* Two columns: Cultivate | Release */}
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                              {/* CULTIVATE */}
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' }} />
+                                  <Text style={{ fontSize: 7, fontWeight: '900', color: '#4ade80', letterSpacing: 1.8 }}>CULTIVATE</Text>
+                                </View>
+                                {acts.map((a, i) => (
+                                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
+                                    <Text style={{ fontSize: 10, color: '#4ade8080', marginTop: 1 }}>◎</Text>
+                                    <Text style={{ fontSize: 10.5, fontWeight: '600', color: 'rgba(255,255,255,0.85)', lineHeight: 14, flex: 1 }}>{a}</Text>
+                                  </View>
+                                ))}
+                              </View>
+
+                              {/* Divider */}
+                              <View style={{ width: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 2 }} />
+
+                              {/* RELEASE */}
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' }} />
+                                  <Text style={{ fontSize: 7, fontWeight: '900', color: '#f87171', letterSpacing: 1.8 }}>RELEASE</Text>
+                                </View>
+                                {avoids.map((a, i) => (
+                                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
+                                    <Text style={{ fontSize: 10, color: '#f8717180', marginTop: 1 }}>◎</Text>
+                                    <Text style={{ fontSize: 10.5, fontWeight: '600', color: 'rgba(255,255,255,0.75)', lineHeight: 14, flex: 1 }}>{a}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })()}
+
+                  {/* ── Elegant floating action buttons ── */}
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, paddingHorizontal: 24, width: '100%' }}>
+                    {/* Day Almanac */}
+                    <TouchableOpacity
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+                      activeOpacity={0.82}
+                      style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(96,165,250,0.30)', shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 }}
+                    >
+                      <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+                      <LinearGradient
+                        colors={['rgba(96,165,250,0.18)', 'rgba(96,165,250,0.04)']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, paddingHorizontal: 12 }}
+                      >
+                        <Text style={{ fontSize: 14 }}>📖</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.8 }}>Day Almanac</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+
+                    {/* Sounds */}
+                    <TouchableOpacity
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+                      activeOpacity={0.82}
+                      style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(128,255,255,0.30)', shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 }}
+                    >
+                      <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+                      <LinearGradient
+                        colors={['rgba(128,255,255,0.18)', 'rgba(128,255,255,0.04)']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, paddingHorizontal: 12 }}
+                      >
+                        <Text style={{ fontSize: 14 }}>🎵</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(128,255,255,0.95)', letterSpacing: 0.8 }}>Sounds</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
                   </View>
                 </View>
             )}
