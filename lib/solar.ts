@@ -130,3 +130,35 @@ export function getSunElevation(lat: number, lon: number, date?: Date): number {
 
   return Math.asin(Math.max(-1, Math.min(1, sinElev))) * (180 / Math.PI);
 }
+
+export function getTimedBgKey(h: number, solar?: SolarTimes | null): string {
+  if (solar) {
+    const { sunrise, solarNoon, sunset } = solar;
+    const brahmaMuhurtaStart = sunrise - (96 / 60); // 96 minutes before sunrise
+    if (h < brahmaMuhurtaStart) return 'night';
+    if (h < sunrise - 0.3) return 'brahma';
+    if (h < sunrise + 0.5) return 'predawn';
+    if (h < sunrise + 0.75) return 'sunrise';
+    if (h < sunrise + 1)   return 'sunrise_2';
+    if (h < sunrise + 2)   return 'sunrise_late';
+    if (h < solarNoon - 0.5) return 'morning';
+    if (h < solarNoon + 1.5) return 'midday';
+    if (h < sunset - 1.5)  return 'afternoon';
+    if (h < sunset)        return 'sandhya';
+    if (h < sunset + 0.5)  return 'twilight';
+    if (h < sunset + 2)    return 'evening';
+    return 'night';
+  }
+  if (h >= 2  && h < 5)   return 'brahma';
+  if (h >= 5  && h < 5.5) return 'predawn';
+  if (h >= 5.5 && h < 6.125) return 'sunrise';
+  if (h >= 6.125 && h < 6.75) return 'sunrise_2';
+  if (h >= 6.75 && h < 8)  return 'sunrise_late';
+  if (h >= 10 && h < 11.75)  return 'morning';
+  if (h >= 11.75 && h < 13.5)  return 'midday';
+  if (h >= 13.5 && h < 17)  return 'afternoon';
+  if (h >= 17 && h < 19)    return 'sandhya';
+  if (h >= 19 && h < 19.5)  return 'twilight';
+  if (h >= 19.5 && h < 21)  return 'evening';
+  return 'night';
+}

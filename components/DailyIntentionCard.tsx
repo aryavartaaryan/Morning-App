@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   premiumGlassCard: {
-    paddingVertical: 5,
+    paddingVertical: 7,
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1,

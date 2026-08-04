@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get('window');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DisplayGroup = {
@@ -116,7 +116,7 @@ const SoundRow = React.memo(function SoundRow({
           <PlayingPulse color={sound.color || '#fff'} />
         ) : (
           <View style={S.playBtn}>
-            <Ionicons name="play" size={11} color="rgba(255,255,255,0.22)" />
+            <Ionicons name="play" size={12} color="rgba(255,255,255,0.4)" />
           </View>
         )}
       </View>
@@ -124,8 +124,8 @@ const SoundRow = React.memo(function SoundRow({
   );
 });
 
-// ─── Collection Pill ──────────────────────────────────────────────────────────
-const CollectionPill = React.memo(function CollectionPill({
+// ─── Horizontal Collection Pill ───────────────────────────────────────────────
+const HorizontalCollectionPill = React.memo(function HorizontalCollectionPill({
   group,
   isActive,
   onPress,
@@ -141,31 +141,54 @@ const CollectionPill = React.memo(function CollectionPill({
         onPress();
       }}
       activeOpacity={0.7}
-      style={[S.pill, isActive && { borderColor: group.themeColor + 'BB' }]}
+      style={[S.hPill, isActive && { borderColor: group.themeColor + 'BB', backgroundColor: group.themeColor + '18' }]}
     >
-      {isActive && (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: group.themeColor + '18', borderRadius: 11 },
-          ]}
-        />
-      )}
       <View
         style={[
           S.pillDot,
-          { backgroundColor: isActive ? group.themeColor : 'rgba(255,255,255,0.12)' },
+          { backgroundColor: isActive ? group.themeColor : 'rgba(255,255,255,0.15)' },
         ]}
       />
       <Text
-        style={[S.pillText, isActive && { color: '#fff', fontWeight: '600' }]}
-        numberOfLines={1}
+        style={[S.hPillText, isActive && { color: '#fff', fontWeight: '600' }]}
       >
         {group.title}
       </Text>
-      <Text style={[S.pillCount, isActive && { color: group.themeColor }]}>
-        {group.sounds.length}
-      </Text>
+    </TouchableOpacity>
+  );
+});
+
+// ─── Collection Grid Card (Discovery Mode) ────────────────────────────────────
+const CollectionGridCard = React.memo(function CollectionGridCard({
+  group,
+  onPress,
+}: {
+  group: DisplayGroup;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      activeOpacity={0.7}
+      style={S.gridCard}
+    >
+      <LinearGradient
+        colors={['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.01)']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={S.gridCardHeader}>
+        <View style={[S.gridCardDot, { backgroundColor: group.themeColor }]} />
+        <Text style={S.gridCardCount}>{group.sounds.length} sounds</Text>
+      </View>
+      <View style={{ marginTop: 12 }}>
+        <Text style={S.gridCardTitle} numberOfLines={2}>{group.title}</Text>
+        {group.subtitle ? (
+          <Text style={[S.gridCardSub, { color: group.themeColor + 'CC' }]} numberOfLines={1}>{group.subtitle}</Text>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 });
@@ -191,7 +214,12 @@ export default function SoundLibraryModal({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
-  const rightPanelFade = useRef(new Animated.Value(1)).current;
+  
+  // Animation for crossfading between discovery and focus modes
+  const modeFade = useRef(new Animated.Value(1)).current;
+  
+  // Ref for horizontal scroll list to auto-scroll to active item
+  const horizontalListRef = useRef<FlatList>(null);
 
   // Sheet open/close animation
   useEffect(() => {
@@ -205,6 +233,7 @@ export default function SoundLibraryModal({
       }).start();
       setActiveId(initialCategory ?? null);
       setSearchQuery('');
+      modeFade.setValue(1);
     } else {
       Animated.timing(slideAnim, {
         toValue: SCREEN_H,
@@ -214,25 +243,25 @@ export default function SoundLibraryModal({
     }
   }, [visible]);
 
-  // Crossfade right panel when switching collections
+  // Smooth mode transition
   const handleSelectGroup = useCallback(
-    (id: string) => {
-      if (id === activeId) { setActiveId(null); return; }
-      // Instant fade out → swap → fade in
-      Animated.timing(rightPanelFade, {
+    (id: string | null) => {
+      if (id === activeId) return;
+      
+      Animated.timing(modeFade, {
         toValue: 0,
-        duration: 80,
+        duration: 120,
         useNativeDriver: true,
       }).start(() => {
         setActiveId(id);
-        Animated.timing(rightPanelFade, {
+        Animated.timing(modeFade, {
           toValue: 1,
-          duration: 140,
+          duration: 150,
           useNativeDriver: true,
         }).start();
       });
     },
-    [activeId, rightPanelFade]
+    [activeId, modeFade]
   );
 
   // Build display groups
@@ -276,7 +305,7 @@ export default function SoundLibraryModal({
 
   const activeGroup = filteredGroups.find(g => g.id === activeId) ?? null;
 
-  // FlatList renderers — stable callbacks for perf
+  // Renderers
   const renderSoundItem = useCallback(
     ({ item, index }: { item: any; index: number }) => (
       <SoundRow
@@ -289,9 +318,9 @@ export default function SoundLibraryModal({
     [playingId, onPlaySound, activeGroup?.sounds.length]
   );
 
-  const renderPillItem = useCallback(
+  const renderHorizontalPill = useCallback(
     ({ item }: { item: DisplayGroup }) => (
-      <CollectionPill
+      <HorizontalCollectionPill
         group={item}
         isActive={activeId === item.id}
         onPress={() => handleSelectGroup(item.id)}
@@ -299,8 +328,30 @@ export default function SoundLibraryModal({
     ),
     [activeId, handleSelectGroup]
   );
+  
+  const renderGridCard = useCallback(
+    ({ item }: { item: DisplayGroup }) => (
+      <CollectionGridCard
+        group={item}
+        onPress={() => handleSelectGroup(item.id)}
+      />
+    ),
+    [handleSelectGroup]
+  );
 
   const keyExtractor = useCallback((item: any) => item.id, []);
+  
+  // Auto-scroll horizontal strip to active item
+  useEffect(() => {
+    if (activeId && horizontalListRef.current) {
+      const idx = filteredGroups.findIndex(g => g.id === activeId);
+      if (idx >= 0) {
+        setTimeout(() => {
+          horizontalListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+        }, 100);
+      }
+    }
+  }, [activeId, filteredGroups]);
 
   return (
     <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
@@ -311,8 +362,8 @@ export default function SoundLibraryModal({
         {/* Glass base */}
         <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
         <LinearGradient
-          colors={['#0C0C0E', '#080809']}
-          style={[StyleSheet.absoluteFillObject, { opacity: 0.97 }]}
+          colors={['#0A0A0C', '#050505']}
+          style={[StyleSheet.absoluteFillObject, { opacity: 0.96 }]}
         />
 
         <SafeAreaView style={S.safeArea}>
@@ -321,14 +372,21 @@ export default function SoundLibraryModal({
 
           {/* Header */}
           <View style={S.header}>
-            <View>
-              <Text style={S.headerTitle}>Nada Library</Text>
-              <Text style={S.headerSub}>
-                {filteredGroups.length} collections · {sounds.length} sounds
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {activeId ? (
+                <TouchableOpacity onPress={() => handleSelectGroup(null)} style={S.backBtn} activeOpacity={0.7}>
+                  <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.8)" />
+                </TouchableOpacity>
+              ) : null}
+              <View>
+                <Text style={S.headerTitle}>Nada Library</Text>
+                <Text style={S.headerSub}>
+                  {filteredGroups.length} collections · {sounds.length} sounds
+                </Text>
+              </View>
             </View>
             <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={15} color="rgba(255,255,255,0.5)" />
+              <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
           </View>
 
@@ -336,14 +394,14 @@ export default function SoundLibraryModal({
           <View style={S.searchWrap}>
             <Ionicons
               name="search"
-              size={14}
+              size={15}
               color="rgba(255,255,255,0.3)"
-              style={{ marginLeft: 13, marginRight: 9 }}
+              style={{ marginLeft: 14, marginRight: 10 }}
             />
             <TextInput
               style={S.searchInput}
               placeholder="Search sounds & collections…"
-              placeholderTextColor="rgba(255,255,255,0.2)"
+              placeholderTextColor="rgba(255,255,255,0.25)"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCorrect={false}
@@ -351,88 +409,75 @@ export default function SoundLibraryModal({
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 10 }}>
-                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.3)" />
+                <Ionicons name="close-circle" size={15} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
             )}
           </View>
 
           <View style={S.mainDivider} />
 
-          {/* ── Two-panel body ────────────────────────────────────────────── */}
-          <View style={S.body}>
+          {/* Dynamic Body */}
+          <Animated.View style={[{ flex: 1 }, { opacity: modeFade }]}>
+            {activeGroup ? (
+              /* Focus Mode: Horizontal Strip + Sound List */
+              <View style={{ flex: 1 }}>
+                <View>
+                  <FlatList
+                    ref={horizontalListRef}
+                    data={filteredGroups}
+                    keyExtractor={keyExtractor}
+                    renderItem={renderHorizontalPill}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={S.horizontalStripContent}
+                    onScrollToIndexFailed={() => {}}
+                  />
+                  <View style={S.mainDivider} />
+                </View>
+                
+                <View style={S.collectionTitleHeader}>
+                   <View style={[S.largeDot, { backgroundColor: activeGroup.themeColor }]} />
+                   <View style={{ flex: 1 }}>
+                     <Text style={S.collectionTitleText} numberOfLines={1}>{activeGroup.title}</Text>
+                     {activeGroup.subtitle ? (
+                       <Text style={[S.collectionSubText, { color: activeGroup.themeColor }]} numberOfLines={1}>{activeGroup.subtitle}</Text>
+                     ) : null}
+                   </View>
+                   <Text style={S.collectionCountText}>{activeGroup.sounds.length} sounds</Text>
+                </View>
 
-            {/* LEFT: collection list */}
-            <View style={S.leftCol}>
+                <FlatList
+                  data={activeGroup.sounds}
+                  keyExtractor={keyExtractor}
+                  renderItem={renderSoundItem}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={S.rightListContent}
+                  initialNumToRender={20}
+                  maxToRenderPerBatch={20}
+                  windowSize={10}
+                />
+              </View>
+            ) : (
+              /* Discovery Mode: Wide Collection Grid */
               <FlatList
                 data={filteredGroups}
                 keyExtractor={keyExtractor}
-                renderItem={renderPillItem}
+                renderItem={renderGridCard}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={S.leftListContent}
+                contentContainerStyle={S.gridContent}
+                numColumns={SCREEN_W > 600 ? 2 : 1}
                 ListEmptyComponent={
-                  <Text style={S.emptyText}>No results</Text>
+                  <View style={S.emptyState}>
+                    <View style={S.emptyIcon}>
+                      <Ionicons name="musical-note" size={24} color="rgba(255,255,255,0.15)" />
+                    </View>
+                    <Text style={S.emptyStateTitle}>No results found</Text>
+                    <Text style={S.emptyStateDesc}>Try searching for a different keyword</Text>
+                  </View>
                 }
               />
-            </View>
-
-            {/* Separator */}
-            <View style={S.colSep} />
-
-            {/* RIGHT: sounds for selected collection */}
-            <View style={S.rightCol}>
-              {activeGroup ? (
-                <Animated.View style={[{ flex: 1 }, { opacity: rightPanelFade }]}>
-                  {/* Collection heading */}
-                  <View style={S.rightHeader}>
-                    <View
-                      style={[S.rightHeaderDot, { backgroundColor: activeGroup.themeColor }]}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[S.rightHeaderTitle, { color: activeGroup.themeColor }]}
-                        numberOfLines={1}
-                      >
-                        {activeGroup.title}
-                      </Text>
-                      {activeGroup.subtitle ? (
-                        <Text style={S.rightHeaderSub} numberOfLines={1}>
-                          {activeGroup.subtitle}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text style={S.rightHeaderCount}>{activeGroup.sounds.length}</Text>
-                  </View>
-
-                  <View style={S.mainDivider} />
-
-                  {/* Sound list — FlatList so it scrolls independently and always renders */}
-                  <FlatList
-                    data={activeGroup.sounds}
-                    keyExtractor={keyExtractor}
-                    renderItem={renderSoundItem}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={S.rightListContent}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={20}
-                    windowSize={10}
-                    removeClippedSubviews={false}
-                  />
-                </Animated.View>
-              ) : (
-                /* Empty state */
-                <View style={S.emptyState}>
-                  <View style={S.emptyIcon}>
-                    <Ionicons name="musical-note" size={20} color="rgba(255,255,255,0.15)" />
-                  </View>
-                  <Text style={S.emptyStateTitle}>Select a collection</Text>
-                  <Text style={S.emptyStateDesc}>
-                    Tap any collection on the left
-                  </Text>
-                </View>
-              )}
-            </View>
-
-          </View>
+            )}
+          </Animated.View>
         </SafeAreaView>
       </Animated.View>
     </Modal>
@@ -443,31 +488,31 @@ export default function SoundLibraryModal({
 const S = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.70)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
   },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: '90%',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    height: '92%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.55,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: -8 },
-    elevation: 28,
+    shadowOpacity: 0.6,
+    shadowRadius: 50,
+    shadowOffset: { width: 0, height: -10 },
+    elevation: 30,
   },
   safeArea: {
     flex: 1,
   },
   handle: {
-    width: 36,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 4,
@@ -479,30 +524,35 @@ const S = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  backBtn: {
+    marginRight: 12,
+    padding: 4,
+    marginLeft: -4,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   headerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.28)',
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.35)',
     marginTop: 2,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
 
   // Search
@@ -510,16 +560,16 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
-    marginBottom: 13,
-    height: 37,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 10,
+    marginBottom: 14,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFF',
     paddingVertical: 0,
   },
@@ -527,156 +577,174 @@ const S = StyleSheet.create({
   // Dividers
   mainDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  colSep: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
 
-  // Body
-  body: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-
-  // Left column
-  leftCol: {
-    width: 148,
-  },
-  leftListContent: {
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    paddingBottom: 50,
-  },
-
-  // Right column — MUST be flex: 1 so FlatList can size itself
-  rightCol: {
-    flex: 1,
-  },
-  rightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  rightHeaderDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 9,
-    flexShrink: 0,
-  },
-  rightHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-  rightHeaderSub: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.32)',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  rightHeaderCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.28)',
-    marginLeft: 6,
-  },
-  rightListContent: {
+  // Discovery Mode Grid
+  gridContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     paddingBottom: 60,
   },
+  gridCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 12,
+    marginHorizontal: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
+  },
+  gridCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gridCardDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  gridCardCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '500',
+  },
+  gridCardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  gridCardSub: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 
-  // Collection pill
-  pill: {
+  // Focus Mode Horizontal Strip
+  horizontalStripContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  hPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 3,
-    paddingVertical: 11,
-    paddingHorizontal: 10,
-    borderRadius: 11,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.055)',
-    overflow: 'hidden',
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 4,
   },
   pillDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     marginRight: 8,
-    flexShrink: 0,
   },
-  pillText: {
-    fontSize: 13,
+  hPillText: {
+    fontSize: 14,
     fontWeight: '400',
-    color: 'rgba(255,255,255,0.5)',
-    flex: 1,
+    color: 'rgba(255,255,255,0.6)',
     letterSpacing: 0.1,
   },
-  pillCount: {
+  
+  // Focus Mode Collection Header
+  collectionTitleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  largeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 14,
+  },
+  collectionTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.1,
+  },
+  collectionSubText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.22)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 3,
+  },
+  collectionCountText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
     fontWeight: '500',
-    marginLeft: 4,
   },
 
   // Sound row
+  rightListContent: {
+    paddingBottom: 80,
+    paddingTop: 4,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 14,
-    minHeight: 48,
+    paddingHorizontal: 20,
+    minHeight: 52,
   },
   rowActive: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   playingBar: {
-    width: 2.5,
+    width: 3,
     alignSelf: 'stretch',
     borderRadius: 2,
-    marginLeft: 8,
-    marginRight: 3,
-    marginVertical: 8,
-    flexShrink: 0,
+    marginRight: 10,
+    marginVertical: 10,
   },
   rowEmoji: {
-    fontSize: 15,
+    fontSize: 17,
     width: 30,
     textAlign: 'center',
-    marginLeft: 4,
+    marginRight: 4,
   },
   rowBody: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 13,
-    marginLeft: 8,
+    paddingVertical: 14,
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   rowTitle: {
-    fontSize: 13.5,
+    fontSize: 14.5,
     fontWeight: '400',
-    color: 'rgba(255,255,255,0.78)',
+    color: 'rgba(255,255,255,0.85)',
     letterSpacing: 0.1,
-    marginBottom: 1,
+    marginBottom: 2,
   },
   rowDesc: {
-    fontSize: 11.5,
-    color: 'rgba(255,255,255,0.3)',
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.35)',
   },
   playBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginLeft: 10,
   },
 
   // Empty states
@@ -685,34 +753,28 @@ const S = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
+    marginTop: 60,
   },
   emptyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   emptyStateTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.35)',
-    marginBottom: 5,
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+    marginBottom: 6,
   },
   emptyStateDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.18)',
-    textAlign: 'center',
-    lineHeight: 17,
-  },
-  emptyText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.28)',
+    color: 'rgba(255,255,255,0.2)',
     textAlign: 'center',
-    marginTop: 20,
   },
 });
