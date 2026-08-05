@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
-  Platform, ImageBackground, Dimensions,
-  Animated, BackHandler
-} from "react-native";
+  Alert, Modal, Platform, Linking, ImageBackground, Dimensions,
+  Animated,
+  BackHandler } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import Constants from 'expo-constants';
+import AppBackground from '@/components/AppBackground';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { getTimedBgKey } from '@/lib/solar';
+import { getSolarTimes, getSunElevation } from '@/lib/solar';
 import { checkAndRescheduleDaily } from '@/lib/nativeAlarm';
 import { store, KEYS } from '@/lib/storage';
 import { AlarmSettings, DEFAULT_ALARM_SETTINGS } from '@/lib/notifications';
@@ -18,15 +20,18 @@ import { DEFAULT_MISSION_SETTINGS, MissionSettings } from '@/lib/missionAlarm';
 import { checkAlarmPermission, requestAllAlarmPermissions } from '@/lib/nativeAlarm';
 import {
   useBgContext,
-  BG_KEYS, BG_META,
-  type BgKey,
+  BG_KEYS, BG_META, BG_ACCENT_COLORS, BG_GRADIENT_START,
+  type WallpaperMode, type BgKey,
+  getTimedBgKey,
 } from '@/lib/bgContext';
 
 const PURPLE = '#a78bfa';
 const GOLD   = '#fbbf24';
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const GREEN  = '#34d399';
+const { width, height } = Dimensions.get('window');
 
 // ─── Local Error Boundary ────────────────────────────────────────────────────
+// Prevents any render-time error in Settings from crashing the whole app.
 class SettingsErrorBoundary extends Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -59,84 +64,76 @@ class SettingsErrorBoundary extends Component<
   }
 }
 
-// ─── Glass Dashboard Module ──────────────────────────────────────────────────
-function DashboardModule({ children, title, icon, color = GOLD }: { children: React.ReactNode; title: string; icon: keyof typeof Ionicons.glyphMap; color?: string; }) {
+// ─── Section header ──────────────────────────────────────────────────────────
+function SectionHeader({ label }: { label: string; }) {
   return (
-    <View style={mod.container}>
-      <BlurView intensity={35} tint="dark" style={mod.card}>
-        <LinearGradient
-          colors={[`${color}0A`, 'transparent']}
-          style={StyleSheet.absoluteFillObject}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        />
-        <View style={mod.header}>
-          <Ionicons name={icon} size={16} color={color} style={{ marginRight: 8 }} />
-          <Text style={[mod.title, { color }]}>{title}</Text>
-        </View>
-        <View style={mod.content}>
-          {children}
-        </View>
-      </BlurView>
+    <View style={sec.row}>
+      <Text style={sec.label}>{label}</Text>
     </View>
   );
 }
-
-const mod = StyleSheet.create({
-  container: { marginHorizontal: 20, marginBottom: 24, borderRadius: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
-  card: { borderRadius: 28, overflow: 'hidden', backgroundColor: 'rgba(20,25,35,0.4)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  title: { fontSize: 13, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  content: { paddingBottom: 8 },
+const sec = StyleSheet.create({
+  row:   { marginHorizontal: 26, marginTop: 40, marginBottom: 14 },
+  label: { fontSize: 11, letterSpacing: 2.5, color: 'rgba(255,255,255,0.45)', fontWeight: '700', textTransform: 'uppercase', fontFamily: 'Nunito_700Bold' },
 });
 
-// ─── Custom Premium Toggle Row ───────────────────────────────────────────────
-function PremiumToggleRow({ label, sub, value, onToggle, color, last = false }: { label: string; sub: string; value: boolean; onToggle: () => void; color: string; last?: boolean; }) {
-  // Animated value for custom switch
-  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.spring(anim, {
-      toValue: value ? 1 : 0,
-      useNativeDriver: false,
-      bounciness: 10,
-      speed: 12
-    }).start();
-  }, [value]);
-
-  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.1)', color] });
-  const thumbLeft = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 22] });
-
+// ─── Glass card ──────────────────────────────────────────────────────────────
+function GlassCard({ children, style }: { children: React.ReactNode; style?: object; }) {
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onToggle();
-      }}
-      style={[ptog.row, !last && ptog.border]}
-    >
-      <View style={ptog.textContainer}>
-        <Text style={ptog.title}>{label}</Text>
-        {sub ? <Text style={ptog.sub}>{sub}</Text> : null}
-      </View>
-      <Animated.View style={[ptog.switchTrack, { backgroundColor: bgColor }]}>
-        <Animated.View style={[ptog.switchThumb, { left: thumbLeft }]} />
-      </Animated.View>
-    </TouchableOpacity>
+    <BlurView intensity={35} tint="dark" style={[glass.card, style]}>
+      {children}
+    </BlurView>
   );
 }
-const ptog = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20 },
-  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  textContainer: { flex: 1, paddingRight: 20 },
-  title: { fontSize: 16, color: '#fff', fontWeight: '400', letterSpacing: 0.5 },
-  sub: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4, lineHeight: 18, letterSpacing: 0.2 },
-  switchTrack: { width: 50, height: 28, borderRadius: 14, justifyContent: 'center' },
-  switchThumb: { position: 'absolute', width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 3 },
+const glass = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
 });
 
+// ─── Toggle row ──────────────────────────────────────────────────────────────
+function ToggleRow({ emoji, label, sub, value, onToggle, color, last = false }: { emoji: string; label: string; sub: string; value: boolean; onToggle: () => void; color: string; last?: boolean; }) {
+  return (
+    <View style={[tog.row]}>
+      <View style={[tog.icon, { backgroundColor: value ? color + '40' : 'rgba(255,255,255,0.05)', borderColor: value ? color + '80' : 'rgba(255,255,255,0.1)', borderWidth: 1 }]}>
+        <Text style={{ fontSize: 16 }}>{emoji}</Text>
+      </View>
+      <View style={[tog.content, !last && tog.border]}>
+        <View style={{ flex: 1, paddingRight: 16 }}>
+          <Text style={[tog.title, value && { color: '#fff', fontWeight: '500' }]}>{label}</Text>
+          {sub ? <Text style={tog.sub}>{sub}</Text> : null}
+        </View>
+        <Switch
+          value={value}
+          onValueChange={onToggle}
+          trackColor={{ false: 'rgba(255,255,255,0.1)', true: color }}
+          thumbColor={'#ffffff'}
+          ios_backgroundColor="rgba(255,255,255,0.08)"
+        />
+      </View>
+    </View>
+  );
+}
+const tog = StyleSheet.create({
+  row:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 18 },
+  content: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingRight: 20 },
+  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)' },
+  icon:   { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+  title:  { fontSize: 13, color: '#FFFFFFE6', fontWeight: '300', letterSpacing: 0.8, fontFamily: 'Nunito_300Light' },
+  sub:    { fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 14, letterSpacing: 0.3, fontFamily: 'Nunito_300Light' },
+});
 
-// ─── Hero Wallpaper Picker ───────────────────────────────────────────────────
-function HeroWallpaperPicker({ scrollY }: { scrollY: Animated.Value }) {
+function WallpaperPicker() {
   const router = useRouter();
   const { wallpaperMode, manualBgKey, bgKey, allBgUris, solarTimes } = useBgContext();
   const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
@@ -178,65 +175,51 @@ function HeroWallpaperPicker({ scrollY }: { scrollY: Animated.Value }) {
   const rawActiveUri = allBgUris[activeBgKey as BgKey];
   const activeUri   = (rawActiveUri && rawActiveUri.length > 4) ? rawActiveUri : null;
 
-  // Parallax effects
-  const headerHeight = SCREEN_H * 0.45;
-  const scale = scrollY.interpolate({
-    inputRange: [-100, 0, headerHeight],
-    outputRange: [1.3, 1, 1],
-    extrapolate: 'clamp'
-  });
-  const translateY = scrollY.interpolate({
-    inputRange: [0, headerHeight],
-    outputRange: [0, headerHeight * 0.5],
-    extrapolate: 'clamp'
-  });
-
   return (
-    <View style={{ height: headerHeight, width: '100%', position: 'relative' }}>
-      <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ scale }, { translateY }] }]}>
-        <ImageBackground source={activeUri ? { uri: activeUri } : undefined} style={{ flex: 1, backgroundColor: '#060A18' }}>
-          <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', '#000000']} style={StyleSheet.absoluteFillObject} locations={[0, 0.6, 1]} />
-        </ImageBackground>
-      </Animated.View>
-      
-      <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-        <Text style={hwp.pageTitle}>Settings</Text>
-      </SafeAreaView>
-
-      <View style={hwp.overlayContent}>
-        <View style={hwp.themeInfo}>
-          <Text style={hwp.themeSub}>
-            {wallpaperMode === 'solar' ? 'AUTO-SOLAR THEME' : 'PINNED THEME'} • {dynamicTimes[activeBgKey as BgKey] || activeMeta.time}
-          </Text>
-          <Text style={hwp.themeTitle}>{activeMeta.emoji} {activeMeta.label}</Text>
+    <TouchableOpacity
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        router.push('/wallpaper');
+      }}
+      activeOpacity={0.9}
+      style={wp.card}
+    >
+      <ImageBackground source={activeUri ? { uri: activeUri } : undefined} style={wp.previewImg}>
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']} style={StyleSheet.absoluteFillObject} />
+        
+        {/* Top Active Indicator */}
+        <View style={{ position: 'absolute', top: 16, left: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <BlurView intensity={30} tint="dark" style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 1.5 }}>
+              {wallpaperMode === 'solar' ? '☀️ AUTO-SOLAR' : '📌 PINNED'}
+            </Text>
+          </BlurView>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/wallpaper');
-          }}
-          style={hwp.editBtn}
-        >
-          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFillObject} />
-          <Ionicons name="color-palette" size={16} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={hwp.editBtnTxt}>Change Theme</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+
+        <View style={wp.previewContent}>
+          <View style={{ flex: 1 }}>
+            <Text style={wp.previewTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
+            <Text style={wp.previewName}>{activeMeta.emoji} {activeMeta.label}</Text>
+          </View>
+          <BlurView intensity={40} tint="light" style={wp.previewBtn}>
+            <Text style={wp.previewBtnTxt}>Edit Theme</Text>
+            <Ionicons name="color-wand" size={14} color="#000" />
+          </BlurView>
+        </View>
+      </ImageBackground>
+    </TouchableOpacity>
   );
 }
 
-const hwp = StyleSheet.create({
-  pageTitle: { fontSize: 24, fontWeight: '300', color: '#fff', letterSpacing: 2, textAlign: 'center', marginTop: 12, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
-  overlayContent: { position: 'absolute', bottom: 32, left: 24, right: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  themeInfo: { flex: 1, paddingRight: 16 },
-  themeSub: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
-  themeTitle: { fontSize: 28, color: '#fff', fontWeight: '300', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
-  editBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)' },
-  editBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+const wp = StyleSheet.create({
+  card: { marginHorizontal: 16, marginTop: 4, borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,20,20,0.6)', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 12 },
+  previewImg: { height: 260, width: '100%', justifyContent: 'flex-end' },
+  previewContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', padding: 24 },
+  previewTime: { fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 8, fontFamily: 'Nunito_600SemiBold' },
+  previewName: { fontSize: 18, color: '#fff', fontWeight: '300', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, fontFamily: 'Nunito_300Light' },
+  previewBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.15)' },
+  previewBtnTxt: { color: '#000', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' },
 });
-
 
 // ─── Permission Checker ───────────────────────────────────────────────────────
 interface PermState { notifications: boolean; exactAlarm: boolean; batteryOpt: boolean; fullScreen: boolean; }
@@ -248,6 +231,9 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
   const check = async () => {
     try {
       setChecking(true);
+      // Each permission check is individually guarded so one failing native
+      // module cannot crash the entire check (e.g. isBatteryOptimizationIgnored
+      // may throw synchronously on some Android ROMs).
       let ea = true, bo = true, fs = true;
       try { ea = await checkAlarmPermission(); } catch { ea = true; }
       try {
@@ -268,7 +254,7 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
         notifStatus = result.status;
       } catch { notifStatus = 'granted'; }
       setPerms({ notifications: notifStatus === 'granted', exactAlarm: !!ea, batteryOpt: !!bo, fullScreen: !!fs });
-    } catch { /* silent */ } finally {
+    } catch { /* silent — permissions UI is non-critical */ } finally {
       setChecking(false);
     }
   };
@@ -285,10 +271,8 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  if (allOk) return null; // Don't show in premium UI if everything is fine
-
   return (
-    <DashboardModule title="System Permissions" icon="warning" color="#FF3B30">
+    <GlassCard>
       {([
         { label: 'Notifications',         ok: perms.notifications },
         { label: 'Schedule Exact Alarms', ok: perms.exactAlarm },
@@ -297,31 +281,30 @@ function PermissionsSection({ onRefresh }: { onRefresh: () => void }) {
       ] as const).map((p, i, arr) => (
         <View key={p.label} style={[perm.row, i < arr.length - 1 && perm.border]}>
           <View style={[perm.dot, { backgroundColor: p.ok ? '#34C759' : '#FF3B30' }]} />
-          <Text style={[perm.label, { color: p.ok ? 'rgba(235,235,245,0.4)' : '#fff', fontWeight: p.ok ? '400' : '500' }]}>
+          <Text style={[perm.label, { color: p.ok ? 'rgba(235,235,245,0.6)' : '#fff', fontWeight: p.ok ? '400' : '500' }]}>
             {p.label}
           </Text>
-          {!p.ok && (
-            <Text style={{ fontSize: 11, letterSpacing: 1, fontWeight: '700', color: '#FF3B30' }}>
-              ACTION REQUIRED
-            </Text>
-          )}
+          <Text style={{ fontSize: 12, letterSpacing: 1.5, fontWeight: '600', color: p.ok ? 'rgba(235,235,245,0.4)' : '#FF3B30' }}>
+            {p.ok ? 'OK' : 'MISSING'}
+          </Text>
         </View>
       ))}
-      <TouchableOpacity onPress={handleFix} disabled={checking} style={perm.fixBtn} activeOpacity={0.8}>
-        <LinearGradient colors={['rgba(255,59,48,0.15)', 'rgba(255,59,48,0.05)']} style={StyleSheet.absoluteFillObject} />
-        <Text style={{ color: '#FF3B30', fontWeight: '700', fontSize: 14, letterSpacing: 1 }}>
-          {checking ? 'CHECKING...' : 'RESOLVE ISSUES'}
-        </Text>
-      </TouchableOpacity>
-    </DashboardModule>
+      {!allOk && (
+        <TouchableOpacity onPress={handleFix} disabled={checking} style={perm.fixBtn} activeOpacity={0.8}>
+          <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 15 }}>
+            {checking ? 'Checking...' : 'Fix Permissions'}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </GlassCard>
   );
 }
 const perm = StyleSheet.create({
-  row:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
-  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  dot:    { width: 6, height: 6, borderRadius: 3, marginRight: 14 },
-  label:  { flex: 1, fontSize: 14, letterSpacing: 0.3 },
-  fixBtn: { marginTop: 8, marginHorizontal: 20, marginBottom: 20, borderRadius: 16, overflow: 'hidden', paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,59,48,0.3)' },
+  row:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)', marginLeft: 28 },
+  dot:    { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
+  label:  { flex: 1, fontSize: 13, letterSpacing: 0.4, fontWeight: '300' },
+  fixBtn: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, alignItems: 'center' },
 });
 
 
@@ -339,8 +322,6 @@ export default function SettingsTab() {
   }, [router]));
 
   const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
-
   const [settings,  setSettings]  = useState<AlarmSettings>(DEFAULT_ALARM_SETTINGS);
   const [mission,   setMission]   = useState<MissionSettings>(DEFAULT_MISSION_SETTINGS);
   const { bgUri, bgKey, accentColor } = useBgContext();
@@ -362,83 +343,105 @@ export default function SettingsTab() {
 
   const saveSettings = async (updated: AlarmSettings) => {
     setSettings(updated); await store.setJSON(KEYS.alarmSettings, updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     checkAndRescheduleDaily(true).catch(() => {});
   };
+  const saveMission = async (updated: MissionSettings) => {
+    setMission(updated); await store.setJSON(KEYS.missionSettings, updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+
 
   const TOGGLES = [
-    { label: 'Sacred Solar Hours', sub: 'Sunrise, Zenith, and Sunset notifications', val: settings.sacredHourNotifs ?? false, onToggle: () => saveSettings({ ...settings, sacredHourNotifs: !(settings.sacredHourNotifs ?? false) }), color: GOLD },
-    { label: 'Circadian Alerts', sub: 'Notify when your body rhythm phase shifts', val: settings.circadianNotifs ?? false, onToggle: () => saveSettings({ ...settings, circadianNotifs: !(settings.circadianNotifs ?? false) }), color: PURPLE },
+    { emoji: '🌅', label: 'Sacred Solar Hours', sub: 'Sunrise, Zenith, and Sunset notifications', val: settings.sacredHourNotifs ?? false, onToggle: () => saveSettings({ ...settings, sacredHourNotifs: !(settings.sacredHourNotifs ?? false) }), color: '#FF9500' },
+    { emoji: '🔬', label: 'Circadian Alerts', sub: 'Notify when your body rhythm phase shifts', val: settings.circadianNotifs ?? false, onToggle: () => saveSettings({ ...settings, circadianNotifs: !(settings.circadianNotifs ?? false) }), color: '#0A84FF' },
   ] as const;
 
   return (
     <SettingsErrorBoundary>
-      <View style={[S.screen]}>
-        
-        <Animated.ScrollView
-          ref={scrollRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-        >
-          {/* ── 1. Hero Parallax Wallpaper Picker ── */}
-          <HeroWallpaperPicker scrollY={scrollY} />
+    <View style={[S.screen, { backgroundColor: accentColor }]}>
+      <AppBackground />
+      <LinearGradient
+        colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.92)', '#000000']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
 
-          <View style={{ marginTop: -20, zIndex: 10 }}>
-            {/* ── 2. Permissions (Android only) ── */}
-            {Platform.OS === 'android' && (
-              <PermissionsSection onRefresh={() => {}} />
-            )}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+        <View style={S.header}>
+          <Text style={S.headerTitle}>Settings</Text>
+        </View>
+      </SafeAreaView>
 
-            {/* ── 3. Notifications Dashboard Module ── */}
-            <DashboardModule title="Smart Notifications" icon="notifications" color="#0A84FF">
-              {TOGGLES.map((row, i) => (
-                <PremiumToggleRow
-                  key={row.label}
-                  label={row.label}
-                  sub={row.sub}
-                  value={row.val}
-                  onToggle={row.onToggle}
-                  color={row.color}
-                  last={i === TOGGLES.length - 1}
-                />
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+
+        {/* ── 1. Background & Wallpaper ── */}
+        <SectionHeader label="Theme & Wallpaper" />
+        <WallpaperPicker />
+
+
+        {/* ── 3. Behaviour Toggles ── */}
+        <SectionHeader label="Notifications" />
+        <GlassCard>
+          {TOGGLES.map((row, i) => (
+            <ToggleRow
+              key={row.label}
+              emoji={row.emoji}
+              label={row.label}
+              sub={row.sub}
+              value={row.val}
+              onToggle={row.onToggle}
+              color={row.color}
+              last={i === TOGGLES.length - 1}
+            />
+          ))}
+        </GlassCard>
+
+        {/* ── 4. Permissions (Android only) ── */}
+        {Platform.OS === 'android' && (
+          <>
+            <SectionHeader label="App Permissions" />
+            <PermissionsSection onRefresh={() => {}} />
+          </>
+        )}
+
+        {/* ── 5. About ── */}
+        <SectionHeader label="About" />
+        <GlassCard>
+          <View style={{ padding: 16, gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff', letterSpacing: 0.5 }}>Nada</Text>
+              <Text style={{ fontSize: 12, color: '#EBEBF550' }}>v1.0</Text>
+            </View>
+            <Text style={{ fontSize: 11, letterSpacing: 1.5, color: '#EBEBF599', lineHeight: 18 }}>
+              Rise with the sun · Ancient Wisdom · Modern Intelligence
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {['Solar Rhythms', 'Ayurveda', 'Vedic Panchang', 'Native Alarms'].map(tag => (
+                <View key={tag} style={S.tagPill}>
+                  <Text style={S.tagTxt}>{tag}</Text>
+                </View>
               ))}
-            </DashboardModule>
-
-            {/* ── 4. About Dashboard Module ── */}
-            <DashboardModule title="About Application" icon="information-circle" color={PURPLE}>
-              <View style={{ padding: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ fontSize: 20, fontWeight: '300', color: '#fff', letterSpacing: 1 }}>Nada App</Text>
-                  <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#fff', fontWeight: '700' }}>v1.0</Text>
-                  </View>
-                </View>
-                <Text style={{ fontSize: 13, letterSpacing: 0.5, color: '#EBEBF599', lineHeight: 20, marginBottom: 16 }}>
-                  Rise with the sun. Blend ancient Ayurvedic wisdom with modern intelligence to optimize your circadian rhythm.
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {['Solar Rhythms', 'Ayurveda', 'Vedic Science', 'Circadian'].map(tag => (
-                    <View key={tag} style={S.tagPill}>
-                      <Text style={S.tagTxt}>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </DashboardModule>
+            </View>
           </View>
-        </Animated.ScrollView>
-      </View>
+        </GlassCard>
+      </ScrollView>
+    </View>
     </SettingsErrorBoundary>
   );
 }
 
 const S = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#000000' },
-  tagPill: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' },
-  tagTxt:  { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.5, textTransform: 'uppercase' },
+  header:  { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
+  headerTitle: { fontSize: 22, fontWeight: '300', color: '#fff', letterSpacing: 1.5, fontFamily: 'Nunito_300Light' },
+
+  tagPill: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  tagTxt:  { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5, fontFamily: 'Nunito_600SemiBold' },
 });

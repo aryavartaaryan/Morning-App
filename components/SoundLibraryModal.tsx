@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
+  Platform,
   SafeAreaView,
   Animated,
   TextInput,
@@ -16,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
-const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get('window');
+const { height: SCREEN_H } = Dimensions.get('window');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DisplayGroup = {
@@ -27,28 +28,103 @@ type DisplayGroup = {
   sounds: any[];
 };
 
+// ─── Animated Sound Row ───────────────────────────────────────────────────────
+function SoundRow({
+  sound,
+  isPlaying,
+  onPress,
+  isLast,
+  index,
+}: {
+  sound: any;
+  isPlaying: boolean;
+  onPress: () => void;
+  isLast?: boolean;
+  index: number;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(6)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 180,
+        delay: index * 30,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 180,
+        delay: index * 30,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      <TouchableOpacity
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress();
+        }}
+        activeOpacity={0.65}
+        style={[S.row, isPlaying && { backgroundColor: 'rgba(255,255,255,0.04)' }]}
+      >
+        {/* Left: playing indicator bar */}
+        <View style={[S.playingBar, { backgroundColor: isPlaying ? (sound.color || '#fff') : 'transparent' }]} />
+
+        <Text style={S.rowEmoji}>{sound.emoji || '🎵'}</Text>
+
+        <View style={[S.rowBody, !isLast && S.rowDivider]}>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[S.rowTitle, isPlaying && { color: sound.color || '#FFFFFF' }]}
+              numberOfLines={1}
+            >
+              {sound.label}
+            </Text>
+            {sound.desc ? (
+              <Text style={S.rowDesc} numberOfLines={1}>
+                {sound.desc}
+              </Text>
+            ) : null}
+          </View>
+
+          {isPlaying ? (
+            <PlayingPulse color={sound.color || '#fff'} />
+          ) : (
+            <View style={S.playBtn}>
+              <Ionicons name="play" size={11} color="rgba(255,255,255,0.25)" />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 // ─── Playing Pulse Dots ───────────────────────────────────────────────────────
 function PlayingPulse({ color }: { color: string }) {
   const a1 = useRef(new Animated.Value(0.3)).current;
   const a2 = useRef(new Animated.Value(0.6)).current;
-  const a3 = useRef(new Animated.Value(1.0)).current;
+  const a3 = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const pulse = (v: Animated.Value, delay: number) =>
       Animated.loop(
         Animated.sequence([
-          Animated.timing(v, { toValue: 1, duration: 380, delay, useNativeDriver: true }),
-          Animated.timing(v, { toValue: 0.2, duration: 380, useNativeDriver: true }),
+          Animated.timing(v, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0.3, duration: 400, useNativeDriver: true }),
         ])
       );
-    const a = pulse(a1, 0);
-    const b = pulse(a2, 127);
-    const c = pulse(a3, 254);
-    a.start(); b.start(); c.start();
-    return () => { a.stop(); b.stop(); c.stop(); };
+    pulse(a1, 0).start();
+    pulse(a2, 133).start();
+    pulse(a3, 266).start();
   }, []);
 
-  const bar = (v: Animated.Value) => ({
+  const barStyle = (v: Animated.Value) => ({
     width: 3,
     height: 13,
     borderRadius: 2,
@@ -59,80 +135,24 @@ function PlayingPulse({ color }: { color: string }) {
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14, height: 20 }}>
-      <Animated.View style={bar(a1)} />
-      <Animated.View style={bar(a2)} />
-      <Animated.View style={bar(a3)} />
+      <Animated.View style={barStyle(a1)} />
+      <Animated.View style={barStyle(a2)} />
+      <Animated.View style={barStyle(a3)} />
     </View>
   );
 }
 
-// ─── Sound Row ────────────────────────────────────────────────────────────────
-const SoundRow = React.memo(function SoundRow({
-  sound,
-  isPlaying,
-  onPress,
-  isLast,
-}: {
-  sound: any;
-  isPlaying: boolean;
-  onPress: () => void;
-  isLast: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      activeOpacity={0.65}
-      style={[S.row, isPlaying && S.rowActive]}
-    >
-      {/* Left edge playing indicator */}
-      <View
-        style={[
-          S.playingBar,
-          { backgroundColor: isPlaying ? sound.color || '#fff' : 'transparent' },
-        ]}
-      />
-
-      <Text style={S.rowEmoji}>{sound.emoji || '🎵'}</Text>
-
-      <View style={[S.rowBody, !isLast && S.rowDivider, isPlaying && { borderBottomColor: 'transparent' }]}>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[S.rowTitle, isPlaying && { color: sound.color || '#FFFFFF', fontWeight: '500' }]}
-            numberOfLines={1}
-          >
-            {sound.label}
-          </Text>
-          {sound.desc ? (
-            <Text style={S.rowDesc} numberOfLines={1}>
-              {sound.desc}
-            </Text>
-          ) : null}
-        </View>
-
-        {isPlaying ? (
-          <PlayingPulse color={sound.color || '#fff'} />
-        ) : (
-          <View style={S.playBtn}>
-            <Ionicons name="play" size={12} color="rgba(255,255,255,0.4)" />
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-});
-
-// ─── Horizontal Collection Pill ───────────────────────────────────────────────
-const HorizontalCollectionPill = React.memo(function HorizontalCollectionPill({
+// ─── Collection Pill ──────────────────────────────────────────────────────────
+function CollectionPill({
   group,
   isActive,
   onPress,
+  hasPlayingSound,
 }: {
   group: DisplayGroup;
   isActive: boolean;
   onPress: () => void;
+  hasPlayingSound: boolean;
 }) {
   return (
     <TouchableOpacity
@@ -141,57 +161,29 @@ const HorizontalCollectionPill = React.memo(function HorizontalCollectionPill({
         onPress();
       }}
       activeOpacity={0.7}
-      style={[S.hPill, isActive && { borderColor: group.themeColor + 'BB', backgroundColor: group.themeColor + '18' }]}
+      style={[S.pill, isActive && { borderColor: group.themeColor + 'CC' }]}
     >
-      <View
-        style={[
-          S.pillDot,
-          { backgroundColor: isActive ? group.themeColor : 'rgba(255,255,255,0.15)' },
-        ]}
-      />
+      {isActive && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: group.themeColor + '14', borderRadius: 12 },
+          ]}
+        />
+      )}
+      <View style={[S.pillDot, { backgroundColor: isActive ? group.themeColor : 'rgba(255,255,255,0.15)' }]} />
       <Text
-        style={[S.hPillText, isActive && { color: '#fff', fontWeight: '600' }]}
+        style={[S.pillText, isActive && { color: '#fff', fontWeight: '600' }]}
+        numberOfLines={1}
       >
         {group.title}
       </Text>
+      <Text style={[S.pillCount, isActive && { color: group.themeColor }]}>
+        {group.sounds.length}
+      </Text>
     </TouchableOpacity>
   );
-});
-
-// ─── Collection Grid Card (Discovery Mode) ────────────────────────────────────
-const CollectionGridCard = React.memo(function CollectionGridCard({
-  group,
-  onPress,
-}: {
-  group: DisplayGroup;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      activeOpacity={0.7}
-      style={S.gridCard}
-    >
-      <LinearGradient
-        colors={['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.01)']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={S.gridCardHeader}>
-        <View style={[S.gridCardDot, { backgroundColor: group.themeColor }]} />
-        <Text style={S.gridCardCount}>{group.sounds.length} sounds</Text>
-      </View>
-      <View style={{ marginTop: 12 }}>
-        <Text style={S.gridCardTitle} numberOfLines={2}>{group.title}</Text>
-        {group.subtitle ? (
-          <Text style={[S.gridCardSub, { color: group.themeColor + 'CC' }]} numberOfLines={1}>{group.subtitle}</Text>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  );
-});
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SoundLibraryModal({
@@ -214,55 +206,27 @@ export default function SoundLibraryModal({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
-  
-  // Animation for crossfading between discovery and focus modes
-  const modeFade = useRef(new Animated.Value(1)).current;
-  
-  // Ref for horizontal scroll list to auto-scroll to active item
-  const horizontalListRef = useRef<FlatList>(null);
 
-  // Sheet open/close animation
+  // Open / close animation
   useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, {
         toValue: 0,
-        damping: 26,
-        stiffness: 240,
-        mass: 0.85,
+        damping: 28,
+        stiffness: 260,
+        mass: 0.9,
         useNativeDriver: true,
       }).start();
       setActiveId(initialCategory ?? null);
       setSearchQuery('');
-      modeFade.setValue(1);
     } else {
       Animated.timing(slideAnim, {
         toValue: SCREEN_H,
-        duration: 200,
+        duration: 220,
         useNativeDriver: true,
       }).start();
     }
   }, [visible]);
-
-  // Smooth mode transition
-  const handleSelectGroup = useCallback(
-    (id: string | null) => {
-      if (id === activeId) return;
-      
-      Animated.timing(modeFade, {
-        toValue: 0,
-        duration: 120,
-        useNativeDriver: true,
-      }).start(() => {
-        setActiveId(id);
-        Animated.timing(modeFade, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }).start();
-      });
-    },
-    [activeId, modeFade]
-  );
 
   // Build display groups
   const displayGroups = useMemo((): DisplayGroup[] => {
@@ -288,196 +252,155 @@ export default function SoundLibraryModal({
     }));
   }, [collections, sounds]);
 
+  // Filter
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return displayGroups;
     const q = searchQuery.toLowerCase();
-    return displayGroups
-      .map(g => {
-        if (g.title.toLowerCase().includes(q)) return g;
-        const ms = g.sounds.filter(
-          (s: any) =>
-            s.label?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
-        );
-        return ms.length > 0 ? { ...g, sounds: ms } : null;
-      })
-      .filter(Boolean) as DisplayGroup[];
+    return displayGroups.map(g => {
+      if (g.title.toLowerCase().includes(q)) return g;
+      const ms = g.sounds.filter((s: any) =>
+        s.label?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
+      );
+      return ms.length > 0 ? { ...g, sounds: ms } : null;
+    }).filter(Boolean) as DisplayGroup[];
   }, [displayGroups, searchQuery]);
 
   const activeGroup = filteredGroups.find(g => g.id === activeId) ?? null;
+  const isSearchMode = searchQuery.length > 0;
 
-  // Renderers
-  const renderSoundItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => (
-      <SoundRow
-        sound={item}
-        isPlaying={playingId === item.id}
-        onPress={() => onPlaySound(item.id)}
-        isLast={index === (activeGroup?.sounds.length ?? 0) - 1}
-      />
-    ),
-    [playingId, onPlaySound, activeGroup?.sounds.length]
-  );
+  const handleSelectGroup = (id: string) => {
+    setActiveId(prev => prev === id ? null : id);
+  };
 
-  const renderHorizontalPill = useCallback(
-    ({ item }: { item: DisplayGroup }) => (
-      <HorizontalCollectionPill
-        group={item}
-        isActive={activeId === item.id}
-        onPress={() => handleSelectGroup(item.id)}
-      />
-    ),
-    [activeId, handleSelectGroup]
-  );
-  
-  const renderGridCard = useCallback(
-    ({ item }: { item: DisplayGroup }) => (
-      <CollectionGridCard
-        group={item}
-        onPress={() => handleSelectGroup(item.id)}
-      />
-    ),
-    [handleSelectGroup]
-  );
-
-  const keyExtractor = useCallback((item: any) => item.id, []);
-  
-  // Auto-scroll horizontal strip to active item
-  useEffect(() => {
-    if (activeId && horizontalListRef.current) {
-      const idx = filteredGroups.findIndex(g => g.id === activeId);
-      if (idx >= 0) {
-        setTimeout(() => {
-          horizontalListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
-        }, 100);
-      }
+  const handleRequestClose = () => {
+    if (activeId) {
+      setActiveId(null);
+    } else {
+      onClose();
     }
-  }, [activeId, filteredGroups]);
+  };
 
   return (
-    <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
-      {/* Backdrop */}
-      <TouchableOpacity style={S.backdrop} activeOpacity={1} onPress={onClose} />
+    <Modal visible={visible} animationType="none" transparent onRequestClose={handleRequestClose}>
+      {/* Dim backdrop */}
+      <TouchableOpacity
+        style={S.backdrop}
+        activeOpacity={1}
+        onPress={handleRequestClose}
+      />
 
       <Animated.View style={[S.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Glass base */}
-        <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
+        {/* Deep black glass base */}
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
         <LinearGradient
-          colors={['#0A0A0C', '#050505']}
+          colors={['#0A0A0C', '#080808']}
           style={[StyleSheet.absoluteFillObject, { opacity: 0.96 }]}
         />
 
-        <SafeAreaView style={S.safeArea}>
-          {/* Handle */}
+        <SafeAreaView style={{ flex: 1 }}>
+          {/* ── Handle ─────────────────────────────────────────────────── */}
           <View style={S.handle} />
 
-          {/* Header */}
+          {/* ── Header ─────────────────────────────────────────────────── */}
           <View style={S.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {activeId ? (
-                <TouchableOpacity onPress={() => handleSelectGroup(null)} style={S.backBtn} activeOpacity={0.7}>
-                  <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.8)" />
-                </TouchableOpacity>
-              ) : null}
-              <View>
-                <Text style={S.headerTitle}>Nada Library</Text>
-                <Text style={S.headerSub}>
-                  {filteredGroups.length} collections · {sounds.length} sounds
-                </Text>
-              </View>
+            <View>
+              <Text style={S.headerTitle}>Nada Library</Text>
+              <Text style={S.headerSub}>
+                {filteredGroups.length} collections · {sounds.length} sounds
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
               <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
           </View>
 
-          {/* Search */}
+          {/* ── Search ──────────────────────────────────────────────────── */}
           <View style={S.searchWrap}>
-            <Ionicons
-              name="search"
-              size={15}
-              color="rgba(255,255,255,0.3)"
-              style={{ marginLeft: 14, marginRight: 10 }}
-            />
+            <Ionicons name="search" size={14} color="rgba(255,255,255,0.3)" style={{ marginLeft: 14, marginRight: 9 }} />
             <TextInput
               style={S.searchInput}
               placeholder="Search sounds & collections…"
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholderTextColor="rgba(255,255,255,0.22)"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCorrect={false}
-              returnKeyType="search"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 10 }}>
-                <Ionicons name="close-circle" size={15} color="rgba(255,255,255,0.4)" />
+                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
             )}
           </View>
 
-          <View style={S.mainDivider} />
+          {/* ── Divider ─────────────────────────────────────────────────── */}
+          <View style={S.divider} />
 
-          {/* Dynamic Body */}
-          <Animated.View style={[{ flex: 1 }, { opacity: modeFade }]}>
-            {activeGroup ? (
-              /* Focus Mode: Horizontal Strip + Sound List */
-              <View style={{ flex: 1 }}>
-                <View>
-                  <FlatList
-                    ref={horizontalListRef}
-                    data={filteredGroups}
-                    keyExtractor={keyExtractor}
-                    renderItem={renderHorizontalPill}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={S.horizontalStripContent}
-                    onScrollToIndexFailed={() => {}}
-                  />
-                  <View style={S.mainDivider} />
-                </View>
-                
-                <View style={S.collectionTitleHeader}>
-                   <View style={[S.largeDot, { backgroundColor: activeGroup.themeColor }]} />
-                   <View style={{ flex: 1 }}>
-                     <Text style={S.collectionTitleText} numberOfLines={1}>{activeGroup.title}</Text>
-                     {activeGroup.subtitle ? (
-                       <Text style={[S.collectionSubText, { color: activeGroup.themeColor }]} numberOfLines={1}>{activeGroup.subtitle}</Text>
-                     ) : null}
-                   </View>
-                   <Text style={S.collectionCountText}>{activeGroup.sounds.length} sounds</Text>
-                </View>
-
-                <FlatList
-                  data={activeGroup.sounds}
-                  keyExtractor={keyExtractor}
-                  renderItem={renderSoundItem}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={S.rightListContent}
-                  initialNumToRender={20}
-                  maxToRenderPerBatch={20}
-                  windowSize={10}
-                />
-              </View>
-            ) : (
-              /* Discovery Mode: Wide Collection Grid */
-              <FlatList
-                data={filteredGroups}
-                keyExtractor={keyExtractor}
-                renderItem={renderGridCard}
+          {/* ── Single-panel drill-down layout ─────────────── */}
+          <View style={{ flex: 1 }}>
+            {!activeGroup ? (
+              <ScrollView
+                style={{ flex: 1, paddingHorizontal: 16 }}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={S.gridContent}
-                numColumns={SCREEN_W > 600 ? 2 : 1}
-                ListEmptyComponent={
-                  <View style={S.emptyState}>
-                    <View style={S.emptyIcon}>
-                      <Ionicons name="musical-note" size={24} color="rgba(255,255,255,0.15)" />
-                    </View>
-                    <Text style={S.emptyStateTitle}>No results found</Text>
-                    <Text style={S.emptyStateDesc}>Try searching for a different keyword</Text>
+                contentContainerStyle={{ paddingVertical: 10, paddingBottom: 50 }}
+              >
+                {filteredGroups.length === 0 && (
+                  <Text style={S.emptyText}>No results</Text>
+                )}
+                {filteredGroups.map(group => (
+                  <CollectionPill
+                    key={group.id}
+                    group={group}
+                    isActive={false}
+                    onPress={() => handleSelectGroup(group.id)}
+                    hasPlayingSound={group.sounds.some((s: any) => s.id === playingId)}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={{ flex: 1 }}>
+                {/* Collection heading with Back button */}
+                <View style={[S.rightHeader, { paddingHorizontal: 16, paddingVertical: 12 }]}>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setActiveId(null);
+                    }} 
+                    style={{ marginRight: 12, paddingVertical: 4, paddingRight: 8, flexDirection: 'row', alignItems: 'center' }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
+                  </TouchableOpacity>
+                  <View style={[S.rightHeaderDot, { backgroundColor: activeGroup.themeColor }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[S.rightHeaderTitle, { color: activeGroup.themeColor, fontSize: 14 }]} numberOfLines={1}>
+                      {activeGroup.title}
+                    </Text>
+                    {activeGroup.subtitle ? (
+                      <Text style={S.rightHeaderSub} numberOfLines={1}>{activeGroup.subtitle}</Text>
+                    ) : null}
                   </View>
-                }
-              />
+                  <Text style={S.rightHeaderCount}>{activeGroup.sounds.length}</Text>
+                </View>
+                <View style={S.divider} />
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
+                >
+                  {activeGroup.sounds.map((sound: any, idx: number) => (
+                    <SoundRow
+                      key={sound.id}
+                      sound={sound}
+                      isPlaying={playingId === sound.id}
+                      onPress={() => { onPlaySound(sound.id); }}
+                      isLast={idx === activeGroup.sounds.length - 1}
+                      index={idx}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
             )}
-          </Animated.View>
+          </View>
         </SafeAreaView>
       </Animated.View>
     </Modal>
@@ -488,31 +411,28 @@ export default function SoundLibraryModal({
 const S = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
   },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: '92%',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    height: '90%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.6,
-    shadowRadius: 50,
+    shadowRadius: 40,
     shadowOffset: { width: 0, height: -10 },
     elevation: 30,
   },
-  safeArea: {
-    flex: 1,
-  },
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 4,
@@ -523,36 +443,31 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 22,
+    paddingTop: 16,
     paddingBottom: 14,
   },
-  backBtn: {
-    marginRight: 12,
-    padding: 4,
-    marginLeft: -4,
-  },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#FFFFFF',
-    letterSpacing: 0.1,
-  },
-  headerSub: {
-    fontSize: 12.5,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 2,
     letterSpacing: 0.2,
   },
+  headerSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+    marginTop: 2,
+    letterSpacing: 0.3,
+  },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 
   // Search
@@ -561,220 +476,194 @@ const S = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginBottom: 14,
-    height: 40,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
+    height: 38,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 11,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: '#FFF',
     paddingVertical: 0,
   },
 
   // Dividers
-  mainDivider: {
+  divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  colDivider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
 
-  // Discovery Mode Grid
-  gridContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 60,
+  // Two-column layout
+  leftCol: {
+    width: 142,
+    paddingHorizontal: 10,
   },
-  gridCard: {
+  rightCol: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 12,
-    marginHorizontal: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.05)',
-    overflow: 'hidden',
+    position: 'relative',
   },
-  gridCardHeader: {
+  rightHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  gridCardDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  rightHeaderDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginRight: 10,
   },
-  gridCardCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: '500',
-  },
-  gridCardTitle: {
-    fontSize: 17,
+  rightHeaderTitle: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#FFFFFF',
     letterSpacing: 0.2,
   },
-  gridCardSub: {
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
+  rightHeaderSub: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.35)',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  rightHeaderCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+    marginLeft: 8,
   },
 
-  // Focus Mode Horizontal Strip
-  horizontalStripContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  hPill: {
+  // Collection pill
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    marginBottom: 4,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: 4,
+    borderColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+    position: 'relative',
   },
   pillDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     marginRight: 8,
+    flexShrink: 0,
   },
-  hPillText: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 0.1,
-  },
-  
-  // Focus Mode Collection Header
-  collectionTitleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  largeDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 14,
-  },
-  collectionTitleText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFF',
-    letterSpacing: 0.1,
-  },
-  collectionSubText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 3,
-  },
-  collectionCountText: {
+  pillText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.55)',
+    flex: 1,
+    letterSpacing: 0.1,
+  },
+  pillCount: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.25)',
+    marginLeft: 4,
     fontWeight: '500',
   },
 
   // Sound row
-  rightListContent: {
-    paddingBottom: 80,
-    paddingTop: 4,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    minHeight: 52,
-  },
-  rowActive: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingRight: 16,
+    borderRadius: 0,
+    overflow: 'hidden',
   },
   playingBar: {
-    width: 3,
-    alignSelf: 'stretch',
+    width: 2.5,
+    height: '70%',
     borderRadius: 2,
-    marginRight: 10,
-    marginVertical: 10,
+    marginLeft: 10,
+    marginRight: 2,
+    flexShrink: 0,
+    minHeight: 20,
   },
   rowEmoji: {
-    fontSize: 17,
+    fontSize: 15,
     width: 30,
     textAlign: 'center',
-    marginRight: 4,
+    marginLeft: 6,
   },
   rowBody: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
+    marginLeft: 8,
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   rowTitle: {
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '400',
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.78)',
     letterSpacing: 0.1,
     marginBottom: 2,
   },
   rowDesc: {
-    fontSize: 12.5,
-    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,0.3)',
   },
   playBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-    marginLeft: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
 
-  // Empty states
+  // Empty state
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    marginTop: 60,
+    paddingHorizontal: 24,
   },
   emptyIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.08)',
   },
   emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: 'rgba(255,255,255,0.4)',
     marginBottom: 6,
   },
   emptyStateDesc: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.2)',
     textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

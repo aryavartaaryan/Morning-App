@@ -1,25 +1,22 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, StatusBar, Image, Dimensions,
-  BackHandler, FlatList
-} from "react-native";
+  Animated, StatusBar, Image, FlatList, Dimensions,
+  BackHandler } from "react-native";
+
+const { width, height } = Dimensions.get('window');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter , useFocusEffect } from "expo-router";
 import {
   useBgContext,
   BG_KEYS, BG_META, type BgKey, getTimedBgKey
 } from '@/lib/bgContext';
 import { getBgSourceSync, getBgSource } from '@/lib/bgImages';
 import AppBackground from '@/components/AppBackground';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_W * 0.72;
-const CARD_SPACING = 20;
 
 function AsyncWallpaperImage({ bgKey }: { bgKey: string }) {
   const [imgUri, setImgUri] = React.useState<string | null>(() => getBgSourceSync(bgKey));
@@ -90,16 +87,13 @@ export default function WallpaperSettings() {
 
   const {
     wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey,
-    bgKey, allBgUris, solarTimes
+    bgKey, allBgUris, solarTimes, bgUri
   } = useBgContext();
 
   const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
   const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'info' }>({ visible: false, message: '', type: 'success' });
   const isMounted = useRef(true);
-
-  // For the animated snap carousel
-  const scrollX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     isMounted.current = true;
@@ -156,106 +150,14 @@ export default function WallpaperSettings() {
     return getCategoryOfKey(key) === activeCategory;
   });
 
-  const renderCarouselItem = useCallback(({ item: key, index }: { item: string, index: number }) => {
-    const meta = BG_META[key as BgKey];
-    const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
-    
-    // Parallax & Scale Animation based on scroll position
-    const inputRange = [
-      (index - 1) * (CARD_WIDTH + CARD_SPACING),
-      index * (CARD_WIDTH + CARD_SPACING),
-      (index + 1) * (CARD_WIDTH + CARD_SPACING),
-    ];
-    
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.92, 1, 0.92],
-      extrapolate: 'clamp',
-    });
-    
-    const opacity = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.6, 1, 0.6],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <View style={{ width: CARD_WIDTH, marginHorizontal: CARD_SPACING / 2 }}>
-        <Animated.View style={[styles.carouselCardWrap, { transform: [{ scale }], opacity }]}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              if (wallpaperMode === 'solar') {
-                setWallpaperMode('manual');
-                setManualBgKey(key as BgKey);
-                showToast('📌 Pinned Mode activated!', 'success');
-              } else {
-                setManualBgKey(key as BgKey);
-                showToast('📌 Pinned wallpaper updated!', 'success');
-              }
-            }}
-            activeOpacity={0.9}
-            style={[
-              styles.carouselCard,
-              active && {
-                borderColor: wallpaperMode === 'solar' ? GOLD : PURPLE,
-                borderWidth: 2,
-              }
-            ]}
-          >
-            <AsyncWallpaperImage bgKey={key} />
-            
-            {/* Cinematic Gradient overlay */}
-            <LinearGradient
-              colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.85)']}
-              locations={[0, 0.5, 1]}
-              style={StyleSheet.absoluteFillObject}
-            />
-
-            {/* Selection Status Overlay */}
-            {active && (
-              <View style={[
-                styles.activeStatusPill,
-                { backgroundColor: wallpaperMode === 'solar' ? GOLD : PURPLE }
-              ]}>
-                <Ionicons name="checkmark-sharp" size={12} color="#000" />
-                <Text style={styles.activeStatusText}>
-                  {wallpaperMode === 'solar' ? 'ACTIVE' : 'PINNED'}
-                </Text>
-              </View>
-            )}
-
-            {/* Time Pill */}
-            <BlurView intensity={30} tint="dark" style={styles.timePill}>
-              <Text style={styles.timePillText}>
-                {dynamicTimes[key as BgKey] || meta.time}
-              </Text>
-            </BlurView>
-
-            {/* Content Overlay */}
-            <View style={styles.itemContent}>
-              <Text numberOfLines={1} style={styles.itemTitle}>
-                {meta.emoji} {meta.label}
-              </Text>
-              <Text numberOfLines={2} style={styles.itemSub}>
-                {meta.sub}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    );
-  }, [wallpaperMode, manualBgKey, bgKey, dynamicTimes, scrollX]);
-
-
   return (
     <View style={styles.screen}>
       <AppBackground />
       <StatusBar barStyle="light-content" />
       {/* Immersive glass overlay to keep UI legible over any background */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.8)', '#050810']}
-        locations={[0, 0.3, 0.8]}
+        colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.85)', '#060A18']}
+        locations={[0, 0.4, 0.9]}
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -281,11 +183,11 @@ export default function WallpaperSettings() {
         {/* Custom Toast Banner */}
         {toast.visible && (
           <View style={[styles.toastBanner, {
-            borderColor: toast.type === 'success' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(167, 139, 250, 0.4)',
+            borderColor: toast.type === 'success' ? 'rgba(251, 191, 36, 0.5)' : 'rgba(167, 139, 250, 0.5)',
             shadowColor: toast.type === 'success' ? GOLD : PURPLE,
           }]}>
             <Text style={{ fontSize: 14 }}>{toast.type === 'success' ? '✨' : '📌'}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', marginLeft: 6 }}>{toast.message}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{toast.message}</Text>
           </View>
         )}
       </SafeAreaView>
@@ -294,12 +196,100 @@ export default function WallpaperSettings() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
       >
+        {/* Active Wallpaper Hero */}
+        <View style={styles.heroContainer}>
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTime}>{dynamicTimes[activeBgKey as BgKey] || activeMeta.time}</Text>
+            <Text style={styles.heroName}>{activeMeta.emoji}  {activeMeta.label}</Text>
+            <Text style={styles.heroSub}>{activeMeta.sub}</Text>
+          </View>
+        </View>
+
+        {/* Segmented Mode Selector */}
+        <BlurView intensity={20} tint="light" style={styles.segmentedControl}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (wallpaperMode !== 'solar') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setWallpaperMode('solar');
+                showToast('☀️ Auto-Solar Mode activated!', 'success');
+              }
+            }}
+            style={[styles.segmentBtn, wallpaperMode === 'solar' && styles.segmentBtnActiveSolar]}
+          >
+            <Text style={{ fontSize: 14 }}>☀️</Text>
+            <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD }]}>
+              Auto-Solar
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (wallpaperMode !== 'manual') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setWallpaperMode('manual');
+                showToast('📌 Pinned Mode active.', 'info');
+              }
+            }}
+            style={[styles.segmentBtn, wallpaperMode === 'manual' && styles.segmentBtnActiveManual]}
+          >
+            <Text style={{ fontSize: 14 }}>📌</Text>
+            <Text style={[styles.segmentText, wallpaperMode === 'manual' && { color: PURPLE }]}>
+              Pinned
+            </Text>
+          </TouchableOpacity>
+
+        </BlurView>
+
+        {/* Mode Description Banner */}
+        {wallpaperMode === 'solar' ? (
+          <View style={[styles.modeDesc, { borderColor: 'rgba(251, 191, 36, 0.25)' }]}>
+            <LinearGradient
+              colors={['rgba(251, 191, 36, 0.12)', 'rgba(10, 15, 30, 0.3)']}
+              style={styles.modeDescGradient}
+            >
+              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                <Text style={{ fontSize: 16 }}>☀️</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: GOLD, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  Auto-Solar Rhythm
+                </Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
+                  Your wallpaper shifts dynamically through 40 solar states in sync with the sun's elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        ) : (
+          <View style={[styles.modeDesc, { borderColor: 'rgba(167, 139, 250, 0.25)' }]}>
+            <LinearGradient
+              colors={['rgba(167, 139, 250, 0.12)', 'rgba(10, 15, 30, 0.3)']}
+              style={styles.modeDescGradient}
+            >
+              <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(167, 139, 250, 0.15)' }]}>
+                <Text style={{ fontSize: 16 }}>📌</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: PURPLE, marginBottom: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  Pinned Wallpaper Active
+                </Text>
+                <Text style={{ fontSize: 11, color: '#FFFFFFCC', lineHeight: 16 }}>
+                  Select any theme below to pin it as your permanent background. Tap Auto-Solar anytime to re-enable dynamic transitions.
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
+
         {/* Category Filter Tabs */}
-        <View style={{ marginTop: 10, marginBottom: 20 }}>
+        <View style={{ marginBottom: 16 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
           >
             {CATEGORIES.map(cat => {
               const isSelected = activeCategory === cat.id;
@@ -315,10 +305,10 @@ export default function WallpaperSettings() {
                     isSelected ? styles.categoryTabActive : styles.categoryTabInactive
                   ]}
                 >
-                  <Text style={{ fontSize: 14, marginRight: 4 }}>{cat.emoji}</Text>
+                  <Text style={{ fontSize: 14 }}>{cat.emoji}</Text>
                   <Text style={{
-                    fontSize: 13,
-                    fontWeight: isSelected ? '700' : '500',
+                    fontSize: 11,
+                    fontWeight: '700',
                     color: isSelected ? '#fff' : '#FFFFFF80'
                   }}>
                     {cat.label}
@@ -329,108 +319,92 @@ export default function WallpaperSettings() {
           </ScrollView>
         </View>
 
-        {/* Cinematic Horizontal Carousel */}
-        <View style={{ height: SCREEN_H * 0.52 }}>
+        {/* Horizontal Card Slider */}
+        <View style={{ marginTop: 10 }}>
           <Animated.FlatList
             data={filteredKeys}
             keyExtractor={item => item}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: (SCREEN_W - CARD_WIDTH) / 2 - (CARD_SPACING / 2)
-            }}
-            snapToInterval={CARD_WIDTH + CARD_SPACING}
+            snapToInterval={width * 0.75 + 20}
             decelerationRate="fast"
-            bounces={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: true }
-            )}
-            scrollEventThrottle={16}
-            renderItem={renderCarouselItem}
+            contentContainerStyle={{ paddingHorizontal: (width - (width * 0.75)) / 2, paddingVertical: 20 }}
+            ItemSeparatorComponent={() => <View style={{ width: 20 }} />}
+            renderItem={({ item: key }) => {
+              const meta = BG_META[key as BgKey];
+              const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
+
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    if (wallpaperMode === 'solar') {
+                      setWallpaperMode('manual');
+                      setManualBgKey(key as BgKey);
+                      showToast('📌 Pinned Mode activated!', 'success');
+                    } else {
+                      setManualBgKey(key as BgKey);
+                      showToast('📌 Pinned wallpaper updated!', 'success');
+                    }
+                  }}
+                  style={[
+                    {
+                      width: width * 0.75,
+                      height: height * 0.52,
+                      borderRadius: 32,
+                      overflow: 'hidden',
+                      borderWidth: active ? 2 : 1,
+                      borderColor: active ? (wallpaperMode === 'solar' ? GOLD : PURPLE) : 'rgba(255,255,255,0.15)',
+                      shadowColor: active ? (wallpaperMode === 'solar' ? GOLD : PURPLE) : '#000',
+                      shadowOffset: { width: 0, height: 12 },
+                      shadowOpacity: active ? 0.35 : 0.6,
+                      shadowRadius: 24,
+                      elevation: 12,
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                    }
+                  ]}
+                >
+                  <AsyncWallpaperImage bgKey={key as string} />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.95)']}
+                    locations={[0, 0.45, 1]}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+
+                  {/* Time Pill */}
+                  <BlurView intensity={40} tint="dark" style={styles.timePill}>
+                    <Text style={styles.timePillText}>
+                      {dynamicTimes[key as BgKey] || meta.time}
+                    </Text>
+                  </BlurView>
+
+                  {/* Selection Status Overlay */}
+                  {active && (
+                    <BlurView intensity={50} tint="dark" style={[
+                      styles.activeStatusPill,
+                      { borderColor: wallpaperMode === 'solar' ? GOLD : PURPLE, borderWidth: 1 }
+                    ]}>
+                      <Ionicons name="checkmark-sharp" size={14} color={wallpaperMode === 'solar' ? GOLD : '#fff'} />
+                      <Text style={[styles.activeStatusText, { color: wallpaperMode === 'solar' ? GOLD : '#fff' }]}>
+                        {wallpaperMode === 'solar' ? 'ACTIVE' : 'PINNED'}
+                      </Text>
+                    </BlurView>
+                  )}
+
+                  {/* Content Overlay */}
+                  <View style={styles.itemContent}>
+                    <Text numberOfLines={1} style={styles.itemTitle}>
+                      {meta.emoji} {meta.label}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.itemSub}>
+                      {meta.sub}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
           />
-        </View>
-
-        {/* Segmented Mode Selector - Redesigned as a floating module */}
-        <View style={styles.modeModuleContainer}>
-          <BlurView intensity={25} tint="dark" style={styles.segmentedControl}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                if (wallpaperMode !== 'solar') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setWallpaperMode('solar');
-                  showToast('☀️ Auto-Solar Mode activated!', 'success');
-                }
-              }}
-              style={[styles.segmentBtn, wallpaperMode === 'solar' && styles.segmentBtnActiveSolar]}
-            >
-              <Text style={{ fontSize: 16, marginRight: 6 }}>☀️</Text>
-              <Text style={[styles.segmentText, wallpaperMode === 'solar' && { color: GOLD, fontWeight: '700' }]}>
-                Auto-Solar
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                if (wallpaperMode !== 'manual') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setWallpaperMode('manual');
-                  showToast('📌 Pinned Mode active.', 'info');
-                }
-              }}
-              style={[styles.segmentBtn, wallpaperMode === 'manual' && styles.segmentBtnActiveManual]}
-            >
-              <Text style={{ fontSize: 16, marginRight: 6 }}>📌</Text>
-              <Text style={[styles.segmentText, wallpaperMode === 'manual' && { color: PURPLE, fontWeight: '700' }]}>
-                Pinned
-              </Text>
-            </TouchableOpacity>
-          </BlurView>
-        </View>
-
-        {/* Mode Description Banner */}
-        <View style={{ paddingHorizontal: 20, marginTop: 4 }}>
-          {wallpaperMode === 'solar' ? (
-            <View style={[styles.modeDesc, { borderColor: 'rgba(251, 191, 36, 0.2)' }]}>
-              <LinearGradient
-                colors={['rgba(251, 191, 36, 0.1)', 'rgba(251, 191, 36, 0.02)']}
-                style={styles.modeDescGradient}
-              >
-                <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-                  <Text style={{ fontSize: 18 }}>☀️</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: GOLD, marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Dynamic Auto-Solar
-                  </Text>
-                  <Text style={{ fontSize: 13, color: '#FFFFFFCC', lineHeight: 18 }}>
-                    Wallpaper shifts seamlessly through 40 solar states matching the sun's actual elevation. Current phase is <Text style={{fontWeight: '800', color: '#fff'}}>{activeMeta.label}</Text>.
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
-          ) : (
-            <View style={[styles.modeDesc, { borderColor: 'rgba(167, 139, 250, 0.2)' }]}>
-              <LinearGradient
-                colors={['rgba(167, 139, 250, 0.1)', 'rgba(167, 139, 250, 0.02)']}
-                style={styles.modeDescGradient}
-              >
-                <View style={[styles.modeDescIcon, { backgroundColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                  <Text style={{ fontSize: 18 }}>📌</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: PURPLE, marginBottom: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                    Pinned Theme Active
-                  </Text>
-                  <Text style={{ fontSize: 13, color: '#FFFFFFCC', lineHeight: 18 }}>
-                    The selected theme is pinned permanently. Swipe through the carousel above to choose another, or tap Auto-Solar for dynamic transitions.
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
-          )}
         </View>
 
       </ScrollView>
@@ -445,30 +419,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '400',
+    fontWeight: '300',
     color: '#fff',
     letterSpacing: 1.5,
   },
   headerSubtitle: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#FFFFFF80',
-    marginBottom: 4,
-    fontWeight: '700',
+    marginBottom: 2,
+    fontWeight: '600',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
@@ -476,177 +450,209 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 70,
     alignSelf: 'center',
-    backgroundColor: 'rgba(15, 15, 20, 0.95)',
+    backgroundColor: 'rgba(20, 20, 20, 0.95)',
     borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 100,
-  },
-  
-  // Category Tabs
-  categoryTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  categoryTabActive: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  categoryTabInactive: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-
-  // Carousel Layout
-  carouselCardWrap: {
-    flex: 1,
-    paddingVertical: 10,
-  },
-  carouselCard: {
-    flex: 1,
-    borderRadius: 32,
-    overflow: 'hidden',
-    backgroundColor: '#111',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
+    justifyContent: 'center',
+    gap: 8,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 16,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 999,
   },
-  timePill: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+  heroContainer: {
+    height: 120,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  timePillText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1.5,
+  heroContent: {
+    alignItems: 'center',
+  },
+  heroTime: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 3,
+    marginBottom: 8,
     textTransform: 'uppercase',
   },
-  activeStatusPill: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  activeStatusText: {
-    color: '#000',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginLeft: 4,
-  },
-  itemContent: {
-    position: 'absolute',
-    bottom: 24,
-    left: 20,
-    right: 20,
-  },
-  itemTitle: {
+  heroName: {
     fontSize: 24,
     fontWeight: '300',
     color: '#fff',
-    marginBottom: 6,
-    letterSpacing: 0.5,
+    textAlign: 'center',
+    letterSpacing: 1.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
-  itemSub: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 18,
-  },
-
-  // Mode Selector Module
-  modeModuleContainer: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 16,
+  heroSub: {
+    fontSize: 11,
+    color: '#FFFFFF99',
+    marginTop: 4,
+    fontWeight: '300',
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    padding: 6,
+    borderRadius: 99,
+    padding: 4,
+    marginHorizontal: 32,
+    marginBottom: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    overflow: 'hidden',
   },
   segmentBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 20,
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 99,
+    backgroundColor: 'transparent',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
   },
   segmentBtnActiveSolar: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
   segmentBtnActiveManual: {
-    backgroundColor: 'rgba(167, 139, 250, 0.15)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(167, 139, 250, 0.3)',
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    borderColor: 'rgba(167, 139, 250, 0.4)',
+  },
+  segmentBtnActiveVideo: {
+    backgroundColor: 'rgba(96, 165, 250, 0.2)',
+    borderColor: 'rgba(96, 165, 250, 0.4)',
   },
   segmentText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#FFFFFF80',
     letterSpacing: 0.5,
   },
-  
-  // Mode Description
   modeDesc: {
-    borderRadius: 24,
+    marginHorizontal: 16,
+    marginBottom: 32,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 40,
   },
   modeDescGradient: {
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    gap: 16,
   },
   modeDescIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+  },
+  categoryTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 99,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  categoryTabActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  categoryTabInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  gridContainer: {
+    paddingHorizontal: 16,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  gridItem: {
+    flex: 1,
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  timePill: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    overflow: 'hidden',
+  },
+  timePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 2,
+  },
+  activeStatusPill: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  activeStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  itemContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  itemTitle: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: '#fff',
+    marginBottom: 6,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  itemSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '300',
+    lineHeight: 18,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });
