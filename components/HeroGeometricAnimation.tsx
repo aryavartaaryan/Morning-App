@@ -16,20 +16,14 @@ function poly(points: { x: number; y: number }[], close = true) {
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
   return close ? d + ' Z' : d;
 }
-function arc(cx: number, cy: number, r: number, startA: number, endA: number) {
-  const x1 = cx + r * Math.cos(startA), y1 = cy + r * Math.sin(startA);
-  const x2 = cx + r * Math.cos(endA),   y2 = cy + r * Math.sin(endA);
-  const large = endA - startA > Math.PI ? 1 : 0;
-  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r.toFixed(2)} ${r.toFixed(2)} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-}
 
-// ── 6 Sacred shapes — mathematical labels ─────────────────────────────────────
+// ── Mathematical soul of each sacred shape ────────────────────────────────────
 export const SHAPE_MATH: Array<{ title: string; eq1: string; eq2: string; insight: string }> = [
   {
-    title: 'Torus Yantra',
-    eq1:   'r(θ) = R + a·cos(nθ)',
-    eq2:   'Genus 1  ·  ∞ Flow',
-    insight: 'Self-Sustaining Universe',
+    title: 'Trikona Mandala',
+    eq1:   'sin 60° = √3 / 2',
+    eq2:   '3 × 120° = 360°',
+    insight: 'Trinity · Creation · Balance',
   },
   {
     title: "Metatron's Cube",
@@ -51,25 +45,25 @@ export const SHAPE_MATH: Array<{ title: string; eq1: string; eq2: string; insigh
   },
   {
     title: 'Vesica Piscis',
-    eq1:   'd = r  ·  √3',
-    eq2:   'Area = πr² / 2 − r²·√3/2',
-    insight: 'Womb of Creation · Duality',
+    eq1:   'r / d = 1 / √3',
+    eq2:   '2 △ share one edge',
+    insight: 'Womb of Creation · Genesis',
   },
   {
-    title: '64 Tetrahedron',
-    eq1:   'N = 64 = 2⁶ = 8²',
-    eq2:   '∑ forces = 0  (Equilibrium)',
-    insight: 'Isotropic Vector Matrix',
+    title: 'Cosmic Merkaba',
+    eq1:   '∑ = 2 Tetrahedra',
+    eq2:   'φ² = φ + 1',
+    insight: 'Light Body · Ascension Vehicle',
   },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HeroGeometricAnimation — 6 sacred shapes, zero-blink cross-fade
-//
-// KEY FIX: All 6 shapes are ALWAYS mounted. Only their opacity changes via
-// Animated.Value. No React state transitions occur during crossfade,
-// which was the root cause of blinking/breaking.
+// HeroGeometricAnimation — 6 triangular sacred shapes, no blink/break
+// All transitions use pure Animated.Value opacity crossfade — zero React
+// state changes during animation so there is NO re-render blinking.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const NUM_SHAPES = 6;
 
 interface HeroGeometricAnimationProps {
   size: number;
@@ -81,8 +75,6 @@ interface HeroGeometricAnimationProps {
   audioMetering?: Animated.Value;
   onShapeChange?: (shapeIndex: number) => void;
 }
-
-const TOTAL_SHAPES = 6;
 
 export function HeroGeometricAnimation({
   size,
@@ -97,29 +89,29 @@ export function HeroGeometricAnimation({
   const hw = size / 2;
   const S  = size;
 
-  // ── 6 independent rotation drivers ─────────────────────────────────────────
+  // ── 6 independent rotation drivers ────────────────────────────────────────
   const rotA = useRef(new Animated.Value(0)).current; // CW  22s
   const rotB = useRef(new Animated.Value(0)).current; // CCW 34s
   const rotC = useRef(new Animated.Value(0)).current; // CW  48s
-  const rotD = useRef(new Animated.Value(0)).current; // CW  18s (fastest)
+  const rotD = useRef(new Animated.Value(0)).current; // CW  18s
   const rotE = useRef(new Animated.Value(0)).current; // CW  42s
   const rotF = useRef(new Animated.Value(0)).current; // CCW 28s
 
-  // ── Per-shape opacity — ALL shapes always mounted, only opacity changes ─────
+  // ── Per-shape opacity — pure Animated.Value, NO state changes ─────────────
   const ops = useRef(
-    Array.from({ length: TOTAL_SHAPES }, (_, i) => new Animated.Value(i === 0 ? 1 : 0))
+    Array.from({ length: NUM_SHAPES }, (_, i) => new Animated.Value(i === 0 ? 1 : 0))
   ).current;
 
-  // ── Breath + pulse ──────────────────────────────────────────────────────────
+  // ── Breath + pulse ────────────────────────────────────────────────────────
   const breath = useRef(new Animated.Value(0)).current;
   const pulse  = useRef(new Animated.Value(0)).current;
 
-  // ── Sound ripples ────────────────────────────────────────────────────────────
+  // ── Sound ripples ─────────────────────────────────────────────────────────
   const ripple1 = useRef(new Animated.Value(0)).current;
   const ripple2 = useRef(new Animated.Value(0)).current;
   const ripple3 = useRef(new Animated.Value(0)).current;
 
-  // ── Track current active shape index (for callbacks only) ───────────────────
+  // Current shape index tracked in a ref — no re-render needed
   const currentShapeRef = useRef(0);
 
   useEffect(() => {
@@ -140,7 +132,7 @@ export function HeroGeometricAnimation({
     Animated.loop(Animated.timing(rotE, { toValue: 1, duration: SE, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rotF, { toValue: 1, duration: SF, easing: Easing.linear, useNativeDriver: true })).start();
 
-    const BREATH_DUR = isHome ? 11000 : isSound ? 8000 : 6000;
+    const BREATH_DUR = isHome ? 11000 : 8000;
     Animated.loop(Animated.sequence([
       Animated.timing(breath, { toValue: 1, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(breath, { toValue: 0, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -173,36 +165,30 @@ export function HeroGeometricAnimation({
       return;
     }
 
-    // ── Shape cycling — pure opacity cross-fade, zero React state changes ─────
-    const HOLD = isHome ? 14000 : isSound ? 12000 : 9000;
-    const FADE = isHome ? 2500  : isSound ? 2000  : 1800;
+    const isSplash = variant === 'splash';
+    const HOLD = isHome ? 14000 : isSound ? 12000 : isSplash ? 2200 : 9000;
+    const FADE = isHome ? 3000  : isSound ? 3000  : isSplash ? 1000 : 2000;
 
-    let alive = true;
+    // ── Pure Animated crossfade cycle — zero React state, zero blink ─────────
     function runCycle(current: number) {
-      if (!alive) return;
-      const timer = setTimeout(() => {
-        if (!alive) return;
-        const next = (current + 1) % TOTAL_SHAPES;
-        // Cross-fade: fade out current, fade in next — purely via Animated, no setState
+      const next = (current + 1) % NUM_SHAPES;
+      Animated.delay(HOLD).start(({ finished }) => {
+        if (!finished) return;
         Animated.parallel([
           Animated.timing(ops[current], { toValue: 0, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
           Animated.timing(ops[next],    { toValue: 1, duration: FADE, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]).start(({ finished }) => {
-          if (!finished || !alive) return;
+          if (!finished) return;
           currentShapeRef.current = next;
           onShapeChange?.(next);
           runCycle(next);
         });
-      }, HOLD);
-      return () => clearTimeout(timer);
+      });
     }
-    const cleanup = runCycle(0);
-    return () => {
-      alive = false;
-      cleanup?.();
-    };
+    runCycle(0);
   }, []);
 
+  // Beat detector for sound mode
   useEffect(() => {
     if (!audioMetering || variant !== 'sound') return;
     let lastLevel = 0, waveIndex = 0, lastWaveTime = 0;
@@ -220,7 +206,7 @@ export function HeroGeometricAnimation({
     return () => audioMetering.removeListener(listenerId);
   }, [audioMetering, variant]);
 
-  // ── Rotation interpolations ─────────────────────────────────────────────────
+  // ── Rotation interpolations ───────────────────────────────────────────────
   const CW  = (r: Animated.Value) => r.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
   const CCW = (r: Animated.Value) => r.interpolate({ inputRange: [0,1], outputRange: ['360deg', '0deg']   });
 
@@ -243,7 +229,7 @@ export function HeroGeometricAnimation({
   const rip3Scale = ripple3.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
   const rip3Op    = ripple3.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.50,0.07,0] });
 
-  // ── Colour palette ──────────────────────────────────────────────────────────
+  // ── Colour palette ────────────────────────────────────────────────────────
   const homeBase = accentColor ?? '#80FFFF';
   const G1 = variant === 'splash' ? '#FFD700' : variant === 'sound' ? (accentColor ?? '#38bdf8') : homeBase;
   const G2 = variant === 'splash' ? '#FDB931' : variant === 'sound' ? blendHex(G1,'#a78bfa',0.4) : G1+'CC';
@@ -251,7 +237,7 @@ export function HeroGeometricAnimation({
   const G4 = variant === 'splash' ? '#B8860B80' : G1+'44';
   const GA = `rgba(${hexToRgbStr(G1)},`;
 
-  // Rotating layer helper — purely presentational, no state
+  // Rotating layer helper
   const RL = ({
     rot, children, extraStyle = {},
   }: {
@@ -279,76 +265,69 @@ export function HeroGeometricAnimation({
       </>)}
 
       {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 0 — TORUS YANTRA (replaces old circles-only Flower of Life)
-          A self-referential torus mandala: concentric petal rings forming
-          the projection of a donut — the universe's natural energy flow.
-          Formula: r(θ) = R + a·cos(nθ)
+          SHAPE 0 — TRIKONA MANDALA
+          A nested set of 7 counter-rotating equilateral triangles,
+          creating a hypnotic, breathing mandala — pure triangle meditation.
+          Formula: sin 60° = √3/2  |  Trinity · Creation · Balance
           ════════════════════════════════════════════════════════════════ */}
       <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[0], transform:[{scale:sc}] }}>
-        {/* Outer slow orbit ring — CW slowest */}
+        {/* Outermost dashed orbit — CCW slowest */}
+        <RL rot={ccwB}>
+          <Svg width={S} height={S}>
+            <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25} strokeDasharray="5 10" />
+            {/* 12 orbit jewels */}
+            {pts(hw,hw,S*0.44,12,Math.PI/12).map((p,i)=>(
+              <SvgCircle key={`tm_oj_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.2:1.3} fill={G3} opacity={0.10+(i%4)*0.07} />
+            ))}
+          </Svg>
+        </RL>
+        {/* Outer triangle — CW slowest */}
         <RL rot={cwE}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.25} strokeDasharray="3 9" />
-            {pts(hw,hw,S*0.44,24,0).map((p,i)=>(
-              <SvgCircle key={`ty_od_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.4} fill={G3} opacity={0.08+(i%5)*0.05} />
+            <SvgPath d={poly(pts(hw,hw,S*0.40,3,-Math.PI/2))}
+              fill={`${GA}0.04)`} stroke={G1} strokeWidth="1.8" strokeLinejoin="round" opacity={0.70} />
+            {pts(hw,hw,S*0.40,3,-Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`tm_ov_${i}`} cx={p.x} cy={p.y} r={3.5} fill={G3} opacity={0.75} />
             ))}
           </Svg>
         </RL>
-        {/* Torus petal ring — 12 large arcs rotating CCW */}
+        {/* Second triangle inverted — CCW medium */}
         <RL rot={ccwF}>
           <Svg width={S} height={S}>
-            {Array.from({ length: 12 }, (_, i) => {
-              const a0 = (i * Math.PI * 2) / 12;
-              const a1 = a0 + (Math.PI * 2) / 12;
-              const rm = S * 0.34;
-              const ri = S * 0.16;
-              const px = hw + rm * Math.cos(a0 + Math.PI/12);
-              const py = hw + rm * Math.sin(a0 + Math.PI/12);
-              return (
-                <SvgPath key={`ty_petal_${i}`}
-                  d={`M${(hw + ri*Math.cos(a0)).toFixed(1)} ${(hw + ri*Math.sin(a0)).toFixed(1)}
-                     Q${px.toFixed(1)} ${py.toFixed(1)}
-                     ${(hw + ri*Math.cos(a1)).toFixed(1)} ${(hw + ri*Math.sin(a1)).toFixed(1)}`}
-                  fill={`${GA}0.06)`}
-                  stroke={G1}
-                  strokeWidth="1.2"
-                  opacity={0.80}
-                />
-              );
-            })}
-            {pts(hw,hw,S*0.34,12,0).map((p,i)=>(
-              <SvgCircle key={`ty_pj_${i}`} cx={p.x} cy={p.y} r={2.8} fill={G3} opacity={0.75} />
+            <SvgPath d={poly(pts(hw,hw,S*0.34,3, Math.PI/2))}
+              fill={`${GA}0.06)`} stroke={G2} strokeWidth="2.0" strokeLinejoin="round" opacity={0.80} />
+            {pts(hw,hw,S*0.34,3, Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`tm_inv_${i}`} cx={p.x} cy={p.y} r={3.0} fill={G3} opacity={0.80} />
             ))}
           </Svg>
         </RL>
-        {/* Inner torus ring — CW medium */}
+        {/* Third triangle — CW medium */}
         <RL rot={cwA}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.22} fill="none" stroke={G2} strokeWidth="1.6" opacity={0.85} />
-            <SvgCircle cx={hw} cy={hw} r={S*0.26} fill="none" stroke={G4} strokeWidth="0.6" opacity={0.35} strokeDasharray="4 6" />
-            {Array.from({ length: 8 }, (_, i) => {
-              const a = (i * Math.PI * 2) / 8;
-              const r1 = S * 0.22, r2 = S * 0.14;
-              return (
-                <SvgPath key={`ty_spoke_${i}`}
-                  d={`M${(hw+r1*Math.cos(a)).toFixed(1)} ${(hw+r1*Math.sin(a)).toFixed(1)} L${(hw+r2*Math.cos(a)).toFixed(1)} ${(hw+r2*Math.sin(a)).toFixed(1)}`}
-                  stroke={G2} strokeWidth="0.9" opacity={0.55}
-                />
-              );
-            })}
-            {pts(hw,hw,S*0.22,8,0).map((p,i)=>(
-              <SvgCircle key={`ty_ij_${i}`} cx={p.x} cy={p.y} r={2.2} fill={G3} opacity={0.70} />
+            <SvgPath d={poly(pts(hw,hw,S*0.27,3,-Math.PI/2))}
+              fill={`${GA}0.08)`} stroke={G1} strokeWidth="1.8" strokeLinejoin="round" opacity={0.88} />
+            {pts(hw,hw,S*0.27,3,-Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`tm_mv_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.82} />
             ))}
           </Svg>
         </RL>
-        {/* Central bindu ring — CW fast */}
+        {/* Fourth triangle inverted — CCW fast */}
+        <RL rot={ccwB}>
+          <Svg width={S} height={S}>
+            <SvgPath d={poly(pts(hw,hw,S*0.20,3, Math.PI/2))}
+              fill={`${GA}0.10)`} stroke={G2} strokeWidth="1.6" strokeLinejoin="round" opacity={0.90} />
+            {pts(hw,hw,S*0.20,3, Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`tm_fv_${i}`} cx={p.x} cy={p.y} r={2.2} fill={G3} opacity={0.85} />
+            ))}
+          </Svg>
+        </RL>
+        {/* Fifth inner triangle — CW fast */}
         <RL rot={cwD}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.08} fill="none" stroke={G1} strokeWidth="1.2" opacity={0.82} />
-            <SvgCircle cx={hw} cy={hw} r={S*0.05} fill={`${GA}0.18)`} stroke={G2} strokeWidth="0.8" opacity={0.70} />
-            {pts(hw,hw,S*0.08,6,0).map((p,i)=>(
-              <SvgCircle key={`ty_cd_${i}`} cx={p.x} cy={p.y} r={2.0} fill={G3} opacity={0.68} />
-            ))}
+            <SvgPath d={poly(pts(hw,hw,S*0.13,3,-Math.PI/2))}
+              fill={`${GA}0.12)`} stroke={G1} strokeWidth="1.4" strokeLinejoin="round" opacity={0.92} />
+            <SvgCircle cx={hw} cy={hw} r={S*0.10} fill="none" stroke={G4} strokeWidth="0.7" opacity={0.40} strokeDasharray="3 5" />
+            <SvgCircle cx={hw} cy={hw} r={S*0.05} fill="none" stroke={G2} strokeWidth="0.9" opacity={0.55} />
           </Svg>
         </RL>
       </Animated.View>
@@ -357,6 +336,7 @@ export function HeroGeometricAnimation({
           SHAPE 1 — METATRON'S CUBE
           Layers: outer orbit (CW slow), 13 circles (CCW med),
                   mesh lines (CW slow), star tetrahedron (CCW fast)
+          Formula: V − E + F = 2
           ════════════════════════════════════════════════════════════════ */}
       <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[1], transform:[{scale:sc}] }}>
         <RL rot={cwE}>
@@ -403,7 +383,8 @@ export function HeroGeometricAnimation({
 
       {/* ════════════════════════════════════════════════════════════════════
           SHAPE 2 — ŚRĪ YANTRA
-          9 interlocking triangles — the supreme yantra
+          Classic: 9 interlocking triangles.
+          Formula: ∑ = 9△ ∩ 43 sub-△
           ════════════════════════════════════════════════════════════════ */}
       <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[2], transform:[{scale:sc}] }}>
         <RL rot={ccwB}>
@@ -461,8 +442,9 @@ export function HeroGeometricAnimation({
       </Animated.View>
 
       {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 3 — SHATKONA (Star of David / Merkaba)
-          Two counter-rotating equilateral triangles — Shiva & Shakti
+          SHAPE 3 — SHATKONA (Star of David / Merkaba ground)
+          Two triangles counter-rotating. Merkaba effect.
+          Formula: e^(iπ) + 1 = 0
           ════════════════════════════════════════════════════════════════ */}
       <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[3], transform:[{scale:scSlow}] }}>
         <RL rot={cwE}>
@@ -517,142 +499,126 @@ export function HeroGeometricAnimation({
       </Animated.View>
 
       {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 4 — VESICA PISCIS (NEW)
-          The "Womb of Creation" — two interlocking circles forming the
-          sacred lens. The root of all sacred geometry proportions.
-          Radiating petals in 6-fold symmetry with orbiting jewels.
-          Formula: d = r · √3
+          SHAPE 4 — VESICA PISCIS TRIKONA
+          Two overlapping triangles sharing an edge, surrounded by 6
+          nested inverted triangular gates — the womb of creation.
+          Entirely triangle-based. Formula: r/d = 1/√3
           ════════════════════════════════════════════════════════════════ */}
-      <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[4], transform:[{scale:sc}] }}>
-        {/* Outer halo + stardust — CCW slowest */}
-        <RL rot={ccwB}>
+      <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[4], transform:[{scale:scSlow}] }}>
+        {/* Outer dashed orbit — CW slowest */}
+        <RL rot={cwE}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.22} strokeDasharray="4 10" />
-            {pts(hw,hw,S*0.44,30,0).map((p,i)=>(
-              <SvgCircle key={`vp_od_${i}`} cx={p.x} cy={p.y} r={i%5===0?2.8:i%2===0?1.8:1.0} fill={G3} opacity={0.07+(i%5)*0.06} />
+            <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.22} strokeDasharray="6 10" />
+            {pts(hw,hw,S*0.44,18,0).map((p,i)=>(
+              <SvgCircle key={`vp_oj_${i}`} cx={p.x} cy={p.y} r={i%6===0?2.8:1.2} fill={G3} opacity={0.08+(i%3)*0.06} />
             ))}
           </Svg>
         </RL>
-        {/* 6 Vesica circles (the Seed of Life base) — CW slow */}
-        <RL rot={cwC}>
+        {/* 6 outward "gateway" triangles pointing from center — CW medium */}
+        <RL rot={cwA}>
           <Svg width={S} height={S}>
-            {/* The two primary interlocking circles of Vesica */}
-            <SvgCircle cx={hw - S*0.18} cy={hw} r={S*0.30}
-              fill={`${GA}0.04)`} stroke={G2} strokeWidth="1.4" opacity={0.85} />
-            <SvgCircle cx={hw + S*0.18} cy={hw} r={S*0.30}
-              fill={`${GA}0.04)`} stroke={G1} strokeWidth="1.4" opacity={0.85} />
-            {/* Outer 6 vesica petals */}
-            {pts(hw,hw,S*0.18,6,0).map((p,i)=>(
-              <SvgCircle key={`vp_sp_${i}`} cx={p.x} cy={p.y} r={S*0.18}
-                fill={`${GA}0.04)`} stroke={G4} strokeWidth="0.8" opacity={0.50} />
-            ))}
+            {pts(hw,hw,S*0.25,6,Math.PI/6).map((p,i)=>{
+              const angle = Math.PI/6 + (i * Math.PI * 2) / 6;
+              const tip = { x: hw + S*0.42 * Math.cos(angle), y: hw + S*0.42 * Math.sin(angle) };
+              const l = { x: hw + S*0.22 * Math.cos(angle + 0.5), y: hw + S*0.22 * Math.sin(angle + 0.5) };
+              const r = { x: hw + S*0.22 * Math.cos(angle - 0.5), y: hw + S*0.22 * Math.sin(angle - 0.5) };
+              return <SvgPath key={`vp_g_${i}`} d={`M${l.x.toFixed(1)} ${l.y.toFixed(1)} L${tip.x.toFixed(1)} ${tip.y.toFixed(1)} L${r.x.toFixed(1)} ${r.y.toFixed(1)} Z`}
+                fill={`${GA}0.05)`} stroke={G2} strokeWidth="1.4" strokeLinejoin="round" opacity={0.72} />;
+            })}
           </Svg>
         </RL>
-        {/* Sacred lens lines — vertical & horizontal axes — CCW fast */}
+        {/* Main upward triangle — CCW medium */}
         <RL rot={ccwF}>
           <Svg width={S} height={S}>
-            {/* Vesica lens vertical axis — the √3 proportion */}
-            {[-1, 1].map(sign=>(
-              <SvgPath key={`vp_ax_${sign}`}
-                d={`M${hw} ${hw - S*0.30} L${hw} ${hw + S*0.30}`}
-                stroke={G3} strokeWidth="0.7" opacity={0.40}
-                strokeDasharray="5 6"
-              />
-            ))}
-            {/* Horizontal connecting line */}
-            <SvgPath
-              d={`M${hw - S*0.36} ${hw} L${hw + S*0.36} ${hw}`}
-              stroke={G4} strokeWidth="0.5" opacity={0.30}
-              strokeDasharray="4 8"
-            />
-            {/* 12 orbit jewels at intersection ring */}
-            {pts(hw,hw,S*0.30,12,Math.PI/12).map((p,i)=>(
-              <SvgCircle key={`vp_oj_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.8:1.4} fill={G3} opacity={0.20+(i%4)*0.10} />
+            <SvgPath d={poly(pts(hw,hw,S*0.35,3,-Math.PI/2))}
+              fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.4" strokeLinejoin="round" opacity={0.94} />
+            {pts(hw,hw,S*0.35,3,-Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`vp_uv_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.88} />
             ))}
           </Svg>
         </RL>
-        {/* Inner core ring + bindu — CW fast */}
+        {/* Main downward triangle — CW fast */}
         <RL rot={cwD}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.12} fill="none" stroke={G2} strokeWidth="1.2" opacity={0.75} />
-            <SvgCircle cx={hw} cy={hw} r={S*0.07} fill="none" stroke={G1} strokeWidth="0.9" opacity={0.60} strokeDasharray="3 4" />
-            {pts(hw,hw,S*0.12,6,0).map((p,i)=>(
-              <SvgCircle key={`vp_cj_${i}`} cx={p.x} cy={p.y} r={2.2} fill={G3} opacity={0.72} />
+            <SvgPath d={poly(pts(hw,hw,S*0.35,3, Math.PI/2))}
+              fill={`${GA}0.10)`} stroke={G2} strokeWidth="2.4" strokeLinejoin="round" opacity={0.94} />
+            {pts(hw,hw,S*0.35,3, Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`vp_dv_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.88} />
             ))}
+          </Svg>
+        </RL>
+        {/* Inner small nested triangles — CCW fast */}
+        <RL rot={ccwB}>
+          <Svg width={S} height={S}>
+            {[S*0.22, S*0.14, S*0.07].map((r,ti)=>(
+              <SvgPath key={`vp_i_${ti}`} d={poly(pts(hw,hw,r,3,ti%2===0?-Math.PI/2:Math.PI/2))}
+                fill={`${GA}${[0.08,0.10,0.14][ti]})`}
+                stroke={ti%2===0?G1:G2} strokeWidth={[1.8,1.4,1.0][ti]} strokeLinejoin="round"
+                opacity={0.88} />
+            ))}
+            <SvgCircle cx={hw} cy={hw} r={S*0.05} fill="none" stroke={G2} strokeWidth="0.9" opacity={0.65} />
           </Svg>
         </RL>
       </Animated.View>
 
       {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 5 — 64 TETRAHEDRON GRID (NEW)
-          The Isotropic Vector Matrix — Buckminster Fuller's zero-point
-          energy lattice. 64 tetrahedra in perfect equilibrium.
-          Rendered as nested star polygons (8, 12, 16 points) with
-          an inner Merkaba core and radial energy lines.
-          Formula: N = 64 = 2⁶
+          SHAPE 5 — COSMIC MERKABA
+          3D star tetrahedron projected in 2D — two tetrahedra interlinked,
+          with orbiting mini-triangles and an outer spinning frame.
+          Formula: 2 Tetrahedra | φ² = φ + 1
           ════════════════════════════════════════════════════════════════ */}
-      <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[5], transform:[{scale:scSlow}] }}>
-        {/* Outer 64-point lattice ring — CW slowest */}
-        <RL rot={cwE}>
+      <Animated.View style={{ position:'absolute', width:S, height:S, opacity:ops[5], transform:[{scale:sc}] }}>
+        {/* Outer rotating tri-frame — CW slowest */}
+        <RL rot={cwC}>
           <Svg width={S} height={S}>
-            <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.4" opacity={0.20} />
-            {/* 64-point radial: every 4th ray is brighter */}
-            {Array.from({ length: 32 }, (_,i) => {
-              const a = (i * Math.PI * 2) / 32;
-              const isMajor = i % 4 === 0;
-              return (
-                <SvgPath key={`tg_ray_${i}`}
-                  d={`M${hw} ${hw} L${(hw + S*0.44*Math.cos(a)).toFixed(1)} ${(hw + S*0.44*Math.sin(a)).toFixed(1)}`}
-                  stroke={isMajor ? G2 : G3}
-                  strokeWidth={isMajor ? 0.5 : 0.2}
-                  opacity={isMajor ? 0.28 : 0.08}
-                />
-              );
-            })}
-            {pts(hw,hw,S*0.44,16,0).map((p,i)=>(
-              <SvgCircle key={`tg_od_${i}`} cx={p.x} cy={p.y} r={i%4===0?3:1.8} fill={G3} opacity={0.12+(i%4)*0.10} />
-            ))}
+            <SvgPath d={poly(pts(hw,hw,S*0.44,3,-Math.PI/2))}
+              fill="none" stroke={G4} strokeWidth="0.6" strokeLinejoin="round" opacity={0.35} />
+            <SvgPath d={poly(pts(hw,hw,S*0.44,3, Math.PI/2))}
+              fill="none" stroke={G4} strokeWidth="0.6" strokeLinejoin="round" opacity={0.35} />
           </Svg>
         </RL>
-        {/* 8-pointed star (two squares) — CCW medium */}
+        {/* 3 orbiting mini-triangles — CCW medium */}
         <RL rot={ccwB}>
           <Svg width={S} height={S}>
-            <SvgPath d={poly(pts(hw,hw,S*0.38,4,-Math.PI/4))}
-              fill={`${GA}0.06)`} stroke={G1} strokeWidth="2.0" opacity={0.90} />
-            <SvgPath d={poly(pts(hw,hw,S*0.38,4,0))}
-              fill={`${GA}0.06)`} stroke={G2} strokeWidth="2.0" opacity={0.90} />
-            {pts(hw,hw,S*0.38,8,-Math.PI/8).map((p,i)=>(
-              <SvgCircle key={`tg_vj_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.85} />
-            ))}
+            {pts(hw,hw,S*0.32,3,0).map((p,i)=>{
+              const angle = (i * Math.PI * 2) / 3;
+              const t1 = { x: p.x + S*0.07 * Math.cos(angle - Math.PI/2), y: p.y + S*0.07 * Math.sin(angle - Math.PI/2) };
+              const t2 = { x: p.x + S*0.07 * Math.cos(angle + Math.PI*5/6), y: p.y + S*0.07 * Math.sin(angle + Math.PI*5/6) };
+              const t3 = { x: p.x + S*0.07 * Math.cos(angle - Math.PI*5/6), y: p.y + S*0.07 * Math.sin(angle - Math.PI*5/6) };
+              return <SvgPath key={`km_mt_${i}`} d={`M${t1.x.toFixed(1)} ${t1.y.toFixed(1)} L${t2.x.toFixed(1)} ${t2.y.toFixed(1)} L${t3.x.toFixed(1)} ${t3.y.toFixed(1)} Z`}
+                fill={`${GA}0.12)`} stroke={G2} strokeWidth="1.4" strokeLinejoin="round" opacity={0.80} />;
+            })}
           </Svg>
         </RL>
-        {/* 12-pointed star inner — CW medium */}
-        <RL rot={cwA}>
-          <Svg width={S} height={S}>
-            {/* Three overlapping squares at 30° = 12-star */}
-            {[0, Math.PI/6, Math.PI/3].map((offset, ti)=>(
-              <SvgPath key={`tg_sq_${ti}`}
-                d={poly(pts(hw,hw,S*0.26,4,offset))}
-                fill={`${GA}0.04)`} stroke={ti===0?G1:ti===1?G2:G3}
-                strokeWidth="1.4" opacity={0.70} />
-            ))}
-            {pts(hw,hw,S*0.26,12,0).map((p,i)=>(
-              <SvgCircle key={`tg_ij_${i}`} cx={p.x} cy={p.y} r={2.0} fill={G3} opacity={0.55+(i%3)*0.10} />
-            ))}
-          </Svg>
-        </RL>
-        {/* Central Merkaba core — CCW fast */}
+        {/* Main upper tetrahedron — CCW fast */}
         <RL rot={ccwF}>
           <Svg width={S} height={S}>
-            <SvgPath d={poly(pts(hw,hw,S*0.14,3,-Math.PI/2))}
-              fill={`${GA}0.12)`} stroke={G1} strokeWidth="1.8" opacity={0.92} />
-            <SvgPath d={poly(pts(hw,hw,S*0.14,3, Math.PI/2))}
-              fill={`${GA}0.12)`} stroke={G2} strokeWidth="1.8" opacity={0.92} />
-            <SvgCircle cx={hw} cy={hw} r={S*0.10} fill="none" stroke={G4} strokeWidth="0.8" opacity={0.55} strokeDasharray="2 5" />
-            <SvgCircle cx={hw} cy={hw} r={S*0.05} fill={`${GA}0.20)`} stroke={G1} strokeWidth="1.0" opacity={0.80} />
-            {pts(hw,hw,S*0.14,6,0).map((p,i)=>(
-              <SvgCircle key={`tg_mj_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.78} />
+            <SvgPath d={poly(pts(hw,hw,S*0.36,3,-Math.PI/2))}
+              fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.6" strokeLinejoin="round" opacity={0.94} />
+            {pts(hw,hw,S*0.36,3,-Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`km_uv_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.90} />
             ))}
+          </Svg>
+        </RL>
+        {/* Main lower tetrahedron — CW fast, counter-rotating */}
+        <RL rot={cwA}>
+          <Svg width={S} height={S}>
+            <SvgPath d={poly(pts(hw,hw,S*0.36,3, Math.PI/2))}
+              fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.6" strokeLinejoin="round" opacity={0.94} />
+            {pts(hw,hw,S*0.36,3, Math.PI/2).map((p,i)=>(
+              <SvgCircle key={`km_dv_${i}`} cx={p.x} cy={p.y} r={4.5} fill={G3} opacity={0.90} />
+            ))}
+          </Svg>
+        </RL>
+        {/* Inner nested star — CW medium */}
+        <RL rot={cwD}>
+          <Svg width={S} height={S}>
+            <SvgPath d={poly(pts(hw,hw,S*0.20,3,-Math.PI/2))}
+              fill={`${GA}0.14)`} stroke={G2} strokeWidth="2.0" strokeLinejoin="round" opacity={0.90} />
+            <SvgPath d={poly(pts(hw,hw,S*0.20,3, Math.PI/2))}
+              fill={`${GA}0.14)`} stroke={G2} strokeWidth="2.0" strokeLinejoin="round" opacity={0.90} />
+            <SvgCircle cx={hw} cy={hw} r={S*0.08} fill="none" stroke={G2} strokeWidth="1.0" opacity={0.70} />
+            <SvgCircle cx={hw} cy={hw} r={S*0.05} fill="none" stroke={G3} strokeWidth="0.8" opacity={0.60} />
           </Svg>
         </RL>
       </Animated.View>

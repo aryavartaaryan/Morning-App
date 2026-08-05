@@ -361,7 +361,6 @@ function VastuScanner({
 function CompassRose({ size, heading, selectedActivity }: { size: number; heading: Animated.Value; selectedActivity: VastuActivity | null }) {
   const cx = 50, cy = 50;
 
-  // Continuous animation values
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const rotAnim = useRef(new Animated.Value(0)).current;
 
@@ -372,196 +371,204 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         Animated.timing(pulseAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
       ])
     ).start();
-
     Animated.loop(
-      Animated.timing(rotAnim, { toValue: 1, duration: 45000, easing: Easing.linear, useNativeDriver: true })
+      Animated.timing(rotAnim, { toValue: 1, duration: 60000, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, []);
 
   const spin1 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const spin2 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
-  const spin3 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
-  const spin4 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '0deg'] });
-  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] });
-  const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  const spin3 = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '120deg'] });
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
+  const pulseOp = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] });
 
-  // Authentic Sri Yantra interlocking triangles
+  // Sri Yantra — upward (Shiva) triangles
   const shivaTriangles = [
     "M 50,12 L 85,78 L 15,78 Z",
     "M 50,26 L 75,64 L 25,64 Z",
     "M 50,38 L 65,56 L 35,56 Z",
-    "M 50,45 L 56,51 L 44,51 Z"
   ];
+  // Sri Yantra — downward (Shakti) triangles
   const shaktiTriangles = [
     "M 50,88 L 15,22 L 85,22 Z",
     "M 50,74 L 25,36 L 75,36 Z",
     "M 50,62 L 35,44 L 65,44 Z",
-    "M 50,55 L 44,49 L 56,49 Z"
   ];
-  const bhupuraPath = "M 15,15 L 42,15 L 42,8 L 58,8 L 58,15 L 85,15 L 85,42 L 92,42 L 92,58 L 85,58 L 85,85 L 58,85 L 58,92 L 42,92 L 42,85 L 15,85 L 15,58 L 8,58 L 8,42 L 15,42 Z";
+
+  // Shatkona: Star of David — two large equilateral triangles
+  const shatkona_up   = "M 50,16 L 79,66 L 21,66 Z";
+  const shatkona_down = "M 50,84 L 21,34 L 79,34 Z";
+
+  // 8-petal lotus petals
+  const lotusPetals8 = Array.from({ length: 8 }, (_, i) => (i * 360) / 8);
+  // 16-petal outer lotus
+  const lotusPetals16 = Array.from({ length: 16 }, (_, i) => (i * 360) / 16);
+
+  // Cardinal labels positions
+  const cardinalDir = [['N', 50, 5.5], ['E', 94.5, 50], ['S', 50, 94.5], ['W', 5.5, 50]];
+  const intercardinalDir = [['NE', 83, 17], ['SE', 83, 83], ['SW', 17, 83], ['NW', 17, 17]];
 
   return (
     <View pointerEvents="none" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      
-      {/* The main dial rotates with the phone's compass heading */}
+
+      {/* The main dial rotates with heading */}
       <Animated.View style={{
         position: 'absolute',
         transform: [{ rotate: heading.interpolate({ inputRange: [-360, 0, 360], outputRange: ['360deg', '0deg', '-360deg'] }) }],
         width: size, height: size,
       }}>
-        {/* Base Background & Gradients */}
+
+        {/* ─ Defs + dark background disc ─ */}
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
           <Defs>
-            <RadialGradient id="goldGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#ffdf00" stopOpacity="0.8" />
-              <Stop offset="50%" stopColor="#d4af37" stopOpacity="0.3" />
-              <Stop offset="100%" stopColor="#996515" stopOpacity="0.05" />
+            <RadialGradient id="bgGlow2" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="rgba(8,5,25,0.96)" />
+              <Stop offset="100%" stopColor="rgba(2,1,12,0.99)" />
             </RadialGradient>
-            <SvgLinearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="100%">
+            <RadialGradient id="goldGlow2" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#ffd700" stopOpacity="0.6" />
+              <Stop offset="60%" stopColor="#d4af37" stopOpacity="0.2" />
+              <Stop offset="100%" stopColor="#996515" stopOpacity="0" />
+            </RadialGradient>
+            <SvgLinearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor="#ffec8b" />
               <Stop offset="50%" stopColor="#ffd700" />
               <Stop offset="100%" stopColor="#daa520" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="goldLineReverse" x1="100%" y1="100%" x2="0%" y2="0%">
+            <SvgLinearGradient id="goldR" x1="100%" y1="100%" x2="0%" y2="0%">
               <Stop offset="0%" stopColor="#ffec8b" />
               <Stop offset="50%" stopColor="#ffd700" />
               <Stop offset="100%" stopColor="#daa520" />
             </SvgLinearGradient>
-            <RadialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="60%" stopColor="rgba(2, 4, 10, 0.98)" />
-              <Stop offset="100%" stopColor="rgba(2, 4, 10, 0.7)" />
+            <RadialGradient id="shatkonaGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#a78bfa" stopOpacity="0.12" />
+              <Stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
             </RadialGradient>
           </Defs>
-          
-          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow)" />
-          {/* Subtle outer grid lines */}
-          <Circle cx={cx} cy={cy} r={47} fill="none" stroke="rgba(255,223,0,0.3)" strokeWidth={0.8} strokeDasharray="1 3" />
-          <Circle cx={cx} cy={cy} r={44} fill="none" stroke="url(#goldLine)" strokeWidth={0.6} />
-          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.4} />
+
+          {/* Dark cosmic disc */}
+          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow2)" />
+
+          {/* Outer degree ring — tick marks every 10° */}
+          {Array.from({ length: 36 }, (_, i) => {
+            const angle = (i * 10) * Math.PI / 180;
+            const isMajor = i % 9 === 0;
+            const r1 = isMajor ? 43.5 : 44.5;
+            const r2 = 47;
+            const x1 = cx + r1 * Math.sin(angle);
+            const y1 = cy - r1 * Math.cos(angle);
+            const x2 = cx + r2 * Math.sin(angle);
+            const y2 = cy - r2 * Math.cos(angle);
+            return <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke={isMajor ? 'rgba(255,215,0,0.7)' : 'rgba(255,215,0,0.2)'}
+              strokeWidth={isMajor ? 0.8 : 0.35} />;
+          })}
+
+          {/* Cardinal N/S/E/W labels */}
+          {cardinalDir.map(([label, lx, ly]) => (
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1.5}
+              textAnchor="middle"
+              fill="rgba(255,220,60,0.95)" fontSize={4.5} fontWeight={700}>
+              {String(label)}
+            </SvgText>
+          ))}
+
+          {/* Inter-cardinal NE/SE/SW/NW labels */}
+          {intercardinalDir.map(([label, lx, ly]) => (
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1}
+              textAnchor="middle"
+              fill="rgba(255,200,60,0.45)" fontSize={2.8}>
+              {String(label)}
+            </SvgText>
+          ))}
+
+          {/* Outer ring borders */}
+          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,215,0,0.5)" strokeWidth={0.6} />
+          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="rgba(255,215,0,0.25)" strokeWidth={0.3} strokeDasharray="1.5 2" />
         </Svg>
 
-        {/* Extremely slow background grid (Octagram/16-pointed star mesh) */}
-        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin3 }] }}>
-          <Svg width={size} height={size} viewBox="0 0 100 100">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <G key={`sq-${i}`} rotation={i * 22.5} origin={`${cx}, ${cy}`}>
-                <Path d="M 22 22 L 78 22 L 78 78 L 22 78 Z" fill="none" stroke="rgba(255,223,0,0.15)" strokeWidth={0.3} />
-                <Path d="M 26 26 L 74 26 L 74 74 L 26 74 Z" fill="none" stroke="rgba(255,223,0,0.08)" strokeWidth={0.2} />
-              </G>
-            ))}
-          </Svg>
-        </Animated.View>
-
-        {/* Slow rotating outermost 32-petal lotus */}
-        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin4 }] }}>
-          <Svg width={size} height={size} viewBox="0 0 100 100">
-            {Array.from({ length: 32 }).map((_, i) => {
-              const a = (i * 360) / 32;
-              return (
-                <G key={`petal32-${i}`} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,2 Q 52,6 50,10 Q 48,6 50,2 Z`} fill="rgba(255,223,0,0.06)" stroke="url(#goldLineReverse)" strokeWidth={0.3} />
-                </G>
-              );
-            })}
-          </Svg>
-        </Animated.View>
-
-        {/* Slow rotating outer mandala ring (Clockwise) - Shodashadala (16 Petals) & Bhupura */}
+        {/* ─ Slowly rotating outer 16-petal lotus ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* Bhupura (Outer Square with gates) - 4 concentric layers for extreme detail */}
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLineReverse)" strokeWidth={0.5} scale={0.96} origin={`${cx}, ${cy}`} />
-            <Path d={bhupuraPath} fill="none" stroke="rgba(255,223,0,0.4)" strokeWidth={0.3} scale={0.92} origin={`${cx}, ${cy}`} />
-            <Path d={bhupuraPath} fill="none" stroke="url(#goldLine)" strokeWidth={0.2} scale={1.04} origin={`${cx}, ${cy}`} />
-            
-            {Array.from({ length: 16 }).map((_, i) => {
-              const a = (i * 360) / 16;
-              return (
-                <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,8 Q 54,16 50,23 Q 46,16 50,8 Z`} fill="rgba(255,223,0,0.12)" stroke="url(#goldLine)" strokeWidth={0.6} />
-                </G>
-              );
-            })}
-          </Svg>
-        </Animated.View>
-
-        {/* Slow rotating inner mandala ring (Counter-clockwise) - Ashtadala (8 Petals) & Manvasra (14 Triangles) */}
-        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
-          <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* 14-Triangle geometric mesh behind the petals */}
-            {Array.from({ length: 14 }).map((_, i) => (
-              <G key={`tri14-${i}`} rotation={(i * 360) / 14} origin={`${cx}, ${cy}`}>
-                <Path d={`M 50,15 L 62,35 L 38,35 Z`} fill="rgba(255,223,0,0.04)" stroke="url(#goldLine)" strokeWidth={0.4} />
+            {lotusPetals16.map((a, i) => (
+              <G key={`p16-${i}`} rotation={a} origin={`${cx},${cy}`}>
+                <Path d="M 50,5 Q 52.5,11 50,17 Q 47.5,11 50,5 Z"
+                  fill="rgba(167,139,250,0.07)" stroke="rgba(167,139,250,0.35)" strokeWidth={0.4} />
               </G>
             ))}
-            
-            <Circle cx={cx} cy={cy} r={23} fill="none" stroke="url(#goldLine)" strokeWidth={0.8} />
-            <Circle cx={cx} cy={cy} r={21} fill="none" stroke="rgba(255,223,0,0.3)" strokeWidth={0.3} strokeDasharray="2 2" />
-            {Array.from({ length: 8 }).map((_, i) => {
-              const a = (i * 360) / 8;
-              return (
-                <G key={i} rotation={a} origin={`${cx}, ${cy}`}>
-                  <Path d={`M 50,23 Q 57,32 50,39 Q 43,32 50,23 Z`} fill="rgba(212,175,55,0.2)" stroke="url(#goldLineReverse)" strokeWidth={0.8} />
-                </G>
-              );
-            })}
           </Svg>
         </Animated.View>
 
-        {/* Pulsing Core Sri Yantra Triangles */}
-        <Animated.View style={{ 
-          position: 'absolute', width: size, height: size, 
-          transform: [{ scale: pulseScale }],
-          opacity: pulseOp
-        }}>
+        {/* ─ Counter-rotating inner 8-petal lotus ─ */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            <Circle cx={cx} cy={cy} r={39} fill="url(#goldGlow)" />
-            {/* Shiva Triangles (Upward) */}
-            {shivaTriangles.map((d, i) => (
-              <Path key={`shiva-${i}`} d={d} fill="rgba(255,223,0,0.15)" stroke="url(#goldLine)" strokeWidth={0.8} />
+            <Circle cx={cx} cy={cy} r={36} fill="none" stroke="rgba(255,215,0,0.2)" strokeWidth={0.4} />
+            <Circle cx={cx} cy={cy} r={34} fill="none" stroke="rgba(167,139,250,0.15)" strokeWidth={0.25} strokeDasharray="2 2" />
+            {lotusPetals8.map((a, i) => (
+              <G key={`p8-${i}`} rotation={a} origin={`${cx},${cy}`}>
+                <Path d="M 50,16 Q 56,25 50,33 Q 44,25 50,16 Z"
+                  fill="rgba(212,175,55,0.15)" stroke="url(#gold)" strokeWidth={0.6} />
+              </G>
             ))}
-            {/* Shakti Triangles (Downward) */}
-            {shaktiTriangles.map((d, i) => (
-              <Path key={`shakti-${i}`} d={d} fill="rgba(255,223,0,0.15)" stroke="url(#goldLineReverse)" strokeWidth={0.8} />
-            ))}
-            <Circle cx={cx} cy={cy} r={2} fill="#ffdf00" />
-            <Circle cx={cx} cy={cy} r={4.5} fill="none" stroke="url(#goldLine)" strokeWidth={1} />
           </Svg>
         </Animated.View>
 
-        {/* Target Arc for Vastu Activity */}
+        {/* ─ SHATKONA (Star of David) — the key sacred geometry ─ */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin3 }], opacity: pulseOp }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* Shatkona glow fill */}
+            <Circle cx={cx} cy={cy} r={34} fill="url(#shatkonaGlow)" />
+            {/* Upward triangle */}
+            <Path d={shatkona_up} fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.6)" strokeWidth={0.7} />
+            {/* Downward triangle */}
+            <Path d={shatkona_down} fill="rgba(255,215,0,0.06)" stroke="rgba(255,215,0,0.5)" strokeWidth={0.7} />
+            {/* Inner hexagon formed by intersection */}
+            <Path d="M 50,34 L 61.6,41 L 61.6,55 L 50,62 L 38.4,55 L 38.4,41 Z"
+              fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+          </Svg>
+        </Animated.View>
+
+        {/* ─ Pulsing Sri Yantra core triangles ─ */}
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ scale: pulseScale }], opacity: pulseOp }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* Subtle gold center glow */}
+            <Circle cx={cx} cy={cy} r={38} fill="url(#goldGlow2)" />
+            {/* Sri Yantra Shiva triangles */}
+            {shivaTriangles.map((d, i) => (
+              <Path key={`sv-${i}`} d={d} fill="rgba(255,215,0,0.06)" stroke="url(#gold)" strokeWidth={0.6} />
+            ))}
+            {/* Sri Yantra Shakti triangles */}
+            {shaktiTriangles.map((d, i) => (
+              <Path key={`sk-${i}`} d={d} fill="rgba(167,139,250,0.06)" stroke="url(#goldR)" strokeWidth={0.6} />
+            ))}
+            {/* Bindu (centre dot) */}
+            <Circle cx={cx} cy={cy} r={1.5} fill="#ffd700" />
+            <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="rgba(255,215,0,0.7)" strokeWidth={0.8} />
+            <Circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(255,215,0,0.3)" strokeWidth={0.4} />
+          </Svg>
+        </Animated.View>
+
+        {/* Target arc for active activity */}
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
           {selectedActivity && (() => {
             const data = VASTU_DATA[selectedActivity];
-            const r = 48;
+            const r = 47;
             return data.dirs.map((dir, i) => {
               let [startAngle, endAngle] = dir.range;
-              if (startAngle > endAngle) endAngle += 360; 
+              if (startAngle > endAngle) endAngle += 360;
               const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
               const startX = cx + r * Math.sin(startAngle * Math.PI / 180);
               const startY = cy - r * Math.cos(startAngle * Math.PI / 180);
               const endX = cx + r * Math.sin(endAngle * Math.PI / 180);
               const endY = cy - r * Math.cos(endAngle * Math.PI / 180);
-              
               return (
                 <G key={i}>
-                  <Path 
-                    d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
-                    fill="none" 
-                    stroke={data.targetColor} 
-                    strokeWidth={1.8} 
-                    strokeLinecap="round" 
-                  />
-                  {/* Subtle glow layer for arc */}
-                  <Path 
-                    d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`} 
-                    fill="none" 
-                    stroke={data.targetColor} 
-                    strokeWidth={5}
-                    strokeOpacity={0.35}
-                    strokeLinecap="round" 
-                  />
+                  {/* Glow layer */}
+                  <Path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`}
+                    fill="none" stroke={data.targetColor} strokeWidth={6} strokeOpacity={0.2} strokeLinecap="round" />
+                  {/* Main arc */}
+                  <Path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`}
+                    fill="none" stroke={data.targetColor} strokeWidth={1.8} strokeLinecap="round" />
                 </G>
               );
             });
@@ -569,11 +576,19 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         </Svg>
       </Animated.View>
 
-      {/* Fixed Alignment Indicator at top (Ultra-thin glowing diamond/triangle) */}
+      {/* Fixed north-pointer diamond */}
       <View style={{ position: 'absolute', width: size, height: size }}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="url(#goldLine)" />
-          <Path d={`M${cx} ${cy-49} L${cx-2} ${cy-44} L${cx} ${cy-46} L${cx+2} ${cy-44} Z`} fill="none" stroke="rgba(255,223,0,0.6)" strokeWidth={1} />
+          <Defs>
+            <SvgLinearGradient id="northGold" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#ffd700" />
+              <Stop offset="100%" stopColor="#ff8c00" />
+            </SvgLinearGradient>
+          </Defs>
+          <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
+            fill="url(#northGold)" />
+          <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
+            fill="none" stroke="rgba(255,200,0,0.8)" strokeWidth={0.6} />
         </Svg>
       </View>
     </View>
@@ -1338,450 +1353,131 @@ export default function WalkTab() {
           paddingBottom: getTabBarClearance(insets.bottom, !!playingId, stepBarActive),
         }}
       >
-        {/* ── HEADER — Vastu Yantra Space Intelligence ─── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 0 }}>
+        {/* ══ HEADER: Space Intelligence (Vastu Yantra) ══ */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }] }}>
           <Animated.View style={{
-            width: '100%',
-            paddingHorizontal: 20,
+            width: '100%', paddingHorizontal: 20,
             paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)),
             transform: [{ translateY: headerTopPad }],
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
-              {/* Left — live heading badge */}
-              <View style={{ flex: 1 }}>
-                {compassActive && (
-                  <View style={{
-                    alignSelf: 'flex-start',
-                    backgroundColor: 'rgba(0,0,0,0.45)',
-                    borderRadius: 12, borderWidth: 1,
-                    borderColor: selectedActivity ? `${VASTU_DATA[selectedActivity].targetColor}50` : 'rgba(255,255,255,0.12)',
-                    paddingHorizontal: 10, paddingVertical: 5,
-                  }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: selectedActivity ? VASTU_DATA[selectedActivity].targetColor : '#fff', fontVariant: ['tabular-nums'] }}>
-                      {currentHeadingDeg}°
-                    </Text>
-                    <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                      {getCardinalLabel(currentHeadingDeg)}
-                    </Text>
-                  </View>
-                )}
-              </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
 
-              {/* Centre — title */}
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{
-                  fontSize: 30,
-                  fontWeight: '600',
-                  color: '#FFF',
-                  letterSpacing: 0.5,
-                  fontFamily: 'DancingScript_600SemiBold',
-                  textShadowColor: 'rgba(167,139,250,0.9)',
-                  textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 18,
-                  textAlign: 'center',
-                  marginBottom: 2,
+              {/* Live compass degree badge */}
+              {compassActive ? (
+                <View style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14, borderWidth: 1,
+                  borderColor: selectedActivity ? `${VASTU_DATA[selectedActivity].targetColor}60` : 'rgba(255,255,255,0.15)',
+                  paddingHorizontal: 12, paddingVertical: 6, minWidth: 56, alignItems: 'center',
                 }}>
-                  Vastu Yantra
-                </Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' }}>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: selectedActivity ? VASTU_DATA[selectedActivity].targetColor : '#ffffff', fontVariant: ['tabular-nums'], lineHeight: 22 }}>
+                    {currentHeadingDeg}°
+                  </Text>
+                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    {getCardinalLabel(currentHeadingDeg)}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ width: 56 }} />
+              )}
+
+              {/* Centre title */}
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(167,139,250,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }}>
                   Space Intelligence
                 </Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', letterSpacing: 1, fontWeight: '500' }}>
+                  Vastu Yantra
+                </Text>
               </View>
 
-              {/* Right — garden icon */}
-              <View style={{ flex: 1, alignItems: 'flex-end', paddingTop: 4 }}>
-                <TouchableOpacity onPress={() => router.push('/garden' as never)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <Ionicons name="leaf" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              {/* Garden icon */}
+              <TouchableOpacity onPress={() => router.push('/garden' as never)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <Ionicons name="leaf" size={17} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </Animated.View>
 
-        {/* ── ACTIVATE + ACTIVITY GRID ──────────────────── */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 12, zIndex: 10, paddingHorizontal: 20 }}>
-
-          {/* Activate / Deactivate Button */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setCompassActive(!compassActive);
-              if (compassActive) { setSelectedActivity(null); setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
-            }}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: compassActive ? 'rgba(167,139,250,0.15)' : 'rgba(0,0,0,0.45)',
-              borderWidth: 1.2,
-              borderColor: compassActive ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.18)',
-              paddingHorizontal: 26, paddingVertical: 11,
-              borderRadius: 32, overflow: 'hidden',
-              shadowColor: compassActive ? '#a78bfa' : '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: compassActive ? 0.4 : 0.2,
-              shadowRadius: 12, elevation: 6,
-              marginBottom: 14,
-            }}
-            activeOpacity={0.75}
-          >
-            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            {/* Pulsing dot when active */}
-            {compassActive && (
-              <Animated.View style={{
-                width: 7, height: 7, borderRadius: 3.5,
-                backgroundColor: '#a78bfa',
-                opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }),
-              }} />
-            )}
-            <Ionicons
-              name={compassActive ? 'radio-outline' : 'compass-outline'}
-              size={14}
-              color={compassActive ? '#a78bfa' : '#FFF'}
-            />
-            <Text style={{ fontSize: 11, fontWeight: '800', color: compassActive ? '#a78bfa' : '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              {compassActive ? 'Space Scanning Active' : 'Activate Space Scanner'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Activity Card Grid — always visible to invite interaction */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' }}>
-            {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
-              const d = VASTU_DATA[act];
-              const isSelected = selectedActivity === act;
-              return (
-                <TouchableOpacity
-                  key={act}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    if (!compassActive) {
-                      setCompassActive(true);
-                    }
-                    setSelectedActivity(isSelected ? null : act);
-                    if (isSelected) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    width: (W - 60) / 2,
-                    borderRadius: 20, overflow: 'hidden',
-                    borderWidth: 1.2,
-                    borderColor: isSelected ? d.targetColor : 'rgba(255,255,255,0.10)',
-                    shadowColor: isSelected ? d.targetColor : '#000',
-                    shadowOffset: { width: 0, height: isSelected ? 6 : 2 },
-                    shadowOpacity: isSelected ? 0.45 : 0.2,
-                    shadowRadius: isSelected ? 14 : 6,
-                    elevation: isSelected ? 10 : 3,
-                  }}
-                >
-                  <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
-                  {isSelected && (
-                    <LinearGradient
-                      colors={[`${d.targetColor}28`, `${d.targetColor}08`]}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                  )}
-                  {/* Top accent line when selected */}
-                  {isSelected && (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: d.targetColor, borderTopLeftRadius: 20, borderTopRightRadius: 20 }} />
-                  )}
-                  <View style={{ padding: 14 }}>
-                    {/* Icon + status row */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <View style={{
-                        width: 38, height: 38, borderRadius: 19,
-                        backgroundColor: isSelected ? `${d.targetColor}25` : 'rgba(255,255,255,0.06)',
-                        borderWidth: 1,
-                        borderColor: isSelected ? `${d.targetColor}60` : 'rgba(255,255,255,0.08)',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Text style={{ fontSize: 18 }}>{d.icon}</Text>
-                      </View>
-                      {isSelected && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3,
-                          backgroundColor: `${d.targetColor}20`, borderRadius: 8,
-                          paddingHorizontal: 6, paddingVertical: 3 }}>
-                          <Animated.View style={{
-                            width: 4, height: 4, borderRadius: 2,
-                            backgroundColor: d.targetColor,
-                            opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }),
-                          }} />
-                          <Text style={{ fontSize: 7, fontWeight: '900', color: d.targetColor, letterSpacing: 1 }}>LIVE</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Label */}
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: isSelected ? '#fff' : 'rgba(255,255,255,0.75)', letterSpacing: 0.3, marginBottom: 3 }}>
-                      {d.westernLabel}
-                    </Text>
-
-                    {/* Direction hint */}
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: isSelected ? `${d.targetColor}CC` : 'rgba(255,255,255,0.35)', letterSpacing: 0.5 }}>
-                      → {d.dirs.map(dr => dr.label).join(' · ')}
-                    </Text>
-
-                    {/* Benefits row (only when selected) */}
-                    {isSelected && (
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-                        {d.benefits.map((b, bi) => (
-                          <View key={bi} style={{ backgroundColor: `${d.targetColor}20`, borderRadius: 6,
-                            paddingHorizontal: 6, paddingVertical: 2 }}>
-                            <Text style={{ fontSize: 8, fontWeight: '700', color: d.targetColor }}>• {b}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Science Panel toggle — only when an activity is selected */}
-          {selectedActivity && (
-            <TouchableOpacity
-              onPress={toggleSciencePanel}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                marginTop: 12, paddingHorizontal: 14, paddingVertical: 7,
-                borderRadius: 16, borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.12)',
-                backgroundColor: 'rgba(255,255,255,0.05)',
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={sciencePanelOpen ? 'chevron-up' : 'flask-outline'} size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>
-                {sciencePanelOpen ? 'Hide Science' : 'Why This Works'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Science Panel — animated expand */}
-          {selectedActivity && (
-            <Animated.View style={{
-              overflow: 'hidden',
-              maxHeight: sciencePanelHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 180] }),
-              opacity: sciencePanelHeight,
-              width: '100%', marginTop: 6,
-            }}>
-              <View style={{
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                borderRadius: 16, borderWidth: 1,
-                borderColor: `${VASTU_DATA[selectedActivity].targetColor}30`,
-                padding: 14,
-              }}>
-                <Text style={{ fontSize: 8, fontWeight: '900', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
-                  THE SCIENCE
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)', lineHeight: 18, marginBottom: 8 }}>
-                  {VASTU_DATA[selectedActivity].scienceNote}
-                </Text>
-                <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 }} />
-                <Text style={{ fontSize: 8, fontWeight: '700', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-                  VEDIC ORIGIN
-                </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 16 }}>
-                  {VASTU_DATA[selectedActivity].reason}
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-        </Animated.View>
-
-        {/* ── NO SENSOR WARNING ───────────────────────────────────────────── */}
-        {!isAvailable && (
-          <View style={st.noSensorCard}>
-            <Text style={st.noSensorEmoji}>📵</Text>
-            <Text style={st.noSensorTitle}>No Step Sensor Found</Text>
-            <Text style={st.noSensorSub}>This device doesn't have a hardware step counter. Step tracking is unavailable.</Text>
-          </View>
-        )}
-
-        {/* ── RING + CENTRE ────────────────────────────────────────────────── */}
-        {/* Ring wrapper: JS-driver opacity+margin outer, JS-driver scale inner — no mixing */}
-        <Animated.View style={[st.ringWrapper, {
-          opacity: cardFade,
-          marginTop: ringMarginTop,
-        }]}>
-          <Animated.View style={{
-            transform: [
-              { scale: pulseAnim },
-              { scale: ringScale },
-            ],
-          }}>
+        {/* ══ HERO RING — Sacred Geometry Space Intelligence ══ */}
+        <Animated.View style={[st.ringWrapper, { opacity: cardFade, marginTop: ringMarginTop }]}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }, { scale: ringScale }] }}>
           <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
-            {/* Inner zone - fixed premium frosted glass disc */}
-            <View style={{
-              position: 'absolute', top: 12, left: 12, width: RING_SIZE - 24, height: RING_SIZE - 24, borderRadius: (RING_SIZE - 24) / 2,
-              overflow: 'hidden'
-            }}>
+            {/* Inner frosted glass disc */}
+            <View style={{ position: 'absolute', top: 12, left: 12, width: RING_SIZE - 24, height: RING_SIZE - 24, borderRadius: (RING_SIZE - 24) / 2, overflow: 'hidden' }}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
               <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim.interpolate({ inputRange: [1, 1.02], outputRange: [0.3, 0.5] }) }]}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.05)', 'transparent']}
-                  start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                  style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={['rgba(255,255,255,0.05)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
               </Animated.View>
             </View>
 
-            {/* ── ULTRA-PREMIUM SMART FITNESS RING — ALL FEATURES ──────────────── */}
-            {/* Feature 4: Heartbeat long-press & Mandala touch PanResponder wrapper */}
-            <View
-              style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}
-              {...mandalaPanResponder.panHandlers}
-            >
-              {/* Feature 4: Heartbeat ripple */}
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', width: RING_SIZE, height: RING_SIZE,
-                borderRadius: RING_SIZE / 2,
-                borderWidth: 2, borderColor: 'rgba(56,189,248,0.7)',
-                transform: [{ scale: rippleScaleHeart }],
-                opacity: rippleOpHeart,
-              }} />
+            {/* Pan responder touch area */}
+            <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }} {...mandalaPanResponder.panHandlers}>
 
-              {/* Feature 5: Goal completion particles */}
+              {/* Heartbeat ripple */}
+              <Animated.View pointerEvents="none" style={{ position: 'absolute', width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2, borderWidth: 2, borderColor: 'rgba(56,189,248,0.7)', transform: [{ scale: rippleScaleHeart }], opacity: rippleOpHeart }} />
+
+              {/* Goal particles */}
               {particleAnims.map((p, i) => (
-                <Animated.View key={i} pointerEvents="none" style={{
-                  position: 'absolute',
-                  width: 6, height: 6, borderRadius: 3,
-                  backgroundColor: p.clr,
-                  top: RING_SIZE / 2 - 3,
-                  left: RING_SIZE / 2 - 3,
-                  transform: [{ translateX: p.x }, { translateY: p.y }],
-                  opacity: p.op,
-                  shadowColor: p.clr, shadowOpacity: 0.8, shadowRadius: 4,
-                }} />
+                <Animated.View key={i} pointerEvents="none" style={{ position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: p.clr, top: RING_SIZE / 2 - 3, left: RING_SIZE / 2 - 3, transform: [{ translateX: p.x }, { translateY: p.y }], opacity: p.op, shadowColor: p.clr, shadowOpacity: 0.8, shadowRadius: 4 }} />
               ))}
 
-              {/* ── Layered aura — extremely slim and calming pulse glow ── */}
-              {/* Feature 1: Gyroscope parallax on the inner glass disc */}
+              {/* Aura pulse layers */}
               <Animated.View style={{ position: 'absolute', width: RING_SIZE + 8, height: RING_SIZE + 8, borderRadius: (RING_SIZE + 8) / 2, backgroundColor: 'rgba(56,189,248,0.03)', transform: [{ scale: pulseAnim }], top: -4, left: -4 }} />
               <Animated.View style={{ position: 'absolute', width: RING_SIZE + 4, height: RING_SIZE + 4, borderRadius: (RING_SIZE + 4) / 2, backgroundColor: 'rgba(56,189,248,0.06)', transform: [{ scale: pulseAnim }], top: -2, left: -2 }} />
               <Animated.View style={{ position: 'absolute', width: RING_SIZE + 2, height: RING_SIZE + 2, borderRadius: (RING_SIZE + 2) / 2, backgroundColor: 'rgba(56,189,248,0.1)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
 
-              {/* ── Inner zone — moonlit disk with gyro parallax ── */}
-              {/* Outer stationary mask so it never breaks the ring boundary */}
-              <View style={{
-                position: 'absolute', width: RING_SIZE - RING_STROKE, height: RING_SIZE - RING_STROKE, borderRadius: (RING_SIZE - RING_STROKE) / 2,
-                backgroundColor: 'rgba(56,189,248,0.08)',
-                overflow: 'hidden',
-              }}>
-                {/* Inner animated content layer (slightly oversized to allow parallax without showing edges) */}
-                <Animated.View style={{
-                  position: 'absolute', top: -12, left: -12, right: -12, bottom: -12,
-                  transform: [{ translateX: gyroX }, { translateY: gyroY }],
-                }}>
-                  {/* Feature 3: Environmental — golden hour tint */}
+              {/* Inner disc with gyro parallax */}
+              <View style={{ position: 'absolute', width: RING_SIZE - RING_STROKE, height: RING_SIZE - RING_STROKE, borderRadius: (RING_SIZE - RING_STROKE) / 2, backgroundColor: 'rgba(56,189,248,0.08)', overflow: 'hidden' }}>
+                <Animated.View style={{ position: 'absolute', top: -12, left: -12, right: -12, bottom: -12, transform: [{ translateX: gyroX }, { translateY: gyroY }] }}>
+
                   <LinearGradient
-                    colors={(
-                      isSunrise || isSunset
-                        ? ['rgba(251,191,36,0.14)', 'rgba(251,146,60,0.08)', 'transparent']
-                        : isRaining
-                        ? ['rgba(147,197,253,0.18)', 'rgba(56,189,248,0.08)', 'transparent']
-                        : ['rgba(186,230,253,0.15)', 'rgba(56,189,248,0.08)', 'transparent']
-                    )}
-                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFillObject} />
+                    colors={isSunrise || isSunset ? ['rgba(251,191,36,0.14)', 'rgba(251,146,60,0.08)', 'transparent'] : isRaining ? ['rgba(147,197,253,0.18)', 'rgba(56,189,248,0.08)', 'transparent'] : ['rgba(186,230,253,0.15)', 'rgba(56,189,248,0.08)', 'transparent']}
+                    start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                  <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.glow, opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }} />
+                  {isHot && <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(239,68,68,0.1)', opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }), transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }] }} />}
+                  {isCold && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 8, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 200 }} />}
 
-                  {/* Feature 3: Gentle inner breath glow (Theme based) */}
-                  <Animated.View pointerEvents="none" style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: theme.glow,
-                    opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-                  }} />
-
-                  {/* Hot weather: Heat wave shimmer overlay */}
-                  {isHot && (
-                    <Animated.View pointerEvents="none" style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                      backgroundColor: 'rgba(239,68,68,0.1)', // Subtle red tint
-                      opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }),
-                      transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }]
-                    }} />
-                  )}
-                  
-                  {/* Cold weather: Frost overlay */}
-                  {isCold && (
-                    <View pointerEvents="none" style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                      borderWidth: 8, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 200,
-                    }} />
-                  )}
-
-                  {/* ── Slim Compass — floats semi-transparently in the inner disc ── */}
+                  {/* Sacred geometry compass + Vastu scanner */}
                   {compassActive && (
-                    <View pointerEvents="none" style={[
-                      StyleSheet.absoluteFillObject,
-                      { alignItems: 'center', justifyContent: 'center', opacity: 0.9 },
-                    ]}>
+                    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', opacity: 0.9 }]}>
                       <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} selectedActivity={selectedActivity} />
-                      <VastuScanner
-                        heading={compassAnim}
-                        selectedActivity={selectedActivity}
-                        radarAnim={radarAnim}
-                        lockedAnim={lockedAnim}
-                      />
+                      <VastuScanner heading={compassAnim} selectedActivity={selectedActivity} radarAnim={radarAnim} lockedAnim={lockedAnim} />
                     </View>
                   )}
 
-                  {/* Feature 3: Rain droplets inside the glass */}
                   {isRaining && rainAnims.map((ra: any, i: number) => (
-                    <Animated.View key={i} pointerEvents="none" style={{
-                      position: 'absolute',
-                      left: ra.x, top: 0,
-                      width: 1.5, height: 8,
-                      borderRadius: 1,
-                      backgroundColor: theme.outer, // Matches theme
-                      opacity: ra.op,
-                      transform: [{ translateY: ra.y }],
-                    }} />
+                    <Animated.View key={i} pointerEvents="none" style={{ position: 'absolute', left: ra.x, top: 0, width: 1.5, height: 8, borderRadius: 1, backgroundColor: theme.outer, opacity: ra.op, transform: [{ translateY: ra.y }] }} />
                   ))}
-
                 </Animated.View>
               </View>
 
-              {/* ── SVG Ring layers ── */}
+              {/* SVG Progress ring */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                {/* Thin Track */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={0.2} />
-                {/* Wide outer glow - made extremely thin */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
-                {/* Mid halo - made extremely thin */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={0.4} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
-                {/* Main crisp arc - made extremely thin */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
-                {/* Inner shimmer sliver - made extremely thin */}
                 <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
-
-                {/* ── Feature 8: Inner Weekly Intention Ring ── */}
                 {summary && summary.weeklyGoal > 0 && (
                   <>
                     <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.track} strokeWidth={0.3} />
                     <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.mid} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.9} />
                   </>
                 )}
-
-                {/* Feature 2: Liquid leading-edge droplet */}
                 {stats.goalPercent > 0 && stats.goalPercent < 100 && (() => {
                   const angle = (stats.goalPercent / 100) * 360 - 90;
                   const rad = angle * Math.PI / 180;
                   const cx = RING_SIZE / 2 + R_OUTER * Math.cos(rad);
                   const cy = RING_SIZE / 2 + R_OUTER * Math.sin(rad);
-                  return (
-                    <>
-                      <Circle cx={cx} cy={cy} r={7} fill={theme.liquid[0]} opacity={0.25} />
-                      <Circle cx={cx} cy={cy} r={4} fill={theme.liquid[1]} opacity={0.7} />
-                      <Circle cx={cx} cy={cy} r={2} fill={theme.liquid[2]} opacity={0.95} />
-                    </>
-                  );
+                  return (<><Circle cx={cx} cy={cy} r={7} fill={theme.liquid[0]} opacity={0.25} /><Circle cx={cx} cy={cy} r={4} fill={theme.liquid[1]} opacity={0.7} /><Circle cx={cx} cy={cy} r={2} fill={theme.liquid[2]} opacity={0.95} /></>);
                 })()}
               </Svg>
             </View>
 
-            {/* Centre content — all data inside the ring */}
+            {/* Centre content */}
             <View style={st.ringCentre}>
-
               {(isSunset || isSunrise) ? (
                 <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
                   <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
@@ -1791,139 +1487,191 @@ export default function WalkTab() {
                 </View>
               ) : (
                 <>
-                  {/* ─ Top: Weather chip ─ */}
                   {weather ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)' }}>
                       <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.7 }}>
-                        {weather.temp}° {weather.condition}
-                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.7 }}>{weather.temp}° {weather.condition}</Text>
                     </View>
                   ) : <View style={{ height: 22, marginBottom: 4 }} />}
-
-                  {/* Data hidden to focus on pure spirituality & rhythm */}
-
-                  {/* ─ Mindful quote ─ */}
                   <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 12 }}>
                     {QUOTES[quoteIdx]}
                   </Animated.Text>
-
-                  {/* ─ Divider ─ */}
                   <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 8, marginBottom: 12 }} />
                 </>
               )}
             </View>
 
-            {/* ── Living Mandala — always spinning sacred geometry ── */}
-            {/* Layer 1: Slow outer rotation (24 petals dodecagram) */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              alignItems: 'center', justifyContent: 'center',
-              transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-            }}>
+            {/* ── Outer mandala layers (always spinning) ── */}
+            <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                {/* Outer dashed ring */}
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={96} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3 9" />
-                {/* 12-petal outer ring */}
                 {[0,30,60,90,120,150,180,210,240,270,300,330].map(deg => {
                   const a = deg * Math.PI / 180;
                   const px = RING_SIZE/2 + 80 * Math.sin(a);
                   const py = RING_SIZE/2 - 80 * Math.cos(a);
                   return <Circle key={deg} cx={px} cy={py} r={3} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.8} />;
                 })}
-                {/* Outer star lines */}
                 {[0,60,120].map(deg => {
                   const a1 = deg * Math.PI / 180;
                   const a2 = (deg + 180) * Math.PI / 180;
-                  return <Line key={deg}
-                    x1={RING_SIZE/2 + 88 * Math.sin(a1)} y1={RING_SIZE/2 - 88 * Math.cos(a1)}
-                    x2={RING_SIZE/2 + 88 * Math.sin(a2)} y2={RING_SIZE/2 - 88 * Math.cos(a2)}
-                    stroke="rgba(255,255,255,0.04)" strokeWidth={0.8} />;
+                  return <Line key={deg} x1={RING_SIZE/2 + 88 * Math.sin(a1)} y1={RING_SIZE/2 - 88 * Math.cos(a1)} x2={RING_SIZE/2 + 88 * Math.sin(a2)} y2={RING_SIZE/2 - 88 * Math.cos(a2)} stroke="rgba(255,255,255,0.04)" strokeWidth={0.8} />;
                 })}
               </Svg>
             </Animated.View>
 
-            {/* Layer 2: Reverse medium rotation (Star of David + inner hex) */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              alignItems: 'center', justifyContent: 'center',
-              transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }],
-            }}>
+            <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }] }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={66} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={0.8} />
-                {/* Inner triangles Star of David */}
-                <Path
-                  d={`M${RING_SIZE/2} ${RING_SIZE/2-55} L${RING_SIZE/2+47.6} ${RING_SIZE/2+27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2+27.5} Z`}
-                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9}
-                />
-                <Path
-                  d={`M${RING_SIZE/2} ${RING_SIZE/2+55} L${RING_SIZE/2+47.6} ${RING_SIZE/2-27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2-27.5} Z`}
-                  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9}
-                />
-                {/* 6 dots at hexagon vertices */}
+                <Path d={`M${RING_SIZE/2} ${RING_SIZE/2-55} L${RING_SIZE/2+47.6} ${RING_SIZE/2+27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2+27.5} Z`} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9} />
+                <Path d={`M${RING_SIZE/2} ${RING_SIZE/2+55} L${RING_SIZE/2+47.6} ${RING_SIZE/2-27.5} L${RING_SIZE/2-47.6} ${RING_SIZE/2-27.5} Z`} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={0.9} />
                 {[0,60,120,180,240,300].map(deg => {
                   const a = deg * Math.PI / 180;
-                  return <Circle key={deg}
-                    cx={RING_SIZE/2 + 55 * Math.sin(a)}
-                    cy={RING_SIZE/2 - 55 * Math.cos(a)}
-                    r={2} fill="rgba(255,255,255,0.12)" />;
+                  return <Circle key={deg} cx={RING_SIZE/2 + 55 * Math.sin(a)} cy={RING_SIZE/2 - 55 * Math.cos(a)} r={2} fill="rgba(255,255,255,0.12)" />;
                 })}
               </Svg>
             </Animated.View>
 
-            {/* Layer 3: Fast inner rotation (inner sacred circle + dot ring) */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              alignItems: 'center', justifyContent: 'center',
-              transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-            }}>
+            <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rot3.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={34} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.7} strokeDasharray="2 6" />
-                {/* 8 micro-dots inner ring */}
                 {[0,45,90,135,180,225,270,315].map(deg => {
                   const a = deg * Math.PI / 180;
-                  return <Circle key={deg}
-                    cx={RING_SIZE/2 + 34 * Math.sin(a)}
-                    cy={RING_SIZE/2 - 34 * Math.cos(a)}
-                    r={1.5} fill="rgba(255,255,255,0.15)" />;
+                  return <Circle key={deg} cx={RING_SIZE/2 + 34 * Math.sin(a)} cy={RING_SIZE/2 - 34 * Math.cos(a)} r={1.5} fill="rgba(255,255,255,0.15)" />;
                 })}
-                {/* Innermost sacred dot */}
                 <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={4} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
               </Svg>
             </Animated.View>
 
-            {/* Draggable rotation layer — user spins this */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              alignItems: 'center', justifyContent: 'center',
-              transform: [{ rotate: mandalaRot.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] }) }, { scale: mandalaScale }]
-            }}>
+            {/* User-draggable mandala layer */}
+            <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: mandalaRot.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] }) }, { scale: mandalaScale }] }}>
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                {stats.goalPercent >= 25 && (
-                  <Path d={`M${RING_SIZE/2} ${RING_SIZE/2-50} L${RING_SIZE/2+43} ${RING_SIZE/2+25} L${RING_SIZE/2-43} ${RING_SIZE/2+25} Z`}
-                    fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />
-                )}
-                {stats.goalPercent >= 50 && (
-                  <Path d={`M${RING_SIZE/2} ${RING_SIZE/2+50} L${RING_SIZE/2+43} ${RING_SIZE/2-25} L${RING_SIZE/2-43} ${RING_SIZE/2-25} Z`}
-                    fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />
-                )}
-                {stats.goalPercent >= 75 && (
-                  <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={22} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
-                )}
-                {stats.goalPercent >= 100 && (
-                  <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={6} fill="rgba(255,255,255,0.35)" />
-                )}
+                {stats.goalPercent >= 25 && <Path d={`M${RING_SIZE/2} ${RING_SIZE/2-50} L${RING_SIZE/2+43} ${RING_SIZE/2+25} L${RING_SIZE/2-43} ${RING_SIZE/2+25} Z`} fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />}
+                {stats.goalPercent >= 50 && <Path d={`M${RING_SIZE/2} ${RING_SIZE/2+50} L${RING_SIZE/2+43} ${RING_SIZE/2-25} L${RING_SIZE/2-43} ${RING_SIZE/2-25} Z`} fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />}
+                {stats.goalPercent >= 75 && <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={22} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />}
+                {stats.goalPercent >= 100 && <Circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={6} fill="rgba(255,255,255,0.35)" />}
               </Svg>
             </Animated.View>
           </View>
           </Animated.View>
-
-
-
-
-
         </Animated.View>
 
+        {/* ══ ACTIVITY SELECTOR + ACTIVATE BUTTON ══ */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 20, marginTop: 16 }}>
+
+          {/* Activate button */}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setCompassActive(!compassActive);
+              if (compassActive) { setSelectedActivity(null); setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+            }}
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              backgroundColor: compassActive ? 'rgba(167,139,250,0.15)' : 'rgba(0,0,0,0.45)',
+              borderWidth: 1.2, borderColor: compassActive ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.15)',
+              paddingHorizontal: 24, paddingVertical: 10, borderRadius: 30,
+              overflow: 'hidden', marginBottom: 14,
+              shadowColor: compassActive ? '#a78bfa' : '#000',
+              shadowOffset: { width: 0, height: 4 }, shadowOpacity: compassActive ? 0.4 : 0.15, shadowRadius: 12, elevation: 6,
+            }}
+            activeOpacity={0.75}
+          >
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+            {compassActive && (
+              <Animated.View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#a78bfa', opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }) }} />
+            )}
+            <Ionicons name={compassActive ? 'radio-outline' : 'compass-outline'} size={13} color={compassActive ? '#a78bfa' : '#FFF'} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: compassActive ? '#a78bfa' : '#FFF', letterSpacing: 1.8, textTransform: 'uppercase' }}>
+              {compassActive ? 'Scanning Active' : 'Activate Scanner'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Compact horizontal activity pills */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 2 }}>
+            {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
+              const d = VASTU_DATA[act];
+              const isSel = selectedActivity === act;
+              return (
+                <TouchableOpacity
+                  key={act}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (!compassActive) setCompassActive(true);
+                    setSelectedActivity(isSel ? null : act);
+                    if (isSel) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 7,
+                    overflow: 'hidden', borderRadius: 22,
+                    borderWidth: 1.2, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.13)',
+                    paddingHorizontal: 14, paddingVertical: 9,
+                    backgroundColor: isSel ? `${d.targetColor}18` : 'rgba(0,0,0,0.35)',
+                    shadowColor: isSel ? d.targetColor : 'transparent',
+                    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: isSel ? 6 : 0,
+                  }}
+                >
+                  <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <Text style={{ fontSize: 15 }}>{d.icon}</Text>
+                  <View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSel ? '#fff' : 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
+                      {d.westernLabel}
+                    </Text>
+                    <Text style={{ fontSize: 8, color: isSel ? `${d.targetColor}CC` : 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>
+                      {d.dirs.map(dr => dr.label).join(' · ')}
+                    </Text>
+                  </View>
+                  {isSel && (
+                    <Animated.View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Benefits row when activity selected */}
+          {selectedActivity && (
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+              {VASTU_DATA[selectedActivity].benefits.map((b, bi) => (
+                <View key={bi} style={{ backgroundColor: `${VASTU_DATA[selectedActivity].targetColor}20`, borderRadius: 10, borderWidth: 1, borderColor: `${VASTU_DATA[selectedActivity].targetColor}50`, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 0.5 }}>✓ {b}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Why This Works toggle */}
+          {selectedActivity && (
+            <TouchableOpacity onPress={toggleSciencePanel} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }} activeOpacity={0.7}>
+              <Ionicons name={sciencePanelOpen ? 'chevron-up' : 'flask-outline'} size={11} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                {sciencePanelOpen ? 'Hide' : 'Why This Works'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Science panel — spring expand */}
+          {selectedActivity && (
+            <Animated.View style={{ overflow: 'hidden', maxHeight: sciencePanelHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 160] }), opacity: sciencePanelHeight, width: '100%', marginTop: 6 }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, borderWidth: 1, borderColor: `${VASTU_DATA[selectedActivity].targetColor}30`, padding: 14 }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 5 }}>THE SCIENCE</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)', lineHeight: 18, marginBottom: 8 }}>{VASTU_DATA[selectedActivity].scienceNote}</Text>
+                <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 }} />
+                <Text style={{ fontSize: 8, fontWeight: '700', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>VEDIC ORIGIN</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 16 }}>{VASTU_DATA[selectedActivity].reason}</Text>
+              </View>
+            </Animated.View>
+          )}
+        </Animated.View>
+
+        {/* No sensor warning */}
+        {!isAvailable && (
+          <View style={st.noSensorCard}>
+            <Text style={st.noSensorEmoji}>📵</Text>
+            <Text style={st.noSensorTitle}>No Step Sensor Found</Text>
+            <Text style={st.noSensorSub}>This device doesn't have a hardware step counter. Step tracking is unavailable.</Text>
+          </View>
+        )}
         {/* ── BOTTOM UI (HIDDEN IN BOWL MODE) ── */}
         <Animated.View style={{ opacity: bowlOpacity }} pointerEvents={isBowlMode ? 'none' : 'auto'}>
           {/* ── ULTRA-SMART BUTTONS ───────────────────────────────── */}
