@@ -4293,20 +4293,27 @@ function SleepTabInner() {
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
       <BlurView
         tint="dark"
-        intensity={85}
+        intensity={90}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Ultra-premium iOS frosted-glass gradient overlay */}
+      {/* Deep Space cosmic gradient — shifts from midnight indigo to pure black */}
       <LinearGradient
         colors={[
-          'rgba(4,6,14,0.1)',
-          'rgba(4,6,14,0.25)',
-          'rgba(4,6,14,0.55)',
-          'rgba(4,6,14,0.90)',
+          'rgba(6,4,22,0.05)',
+          'rgba(4,4,18,0.30)',
+          'rgba(3,3,14,0.65)',
+          'rgba(2,2,10,0.96)',
         ]}
-        locations={[0, 0.35, 0.7, 1]}
+        locations={[0, 0.3, 0.65, 1]}
         style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Ambient cosmic colour wash — subtle indigo mist */}
+      <View
+        style={[StyleSheet.absoluteFillObject, {
+          backgroundColor: 'rgba(30,10,80,0.08)',
+        }]}
         pointerEvents="none"
       />
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
@@ -4443,37 +4450,140 @@ function SleepTabInner() {
           keyboardShouldPersistTaps="handled"
         >
 
-        {/* ── Hero area ── */}
-        <View
-          style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
-        >
+        {/* ── Premium Hero Area — Deep Space + Editorial + Breathing Room ── */}
+        <View style={{ width: W, alignItems: 'center' }}>
           {!isSearching && (
             <View style={{
               width: '100%',
-              paddingHorizontal: 24,
-              paddingVertical: 0,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
-              marginTop: 44,
-              marginBottom: 12,
-              gap: 8,
+              marginTop: 32,
+              marginBottom: 20,
+              paddingHorizontal: 24,
             }}>
-              {/* Main title */}
-              <Text style={[heroTextStyle, { marginBottom: 6, fontFamily: 'DancingScript_700Bold', letterSpacing: 1 }]}>
-                {heroContent ? heroContent.header : displayMode.label}
-              </Text>
-              
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 18, paddingVertical: 6, borderRadius: 24, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: 'Nunito_600SemiBold' }}>
-                  {heroContent ? heroContent.actionText : 'Listen & tune in'}
-                </Text>
+
+              {/* ── Moon-Phase Breathing Orb (Option A) ── */}
+              <View style={{ alignItems: 'center', marginBottom: 28 }}>
+                {/* Outer cosmic glow ring */}
+                <View style={{
+                  width: 140, height: 140, borderRadius: 70,
+                  backgroundColor: 'transparent',
+                  borderWidth: 1,
+                  borderColor: 'rgba(160,120,255,0.12)',
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#7c3aed',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 30,
+                }}>
+                  {/* Mid ring */}
+                  <View style={{
+                    width: 112, height: 112, borderRadius: 56,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderColor: 'rgba(160,120,255,0.18)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {/* Core orb — glassmorphic */}
+                    <BlurView intensity={50} tint="dark" style={{
+                      width: 84, height: 84, borderRadius: 42,
+                      alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden',
+                      borderWidth: 1,
+                      borderColor: 'rgba(180,140,255,0.30)',
+                    }}>
+                      <LinearGradient
+                        colors={['rgba(120,80,220,0.55)', 'rgba(60,30,120,0.80)']}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <Text style={{ fontSize: 28 }}>🌙</Text>
+                    </BlurView>
+                  </View>
+                </View>
               </View>
 
-              {/* Subtitle / Status Text */}
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', marginTop: 2, paddingHorizontal: 20 }}>
+              {/* ── Editorial Title (Option B) ── */}
+              <Text style={[heroTextStyle, {
+                fontFamily: 'DancingScript_700Bold',
+                letterSpacing: 1.2,
+                fontSize: 32,
+                marginBottom: 10,
+              }]}>
+                {heroContent ? heroContent.header : displayMode.label}
+              </Text>
+
+              {/* ── Ultra-slim status pill ── */}
+              <BlurView intensity={30} tint="dark" style={{
+                paddingHorizontal: 20, paddingVertical: 7,
+                borderRadius: 99, marginBottom: 12,
+                borderWidth: 1, borderColor: 'rgba(160,120,255,0.25)',
+                overflow: 'hidden',
+              }}>
+                <Text style={{ fontSize: 9, color: 'rgba(200,170,255,0.95)', fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase', fontFamily: 'Nunito_700Bold' }}>
+                  {heroContent ? heroContent.actionText : 'Listen & Tune In'}
+                </Text>
+              </BlurView>
+
+              {/* ── Breathing room subtitle (Option C) ── */}
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.8, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', lineHeight: 20, paddingHorizontal: 32 }}>
                 {heroContent ? heroContent.sentence : displayMode.subtitle}
               </Text>
+
+              {/* ── Now Playing Dock — editorial style (Option B+C) ── */}
+              {playingId && (() => {
+                const nowSound = ALL_SOUNDS_LIST.find(s => s.id === playingId);
+                if (!nowSound) return null;
+                return (
+                  <View style={{ marginTop: 24, width: '100%' }}>
+                    <BlurView intensity={60} tint="dark" style={{
+                      borderRadius: 28, overflow: 'hidden',
+                      borderWidth: 1,
+                      borderColor: (nowSound as any).color ? (nowSound as any).color + '40' : 'rgba(255,255,255,0.15)',
+                      shadowColor: (nowSound as any).color ?? '#7c3aed',
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.25, shadowRadius: 20,
+                    }}>
+                      <LinearGradient
+                        colors={[(nowSound as any).top ?? '#0A0818', 'rgba(4,4,14,0.95)']}
+                        style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }}
+                      >
+                        {/* Track color orb */}
+                        <View style={{
+                          width: 46, height: 46, borderRadius: 14,
+                          backgroundColor: (nowSound as any).color ? (nowSound as any).color + '25' : 'rgba(255,255,255,0.1)',
+                          borderWidth: 1, borderColor: (nowSound as any).color ? (nowSound as any).color + '50' : 'rgba(255,255,255,0.2)',
+                          alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Text style={{ fontSize: 22 }}>{(nowSound as any).emoji ?? '🎵'}</Text>
+                        </View>
+
+                        {/* Track info */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, color: (nowSound as any).color ?? '#a78bfa', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>NOW PLAYING</Text>
+                          <Text style={{ fontSize: 16, color: '#fff', fontWeight: '300', fontFamily: 'Nunito_300Light', letterSpacing: 0.5 }} numberOfLines={1}>{(nowSound as any).label}</Text>
+                        </View>
+
+                        {/* Waveform icon + pause */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <Ionicons name="stats-chart" size={14} color={(nowSound as any).color ?? '#a78bfa'} />
+                          <TouchableOpacity
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); togglePause(); }}
+                            style={{
+                              width: 36, height: 36, borderRadius: 18,
+                              backgroundColor: (nowSound as any).color ? (nowSound as any).color + '20' : 'rgba(255,255,255,0.1)',
+                              borderWidth: 1, borderColor: (nowSound as any).color ? (nowSound as any).color + '60' : 'rgba(255,255,255,0.3)',
+                              alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name={isPaused ? 'play' : 'pause'} size={14} color="#fff" style={isPaused ? { marginLeft: 2 } : {}} />
+                          </TouchableOpacity>
+                        </View>
+                      </LinearGradient>
+                    </BlurView>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </View>
@@ -4548,10 +4658,15 @@ function SleepTabInner() {
           </View>
         ) : (
         <>
-        <SonicCollections onSelectCollection={setActiveCollectionId} />
-
-
-
+          {/* ── Editorial section header (Option B) ── */}
+          <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '700', fontFamily: 'Nunito_700Bold', letterSpacing: 2.5, textTransform: 'uppercase' }}>Sonic Therapies</Text>
+              <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+            </View>
+          </View>
+          <SonicCollections onSelectCollection={setActiveCollectionId} />
         </>
         )}
 

@@ -103,63 +103,86 @@ const DEFAULT_STATS: TodayStats = {
   distanceKm: 0, calories: 0, activeMinutes: 0, goalPercent: 0,
 };
 
-// ─── Vastu Yantra Scanner ──────────────────────────────────────────────────────
+// ─── Vastu Yantra — Space Intelligence Scanner ────────────────────────────────
 type VastuDir = { label: string; range: [number, number]; };
 
-type VastuActivity = 'sleep' | 'eat' | 'meditate' | 'work' | 'exercise' | 'study' | 'relax';
+type VastuActivity = 'sleep' | 'meditate' | 'deepwork' | 'movement' | 'eat';
 
-const VASTU_DATA: Record<VastuActivity, { icon: string; label: string; dirs: VastuDir[]; targetColor: string; reason: string; searchingText: string }> = {
-  sleep: { 
-    icon: '🛏️', label: 'Sleep Architecture', 
+const VASTU_DATA: Record<VastuActivity, {
+  icon: string;
+  label: string;        // Short label for card
+  westernLabel: string; // US-friendly headline
+  dirs: VastuDir[];
+  targetColor: string;
+  gradientPair: [string, string];
+  reason: string;
+  benefits: string[];   // 3 benefit pills shown on lock-on
+  scienceNote: string;  // One-liner for science panel
+  searchingText: string;
+}> = {
+  sleep: {
+    icon: '🌙',
+    label: 'Sleep & Recovery',
+    westernLabel: 'Sleep & Recovery',
     dirs: [ { label: 'South', range: [157.5, 202.5] }, { label: 'East', range: [67.5, 112.5] } ],
-    targetColor: '#a78bfa', 
-    reason: "Optimize your sleep architecture. Align your body with the Earth's geomagnetic lines to naturally lower cortisol, reduce sleep latency, and maximize deep REM sleep.",
-    searchingText: "Put your head in the direction pointed by Vastu Scanner for deep sleep optimization"
+    targetColor: '#a78bfa',
+    gradientPair: ['#4c1d95', '#7c3aed'],
+    reason: "Align your body with Earth's geomagnetic field to reduce cortisol, lower sleep latency, and maximize deep REM. Vedic tradition calls this alignment Dakshin — revered for 5,000 years.",
+    benefits: ['Deeper REM', 'Faster Sleep Onset', 'Morning Clarity'],
+    scienceNote: "Geomagnetic alignment reduces electromagnetic interference on the brain's pineal gland — the melatonin command centre.",
+    searchingText: "Rotate until locked · Point your head in this direction while sleeping",
   },
-  eat: { 
-    icon: '🍽️', label: 'Eat', 
-    dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
-    targetColor: '#fcd34d', 
-    reason: "Align with the solar axis to optimize your digestive fire and enhance metabolic rhythm.",
-    searchingText: "Face the direction pointed by Vastu Scanner for mindful nourishment"
-  },
-  meditate: { 
-    icon: '🧘', label: 'Meditate', 
+  meditate: {
+    icon: '🧘',
+    label: 'Mindfulness',
+    westernLabel: 'Mindfulness & Stillness',
     dirs: [ { label: 'North-East', range: [22.5, 67.5] }, { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
-    targetColor: '#e879f9', 
-    reason: "Minimize electromagnetic interference and unlock deep nervous system rest for spiritual clarity.",
-    searchingText: "Face the direction pointed by Vastu Scanner for profound inner peace"
+    targetColor: '#e879f9',
+    gradientPair: ['#701a75', '#a21caf'],
+    reason: "NE and East channels carry the lowest man-made electromagnetic noise. Ancient rishis chose this axis for maximum nervous system coherence and inner stillness.",
+    benefits: ['HRV Boost', 'Nervous System Rest', 'Deeper Stillness'],
+    scienceNote: "Lower ambient EM noise in the North-East quadrant supports parasympathetic dominance — the physiological state of calm.",
+    searchingText: "Rotate until locked · Face this direction during meditation or breathwork",
   },
-  work: { 
-    icon: '💼', label: 'WFH Desk Optimizer', 
+  deepwork: {
+    icon: '⚡',
+    label: 'Deep Focus',
+    westernLabel: 'Deep Work & Flow State',
     dirs: [ { label: 'North', range: [337.5, 22.5] }, { label: 'East', range: [67.5, 112.5] } ],
-    targetColor: '#60a5fa', 
-    reason: "Biohack your workspace orientation. Align your desk to the magnetic North to optimize Alpha brainwaves, increase deep focus, and reduce workflow friction.",
-    searchingText: "Face the direction pointed by Vastu Scanner to enter peak flow state"
+    targetColor: '#60a5fa',
+    gradientPair: ['#1e3a8a', '#1d4ed8'],
+    reason: "Facing North aligns you with geomagnetic flux lines that subtly orient the vestibular system — reducing spatial friction and helping you enter flow states faster at your WFH desk.",
+    benefits: ['Alpha Brainwaves', 'Reduced Distraction', 'Faster Flow Entry'],
+    scienceNote: "North-facing orientation minimises vestibular load, the unconscious effort your brain uses to reorient in space — freeing cognitive bandwidth.",
+    searchingText: "Rotate until locked · Set your desk or screen to face this direction",
   },
-  exercise: { 
-    icon: '🏃', label: 'Exercise', 
+  movement: {
+    icon: '🏃',
+    label: 'Movement',
+    westernLabel: 'Exercise & Vitality',
+    dirs: [ { label: 'East', range: [67.5, 112.5] } ],
+    targetColor: '#f87171',
+    gradientPair: ['#7f1d1d', '#dc2626'],
+    reason: "Facing East during morning movement syncs your body to the rising solar axis — amplifying cortisol's natural morning peak for maximum athletic performance and energy.",
+    benefits: ['Cortisol Sync', 'Peak Energy Output', 'Circadian Boost'],
+    scienceNote: "Solar axis alignment during exercise leverages the cortisol awakening response — your body's built-in performance window in the first 90 minutes post-sunrise.",
+    searchingText: "Rotate until locked · Begin your workout or yoga facing this direction",
+  },
+  eat: {
+    icon: '🥗',
+    label: 'Mindful Eating',
+    westernLabel: 'Mindful Eating & Digestion',
     dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
-    targetColor: '#f87171', 
-    reason: "Sync with the solar alignment to boost vitality, energy flow, and your natural circadian rhythm.",
-    searchingText: "Face the direction pointed by Vastu Scanner for dynamic energy"
+    targetColor: '#fcd34d',
+    gradientPair: ['#78350f', '#b45309'],
+    reason: "Eating while facing East or North aligns your digestive axis with Earth's magnetic field, activating the vagus nerve and supporting parasympathetic digestion — the opposite of stress-eating.",
+    benefits: ['Vagal Tone', 'Better Digestion', 'Mindful Eating'],
+    scienceNote: "Parasympathetic activation during eating (rest & digest) significantly improves nutrient absorption and reduces cortisol-driven over-eating.",
+    searchingText: "Rotate until locked · Sit facing this direction during your meals",
   },
-  study: { 
-    icon: '💻', label: 'Study', 
-    dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
-    targetColor: '#34d399', 
-    reason: "Harness magnetic alignment to support mental retention and reduce spatial disorientation.",
-    searchingText: "Face the direction pointed by Vastu Scanner for crystal clear focus"
-  },
-  relax: { 
-    icon: '🛁', label: 'Relax', 
-    dirs: [ { label: 'West', range: [247.5, 292.5] } ],
-    targetColor: '#94a3b8', 
-    reason: "Embrace the sunset energy to naturally trigger your parasympathetic rest and digest state.",
-    searchingText: "Face the direction pointed by Vastu Scanner to unwind and release"
-  }
 };
 
+// ─── Radar sweep animation helper ────────────────────────────────────────────
 function createOpacity(ranges: [number, number][], isSearching: boolean) {
   const inputRange = [];
   const outputRange = [];
@@ -182,17 +205,29 @@ function createOpacity(ranges: [number, number][], isSearching: boolean) {
   return { inputRange, outputRange };
 }
 
-function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, selectedActivity: VastuActivity | null }) {
+// ─── Premium Vastu Scanner — Real-time Scanning Feel ─────────────────────────
+function VastuScanner({
+  heading, selectedActivity, radarAnim, lockedAnim
+}: {
+  heading: Animated.Value;
+  selectedActivity: VastuActivity | null;
+  radarAnim: Animated.Value;
+  lockedAnim: Animated.Value;
+}) {
   const modHeading = Animated.modulo(Animated.add(heading, 36000), 360);
 
   if (!selectedActivity) {
     return (
-      <View pointerEvents="none" style={{ position: 'absolute', top: -75, left: -100, right: -100, alignItems: 'center' }}>
-        <Text style={{ fontSize: 11, fontWeight: '800', color: '#c084fc', letterSpacing: 3, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, marginBottom: 4 }}>
-          Vastu Energy Scanner
+      <View pointerEvents="none" style={{ position: 'absolute', top: -88, left: -110, right: -110, alignItems: 'center' }}>
+        {/* Idle state — invites user to select */}
+        <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.35)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 5 }}>
+          VASTU YANTRA
         </Text>
-        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-          Select an intention above
+        <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5, textAlign: 'center' }}>
+          Select an intention below
+        </Text>
+        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.3)', marginTop: 4, letterSpacing: 1, textTransform: 'uppercase' }}>
+          Ancient direction intelligence
         </Text>
       </View>
     );
@@ -201,54 +236,123 @@ function VastuScanner({ heading, selectedActivity }: { heading: Animated.Value, 
   const data = VASTU_DATA[selectedActivity];
   const allRanges = data.dirs.map(d => d.range);
   const searchingConfig = createOpacity(allRanges, true);
+  const lockedConfig    = createOpacity(allRanges, false);
   const searchingOpacity = modHeading.interpolate(searchingConfig);
+  const lockedOpacity    = modHeading.interpolate(lockedConfig);
+
+  // Radar sweep rotation
+  const radarDeg = radarAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  // Lock-on glow scale
+  const lockScale = lockedAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.8, 1.15, 1] });
+  const lockGlowOp = lockedAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 1, 0.7] });
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: '50%', marginTop: -220, left: -120, right: -120, alignItems: 'center' }}>
-      {/* Aligned State */}
-      {data.dirs.map((dir, idx) => {
-        const dirConfig = createOpacity([dir.range], false);
-        const opacity = modHeading.interpolate(dirConfig);
-        return (
-          <Animated.View key={idx} style={{ position: 'absolute', alignItems: 'center', opacity }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <View style={{ height: 1.5, width: 24, backgroundColor: data.targetColor, marginRight: 8, shadowColor: data.targetColor, shadowOpacity: 0.8, shadowRadius: 4 }} />
-              <Text style={{ fontSize: 10, fontWeight: '900', color: data.targetColor, letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-                You have reached correct direction
-              </Text>
-              <View style={{ height: 1.5, width: 24, backgroundColor: data.targetColor, marginLeft: 8, shadowColor: data.targetColor, shadowOpacity: 0.8, shadowRadius: 4 }} />
-            </View>
-            <Text style={{ fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: 0.5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8, textAlign: 'center', paddingHorizontal: 10 }}>
-              {selectedActivity === 'sleep' ? `Put your head in this direction and sleep` :
-               selectedActivity === 'meditate' ? `Put your face in this direction to meditate` :
-               selectedActivity === 'eat' ? `Put your face in this direction to have the meal` :
-               selectedActivity === 'work' ? `Put your face in this direction to work` :
-               selectedActivity === 'exercise' ? `Put your face in this direction to exercise` :
-               `Aligned in this direction`}
-            </Text>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: '#fcd34d', marginTop: 8, textTransform: 'uppercase', letterSpacing: 2, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 }}>
-              Zone: {dir.label}
-            </Text>
-          </Animated.View>
-        );
-      })}
+    <View pointerEvents="none" style={{ position: 'absolute', top: '50%', marginTop: -200, left: -130, right: -130, alignItems: 'center' }}>
 
-      {/* Searching State */}
-      <Animated.View style={{ 
-        position: 'absolute', top: 10, alignItems: 'center', 
-        opacity: searchingOpacity 
-      }}>
-        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fcd34d', letterSpacing: 1.2, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, textAlign: 'center', paddingHorizontal: 20 }}>
-          {selectedActivity === 'sleep' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to place your head...` :
-           selectedActivity === 'meditate' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to meditate...` :
-           selectedActivity === 'eat' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to eat...` :
-           selectedActivity === 'work' ? `Searching ${data.dirs.map(d=>d.label).join(' or ')} to work...` :
-           `Searching ${data.dirs.map(d=>d.label).join(' or ')}...`}
+      {/* ── SCANNING state ── */}
+      <Animated.View style={{ position: 'absolute', alignItems: 'center', opacity: searchingOpacity, top: 0 }}>
+        {/* Rotating radar wedge overlay on top of Sri Yantra */}
+        <Animated.View style={{
+          position: 'absolute', top: -110, left: -110, right: -110,
+          alignItems: 'center', justifyContent: 'center',
+          transform: [{ rotate: radarDeg }],
+        }}>
+          <Svg width={220} height={220} viewBox="0 0 220 220">
+            <Defs>
+              <RadialGradient id="radarSweep" cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor={data.targetColor} stopOpacity="0.0" />
+                <Stop offset="60%" stopColor={data.targetColor} stopOpacity="0.18" />
+                <Stop offset="100%" stopColor={data.targetColor} stopOpacity="0.04" />
+              </RadialGradient>
+            </Defs>
+            {/* Radar sweep wedge (60° arc) */}
+            <Path
+              d={`M110,110 L110,10 A100,100 0 0,1 ${110 + 100 * Math.sin(60 * Math.PI / 180)},${110 - 100 * Math.cos(60 * Math.PI / 180)} Z`}
+              fill="url(#radarSweep)"
+            />
+            {/* Leading edge line */}
+            <Line x1="110" y1="110" x2="110" y2="10"
+              stroke={data.targetColor} strokeWidth="1.2" strokeOpacity="0.7"
+            />
+          </Svg>
+        </Animated.View>
+
+        {/* SCANNING badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
+          backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20,
+          borderWidth: 1, borderColor: `${data.targetColor}50`,
+          paddingHorizontal: 14, paddingVertical: 6, marginBottom: 8 }}>
+          {/* Pulsing dot */}
+          <Animated.View style={{
+            width: 6, height: 6, borderRadius: 3,
+            backgroundColor: data.targetColor,
+            opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }),
+          }} />
+          <Text style={{ fontSize: 9, fontWeight: '900', color: data.targetColor, letterSpacing: 2.5, textTransform: 'uppercase' }}>SCANNING</Text>
+        </View>
+
+        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.75)', textAlign: 'center', letterSpacing: 0.3, marginBottom: 4, paddingHorizontal: 16 }}>
+          Searching {data.dirs.map(d => d.label).join(' or ')}
         </Text>
-        <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center', paddingHorizontal: 20 }}>
           {data.searchingText}
         </Text>
       </Animated.View>
+
+      {/* ── LOCKED state ── */}
+      {data.dirs.map((dir, idx) => {
+        const dirConfig = createOpacity([dir.range], false);
+        const dirOp = modHeading.interpolate(dirConfig);
+        return (
+          <Animated.View key={idx} style={{ position: 'absolute', alignItems: 'center', opacity: dirOp, top: 0 }}>
+            {/* Full-aura lock-on glow ring */}
+            <Animated.View style={{
+              position: 'absolute', top: -130,
+              width: 260, height: 260, borderRadius: 130,
+              backgroundColor: `${data.targetColor}15`,
+              transform: [{ scale: lockScale }],
+              opacity: lockGlowOp,
+            }} />
+
+            {/* LOCKED badge */}
+            <Animated.View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: `${data.targetColor}22`,
+              borderRadius: 20, borderWidth: 1.5,
+              borderColor: data.targetColor,
+              paddingHorizontal: 16, paddingVertical: 7,
+              marginBottom: 10,
+              transform: [{ scale: lockScale }],
+            }}>
+              <Text style={{ fontSize: 12 }}>✦</Text>
+              <Text style={{ fontSize: 10, fontWeight: '900', color: data.targetColor, letterSpacing: 2.5, textTransform: 'uppercase' }}>ALIGNED</Text>
+            </Animated.View>
+
+            {/* Direction zone label */}
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.5, textShadowColor: data.targetColor, textShadowRadius: 18, textShadowOffset: { width: 0, height: 0 }, textAlign: 'center', marginBottom: 4 }}>
+              {dir.label}
+            </Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textAlign: 'center', marginBottom: 12 }}>
+              {selectedActivity === 'sleep' ? 'Head pointing this direction' :
+               selectedActivity === 'meditate' ? 'Face this direction' :
+               selectedActivity === 'deepwork' ? 'Screen / desk this direction' :
+               selectedActivity === 'movement' ? 'Begin exercise facing this way' :
+               'Sit facing this direction'}
+            </Text>
+
+            {/* Benefit pills */}
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {data.benefits.map((b, bi) => (
+                <View key={bi} style={{ backgroundColor: `${data.targetColor}25`, borderRadius: 12,
+                  borderWidth: 1, borderColor: `${data.targetColor}60`,
+                  paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: data.targetColor, letterSpacing: 0.5 }}>✓ {b}</Text>
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+        );
+      })}
     </View>
   );
 }
@@ -538,6 +642,12 @@ export default function WalkTab() {
   const selectedActivityRef = useRef<VastuActivity | null>(null);
   useEffect(() => { selectedActivityRef.current = selectedActivity; }, [selectedActivity]);
   const [energizeModalVisible, setEnergizeModalVisible] = useState(false);
+  const [sciencePanelOpen, setSciencePanelOpen] = useState(false);
+  const [currentHeadingDeg, setCurrentHeadingDeg] = useState(0);
+  const sciencePanelHeight = useRef(new Animated.Value(0)).current;
+  // Radar sweep + lock-on animations for VastuScanner
+  const radarAnim  = useRef(new Animated.Value(0)).current;
+  const lockedAnim = useRef(new Animated.Value(0)).current;
   const [stats,        setStats]        = useState<TodayStats>(DEFAULT_STATS);
   const [weekData,     setWeekData]     = useState<DailyData[]>([]);
   const [isAvailable,  setIsAvailable]  = useState(true);
@@ -599,6 +709,25 @@ export default function WalkTab() {
   const [compassActive, setCompassActive] = useState<boolean>(false);
   const compassAnim = useRef(new Animated.Value(0)).current;
   let lastHeading = 0;
+
+  // ── Start / stop radar sweep based on compass active ──────────────────────
+  useEffect(() => {
+    if (compassActive) {
+      Animated.loop(
+        Animated.timing(radarAnim, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: true })
+      ).start();
+    } else {
+      radarAnim.stopAnimation();
+      radarAnim.setValue(0);
+    }
+  }, [compassActive]);
+
+  // Science panel toggle
+  const toggleSciencePanel = () => {
+    const toValue = sciencePanelOpen ? 0 : 1;
+    setSciencePanelOpen(!sciencePanelOpen);
+    Animated.spring(sciencePanelHeight, { toValue, useNativeDriver: false, friction: 10, tension: 80 }).start();
+  };
 
   // ── Feature 4: Heartbeat press ─────────────────────────────────────────────
   const heartbeatScale = useRef(new Animated.Value(1)).current;
@@ -951,6 +1080,7 @@ export default function WalkTab() {
             else if (diff < -180) diff += 360;
             
             let newHeading = lastHeading + diff;
+            setCurrentHeadingDeg(Math.round((newHeading % 360 + 360) % 360));
             
             Animated.spring(compassAnim, {
               toValue: newHeading,
@@ -979,9 +1109,18 @@ export default function WalkTab() {
 
               if (isAligned && !wasAlignedRef.current) {
                 wasAlignedRef.current = true;
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                // Premium 3-pulse lock-on haptic sequence
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 100);
+                setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 220);
+                // Play lock-on animation
+                Animated.sequence([
+                  Animated.timing(lockedAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.back(2)), useNativeDriver: false }),
+                  Animated.timing(lockedAnim, { toValue: 0.7, duration: 500, useNativeDriver: false }),
+                ]).start();
               } else if (!isAligned) {
                 wasAlignedRef.current = false;
+                lockedAnim.setValue(0);
               }
             }
 
@@ -1165,9 +1304,12 @@ export default function WalkTab() {
 
   return (
     <ImageBackground
-      source={{ uri: getBgSourceSync(stepBgKey as any) }}
+      source={{ uri: 'https://images.pexels.com/photos/29943761/pexels-photo-29943761.jpeg' }}
       style={[{ flex: 1, backgroundColor: accentColor || BG_DARK }]}
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
+      {/* iOS Premium Filter Overlay */}
+      <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5, 8, 18, 0.5)' }]} />
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -1196,7 +1338,7 @@ export default function WalkTab() {
           paddingBottom: getTabBarClearance(insets.bottom, !!playingId, stepBarActive),
         }}
       >
-        {/* ── HEADER ────────────────────────────────────── */}
+        {/* ── HEADER — Vastu Yantra Space Intelligence ─── */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], marginBottom: 0 }}>
           <Animated.View style={{
             width: '100%',
@@ -1205,81 +1347,243 @@ export default function WalkTab() {
             transform: [{ translateY: headerTopPad }],
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
-              <View style={{ flex: 1 }} />
+              {/* Left — live heading badge */}
+              <View style={{ flex: 1 }}>
+                {compassActive && (
+                  <View style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: 'rgba(0,0,0,0.45)',
+                    borderRadius: 12, borderWidth: 1,
+                    borderColor: selectedActivity ? `${VASTU_DATA[selectedActivity].targetColor}50` : 'rgba(255,255,255,0.12)',
+                    paddingHorizontal: 10, paddingVertical: 5,
+                  }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: selectedActivity ? VASTU_DATA[selectedActivity].targetColor : '#fff', fontVariant: ['tabular-nums'] }}>
+                      {currentHeadingDeg}°
+                    </Text>
+                    <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                      {getCardinalLabel(currentHeadingDeg)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Centre — title */}
               <View style={{ alignItems: 'center' }}>
                 <Text style={{
-                  fontSize: 34,
+                  fontSize: 30,
                   fontWeight: '600',
                   color: '#FFF',
                   letterSpacing: 0.5,
                   fontFamily: 'DancingScript_600SemiBold',
-                  textShadowColor: 'rgba(96,165,250,0.8)',
+                  textShadowColor: 'rgba(167,139,250,0.9)',
                   textShadowOffset: { width: 0, height: 2 },
                   textShadowRadius: 18,
                   textAlign: 'center',
-                  marginBottom: 4,
+                  marginBottom: 2,
                 }}>
                   Vastu Yantra
                 </Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, fontWeight: '500', textTransform: 'uppercase' }}>
-                  Sacred Space & Energy Scanner
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' }}>
+                  Space Intelligence
                 </Text>
               </View>
+
+              {/* Right — garden icon */}
               <View style={{ flex: 1, alignItems: 'flex-end', paddingTop: 4 }}>
-                <TouchableOpacity onPress={() => router.push('/garden' as never)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <Ionicons name="leaf" size={20} color="#fff" />
+                <TouchableOpacity onPress={() => router.push('/garden' as never)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <Ionicons name="leaf" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
           </Animated.View>
         </Animated.View>
 
+        {/* ── ACTIVATE + ACTIVITY GRID ──────────────────── */}
+        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 12, zIndex: 10, paddingHorizontal: 20 }}>
 
-        {/* Vastu Scanner Toggle Button & Pills */}
-        <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], alignItems: 'center', marginBottom: 16, zIndex: 10 }}>
+          {/* Activate / Deactivate Button */}
           <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setCompassActive(!compassActive); if(compassActive) setSelectedActivity(null); }}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setCompassActive(!compassActive);
+              if (compassActive) { setSelectedActivity(null); setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+            }}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: compassActive ? 'rgba(192,132,252,0.15)' : 'rgba(0, 0, 0, 0.4)',
-              borderWidth: 1, borderColor: compassActive ? 'rgba(192,132,252,0.4)' : 'rgba(255,255,255,0.2)',
-              paddingHorizontal: 24, paddingVertical: 10,
-              borderRadius: 30,
-              overflow: 'hidden',
-              shadowColor: compassActive ? '#c084fc' : '#000',
+              backgroundColor: compassActive ? 'rgba(167,139,250,0.15)' : 'rgba(0,0,0,0.45)',
+              borderWidth: 1.2,
+              borderColor: compassActive ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.18)',
+              paddingHorizontal: 26, paddingVertical: 11,
+              borderRadius: 32, overflow: 'hidden',
+              shadowColor: compassActive ? '#a78bfa' : '#000',
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 5,
+              shadowOpacity: compassActive ? 0.4 : 0.2,
+              shadowRadius: 12, elevation: 6,
+              marginBottom: 14,
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
             <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <Ionicons name={compassActive ? "scan-outline" : "finger-print-outline"} size={14} color={compassActive ? "#c084fc" : "#FFF"} />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: compassActive ? '#c084fc' : '#FFF', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-              {compassActive ? "Scanning Space..." : "Tap to Scan Space"}
+            {/* Pulsing dot when active */}
+            {compassActive && (
+              <Animated.View style={{
+                width: 7, height: 7, borderRadius: 3.5,
+                backgroundColor: '#a78bfa',
+                opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }),
+              }} />
+            )}
+            <Ionicons
+              name={compassActive ? 'radio-outline' : 'compass-outline'}
+              size={14}
+              color={compassActive ? '#a78bfa' : '#FFF'}
+            />
+            <Text style={{ fontSize: 11, fontWeight: '800', color: compassActive ? '#a78bfa' : '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              {compassActive ? 'Space Scanning Active' : 'Activate Space Scanner'}
             </Text>
           </TouchableOpacity>
 
-          {compassActive && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16, width: '100%' }} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
-              {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => (
+          {/* Activity Card Grid — always visible to invite interaction */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' }}>
+            {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
+              const d = VASTU_DATA[act];
+              const isSelected = selectedActivity === act;
+              return (
                 <TouchableOpacity
                   key={act}
-                  onPress={() => { Haptics.selectionAsync(); setSelectedActivity(act); }}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (!compassActive) {
+                      setCompassActive(true);
+                    }
+                    setSelectedActivity(isSelected ? null : act);
+                    if (isSelected) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+                  }}
+                  activeOpacity={0.8}
                   style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 6,
-                    backgroundColor: selectedActivity === act ? `${VASTU_DATA[act].targetColor}30` : 'rgba(0,0,0,0.4)',
-                    borderWidth: 1, borderColor: selectedActivity === act ? VASTU_DATA[act].targetColor : 'rgba(255,255,255,0.15)',
-                    paddingHorizontal: 16, paddingVertical: 8,
-                    borderRadius: 20,
+                    width: (W - 60) / 2,
+                    borderRadius: 20, overflow: 'hidden',
+                    borderWidth: 1.2,
+                    borderColor: isSelected ? d.targetColor : 'rgba(255,255,255,0.10)',
+                    shadowColor: isSelected ? d.targetColor : '#000',
+                    shadowOffset: { width: 0, height: isSelected ? 6 : 2 },
+                    shadowOpacity: isSelected ? 0.45 : 0.2,
+                    shadowRadius: isSelected ? 14 : 6,
+                    elevation: isSelected ? 10 : 3,
                   }}
                 >
-                  <Text style={{ fontSize: 14 }}>{VASTU_DATA[act].icon}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: selectedActivity === act ? VASTU_DATA[act].targetColor : '#FFF', textTransform: 'uppercase', letterSpacing: 1 }}>{VASTU_DATA[act].label}</Text>
+                  <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  {isSelected && (
+                    <LinearGradient
+                      colors={[`${d.targetColor}28`, `${d.targetColor}08`]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  )}
+                  {/* Top accent line when selected */}
+                  {isSelected && (
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: d.targetColor, borderTopLeftRadius: 20, borderTopRightRadius: 20 }} />
+                  )}
+                  <View style={{ padding: 14 }}>
+                    {/* Icon + status row */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <View style={{
+                        width: 38, height: 38, borderRadius: 19,
+                        backgroundColor: isSelected ? `${d.targetColor}25` : 'rgba(255,255,255,0.06)',
+                        borderWidth: 1,
+                        borderColor: isSelected ? `${d.targetColor}60` : 'rgba(255,255,255,0.08)',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 18 }}>{d.icon}</Text>
+                      </View>
+                      {isSelected && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3,
+                          backgroundColor: `${d.targetColor}20`, borderRadius: 8,
+                          paddingHorizontal: 6, paddingVertical: 3 }}>
+                          <Animated.View style={{
+                            width: 4, height: 4, borderRadius: 2,
+                            backgroundColor: d.targetColor,
+                            opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }),
+                          }} />
+                          <Text style={{ fontSize: 7, fontWeight: '900', color: d.targetColor, letterSpacing: 1 }}>LIVE</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Label */}
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: isSelected ? '#fff' : 'rgba(255,255,255,0.75)', letterSpacing: 0.3, marginBottom: 3 }}>
+                      {d.westernLabel}
+                    </Text>
+
+                    {/* Direction hint */}
+                    <Text style={{ fontSize: 9, fontWeight: '600', color: isSelected ? `${d.targetColor}CC` : 'rgba(255,255,255,0.35)', letterSpacing: 0.5 }}>
+                      → {d.dirs.map(dr => dr.label).join(' · ')}
+                    </Text>
+
+                    {/* Benefits row (only when selected) */}
+                    {isSelected && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                        {d.benefits.map((b, bi) => (
+                          <View key={bi} style={{ backgroundColor: `${d.targetColor}20`, borderRadius: 6,
+                            paddingHorizontal: 6, paddingVertical: 2 }}>
+                            <Text style={{ fontSize: 8, fontWeight: '700', color: d.targetColor }}>• {b}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              );
+            })}
+          </View>
+
+          {/* Science Panel toggle — only when an activity is selected */}
+          {selectedActivity && (
+            <TouchableOpacity
+              onPress={toggleSciencePanel}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                marginTop: 12, paddingHorizontal: 14, paddingVertical: 7,
+                borderRadius: 16, borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.12)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={sciencePanelOpen ? 'chevron-up' : 'flask-outline'} size={12} color="rgba(255,255,255,0.6)" />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>
+                {sciencePanelOpen ? 'Hide Science' : 'Why This Works'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Science Panel — animated expand */}
+          {selectedActivity && (
+            <Animated.View style={{
+              overflow: 'hidden',
+              maxHeight: sciencePanelHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 180] }),
+              opacity: sciencePanelHeight,
+              width: '100%', marginTop: 6,
+            }}>
+              <View style={{
+                backgroundColor: 'rgba(255,255,255,0.04)',
+                borderRadius: 16, borderWidth: 1,
+                borderColor: `${VASTU_DATA[selectedActivity].targetColor}30`,
+                padding: 14,
+              }}>
+                <Text style={{ fontSize: 8, fontWeight: '900', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
+                  THE SCIENCE
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)', lineHeight: 18, marginBottom: 8 }}>
+                  {VASTU_DATA[selectedActivity].scienceNote}
+                </Text>
+                <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 }} />
+                <Text style={{ fontSize: 8, fontWeight: '700', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+                  VEDIC ORIGIN
+                </Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 16 }}>
+                  {VASTU_DATA[selectedActivity].reason}
+                </Text>
+              </View>
+            </Animated.View>
           )}
         </Animated.View>
 
@@ -1412,7 +1716,12 @@ export default function WalkTab() {
                       { alignItems: 'center', justifyContent: 'center', opacity: 0.9 },
                     ]}>
                       <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} selectedActivity={selectedActivity} />
-                      <VastuScanner heading={compassAnim} selectedActivity={selectedActivity} />
+                      <VastuScanner
+                        heading={compassAnim}
+                        selectedActivity={selectedActivity}
+                        radarAnim={radarAnim}
+                        lockedAnim={lockedAnim}
+                      />
                     </View>
                   )}
 
