@@ -1,4 +1,4 @@
-'use client';
+
 import { Component, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
-  Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
+  Nunito_300Light, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold,
   Nunito_800ExtraBold, Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
@@ -755,7 +755,10 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       // 2500ms was causing "frozen then sudden jump" visual sticking.
       duration: progress >= 1 ? 600 : 400,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: true
+      // MUST be false: offsetMainAnim drives strokeDashoffset on an SVG
+      // AnimatedCircle. SVG props are not handled by the native driver —
+      // using true here causes a fatal crash on Android at ~10% progress.
+      useNativeDriver: false
     }).start();
   }, [progress]);
 
@@ -1680,7 +1683,7 @@ type AppPhase = 'gate' | 'downloading' | 'downloading_done' | 'splash' | 'done';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold,
+    Nunito_300Light, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold,
     Nunito_800ExtraBold, Nunito_900Black,
     DancingScript_600SemiBold,
   });

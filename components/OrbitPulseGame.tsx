@@ -73,6 +73,7 @@ type Obstacle = { x: number; y: number; w: number; h: number; id: number; type: 
 const LABELS = ['JOY', 'CALM', 'BREATHE', 'FLOW', 'PEACE', 'LOVE', 'HEAL', 'REST'];
 
 function getPlatforms(chunk: number): GamePlatform[] {
+  'worklet';
   if (chunk < 1) return [];
   const r1 = Math.abs(Math.sin(chunk * 127.1 + 311.7)) % 1;
   const r2 = Math.abs(Math.sin(chunk * 269.5 + 183.3)) % 1;
@@ -87,6 +88,7 @@ function getPlatforms(chunk: number): GamePlatform[] {
 }
 
 function getCoins(chunk: number): Coin[] {
+  'worklet';
   if (chunk < 1) return [];
   const r  = Math.abs(Math.sin(chunk * 75.3  + 457.1)) % 1;
   const r2 = Math.abs(Math.sin(chunk * 132.7 + 89.2))  % 1;
@@ -109,6 +111,7 @@ function getCoins(chunk: number): Coin[] {
 }
 
 function getObstacles(chunk: number): Obstacle[] {
+  'worklet';
   if (chunk < 3) return [];
   const r = Math.abs(Math.sin(chunk * 211.3 + 19.1)) % 1;
   if (r < 0.4) return [];
@@ -251,22 +254,23 @@ const GroundTiles = React.memo(({ worldX }: { worldX: SharedValue<number> }) => 
 
 // ─── World Items (rendered in screen-space from JS state) ────────────────────
 type WorldState = {
-  worldX: number;
+  chunk0: number;
   consumed: Record<number, boolean>;
 };
 
 const WorldItems = React.memo(({ ws }: { ws: WorldState }) => {
-  const { worldX, consumed } = ws;
-  const chunk0 = Math.max(0, Math.floor(worldX / CHUNK_W) - 1);
+  const { chunk0, consumed } = ws;
   const visibleChunks = [chunk0, chunk0 + 1, chunk0 + 2, chunk0 + 3];
 
   const platforms: GamePlatform[] = visibleChunks.flatMap(getPlatforms);
   const coins: Coin[]         = visibleChunks.flatMap(getCoins);
   const obstacles: Obstacle[] = visibleChunks.flatMap(getObstacles);
 
+  const offsetX = chunk0 * CHUNK_W;
+
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Svg width={W} height={H}>
+    <View style={{ position: 'absolute', left: offsetX, top: 0, width: 4 * CHUNK_W, height: H }} pointerEvents="none">
+      <Svg width={4 * CHUNK_W} height={H}>
         <Defs>
           <SvgLinearGradient id="brick" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#f97316" stopOpacity="1" />
@@ -285,8 +289,8 @@ const WorldItems = React.memo(({ ws }: { ws: WorldState }) => {
 
         {/* ── Platforms ── */}
         {platforms.map(p => {
-          const sx = p.x - worldX;
-          if (sx > W + 20 || sx + p.w < -20) return null;
+          const sx = p.x - offsetX;
+          if (sx > 4 * CHUNK_W + 20 || sx + p.w < -20) return null;
           const bw = 30;
           const bc = Math.ceil(p.w / bw);
           return (
@@ -310,8 +314,8 @@ const WorldItems = React.memo(({ ws }: { ws: WorldState }) => {
         {/* ── Coins ── */}
         {coins.map(coin => {
           if (consumed[coin.id]) return null;
-          const sx = coin.x - worldX;
-          if (sx > W + 30 || sx < -30) return null;
+          const sx = coin.x - offsetX;
+          if (sx > 4 * CHUNK_W + 30 || sx < -30) return null;
           return (
             <G key={coin.id}>
               <Circle cx={sx} cy={coin.y} r={16} fill="rgba(251,191,36,0.18)" />
@@ -340,8 +344,8 @@ const WorldItems = React.memo(({ ws }: { ws: WorldState }) => {
 
         {/* ── Obstacles ── */}
         {obstacles.map(obs => {
-          const sx = obs.x - worldX;
-          if (sx > W + 40 || sx < -40) return null;
+          const sx = obs.x - offsetX;
+          if (sx > 4 * CHUNK_W + 40 || sx < -40) return null;
           if (obs.type === 'thorn') {
             const { y, w, h } = obs;
             return (
@@ -534,7 +538,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
   const [gameOver,       setGameOver]       = useState(false);
   const [showTutorial,   setShowTutorial]   = useState(true);
   const [showQuit,       setShowQuit]       = useState(false);
-  const [worldState,     setWorldState]     = useState<WorldState>({ worldX: 0, consumed: {} });
+  const [worldState,     setWorldState]     = useState<WorldState>({ chunk0: 0, consumed: {} });
   const [popups,         setPopups]         = useState<Array<{ id: number; type: 'label'|'pts'; text: string; pts?: number }>>([]);
 
   const popIdRef   = useRef(0);
@@ -601,9 +605,9 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     setPopups(p => p.filter(x => x.id !== id));
   }, []);
 
-  // Throttled world state sync (render at ~30fps from UI thread worldX)
-  const syncWorldState = useCallback((wx: number, cons: Record<number, boolean>) => {
-    setWorldState({ worldX: wx, consumed: cons });
+  // Throttled world state sync
+  const syncWorldState = useCallback((c0: number, cons: Record<number, boolean>) => {
+    setWorldState({ chunk0: c0, consumed: cons });
   }, []);
 
   const onCoinHit = useCallback((label: string) => {
@@ -646,8 +650,9 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
-  // ── Sync rate limiter ──
-  const lastSync = useSharedValue(0);
+  // ── Sync rate limiters ──
+  const lastSyncChunk = useSharedValue(-1);
+  const lastDistSync  = useSharedValue(0);
 
   // ── Game Loop ──
   useFrameCallback(({ timeSincePreviousFrame }) => {
@@ -714,6 +719,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
           consumed.value  = m;
           auraScale.value = withTiming(Math.min(auraScale.value + 0.22, 2.2), { duration: 240 });
           runOnJS(onCoinHit)(coin.label);
+          runOnJS(syncWorldState)(ci0, consumed.value); // force update rendering for picked up coin
         }
       }
     }
@@ -741,22 +747,25 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     // Aura decay
     if (auraScale.value > 1) auraScale.value = Math.max(1, auraScale.value - 0.25 * dt);
 
-    // Distance tick
-    runOnJS(onDistTick)(worldX.value);
-
-    // Sync render state ~30fps
+    // Distance tick throttled
     const now = Date.now();
-    if (now - lastSync.value > 33) {
-      lastSync.value = now;
-      runOnJS(syncWorldState)(worldX.value, consumed.value);
+    if (now - lastDistSync.value > 150) {
+      lastDistSync.value = now;
+      runOnJS(onDistTick)(worldX.value);
+    }
+
+    // Sync chunk state for rendering
+    if (ci0 !== lastSyncChunk.value) {
+      lastSyncChunk.value = ci0;
+      runOnJS(syncWorldState)(ci0, consumed.value);
     }
   });
 
   // ── Gestures ──
-  const tapGesture = Gesture.Tap().onEnd(() => {
+  const tapGesture = Gesture.Tap().runOnJS(true).onEnd(() => {
     if (gameOver || showQuit) return;
     if (showTutorial) {
-      runOnJS(setShowTutorial)(false);
+      setShowTutorial(false);
       isPlaying.value = true;
       return;
     }
@@ -766,10 +775,10 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
       isGrounded.value = false;
       isJumping.value  = true;
       jumpCount.value += 1;
-      runOnJS(doJumpHaptic)();
+      doJumpHaptic();
     }
   });
-  const holdGesture = Gesture.LongPress().minDuration(180)
+  const holdGesture = Gesture.LongPress().minDuration(180).runOnJS(true)
     .onBegin(() => { isPressing.value = true; })
     .onFinalize(() => { isPressing.value = false; });
   const combined = Gesture.Simultaneous(tapGesture, holdGesture);
@@ -785,7 +794,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
     scoreRef.current = 0; comboRef.current = 0;
     setScore(0); setDistance(0); setHealth(3); setCombo(0);
     setGameOver(false); setPopups([]);
-    setWorldState({ worldX: 0, consumed: {} });
+    setWorldState({ chunk0: 0, consumed: {} });
     isPlaying.value = true;
   }, []);
 
@@ -798,6 +807,7 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
   // ── Animated styles ──
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOp.value }));
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+  const worldTranslateStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -worldX.value }] }));
 
   // ── Render ──
   return (
@@ -813,8 +823,10 @@ export default function OrbitPulseGame({ visible, onClose }: { visible: boolean;
 
             {/* Shake wrapper */}
             <Animated.View style={[StyleSheet.absoluteFillObject, shakeStyle]} pointerEvents="none">
-              {/* World items — JS-rendered, only visible chunks */}
-              <WorldItems ws={worldState} />
+              {/* World items — JS-rendered, translated smoothly on UI thread */}
+              <Animated.View style={worldTranslateStyle}>
+                <WorldItems ws={worldState} />
+              </Animated.View>
               {/* Ground tiles */}
               <GroundTiles worldX={worldX} />
               {/* Player */}
