@@ -45,6 +45,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import type { MoodKey } from '@/components/MoodSheet';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
+import { SplashGeometricAnimation } from '@/components/SplashGeometricAnimation';
 
 // Prevent the native splash from auto-hiding.
 // We dismiss it dynamically when leaving the 'gate' phase to avoid flashes.
@@ -206,7 +207,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
 
         {/* Cosmic Geometric Animation — let it breathe cleanly without video behind it */}
         <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 1.0} variant="splash" opacity={0.65} />
+          <SplashGeometricAnimation size={SW * 1.0} opacity={0.65} />
         </Animated.View>
 
         {/* Ultra Premium "NADA" Text */}

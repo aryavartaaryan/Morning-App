@@ -2122,11 +2122,11 @@ function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; suns
 }
 
 const ReelCard = memo(function ReelCard({
-  sound, isActive, isPlaying, isPaused, sessionSecs, stopIdx,
+  sound, isActive, isPlaying, isPaused, stopIdx,
   onPlay, onToggle, onStop, onChangeTimer, onPrev, onNext, isFirst, isLast,
 }: {
   sound: PlayableSoundMeta; isActive: boolean;
-  isPlaying: boolean; isPaused: boolean; sessionSecs: number; stopIdx: number;
+  isPlaying: boolean; isPaused: boolean; stopIdx: number;
   onPlay: () => void; onToggle: () => void; onStop: () => void;
   onChangeTimer: (i: number) => void;
   onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
@@ -2134,7 +2134,8 @@ const ReelCard = memo(function ReelCard({
   const { accentColor, solarTimes } = useBgContext();
   const isNight = checkIsNightTime(solarTimes);
   const activeDurationOptions = isNight ? REEL_DURATION_OPTIONS : REEL_DURATION_OPTIONS.filter(o => o.id !== 'night');
-  const { playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, getMeteringLevel } = useSoundPlayer();
+  const { sessionSecs: ctxSessionSecs, playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, getMeteringLevel } = useSoundPlayer();
+  const sessionSecs = isPlaying ? ctxSessionSecs : 0;
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -2599,13 +2600,35 @@ const ReelCard = memo(function ReelCard({
         </View>
 
         <Animated.View style={{
+          position: 'absolute',
+          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
+          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
+          alignItems: 'center',
+          justifyContent: 'center',
           transform: [{
             scale: isActive ? meteringAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [1, 1.1]
+              outputRange: [1, 1.15]
             }) : 1
           }]
         }}>
+          {/* ── Central Energy Core ── */}
+          {isActive && (
+            <Animated.View style={{
+              position: 'absolute',
+              width: 30, height: 30,
+              borderRadius: 15,
+              backgroundColor: sound.color ?? '#fff',
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.15, 0.6, 1] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 2.5] }) }],
+              shadowColor: sound.color ?? '#fff',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1,
+              shadowRadius: 20,
+              zIndex: 0,
+            }} />
+          )}
+
           <HeroGeometricAnimation 
             variant="sound" 
             size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} 
@@ -2968,7 +2991,6 @@ const ReelCard = memo(function ReelCard({
          prev.isActive === next.isActive &&
          prev.isPlaying === next.isPlaying &&
          prev.isPaused === next.isPaused &&
-         prev.sessionSecs === next.sessionSecs &&
          prev.stopIdx === next.stopIdx &&
          prev.isFirst === next.isFirst &&
          prev.isLast === next.isLast;
@@ -3032,18 +3054,19 @@ function ReelProgressBar({ progress, color }: { progress: number; color: string 
 }
 
 const SoundReelsModal = memo(function SoundReelsModal({
-  visible, startIndex, playingId, isPaused, sessionSecs, stopIdx,
+  visible, startIndex, playingId, isPaused, stopIdx,
   onPlaySound, onToggle, onStop, onStopSilent, onClose, onChangeTimer,
-  onOpenLibrary,
+  onOpenLibrary, preBufferSound, cleanPreBuffer
 }: {
   visible: boolean; startIndex: number;
-  playingId: string | null; isPaused: boolean; sessionSecs: number; stopIdx: number;
+  playingId: string | null; isPaused: boolean; stopIdx: number;
   onPlaySound: (id: string) => void; onToggle: () => void; onStop: () => void;
   onStopSilent: () => void;
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
   onOpenLibrary?: (category: string) => void;
+  preBufferSound: (s: PlayableSoundMeta) => Promise<void>;
+  cleanPreBuffer: () => Promise<void>;
 }) {
-  const { preBufferSound, cleanPreBuffer } = useSoundPlayer();
   const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList>(null);
   const [reelData, setReelData] = useState(REELS_ALL_SOUNDS);
@@ -3293,7 +3316,6 @@ const SoundReelsModal = memo(function SoundReelsModal({
                 isActive={activeIndex === index}
                 isPlaying={playingId === item.id}
                 isPaused={isPaused && playingId === item.id}
-                sessionSecs={playingId === item.id ? sessionSecs : 0}
                 stopIdx={stopIdx}
                 onPlay={() => onPlaySound(item.id)}
                 onToggle={onToggle}
@@ -3630,7 +3652,6 @@ const SoundReelsModal = memo(function SoundReelsModal({
          prev.startIndex === next.startIndex &&
          prev.playingId === next.playingId &&
          prev.isPaused === next.isPaused &&
-         prev.sessionSecs === next.sessionSecs &&
          prev.stopIdx === next.stopIdx;
 });
 
@@ -3641,14 +3662,15 @@ const SoundReelsModal = memo(function SoundReelsModal({
 const COLLECTION_PREMIUM_ICON = 'musical-notes';
 
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
-  // Edge-to-edge flush masonry grid: 1px gap in the middle
-  const colW = (W - 1) / 2;
-  const premiumColH = Math.round(colW * 1.55); // Tall editorial poster format
+  // Elegant smart premium capsule design (2 columns)
+  const gap = 16;
+  const colW = Math.floor((W - 32 - gap) / 2);
+  const colH = Math.floor(colW * 1.7); // Capsule aspect ratio
+  const capsuleRadius = colW / 2; // Perfect semicircle top and bottom
 
   return (
-    <View style={{ paddingHorizontal: 0, paddingBottom: 28 }}>
-      {/* Section header needs its own padding since the container is edge-to-edge */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 24, marginTop: 12 }}>
+    <View style={{ paddingHorizontal: 16, paddingBottom: 28 }}>
+      <View style={{ marginBottom: 24, marginTop: 12 }}>
         <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
           SONIC THERAPIES
         </Text>
@@ -3660,7 +3682,6 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
         </Text>
       </View>
 
-      {/* 2-column edge-to-edge flush grid */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         {SONIC_COLLECTIONS.map((col, idx) => {
           const soundCount = col.soundIds.length;
@@ -3670,60 +3691,48 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
               activeOpacity={0.88}
               onPress={() => onSelectCollection(col.id)}
               style={{
-                width: colW, height: premiumColH,
-                marginBottom: 1, // 1px vertical gap between rows
+                width: colW, height: colH,
+                borderRadius: capsuleRadius,
+                backgroundColor: 'rgba(10,12,18,0.7)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.06)',
                 overflow: 'hidden',
-                backgroundColor: '#050505',
+                alignItems: 'center',
+                marginBottom: gap,
               }}
             >
-              {/* Full-bleed artwork with no borders */}
-              <Image source={{ uri: col.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-              
-              {/* Deep central vignette for extreme text readability */}
-              <LinearGradient
-                colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.85)']}
-                locations={[0, 0.45, 1]}
-                style={StyleSheet.absoluteFillObject}
-              />
-              
-              {/* Subtle colour wash */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} />
+              {/* Top half: Circular Artwork */}
+              <View style={{ width: colW, height: colW, overflow: 'hidden' }}>
+                <Image source={{ uri: col.imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                {/* Seamless blend from image into the dark card background */}
+                <LinearGradient
+                  colors={['transparent', 'rgba(10,12,18,0.8)', 'rgba(10,12,18,1)']}
+                  locations={[0.5, 0.9, 1]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              </View>
 
-              {/* Centered Editorial Content — Movie Poster Style */}
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 14 }}>
-                
-                {/* Glowing Badge */}
-                <View style={{ marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: col.themeColor+'60', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 24, backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                  <Text style={{ fontSize: 8, color: col.themeColor, letterSpacing: 2.5, fontFamily: 'Nunito_700Bold' }}>
-                    {col.subtitle.toUpperCase()}
-                  </Text>
-                </View>
+              {/* Theme color subtle glow/wash inside the card */}
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.07 }]} />
 
-                {/* Title (Allowed to wrap naturally so full names are visible) */}
+              {/* Text Area (Bottom Half) - Completely centered & smart */}
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingBottom: 16, width: '100%' }}>
+                <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
+                  {col.subtitle.toUpperCase()}
+                </Text>
+
                 <Text
-                  style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', lineHeight: 28, marginBottom: 14, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}
+                  style={{ fontSize: 20, color: '#fff', fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', lineHeight: 24, marginBottom: 8 }}
+                  numberOfLines={3}
                 >
                   {col.title}
                 </Text>
 
-                {/* Theme Divider */}
-                <View style={{ width: 32, height: 1, backgroundColor: col.themeColor+'AA', marginBottom: 14 }} />
+                <View style={{ width: 24, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 8 }} />
 
-                {/* Explore Link */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
-                    EXPLORE
-                  </Text>
-                  <Ionicons name="arrow-forward" size={10} color={col.themeColor} />
-                </View>
-
-                {/* Track count pinned to bottom */}
-                <View style={{ position: 'absolute', bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6 }}>
-                  <Ionicons name="albums-outline" size={10} color="#fff" />
-                  <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700', letterSpacing: 1.1, fontFamily: 'Nunito_700Bold' }}>
-                    {soundCount} TRACKS
-                  </Text>
-                </View>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
+                  {soundCount} TRACKS
+                </Text>
               </View>
             </TouchableOpacity>
           );
@@ -4081,7 +4090,7 @@ function SleepTabInner() {
   }, [searchQuery]);
 
   // ── Global sound player (context) ──────────────────────────
-  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer } = useSoundPlayer();
 
   // ── Settings ───────────────────────────────────────────────
   const [wakeHour,      setWakeHour]      = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.hour);
@@ -4333,7 +4342,12 @@ function SleepTabInner() {
     setShowReels(false);
   }, []);
 
-  const changeStopTimer = (idx: number) => {
+  const handleOpenLibrary = useCallback((cat: string) => {
+    setLibraryInitialCat(cat);
+    setLibraryOpen(true);
+  }, []);
+
+  const changeStopTimer = useCallback((idx: number) => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (idx === -1) {
@@ -4385,7 +4399,7 @@ function SleepTabInner() {
     } catch (e) {
       console.warn('Error in changeStopTimer:', e);
     }
-  };
+  }, [changeTimer, playingId, playSound, sleepTabDurationSecs]);
 
   const toggleSleepIntel = () => {
     const opening = !sleepIntelOpen;
@@ -4665,8 +4679,8 @@ function SleepTabInner() {
       {/* Background Image confined to the top 55% of the screen like Sonic Therapies mode */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55 }}>
         <Image
-          source={{ uri: BG_URLS['afternoon_late_2'] || bgUri }}
-          style={StyleSheet.absoluteFillObject}
+          source={{ uri: BG_URLS['afternoon_first_late'] || bgUri || '' }}
+          style={StyleSheet.absoluteFillObject as any}
           resizeMode="cover"
         />
         <BlurView
@@ -5036,7 +5050,6 @@ function SleepTabInner() {
         startIndex={reelsStartIdx}
         playingId={playingId}
         isPaused={isPaused}
-        sessionSecs={sessionSecs}
         stopIdx={stopIdx}
         onPlaySound={handleReelPlaySound}
         onToggle={togglePause}
@@ -5044,10 +5057,9 @@ function SleepTabInner() {
         onStopSilent={handleStopSilent}
         onClose={handleReelClose}
         onChangeTimer={changeStopTimer}
-        onOpenLibrary={(cat) => {
-          setLibraryInitialCat(cat);
-          setLibraryOpen(true);
-        }}
+        onOpenLibrary={handleOpenLibrary}
+        preBufferSound={preBufferSound}
+        cleanPreBuffer={cleanPreBuffer}
       />
 
       {/* ── Sound Library Modal ── */}

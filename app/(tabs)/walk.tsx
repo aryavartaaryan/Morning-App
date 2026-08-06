@@ -122,7 +122,7 @@ const VASTU_DATA: Record<VastuActivity, {
   searchingText: string;
 }> = {
   sleep: {
-    icon: '🌙',
+    icon: 'moon-outline',
     label: 'Sleep & Recovery',
     westernLabel: 'Sleep & Recovery',
     dirs: [ { label: 'South', range: [157.5, 202.5] }, { label: 'East', range: [67.5, 112.5] } ],
@@ -134,7 +134,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Point your head in this direction while sleeping",
   },
   meditate: {
-    icon: '🧘',
+    icon: 'flower-outline',
     label: 'Mindfulness',
     westernLabel: 'Mindfulness & Stillness',
     dirs: [ { label: 'North-East', range: [22.5, 67.5] }, { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
@@ -146,7 +146,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Face this direction during meditation or breathwork",
   },
   deepwork: {
-    icon: '⚡',
+    icon: 'flash-outline',
     label: 'Deep Focus',
     westernLabel: 'Deep Work & Flow State',
     dirs: [ { label: 'North', range: [337.5, 22.5] }, { label: 'East', range: [67.5, 112.5] } ],
@@ -158,7 +158,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Set your desk or screen to face this direction",
   },
   movement: {
-    icon: '🏃',
+    icon: 'walk-outline',
     label: 'Movement',
     westernLabel: 'Exercise & Vitality',
     dirs: [ { label: 'East', range: [67.5, 112.5] } ],
@@ -170,7 +170,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Begin your workout or yoga facing this direction",
   },
   eat: {
-    icon: '🥗',
+    icon: 'restaurant-outline',
     label: 'Mindful Eating',
     westernLabel: 'Mindful Eating & Digestion',
     dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
@@ -422,130 +422,121 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         {/* ─ Defs + dark background disc ─ */}
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
           <Defs>
-            <RadialGradient id="bgGlow2" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="rgba(8,5,25,0.96)" />
-              <Stop offset="100%" stopColor="rgba(2,1,12,0.99)" />
+            <RadialGradient id="bgGlowPremium" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="rgba(3, 4, 12, 0.95)" />
+              <Stop offset="80%" stopColor="rgba(7, 9, 20, 0.85)" />
+              <Stop offset="100%" stopColor="rgba(2, 3, 10, 0.95)" />
             </RadialGradient>
-            <RadialGradient id="goldGlow2" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#ffd700" stopOpacity="0.6" />
-              <Stop offset="60%" stopColor="#d4af37" stopOpacity="0.2" />
-              <Stop offset="100%" stopColor="#996515" stopOpacity="0" />
-            </RadialGradient>
-            <SvgLinearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#ffec8b" />
-              <Stop offset="50%" stopColor="#ffd700" />
-              <Stop offset="100%" stopColor="#daa520" />
+            <SvgLinearGradient id="holoGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+              <Stop offset="50%" stopColor="#818cf8" stopOpacity="0.4" />
+              <Stop offset="100%" stopColor="#c084fc" stopOpacity="0.1" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="goldR" x1="100%" y1="100%" x2="0%" y2="0%">
-              <Stop offset="0%" stopColor="#ffec8b" />
-              <Stop offset="50%" stopColor="#ffd700" />
-              <Stop offset="100%" stopColor="#daa520" />
+            <SvgLinearGradient id="holoGlowR" x1="100%" y1="100%" x2="0%" y2="0%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
+              <Stop offset="50%" stopColor="#38bdf8" stopOpacity="0.3" />
+              <Stop offset="100%" stopColor="#818cf8" stopOpacity="0.05" />
             </SvgLinearGradient>
-            <RadialGradient id="shatkonaGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#a78bfa" stopOpacity="0.12" />
-              <Stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
-            </RadialGradient>
           </Defs>
 
-          {/* Dark cosmic disc */}
-          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow2)" />
+          {/* Dark cosmic disc (as requested) */}
+          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlowPremium)" />
+          {/* Subtle ultra-thin glass rim */}
+          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.1} />
 
-          {/* Outer degree ring — tick marks every 10° */}
-          {Array.from({ length: 36 }, (_, i) => {
-            const angle = (i * 10) * Math.PI / 180;
-            const isMajor = i % 9 === 0;
-            const r1 = isMajor ? 43.5 : 44.5;
-            const r2 = 47;
+          {/* Outer degree ring — ultra-precise technical ticks */}
+          {Array.from({ length: 72 }, (_, i) => {
+            const angle = (i * 5) * Math.PI / 180;
+            const isCardinal = i % 18 === 0;
+            const isMajor = i % 9 === 0 && !isCardinal;
+            const r1 = isCardinal ? 43 : isMajor ? 44.5 : 46;
+            const r2 = 47.5;
             const x1 = cx + r1 * Math.sin(angle);
             const y1 = cy - r1 * Math.cos(angle);
             const x2 = cx + r2 * Math.sin(angle);
             const y2 = cy - r2 * Math.cos(angle);
             return <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke={isMajor ? 'rgba(255,215,0,0.7)' : 'rgba(255,215,0,0.2)'}
-              strokeWidth={isMajor ? 0.8 : 0.35} />;
+              stroke={isCardinal ? 'rgba(255,255,255,0.7)' : isMajor ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}
+              strokeWidth={isCardinal ? 0.3 : isMajor ? 0.2 : 0.1} />;
           })}
 
-          {/* Cardinal N/S/E/W labels */}
+          {/* Cardinal N/S/E/W labels — ultra clean typography */}
           {cardinalDir.map(([label, lx, ly]) => (
-            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1.5}
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1.2}
               textAnchor="middle"
-              fill="rgba(255,220,60,0.95)" fontSize={4.5} fontWeight={700}>
+              fill="rgba(255,255,255,0.9)" fontSize={4} fontWeight={600} letterSpacing={1}>
               {String(label)}
             </SvgText>
           ))}
 
           {/* Inter-cardinal NE/SE/SW/NW labels */}
           {intercardinalDir.map(([label, lx, ly]) => (
-            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1}
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 0.8}
               textAnchor="middle"
-              fill="rgba(255,200,60,0.45)" fontSize={2.8}>
+              fill="rgba(255,255,255,0.3)" fontSize={2.2} letterSpacing={1.5}>
               {String(label)}
             </SvgText>
           ))}
 
-          {/* Outer ring borders */}
-          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,215,0,0.5)" strokeWidth={0.6} />
-          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="rgba(255,215,0,0.25)" strokeWidth={0.3} strokeDasharray="1.5 2" />
+          {/* Outer ring precision borders */}
+          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.15} />
+          <Circle cx={cx} cy={cy} r={42} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.1} strokeDasharray="1 3" />
         </Svg>
 
-        {/* ─ Slowly rotating outer 16-petal lotus ─ */}
+        {/* ─ Slowly rotating outer 16-petal lotus (Holographic) ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
             {lotusPetals16.map((a, i) => (
               <G key={`p16-${i}`} rotation={a} origin={`${cx},${cy}`}>
                 <Path d="M 50,5 Q 52.5,11 50,17 Q 47.5,11 50,5 Z"
-                  fill="rgba(167,139,250,0.07)" stroke="rgba(167,139,250,0.35)" strokeWidth={0.4} />
+                  fill="none" stroke="url(#holoGlow)" strokeWidth={0.15} opacity={0.6} />
               </G>
             ))}
           </Svg>
         </Animated.View>
 
-        {/* ─ Counter-rotating inner 8-petal lotus ─ */}
+        {/* ─ Counter-rotating inner 8-petal lotus (Holographic) ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            <Circle cx={cx} cy={cy} r={36} fill="none" stroke="rgba(255,215,0,0.2)" strokeWidth={0.4} />
-            <Circle cx={cx} cy={cy} r={34} fill="none" stroke="rgba(167,139,250,0.15)" strokeWidth={0.25} strokeDasharray="2 2" />
+            <Circle cx={cx} cy={cy} r={36} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.15} />
+            <Circle cx={cx} cy={cy} r={34.5} fill="none" stroke="rgba(129,140,248,0.2)" strokeWidth={0.1} strokeDasharray="2 4" />
             {lotusPetals8.map((a, i) => (
               <G key={`p8-${i}`} rotation={a} origin={`${cx},${cy}`}>
                 <Path d="M 50,16 Q 56,25 50,33 Q 44,25 50,16 Z"
-                  fill="rgba(212,175,55,0.15)" stroke="url(#gold)" strokeWidth={0.6} />
+                  fill="none" stroke="url(#holoGlowR)" strokeWidth={0.2} opacity={0.7} />
               </G>
             ))}
           </Svg>
         </Animated.View>
 
-        {/* ─ SHATKONA (Star of David) — the key sacred geometry ─ */}
+        {/* ─ SHATKONA (Star of David) — Holographic Projection ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin3 }], opacity: pulseOp }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* Shatkona glow fill */}
-            <Circle cx={cx} cy={cy} r={34} fill="url(#shatkonaGlow)" />
             {/* Upward triangle */}
-            <Path d={shatkona_up} fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.6)" strokeWidth={0.7} />
+            <Path d={shatkona_up} fill="rgba(255,255,255,0.01)" stroke="url(#holoGlow)" strokeWidth={0.25} />
             {/* Downward triangle */}
-            <Path d={shatkona_down} fill="rgba(255,215,0,0.06)" stroke="rgba(255,215,0,0.5)" strokeWidth={0.7} />
+            <Path d={shatkona_down} fill="rgba(255,255,255,0.01)" stroke="url(#holoGlowR)" strokeWidth={0.25} />
             {/* Inner hexagon formed by intersection */}
             <Path d="M 50,34 L 61.6,41 L 61.6,55 L 50,62 L 38.4,55 L 38.4,41 Z"
-              fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
+              fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.1} />
           </Svg>
         </Animated.View>
 
-        {/* ─ Pulsing Sri Yantra core triangles ─ */}
+        {/* ─ Pulsing Sri Yantra core triangles (Ultra-thin tech aesthetic) ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ scale: pulseScale }], opacity: pulseOp }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            {/* Subtle gold center glow */}
-            <Circle cx={cx} cy={cy} r={38} fill="url(#goldGlow2)" />
             {/* Sri Yantra Shiva triangles */}
             {shivaTriangles.map((d, i) => (
-              <Path key={`sv-${i}`} d={d} fill="rgba(255,215,0,0.06)" stroke="url(#gold)" strokeWidth={0.6} />
+              <Path key={`sv-${i}`} d={d} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={0.15} />
             ))}
             {/* Sri Yantra Shakti triangles */}
             {shaktiTriangles.map((d, i) => (
-              <Path key={`sk-${i}`} d={d} fill="rgba(167,139,250,0.06)" stroke="url(#goldR)" strokeWidth={0.6} />
+              <Path key={`sk-${i}`} d={d} fill="none" stroke="rgba(129,140,248,0.25)" strokeWidth={0.15} />
             ))}
-            {/* Bindu (centre dot) */}
-            <Circle cx={cx} cy={cy} r={1.5} fill="#ffd700" />
-            <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="rgba(255,215,0,0.7)" strokeWidth={0.8} />
-            <Circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(255,215,0,0.3)" strokeWidth={0.4} />
+            {/* Bindu (centre dot) - Glowing orb */}
+            <Circle cx={cx} cy={cy} r={0.8} fill="#ffffff" />
+            <Circle cx={cx} cy={cy} r={2.5} fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={0.15} />
+            <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.1} />
           </Svg>
         </Animated.View>
 
@@ -1392,24 +1383,14 @@ export default function WalkTab() {
                 <View style={{ width: 56 }} />
               )}
 
-              {/* Centre title (Ultra Premium Boxed HUD) */}
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <View style={{
-                  paddingVertical: 12, paddingHorizontal: 28,
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  borderRadius: 30,
-                  borderWidth: 0.5,
-                  borderColor: 'rgba(255, 255, 255, 0.15)',
-                  alignItems: 'center',
-                }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#ffffff', letterSpacing: 4.5, textTransform: 'uppercase' }}>
-                    Space Intelligence
-                  </Text>
-                  <View style={{ width: 20, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 6 }} />
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 6, fontWeight: '500', textTransform: 'uppercase' }}>
-                    Vastu Yantra
-                  </Text>
-                </View>
+              {/* Centre title (Ultra Premium Borderless HUD) */}
+              <View style={{ alignItems: 'center', flex: 1, paddingVertical: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>
+                  Space Intelligence
+                </Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 8, fontWeight: '600', marginTop: 4, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>
+                  Vastu Yantra
+                </Text>
               </View>
 
               {/* Empty spacer to balance header */}
@@ -1529,30 +1510,8 @@ export default function WalkTab() {
               </Svg>
             </View>
 
-            {/* Centre content */}
-            <View style={st.ringCentre}>
-              {(isSunset || isSunrise) ? (
-                <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
-                    {isSunset ? 'Sunset · Meditate Now' : 'Sunrise · Meditate Now'}
-                  </Text>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Connect with the divinity</Text>
-                </View>
-              ) : (
-                <>
-                  {weather ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)' }}>
-                      <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.7 }}>{weather.temp}° {weather.condition}</Text>
-                    </View>
-                  ) : <View style={{ height: 22, marginBottom: 4 }} />}
-                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 12 }}>
-                    {QUOTES[quoteIdx]}
-                  </Animated.Text>
-                  <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 8, marginBottom: 12 }} />
-                </>
-              )}
-            </View>
+            {/* Centre content cleared for minimalist holographic ring */}
+            <View style={st.ringCentre} pointerEvents="none" />
 
             {/* ── Outer mandala layers (always spinning) ── */}
             <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
@@ -1611,6 +1570,16 @@ export default function WalkTab() {
         {/* ══ ACTIVITY SELECTOR + ACTIVATE BUTTON ══ */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 20, marginTop: 16 }}>
 
+          {/* Sleek Weather Badge */}
+          {weather && (
+            <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 }}>
+              <Text style={{ fontSize: 12 }}>{weather.emoji}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginLeft: 6, letterSpacing: 1, textTransform: 'uppercase' }}>
+                {weather.temp}° {weather.condition}
+              </Text>
+            </View>
+          )}
+
           {/* Activate button */}
           <TouchableOpacity
             onPress={() => {
@@ -1639,9 +1608,8 @@ export default function WalkTab() {
             </Text>
           </TouchableOpacity>
 
-          {/* Compact horizontal activity pills */}
-          {/* Elegant Horizontal Activity Cards */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 10, paddingTop: 4 }}>
+          {/* Elegant Horizontal Activity Pills */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 10, paddingTop: 4 }}>
             {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
               const d = VASTU_DATA[act];
               const isSel = selectedActivity === act;
@@ -1667,27 +1635,22 @@ export default function WalkTab() {
                   }}
                   activeOpacity={0.8}
                   style={{
-                    flexDirection: 'column', alignItems: 'center', gap: 12,
-                    overflow: 'hidden', borderRadius: 24, width: 110,
-                    borderWidth: 1.5, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.1)',
-                    paddingHorizontal: 12, paddingVertical: 18,
-                    backgroundColor: isSel ? `${d.targetColor}20` : 'rgba(255,255,255,0.04)',
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    overflow: 'hidden', borderRadius: 20,
+                    borderWidth: 1, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.15)',
+                    paddingHorizontal: 16, paddingVertical: 12,
+                    backgroundColor: isSel ? `${d.targetColor}20` : 'rgba(255,255,255,0.05)',
                     shadowColor: isSel ? d.targetColor : 'transparent',
-                    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: isSel ? 6 : 0,
+                    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: isSel ? 4 : 0,
                   }}
                 >
                   <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
-                  <Text style={{ fontSize: 32 }}>{d.icon}</Text>
-                  <View style={{ alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSel ? '#fff' : 'rgba(255,255,255,0.7)', textAlign: 'center', letterSpacing: 0.3 }}>
-                      {d.westernLabel}
-                    </Text>
-                    <Text style={{ fontSize: 9, color: isSel ? `${d.targetColor}EE` : 'rgba(255,255,255,0.4)', textAlign: 'center', letterSpacing: 0.5 }}>
-                      {d.dirs.map(dr => dr.label).join(' · ')}
-                    </Text>
-                  </View>
+                  <Ionicons name={d.icon as any} size={16} color={isSel ? d.targetColor : 'rgba(255,255,255,0.7)'} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? '#fff' : 'rgba(255,255,255,0.8)', letterSpacing: 0.5 }}>
+                    {d.westernLabel}
+                  </Text>
                   {isSel && (
-                    <Animated.View style={{ position: 'absolute', top: 12, right: 12, width: 6, height: 6, borderRadius: 3, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
+                    <Animated.View style={{ marginLeft: 4, width: 4, height: 4, borderRadius: 2, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
                   )}
                 </TouchableOpacity>
               );

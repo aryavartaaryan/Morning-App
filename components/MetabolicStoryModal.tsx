@@ -161,40 +161,39 @@ function Card0Western({ period, accent }: { period: DoshaPeriod; accent: string 
   return (
     <View style={S.card}>
       {/* Time & Badge */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>
           {period.startLabel} — {period.endLabel}
         </Text>
         <Text style={{ fontSize: 42 }}>{period.emoji}</Text>
       </View>
 
-      {/* Headline (Editorial Serif) */}
-      <Text style={{ fontSize: 38, fontFamily: 'Georgia', color: '#FFFFFF', lineHeight: 44, marginBottom: 14 }}>
+      {/* Headline (Sleek Sans-Serif) */}
+      <Text style={{ fontSize: 32, fontWeight: '800', color: '#FFFFFF', lineHeight: 40, marginBottom: 12 }}>
         {ex.headline}
       </Text>
-      <Text style={{ fontSize: 12, color: accent, fontWeight: '800', letterSpacing: 1.5, marginBottom: 36, textTransform: 'uppercase' }}>
+      <Text style={{ fontSize: 11, color: accent, fontWeight: '800', letterSpacing: 1.5, marginBottom: 24, textTransform: 'uppercase' }}>
         {ex.tagline}
       </Text>
 
-      {/* Body Section 1 */}
-      <View style={{ marginBottom: 28 }}>
-        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 2, marginBottom: 10 }}>HAPPENING NOW</Text>
-        <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.95)', lineHeight: 26, fontWeight: '400' }}>{ex.what}</Text>
+      {/* Structured Glass Boxes */}
+      <View style={S.slimBox}>
+        <Text style={[S.slimBoxLabel, { color: 'rgba(255,255,255,0.4)' }]}>HAPPENING NOW</Text>
+        <Text style={S.slimBoxText}>{ex.what}</Text>
       </View>
 
-      {/* Body Section 2 */}
-      <View style={{ marginBottom: 40 }}>
-        <Text style={{ fontSize: 10, color: accent, fontWeight: '800', letterSpacing: 2, marginBottom: 10, opacity: 0.8 }}>WHY IT MATTERS</Text>
-        <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.95)', lineHeight: 26, fontWeight: '400' }}>{ex.whyMatters}</Text>
+      <View style={S.slimBox}>
+        <Text style={[S.slimBoxLabel, { color: accent }]}>WHY IT MATTERS</Text>
+        <Text style={S.slimBoxText}>{ex.whyMatters}</Text>
       </View>
 
       {/* Sleek Key Facts Row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', paddingTop: 24 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
         {ex.topFact.map((f, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 26, marginBottom: 4 }}>{f.icon}</Text>
+            <Text style={{ fontSize: 24, marginBottom: 2 }}>{f.icon}</Text>
             <Text style={{ fontSize: 9, color: accent, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>{f.label}</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500', textAlign: 'center' }}>{f.value}</Text>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '500', textAlign: 'center' }}>{f.value}</Text>
           </View>
         ))}
       </View>
@@ -210,22 +209,23 @@ function Card0bAnalogy({ period, accent }: { period: DoshaPeriod; accent: string
 
   return (
     <View style={S.card}>
-      <Text style={[S.cardLabel, { marginBottom: 40 }]}>THE ANALOGY</Text>
+      <Text style={S.cardLabel}>THE ANALOGY</Text>
 
-      {/* Big analogy */}
-      <Text style={{ fontSize: 26, fontFamily: 'Georgia', color: '#FFFFFF', lineHeight: 38, fontStyle: 'italic', marginBottom: 60, textAlign: 'center' }}>
-        "{ex.analogy.replace(/^.*?\s\s/, '')}"
-      </Text>
+      {/* Big analogy inside a glass container */}
+      <View style={[S.slimBox, { paddingVertical: 32, paddingHorizontal: 24, marginBottom: 24 }]}>
+        <Text style={{ fontSize: 22, fontWeight: '300', color: '#FFFFFF', lineHeight: 32, fontStyle: 'italic', textAlign: 'center' }}>
+          "{ex.analogy.replace(/^.*?\s\s/, '')}"
+        </Text>
+      </View>
 
-      {/* Sanskrit name reveal */}
+      {/* Sanskrit name reveal inside glass */}
       {s && (
-        <View style={{ alignItems: 'center', marginBottom: 40 }}>
-          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 3, marginBottom: 12 }}>AYURVEDIC TERM</Text>
-          <Text style={{ fontSize: 46, fontWeight: '900', color: accent, letterSpacing: 1, marginBottom: 8, fontFamily: 'Georgia' }}>{s.sanskrit}</Text>
-          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', textAlign: 'center' }}>"{s.meaning}"</Text>
+        <View style={[S.slimBox, { alignItems: 'center', paddingVertical: 28 }]}>
+          <Text style={[S.slimBoxLabel, { color: 'rgba(255,255,255,0.4)', marginBottom: 12 }]}>AYURVEDIC TERM</Text>
+          <Text style={{ fontSize: 32, fontWeight: '900', color: accent, letterSpacing: 1, marginBottom: 8 }}>{s.sanskrit}</Text>
+          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', textAlign: 'center' }}>"{s.meaning}"</Text>
         </View>
       )}
-
       {/* Divider */}
       <View style={S.divider} />
       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600' }}>Swipe to explore your body →</Text>
@@ -245,37 +245,38 @@ function Card1Dashboard({ period, accent }: { period: DoshaPeriod; accent: strin
 
   const remM = period.minutesRemaining;
   const remStr = remM >= 60 ? `${Math.floor(remM / 60)}h ${remM % 60}m` : `${remM}m`;
-  const durM = period.durationMinutes;
+  const durH = (period.endH - period.startH + 24) % 24 || 24;
+  const durM = Math.round(durH * 60);
   const prog = Math.max(0, Math.min(1, 1 - (remM / durM)));
   const durStr = durM >= 60 ? `${Math.floor(durM / 60)}h ${durM % 60}m` : `${durM}m`;
 
   return (
     <View style={[S.card, { alignItems: 'center', justifyContent: 'center' }]}>
-      {/* Active pulse */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 30 }}>
-        <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accent, transform: [{ scale: pulse }], marginRight: 10 }} />
-        <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 3, color: accent, textTransform: 'uppercase' }}>ACTIVE NOW</Text>
+      {/* Active badge */}
+      <View style={[S.activeBadge, { borderColor: accent + '60', backgroundColor: accent + '14', marginBottom: 24 }]}>
+        <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accent, transform: [{ scale: pulse }], marginRight: 8 }} />
+        <Text style={[S.activeBadgeTxt, { color: accent }]}>ACTIVE NOW</Text>
       </View>
 
       {/* Hero */}
-      <Text style={{ fontSize: 72, marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>{period.emoji}</Text>
-      <Text style={{ fontSize: 36, fontFamily: 'Georgia', color: '#FFFFFF', textAlign: 'center', letterSpacing: -0.5, lineHeight: 42, marginBottom: 8 }}>
+      <Text style={{ fontSize: 64, marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>{period.emoji}</Text>
+      <Text style={{ fontSize: 28, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', letterSpacing: -0.5, lineHeight: 34, marginBottom: 8 }}>
         {period.englishLabel}
       </Text>
-      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 2, marginBottom: 40, textTransform: 'uppercase' }}>
+      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 2, marginBottom: 40, textTransform: 'uppercase' }}>
         {period.startLabel}  —  {period.endLabel}
       </Text>
 
-      {/* Metrics Row (Sleek minimalist layout) */}
-      <View style={{ flexDirection: 'row', width: '100%', marginBottom: 40, justifyContent: 'space-between', paddingHorizontal: 10 }}>
+      {/* Clinical Metrics Grid */}
+      <View style={[S.metricRow, { width: '100%', marginBottom: 24 }]}>
         {[
           { label: 'DURATION', value: durStr },
           { label: 'REMAINING', value: remStr },
           { label: 'ELAPSED', value: `${Math.round(prog * 100)}%` },
         ].map((m, i) => (
-          <View key={i} style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 28, fontFamily: 'Georgia', color: i === 2 ? accent : '#FFFFFF', marginBottom: 4 }}>{m.value}</Text>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{m.label}</Text>
+          <View key={i} style={[S.metricCell, i === 1 && { borderLeftWidth: StyleSheet.hairlineWidth, borderRightWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[S.metricVal, { color: i === 2 ? accent : '#FFFFFF' }]}>{m.value}</Text>
+            <Text style={S.metricLabel}>{m.label}</Text>
           </View>
         ))}
       </View>
@@ -283,11 +284,11 @@ function Card1Dashboard({ period, accent }: { period: DoshaPeriod; accent: strin
       {/* Progress Line */}
       <View style={{ width: '100%', paddingHorizontal: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: '800', letterSpacing: 2 }}>PHASE PROGRESS</Text>
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 2 }}>PHASE PROGRESS</Text>
           <Text style={{ fontSize: 9, color: accent, fontWeight: '900', letterSpacing: 1 }}>{Math.round(prog * 100)}%</Text>
         </View>
-        <View style={{ height: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-          <View style={{ width: `${Math.round(prog * 100)}%` as any, height: 2, backgroundColor: accent }} />
+        <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+          <View style={{ width: `${Math.round(prog * 100)}%` as any, height: 4, borderRadius: 2, backgroundColor: accent }} />
         </View>
       </View>
     </View>
@@ -324,48 +325,55 @@ function Card2BodyClock({ period, solarTimes, accent }: {
 
   return (
     <View style={S.card}>
-      <Text style={[S.cardLabel, { marginBottom: 30 }]}>YOUR 24-HOUR BODY CLOCK</Text>
-      <Text style={{ fontSize: 15, fontFamily: 'Georgia', color: 'rgba(255,255,255,0.7)', lineHeight: 24, textAlign: 'center', marginBottom: 30, fontStyle: 'italic' }}>
+      <Text style={S.cardLabel}>YOUR 24-HOUR BODY CLOCK</Text>
+      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 20, textAlign: 'center', marginBottom: 24 }}>
         The day splits into 6 natural phases. Each governs different biology. Ayurveda mapped this 5,000 years ago.
       </Text>
 
-      {/* 24h sleek bar */}
-      <View style={{ flexDirection: 'row', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
-        {PERIODS_ORDERED.map((p, i) => {
-          const dur = (p.end - p.start + 24) % 24 || 24;
-          const w = (dur / 24) * 100;
-          const isActive = p.id === period.id;
-          return (
-            <View key={i} style={{ width: `${w}%`, backgroundColor: p.color, opacity: isActive ? 1 : 0.3 }} />
-          );
-        })}
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>SUNRISE</Text>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>NOON</Text>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>SUNSET</Text>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>MIDNIGHT</Text>
+      {/* 24h sleek bar inside glass */}
+      <View style={[S.slimBox, { padding: 16, marginBottom: 16 }]}>
+        <View style={{ flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
+          {PERIODS_ORDERED.map((p, i) => {
+            const dur = (p.end - p.start + 24) % 24 || 24;
+            const w = (dur / 24) * 100;
+            const isActive = p.id === period.id;
+            return (
+              <View key={i} style={{ width: `${w}%`, backgroundColor: p.color, opacity: isActive ? 1 : 0.3 }} />
+            );
+          })}
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>SUNRISE</Text>
+          <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>NOON</Text>
+          <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>SUNSET</Text>
+          <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1 }}>MIDNIGHT</Text>
+        </View>
       </View>
 
-      {/* Period sleek list */}
-      <View style={{ gap: 14 }}>
+      {/* Period sleek list inside glass */}
+      <View style={[S.slimBox, { paddingVertical: 12, paddingHorizontal: 16 }]}>
         {PERIODS_ORDERED.map((p, i) => {
           const isActive = p.id === period.id;
           const dur = (p.end - p.start + 24) % 24 || 24;
           return (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, opacity: isActive ? 1 : 0.4 }}>
-              <Text style={{ fontSize: 24 }}>{p.emoji}</Text>
-              <View style={{ flex: 1, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingBottom: 10 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: isActive ? p.color : '#FFFFFF' }}>{p.label}</Text>
+            <View key={i} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+              paddingVertical: 10,
+              borderBottomWidth: i === PERIODS_ORDERED.length - 1 ? 0 : StyleSheet.hairlineWidth,
+              borderColor: 'rgba(255,255,255,0.08)',
+              opacity: isActive ? 1 : 0.4
+            }}>
+              <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? p.color : '#FFFFFF' }}>{p.label}</Text>
                   {isActive && <Text style={{ fontSize: 8, color: p.color, fontWeight: '900', letterSpacing: 1.5 }}>ACTIVE</Text>}
                 </View>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1 }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 0.5 }}>
                   {fmt12H(p.start % 24)} — {fmt12H(p.end % 24)}
                 </Text>
               </View>
             </View>
-
           );
         })}
       </View>
@@ -383,22 +391,20 @@ function Card3Etym({ period, accent }: { period: DoshaPeriod; accent: string }) 
       <Text style={S.cardLabel}>ETYMOLOGY & ORIGIN</Text>
 
       {x.etymParts.slice(0, 2).map((e, i) => (
-        <View key={i} style={{ marginBottom: 30 }}>
-          <Text style={{ fontSize: 24, fontFamily: 'Georgia', color: accent, marginBottom: 8 }}>{e.term}</Text>
-          <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', lineHeight: 26, fontWeight: '400' }}>{e.breakdown}</Text>
+        <View key={i} style={S.slimBox}>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: accent, marginBottom: 8 }}>{e.term}</Text>
+          <Text style={S.slimBoxText}>{e.breakdown}</Text>
         </View>
       ))}
 
-      <View style={S.divider} />
-
-      <View style={{ marginBottom: 30 }}>
-        <Text style={{ fontSize: 10, color: '#fbbf24', fontWeight: '800', letterSpacing: 2, marginBottom: 12 }}>☀️  SUN CONNECTION</Text>
-        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 24, fontWeight: '500' }}>{x.sunPosition}</Text>
+      <View style={[S.slimBox, { borderColor: '#fbbf2440', backgroundColor: '#fbbf2408' }]}>
+        <Text style={[S.slimBoxLabel, { color: '#fbbf24' }]}>☀️  SUN CONNECTION</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 20, fontWeight: '500' }}>{x.sunPosition}</Text>
       </View>
 
-      <View style={{ borderLeftWidth: 2, borderLeftColor: accent + '60', paddingLeft: 16, paddingVertical: 4 }}>
-        <Text style={{ fontSize: 13, fontFamily: 'Georgia', color: 'rgba(255,255,255,0.6)', lineHeight: 22, fontStyle: 'italic', marginBottom: 10 }}>"{x.classicalRef.text}"</Text>
-        <Text style={{ fontSize: 10, color: accent, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>— {x.classicalRef.source}</Text>
+      <View style={[S.slimBox, { paddingVertical: 24, alignItems: 'center' }]}>
+        <Text style={{ fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.7)', lineHeight: 22, fontStyle: 'italic', textAlign: 'center', marginBottom: 12 }}>"{x.classicalRef.text}"</Text>
+        <Text style={{ fontSize: 9, color: accent, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>— {x.classicalRef.source}</Text>
       </View>
     </View>
   );
@@ -418,33 +424,34 @@ function Card4BodySystems({ period, accent }: { period: DoshaPeriod; accent: str
       <Text style={S.cardLabel}>YOUR BODY AT {timeStr}</Text>
 
       {/* Hero science section */}
-      <View style={{ alignItems: 'center', marginBottom: 30 }}>
-        <Text style={{ fontSize: 50, marginBottom: 16, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>{period.sciEmoji}</Text>
-        <Text style={{ fontSize: 24, fontFamily: 'Georgia', color: accent, textAlign: 'center', lineHeight: 32, marginBottom: 12 }}>{period.sciTitle}</Text>
-        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 24, textAlign: 'center', fontWeight: '400' }}>{period.sciDesc}</Text>
+      <View style={[S.slimBox, { alignItems: 'center', paddingVertical: 28, marginBottom: 16 }]}>
+        <Text style={{ fontSize: 42, marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>{period.sciEmoji}</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: accent, textAlign: 'center', lineHeight: 28, marginBottom: 10 }}>{period.sciTitle}</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 20, textAlign: 'center', fontWeight: '400' }}>{period.sciDesc}</Text>
       </View>
 
       {/* System tags */}
       {x?.systemTags && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 30 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
           {x.systemTags.map((tag, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderColor: (SYS_COLOR[tag] ?? accent) + '40' }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: SYS_COLOR[tag] ?? accent, marginRight: 8 }} />
-              <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>{tag}</Text>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: (SYS_COLOR[tag] ?? accent) + '50', backgroundColor: (SYS_COLOR[tag] ?? accent) + '15' }}>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: SYS_COLOR[tag] ?? accent, marginRight: 6 }} />
+              <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>{tag}</Text>
             </View>
           ))}
         </View>
       )}
 
       {/* Top 3 bullets */}
-      <View style={S.divider} />
-      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 2, marginBottom: 16 }}>HAPPENING INSIDE</Text>
-      {w.bodyBullets.slice(0, 3).map((b, i) => (
-        <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, marginTop: 7, flexShrink: 0, backgroundColor: b.dot }} />
-          <Text style={{ flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 22 }}>{b.text}</Text>
-        </View>
-      ))}
+      <View style={S.slimBox}>
+        <Text style={[S.slimBoxLabel, { color: 'rgba(255,255,255,0.4)' }]}>HAPPENING INSIDE</Text>
+        {w.bodyBullets.slice(0, 3).map((b, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i === 2 ? 0 : 16 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 7, flexShrink: 0, backgroundColor: b.dot }} />
+            <Text style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 20 }}>{b.text}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -457,19 +464,17 @@ function Card5CircSci({ period, accent }: { period: DoshaPeriod; accent: string 
 
   return (
     <View style={S.card}>
-      <Text style={[S.cardLabel, { marginBottom: 30 }]}>SCIENCE SAYS</Text>
+      <Text style={S.cardLabel}>SCIENCE SAYS</Text>
 
-      <View style={{ marginBottom: 40 }}>
-        <Text style={{ fontSize: 10, color: accent, fontWeight: '800', letterSpacing: 2, marginBottom: 16 }}>MODERN CHRONOBIOLOGY</Text>
-        <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.9)', lineHeight: 28, fontWeight: '400' }}>{w.modernBrief}</Text>
+      <View style={S.slimBox}>
+        <Text style={[S.slimBoxLabel, { color: accent }]}>MODERN CHRONOBIOLOGY</Text>
+        <Text style={S.slimBoxText}>{w.modernBrief}</Text>
       </View>
 
-      <View style={S.divider} />
-
       {x?.circadianSci && (
-        <View style={{ marginBottom: 10 }}>
-          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 2, marginBottom: 16 }}>DEEP SCIENCE</Text>
-          <Text style={{ fontSize: 15, fontFamily: 'Georgia', color: 'rgba(255,255,255,0.7)', lineHeight: 24, fontStyle: 'italic' }}>{x.circadianSci}</Text>
+        <View style={S.slimBox}>
+          <Text style={[S.slimBoxLabel, { color: 'rgba(255,255,255,0.4)' }]}>DEEP SCIENCE</Text>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 22, fontStyle: 'italic' }}>{x.circadianSci}</Text>
         </View>
       )}
     </View>
@@ -494,8 +499,8 @@ function Card6Elements({ period, accent }: { period: DoshaPeriod; accent: string
     <View style={S.card}>
       <Text style={S.cardLabel}>ELEMENTAL PHYSIOLOGY</Text>
 
-      <View style={{ alignItems: 'center', marginBottom: 40 }}>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: accent, letterSpacing: -0.5, marginBottom: 8 }}>
+      <View style={[S.slimBox, { alignItems: 'center', marginBottom: 24 }]}>
+        <Text style={{ fontSize: 20, fontWeight: '900', color: accent, letterSpacing: -0.5, marginBottom: 8 }}>
           {period.dosha.charAt(0).toUpperCase() + period.dosha.slice(1)} = {w.romanElements}
         </Text>
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', letterSpacing: 0.5 }}>Two forces · one biological principle</Text>
@@ -504,20 +509,21 @@ function Card6Elements({ period, accent }: { period: DoshaPeriod; accent: string
       {w.elements.map((el, i) => {
         const chips = ELEMENT_CHIPS[el.name] ?? [];
         return (
-          <View key={i} style={{ marginBottom: 24 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 12 }}>
-              <Text style={{ fontSize: 36, marginTop: -4 }}>{el.emoji}</Text>
+          <View key={i} style={S.slimBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+              <Text style={{ fontSize: 32 }}>{el.emoji}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: accent, marginBottom: 4 }}>{el.name}</Text>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 20 }}>
-                  {el.desc}{el.italic ? ` ` : ''}
-                  {el.italic && <Text style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.6)' }}>{el.italic}</Text>}
-                </Text>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: accent, marginBottom: 2 }}>{el.name}</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>VEDIC ELEMENT</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 50 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 20, marginBottom: 16 }}>
+              {el.desc}{el.italic ? ` ` : ''}
+              {el.italic && <Text style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.6)' }}>{el.italic}</Text>}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {chips.map((c, j) => (
-                <View key={j} style={{ borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderColor: accent + '40', backgroundColor: accent + '10' }}>
+                <View key={j} style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 4, borderColor: accent + '40', backgroundColor: accent + '10' }}>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: accent }}>{c}</Text>
                 </View>
               ))}
@@ -526,10 +532,11 @@ function Card6Elements({ period, accent }: { period: DoshaPeriod; accent: string
         );
       })}
 
-      <View style={S.divider} />
-      <Text style={{ fontSize: 12, fontFamily: 'Georgia', color: 'rgba(255,255,255,0.5)', lineHeight: 18, fontStyle: 'italic', textAlign: 'center' }}>
-        {x.elementCombined}
-      </Text>
+      <View style={[S.slimBox, { paddingVertical: 24 }]}>
+        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 18, fontStyle: 'italic', textAlign: 'center' }}>
+          {x.elementCombined}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -543,27 +550,29 @@ function Card7DoNow({ period, accent }: { period: DoshaPeriod; accent: string })
     <View style={S.card}>
       <Text style={S.cardLabel}>YOUR PROTOCOL</Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 30 }}>
-        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#34d39920', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#34d39950' }}>
-          <Text style={{ fontSize: 16, color: '#34d399', fontWeight: '900' }}>✓</Text>
-        </View>
-        <Text style={{ fontSize: 16, fontWeight: '900', color: '#34d399', letterSpacing: 2 }}>DO THIS NOW</Text>
-      </View>
-
-      <View style={{ gap: 24, marginBottom: 40 }}>
-        {w.doItems.slice(0, 4).map((item, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <Text style={{ fontSize: 28 }}>{item.emoji}</Text>
-            <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.95)', fontWeight: '400', flex: 1, lineHeight: 24 }}>{item.text}</Text>
+      <View style={[S.slimBox, { borderColor: '#34d39940', backgroundColor: '#34d39910', marginBottom: 24 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#34d39925', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 13, color: '#34d399', fontWeight: '900' }}>✓</Text>
           </View>
-        ))}
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#34d399', letterSpacing: 2 }}>DO THIS NOW</Text>
+        </View>
+
+        <View style={{ gap: 20 }}>
+          {w.doItems.slice(0, 4).map((item, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <Text style={{ fontSize: 24 }}>{item.emoji}</Text>
+              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.95)', fontWeight: '400', flex: 1, lineHeight: 22 }}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      <View style={S.divider} />
-      
-      <View style={{ alignItems: 'center' }}>
-        <Text style={{ fontSize: 10, color: accent, fontWeight: '800', letterSpacing: 2, marginBottom: 8 }}>KĀLA CIKITSĀ</Text>
-        <Text style={{ fontSize: 13, fontFamily: 'Georgia', color: 'rgba(255,255,255,0.6)', lineHeight: 20, fontStyle: 'italic', textAlign: 'center' }}>Right action at the right time requires 10% of the effort. Time is the primary physician.</Text>
+      <View style={S.slimBox}>
+        <Text style={[S.slimBoxLabel, { color: accent }]}>KĀLA CIKITSĀ</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 20, fontStyle: 'italic' }}>
+          Right action at the right time requires 10% of the effort. Time is the primary physician.
+        </Text>
       </View>
     </View>
   );
@@ -578,34 +587,35 @@ function Card7bAvoidNow({ period, accent }: { period: DoshaPeriod; accent: strin
     <View style={S.card}>
       <Text style={S.cardLabel}>AVOID THIS NOW</Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 30 }}>
-        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#f43f5e20', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f43f5e50' }}>
-          <Text style={{ fontSize: 14, color: '#f43f5e', fontWeight: '900' }}>✕</Text>
-        </View>
-        <Text style={{ fontSize: 16, fontWeight: '900', color: '#f43f5e', letterSpacing: 2 }}>AVOID THIS NOW</Text>
-      </View>
-
-      <View style={{ gap: 24, marginBottom: 40 }}>
-        {w.avoidItems.slice(0, 4).map((item, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <Text style={{ fontSize: 28 }}>{item.emoji}</Text>
-            <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.95)', fontWeight: '400', flex: 1, lineHeight: 24 }}>{item.text}</Text>
+      <View style={[S.slimBox, { borderColor: '#f43f5e40', backgroundColor: '#f43f5e10', marginBottom: 24 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#f43f5e25', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 12, color: '#f43f5e', fontWeight: '900' }}>✕</Text>
           </View>
-        ))}
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#f43f5e', letterSpacing: 2 }}>AVOID THIS NOW</Text>
+        </View>
+
+        <View style={{ gap: 20 }}>
+          {w.avoidItems.slice(0, 4).map((item, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <Text style={{ fontSize: 24 }}>{item.emoji}</Text>
+              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.95)', fontWeight: '400', flex: 1, lineHeight: 22 }}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Body bullets 4-5 if any */}
       {w.bodyBullets.length > 3 && (
-        <>
-          <View style={S.divider} />
-          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 2, marginBottom: 16 }}>ALSO HAPPENING INSIDE</Text>
+        <View style={S.slimBox}>
+          <Text style={[S.slimBoxLabel, { color: 'rgba(255,255,255,0.4)' }]}>ALSO HAPPENING INSIDE</Text>
           {w.bodyBullets.slice(3, 5).map((b, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, marginTop: 7, flexShrink: 0, backgroundColor: b.dot }} />
-              <Text style={{ flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 22 }}>{b.text}</Text>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i === 1 ? 0 : 14 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 7, flexShrink: 0, backgroundColor: b.dot }} />
+              <Text style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 20 }}>{b.text}</Text>
             </View>
           ))}
-        </>
+        </View>
       )}
     </View>
   );
@@ -641,29 +651,27 @@ function Card8Naad({ period, accent, onNaad, onDeepDive, onWellness }: {
       <Text style={S.cardLabel}>DEEPEN THIS PERIOD</Text>
 
       {/* Nāda immersive section */}
-      <View style={{ alignItems: 'center', marginBottom: 40 }}>
-        <Text style={{ fontSize: 60, marginBottom: 12 }}>🎵</Text>
-        <Text style={{ fontSize: 28, fontFamily: 'Georgia', color: accent, marginBottom: 12 }}>Nāda Cikitsā</Text>
-        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 24, textAlign: 'center', marginBottom: 20 }}>
+      <View style={[S.slimBox, { alignItems: 'center', paddingVertical: 32, marginBottom: 24 }]}>
+        <Text style={{ fontSize: 48, marginBottom: 12 }}>🎵</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: accent, marginBottom: 12 }}>Nāda Cikitsā</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 20, textAlign: 'center', marginBottom: 24 }}>
           Sound as medicine — specific frequencies aligned to balance {period.dosha.charAt(0).toUpperCase() + period.dosha.slice(1)}.
         </Text>
         
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 30 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 24 }}>
           {(w?.naadSounds ?? []).slice(0, 4).map((id, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: accent + '40', backgroundColor: accent + '10' }}>
-              <Text style={{ fontSize: 16 }}>{NAAD_ICONS[id] ?? '🎵'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: accent }}>{NAAD_NAMES[id] ?? id}</Text>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: accent + '40', backgroundColor: accent + '10' }}>
+              <Text style={{ fontSize: 14 }}>{NAAD_ICONS[id] ?? '🎵'}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: accent }}>{NAAD_NAMES[id] ?? id}</Text>
             </View>
           ))}
         </View>
 
         <TouchableOpacity onPress={onNaad} activeOpacity={0.8}
-          style={{ borderRadius: 99, paddingVertical: 18, paddingHorizontal: 40, alignItems: 'center', backgroundColor: accent, shadowColor: accent, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20 }}>
-          <Text style={{ fontSize: 15, fontWeight: '900', color: '#000000', letterSpacing: 1 }}>PLAY SOUNDS</Text>
+          style={{ borderRadius: 99, paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center', backgroundColor: accent }}>
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#000000', letterSpacing: 1 }}>PLAY SOUNDS</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={S.divider} />
 
       {/* Explore buttons */}
       <View style={{ gap: 16 }}>
@@ -760,7 +768,7 @@ export default function MetabolicStoryModal({
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
         <BlurView intensity={100} tint="dark" style={styles.screen}>
           {/* Massive deep radial glow */}
-          <LinearGradient colors={[accent + '55', accent + '10', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" opacity={0.6} />
+          <LinearGradient colors={[accent + '55', accent + '10', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.8 }} style={[StyleSheet.absoluteFillObject, { opacity: 0.6 }]} pointerEvents="none" />
           
           {/* Elegant top progress bar */}
           <View style={styles.progressRow}>
@@ -829,21 +837,33 @@ export default function MetabolicStoryModal({
 const S = StyleSheet.create({
   card: {
     flex: 1,
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 20,
     justifyContent: 'center',
   },
   cardLabel: {
     fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 4, marginBottom: 24, textAlign: 'center',
+    letterSpacing: 4, marginBottom: 20, textAlign: 'center',
     textTransform: 'uppercase', fontFamily: 'System'
   },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    marginVertical: 24,
+    marginVertical: 20,
     width: '100%',
+  },
+  slimBox: {
+    borderRadius: 24, borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)',
+    padding: 20, marginBottom: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 15,
+  },
+  slimBoxLabel: {
+    fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 10, textTransform: 'uppercase'
+  },
+  slimBoxText: {
+    fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 22, fontWeight: '400'
   },
   activeBadge: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'center',
@@ -852,16 +872,16 @@ const S = StyleSheet.create({
   activeBadgeTxt: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   metricRow: {
     flexDirection: 'row', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,25,40,0.4)', overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20,
+    borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 15,
   },
   metricCell: { flex: 1, alignItems: 'center', paddingVertical: 20 },
   metricVal: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5, color: '#FFFFFF' },
   metricLabel: { fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1.5, marginTop: 6, textTransform: 'uppercase' },
   portalRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)', padding: 20, overflow: 'hidden',
-    backgroundColor: 'rgba(20,25,40,0.4)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20,
+    borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', padding: 20, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.03)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 15,
   },
 });
 

@@ -252,20 +252,16 @@ export default function SoundLibraryModal({
     }));
   }, [collections, sounds]);
 
-  // Filter
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return displayGroups;
+  // Filter sounds for search mode
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
-    return displayGroups.map(g => {
-      if (g.title.toLowerCase().includes(q)) return g;
-      const ms = g.sounds.filter((s: any) =>
-        s.label?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
-      );
-      return ms.length > 0 ? { ...g, sounds: ms } : null;
-    }).filter(Boolean) as DisplayGroup[];
-  }, [displayGroups, searchQuery]);
+    return sounds.filter(s => 
+      s.label?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
+    );
+  }, [sounds, searchQuery]);
 
-  const activeGroup = filteredGroups.find(g => g.id === activeId) ?? null;
+  const activeGroup = displayGroups.find(g => g.id === activeId) ?? null;
   const isSearchMode = searchQuery.length > 0;
 
   const handleSelectGroup = (id: string) => {
@@ -306,7 +302,7 @@ export default function SoundLibraryModal({
             <View>
               <Text style={S.headerTitle}>Svara Library</Text>
               <Text style={S.headerSub}>
-                {filteredGroups.length} collections · {sounds.length} sounds
+                {displayGroups.length} collections · {sounds.length} sounds
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
@@ -337,16 +333,35 @@ export default function SoundLibraryModal({
 
           {/* ── Single-panel drill-down layout ─────────────── */}
           <View style={{ flex: 1 }}>
-            {!activeGroup ? (
+            {isSearchMode ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
+              >
+                {searchResults.length === 0 && (
+                  <Text style={S.emptyText}>No results</Text>
+                )}
+                {searchResults.map((sound: any, idx: number) => (
+                  <SoundRow
+                    key={sound.id}
+                    sound={sound}
+                    isPlaying={playingId === sound.id}
+                    onPress={() => { onPlaySound(sound.id); }}
+                    isLast={idx === searchResults.length - 1}
+                    index={idx}
+                  />
+                ))}
+              </ScrollView>
+            ) : !activeGroup ? (
               <ScrollView
                 style={{ flex: 1, paddingHorizontal: 16 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingVertical: 10, paddingBottom: 50 }}
               >
-                {filteredGroups.length === 0 && (
+                {displayGroups.length === 0 && (
                   <Text style={S.emptyText}>No results</Text>
                 )}
-                {filteredGroups.map(group => (
+                {displayGroups.map(group => (
                   <CollectionPill
                     key={group.id}
                     group={group}
@@ -418,9 +433,9 @@ const S = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: '90%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    height: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.6,
