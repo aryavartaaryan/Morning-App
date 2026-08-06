@@ -157,8 +157,10 @@ const SLEEP_SOUNDS_IMAGE_URLS: readonly string[] = ALL_SLEEP_SOUNDS
   .map(s => (s as any).imageUri as string | undefined)
   .filter((u): u is string => !!u);
 
+export const SPACE_SCANNER_BG_URL = 'https://images.pexels.com/photos/29943761/pexels-photo-29943761.jpeg';
+
 const ALL_URLS: readonly string[] = [
-  ...new Set([...Object.values(SOUND_IMAGES), ...NIGHT_THEME_URLS, ...SLEEP_SOUNDS_IMAGE_URLS]),
+  ...new Set([...Object.values(SOUND_IMAGES), ...NIGHT_THEME_URLS, ...SLEEP_SOUNDS_IMAGE_URLS, SPACE_SCANNER_BG_URL]),
 ];
 
 /**

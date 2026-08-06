@@ -114,12 +114,12 @@ export function HeroGeometricAnimation({
     const isSplash = variant === 'splash';
 
     // Meditative but clearly visible rotation speeds
-    const SA = isHome ? 22000 : isSound ? 18000 : 8000;
-    const SB = isHome ? 34000 : isSound ? 28000 : 12000;
-    const SC = isHome ? 48000 : isSound ? 38000 : 18000;
-    const SD = isHome ? 18000 : isSound ? 14000 : 6000;
-    const SE = isHome ? 42000 : isSound ? 50000 : 22000;
-    const SF = isHome ? 28000 : isSound ? 22000 : 10000;
+    const SA = isHome ? 22000 : isSound ? 18000 : 22000;
+    const SB = isHome ? 34000 : isSound ? 28000 : 34000;
+    const SC = isHome ? 48000 : isSound ? 38000 : 48000;
+    const SD = isHome ? 18000 : isSound ? 14000 : 18000;
+    const SE = isHome ? 42000 : isSound ? 50000 : 42000;
+    const SF = isHome ? 28000 : isSound ? 22000 : 28000;
 
     Animated.loop(Animated.timing(rotA, { toValue: 1, duration: SA, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rotB, { toValue: 1, duration: SB, easing: Easing.linear, useNativeDriver: true })).start();
@@ -129,7 +129,7 @@ export function HeroGeometricAnimation({
     Animated.loop(Animated.timing(rotF, { toValue: 1, duration: SF, easing: Easing.linear, useNativeDriver: true })).start();
 
     // Breath
-    const BREATH_DUR = isHome ? 11000 : isSound ? 8000 : 6000;
+    const BREATH_DUR = isHome ? 11000 : isSound ? 8000 : 11000;
     Animated.loop(Animated.sequence([
       Animated.timing(breath, { toValue: 1, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(breath, { toValue: 0, duration: BREATH_DUR, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -357,39 +357,22 @@ export function HeroGeometricAnimation({
               ))}
             </Svg>
           </RL>
-          {/* 13 circles — CCW medium */}
-          <RL rot={ccwB}>
-            <Svg width={S} height={S}>
-              {[{x:hw,y:hw},...pts(hw,hw,S*0.19,6,0),...pts(hw,hw,S*0.38,6,0)].map((p,i)=>(
-                <SvgCircle key={`mc_c_${i}`} cx={p.x} cy={p.y} r={S*0.19}
-                  fill={`${GA}0.04)`} stroke={G2} strokeWidth="1.0" opacity={i===0?0.90:0.58} />
-              ))}
-              <SvgPath d={poly(pts(hw,hw,S*0.34,6,0))} fill="none" stroke={G3} strokeWidth="0.8" opacity={0.42} />
-            </Svg>
-          </RL>
-          {/* Mesh lines — CW slow */}
-          <RL rot={cwC}>
-            <Svg width={S} height={S}>
-              {(()=>{
-                const c=[{x:hw,y:hw},...pts(hw,hw,S*0.19,6,0),...pts(hw,hw,S*0.38,6,0)];
-                return c.flatMap((a,i)=>c.filter((_,j)=>j>i).map((b,j)=>(
-                  <SvgPath key={`mc_l_${i}_${j}`}
-                    d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`}
-                    stroke={G4} strokeWidth="0.35" opacity={0.18} />
-                )));
-              })()}
-            </Svg>
-          </RL>
-          {/* Star tetrahedron + vertex jewels — CCW fast */}
+          
+          {/* Star tetrahedron (Enlarged) + vertex jewels + Central Bindu — CCW fast */}
           <RL rot={ccwF}>
             <Svg width={S} height={S}>
-              <SvgPath d={poly(pts(hw,hw,S*0.34,3,-Math.PI/2))}
-                fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
-              <SvgPath d={poly(pts(hw,hw,S*0.34,3, Math.PI/2))}
-                fill={`${GA}0.10)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
-              {pts(hw,hw,S*0.34,6,0).map((p,i)=>(
+              <SvgPath d={poly(pts(hw,hw,S*0.42,3,-Math.PI/2))}
+                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
+              <SvgPath d={poly(pts(hw,hw,S*0.42,3, Math.PI/2))}
+                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
+              {pts(hw,hw,S*0.42,6,0).map((p,i)=>(
                 <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.82} />
               ))}
+              
+              {/* Elegant Central Dot (Bindu) */}
+              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G2} strokeWidth="0.6" opacity={0.3} strokeDasharray="2 4" />
+              <SvgCircle cx={hw} cy={hw} r={6} fill={G1} opacity={0.95} />
+              <SvgCircle cx={hw} cy={hw} r={2.5} fill={G3} opacity={1} />
             </Svg>
           </RL>
         </Animated.View>

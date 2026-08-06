@@ -3056,9 +3056,9 @@ function WeatherSection({
 
   return (
     <View style={WSEC.container}>
-      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={85} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+        colors={['rgba(14,21,48,0.85)', 'rgba(5,9,20,0.92)', 'rgba(14,21,48,0.80)']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -3147,15 +3147,15 @@ function WeatherSection({
 
 const WSEC = StyleSheet.create({
   container: {
-    marginHorizontal: 10, marginTop: 1, marginBottom: 2,
-    borderRadius: 20,
+    marginHorizontal: 12, marginTop: 2, marginBottom: 4,
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
+    borderColor: 'rgba(255,255,255,0.25)',
+    shadowColor: '#60a5fa',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
     elevation: 18,
   },
   topEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.15)' },
@@ -3163,19 +3163,19 @@ const WSEC = StyleSheet.create({
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bigEmoji: { fontSize: 32 },
-  bigTemp: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 },
+  bigTemp: { fontSize: 30, fontWeight: '300', color: '#FFFFFF', letterSpacing: -1.5, textShadowColor: 'rgba(255,255,255,0.2)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
   feelsLike: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '700' },
-  cond: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '800' },
+  cond: { fontSize: 13, color: 'rgba(255,255,255,0.95)', fontWeight: '600', letterSpacing: 0.2 },
   hiVal: { fontSize: 10, fontWeight: '800', color: '#f87171E8' },
   loVal: { fontSize: 10, fontWeight: '800', color: '#93c5fdCC' },
   chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  chip: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)' },
+  chip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.25)', shadowColor: '#FFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.1, shadowRadius: 4 },
   chipText: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.8)' },
   chevronWrap: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', marginLeft: 4 },
   chevron: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '900', lineHeight: 14 },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
-  hourCard: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 54, gap: 2 },
-  hourCardNow: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' },
+  hourCard: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)', minWidth: 56, gap: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  hourCardNow: { backgroundColor: 'rgba(96, 165, 250, 0.25)', borderColor: 'rgba(96, 165, 250, 0.5)', shadowColor: '#60a5fa', shadowOpacity: 0.3, shadowRadius: 10 },
   hourTime: { fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 },
   hourEmoji: { fontSize: 20, marginVertical: 2 },
   hourTemp: { fontSize: 12, fontWeight: '900', color: '#FFFFFF' },
@@ -5333,12 +5333,11 @@ function SleepSoundsButton({
       <Animated.View style={{ transform: [{ scale: calmPulse }, { scale: btnScale }], justifyContent: 'center', alignItems: 'center' }}>
         
         {/* Radiating Sound Waves */}
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 36, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: '100%', height: 36, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
 
         <View style={{
           borderRadius: 99, overflow: 'hidden',
-          backgroundColor: 'rgba(10,15,25,0.4)',
           borderWidth: 1.5, borderColor: 'rgba(128,255,255,0.4)',
           shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12,
           elevation: 8,
@@ -5346,17 +5345,18 @@ function SleepSoundsButton({
           <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
           
           <LinearGradient
-            colors={['rgba(128,255,255,0.25)', 'rgba(0,212,184,0.05)', 'transparent', 'rgba(128,255,255,0.15)']}
+            colors={['rgba(128,255,255,0.25)', 'rgba(0,212,184,0.05)', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}
-          >
-            {/* Soft breathing glow layer */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-              backgroundColor: 'rgba(128,255,255,0.2)',
-              opacity: glowOpacity,
-            }} />
+            style={StyleSheet.absoluteFillObject}
+          />
+          {/* Soft breathing glow layer */}
+          <Animated.View pointerEvents="none" style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(128,255,255,0.2)',
+            opacity: glowOpacity,
+          }} />
 
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 10 }}>
             {/* Soundwave icon */}
             <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8, zIndex: 1 }}>
               <SvgPath d="M4 12v0.01" stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
@@ -5367,12 +5367,10 @@ function SleepSoundsButton({
               <SvgPath d="M19 12v0.01" stroke="#80FFFF" strokeOpacity="0.6" strokeWidth="2" strokeLinecap="round" />
             </Svg>
 
-            <View style={{ height: 36, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#80FFFF', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', textShadowColor: '#80FFFF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4 }}>
-                {label}
-              </Text>
-            </View>
-          </LinearGradient>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#80FFFF', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', textShadowColor: '#80FFFF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4 }}>
+              {label}
+            </Text>
+          </View>
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -6008,6 +6006,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           {/* Inner hero ring container — centered in wrapper */}
           <Animated.View 
             {...panResponder.panHandlers}
+            pointerEvents="box-only"
             style={{ 
               width: HERO_RS, height: HERO_RS,
               transform: [{ scale: touchScale }]
@@ -6015,7 +6014,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           >
 
           {/* ── Inner zone — minimalist Apple/iOS dark glass (Matches Intention Card) ── */}
-          <View style={{
+          <View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
             overflow: 'hidden',
             borderWidth: 1.5,
@@ -6774,22 +6773,22 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     <>
       {/* VEDIC ALMANAC CARD */}
       <View style={{
-        marginHorizontal: 6,
-        marginTop: 1,
-        marginBottom: 1,
-        borderRadius: 20,
+        marginHorizontal: 12,
+        marginTop: 6,
+        marginBottom: 6,
+        borderRadius: 24,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.13)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 14 },
-        shadowOpacity: 0.55,
-        shadowRadius: 28,
-        elevation: 18,
+        borderColor: 'rgba(255,255,255,0.22)',
+        shadowColor: '#fbbf24',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.12,
+        shadowRadius: 36,
+        elevation: 20,
       }}>
-        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <BlurView intensity={85} tint="dark" style={StyleSheet.absoluteFillObject} />
         <LinearGradient
-          colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+          colors={['rgba(14,21,48,0.85)', 'rgba(5,9,20,0.92)', 'rgba(14,21,48,0.80)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
         />
@@ -6824,7 +6823,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                 </View>
               </View>
               
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 26 }}>
+              <Text style={{ fontSize: 26, fontWeight: '300', color: '#FFFFFF', letterSpacing: -0.5, lineHeight: 30, textShadowColor: 'rgba(255,255,255,0.25)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
                 {now.toLocaleDateString('en-IN', { weekday: 'long' })}
               </Text>
               <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.2, marginTop: 2 }}>
@@ -6871,14 +6870,14 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                     Haptics.selectionAsync();
                     setExpandedRow(isExpanded ? null : idx);
                   }}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3, gap: 10 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 12 }}>
                   <View style={{ width: 70 }}>
                     <Text style={{ fontSize: 7, fontWeight: '900', color: row.color + 'BB', letterSpacing: 1.4 }}>
                       {row.label}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF', letterSpacing: 0.4 }} numberOfLines={1}>
                       {row.value}
                     </Text>
                     <Text style={{ fontSize: 9.5, fontWeight: '800', color: row.color, marginTop: 1, letterSpacing: 0.3 }} numberOfLines={1}>
@@ -6902,9 +6901,13 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
                     marginBottom: 10, marginTop: -4,
                     paddingHorizontal: 14, paddingVertical: 12,
                     borderRadius: 12,
-                    backgroundColor: row.color + '0D',
+                    backgroundColor: 'rgba(255,255,255,0.06)',
                     borderWidth: 1,
-                    borderColor: row.color + '2A',
+                    borderColor: row.color + '40',
+                    shadowColor: row.color,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
                   }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
@@ -7184,14 +7187,15 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 
           {/* Drag handle */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>
-            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+            <View style={{ width: 36, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.25)', shadowColor: '#FFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }} />
           </View>
 
           {/* Floating close button */}
           <TouchableOpacity
             onPress={close}
-            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '700' }}>✕</Text>
+            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, overflow: 'hidden' }}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '400', opacity: 0.8 }}>✕</Text>
           </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, paddingTop: 0 }}>
@@ -7259,31 +7263,40 @@ const AnimatedAlmanacButton = ({ onPress }: { onPress: () => void }) => {
 
   return (
     <View style={{ alignItems: 'center', marginTop: -20, zIndex: 20 }}>
-      {/* Premium glowing pulse background */}
-      <Animated.View style={{ 
-        position: 'absolute', 
-        width: 170, 
-        height: 38, 
-        borderRadius: 20, 
-        backgroundColor: 'rgba(96, 165, 250, 0.4)', 
-        transform: [{ scale: pulseAnim }], 
-        opacity: pulseAnim.interpolate({ inputRange: [1, 1.05], outputRange: [0, 0.6] }) 
-      }} />
       <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        {/* Premium glowing pulse background */}
+        <Animated.View style={{ 
+          position: 'absolute', 
+          top: 0, left: 0, right: 0, bottom: 0,
+          borderRadius: 99, 
+          backgroundColor: 'rgba(96, 165, 250, 0.4)', 
+          transform: [{ scale: 1.05 }], 
+          opacity: pulseAnim.interpolate({ inputRange: [1, 1.05], outputRange: [0, 0.6] }) 
+        }} />
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
           style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-            paddingHorizontal: 24, paddingVertical: 8,
-            backgroundColor: 'rgba(15, 20, 35, 0.95)',
-            borderWidth: 1, borderColor: 'rgba(96, 165, 250, 0.45)',
-            borderRadius: 20,
+            borderRadius: 99,
+            overflow: 'hidden',
+            borderWidth: 1, 
+            borderColor: 'rgba(96, 165, 250, 0.45)',
             shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8
           }}
         >
-          <Text style={{ fontSize: 8, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
-          <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <LinearGradient
+            colors={['rgba(96, 165, 250, 0.25)', 'rgba(96, 165, 250, 0.05)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            paddingHorizontal: 24, paddingVertical: 10
+          }}>
+            <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.6 }}>OPEN DAY ALMANAC</Text>
+            <Text style={{ fontSize: 11, color: '#60a5fa', fontWeight: '900', marginTop: 1 }}>⌄</Text>
+          </View>
         </TouchableOpacity>
       </Animated.View>
     </View>

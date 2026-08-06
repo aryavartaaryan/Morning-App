@@ -46,6 +46,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBgContext } from '@/lib/bgContext';
 import { useSoundPlayer } from '@/lib/soundPlayerContext';
 import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri, SPACE_SCANNER_BG_URL } from '@/lib/soundImagePreload';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
@@ -77,8 +78,8 @@ const GLASS_BORDER = 'rgba(255,255,255,0.13)';
 const GLASS_SHINE  = 'rgba(255,255,255,0.07)';
 
 // ── Ring geometry ─────────────────────────────────────────────────────────────
-const RING_SIZE   = 316;
-const RING_STROKE = 6;
+const RING_SIZE   = 350;
+const RING_STROKE = 4;
 const R_OUTER     = (RING_SIZE - RING_STROKE) / 2;
 const R_INNER     = R_OUTER - 18; // For weekly intention ring
 const CIRCUMF     = 2 * Math.PI * R_OUTER;
@@ -577,20 +578,22 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
       </Animated.View>
 
       {/* Fixed north-pointer diamond */}
-      <View style={{ position: 'absolute', width: size, height: size }}>
-        <Svg width={size} height={size} viewBox="0 0 100 100">
-          <Defs>
-            <SvgLinearGradient id="northGold" x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor="#ffd700" />
-              <Stop offset="100%" stopColor="#ff8c00" />
-            </SvgLinearGradient>
-          </Defs>
-          <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
-            fill="url(#northGold)" />
-          <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
-            fill="none" stroke="rgba(255,200,0,0.8)" strokeWidth={0.6} />
-        </Svg>
-      </View>
+      {selectedActivity && (
+        <View style={{ position: 'absolute', width: size, height: size }}>
+          <Svg width={size} height={size} viewBox="0 0 100 100">
+            <Defs>
+              <SvgLinearGradient id="northGold" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#ffd700" />
+                <Stop offset="100%" stopColor="#ff8c00" />
+              </SvgLinearGradient>
+            </Defs>
+            <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
+              fill="url(#northGold)" />
+            <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
+              fill="none" stroke="rgba(255,200,0,0.8)" strokeWidth={0.6} />
+          </Svg>
+        </View>
+      )}
     </View>
   );
 }
@@ -601,19 +604,19 @@ function GlassPulseOverlay() {
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
       <BlurView
         tint="dark"
-        intensity={65}
+        intensity={15}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Premium iOS frosted-glass gradient overlay — same as sleep page */}
+      {/* Premium iOS frosted-glass gradient overlay — ultra smooth */}
       <LinearGradient
         colors={[
-          'rgba(4,6,14,0.15)',
-          'rgba(4,6,14,0.30)',
-          'rgba(4,6,14,0.45)',
-          'rgba(4,6,14,0.65)',
+          'rgba(4,6,14,0.1)',
+          'rgba(4,6,14,0.3)',
+          'rgba(4,6,14,0.6)',
+          'rgba(4,6,14,0.85)',
         ]}
-        locations={[0, 0.3, 0.7, 1]}
+        locations={[0, 0.4, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -623,27 +626,15 @@ function GlassPulseOverlay() {
 
 // ── DYNAMIC RING THEMES ────────────────────────────────────────────────────────
 function getRingTheme(hour: number) {
-  if (hour >= 5 && hour < 10) {
-    return { // Morning (Gold/Amber)
-      outer: '#fde68a', mid: '#fcd34d', inner: '#fbbf24', track: 'rgba(251,191,36,0.2)', glow: 'rgba(251,191,36,0.1)',
-      liquid: ['#fbbf24', '#fcd34d', '#ffffff']
-    };
-  } else if (hour >= 10 && hour < 17) {
-    return { // Midday (Cyan/Sky)
-      outer: '#bae6fd', mid: '#7dd3fc', inner: '#38bdf8', track: 'rgba(56,189,248,0.2)', glow: 'rgba(56,189,248,0.1)',
-      liquid: ['#38bdf8', '#7dd3fc', '#ffffff']
-    };
-  } else if (hour >= 17 && hour < 20) {
-    return { // Sunset (Orange/Coral)
-      outer: '#fed7aa', mid: '#fdba74', inner: '#fb923c', track: 'rgba(251,146,60,0.2)', glow: 'rgba(251,146,60,0.1)',
-      liquid: ['#fb923c', '#fdba74', '#ffffff']
-    };
-  } else {
-    return { // Night (Indigo/Violet)
-      outer: '#c7d2fe', mid: '#a5b4fc', inner: '#818cf8', track: 'rgba(129,140,248,0.2)', glow: 'rgba(129,140,248,0.1)',
-      liquid: ['#818cf8', '#a5b4fc', '#ffffff']
-    };
-  }
+  // Ultra-modern Space Intelligence Scanner palette
+  return {
+    outer: '#E0E7FF',
+    mid: '#A5B4FC',
+    inner: '#FFFFFF',
+    track: 'rgba(255,255,255,0.06)',
+    glow: 'rgba(255,255,255,0.04)',
+    liquid: ['#818CF8', '#C7D2FE', '#FFFFFF']
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -654,7 +645,9 @@ export default function WalkTab() {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [selectedActivity, setSelectedActivity] = useState<VastuActivity | null>(null);
+  const [activeActivity, setActiveActivity] = useState<VastuActivity | null>(null);
   const selectedActivityRef = useRef<VastuActivity | null>(null);
+  const transitionAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => { selectedActivityRef.current = selectedActivity; }, [selectedActivity]);
   const [energizeModalVisible, setEnergizeModalVisible] = useState(false);
   const [sciencePanelOpen, setSciencePanelOpen] = useState(false);
@@ -724,6 +717,28 @@ export default function WalkTab() {
   const [compassActive, setCompassActive] = useState<boolean>(false);
   const compassAnim = useRef(new Animated.Value(0)).current;
   let lastHeading = 0;
+
+  // ── Haptic Resonance Field (Option 1) ───────────────────────────────────
+  useEffect(() => {
+    let wasLocked = false;
+    let lastBeatTime = 0;
+    const id = lockedAnim.addListener(({ value }) => {
+      const now = Date.now();
+      if (value > 0.9 && !wasLocked) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        wasLocked = true;
+      } else if (value < 0.9 && wasLocked) {
+        wasLocked = false;
+      } else if (value > 0.4 && value < 0.9) {
+        // Heartbeat as you approach alignment
+        if (now - lastBeatTime > 400 - (value * 200)) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+          lastBeatTime = now;
+        }
+      }
+    });
+    return () => { lockedAnim.removeListener(id); };
+  }, [lockedAnim]);
 
   // ── Start / stop radar sweep based on compass active ──────────────────────
   useEffect(() => {
@@ -1319,28 +1334,25 @@ export default function WalkTab() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.pexels.com/photos/29943761/pexels-photo-29943761.jpeg' }}
-      style={[{ flex: 1, backgroundColor: accentColor || BG_DARK }]}
+      source={{ uri: getLocalSoundImageUri(SPACE_SCANNER_BG_URL) }}
+      style={[{ flex: 1, backgroundColor: BG_DARK }]}
       imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
-      {/* iOS Premium Filter Overlay */}
-      <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(5, 8, 18, 0.5)' }]} />
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
 
 
-      {/* Top nature glow */}
+      {/* Top cosmic glow */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, { opacity: glowOpacity, pointerEvents: 'none' }]}
         pointerEvents="none"
       >
         <LinearGradient
-          colors={['rgba(96,165,250,0.15)', 'transparent']}
+          colors={['rgba(255,255,255,0.08)', 'transparent']}
           style={{ position: 'absolute', top: -80, left: -80, width: 380, height: 380, borderRadius: 190 }}
         />
         <LinearGradient
-          colors={['rgba(59,130,246,0.12)', 'transparent']}
+          colors={['rgba(255,255,255,0.05)', 'transparent']}
           style={{ position: 'absolute', top: 120, right: -60, width: 320, height: 320, borderRadius: 160 }}
         />
       </Animated.View>
@@ -1380,20 +1392,28 @@ export default function WalkTab() {
                 <View style={{ width: 56 }} />
               )}
 
-              {/* Centre title */}
+              {/* Centre title (Ultra Premium Boxed HUD) */}
               <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase', textShadowColor: 'rgba(167,139,250,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 }}>
-                  Space Intelligence
-                </Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', letterSpacing: 1, fontWeight: '500' }}>
-                  Vastu Yantra
-                </Text>
+                <View style={{
+                  paddingVertical: 12, paddingHorizontal: 28,
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 30,
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#ffffff', letterSpacing: 4.5, textTransform: 'uppercase' }}>
+                    Space Intelligence
+                  </Text>
+                  <View style={{ width: 20, height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 6 }} />
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 6, fontWeight: '500', textTransform: 'uppercase' }}>
+                    Vastu Yantra
+                  </Text>
+                </View>
               </View>
 
-              {/* Garden icon */}
-              <TouchableOpacity onPress={() => router.push('/garden' as never)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Ionicons name="leaf" size={17} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
+              {/* Empty spacer to balance header */}
+              <View style={{ width: 56 }} />
             </View>
           </Animated.View>
         </Animated.View>
@@ -1423,55 +1443,88 @@ export default function WalkTab() {
                 <Animated.View key={i} pointerEvents="none" style={{ position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: p.clr, top: RING_SIZE / 2 - 3, left: RING_SIZE / 2 - 3, transform: [{ translateX: p.x }, { translateY: p.y }], opacity: p.op, shadowColor: p.clr, shadowOpacity: 0.8, shadowRadius: 4 }} />
               ))}
 
-              {/* Aura pulse layers */}
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 8, height: RING_SIZE + 8, borderRadius: (RING_SIZE + 8) / 2, backgroundColor: 'rgba(56,189,248,0.03)', transform: [{ scale: pulseAnim }], top: -4, left: -4 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 4, height: RING_SIZE + 4, borderRadius: (RING_SIZE + 4) / 2, backgroundColor: 'rgba(56,189,248,0.06)', transform: [{ scale: pulseAnim }], top: -2, left: -2 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 2, height: RING_SIZE + 2, borderRadius: (RING_SIZE + 2) / 2, backgroundColor: 'rgba(56,189,248,0.1)', transform: [{ scale: pulseAnim }], top: -1, left: -1 }} />
-
               {/* Inner disc with gyro parallax */}
-              <View style={{ position: 'absolute', width: RING_SIZE - RING_STROKE, height: RING_SIZE - RING_STROKE, borderRadius: (RING_SIZE - RING_STROKE) / 2, backgroundColor: 'rgba(56,189,248,0.08)', overflow: 'hidden' }}>
+              <View style={{ position: 'absolute', width: RING_SIZE - RING_STROKE, height: RING_SIZE - RING_STROKE, borderRadius: (RING_SIZE - RING_STROKE) / 2, backgroundColor: 'rgba(255,255,255,0.03)', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
                 <Animated.View style={{ position: 'absolute', top: -12, left: -12, right: -12, bottom: -12, transform: [{ translateX: gyroX }, { translateY: gyroY }] }}>
 
                   <LinearGradient
-                    colors={isSunrise || isSunset ? ['rgba(251,191,36,0.14)', 'rgba(251,146,60,0.08)', 'transparent'] : isRaining ? ['rgba(147,197,253,0.18)', 'rgba(56,189,248,0.08)', 'transparent'] : ['rgba(186,230,253,0.15)', 'rgba(56,189,248,0.08)', 'transparent']}
+                    colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)', 'transparent']}
                     start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
                   <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.glow, opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }} />
-                  {isHot && <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(239,68,68,0.1)', opacity: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.8] }), transform: [{ scale: heatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }] }} />}
-                  {isCold && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 8, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 200 }} />}
 
                   {/* Sacred geometry compass + Vastu scanner */}
-                  {compassActive && (
-                    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', opacity: 0.9 }]}>
-                      <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} selectedActivity={selectedActivity} />
-                      <VastuScanner heading={compassAnim} selectedActivity={selectedActivity} radarAnim={radarAnim} lockedAnim={lockedAnim} />
-                    </View>
-                  )}
+                  <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', opacity: 0.9 }]}>
+                    <CompassRose size={RING_SIZE - RING_STROKE - 30} heading={compassAnim} selectedActivity={activeActivity} />
+                    {compassActive && (
+                      <VastuScanner heading={compassAnim} selectedActivity={activeActivity} radarAnim={radarAnim} lockedAnim={lockedAnim} />
+                    )}
+                  </View>
 
-                  {isRaining && rainAnims.map((ra: any, i: number) => (
-                    <Animated.View key={i} pointerEvents="none" style={{ position: 'absolute', left: ra.x, top: 0, width: 1.5, height: 8, borderRadius: 1, backgroundColor: theme.outer, opacity: ra.op, transform: [{ translateY: ra.y }] }} />
-                  ))}
+                  {/* Meditative Transition Cover */}
+                  <Animated.View pointerEvents="none" style={{
+                    position: 'absolute', top: -30, left: -30, right: -30, bottom: -30,
+                    backgroundColor: '#ffffff',
+                    opacity: transitionAnim,
+                  }} />
+                  
+                  {/* Laser Lock-on UI (Option 1) */}
+                  {compassActive && activeActivity && (
+                    <Animated.View pointerEvents="none" style={{
+                      position: 'absolute', top: -400, left: '50%', marginLeft: -1.5, width: 3, height: 400,
+                      backgroundColor: '#ffffff',
+                      opacity: lockedAnim.interpolate({ inputRange: [0.8, 1], outputRange: [0, 1] }),
+                      shadowColor: '#ffffff', shadowOpacity: 1, shadowRadius: 15, shadowOffset: { width: 0, height: 0 }
+                    }} />
+                  )}
                 </Animated.View>
               </View>
 
-              {/* SVG Progress ring */}
-              <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.track} strokeWidth={0.2} />
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.2} />
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.mid} strokeWidth={0.4} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.5} />
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.inner} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
-                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke={theme.outer} strokeWidth={0.3} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.85} />
-                {summary && summary.weeklyGoal > 0 && (
+              {/* High-End Calibration Progress Ring */}
+              <Svg width={RING_SIZE + 60} height={RING_SIZE + 60} viewBox={`-30 -30 ${RING_SIZE + 60} ${RING_SIZE + 60}`} style={{ position: 'absolute', top: -30, left: -30 }}>
+                <Defs>
+                  <SvgLinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                    <Stop offset="100%" stopColor="#A5B4FC" stopOpacity="0.4" />
+                  </SvgLinearGradient>
+                </Defs>
+
+                {/* Outer Calibration Tracks (Aerospace/Smart UI feel) */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 16} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={0.5} strokeDasharray="1 6" />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER + 22} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.5} strokeDasharray="4 16" />
+
+                {/* Base Precision Track */}
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+                <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth={5} />
+
+                {/* Active Progress Sweep */}
+                {stats.goalPercent > 0 && (
                   <>
-                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.track} strokeWidth={0.3} />
-                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke={theme.mid} strokeWidth={0.6} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.9} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#progressGradient)" strokeWidth={5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.25} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_OUTER} fill="none" stroke="url(#progressGradient)" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={CIRCUMF} strokeDashoffset={CIRCUMF * (1 - (stats.goalPercent / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={1} />
                   </>
                 )}
+
+                {/* Weekly Intention Ring */}
+                {summary && summary.weeklyGoal > 0 && (
+                  <>
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={0.5} />
+                    <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R_INNER} fill="none" stroke="rgba(165,180,252,0.7)" strokeWidth={1.2} strokeLinecap="round" strokeDasharray={CIRCUMF_INNER} strokeDashoffset={CIRCUMF_INNER * (1 - (Math.min(100, summary.weeklyGoalPercent) / 100))} transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} />
+                  </>
+                )}
+
+                {/* Sleek Leading Edge Glowing Orb */}
                 {stats.goalPercent > 0 && stats.goalPercent < 100 && (() => {
                   const angle = (stats.goalPercent / 100) * 360 - 90;
                   const rad = angle * Math.PI / 180;
                   const cx = RING_SIZE / 2 + R_OUTER * Math.cos(rad);
                   const cy = RING_SIZE / 2 + R_OUTER * Math.sin(rad);
-                  return (<><Circle cx={cx} cy={cy} r={7} fill={theme.liquid[0]} opacity={0.25} /><Circle cx={cx} cy={cy} r={4} fill={theme.liquid[1]} opacity={0.7} /><Circle cx={cx} cy={cy} r={2} fill={theme.liquid[2]} opacity={0.95} /></>);
+                  return (
+                    <G>
+                      <Circle cx={cx} cy={cy} r={8} fill="#ffffff" opacity={0.15} />
+                      <Circle cx={cx} cy={cy} r={4} fill="#ffffff" opacity={0.4} />
+                      <Circle cx={cx} cy={cy} r={1.5} fill="#ffffff" />
+                    </G>
+                  );
                 })()}
               </Svg>
             </View>
@@ -1587,7 +1640,8 @@ export default function WalkTab() {
           </TouchableOpacity>
 
           {/* Compact horizontal activity pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 2 }}>
+          {/* Elegant Horizontal Activity Cards */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 10, paddingTop: 4 }}>
             {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
               const d = VASTU_DATA[act];
               const isSel = selectedActivity === act;
@@ -1597,32 +1651,43 @@ export default function WalkTab() {
                   onPress={() => {
                     Haptics.selectionAsync();
                     if (!compassActive) setCompassActive(true);
-                    setSelectedActivity(isSel ? null : act);
-                    if (isSel) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+                    
+                    const nextAct = isSel ? null : act;
+                    setSelectedActivity(nextAct);
+                    
+                    // Meditative transition sequence
+                    Animated.sequence([
+                      Animated.timing(transitionAnim, { toValue: 1, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+                    ]).start(() => {
+                      setActiveActivity(nextAct);
+                      Animated.timing(transitionAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: true }).start();
+                    });
+
+                    if (nextAct) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
                   }}
                   activeOpacity={0.8}
                   style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 7,
-                    overflow: 'hidden', borderRadius: 22,
-                    borderWidth: 1.2, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.13)',
-                    paddingHorizontal: 14, paddingVertical: 9,
-                    backgroundColor: isSel ? `${d.targetColor}18` : 'rgba(0,0,0,0.35)',
+                    flexDirection: 'column', alignItems: 'center', gap: 12,
+                    overflow: 'hidden', borderRadius: 24, width: 110,
+                    borderWidth: 1.5, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.1)',
+                    paddingHorizontal: 12, paddingVertical: 18,
+                    backgroundColor: isSel ? `${d.targetColor}20` : 'rgba(255,255,255,0.04)',
                     shadowColor: isSel ? d.targetColor : 'transparent',
-                    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: isSel ? 6 : 0,
+                    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: isSel ? 6 : 0,
                   }}
                 >
-                  <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-                  <Text style={{ fontSize: 15 }}>{d.icon}</Text>
-                  <View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSel ? '#fff' : 'rgba(255,255,255,0.7)', letterSpacing: 0.3 }}>
+                  <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <Text style={{ fontSize: 32 }}>{d.icon}</Text>
+                  <View style={{ alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSel ? '#fff' : 'rgba(255,255,255,0.7)', textAlign: 'center', letterSpacing: 0.3 }}>
                       {d.westernLabel}
                     </Text>
-                    <Text style={{ fontSize: 8, color: isSel ? `${d.targetColor}CC` : 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>
+                    <Text style={{ fontSize: 9, color: isSel ? `${d.targetColor}EE` : 'rgba(255,255,255,0.4)', textAlign: 'center', letterSpacing: 0.5 }}>
                       {d.dirs.map(dr => dr.label).join(' · ')}
                     </Text>
                   </View>
                   {isSel && (
-                    <Animated.View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
+                    <Animated.View style={{ position: 'absolute', top: 12, right: 12, width: 6, height: 6, borderRadius: 3, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
                   )}
                 </TouchableOpacity>
               );

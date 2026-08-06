@@ -304,7 +304,7 @@ export default function SoundLibraryModal({
           {/* ── Header ─────────────────────────────────────────────────── */}
           <View style={S.header}>
             <View>
-              <Text style={S.headerTitle}>Nada Library</Text>
+              <Text style={S.headerTitle}>Svara Library</Text>
               <Text style={S.headerSub}>
                 {filteredGroups.length} collections · {sounds.length} sounds
               </Text>

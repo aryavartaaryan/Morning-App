@@ -21,6 +21,7 @@ import { getSolarTimes, SolarTimes } from '@/lib/solar';
 import { getCurrentPeriod, getHeroRingContent } from '@/lib/ayurvedicPeriods';
 import { getSacredHourInfo } from '@/lib/solarRingPalette';
 import { useBgContext } from '@/lib/bgContext';
+import { BG_URLS } from '@/lib/bgImages';
 import { Colors, Font } from '@/constants/theme';
 import { useSoundPlayer, PlayableSoundMeta, getCachedDuration } from '@/lib/soundPlayerContext';
 import { SOUND_IMAGES as SOUND_IMAGES_LIB, ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
@@ -2014,19 +2015,24 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
 // Renders 3 layered sine waves synced to live audio via getMeteringLevel().
 // Sits just above the bottom player bar, BEHIND the sacred geometry orb.
 const ReelSineWave = memo(function ReelSineWave({
-  isPlaying, isPaused, color, getMeteringLevel, waveWidth,
+  isPlaying, isPaused, color, getMeteringLevel, size,
 }: {
   isPlaying: boolean;
   isPaused: boolean;
   color: string;
   getMeteringLevel: () => number;
-  waveWidth: number;
+  size: number;
 }) {
-  const WAVE_H = 100;
-  const CY = WAVE_H * 0.5;
-  const [wavePaths, setWavePaths] = useState({ p1: '', p2: '', p3: '' });
+  const CY = size * 0.5;
+  const p1Ref = useRef<any>(null);
+  const p2Ref = useRef<any>(null);
+  const p3Ref = useRef<any>(null);
+  const p4Ref = useRef<any>(null);
   const phaseRef = useRef(0);
   const mountedRef = useRef(true);
+
+  // Provide initial path so Svg Path doesn't crash on mount
+  const initialPath = useMemo(() => makeSineStrokePath(size, 0, 0.5, size * 0.7, CY), [size, CY]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2036,45 +2042,61 @@ const ReelSineWave = memo(function ReelSineWave({
   useEffect(() => {
     if (!isPlaying || isPaused) {
       // Flat idle line
-      const fl = makeSineStrokePath(waveWidth, 0, 0.5, waveWidth * 0.7, CY);
-      setWavePaths({ p1: fl, p2: fl, p3: fl });
+      const fl = makeSineStrokePath(size, 0, 0.5, size * 0.7, CY);
+      p1Ref.current?.setNativeProps({ d: fl });
+      p2Ref.current?.setNativeProps({ d: fl });
+      p3Ref.current?.setNativeProps({ d: fl });
+      p4Ref.current?.setNativeProps({ d: fl });
       return;
     }
     const tid = setInterval(() => {
       if (!mountedRef.current) return;
-      phaseRef.current += 0.07; // Slightly slower, more elegant wave speed
+      phaseRef.current += 0.05; // Elegant floating wave
       const m = Math.max(0, Math.min(1, getMeteringLevel()));
-      const amp = 2.5 + m * 18; // Reduced amplitude for elegant, subtle vibration
-      setWavePaths({
-        p1: makeSineStrokePath(waveWidth, phaseRef.current,               amp,        waveWidth * 0.52, CY),
-        p2: makeSineStrokePath(waveWidth, phaseRef.current + Math.PI / 2.8, amp * 0.62, waveWidth * 0.40, CY),
-        p3: makeSineStrokePath(waveWidth, phaseRef.current - Math.PI / 3.5, amp * 0.42, waveWidth * 0.68, CY),
-      });
-    }, 1000 / 30); // 30 fps — smooth but not wasteful
+      // Max 20px for crystal containment vibration
+      const amp = 2 + m * 20; 
+      
+      const p1 = makeSineStrokePath(size, phaseRef.current,               amp,        size * 0.52, CY);
+      const p2 = makeSineStrokePath(size, phaseRef.current + Math.PI / 3, amp * 0.8,  size * 0.40, CY);
+      const p3 = makeSineStrokePath(size, phaseRef.current - Math.PI / 4, amp * 0.6,  size * 0.68, CY);
+      
+      p1Ref.current?.setNativeProps({ d: p1 });
+      p2Ref.current?.setNativeProps({ d: p2 });
+      p3Ref.current?.setNativeProps({ d: p3 });
+      p4Ref.current?.setNativeProps({ d: p3 });
+    }, 1000 / 30);
     return () => clearInterval(tid);
-  }, [isPlaying, isPaused, waveWidth]);
+  }, [isPlaying, isPaused, size, CY]);
 
-  const waveOpacity = isPlaying && !isPaused ? 1 : 0.12;
+  const waveOpacity = isPlaying && !isPaused ? 1 : 0.15;
 
   return (
     <View
       pointerEvents="none"
       style={{
         position: 'absolute',
-        bottom: 150, // shifted a little above the bottom player bar
-        left: 0, right: 0,
-        height: WAVE_H,
+        top: 0, left: 0, right: 0, bottom: 0,
+        width: size, height: size,
         opacity: waveOpacity,
-        zIndex: 2,
+        zIndex: 10,
       }}
     >
-      <Svg width={waveWidth} height={WAVE_H}>
-        {/* Layer 3 — wide, softer premium glow */}
-        <Path d={wavePaths.p3} stroke={color + '12'} strokeWidth={14} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        {/* Layer 2 — mid wave, smooth blend */}
-        <Path d={wavePaths.p2} stroke={color + '33'} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        {/* Layer 1 — primary bright, crisp signal line */}
-        <Path d={wavePaths.p1} stroke={color + 'E6'} strokeWidth={1} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Svg width={size} height={size}>
+        <Defs>
+          <SvgClipPath id="crystalOrb">
+            <SvgCircle cx={size / 2} cy={size / 2} r={size / 2 - 2} />
+          </SvgClipPath>
+        </Defs>
+        <G clipPath="url(#crystalOrb)">
+          {/* Layer 4 — ultra wide, ambient deep glow */}
+          <Path ref={p4Ref} d={initialPath} stroke={color} strokeWidth={24} opacity={0.12} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Layer 3 — medium premium glow */}
+          <Path ref={p3Ref} d={initialPath} stroke={color} strokeWidth={12} opacity={0.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Layer 2 — crisp vibrant core */}
+          <Path ref={p2Ref} d={initialPath} stroke={color} strokeWidth={3} opacity={0.65} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Layer 1 — brilliant white-hot laser center */}
+          <Path ref={p1Ref} d={initialPath} stroke="#ffffff" strokeWidth={1} opacity={0.9} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </G>
       </Svg>
     </View>
   );
@@ -2576,21 +2598,35 @@ const ReelCard = memo(function ReelCard({
           )}
         </View>
 
-        <HeroGeometricAnimation variant="sound" size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} theme="dark" opacity={0.85} speed="slow" audioMetering={meteringAnim} />
+        <Animated.View style={{
+          transform: [{
+            scale: isActive ? meteringAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 1.1]
+            }) : 1
+          }]
+        }}>
+          <HeroGeometricAnimation 
+            variant="sound" 
+            size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} 
+            theme="dark" 
+            opacity={isActive ? 0.85 : 0.4} 
+            speed="slow" 
+            audioMetering={isActive ? meteringAnim : undefined} 
+          />
+
+          {/* ── Option 2: Core Energy Field (Masked Laser inside the Crystal Orb) ── */}
+          {isActive && (
+            <ReelSineWave
+              isPlaying={isPlaying}
+              isPaused={isPaused}
+              color={sound.color ?? '#a78bfa'}
+              getMeteringLevel={getMeteringLevel}
+              size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95}
+            />
+          )}
+        </Animated.View>
       </View>
-
-
-
-      {/* ── Real-time Sinewave Visualizer — Concept 5 Signal Waveform ── */}
-      {isActive && (
-        <ReelSineWave
-          isPlaying={isPlaying}
-          isPaused={isPaused}
-          color={sound.color ?? '#a78bfa'}
-          getMeteringLevel={getMeteringLevel}
-          waveWidth={REEL_W}
-        />
-      )}
 
       {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
@@ -3605,12 +3641,14 @@ const SoundReelsModal = memo(function SoundReelsModal({
 const COLLECTION_PREMIUM_ICON = 'musical-notes';
 
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
-  const colW = Math.floor((W - 32 - 12) / 2);
-  const colH = Math.round(colW * 1.58);
+  // Edge-to-edge flush masonry grid: 1px gap in the middle
+  const colW = (W - 1) / 2;
+  const premiumColH = Math.round(colW * 1.55); // Tall editorial poster format
+
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 28 }}>
-      {/* Section header */}
-      <View style={{ marginBottom: 24, marginTop: 12 }}>
+    <View style={{ paddingHorizontal: 0, paddingBottom: 28 }}>
+      {/* Section header needs its own padding since the container is edge-to-edge */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 24, marginTop: 12 }}>
         <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
           SONIC THERAPIES
         </Text>
@@ -3622,12 +3660,10 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
         </Text>
       </View>
 
-      {/* 2-column editorial grid */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
-        {SONIC_COLLECTIONS.map(col => {
+      {/* 2-column edge-to-edge flush grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        {SONIC_COLLECTIONS.map((col, idx) => {
           const soundCount = col.soundIds.length;
-          // Taller, more elegant aspect ratio for collections (1.65)
-          const premiumColH = Math.round(colW * 1.65);
           return (
             <TouchableOpacity
               key={col.id}
@@ -3635,85 +3671,59 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
               onPress={() => onSelectCollection(col.id)}
               style={{
                 width: colW, height: premiumColH,
-                borderRadius: 28, overflow: 'hidden',
-                borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: 0.35, shadowRadius: 20,
-                elevation: 12,
+                marginBottom: 1, // 1px vertical gap between rows
+                overflow: 'hidden',
+                backgroundColor: '#050505',
               }}
             >
-              {/* Full-bleed artwork */}
+              {/* Full-bleed artwork with no borders */}
               <Image source={{ uri: col.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
               
-              {/* Smooth dark vignette to ensure top pill and bottom plaque pop */}
+              {/* Deep central vignette for extreme text readability */}
               <LinearGradient
-                colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
-                locations={[0, 0.4, 1]}
+                colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.85)']}
+                locations={[0, 0.45, 1]}
                 style={StyleSheet.absoluteFillObject}
               />
               
-              {/* Subtle colour wash to tie into the theme */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.12 }]} />
+              {/* Subtle colour wash */}
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} />
 
-              {/* Top pill — elegant category badge */}
-              <View style={{ position: 'absolute', top: 12, left: 12 }}>
-                <BlurView intensity={45} tint="dark" style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
-                  borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5,
-                  overflow: 'hidden',
-                  borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)',
-                }}>
-                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: col.themeColor, shadowColor: col.themeColor, shadowOpacity: 0.8, shadowRadius: 4 }} />
-                  <Text style={{ fontSize: 8, fontWeight: '800', color: 'rgba(255,255,255,0.85)', letterSpacing: 1.5, fontFamily: 'Nunito_700Bold' }}>
+              {/* Centered Editorial Content — Movie Poster Style */}
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+                
+                {/* Glowing Badge */}
+                <View style={{ marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: col.themeColor+'60', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 24, backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                  <Text style={{ fontSize: 8, color: col.themeColor, letterSpacing: 2.5, fontFamily: 'Nunito_700Bold' }}>
                     {col.subtitle.toUpperCase()}
                   </Text>
-                </BlurView>
-              </View>
+                </View>
 
-              {/* Bottom Floating Glass Plaque — Ultra Premium */}
-              <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-                <BlurView intensity={65} tint="dark" style={{ padding: 14, paddingTop: 14, paddingBottom: 14, backgroundColor: 'rgba(5,10,20,0.35)' }}>
-                  {/* Title */}
-                  <Text
-                    style={{ fontSize: 18, color: '#fff', fontFamily: 'Nunito_600SemiBold', marginBottom: 2, letterSpacing: 0.2 }}
-                    numberOfLines={2}
-                  >
-                    {col.title}
+                {/* Title (Allowed to wrap naturally so full names are visible) */}
+                <Text
+                  style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', lineHeight: 28, marginBottom: 14, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}
+                >
+                  {col.title}
+                </Text>
+
+                {/* Theme Divider */}
+                <View style={{ width: 32, height: 1, backgroundColor: col.themeColor+'AA', marginBottom: 14 }} />
+
+                {/* Explore Link */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
+                    EXPLORE
                   </Text>
-                  {/* Subtitle / Description */}
-                  <Text
-                    style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 12, fontFamily: 'Nunito_400Regular', letterSpacing: 0.2, lineHeight: 14 }}
-                    numberOfLines={1}
-                  >
-                    {col.description}
+                  <Ionicons name="arrow-forward" size={10} color={col.themeColor} />
+                </View>
+
+                {/* Track count pinned to bottom */}
+                <View style={{ position: 'absolute', bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6 }}>
+                  <Ionicons name="albums-outline" size={10} color="#fff" />
+                  <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700', letterSpacing: 1.1, fontFamily: 'Nunito_700Bold' }}>
+                    {soundCount} TRACKS
                   </Text>
-                  
-                  {/* Delicate Divider */}
-                  <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 10 }} />
-                  
-                  {/* Footer: Track count & Action Button */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="albums-outline" size={10} color="rgba(255,255,255,0.4)" />
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1.1, fontFamily: 'Nunito_700Bold' }}>
-                        {soundCount} TRACKS
-                      </Text>
-                    </View>
-                    
-                    {/* Glass Action Button */}
-                    <View style={{ 
-                      backgroundColor: col.themeColor + '30', 
-                      paddingHorizontal: 12, paddingVertical: 5, 
-                      borderRadius: 12,
-                      borderWidth: StyleSheet.hairlineWidth, borderColor: col.themeColor + '60'
-                    }}>
-                      <Text style={{ fontSize: 9, color: col.themeColor, fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
-                        Explore
-                      </Text>
-                    </View>
-                  </View>
-                </BlurView>
+                </View>
               </View>
             </TouchableOpacity>
           );
@@ -4654,13 +4664,11 @@ function SleepTabInner() {
     <View style={[S.screen, { backgroundColor: '#03030D' }]}>
       {/* Background Image confined to the top 55% of the screen like Sonic Therapies mode */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55 }}>
-        {bgUri && (
-          <Image
-            source={{ uri: bgUri }}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
-          />
-        )}
+        <Image
+          source={{ uri: BG_URLS['afternoon_late_2'] || bgUri }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
         <BlurView
           tint="dark"
           intensity={85}
