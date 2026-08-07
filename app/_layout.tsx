@@ -309,77 +309,87 @@ const SETUP_SUBTITLES = [
   'A new dawn of conscious living awaits you',
 ];
 
-function PremiumSurveyChip({ label, isSelected, onPress }: { label: string, isSelected: boolean, onPress: () => void }) {
+function PremiumSurveyGridItem({ label, icon, isSelected, onPress }: { label: string, icon: string, isSelected: boolean, onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
   
-  const handlePressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
-  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
+  const handlePressIn = () => Animated.spring(scale, { toValue: 0.92, useNativeDriver: true }).start();
+  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 5, tension: 40, useNativeDriver: true }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View style={{ transform: [{ scale }], width: '48%', marginBottom: 12 }}>
       <TouchableOpacity activeOpacity={0.9} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => { Haptics.selectionAsync().catch(()=>{}); onPress(); }}>
         <BlurView 
-          intensity={isSelected ? 20 : 10} 
+          intensity={isSelected ? 30 : 15} 
           tint="dark" 
           style={{ 
-            borderRadius: 24, 
+            borderRadius: 20, 
             overflow: 'hidden', 
-            borderWidth: 1, 
-            borderColor: isSelected ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.1)',
-            backgroundColor: isSelected ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
+            borderWidth: 1.5, 
+            borderColor: isSelected ? 'rgba(147, 197, 253, 0.8)' : 'rgba(255,255,255,0.08)',
+            backgroundColor: isSelected ? 'rgba(96, 165, 250, 0.15)' : 'rgba(0,0,0,0.3)',
+            height: 90,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 10
           }}
         >
-          <View style={{ paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
-            {isSelected && <Ionicons name="checkmark" size={16} color="#ffffff" style={{ marginRight: 6 }} />}
-            <Text style={{ 
-              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', 
-              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_500Medium', 
-              fontSize: 14,
-            }}>
-              {label}
-            </Text>
-          </View>
+          {isSelected && (
+             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+          )}
+          <Text style={{ fontSize: 24, marginBottom: 8, opacity: isSelected ? 1 : 0.6 }}>{icon}</Text>
+          <Text style={{ 
+            color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', 
+            fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
+            fontSize: 13,
+            textAlign: 'center',
+            lineHeight: 18
+          }}>
+            {label}
+          </Text>
         </BlurView>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-function PremiumSurveyRow({ label, isSelected, onPress }: { label: string, isSelected: boolean, onPress: () => void }) {
+function PremiumSurveySlimRow({ label, icon, isSelected, onPress }: { label: string, icon: string, isSelected: boolean, onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
   
-  const handlePressIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
-  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }).start();
+  const handlePressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
+  const handlePressOut = () => Animated.spring(scale, { toValue: 1, friction: 5, tension: 40, useNativeDriver: true }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }], width: '100%' }}>
+    <Animated.View style={{ transform: [{ scale }], width: '100%', marginBottom: 10 }}>
       <TouchableOpacity activeOpacity={0.9} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => { Haptics.selectionAsync().catch(()=>{}); onPress(); }}>
         <BlurView 
-          intensity={isSelected ? 20 : 10} 
+          intensity={isSelected ? 30 : 15} 
           tint="dark" 
           style={{ 
-            borderRadius: 16, 
+            borderRadius: 18, 
             overflow: 'hidden', 
-            borderWidth: 1, 
-            borderColor: isSelected ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.08)',
-            backgroundColor: isSelected ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
+            borderWidth: 1.5, 
+            borderColor: isSelected ? 'rgba(147, 197, 253, 0.8)' : 'rgba(255,255,255,0.06)',
+            backgroundColor: isSelected ? 'rgba(96, 165, 250, 0.15)' : 'rgba(0,0,0,0.25)',
           }}
         >
-          <View style={{ paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 22, marginRight: 14, opacity: isSelected ? 1 : 0.6 }}>{icon}</Text>
             <Text style={{ 
-              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)', 
-              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_500Medium', 
-              fontSize: 15,
+              flex: 1,
+              color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.7)', 
+              fontFamily: isSelected ? 'Nunito_700Bold' : 'Nunito_600SemiBold', 
+              fontSize: 16,
+              letterSpacing: 0.2
             }}>
               {label}
             </Text>
             <View style={{ 
-              width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, 
-              borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.3)',
-              backgroundColor: 'transparent',
+              width: 20, height: 20, borderRadius: 10, borderWidth: 2, 
+              borderColor: isSelected ? '#93c5fd' : 'rgba(255,255,255,0.15)',
+              backgroundColor: isSelected ? 'rgba(147, 197, 253, 0.2)' : 'transparent',
               alignItems: 'center', justifyContent: 'center'
             }}>
-              {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ffffff' }} />}
+              {isSelected && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#93c5fd' }} />}
             </View>
           </View>
         </BlurView>
@@ -398,15 +408,44 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
   const contentTranslate = useRef(new Animated.Value(0)).current;
+  const orbPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbPulse, { toValue: 1.15, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(orbPulse, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
   }, []);
 
-  const tags1 = ['Manage Daily Stress', 'Improve Sleep Quality', 'Boost Morning Energy', 'Find Mental Clarity', 'Build Healthy Habits', 'Digital Mindfulness'];
-  const tags2 = ['Desk Bound (Mostly Sedentary)', 'Lightly Active (Occasional Walks)', 'Highly Active (Regular Workouts)'];
-  const tags3 = ['Groggy & Exhausted', 'Anxious & Rushed', 'Okay, but Need Coffee', 'Rested & Ready'];
-  const tags4 = ['Always Short on Time', 'High Stress & Burnout', 'Doomscrolling/Screen Time', 'Inconsistent Sleep', 'Lack of Motivation'];
+  const tags1 = [
+    { label: 'Manage Stress', icon: '🧘‍♀️' }, { label: 'Better Sleep', icon: '😴' }, 
+    { label: 'Boost Energy', icon: '⚡' }, { label: 'Mental Clarity', icon: '🧠' }, 
+    { label: 'Build Habits', icon: '🌱' }, { label: 'Mindfulness', icon: '📱' }
+  ];
+  
+  const tags2 = [
+    { label: 'Desk Bound (Sedentary)', icon: '🪑' }, 
+    { label: 'Lightly Active (Walks)', icon: '🚶' }, 
+    { label: 'Highly Active (Workouts)', icon: '🏃' }
+  ];
+  
+  const tags3 = [
+    { label: 'Groggy & Exhausted', icon: '😫' }, 
+    { label: 'Anxious & Rushed', icon: '⏱️' }, 
+    { label: 'Okay, Need Coffee', icon: '☕' }, 
+    { label: 'Rested & Ready', icon: '✨' }
+  ];
+  
+  const tags4 = [
+    { label: 'Always Short on Time', icon: '⏳' }, 
+    { label: 'High Stress & Burnout', icon: '🔥' }, 
+    { label: 'Doomscrolling', icon: '📱' }, 
+    { label: 'Inconsistent Sleep', icon: '🌙' }, 
+    { label: 'Lack of Motivation', icon: '📉' }
+  ];
 
   const canContinueStep = 
     (step === 0 && q1.length > 0) ||
@@ -452,7 +491,7 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
     Animated.timing(fadeAnim, { toValue: 0, duration: 800, useNativeDriver: true }).start(() => {
-      const target = q2 === 'Desk Bound (Mostly Sedentary)' ? '21000' : q2 === 'Lightly Active (Occasional Walks)' ? '35000' : '50000';
+      const target = q2 === 'Desk Bound (Sedentary)' ? '21000' : q2 === 'Lightly Active (Walks)' ? '35000' : '50000';
       AsyncStorage.setItem('sc_weekly_goal', target).catch(() => {});
       AsyncStorage.setItem('sc_intentions', JSON.stringify(q1)).catch(() => {});
       onComplete();
@@ -463,48 +502,48 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
     switch (step) {
       case 0:
         return (
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>What brings you to Svara?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Select all that apply to personalize your journey.</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>What brings you to Svara?</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>Select all that apply to personalize your journey.</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {tags1.map(t => (
-                <PremiumSurveyChip key={t} label={t} isSelected={q1.includes(t)} onPress={() => toggleQ1(t)} />
+                <PremiumSurveyGridItem key={t.label} label={t.label} icon={t.icon} isSelected={q1.includes(t.label)} onPress={() => toggleQ1(t.label)} />
               ))}
             </View>
           </View>
         );
       case 1:
         return (
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>How do you feel upon waking?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>Understanding your mornings helps us adapt.</Text>
-            <View style={{ gap: 12, marginTop: 8 }}>
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>How do you feel upon waking?</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>Understanding your mornings helps us adapt.</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {tags3.map(t => (
-                <PremiumSurveyRow key={t} label={t} isSelected={q3 === t} onPress={() => handleSelectSingle(setQ3, t, 2)} />
+                <PremiumSurveyGridItem key={t.label} label={t.label} icon={t.icon} isSelected={q3 === t.label} onPress={() => handleSelectSingle(setQ3, t.label, 2)} />
               ))}
             </View>
           </View>
         );
       case 2:
         return (
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your biggest obstacle?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>We'll help you overcome these challenges.</Text>
-            <View style={{ gap: 12, marginTop: 8 }}>
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>Your biggest obstacle?</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>We'll help you overcome these challenges.</Text>
+            <View style={{ width: '100%' }}>
               {tags4.map(t => (
-                <PremiumSurveyRow key={t} label={t} isSelected={q4 === t} onPress={() => handleSelectSingle(setQ4, t, 3)} />
+                <PremiumSurveySlimRow key={t.label} label={t.label} icon={t.icon} isSelected={q4 === t.label} onPress={() => handleSelectSingle(setQ4, t.label, 3)} />
               ))}
             </View>
           </View>
         );
       case 3:
         return (
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 8, letterSpacing: 0.5 }}>Your current rhythm?</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 24 }}>To set an achievable wellness goal.</Text>
-            <View style={{ gap: 12, marginTop: 8 }}>
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>Your current rhythm?</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>To set an achievable wellness goal.</Text>
+            <View style={{ width: '100%' }}>
               {tags2.map(t => (
-                <PremiumSurveyRow key={t} label={t} isSelected={q2 === t} onPress={() => setQ2(t)} />
+                <PremiumSurveySlimRow key={t.label} label={t.label} icon={t.icon} isSelected={q2 === t.label} onPress={() => setQ2(t.label)} />
               ))}
             </View>
           </View>
@@ -515,28 +554,36 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#020617', zIndex: 100, elevation: 10000, opacity: fadeAnim }]}>
-      {/* Dynamic Background Image */}
-      <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.8 }} resizeMode="cover" />
-      <LinearGradient
-        colors={['rgba(2,6,23,0.3)', 'rgba(2,6,23,0.85)', '#020617']}
-        style={StyleSheet.absoluteFillObject}
-      />
+      {/* Premium Deep Background */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#040714' }]} />
       
+      {/* Animated Glowing Orbs */}
+      <Animated.View style={{ 
+        position: 'absolute', top: -150, left: -100, width: 400, height: 400, borderRadius: 200, 
+        backgroundColor: 'rgba(56, 189, 248, 0.08)', transform: [{ scale: orbPulse }]
+      }} />
+      <Animated.View style={{ 
+        position: 'absolute', bottom: -100, right: -150, width: 500, height: 500, borderRadius: 250, 
+        backgroundColor: 'rgba(99, 102, 241, 0.06)', transform: [{ scale: orbPulse }]
+      }} />
+
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 40 }}>
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
           
           {/* Header & Progress Indicator */}
-          <View style={{ marginBottom: 40 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <Text style={{ fontSize: 18, color: '#bfdbfe', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 1 }}>Svara</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_700Bold', letterSpacing: 2 }}>{step + 1} / 4</Text>
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text style={{ fontSize: 20, color: '#bfdbfe', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 1 }}>Svara</Text>
+              <BlurView intensity={20} tint="dark" style={{ borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, overflow: 'hidden' }}>
+                 <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2 }}>{step + 1} OF 4</Text>
+              </BlurView>
             </View>
-            <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+            <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1.5, overflow: 'hidden' }}>
               <Animated.View style={{ 
                 width: `${((step + 1) / 4) * 100}%`, 
                 height: '100%', 
                 backgroundColor: '#93c5fd', 
-                borderRadius: 2 
+                borderRadius: 1.5 
               }} />
             </View>
           </View>
@@ -549,17 +596,17 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
         </View>
 
         {/* Footer Actions */}
-        <View style={{ paddingHorizontal: 28, paddingBottom: 40, paddingTop: 10 }}>
-          <BlurView intensity={30} tint="dark" style={{ borderRadius: 30, overflow: 'hidden' }}>
-            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.02)', padding: 6 }}>
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 12 }}>
+          <BlurView intensity={25} tint="dark" style={{ borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', padding: 6 }}>
               {step > 0 && (
                 <TouchableOpacity 
                   onPress={handleBack}
                   activeOpacity={0.7}
                   style={{ 
-                    paddingVertical: 18, 
-                    paddingHorizontal: 24,
-                    borderRadius: 24, 
+                    paddingVertical: 16, 
+                    paddingHorizontal: 20,
+                    borderRadius: 22, 
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -574,24 +621,24 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
                 activeOpacity={0.8}
                 style={{ 
                   flex: 1,
-                  paddingVertical: 18, 
-                  borderRadius: 24, 
+                  paddingVertical: 16, 
+                  borderRadius: 22, 
                   alignItems: 'center',
                   flexDirection: 'row',
                   justifyContent: 'center',
-                  backgroundColor: canContinueStep ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.05)'
+                  backgroundColor: canContinueStep ? '#3b82f6' : 'rgba(255,255,255,0.05)'
                 }}>
                 <Text style={{ 
                   color: canContinueStep ? '#ffffff' : 'rgba(255,255,255,0.3)', 
                   fontFamily: 'Nunito_800ExtraBold', 
-                  fontSize: 15, 
+                  fontSize: 14, 
                   letterSpacing: 1.5, 
                   textTransform: 'uppercase',
                   marginRight: canContinueStep ? 8 : 0
                 }}>
                   {step === 3 ? 'Begin Journey' : 'Continue'}
                 </Text>
-                {canContinueStep && step < 3 && <Ionicons name="arrow-forward" size={18} color="#ffffff" />}
+                {canContinueStep && step < 3 && <Ionicons name="arrow-forward" size={16} color="#ffffff" />}
               </TouchableOpacity>
             </View>
           </BlurView>
@@ -600,8 +647,6 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
     </Animated.View>
   );
 }
-
-
 function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOutComplete }: { progress: number; label: string; error?: boolean; onRetry?: () => void; isFadingOut?: boolean; onFadeOutComplete?: () => void }) {
   const pulseAnim   = useRef(new Animated.Value(0)).current;
   const screenOp    = useRef(new Animated.Value(1)).current;

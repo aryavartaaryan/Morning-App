@@ -59,9 +59,11 @@ import OrbitPulseGame from '@/components/OrbitPulseGame';
 // ── Sensors (optional — gracefully degrade if unavailable) ────────────────────
 let Gyroscope: any = null;
 let Magnetometer: any = null;
+let Accelerometer: any = null;
 try { 
   Gyroscope = require('expo-sensors').Gyroscope; 
   Magnetometer = require('expo-sensors').Magnetometer;
+  Accelerometer = require('expo-sensors').Accelerometer;
 } catch (_) {}
 
 const { width: W } = Dimensions.get('window');
@@ -122,7 +124,7 @@ const VASTU_DATA: Record<VastuActivity, {
   searchingText: string;
 }> = {
   sleep: {
-    icon: 'moon-outline',
+    icon: '🌙',
     label: 'Sleep & Recovery',
     westernLabel: 'Sleep & Recovery',
     dirs: [ { label: 'South', range: [157.5, 202.5] }, { label: 'East', range: [67.5, 112.5] } ],
@@ -134,7 +136,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Point your head in this direction while sleeping",
   },
   meditate: {
-    icon: 'flower-outline',
+    icon: '🧘',
     label: 'Mindfulness',
     westernLabel: 'Mindfulness & Stillness',
     dirs: [ { label: 'North-East', range: [22.5, 67.5] }, { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
@@ -146,7 +148,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Face this direction during meditation or breathwork",
   },
   deepwork: {
-    icon: 'flash-outline',
+    icon: '⚡',
     label: 'Deep Focus',
     westernLabel: 'Deep Work & Flow State',
     dirs: [ { label: 'North', range: [337.5, 22.5] }, { label: 'East', range: [67.5, 112.5] } ],
@@ -158,7 +160,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Set your desk or screen to face this direction",
   },
   movement: {
-    icon: 'walk-outline',
+    icon: '🏃',
     label: 'Movement',
     westernLabel: 'Exercise & Vitality',
     dirs: [ { label: 'East', range: [67.5, 112.5] } ],
@@ -170,7 +172,7 @@ const VASTU_DATA: Record<VastuActivity, {
     searchingText: "Rotate until locked · Begin your workout or yoga facing this direction",
   },
   eat: {
-    icon: 'restaurant-outline',
+    icon: '🥗',
     label: 'Mindful Eating',
     westernLabel: 'Mindful Eating & Digestion',
     dirs: [ { label: 'East', range: [67.5, 112.5] }, { label: 'North', range: [337.5, 22.5] } ],
@@ -252,47 +254,7 @@ function VastuScanner({
 
       {/* ── SCANNING state ── */}
       <Animated.View style={{ position: 'absolute', alignItems: 'center', opacity: searchingOpacity, top: 0 }}>
-        {/* Rotating radar wedge overlay on top of Sri Yantra */}
-        <Animated.View style={{
-          position: 'absolute', top: -110, left: -110, right: -110,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ rotate: radarDeg }],
-        }}>
-          <Svg width={220} height={220} viewBox="0 0 220 220">
-            <Defs>
-              <RadialGradient id="radarSweep" cx="50%" cy="50%" r="50%">
-                <Stop offset="0%" stopColor={data.targetColor} stopOpacity="0.0" />
-                <Stop offset="60%" stopColor={data.targetColor} stopOpacity="0.18" />
-                <Stop offset="100%" stopColor={data.targetColor} stopOpacity="0.04" />
-              </RadialGradient>
-            </Defs>
-            {/* Radar sweep wedge (60° arc) */}
-            <Path
-              d={`M110,110 L110,10 A100,100 0 0,1 ${110 + 100 * Math.sin(60 * Math.PI / 180)},${110 - 100 * Math.cos(60 * Math.PI / 180)} Z`}
-              fill="url(#radarSweep)"
-            />
-            {/* Leading edge line */}
-            <Line x1="110" y1="110" x2="110" y2="10"
-              stroke={data.targetColor} strokeWidth="1.2" strokeOpacity="0.7"
-            />
-          </Svg>
-        </Animated.View>
-
-        {/* SCANNING badge */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
-          backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20,
-          borderWidth: 1, borderColor: `${data.targetColor}50`,
-          paddingHorizontal: 14, paddingVertical: 6, marginBottom: 8 }}>
-          {/* Pulsing dot */}
-          <Animated.View style={{
-            width: 6, height: 6, borderRadius: 3,
-            backgroundColor: data.targetColor,
-            opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }),
-          }} />
-          <Text style={{ fontSize: 9, fontWeight: '900', color: data.targetColor, letterSpacing: 2.5, textTransform: 'uppercase' }}>SCANNING</Text>
-        </View>
-
-        <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.75)', textAlign: 'center', letterSpacing: 0.3, marginBottom: 4, paddingHorizontal: 16 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textAlign: 'center', letterSpacing: 0.5, marginBottom: 6, paddingHorizontal: 16 }}>
           Searching {data.dirs.map(d => d.label).join(' or ')}
         </Text>
         <Text style={{ fontSize: 9, fontWeight: '500', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center', paddingHorizontal: 20 }}>
@@ -422,121 +384,130 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
         {/* ─ Defs + dark background disc ─ */}
         <Svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'absolute' }}>
           <Defs>
-            <RadialGradient id="bgGlowPremium" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="rgba(3, 4, 12, 0.95)" />
-              <Stop offset="80%" stopColor="rgba(7, 9, 20, 0.85)" />
-              <Stop offset="100%" stopColor="rgba(2, 3, 10, 0.95)" />
+            <RadialGradient id="bgGlow2" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="rgba(8,5,25,0.96)" />
+              <Stop offset="100%" stopColor="rgba(2,1,12,0.99)" />
             </RadialGradient>
-            <SvgLinearGradient id="holoGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
-              <Stop offset="50%" stopColor="#818cf8" stopOpacity="0.4" />
-              <Stop offset="100%" stopColor="#c084fc" stopOpacity="0.1" />
+            <RadialGradient id="goldGlow2" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+              <Stop offset="60%" stopColor="#a5b4fc" stopOpacity="0.1" />
+              <Stop offset="100%" stopColor="#a5b4fc" stopOpacity="0" />
+            </RadialGradient>
+            <SvgLinearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#ffffff" />
+              <Stop offset="50%" stopColor="#e0e7ff" />
+              <Stop offset="100%" stopColor="#a5b4fc" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="holoGlowR" x1="100%" y1="100%" x2="0%" y2="0%">
-              <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
-              <Stop offset="50%" stopColor="#38bdf8" stopOpacity="0.3" />
-              <Stop offset="100%" stopColor="#818cf8" stopOpacity="0.05" />
+            <SvgLinearGradient id="goldR" x1="100%" y1="100%" x2="0%" y2="0%">
+              <Stop offset="0%" stopColor="#ffffff" />
+              <Stop offset="50%" stopColor="#e0e7ff" />
+              <Stop offset="100%" stopColor="#a5b4fc" />
             </SvgLinearGradient>
+            <RadialGradient id="shatkonaGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#a78bfa" stopOpacity="0.12" />
+              <Stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
+            </RadialGradient>
           </Defs>
 
-          {/* Dark cosmic disc (as requested) */}
-          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlowPremium)" />
-          {/* Subtle ultra-thin glass rim */}
-          <Circle cx={cx} cy={cy} r={49} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.1} />
+          {/* Dark cosmic disc */}
+          <Circle cx={cx} cy={cy} r={49} fill="url(#bgGlow2)" />
 
-          {/* Outer degree ring — ultra-precise technical ticks */}
-          {Array.from({ length: 72 }, (_, i) => {
-            const angle = (i * 5) * Math.PI / 180;
-            const isCardinal = i % 18 === 0;
-            const isMajor = i % 9 === 0 && !isCardinal;
-            const r1 = isCardinal ? 43 : isMajor ? 44.5 : 46;
-            const r2 = 47.5;
+          {/* Outer degree ring — tick marks every 10° */}
+          {Array.from({ length: 36 }, (_, i) => {
+            const angle = (i * 10) * Math.PI / 180;
+            const isMajor = i % 9 === 0;
+            const r1 = isMajor ? 43.5 : 44.5;
+            const r2 = 47;
             const x1 = cx + r1 * Math.sin(angle);
             const y1 = cy - r1 * Math.cos(angle);
             const x2 = cx + r2 * Math.sin(angle);
             const y2 = cy - r2 * Math.cos(angle);
             return <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke={isCardinal ? 'rgba(255,255,255,0.7)' : isMajor ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}
-              strokeWidth={isCardinal ? 0.3 : isMajor ? 0.2 : 0.1} />;
+              stroke={isMajor ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.15)'}
+              strokeWidth={isMajor ? 0.5 : 0.2} />;
           })}
 
-          {/* Cardinal N/S/E/W labels — ultra clean typography */}
+          {/* Cardinal N/S/E/W labels */}
           {cardinalDir.map(([label, lx, ly]) => (
-            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1.2}
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1.5}
               textAnchor="middle"
-              fill="rgba(255,255,255,0.9)" fontSize={4} fontWeight={600} letterSpacing={1}>
+              fill="rgba(255,255,255,0.8)" fontSize={4} fontWeight={600} letterSpacing={0.5}>
               {String(label)}
             </SvgText>
           ))}
 
           {/* Inter-cardinal NE/SE/SW/NW labels */}
           {intercardinalDir.map(([label, lx, ly]) => (
-            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 0.8}
+            <SvgText key={String(label)} x={Number(lx)} y={Number(ly) + 1}
               textAnchor="middle"
-              fill="rgba(255,255,255,0.3)" fontSize={2.2} letterSpacing={1.5}>
+              fill="rgba(255,255,255,0.3)" fontSize={2.5}>
               {String(label)}
             </SvgText>
           ))}
 
-          {/* Outer ring precision borders */}
-          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={0.15} />
-          <Circle cx={cx} cy={cy} r={42} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.1} strokeDasharray="1 3" />
+          {/* Outer ring borders */}
+          <Circle cx={cx} cy={cy} r={48} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.3} />
+          <Circle cx={cx} cy={cy} r={43} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.2} strokeDasharray="1 3" />
         </Svg>
 
-        {/* ─ Slowly rotating outer 16-petal lotus (Holographic) ─ */}
+        {/* ─ Slowly rotating outer 16-petal lotus ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin1 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
             {lotusPetals16.map((a, i) => (
               <G key={`p16-${i}`} rotation={a} origin={`${cx},${cy}`}>
                 <Path d="M 50,5 Q 52.5,11 50,17 Q 47.5,11 50,5 Z"
-                  fill="none" stroke="url(#holoGlow)" strokeWidth={0.15} opacity={0.6} />
+                  fill="rgba(167,139,250,0.07)" stroke="rgba(167,139,250,0.35)" strokeWidth={0.4} />
               </G>
             ))}
           </Svg>
         </Animated.View>
 
-        {/* ─ Counter-rotating inner 8-petal lotus (Holographic) ─ */}
+        {/* ─ Counter-rotating inner 8-petal lotus ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin2 }] }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
-            <Circle cx={cx} cy={cy} r={36} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.15} />
-            <Circle cx={cx} cy={cy} r={34.5} fill="none" stroke="rgba(129,140,248,0.2)" strokeWidth={0.1} strokeDasharray="2 4" />
+            <Circle cx={cx} cy={cy} r={36} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={0.2} />
+            <Circle cx={cx} cy={cy} r={34} fill="none" stroke="rgba(167,139,250,0.1)" strokeWidth={0.2} strokeDasharray="1 3" />
             {lotusPetals8.map((a, i) => (
               <G key={`p8-${i}`} rotation={a} origin={`${cx},${cy}`}>
                 <Path d="M 50,16 Q 56,25 50,33 Q 44,25 50,16 Z"
-                  fill="none" stroke="url(#holoGlowR)" strokeWidth={0.2} opacity={0.7} />
+                  fill="rgba(255,255,255,0.03)" stroke="url(#gold)" strokeWidth={0.3} />
               </G>
             ))}
           </Svg>
         </Animated.View>
 
-        {/* ─ SHATKONA (Star of David) — Holographic Projection ─ */}
+        {/* ─ SHATKONA (Star of David) — the key sacred geometry ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: spin3 }], opacity: pulseOp }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* Shatkona glow fill */}
+            <Circle cx={cx} cy={cy} r={34} fill="url(#shatkonaGlow)" />
             {/* Upward triangle */}
-            <Path d={shatkona_up} fill="rgba(255,255,255,0.01)" stroke="url(#holoGlow)" strokeWidth={0.25} />
+            <Path d={shatkona_up} fill="rgba(167,139,250,0.05)" stroke="rgba(167,139,250,0.4)" strokeWidth={0.3} />
             {/* Downward triangle */}
-            <Path d={shatkona_down} fill="rgba(255,255,255,0.01)" stroke="url(#holoGlowR)" strokeWidth={0.25} />
+            <Path d={shatkona_down} fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.3)" strokeWidth={0.3} />
             {/* Inner hexagon formed by intersection */}
             <Path d="M 50,34 L 61.6,41 L 61.6,55 L 50,62 L 38.4,55 L 38.4,41 Z"
-              fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.1} />
+              fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" strokeWidth={0.5} />
           </Svg>
         </Animated.View>
 
-        {/* ─ Pulsing Sri Yantra core triangles (Ultra-thin tech aesthetic) ─ */}
+        {/* ─ Pulsing Sri Yantra core triangles ─ */}
         <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ scale: pulseScale }], opacity: pulseOp }}>
           <Svg width={size} height={size} viewBox="0 0 100 100">
+            {/* Subtle gold center glow */}
+            <Circle cx={cx} cy={cy} r={38} fill="url(#goldGlow2)" />
             {/* Sri Yantra Shiva triangles */}
             {shivaTriangles.map((d, i) => (
-              <Path key={`sv-${i}`} d={d} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={0.15} />
+              <Path key={`sv-${i}`} d={d} fill="rgba(255,255,255,0.03)" stroke="url(#gold)" strokeWidth={0.3} />
             ))}
             {/* Sri Yantra Shakti triangles */}
             {shaktiTriangles.map((d, i) => (
-              <Path key={`sk-${i}`} d={d} fill="none" stroke="rgba(129,140,248,0.25)" strokeWidth={0.15} />
+              <Path key={`sk-${i}`} d={d} fill="rgba(167,139,250,0.03)" stroke="url(#goldR)" strokeWidth={0.3} />
             ))}
-            {/* Bindu (centre dot) - Glowing orb */}
-            <Circle cx={cx} cy={cy} r={0.8} fill="#ffffff" />
-            <Circle cx={cx} cy={cy} r={2.5} fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={0.15} />
-            <Circle cx={cx} cy={cy} r={5} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.1} />
+            {/* Bindu (centre dot) */}
+            <Circle cx={cx} cy={cy} r={1.5} fill="#ffffff" />
+            <Circle cx={cx} cy={cy} r={3.5} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.4} />
+            <Circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={0.2} />
           </Svg>
         </Animated.View>
 
@@ -555,12 +526,9 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
               const endY = cy - r * Math.cos(endAngle * Math.PI / 180);
               return (
                 <G key={i}>
-                  {/* Glow layer */}
+                  {/* Razor thin precise target arc */}
                   <Path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`}
-                    fill="none" stroke={data.targetColor} strokeWidth={6} strokeOpacity={0.2} strokeLinecap="round" />
-                  {/* Main arc */}
-                  <Path d={`M ${startX} ${startY} A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`}
-                    fill="none" stroke={data.targetColor} strokeWidth={1.8} strokeLinecap="round" />
+                    fill="none" stroke={data.targetColor} strokeWidth={0.8} strokeOpacity={0.8} strokeLinecap="round" strokeDasharray="3 3" />
                 </G>
               );
             });
@@ -574,14 +542,14 @@ function CompassRose({ size, heading, selectedActivity }: { size: number; headin
           <Svg width={size} height={size} viewBox="0 0 100 100">
             <Defs>
               <SvgLinearGradient id="northGold" x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor="#ffd700" />
-                <Stop offset="100%" stopColor="#ff8c00" />
+                <Stop offset="0%" stopColor="#ffffff" />
+                <Stop offset="100%" stopColor="#a5b4fc" />
               </SvgLinearGradient>
             </Defs>
             <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
               fill="url(#northGold)" />
             <Path d={`M${cx} ${cy-48} L${cx-2.5} ${cy-43} L${cx} ${cy-45} L${cx+2.5} ${cy-43} Z`}
-              fill="none" stroke="rgba(255,200,0,0.8)" strokeWidth={0.6} />
+              fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={0.3} />
           </Svg>
         </View>
       )}
@@ -643,6 +611,8 @@ export default function WalkTab() {
   const [energizeModalVisible, setEnergizeModalVisible] = useState(false);
   const [sciencePanelOpen, setSciencePanelOpen] = useState(false);
   const [currentHeadingDeg, setCurrentHeadingDeg] = useState(0);
+  const [isFlat, setIsFlat] = useState(true);
+  const [isLockedState, setIsLockedState] = useState(false);
   const sciencePanelHeight = useRef(new Animated.Value(0)).current;
   // Radar sweep + lock-on animations for VastuScanner
   const radarAnim  = useRef(new Animated.Value(0)).current;
@@ -1072,14 +1042,24 @@ export default function WalkTab() {
       });
     }, 8000);
 
-    // Feature 1: Gyroscope parallax
+    // Feature 1: Gyroscope & Accelerometer (Tilt)
     let gyroSub: any = null;
+    let accelSub: any = null;
     if (Gyroscope) {
       try {
         Gyroscope.setUpdateInterval(120);
         gyroSub = Gyroscope.addListener(({ x, y }: { x: number; y: number }) => {
           Animated.spring(gyroX, { toValue: Math.max(-8, Math.min(8, y * 40)), useNativeDriver: true, tension: 60, friction: 12 }).start();
           Animated.spring(gyroY, { toValue: Math.max(-8, Math.min(8, x * 40)), useNativeDriver: true, tension: 60, friction: 12 }).start();
+        });
+      } catch (_) {}
+    }
+    if (Accelerometer) {
+      try {
+        Accelerometer.setUpdateInterval(500);
+        accelSub = Accelerometer.addListener(({ z }: { z: number }) => {
+          // If |z| is close to 1, phone is flat. If close to 0, it is vertical.
+          setIsFlat(Math.abs(z) > 0.65);
         });
       } catch (_) {}
     }
@@ -1130,6 +1110,7 @@ export default function WalkTab() {
 
               if (isAligned && !wasAlignedRef.current) {
                 wasAlignedRef.current = true;
+                setIsLockedState(true);
                 // Premium 3-pulse lock-on haptic sequence
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 100);
@@ -1141,6 +1122,7 @@ export default function WalkTab() {
                 ]).start();
               } else if (!isAligned) {
                 wasAlignedRef.current = false;
+                setIsLockedState(false);
                 lockedAnim.setValue(0);
               }
             }
@@ -1166,6 +1148,7 @@ export default function WalkTab() {
       clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}
       if (magSub) magSub.remove();
+      if (accelSub) accelSub.remove();
     };
   }, []);
 
@@ -1327,7 +1310,7 @@ export default function WalkTab() {
     <ImageBackground
       source={{ uri: getLocalSoundImageUri(SPACE_SCANNER_BG_URL) }}
       style={[{ flex: 1, backgroundColor: BG_DARK }]}
-      imageStyle={{ opacity: 1, resizeMode: 'cover' }}>
+      imageStyle={{ opacity: 0.35, resizeMode: 'cover' }}>
       <GlassPulseOverlay />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -1362,40 +1345,40 @@ export default function WalkTab() {
             width: '100%', paddingHorizontal: 20,
             paddingTop: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)),
             transform: [{ translateY: headerTopPad }],
+            alignItems: 'center',
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-
-              {/* Live compass degree badge */}
-              {compassActive ? (
-                <View style={{
-                  backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14, borderWidth: 1,
-                  borderColor: selectedActivity ? `${VASTU_DATA[selectedActivity].targetColor}60` : 'rgba(255,255,255,0.15)',
-                  paddingHorizontal: 12, paddingVertical: 6, minWidth: 56, alignItems: 'center',
-                }}>
-                  <Text style={{ fontSize: 20, fontWeight: '900', color: selectedActivity ? VASTU_DATA[selectedActivity].targetColor : '#ffffff', fontVariant: ['tabular-nums'], lineHeight: 22 }}>
-                    {currentHeadingDeg}°
-                  </Text>
-                  <Text style={{ fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                    {getCardinalLabel(currentHeadingDeg)}
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ width: 56 }} />
-              )}
-
-              {/* Centre title (Ultra Premium Borderless HUD) */}
-              <View style={{ alignItems: 'center', flex: 1, paddingVertical: 10 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 5, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>
-                  Space Intelligence
-                </Text>
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 8, fontWeight: '600', marginTop: 4, textTransform: 'uppercase', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>
-                  Vastu Yantra
-                </Text>
-              </View>
-
-              {/* Empty spacer to balance header */}
-              <View style={{ width: 56 }} />
+            {/* Single Line Title (Ultra Premium) */}
+            <View style={{
+              paddingVertical: 10, paddingHorizontal: 24,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 24,
+              borderWidth: 0.5,
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              alignItems: 'center',
+            }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#ffffff', letterSpacing: 4, textTransform: 'uppercase' }}>
+                Space Intelligence · Vastu Yantra
+              </Text>
             </View>
+
+            {/* Live compass degree badge (Floating HUD) */}
+            {compassActive && (
+              <Animated.View style={{
+                position: 'absolute',
+                top: (Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44)) + 46,
+                backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, borderWidth: 1,
+                borderColor: selectedActivity ? `${VASTU_DATA[selectedActivity].targetColor}50` : 'rgba(255,255,255,0.15)',
+                paddingHorizontal: 12, paddingVertical: 4, alignItems: 'center',
+                flexDirection: 'row', gap: 6,
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: selectedActivity ? VASTU_DATA[selectedActivity].targetColor : '#ffffff', fontVariant: ['tabular-nums'] }}>
+                  {currentHeadingDeg}°
+                </Text>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                  {getCardinalLabel(currentHeadingDeg)}
+                </Text>
+              </Animated.View>
+            )}
           </Animated.View>
         </Animated.View>
 
@@ -1510,8 +1493,30 @@ export default function WalkTab() {
               </Svg>
             </View>
 
-            {/* Centre content cleared for minimalist holographic ring */}
-            <View style={st.ringCentre} pointerEvents="none" />
+            {/* Centre content */}
+            <View style={st.ringCentre}>
+              {(isSunset || isSunrise) ? (
+                <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>
+                    {isSunset ? 'Sunset · Meditate Now' : 'Sunrise · Meditate Now'}
+                  </Text>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Connect with the divinity</Text>
+                </View>
+              ) : (
+                <>
+                  {weather ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)' }}>
+                      <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.7 }}>{weather.temp}° {weather.condition}</Text>
+                    </View>
+                  ) : <View style={{ height: 22, marginBottom: 4 }} />}
+                  <Animated.Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4, letterSpacing: 0.5, textAlign: 'center', opacity: quoteOpacity, paddingHorizontal: 12 }}>
+                    {QUOTES[quoteIdx]}
+                  </Animated.Text>
+                  <View style={{ width: 60, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 8, marginBottom: 12 }} />
+                </>
+              )}
+            </View>
 
             {/* ── Outer mandala layers (always spinning) ── */}
             <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
@@ -1569,93 +1574,88 @@ export default function WalkTab() {
 
         {/* ══ ACTIVITY SELECTOR + ACTIVATE BUTTON ══ */}
         <Animated.View style={{ opacity: cardFade, transform: [{ translateY: cardSlide }], paddingHorizontal: 20, marginTop: 16 }}>
+          {isLockedState && selectedActivity ? (
+            <Animated.View style={{ opacity: lockedAnim, paddingTop: 20, paddingBottom: 10 }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, borderWidth: 1, borderColor: `${VASTU_DATA[selectedActivity].targetColor}40`, padding: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 24 }}>{VASTU_DATA[selectedActivity].icon}</Text>
+                  <View>
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: VASTU_DATA[selectedActivity].targetColor, letterSpacing: 2, textTransform: 'uppercase' }}>TARGET ALIGNED</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{VASTU_DATA[selectedActivity].westernLabel}</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 18, marginBottom: 12 }}>{VASTU_DATA[selectedActivity].scienceNote}</Text>
+                <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 12 }} />
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 15 }}>{VASTU_DATA[selectedActivity].reason}</Text>
+              </View>
+            </Animated.View>
+          ) : (
+            <Animated.View style={{ opacity: lockedAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }}>
+              {/* Activate button */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setCompassActive(!compassActive);
+                  if (compassActive) { setSelectedActivity(null); setSciencePanelOpen(false); sciencePanelHeight.setValue(0); setIsLockedState(false); }
+                }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  backgroundColor: compassActive ? 'rgba(167,139,250,0.15)' : 'rgba(0,0,0,0.45)',
+                  borderWidth: 1.2, borderColor: compassActive ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.15)',
+                  paddingHorizontal: 24, paddingVertical: 10, borderRadius: 30,
+                  overflow: 'hidden', marginBottom: 14,
+                  shadowColor: compassActive ? '#a78bfa' : '#000',
+                  shadowOffset: { width: 0, height: 4 }, shadowOpacity: compassActive ? 0.4 : 0.15, shadowRadius: 12, elevation: 6,
+                }}
+                activeOpacity={0.75}
+              >
+                <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                <Ionicons name={compassActive ? 'radio-outline' : 'compass-outline'} size={13} color={compassActive ? '#a78bfa' : '#FFF'} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: compassActive ? '#a78bfa' : '#FFF', letterSpacing: 1.8, textTransform: 'uppercase' }}>
+                  {compassActive ? 'Scanning Active' : 'Activate Scanner'}
+                </Text>
+              </TouchableOpacity>
 
-          {/* Sleek Weather Badge */}
-          {weather && (
-            <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 }}>
-              <Text style={{ fontSize: 12 }}>{weather.emoji}</Text>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginLeft: 6, letterSpacing: 1, textTransform: 'uppercase' }}>
-                {weather.temp}° {weather.condition}
-              </Text>
-            </View>
+              {/* Sleek Horizontal Activity Pills */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 10, paddingTop: 4 }}>
+                {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
+                  const d = VASTU_DATA[act];
+                  const isSel = selectedActivity === act;
+                  return (
+                    <TouchableOpacity
+                      key={act}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        if (!compassActive) setCompassActive(true);
+                        const nextAct = isSel ? null : act;
+                        setSelectedActivity(nextAct);
+                        Animated.sequence([
+                          Animated.timing(transitionAnim, { toValue: 1, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+                        ]).start(() => {
+                          setActiveActivity(nextAct);
+                          Animated.timing(transitionAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: true }).start();
+                        });
+                        if (nextAct) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 8,
+                        overflow: 'hidden', borderRadius: 30,
+                        borderWidth: 1, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.1)',
+                        paddingHorizontal: 16, paddingVertical: 10,
+                        backgroundColor: isSel ? `${d.targetColor}25` : 'rgba(255,255,255,0.03)',
+                      }}
+                    >
+                      <Text style={{ fontSize: 18 }}>{d.icon}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? '#fff' : 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>
+                        {d.westernLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </Animated.View>
           )}
-
-          {/* Activate button */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setCompassActive(!compassActive);
-              if (compassActive) { setSelectedActivity(null); setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
-            }}
-            style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              backgroundColor: compassActive ? 'rgba(167,139,250,0.15)' : 'rgba(0,0,0,0.45)',
-              borderWidth: 1.2, borderColor: compassActive ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.15)',
-              paddingHorizontal: 24, paddingVertical: 10, borderRadius: 30,
-              overflow: 'hidden', marginBottom: 14,
-              shadowColor: compassActive ? '#a78bfa' : '#000',
-              shadowOffset: { width: 0, height: 4 }, shadowOpacity: compassActive ? 0.4 : 0.15, shadowRadius: 12, elevation: 6,
-            }}
-            activeOpacity={0.75}
-          >
-            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            {compassActive && (
-              <Animated.View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#a78bfa', opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }) }} />
-            )}
-            <Ionicons name={compassActive ? 'radio-outline' : 'compass-outline'} size={13} color={compassActive ? '#a78bfa' : '#FFF'} />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: compassActive ? '#a78bfa' : '#FFF', letterSpacing: 1.8, textTransform: 'uppercase' }}>
-              {compassActive ? 'Scanning Active' : 'Activate Scanner'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Elegant Horizontal Activity Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 10, paddingTop: 4 }}>
-            {(Object.keys(VASTU_DATA) as VastuActivity[]).map(act => {
-              const d = VASTU_DATA[act];
-              const isSel = selectedActivity === act;
-              return (
-                <TouchableOpacity
-                  key={act}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    if (!compassActive) setCompassActive(true);
-                    
-                    const nextAct = isSel ? null : act;
-                    setSelectedActivity(nextAct);
-                    
-                    // Meditative transition sequence
-                    Animated.sequence([
-                      Animated.timing(transitionAnim, { toValue: 1, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-                    ]).start(() => {
-                      setActiveActivity(nextAct);
-                      Animated.timing(transitionAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: true }).start();
-                    });
-
-                    if (nextAct) { setSciencePanelOpen(false); sciencePanelHeight.setValue(0); }
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 8,
-                    overflow: 'hidden', borderRadius: 20,
-                    borderWidth: 1, borderColor: isSel ? d.targetColor : 'rgba(255,255,255,0.15)',
-                    paddingHorizontal: 16, paddingVertical: 12,
-                    backgroundColor: isSel ? `${d.targetColor}20` : 'rgba(255,255,255,0.05)',
-                    shadowColor: isSel ? d.targetColor : 'transparent',
-                    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: isSel ? 4 : 0,
-                  }}
-                >
-                  <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
-                  <Ionicons name={d.icon as any} size={16} color={isSel ? d.targetColor : 'rgba(255,255,255,0.7)'} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? '#fff' : 'rgba(255,255,255,0.8)', letterSpacing: 0.5 }}>
-                    {d.westernLabel}
-                  </Text>
-                  {isSel && (
-                    <Animated.View style={{ marginLeft: 4, width: 4, height: 4, borderRadius: 2, backgroundColor: d.targetColor, opacity: radarAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }) }} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
 
           {/* Benefits row when activity selected */}
           {selectedActivity && (
@@ -1848,6 +1848,18 @@ export default function WalkTab() {
         visible={energizeModalVisible}
         onClose={() => setEnergizeModalVisible(false)}
       />
+
+      {/* ── Horizontal Tilt Warning (Smart Sensor) ── */}
+      {compassActive && !isFlat && (
+        <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 100, justifyContent: 'center', alignItems: 'center' }]}>
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: 32, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', maxWidth: '80%' }}>
+            <Ionicons name="phone-landscape-outline" size={48} color="#fff" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8, letterSpacing: 1 }}>DEVICE NOT FLAT</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 18 }}>Please hold your device flat to calibrate the Yantra.</Text>
+          </View>
+        </Animated.View>
+      )}
     </ImageBackground>
   );
 }

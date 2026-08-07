@@ -1750,6 +1750,21 @@ const makeSineStrokePath = (W: number, phase: number, amplitude: number, wavelen
   return pts.join(' ');
 };
 
+// Circular sine path for the circumference of the sacred geometry
+const makeCircularSinePath = (cx: number, cy: number, baseRadius: number, phase: number, amplitude: number, numWaves: number): string => {
+  const pts: string[] = [];
+  const steps = 180; // High resolution for smoothness
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * Math.PI * 2;
+    // Add sine wave variation to radius
+    const r = baseRadius + amplitude * Math.sin(numWaves * angle + phase);
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    pts.push(i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : `L${x.toFixed(1)} ${y.toFixed(1)}`);
+  }
+  return pts.join(' ');
+};
+
 // Sacred geometry dot positions on a ring
 function sacredDots(cx: number, cy: number, r: number, count: number, angleOffset: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -2023,7 +2038,10 @@ const ReelSineWave = memo(function ReelSineWave({
   getMeteringLevel: () => number;
   size: number;
 }) {
+  const CX = size * 0.5;
   const CY = size * 0.5;
+  const BASE_RADIUS = size * 0.46; // Circumference of the orb
+  
   const p1Ref = useRef<any>(null);
   const p2Ref = useRef<any>(null);
   const p3Ref = useRef<any>(null);
@@ -2032,7 +2050,7 @@ const ReelSineWave = memo(function ReelSineWave({
   const mountedRef = useRef(true);
 
   // Provide initial path so Svg Path doesn't crash on mount
-  const initialPath = useMemo(() => makeSineStrokePath(size, 0, 0.5, size * 0.7, CY), [size, CY]);
+  const initialPath = useMemo(() => makeCircularSinePath(CX, CY, BASE_RADIUS, 0, 0, 1), [CX, CY, BASE_RADIUS]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2041,8 +2059,8 @@ const ReelSineWave = memo(function ReelSineWave({
 
   useEffect(() => {
     if (!isPlaying || isPaused) {
-      // Flat idle line
-      const fl = makeSineStrokePath(size, 0, 0.5, size * 0.7, CY);
+      // Flat idle line (perfect circle)
+      const fl = makeCircularSinePath(CX, CY, BASE_RADIUS, 0, 0, 1);
       p1Ref.current?.setNativeProps({ d: fl });
       p2Ref.current?.setNativeProps({ d: fl });
       p3Ref.current?.setNativeProps({ d: fl });
@@ -2051,24 +2069,24 @@ const ReelSineWave = memo(function ReelSineWave({
     }
     const tid = setInterval(() => {
       if (!mountedRef.current) return;
-      phaseRef.current += 0.05; // Elegant floating wave
+      phaseRef.current += 0.08; // Elegant floating circular wave
       const m = Math.max(0, Math.min(1, getMeteringLevel()));
-      // Max 20px for crystal containment vibration
-      const amp = 2 + m * 20; 
+      // Premium elegant vibration (small amplitude, high frequency/numWaves)
+      const amp = 1 + m * 5; 
       
-      const p1 = makeSineStrokePath(size, phaseRef.current,               amp,        size * 0.52, CY);
-      const p2 = makeSineStrokePath(size, phaseRef.current + Math.PI / 3, amp * 0.8,  size * 0.40, CY);
-      const p3 = makeSineStrokePath(size, phaseRef.current - Math.PI / 4, amp * 0.6,  size * 0.68, CY);
+      const p1 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current, amp, 32);
+      const p2 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current * -1.2, amp * 0.8, 24);
+      const p3 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current * 0.8, amp * 0.6, 36);
       
       p1Ref.current?.setNativeProps({ d: p1 });
       p2Ref.current?.setNativeProps({ d: p2 });
       p3Ref.current?.setNativeProps({ d: p3 });
-      p4Ref.current?.setNativeProps({ d: p3 });
+      p4Ref.current?.setNativeProps({ d: p3 }); // p4 shares p3's shape but with larger glow
     }, 1000 / 30);
     return () => clearInterval(tid);
-  }, [isPlaying, isPaused, size, CY]);
+  }, [isPlaying, isPaused, CX, CY, BASE_RADIUS]);
 
-  const waveOpacity = isPlaying && !isPaused ? 1 : 0.15;
+  const waveOpacity = isPlaying && !isPaused ? 1 : 0.3; // Slightly visible when paused for elegance
 
   return (
     <View
@@ -2082,20 +2100,15 @@ const ReelSineWave = memo(function ReelSineWave({
       }}
     >
       <Svg width={size} height={size}>
-        <Defs>
-          <SvgClipPath id="crystalOrb">
-            <SvgCircle cx={size / 2} cy={size / 2} r={size / 2 - 2} />
-          </SvgClipPath>
-        </Defs>
-        <G clipPath="url(#crystalOrb)">
+        <G>
           {/* Layer 4 — ultra wide, ambient deep glow */}
-          <Path ref={p4Ref} d={initialPath} stroke={color} strokeWidth={24} opacity={0.12} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path ref={p4Ref} d={initialPath} stroke={color} strokeWidth={24} opacity={0.15} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Layer 3 — medium premium glow */}
-          <Path ref={p3Ref} d={initialPath} stroke={color} strokeWidth={12} opacity={0.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path ref={p3Ref} d={initialPath} stroke={color} strokeWidth={12} opacity={0.35} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Layer 2 — crisp vibrant core */}
-          <Path ref={p2Ref} d={initialPath} stroke={color} strokeWidth={3} opacity={0.65} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path ref={p2Ref} d={initialPath} stroke={color} strokeWidth={3} opacity={0.75} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {/* Layer 1 — brilliant white-hot laser center */}
-          <Path ref={p1Ref} d={initialPath} stroke="#ffffff" strokeWidth={1} opacity={0.9} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path ref={p1Ref} d={initialPath} stroke="#ffffff" strokeWidth={1.5} opacity={1.0} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </G>
       </Svg>
     </View>
@@ -3053,6 +3066,219 @@ function ReelProgressBar({ progress, color }: { progress: number; color: string 
   );
 }
 
+// ─── Ultra-Fast Animated Close Prompt ─────────────────────────────────────────
+const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: boolean; onDismiss: () => void; onStop: () => void; onClose: () => void }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 70, friction: 12 }).start();
+    } else {
+      Animated.timing(anim, { toValue: 0, duration: 200, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
+  return (
+    <Animated.View 
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[
+        StyleSheet.absoluteFillObject, 
+        { zIndex: 999, justifyContent: 'center', alignItems: 'center', opacity: anim.interpolate({ inputRange: [0, 0.1], outputRange: [0, 1], extrapolate: 'clamp' }) }
+      ]}
+    >
+      {/* Super subtle dark backdrop */}
+      <TouchableOpacity 
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.82)' }]} 
+        activeOpacity={1} 
+        onPress={onDismiss} 
+      />
+      
+      <Animated.View style={{ 
+        width: '82%', 
+        maxWidth: 380,
+        borderRadius: 28,
+        borderWidth: StyleSheet.hairlineWidth, 
+        borderColor: 'rgba(255,255,255,0.15)', 
+        shadowColor: '#FFF', 
+        shadowOffset: { width: 0, height: 0 }, 
+        shadowOpacity: 0.05, 
+        shadowRadius: 40, 
+        elevation: 24,
+        overflow: 'hidden',
+        transform: [
+          { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) },
+          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }
+        ]
+      }}>
+        {/* Delicate Gradient Background */}
+        <LinearGradient
+          colors={['rgba(20,22,28,0.98)', 'rgba(8,10,14,0.98)']}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        {/* Top delicate highlight line */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+
+        <View style={{ paddingTop: 42, paddingHorizontal: 32, paddingBottom: 24, alignItems: 'center' }}>
+          {/* Delicate Icon Container */}
+          <View style={{ 
+            marginBottom: 24, 
+            width: 56, height: 56,
+            borderRadius: 28,
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(255,255,255,0.02)',
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: 'rgba(255,255,255,0.1)'
+          }}>
+            <Ionicons name="pause-circle-outline" size={32} color="rgba(255,255,255,0.7)" style={{ fontWeight: '100' }} />
+          </View>
+          
+          <Text style={{ fontSize: 20, color: '#FFF', fontFamily: 'Nunito_600SemiBold', textAlign: 'center', letterSpacing: 1.2, marginBottom: 12 }}>
+            Session Active
+          </Text>
+          
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontFamily: 'Nunito_400Regular', lineHeight: 22, paddingHorizontal: 4, letterSpacing: 0.3 }}>
+            The resonance continues to flow. How would you like to proceed?
+          </Text>
+        </View>
+        
+        <View style={{ paddingHorizontal: 28, paddingBottom: 32, gap: 12 }}>
+          {/* Primary Delicate Button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onDismiss();
+              setTimeout(() => onClose(), 150);
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                Flow In Background
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Secondary Ghost Button */}
+          <TouchableOpacity
+            activeOpacity={0.6}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onStop();
+              onDismiss();
+              setTimeout(() => onClose(), 150);
+            }}
+            style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 12, color: 'rgba(255,100,100,0.6)', fontFamily: 'Nunito_400Regular', letterSpacing: 1.2 }}>
+              End Soundscape
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+});
+
+// ─── Ultra-Fast Animated Grid Browse ─────────────────────────────────────────
+const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: boolean; onClose: () => void; onSelect: (idx: number) => void; playingId: string | null }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(anim, { toValue: 1, duration: 250, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    } else {
+      Animated.timing(anim, { toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
+  return (
+    <Animated.View 
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[
+        StyleSheet.absoluteFillObject, 
+        { zIndex: 30, backgroundColor: 'rgba(4,6,20,0.97)', opacity: anim }
+      ]}
+    >
+      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
+          <View>
+            <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold' }}>Browse Sounds</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontFamily: 'Nunito_500Medium' }}>{REELS_ALL_SOUNDS.length} masterfully crafted soundscapes</Text>
+          </View>
+          <TouchableOpacity
+            onPress={onClose}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="close" size={22} color="rgba(255,255,255,0.9)" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Category sections */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          {(CATEGORIES.slice(1) as string[]).map(cat => {
+            const catSounds = REELS_ALL_SOUNDS.filter(s => s.cat === cat);
+            if (!catSounds.length) return null;
+            const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
+            return (
+              <View key={cat} style={{ marginBottom: 28 }}>
+                {/* Section header */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, marginBottom: 14 }}>
+                  <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' }}>{cat}</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: meta.color + '30', marginLeft: 6 }} />
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', paddingLeft: 4 }}>{catSounds.length}</Text>
+                </View>
+                {/* Horizontal sound pills */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+                  {catSounds.map(sound => {
+                    const idx = REELS_ALL_SOUNDS.indexOf(sound);
+                    const isNowPlaying = playingId === sound.id;
+                    return (
+                      <TouchableOpacity
+                        key={sound.id}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          onSelect(idx);
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 10,
+                          paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16,
+                          borderWidth: 1.5,
+                          borderColor: isNowPlaying ? sound.color + '90' : 'rgba(255,255,255,0.08)',
+                          backgroundColor: isNowPlaying ? sound.color + '20' : 'rgba(255,255,255,0.04)',
+                          minWidth: 120,
+                        }}
+                      >
+                        <Text style={{ fontSize: 20 }}>{sound.emoji}</Text>
+                        <View style={{ flexShrink: 1 }}>
+                          <MarqueeText style={{ fontSize: 13, fontWeight: '700', color: isNowPlaying ? sound.color : '#FFFFFFEE', fontFamily: 'Nunito_700Bold' }} active={isNowPlaying} duration={6000}>
+                            {sound.label}
+                          </MarqueeText>
+                          {isNowPlaying && (
+                            <Text style={{ fontSize: 8, color: sound.color, fontWeight: '900', letterSpacing: 0.8, marginTop: 2 }}>▶ PLAYING</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </SafeAreaView>
+    </Animated.View>
+  );
+});
+
+
 const SoundReelsModal = memo(function SoundReelsModal({
   visible, startIndex, playingId, isPaused, stopIdx,
   onPlaySound, onToggle, onStop, onStopSilent, onClose, onChangeTimer,
@@ -3477,172 +3703,27 @@ const SoundReelsModal = memo(function SoundReelsModal({
           </>
         )}
 
-        {/* ── Grid Browse Overlay ── */}
-        {gridOpen && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,6,20,0.97)', zIndex: 30 }}>
-            <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-              {/* Header */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
-                <View>
-                  <Text style={{ fontSize: 19, fontWeight: '900', color: '#FFFFFF' }}>Browse Sounds</Text>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>{REELS_ALL_SOUNDS.length} sounds · tap any to play instantly</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setGridOpen(false)}
-                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Ionicons name="close" size={20} color="rgba(255,255,255,0.80)" />
-                </TouchableOpacity>
-              </View>
+        {/* ── Ultra-Fast Grid Browse Overlay ── */}
+        <GridBrowse 
+          visible={gridOpen} 
+          onClose={() => setGridOpen(false)} 
+          playingId={playingId}
+          onSelect={(idx) => {
+            setGridOpen(false);
+            activeIndexRef.current = idx;
+            setActiveIndex(idx);
+            setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 80);
+          }} 
+        />
 
-              {/* Category sections */}
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                {(CATEGORIES.slice(1) as string[]).map(cat => {
-                  const catSounds = REELS_ALL_SOUNDS.filter(s => s.cat === cat);
-                  if (!catSounds.length) return null;
-                  const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
-                  return (
-                    <View key={cat} style={{ marginBottom: 26 }}>
-                      {/* Section header */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, marginBottom: 10 }}>
-                        <Text style={{ fontSize: 15 }}>{meta.emoji}</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>{cat}</Text>
-                        <View style={{ flex: 1, height: 0.5, backgroundColor: meta.color + '40', marginLeft: 4 }} />
-                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.30)' }}>{catSounds.length}</Text>
-                      </View>
-                      {/* Horizontal sound pills */}
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
-                        {catSounds.map(sound => {
-                          const idx = REELS_ALL_SOUNDS.indexOf(sound);
-                          const isNowPlaying = playingId === sound.id;
-                          return (
-                            <TouchableOpacity
-                              key={sound.id}
-                              onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                setGridOpen(false);
-                                activeIndexRef.current = idx;
-                                setActiveIndex(idx);
-                                setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 80);
-                              }}
-                              style={{
-                                flexDirection: 'row', alignItems: 'center', gap: 8,
-                                paddingHorizontal: 13, paddingVertical: 10, borderRadius: 14,
-                                borderWidth: 1,
-                                borderColor: isNowPlaying ? sound.color + '80' : 'rgba(255,255,255,0.12)',
-                                backgroundColor: isNowPlaying ? sound.color + '1A' : 'rgba(255,255,255,0.06)',
-                                minWidth: 100,
-                              }}
-                            >
-                              <Text style={{ fontSize: 17 }}>{sound.emoji}</Text>
-                              <View style={{ flexShrink: 1 }}>
-                                <MarqueeText style={{ fontSize: 11, fontWeight: '700', color: isNowPlaying ? sound.color : '#FFFFFFEE' }} active={isNowPlaying} duration={6000}>
-                                  {sound.label}
-                                </MarqueeText>
-                                {isNowPlaying && (
-                                  <Text style={{ fontSize: 7, color: sound.color, fontWeight: '900', letterSpacing: 0.5 }}>▶ PLAYING</Text>
-                                )}
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            </SafeAreaView>
-          </View>
-        )}
 
-        {/* Ultra-Smart Sleek Minimalist Popup */}
-        {showClosePrompt && (
-          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, justifyContent: 'flex-end' }]}>
-            {/* Pure black ultra-fast backdrop, NO BlurView to ensure zero lag */}
-            <TouchableOpacity 
-              style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.85)' }]} 
-              activeOpacity={1} 
-              onPress={() => setShowClosePrompt(false)} 
-            />
-            
-            <Animated.View style={{ 
-              width: '100%', 
-              borderTopLeftRadius: 36,
-              borderTopRightRadius: 36,
-              overflow: 'hidden', 
-              backgroundColor: '#0A0A0A', // Pure dark color requested by user
-              borderTopWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.08)', 
-              shadowColor: '#000', 
-              shadowOffset: { width: 0, height: -10 }, 
-              shadowOpacity: 0.5, 
-              shadowRadius: 20, 
-              elevation: 24,
-              paddingBottom: insets.bottom + 16
-            }}>
-              
-              <View style={{ padding: 32, paddingBottom: 24, alignItems: 'center' }}>
-                <View style={{ 
-                  marginBottom: 20, 
-                  padding: 18,
-                  borderRadius: 24,
-                  backgroundColor: '#121212',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.05)'
-                }}>
-                  <Ionicons name="pulse" size={28} color="rgba(255,255,255,0.95)" />
-                </View>
-                <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFF', fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', letterSpacing: 0.5, marginBottom: 12 }}>Active Soundscape</Text>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textAlign: 'center', fontFamily: 'Nunito_500Medium', lineHeight: 22, paddingHorizontal: 16 }}>Seamlessly run this resonance in the background, or conclude your current journey.</Text>
-              </View>
-              
-              <View style={{ paddingHorizontal: 24, paddingBottom: 8, gap: 12 }}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowClosePrompt(false);
-                    // Defer unmount of Modal to avoid Android touch swallowing race condition
-                    setTimeout(() => onClose(isLast), 50);
-                  }}
-                >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
-                  >
-                    <Text style={{ fontSize: 14, color: '#FFF', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>Flow In Background</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setShowClosePrompt(false);
-                    onStop();
-                    // Defer unmount of Modal to avoid Android touch swallowing race condition
-                    setTimeout(() => onClose(isLast), 50);
-                  }}
-                  style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A0C0C', borderWidth: 1, borderColor: 'rgba(255,60,60,0.2)' }}
-                >
-                  <Text style={{ fontSize: 14, color: 'rgba(255,80,80,1)', fontWeight: '800', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>Conclude Session</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowClosePrompt(false);
-                  }}
-                  style={{ paddingVertical: 14, alignItems: 'center', marginTop: 4 }}
-                >
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '700', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        )}
+        {/* ── Ultra-Fast Animated Close Prompt ── */}
+        <ClosePrompt 
+          visible={showClosePrompt} 
+          onDismiss={() => setShowClosePrompt(false)} 
+          onStop={onStop} 
+          onClose={() => onClose(isLast)} 
+        />
       </View>
       </ScreenErrorBoundary>
     </Modal>
@@ -3665,8 +3746,6 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
   // Elegant smart premium capsule design (2 columns)
   const gap = 16;
   const colW = Math.floor((W - 32 - gap) / 2);
-  const colH = Math.floor(colW * 1.7); // Capsule aspect ratio
-  const capsuleRadius = colW / 2; // Perfect semicircle top and bottom
 
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 28 }}>
@@ -3691,48 +3770,52 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
               activeOpacity={0.88}
               onPress={() => onSelectCollection(col.id)}
               style={{
-                width: colW, height: colH,
-                borderRadius: capsuleRadius,
+                width: colW, height: Math.round(colW * 1.52),
+                borderRadius: 28,
                 backgroundColor: 'rgba(10,12,18,0.7)',
                 borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.06)',
+                borderColor: 'rgba(255,255,255,0.12)',
                 overflow: 'hidden',
-                alignItems: 'center',
                 marginBottom: gap,
+                shadowColor: col.themeColor,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.25,
+                shadowRadius: 16,
+                elevation: 8,
               }}
             >
-              {/* Top half: Circular Artwork */}
-              <View style={{ width: colW, height: colW, overflow: 'hidden' }}>
-                <Image source={{ uri: col.imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                {/* Seamless blend from image into the dark card background */}
-                <LinearGradient
-                  colors={['transparent', 'rgba(10,12,18,0.8)', 'rgba(10,12,18,1)']}
-                  locations={[0.5, 0.9, 1]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
+              {/* Full Artwork Background */}
+              <Image source={{ uri: col.imageUri }} style={{ width: '100%', height: '100%', position: 'absolute' }} resizeMode="cover" />
+              
+              {/* Premium cinematic deep scrim */}
+              <LinearGradient
+                colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.75)', 'rgba(0,0,0,0.98)']}
+                locations={[0, 0.3, 0.65, 1]}
+                style={StyleSheet.absoluteFillObject}
+              />
 
               {/* Theme color subtle glow/wash inside the card */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.07 }]} />
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} />
 
-              {/* Text Area (Bottom Half) - Completely centered & smart */}
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingBottom: 16, width: '100%' }}>
-                <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
-                  {col.subtitle.toUpperCase()}
+              {/* Text Area (Bottom Aligned) */}
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: 16, paddingTop: 10 }}>
+                <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' }}>
+                  {col.subtitle}
                 </Text>
 
+                {/* Show full title without numberOfLines */}
                 <Text
-                  style={{ fontSize: 20, color: '#fff', fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', lineHeight: 24, marginBottom: 8 }}
-                  numberOfLines={3}
+                  style={{ fontSize: 22, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: 26, marginBottom: 8 }}
                 >
                   {col.title}
                 </Text>
 
-                <View style={{ width: 24, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 8 }} />
-
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
-                  {soundCount} TRACKS
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name={COLLECTION_PREMIUM_ICON} size={10} color="rgba(255,255,255,0.6)" />
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
+                    {soundCount} TRACKS
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           );
@@ -4679,7 +4762,7 @@ function SleepTabInner() {
       {/* Background Image confined to the top 55% of the screen like Sonic Therapies mode */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55 }}>
         <Image
-          source={{ uri: BG_URLS['afternoon_first_late'] || bgUri || '' }}
+          source={{ uri: BG_URLS['morning_late'] || bgUri || '' }}
           style={StyleSheet.absoluteFillObject as any}
           resizeMode="cover"
         />

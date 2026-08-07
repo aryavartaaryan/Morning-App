@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { 
   getPanchangData, getVedicMonth, getCosmicScore, getExactTimings,
   getUpcomingFestival, getYearlyFestivals, getFestivalForDate, Festival,
@@ -8,7 +8,7 @@ import {
 } from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, FlatList,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder, BackHandler
 } from 'react-native';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5650,8 +5650,6 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const HERO_STR = 6;
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
-  const HERO_R_IN = HERO_R - 12;
-  const HERO_C_IN = 2 * Math.PI * HERO_R_IN;
   const pulse  = useRef(new Animated.Value(1)).current;
   const bounce = useRef(new Animated.Value(0)).current;
   const tapPulse = useRef(new Animated.Value(1)).current;
@@ -6019,16 +6017,31 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           {/* ── Inner zone — minimalist Apple/iOS dark glass (Matches Intention Card) ── */}
           <View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-            overflow: 'hidden',
-            borderWidth: 1.5,
-            borderColor: `${haloHex}40`,
-            shadowColor: haloHex,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.5,
-            shadowRadius: 20,
           }}>
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,15,25,0.4)' }]} />
+            {/* ── The Core Circle ── */}
+            <View style={{
+               position: 'absolute',
+               width: HERO_RS * 0.72,
+               height: HERO_RS * 0.72,
+               borderRadius: HERO_RS * 0.36,
+               top: HERO_RS * 0.14,
+               left: HERO_RS * 0.14,
+               overflow: 'hidden',
+               borderWidth: 1.5,
+               borderColor: `${haloHex}40`,
+               shadowColor: haloHex,
+               shadowOffset: { width: 0, height: 0 },
+               shadowOpacity: 0.5,
+               shadowRadius: 20,
+            }}>
+               <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,15,25,0.4)' }]} />
+               {/* Bubble inner glow (Premium Neon / Sky Blue) */}
+               <LinearGradient
+                 colors={[`${haloHex}25`, `${ringHex}05`, 'transparent', `${haloHex}15`]}
+                 start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                 style={StyleSheet.absoluteFillObject} />
+            </View>
             
             {/* ── Sacred Geometric Yantra — CENTREPIECE MEDITATION VISUAL ── */}
             <Animated.View pointerEvents="none" style={{
@@ -6038,12 +6051,6 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}>
               <HeroGeometricAnimation size={(HERO_RS - 12) * 0.82} variant="home" accentColor={haloHex} opacity={0.65} onShapeChange={handleShapeChange} />
             </Animated.View>
-
-            {/* Bubble inner glow (Premium Neon / Sky Blue) */}
-            <LinearGradient
-              colors={[`${haloHex}25`, `${ringHex}05`, 'transparent', `${haloHex}15`]}
-              start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-              style={StyleSheet.absoluteFillObject} />
 
             {/* ── Fluid Effect ── */}
             <Animated.View pointerEvents="none" style={{
@@ -6131,9 +6138,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               </SvgLinearGradient>
             </Defs>
 
-            {/* Track rings (Double Concentric) */}
+            {/* Track rings (Single) */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}18`} strokeWidth={HERO_STR} />
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R_IN} fill="none" stroke={`${ringHex}15`} strokeWidth={HERO_STR * 0.7} />
 
             {/* Outer ghost ring — precision instrument second rail */}
             <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R + 8} fill="none" stroke={`${accentHex}20`} strokeWidth={0.8} strokeDasharray="4 8" />
@@ -6150,9 +6156,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             {/* ── Sacred Hour OR Main Progress Arc ── */}
             {sacredHour.type !== null ? (
               <>
-                {/* Sacred Hour - Glowing Double Concentric Rings */}
+                {/* Sacred Hour - Glowing Single Ring */}
                 <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#sunGlow)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C * (1 - sacredHour.progress))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.85} />
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R_IN} fill="none" stroke="#FDE68A" strokeWidth={HERO_STR * 0.5} strokeLinecap="round" strokeDasharray={String(HERO_C_IN)} strokeDashoffset={String(HERO_C_IN * (1 - sacredHour.progress))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.65} />
 
                 {/* The Literal Sun Orb - Enhanced */}
                 {(() => {
@@ -6181,32 +6186,22 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               </>
             ) : (
               <>
-                {/* Main crisp arc — metallic sweep - Double Concentric */}
+                {/* Main crisp arc — metallic sweep - Single Ring */}
                 <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R_IN} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR * 0.7} strokeLinecap="round" strokeDasharray={String(HERO_C_IN)} strokeDashoffset={String(HERO_C_IN*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.8} />
                 
                 {/* Inner neon sliver on outer ring */}
                 <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.88 : 0.78} />
-                {/* Inner neon sliver on inner ring */}
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R_IN} fill="none" stroke={accentHex} strokeWidth={1.0} strokeLinecap="round" strokeDasharray={String(HERO_C_IN)} strokeDashoffset={String(HERO_C_IN*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.65 : 0.55} />
 
                 {/* ── Glowing particles at the arc leading edges ── */}
                 {prog > 0.01 && prog < 0.999 && (() => {
                   const angle = (prog * 2 * Math.PI) - Math.PI / 2;
                   const pxOut = HERO_RS/2 + Math.cos(angle) * HERO_R;
                   const pyOut = HERO_RS/2 + Math.sin(angle) * HERO_R;
-                  const pxIn = HERO_RS/2 + Math.cos(angle) * HERO_R_IN;
-                  const pyIn = HERO_RS/2 + Math.sin(angle) * HERO_R_IN;
                   return (<>
                     {/* Outer Edge Particle */}
                     <SvgCircle cx={pxOut} cy={pyOut} r={7} fill={accentHex} opacity={0.25} />
                     <SvgCircle cx={pxOut} cy={pyOut} r={4} fill={accentHex} opacity={0.5} />
                     <SvgCircle cx={pxOut} cy={pyOut} r={2.2} fill="#FFFFFF" opacity={0.96} />
-                    
-                    {/* Inner Edge Particle */}
-                    <SvgCircle cx={pxIn} cy={pyIn} r={5} fill={accentHex} opacity={0.15} />
-                    <SvgCircle cx={pxIn} cy={pyIn} r={2.5} fill={accentHex} opacity={0.4} />
-                    <SvgCircle cx={pxIn} cy={pyIn} r={1.5} fill="#FFFFFF" opacity={0.90} />
                   </>);
                 })()}
               </>
@@ -6323,11 +6318,11 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 {/* Main phase name — the hero text */}
                 <Text
                   style={{
-                    fontSize: compact ? 21 : 27,
-                    fontWeight: '400',
+                    fontSize: compact ? 19 : 24,
+                    fontWeight: '600',
                     color: '#FFFFFF',
                     textAlign: 'center',
-                    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                    fontFamily: 'DancingScript_600SemiBold',
                     textShadowColor: 'rgba(0,0,0,0.98)',
                     textShadowOffset: { width: 0, height: 2 },
                     textShadowRadius: 16,
@@ -6369,22 +6364,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                   alignItems: 'center',
                   opacity: eqFade,
                   paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 10,
-                  overflow: 'hidden',
                 }}>
-                  <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
-                  <LinearGradient
-                    colors={[`${accentHex}1A`, 'transparent']}
-                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
                   {/* Shape name */}
                   <Text style={{
                     fontSize: compact ? 8.5 : 9.5,
@@ -6421,16 +6401,6 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                     letterSpacing: 0.5,
                     marginBottom: 4,
                   }}>{SHAPE_MATH[geoShape]?.eq2}</Text>
-                  {/* Insight tagline */}
-                  <Text style={{
-                    fontSize: compact ? 7.5 : 8.5,
-                    fontWeight: '600',
-                    color: `${accentHex}99`,
-                    letterSpacing: 1.4,
-                    textTransform: 'uppercase',
-                    textAlign: 'center',
-                    fontStyle: 'italic',
-                  }}>{SHAPE_MATH[geoShape]?.insight}</Text>
                 </Animated.View>
               </Animated.View>
             </>
@@ -7381,6 +7351,17 @@ function DailyTab() {
     return festivals.find(f => f.date.getDate() === today.getDate() && f.date.getMonth() === today.getMonth())?.festival;
   }, [festivals]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [])
+  );
+
   // Premium Breathe & Reveal entrance effect synced with SplashOverlay
   useEffect(() => {
     if (isDailyTabFirstLaunch) {
@@ -7812,7 +7793,7 @@ function DailyTab() {
                         </BlurView>
                       </TouchableOpacity>
                     )}
-                    <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); if (currentPeriod) setShowStory(true); }} />
+                    <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }} />
                   </View>
 
                   {/* ── Frosted Glass Circadian Card ── */}
@@ -7857,7 +7838,7 @@ function DailyTab() {
                               shadowOpacity: 0.3,
                               shadowRadius: 8,
                             }}>
-                              <Text style={{ fontSize: 8.5, fontWeight: '900', color: `${accentColor}E6`, letterSpacing: 2.4, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 2.4, textAlign: 'center', textShadowColor: accentColor, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
                                 CURRENT CIRCADIAN HOUR  ·  {currentPeriod.startLabel}–{currentPeriod.endLabel}
                               </Text>
                             </View>
@@ -7902,7 +7883,7 @@ function DailyTab() {
                   })()}
 
                   {/* ── Elegant floating action buttons ── */}
-                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, paddingHorizontal: 24, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 24, paddingHorizontal: 24, width: '100%' }}>
                     {/* Day Almanac */}
                     <TouchableOpacity
                       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}

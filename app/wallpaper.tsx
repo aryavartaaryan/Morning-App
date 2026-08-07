@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, StatusBar, Image, Dimensions,
+  Animated, StatusBar, Image, Dimensions, LayoutAnimation,
   BackHandler } from "react-native";
 
 const { width, height } = Dimensions.get('window');
@@ -86,6 +86,7 @@ export default function WallpaperSettings() {
 
   const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
   const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
+  const [displayMode, setDisplayMode] = useState<'carousel' | 'grid'>('carousel');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'info' }>({ visible: false, message: '', type: 'success' });
   const isMounted = useRef(true);
 
@@ -254,11 +255,12 @@ export default function WallpaperSettings() {
         </View>
 
         {/* Fluid Categories */}
-        <View style={{ marginVertical: 20 }}>
+        <View style={{ marginVertical: 20, flexDirection: 'row', alignItems: 'center', paddingRight: 20 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            contentContainerStyle={{ paddingLeft: 20, paddingRight: 12, gap: 12 }}
+            style={{ flex: 1 }}
           >
             {CATEGORIES.map(cat => {
               const isSelected = activeCategory === cat.id;
@@ -287,10 +289,33 @@ export default function WallpaperSettings() {
               );
             })}
           </ScrollView>
+          <View style={styles.viewToggleContainer}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setDisplayMode('carousel');
+              }}
+              style={[styles.viewToggleBtn, displayMode === 'carousel' && styles.viewToggleBtnActive]}
+            >
+              <Ionicons name="images-outline" size={18} color={displayMode === 'carousel' ? '#fff' : 'rgba(255,255,255,0.4)'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setDisplayMode('grid');
+              }}
+              style={[styles.viewToggleBtn, displayMode === 'grid' && styles.viewToggleBtnActive]}
+            >
+              <Ionicons name="grid-outline" size={18} color={displayMode === 'grid' ? '#fff' : 'rgba(255,255,255,0.4)'} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Cinematic Gallery */}
         <View style={{ marginTop: 10 }}>
+          {displayMode === 'carousel' ? (
           <Animated.FlatList
             data={filteredKeys}
             keyExtractor={item => item}
@@ -366,6 +391,75 @@ export default function WallpaperSettings() {
               );
             }}
           />
+          ) : (
+            <View style={styles.gridContainer}>
+              {filteredKeys.map(key => {
+                const meta = BG_META[key as BgKey];
+                const active = wallpaperMode === 'manual' ? manualBgKey === key : bgKey === key;
+                const accentColor = wallpaperMode === 'solar' ? GOLD : PURPLE;
+
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      if (wallpaperMode === 'solar') {
+                        setWallpaperMode('manual');
+                        setManualBgKey(key as BgKey);
+                        showToast('Pinned Mode Activated', 'success');
+                      } else {
+                        setManualBgKey(key as BgKey);
+                        showToast('Pinned Wallpaper Updated', 'success');
+                      }
+                    }}
+                    style={[
+                      styles.gridCardContainer,
+                      {
+                        borderColor: active ? accentColor : 'rgba(255,255,255,0.08)',
+                        shadowColor: active ? accentColor : '#000',
+                        shadowOpacity: active ? 0.4 : 0.2,
+                        transform: [{ scale: active ? 1 : 0.98 }],
+                      }
+                    ]}
+                  >
+                    <AsyncWallpaperImage bgKey={key as string} />
+                    
+                    <LinearGradient
+                      colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
+                      locations={[0, 0.4, 0.7, 1]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+
+                    {/* Top Left Time Pill */}
+                    <View style={[styles.cardTimePill, { top: 12, left: 12, paddingHorizontal: 8, paddingVertical: 4 }]}>
+                      <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+                      <Text style={[styles.cardTimeText, { fontSize: 8 }]}>
+                        {dynamicTimes[key as BgKey] || meta.time}
+                      </Text>
+                    </View>
+
+                    {/* Top Right Active Indicator */}
+                    {active && (
+                      <View style={[styles.cardActiveIndicator, { backgroundColor: accentColor, top: 12, right: 12, width: 20, height: 20, borderRadius: 10 }]}>
+                         <Ionicons name="checkmark-sharp" size={10} color="#111" />
+                      </View>
+                    )}
+
+                    {/* Bottom Info */}
+                    <View style={[styles.cardContent, { padding: 12 }]}>
+                      <Text numberOfLines={1} style={[styles.cardTitle, { fontSize: 16, marginBottom: 4 }]}>
+                        {meta.emoji} {meta.label}
+                      </Text>
+                      <Text numberOfLines={2} style={[styles.cardSub, { fontSize: 10, lineHeight: 14 }]}>
+                        {meta.sub}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -516,6 +610,38 @@ const styles = StyleSheet.create({
   },
   categoryTabInactive: {
     backgroundColor: 'transparent',
+  },
+  viewToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 99,
+    padding: 4,
+    gap: 4,
+  },
+  viewToggleBtn: {
+    padding: 8,
+    borderRadius: 99,
+  },
+  viewToggleBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  gridCardContainer: {
+    width: (width - 56) / 2, // (width - 2*20 padding - 16 gap) / 2
+    height: height * 0.3,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 8,
+    backgroundColor: '#111',
   },
   cardContainer: {
     height: height * 0.55,
