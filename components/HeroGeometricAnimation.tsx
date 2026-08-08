@@ -66,6 +66,12 @@ interface HeroGeometricAnimationProps {
   audioMetering?: Animated.Value;
   /** Called with the new shape index (0-3) when shape transitions complete */
   onShapeChange?: (shapeIndex: number) => void;
+  /** If provided, locks the animation to a specific shape index and disables cycling */
+  shapeIndex?: number;
+  /** External breath driver for dramatic inhale/exhale effects */
+  externalBreath?: Animated.Value;
+  /** If provided, restricts audio beat detector to only run when active */
+  isActive?: boolean;
 }
 
 export function HeroGeometricAnimation({
@@ -77,6 +83,9 @@ export function HeroGeometricAnimation({
   accentColor,
   audioMetering,
   onShapeChange,
+  shapeIndex,
+  externalBreath,
+  isActive = true,
 }: HeroGeometricAnimationProps) {
   const hw = size / 2;
   const S  = size;
@@ -163,10 +172,14 @@ export function HeroGeometricAnimation({
     const FADE = isHome ? 3000  : isSound ? 3000  : isSplash ? 1200 : 2000;
     const ops  = [op0, op1, op2, op3];
 
-    if (variant === 'minimal') {
-      op0.setValue(1); op1.setValue(0); op2.setValue(0); op3.setValue(0);
-      setActiveShape(0);
-      onShapeChange?.(0);
+    if (variant === 'minimal' || typeof shapeIndex === 'number') {
+      const idx = typeof shapeIndex === 'number' ? shapeIndex : 0;
+      op0.setValue(idx === 0 ? 1 : 0);
+      op1.setValue(idx === 1 ? 1 : 0);
+      op2.setValue(idx === 2 ? 1 : 0);
+      op3.setValue(idx === 3 ? 1 : 0);
+      setActiveShape(idx);
+      onShapeChange?.(idx);
       return;
     }
 
@@ -192,7 +205,7 @@ export function HeroGeometricAnimation({
 
   // Beat detector
   useEffect(() => {
-    if (!audioMetering || variant !== 'sound') return;
+    if (!audioMetering || variant !== 'sound' || !isActive) return;
     let lastLevel = 0, waveIndex = 0, lastWaveTime = 0;
     const waves = [ripple1, ripple2, ripple3];
     const listenerId = audioMetering.addListener(({ value }) => {
@@ -206,7 +219,7 @@ export function HeroGeometricAnimation({
       lastLevel = value;
     });
     return () => audioMetering.removeListener(listenerId);
-  }, [audioMetering, variant]);
+  }, [audioMetering, variant, isActive]);
 
   // ── Rotation interpolations ───────────────────────────────────────────────
   const CW  = (r: Animated.Value) => r.interpolate({ inputRange: [0,1], outputRange: ['0deg',   '360deg'] });
@@ -219,17 +232,25 @@ export function HeroGeometricAnimation({
   const ccwB = CCW(rotB); // 34s
   const ccwF = CCW(rotF); // 28s
 
-  const sc     = breath.interpolate({ inputRange: [0,1], outputRange: variant === 'home' ? [0.97,1.03] : [0.90,1.10] });
-  const scSlow = breath.interpolate({ inputRange: [0,1], outputRange: [0.985,1.015] });
+  const activeBreath = externalBreath || breath;
+
+  // If driven by external breath, scale drastically from 35% (exhale) to 105% (inhale)
+  const sc     = activeBreath.interpolate({ inputRange: [0,1], outputRange: externalBreath ? [0.35, 1.05] : (variant === 'home' ? [0.97,1.03] : [0.90,1.10]) });
+  const scSlow = activeBreath.interpolate({ inputRange: [0,1], outputRange: externalBreath ? [0.38, 1.02] : [0.985,1.015] });
+  
+  // Dramatic opacity change for the geometry lines based on breath
+  const geomOpacity = activeBreath.interpolate({ inputRange: [0,1], outputRange: externalBreath ? [0.15, 1] : [1, 1] });
+
   const bindOp = pulse.interpolate({ inputRange: [0,1], outputRange: [0.28, 0.95] });
   const bindSc = pulse.interpolate({ inputRange: [0,1], outputRange: [0.55, 1.6] });
 
-  const rip1Scale = ripple1.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
-  const rip1Op    = ripple1.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.70,0.15,0] });
-  const rip2Scale = ripple2.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
-  const rip2Op    = ripple2.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.60,0.10,0] });
-  const rip3Scale = ripple3.interpolate({ inputRange:[0,1], outputRange:[0.05,0.95] });
-  const rip3Op    = ripple3.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.50,0.07,0] });
+  // Circumference vibration waves
+  const rip1Scale = ripple1.interpolate({ inputRange:[0,1], outputRange:[0.95,1.25] });
+  const rip1Op    = ripple1.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.60,0.15,0] });
+  const rip2Scale = ripple2.interpolate({ inputRange:[0,1], outputRange:[0.95,1.35] });
+  const rip2Op    = ripple2.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.50,0.10,0] });
+  const rip3Scale = ripple3.interpolate({ inputRange:[0,1], outputRange:[0.95,1.45] });
+  const rip3Op    = ripple3.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.40,0.07,0] });
 
   // ── Colour palette ────────────────────────────────────────────────────────
   const homeBase = accentColor ?? '#80FFFF';
@@ -284,13 +305,33 @@ export function HeroGeometricAnimation({
         </RL>
       )}
 
+      {/* ── Calming Warm Yellow Breathing Ring ── */}
+      {externalBreath && (
+        <Animated.View style={{
+          position: 'absolute',
+          width: S, height: S,
+          opacity: geomOpacity,
+          transform: [{ scale: (shapeIndex === 3 ? scSlow : sc) }]
+        }}>
+          <Svg width={S} height={S}>
+            {/* The outer glowing aura */}
+            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFD700" strokeWidth="2.5" opacity={0.35} />
+            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFEA70" strokeWidth="6" opacity={0.15} />
+            {/* The crisp inner edge */}
+            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFFFFF" strokeWidth="0.8" opacity={0.8} />
+          </Svg>
+        </Animated.View>
+      )}
+
+
+
       {/* ════════════════════════════════════════════════════════════════════
           SHAPE 0 — DEEP FOCUS YANTRA (Minimalist Sri Chakra)
           Layers: outer minimalist rings, 5 downward triangles, 4 upward triangles
           Formula: ∑ = 5▽ ∩ 4△
           ════════════════════════════════════════════════════════════════ */}
       {show(0) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op0, transform:[{scale:sc}] }}>
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op0, geomOpacity), transform:[{scale:sc}] }}>
           {/* Outer focus rings — CW slowest */}
           <RL rot={cwE}>
             <Svg width={S} height={S}>
@@ -347,7 +388,7 @@ export function HeroGeometricAnimation({
           Formula: V − E + F = 2
           ════════════════════════════════════════════════════════════════ */}
       {show(1) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op1, transform:[{scale:sc}] }}>
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op1, geomOpacity), transform:[{scale:sc}] }}>
           {/* Outer orbit — CW slowest */}
           <RL rot={cwE}>
             <Svg width={S} height={S}>
@@ -388,7 +429,7 @@ export function HeroGeometricAnimation({
           Formula: ∑ = 9△ ∩ 43 sub-△
           ════════════════════════════════════════════════════════════════ */}
       {show(2) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op2, transform:[{scale:sc}] }}>
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op2, geomOpacity), transform:[{scale:sc}] }}>
 
           {/* Layer 1: outer rings + lotus 16 + 8 — CCW slowest */}
           <RL rot={ccwB}>
@@ -472,7 +513,7 @@ export function HeroGeometricAnimation({
           Formula: e^(iπ) + 1 = 0
           ════════════════════════════════════════════════════════════════ */}
       {show(3) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity:op3, transform:[{scale:scSlow}] }}>
+        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op3, geomOpacity), transform:[{scale:scSlow}] }}>
 
           {/* Layer 1: radial web + outer ring + orbit dots — CW slowest */}
           <RL rot={cwE}>

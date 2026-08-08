@@ -5,18 +5,15 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
-  withSpring,
-  withSequence,
   withDelay,
   Easing,
   interpolate,
   withRepeat,
+  withSequence,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-const AnimatedG = Animated.createAnimatedComponent(G);
 
 interface Props {
   size: number;
@@ -27,232 +24,174 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
   const hw = size / 2;
   const S = size;
 
-  // -- Constants --
+  // -- Color Palette (Ultra Premium Sunrise Glow) --
   const GOLD_1 = '#FFD700';
   const GOLD_2 = '#FDB931';
-  const WHITE = '#FFFFFF';
+  const GOLD_3 = '#FF8C00'; // Deep sunrise orange for the mist
   
   // -- Shared Values --
-  const binduScale = useSharedValue(0);
-  const gyroTime = useSharedValue(0);
-  const gyroFade = useSharedValue(0);
-  const shatkonaProgress = useSharedValue(0);
-  const breath = useSharedValue(0);
-  const rot = useSharedValue(0);
+  const orbPulse = useSharedValue(0);
+  const orbFadeIn = useSharedValue(0);
+  const phaseTwoTransition = useSharedValue(0);
+  const mistDriftX = useSharedValue(0);
+  const mistDriftY = useSharedValue(0);
+  const globalScale = useSharedValue(1);
 
   useEffect(() => {
-    // 1. Bindu Drops in
-    binduScale.value = withSequence(
-      withDelay(100, withSpring(1, { damping: 12, stiffness: 100 })),
-      withDelay(4000, withTiming(1.5, { duration: 2000, easing: Easing.inOut(Easing.ease) }))
-    );
+    // Ultra-soft calming easing
+    const gentleEase = Easing.bezier(0.25, 0.1, 0.25, 1);
+    const deepBreathEase = Easing.inOut(Easing.sin);
 
-    // 2. Ultra-Premium 3D Gyroscope / Astrolabe spins and aligns
-    // It takes 3.2 seconds to explode outward, spin wildly in 3D, and align perfectly flat.
-    gyroTime.value = withDelay(
-      300,
-      withTiming(1, { duration: 3200, easing: Easing.out(Easing.cubic) })
-    );
+    // 1. Orb fades in softly (0 - 1.0s)
+    orbFadeIn.value = withTiming(1, { duration: 1000, easing: gentleEase });
 
-    // 3. Gyroscope Fades out smoothly once aligned
-    gyroFade.value = withDelay(
-      3400,
-      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.cubic) })
-    );
-
-    // 4. Intricate Stroked Shatkona Draws Itself (The part you loved)
-    shatkonaProgress.value = withDelay(
-      3500,
-      withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) })
-    );
-
-    // 5. Global breath
-    breath.value = withDelay(
-      6000,
-      withRepeat(
-        withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
-        -1,
-        true
-      )
-    );
-
-    // 6. Global rotation
-    rot.value = withRepeat(
-      withTiming(1, { duration: 60000, easing: Easing.linear }),
-      -1,
+    // 2. Continuous Glowing Pulse (In and Out breathing effect)
+    orbPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2500, easing: deepBreathEase }),
+        withTiming(0, { duration: 2500, easing: deepBreathEase })
+      ),
+      -1, // infinite
       false
     );
+
+    // 3. Subtle continuous breath on the whole container
+    globalScale.value = withRepeat(
+      withSequence(
+        withTiming(1.02, { duration: 3000, easing: deepBreathEase }),
+        withTiming(0.98, { duration: 3000, easing: deepBreathEase })
+      ),
+      -1,
+      true
+    );
+
+    // 4. Phase 2 Transition (4.2s) - Dissolves Orb into Ethereal Mist
+    phaseTwoTransition.value = withDelay(
+      4200, 
+      withTiming(1, { duration: 1800, easing: gentleEase })
+    );
+
+    // 5. The Ethereal Mist drifts very slowly organically
+    mistDriftX.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 8000, easing: deepBreathEase }),
+        withTiming(0, { duration: 8000, easing: deepBreathEase })
+      ),
+      -1,
+      true
+    );
+    mistDriftY.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 9000, easing: deepBreathEase }),
+        withTiming(0, { duration: 9000, easing: deepBreathEase })
+      ),
+      -1,
+      true
+    );
+
   }, []);
 
-  // -- Geometry Helpers --
-  function pts(cx: number, cy: number, r: number, n: number, offset = 0) {
-    return Array.from({ length: n }, (_, i) => {
-      const a = offset + (i * Math.PI * 2) / n;
-      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-    });
-  }
-
-  function poly(points: { x: number; y: number }[], close = true) {
-    const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
-    return close ? d + ' Z' : d;
-  }
-
-  const R = S * 0.28;
-  const path1 = poly(pts(hw, hw, R, 3, Math.PI / 6));
-  const path2 = poly(pts(hw, hw, R, 3, -Math.PI / 6));
-  const PATH_LEN = S * 1.5;
-
-  // -- Animated Styles & Props --
-  const binduStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: binduScale.value * interpolate(breath.value, [0, 1], [1, 1.1]) }
-    ],
-    opacity: interpolate(shatkonaProgress.value, [0, 1], [1, 0.8]),
-  }));
-
+  // -- Styles & Props --
   const globalStyle = useAnimatedStyle(() => ({
     transform: [
-      { rotate: `${rot.value * 360}deg` },
-      { scale: interpolate(breath.value, [0, 1], [1, 1.05]) }
+      { scale: globalScale.value }
     ],
   }));
 
-  // Shatkona path props
-  const shatkonaProps = useAnimatedProps(() => ({
-    strokeDashoffset: interpolate(shatkonaProgress.value, [0, 1], [PATH_LEN, 0]),
-    strokeOpacity: interpolate(shatkonaProgress.value, [0, 0.2, 1], [0, 1, 1]),
-    fillOpacity: interpolate(shatkonaProgress.value, [0.8, 1], [0, 0.15]),
-  }));
+  // PHASE 1: The massive glowing orb animation
+  const orbProps = useAnimatedProps(() => {
+    // Scales beautifully to create the glowing in/out effect
+    const currentScale = interpolate(orbPulse.value, [0, 1], [0.85, 1.05]);
+    const radius = (S * 0.42) * currentScale; 
+    
+    // Fades in, pulses, then completely dissolves during Phase 2 transition
+    const currentOpacity = interpolate(orbPulse.value, [0, 1], [0.7, 1.0]) 
+                           * orbFadeIn.value 
+                           * interpolate(phaseTwoTransition.value, [0, 1], [1, 0]);
+                           
+    return {
+      r: radius,
+      opacity: currentOpacity
+    };
+  });
 
-  // -- 3D Gyroscope Rings Configuration --
-  // We define 5 rings that spin on different 3D axes and eventually align to 0deg.
-  const gyroRings = [
-    { r: S * 0.38, strokeWidth: 1, dash: [4, 8], xRot: 1080, yRot: -720, zRot: 1440, color: GOLD_1 },
-    { r: S * 0.33, strokeWidth: 2, dash: [1, 0], xRot: -720, yRot: 1440, zRot: -1080, color: GOLD_2 },
-    { r: S * 0.28, strokeWidth: 1.5, dash: [12, 6], xRot: 1440, yRot: 1080, zRot: 720, color: GOLD_1 },
-    { r: S * 0.23, strokeWidth: 0.5, dash: [2, 4], xRot: -1440, yRot: -1080, zRot: -720, color: WHITE },
-    { r: S * 0.18, strokeWidth: 2.5, dash: [20, 10], xRot: 720, yRot: -1440, zRot: 1080, color: GOLD_2 },
-  ];
+  // PHASE 2: The Sunrise Mist / Ethereal Aura 
+  // It fades in as Phase 2 starts, and scales up to fill the background
+  const mist1Props = useAnimatedProps(() => {
+    const mistOpacity = interpolate(phaseTwoTransition.value, [0, 1], [0, 0.6]);
+    const driftX = interpolate(mistDriftX.value, [0, 1], [-S * 0.1, S * 0.1]);
+    const driftY = interpolate(mistDriftY.value, [0, 1], [-S * 0.1, S * 0.1]);
+    const scale = interpolate(phaseTwoTransition.value, [0, 1], [0.8, 1.3]);
+    
+    return {
+      opacity: mistOpacity,
+      cx: hw + driftX,
+      cy: hw + driftY,
+      r: S * 0.8 * scale // Massive radius, covers whole screen
+    };
+  });
+
+  const mist2Props = useAnimatedProps(() => {
+    const mistOpacity = interpolate(phaseTwoTransition.value, [0, 1], [0, 0.4]);
+    const driftX = interpolate(mistDriftX.value, [0, 1], [S * 0.15, -S * 0.15]);
+    const driftY = interpolate(mistDriftY.value, [0, 1], [S * 0.1, -S * 0.1]);
+    const scale = interpolate(phaseTwoTransition.value, [0, 1], [0.9, 1.5]);
+    
+    return {
+      opacity: mistOpacity,
+      cx: hw + driftX,
+      cy: hw + driftY,
+      r: S * 0.9 * scale
+    };
+  });
 
   return (
     <View style={{ position: 'absolute', width: S, height: S, opacity, justifyContent: 'center', alignItems: 'center' }} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, globalStyle]}>
-        
-        {/* Phase 1: Ultra Premium 3D Gyroscope Alignment */}
-        <Animated.View style={[StyleSheet.absoluteFill, { position: 'absolute', zIndex: 1 }]} pointerEvents="none">
-          {gyroRings.map((ring, i) => {
-            const ringStyle = useAnimatedStyle(() => {
-              // Spin from wild angles to exactly 0deg
-              const rotX = interpolate(gyroTime.value, [0, 1], [ring.xRot, 0]) + 'deg';
-              const rotY = interpolate(gyroTime.value, [0, 1], [ring.yRot, 0]) + 'deg';
-              const rotZ = interpolate(gyroTime.value, [0, 1], [ring.zRot, 0]) + 'deg';
-              // Explode scale from 0 to 1
-              const scale = interpolate(gyroTime.value, [0, 0.4, 1], [0.1, 1.1, 1]);
-              const fade = interpolate(gyroFade.value, [0, 1], [1, 0]);
-
-              return {
-                transform: [
-                  { perspective: 800 },
-                  { rotateX: rotX },
-                  { rotateY: rotY },
-                  { rotateZ: rotZ },
-                  { scale: scale }
-                ],
-                opacity: fade,
-              };
-            });
-
-            // Path draws itself while spinning
-            const ringProps = useAnimatedProps(() => {
-              const circumference = 2 * Math.PI * ring.r;
-              return {
-                strokeDashoffset: interpolate(gyroTime.value, [0, 0.8, 1], [circumference, 0, 0]),
-                strokeDasharray: ring.dash[0] === 1 && ring.dash[1] === 0 ? [circumference, circumference] : ring.dash,
-              };
-            });
-
-            return (
-              <Animated.View key={`gyro_${i}`} style={[StyleSheet.absoluteFill, ringStyle, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Svg width={S} height={S}>
-                  <AnimatedCircle
-                    cx={hw} cy={hw} r={ring.r}
-                    stroke={ring.color}
-                    strokeWidth={ring.strokeWidth}
-                    fill="none"
-                    animatedProps={ringProps}
-                  />
-                  {/* Subtle node points on the rings */}
-                  <Circle cx={hw} cy={hw - ring.r} r={ring.strokeWidth * 2} fill={WHITE} />
-                  <Circle cx={hw} cy={hw + ring.r} r={ring.strokeWidth * 2} fill={WHITE} />
-                </Svg>
-              </Animated.View>
-            );
-          })}
-        </Animated.View>
-
-        {/* Phase 2: Intricate Stroked Shatkona (World Class) */}
-        <Svg width={S} height={S} style={{ position: 'absolute', zIndex: 2 }}>
+        <Svg width={S} height={S}>
           <Defs>
-            <RadialGradient id="glow" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0%" stopColor={GOLD_1} stopOpacity="0.5" />
-              <Stop offset="100%" stopColor={GOLD_1} stopOpacity="0" />
+            {/* Ultra Premium Solid Glowing Light Source (Phase 1) */}
+            <RadialGradient id="orbGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0%" stopColor={GOLD_1} stopOpacity="1" />
+              <Stop offset="75%" stopColor={GOLD_2} stopOpacity="0.8" />
+              <Stop offset="100%" stopColor={GOLD_2} stopOpacity="0" />
+            </RadialGradient>
+            
+            {/* Soft Sunrise Mist Core (Phase 2) */}
+            <RadialGradient id="mist1" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0%" stopColor={GOLD_1} stopOpacity="0.8" />
+              <Stop offset="40%" stopColor={GOLD_2} stopOpacity="0.5" />
+              <Stop offset="100%" stopColor={GOLD_2} stopOpacity="0" />
+            </RadialGradient>
+
+            {/* Deep Warm Ethereal Aura (Phase 2) */}
+            <RadialGradient id="mist2" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0%" stopColor={GOLD_2} stopOpacity="0.7" />
+              <Stop offset="50%" stopColor={GOLD_3} stopOpacity="0.4" />
+              <Stop offset="100%" stopColor={GOLD_3} stopOpacity="0" />
             </RadialGradient>
           </Defs>
-          
-          {/* Central Bindu Glow */}
+
+          {/* ----- PHASE 2: The Ethereal Sunrise Mist (Aura) ----- */}
+          {/* Rendered underneath the orb so it can cleanly take over */}
           <AnimatedCircle
-            cx={hw} cy={hw} r={S * 0.4}
-            fill="url(#glow)"
-            animatedProps={useAnimatedProps(() => ({
-              opacity: interpolate(shatkonaProgress.value, [0.5, 1], [0, 1]),
-            }))}
+            fill="url(#mist2)"
+            animatedProps={mist2Props}
+          />
+          <AnimatedCircle
+            fill="url(#mist1)"
+            animatedProps={mist1Props}
           />
 
-          {/* Stroked Shatkona */}
-          <AnimatedPath
-            d={path1}
-            stroke={GOLD_1}
-            strokeWidth="2.5"
-            fill={GOLD_1}
-            strokeDasharray={PATH_LEN}
-            strokeLinejoin="round"
-            animatedProps={shatkonaProps}
-          />
-          <AnimatedPath
-            d={path2}
-            stroke={GOLD_2}
-            strokeWidth="2.5"
-            fill={GOLD_2}
-            strokeDasharray={PATH_LEN}
-            strokeLinejoin="round"
-            animatedProps={shatkonaProps}
+          {/* ----- PHASE 1: The Massive Premium Glowing Orb ----- */}
+          <AnimatedCircle
+            cx={hw} cy={hw}
+            fill="url(#orbGlow)"
+            animatedProps={orbProps}
           />
 
-          {/* Shatkona Nodes */}
-          <AnimatedG animatedProps={useAnimatedProps(() => ({ opacity: shatkonaProgress.value }))}>
-            {pts(hw, hw, R, 3, Math.PI / 6).map((p, i) => (
-              <Circle key={`d_${i}`} cx={p.x} cy={p.y} r="3.5" fill={WHITE} />
-            ))}
-            {pts(hw, hw, R, 3, -Math.PI / 6).map((p, i) => (
-              <Circle key={`u_${i}`} cx={p.x} cy={p.y} r="3.5" fill={WHITE} />
-            ))}
-          </AnimatedG>
         </Svg>
       </Animated.View>
-
-      {/* Bindu (Center Dot) */}
-      <Animated.View style={[{
-        position: 'absolute',
-        width: 12, height: 12,
-        borderRadius: 6,
-        backgroundColor: WHITE,
-        shadowColor: GOLD_1,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 15,
-        elevation: 5,
-        zIndex: 3
-      }, binduStyle]} />
     </View>
   );
 }

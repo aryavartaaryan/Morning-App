@@ -2137,7 +2137,7 @@ function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; suns
 const ReelCard = memo(function ReelCard({
   sound, isActive, isPlaying, isPaused, stopIdx, isFirst, isLast,
   onPlay, onToggle, onStopSilent, onSelectSound,
-  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel
+  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, trackDurMs
 }: {
   sound: PlayableSoundMeta;
   isActive: boolean;
@@ -2151,10 +2151,11 @@ const ReelCard = memo(function ReelCard({
   onStopSilent: () => void;
   onSelectSound: (cat: string) => void;
   isAudioLoading: boolean;
-  getPositionMs: () => Promise<number | null>;
+  getPositionMs: () => number;
   seekTo: (ms: number) => Promise<void>;
   meteringAnim: Animated.Value;
   getMeteringLevel: () => number;
+  trackDurMs: number;
 }) {
   const { accentColor, solarTimes } = useBgContext();
   const isNight = checkIsNightTime(solarTimes);
@@ -2167,6 +2168,15 @@ const ReelCard = memo(function ReelCard({
   }, [isActive, isAudioLoading]);
   const insets = useSafeAreaInsets();
   const kbAnim = useRef(new Animated.Value(0)).current;
+
+  const externalBreath = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isActive) return;
+    Animated.loop(Animated.sequence([
+      Animated.timing(externalBreath, { toValue: 1, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      Animated.timing(externalBreath, { toValue: 0, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+    ])).start();
+  }, [isActive, externalBreath]);
   const [positionMs, setPositionMs] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
@@ -2203,12 +2213,6 @@ const ReelCard = memo(function ReelCard({
   const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
   const playTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const pulse1 = useRef(new Animated.Value(0)).current;
-  const pulse2 = useRef(new Animated.Value(0)).current;
-  const pulse3 = useRef(new Animated.Value(0)).current;
-  const pulse4 = useRef(new Animated.Value(0)).current;
-  const pulse5 = useRef(new Animated.Value(0)).current;
-
   const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.12] });
   const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
   const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
@@ -2231,44 +2235,6 @@ const ReelCard = memo(function ReelCard({
     });
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
-
-  useEffect(() => {
-    const waves = [pulse1, pulse2, pulse3, pulse4, pulse5];
-    if (!isActive || !isPlaying || isPaused) {
-      waves.forEach(p => { p.stopAnimation(); p.setValue(0); });
-      return;
-    }
-
-    let lastLevel = 0;
-    let waveIndex = 0;
-    let lastWaveTime = 0;
-    
-    const listenerId = meteringAnim.addListener(({ value }) => {
-      const now = Date.now();
-      const isBeat = value - lastLevel > 0.03 && (now - lastWaveTime > 250);
-      const isFallback = (now - lastWaveTime > 1800);
-
-      if (isBeat || isFallback) {
-        lastWaveTime = now;
-        const anim = waves[waveIndex];
-        waveIndex = (waveIndex + 1) % 5;
-        anim.setValue(0);
-        
-        Animated.timing(anim, {
-          toValue: 1,
-          duration: isFallback ? 4000 : 2500, 
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true
-        }).start();
-      }
-      lastLevel = value;
-    });
-
-    return () => {
-      meteringAnim.removeListener(listenerId);
-      waves.forEach(p => p.stopAnimation());
-    };
-  }, [isActive, isPlaying, isPaused, meteringAnim, pulse1, pulse2, pulse3, pulse4, pulse5]);
 
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
@@ -2302,9 +2268,9 @@ const ReelCard = memo(function ReelCard({
     }
     stallCountRef.current = 0;
     _isAudioStalledRef.current = false;
-    getPositionMs().then(pos => { prevPositionMsRef.current = pos ?? 0; });
-    const interval = setInterval(async () => {
-      const newPos = await getPositionMs() ?? 0;
+    prevPositionMsRef.current = getPositionMs();
+    const interval = setInterval(() => {
+      const newPos = getPositionMs();
       if (Math.abs(newPos - prevPositionMsRef.current) > 150 || newPos === 0) {
         setPositionMs(newPos);
       }
@@ -2369,8 +2335,8 @@ const ReelCard = memo(function ReelCard({
     return () => { loop?.stop(); hintAnim.stopAnimation(); };
   }, [isActive, isLast]);
 
+  // trackDurMs is now passed directly as a prop
   const TRACK_W = REEL_W - 88;
-  const trackDurMs = 0;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
   useEffect(() => {
     if (isDragging.current) return;
@@ -2522,29 +2488,33 @@ const ReelCard = memo(function ReelCard({
       />
 
       <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 80, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
-        {[
-          { anim: pulse1, sm: 1.35, bw: 1.0, oMin: 0.00, oMax: 0.85, sMin: 0.85, sMax: 1.30 },
-          { anim: pulse2, sm: 1.18, bw: 1.2, oMin: 0.02, oMax: 0.95, sMin: 0.90, sMax: 1.20 },
-          { anim: pulse3, sm: 0.98, bw: 1.5, oMin: 0.05, oMax: 1.00, sMin: 0.94, sMax: 1.12 },
-          { anim: pulse4, sm: 1.35, bw: 1.0, oMin: 0.00, oMax: 0.85, sMin: 0.85, sMax: 1.30 },
-          { anim: pulse5, sm: 1.18, bw: 1.2, oMin: 0.02, oMax: 0.95, sMin: 0.90, sMax: 1.20 },
-        ].slice(0, 5).map((r, i) => {
-          const HERO_RS = Dimensions.get('window').height < 800 ? 238 : 302;
-          const s = HERO_RS * r.sm;
-          const color = accentColor || sound.color || '#fff';
-          
-          const liveScale = r.anim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] });
-          const liveOpacity = r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, r.oMax, r.oMin, 0] });
-
-          return (
-            <Animated.View key={`sr${i}`} pointerEvents="none" style={{
-              position: 'absolute', width: s, height: s, borderRadius: s / 2, borderWidth: r.bw * 1.5, borderColor: color,
-              shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20,
-              opacity: liveOpacity,
-              transform: [{ scale: liveScale }],
+        
+        {isActive && (isPlaying && !isPaused) && (
+          <>
+            {/* Core audio-reactive glow */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: 280, height: 280, borderRadius: 140,
+              backgroundColor: sound.color || '#a78bfa',
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.15, 0.45] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.35] }) }],
+              shadowColor: sound.color || '#a78bfa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 35
             }} />
-          );
-        })}
+            
+            {/* Ultra-premium cinematic rings reacting instantly via Native Driver */}
+            {[
+              { bw: 2.0, oMin: 0.10, oMax: 0.70, sMin: 1.00, sMax: 1.45 },
+              { bw: 1.0, oMin: 0.05, oMax: 0.45, sMin: 1.15, sMax: 1.70 },
+              { bw: 0.5, oMin: 0.00, oMax: 0.20, sMin: 1.25, sMax: 1.95 },
+            ].map((r, i) => (
+              <Animated.View key={`sr${i}`} pointerEvents="none" style={{
+                position: 'absolute', width: 280, height: 280, borderRadius: 140,
+                borderWidth: r.bw, borderColor: sound.color || '#a78bfa',
+                opacity: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
+                transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }]
+              }} />
+            ))}
+          </>
+        )}
 
         <View style={{
           position: 'absolute',
@@ -2601,6 +2571,9 @@ const ReelCard = memo(function ReelCard({
               opacity={0.85} 
               speed="slow" 
               audioMetering={meteringAnim} 
+              shapeIndex={3}
+              externalBreath={externalBreath}
+              isActive={isActive}
             />
           )}
 
@@ -3027,7 +3000,7 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
       </Animated.View>
     </Animated.View>
   );
-});
+}, (prev, next) => prev.visible === next.visible);
 
 const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: boolean; onClose: () => void; onSelect: (idx: number) => void; playingId: string | null }) => {
   const anim = useRef(new Animated.Value(0)).current;
@@ -3123,7 +3096,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
   visible, startIndex, playingId, isPaused, stopIdx,
   onPlaySound, onToggle, onStopSilent, onClose, onChangeTimer,
   onOpenLibrary, preBufferSound, cleanPreBuffer,
-  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel
+  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, playingDurationSecs
 }: {
   visible: boolean; startIndex: number;
   playingId: string | null; isPaused: boolean; stopIdx: number;
@@ -3133,14 +3106,31 @@ const SoundReelsModal = memo(function SoundReelsModal({
   preBufferSound: (s: PlayableSoundMeta) => Promise<void>;
   cleanPreBuffer: () => Promise<void>;
   isAudioLoading: boolean;
-  getPositionMs: () => Promise<number | null>;
+  getPositionMs: () => number;
   seekTo: (ms: number) => Promise<void>;
   meteringAnim: Animated.Value;
   getMeteringLevel: () => number;
+  playingDurationSecs: number | null;
 }) {
   const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [reelData, setReelData] = useState(REELS_ALL_SOUNDS);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      const filtered = REELS_ALL_SOUNDS.filter(s => 
+        (s.label && s.label.toLowerCase().includes(q)) || 
+        (s.desc && s.desc.toLowerCase().includes(q))
+      );
+      setReelData(filtered);
+      setActiveIndex(0);
+      flatRef.current?.scrollToOffset({ offset: 0, animated: false });
+    } else {
+      setReelData(REELS_ALL_SOUNDS);
+    }
+  }, [searchQuery]);
   const [activeIndex, setActiveIndex] = useState(startIndex);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [catBanner, setCatBanner] = useState<{ text: string; emoji: string; color: string } | null>(null);
@@ -3258,6 +3248,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
               seekTo={seekTo}
               meteringAnim={meteringAnim}
               getMeteringLevel={getMeteringLevel}
+              trackDurMs={(playingId === item.id && playingDurationSecs) ? playingDurationSecs * 1000 : 0}
             />
           )}
         />
@@ -3268,22 +3259,64 @@ const SoundReelsModal = memo(function SoundReelsModal({
           pointerEvents="none"
         />
         <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 8 }}>
-            <TouchableOpacity onPress={() => setShowClosePrompt(true)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.80)" />
+          <BlurView intensity={60} tint="dark" style={{ 
+            paddingHorizontal: 16, paddingBottom: 12, paddingTop: 10,
+            borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
+            backgroundColor: 'rgba(10,12,24,0.4)',
+            flexDirection: 'row', alignItems: 'center', gap: 10
+          }}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.10)', 'transparent']}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            
+            <TouchableOpacity onPress={() => setShowClosePrompt(true)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
+              <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.80)" />
             </TouchableOpacity>
-            <View style={{ flex: 1 }} />
-            {/* Svara Library button */}
+
             {onOpenLibrary && (
               <TouchableOpacity
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onOpenLibrary('All'); }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 }}
+                activeOpacity={0.8}
+                style={{ 
+                  flexDirection: 'row', alignItems: 'center', gap: 6, 
+                  backgroundColor: 'rgba(255,255,255,0.08)', 
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', 
+                  borderRadius: 99, paddingHorizontal: 14, paddingVertical: 10,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8
+                }}
               >
-                <Ionicons name="musical-notes-outline" size={14} color="rgba(255,255,255,0.85)" />
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>Svara Library</Text>
+                <Ionicons name="musical-notes" size={16} color="#a78bfa" />
+                <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
+                  Library
+                </Text>
               </TouchableOpacity>
             )}
-          </View>
+
+            <View style={{ 
+              flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: 'rgba(255,255,255,0.06)', 
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', 
+              borderRadius: 99, paddingHorizontal: 14, height: 40,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8
+            }}>
+              <Ionicons name="search" size={16} color="rgba(255,255,255,0.5)" />
+              <TextInput
+                style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular' }}
+                placeholder="Search..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchQuery(''); Keyboard.dismiss(); }}>
+                  <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.6)" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </BlurView>
         </SafeAreaView>
         <GridBrowse 
           visible={gridOpen} 
@@ -3310,15 +3343,18 @@ const SoundReelsModal = memo(function SoundReelsModal({
          prev.startIndex === next.startIndex &&
          prev.playingId === next.playingId &&
          prev.isPaused === next.isPaused &&
-         prev.stopIdx === next.stopIdx;
+         prev.stopIdx === next.stopIdx &&
+         prev.isAudioLoading === next.isAudioLoading;
 });
 
 
 // ─── Sonic Collections UI ──────────────────────────────────────────────────
 const COLLECTION_PREMIUM_ICON = 'musical-notes';
 
-// Individual collection card with stagger animation
-const CollectionCard = memo(function CollectionCard({
+// ─── Cinematic Sonic Collections UI ──────────────────────────────────────────────────
+
+// Individual Cinematic Collection Card
+const CinematicCollectionCard = memo(function CinematicCollectionCard({
   col, index, onPress,
 }: {
   col: typeof SONIC_COLLECTIONS[number];
@@ -3327,39 +3363,32 @@ const CollectionCard = memo(function CollectionCard({
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(entryAnim, {
-      toValue: 1, duration: 480,
-      delay: index * 55,
+      toValue: 1, duration: 600,
+      delay: Math.min(index, 10) * 80, // Stagger entry
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
     }).start();
   }, []);
 
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(glowAnim, { toValue: 1, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      Animated.timing(glowAnim, { toValue: 0, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-    ]));
-    const t = setTimeout(() => loop.start(), index * 200 + 600);
-    return () => { clearTimeout(t); loop.stop(); };
-  }, []);
+  const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.95, useNativeDriver: true, damping: 25, stiffness: 350 }).start();
+  const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,     useNativeDriver: true, damping: 20, stiffness: 280 }).start();
 
-  const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.965, useNativeDriver: true, damping: 30, stiffness: 400 }).start();
-  const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,     useNativeDriver: true, damping: 20, stiffness: 300 }).start();
-
-  const opacity    = entryAnim;
-  const translateY = entryAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] });
-  const glowOp     = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] });
-
-  // Alternate layout: big hero for every 3rd card (indices 0, 3, 6…), compact 2-col otherwise
-  const isHero = index % 5 === 0;
-  const cardH  = isHero ? 300 : 220;
+  // 2-column grid item width
+  const CARD_W = (W - 32 - 16) / 2;
+  const CARD_H = 340; // Tall portrait ratio
 
   return (
-    <Animated.View style={{ opacity, transform: [{ translateY }, { scale: pressAnim }] }}>
+    <Animated.View style={{ 
+      opacity: entryAnim, 
+      width: CARD_W,
+      transform: [
+        { translateY: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }, 
+        { scale: pressAnim }
+      ] 
+    }}>
       <TouchableOpacity
         activeOpacity={1}
         onPress={onPress}
@@ -3367,76 +3396,73 @@ const CollectionCard = memo(function CollectionCard({
         onPressOut={handlePressOut}
       >
         <View style={{
-          height: cardH,
-          borderRadius: isHero ? 28 : 24,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.10)',
+          width: CARD_W, height: CARD_H,
+          borderRadius: 24, overflow: 'hidden',
+          backgroundColor: '#0A0A0F',
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.3, shadowRadius: 20, elevation: 8,
         }}>
-          {/* Background image */}
+          {/* Cinematic image */}
           <Image
             source={{ uri: col.imageUri }}
-            style={StyleSheet.absoluteFillObject}
+            style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
 
-          {/* Animated glow tint */}
-          <Animated.View
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: glowOp }]}
+          {/* Top gradient for tag readability */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.6)', 'transparent']}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 90 }}
             pointerEvents="none"
           />
 
-          {/* Deep cinematic scrim — brighter at top for top text, dark at bottom */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.82)']}
-            locations={[0, 0.22, 0.55, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
-
-          {/* Top row — subtitle tag + track count pill */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16 }}>
-            <View style={{ backgroundColor: col.themeColor + '28', borderWidth: 1, borderColor: col.themeColor + '60', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
+          {/* Top Info - Category & Track Count */}
+          <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ 
+              backgroundColor: col.themeColor + '30',
+              borderWidth: 1, borderColor: col.themeColor + '50',
+              borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
+              alignSelf: 'flex-start'
+            }}>
+              <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
                 {col.subtitle}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
-              <Ionicons name="musical-notes" size={9} color="rgba(255,255,255,0.7)" />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>
-                {col.soundIds.length} TRACKS
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8 }}>
+              <Ionicons name="musical-notes" size={8} color="rgba(255,255,255,0.8)" />
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_700Bold' }}>
+                {col.soundIds.length}
               </Text>
             </View>
           </View>
 
-          {/* Bottom content — title + description + play button */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 18 }}>
-            <Text style={{ fontSize: isHero ? 28 : 22, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: isHero ? 34 : 28, marginBottom: 6 }}>
-              {col.title}
-            </Text>
-            <Text
-              numberOfLines={isHero ? 2 : 1}
-              style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontFamily: 'Nunito_400Regular', lineHeight: 17, letterSpacing: 0.1, marginBottom: 14 }}
-            >
-              {col.description}
-            </Text>
+          {/* Bottom Frosted Glass Area */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
+            <BlurView intensity={75} tint="dark" style={{ padding: 16, paddingBottom: 18, paddingTop: 20 }}>
+              {/* Subtle top border mapped to theme color */}
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: col.themeColor, opacity: 0.8 }} />
+              
+              <Text style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: 28, marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                {col.title}
+              </Text>
 
-            {/* Play button row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text numberOfLines={3} style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', lineHeight: 16, marginBottom: 14 }}>
+                {col.description}
+              </Text>
+
+              {/* Action Button */}
               <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 8,
-                backgroundColor: col.themeColor,
-                borderRadius: 99, paddingHorizontal: 18, paddingVertical: 9,
-                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                backgroundColor: col.themeColor, borderRadius: 12, paddingVertical: 8,
+                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6
               }}>
-                <Ionicons name="play" size={12} color="#fff" />
-                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
-                  LISTEN NOW
+                <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
+                  EXPLORE
                 </Text>
+                <Ionicons name="arrow-forward" size={12} color="#fff" />
               </View>
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.80)" />
-              </View>
-            </View>
+            </BlurView>
           </View>
         </View>
       </TouchableOpacity>
@@ -3451,78 +3477,31 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
     Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
   }, []);
 
-  // Group collections: 1 full-width hero + pairs of compact side-by-side
-  // Layout: hero, [compact, compact], hero, [compact, compact]...
-  // We'll do alternating: every 5th is hero, rest are compact in 2-col pairs
-  const compactW = Math.floor((W - 32 - 10) / 2);
-
-  const rows: Array<{ type: 'hero'; col: typeof SONIC_COLLECTIONS[number]; absIdx: number } | { type: 'pair'; left: typeof SONIC_COLLECTIONS[number]; leftIdx: number; right?: typeof SONIC_COLLECTIONS[number]; rightIdx?: number }> = [];
-  let i = 0;
-  while (i < SONIC_COLLECTIONS.length) {
-    if (i % 5 === 0) {
-      rows.push({ type: 'hero', col: SONIC_COLLECTIONS[i], absIdx: i });
-      i++;
-    } else {
-      rows.push({ type: 'pair', left: SONIC_COLLECTIONS[i], leftIdx: i, right: SONIC_COLLECTIONS[i + 1], rightIdx: i + 1 });
-      i += 2;
-    }
-  }
-
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-      {/* Section header */}
-      <Animated.View style={{ marginBottom: 28, marginTop: 8, opacity: headerAnim, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_700Bold', letterSpacing: 3.5, textTransform: 'uppercase', marginBottom: 8 }}>
+    <View style={{ paddingHorizontal: 16, paddingBottom: 60 }}>
+      {/* Premium Header */}
+      <Animated.View style={{ marginBottom: 24, marginTop: 12, opacity: headerAnim, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_700Bold', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' }}>
           SONIC THERAPIES
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
-          <Text style={{ fontSize: 30, color: '#fff', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, lineHeight: 36 }}>
-            Curated Programs
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <View style={{ width: 24, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_300Light', letterSpacing: 0.4 }}>
-            {SONIC_COLLECTIONS.length} healing collections
-          </Text>
-        </View>
+        <Text style={{ fontSize: 34, color: '#fff', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, lineHeight: 40, textAlign: 'center' }}>
+          Curated Programs
+        </Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_300Light', letterSpacing: 0.5, textAlign: 'center', marginTop: 6 }}>
+          {SONIC_COLLECTIONS.length} fully immersive healing journeys
+        </Text>
       </Animated.View>
 
-      {/* Cards grid */}
-      <View style={{ gap: 10 }}>
-        {rows.map((row, rowIdx) => {
-          if (row.type === 'hero') {
-            return (
-              <CollectionCard
-                key={row.col.id}
-                col={row.col}
-                index={row.absIdx}
-                onPress={() => onSelectCollection(row.col.id)}
-              />
-            );
-          }
-          // Pair row
-          return (
-            <View key={`pair-${rowIdx}`} style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ width: compactW }}>
-                <CollectionCard
-                  col={row.left}
-                  index={row.leftIdx}
-                  onPress={() => onSelectCollection(row.left.id)}
-                />
-              </View>
-              {row.right && (
-                <View style={{ width: compactW }}>
-                  <CollectionCard
-                    col={row.right}
-                    index={row.rightIdx!}
-                    onPress={() => onSelectCollection(row.right!.id)}
-                  />
-                </View>
-              )}
-            </View>
-          );
-        })}
+      {/* 2-Column Grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' }}>
+        {SONIC_COLLECTIONS.map((col, idx) => (
+          <CinematicCollectionCard
+            key={col.id}
+            col={col}
+            index={idx}
+            onPress={() => onSelectCollection(col.id)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -3922,10 +3901,10 @@ function SleepTabInner() {
 
   useEffect(() => {
     if (!pendingOpenReels) return;
-    const startIdx = Math.max(0, REELS_ALL_SOUNDS.findIndex(s => s.id === pendingOpenReels));
+    const startIdx = Math.max(0, REELS_ALL_SOUNDS.findIndex(s => s.id === playingId));
     setReelsStartIdx(startIdx);
     setShowReels(true);
-  }, [pendingOpenReels]);
+  }, [pendingOpenReels, playingId]);
 
   const handleSoundCardTap = useCallback((id: string) => {
     const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
@@ -3966,13 +3945,79 @@ function SleepTabInner() {
 
   return (
     <View style={[S.screen, { backgroundColor: '#03030D' }]}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55 }}>
+      <Animated.View style={{ 
+        position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55,
+        transform: [{ translateY: Animated.multiply(scrollY, -1) }]
+      }}>
         <Image source={{ uri: BG_URLS['midday_early_late'] || bgUri || '' }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
         <BlurView tint="dark" intensity={85} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
         <LinearGradient colors={['rgba(3,3,13,0.1)', 'rgba(3,3,13,0.3)', 'rgba(3,3,13,0.75)', '#03030D']} locations={[0, 0.4, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-      </View>
+      </Animated.View>
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
+      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent', zIndex: 10 }}>
+        <BlurView intensity={60} tint="dark" style={{ 
+          paddingHorizontal: 16, paddingBottom: 12, paddingTop: 10,
+          borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
+          backgroundColor: 'rgba(10,12,24,0.4)',
+          flexDirection: 'row', alignItems: 'center', gap: 10
+        }}>
+          {/* Subtle top gradient */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.10)', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+
+          {/* Svara Library Button */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+            activeOpacity={0.8}
+            style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: 6, 
+              backgroundColor: 'rgba(255,255,255,0.08)', 
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', 
+              borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8
+            }}
+          >
+            <Ionicons name="musical-notes" size={16} color="#a78bfa" />
+            <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
+              Svara Library
+            </Text>
+          </TouchableOpacity>
+
+          {/* Medium Sized Search Bar */}
+          <View style={{ 
+            flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: 'rgba(255,255,255,0.06)', 
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', 
+            borderRadius: 99, paddingHorizontal: 14, height: 40,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8
+          }}>
+            <Ionicons name="search" size={16} color="rgba(255,255,255,0.5)" />
+            <TextInput
+              style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular' }}
+              placeholder="Search sounds..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setIsSearching(text.length > 0);
+              }}
+              onFocus={() => setIsSearching(true)}
+              onBlur={() => {
+                if (searchQuery.length === 0) setIsSearching(false);
+              }}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
+                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </BlurView>
+      </SafeAreaView>
       <View style={{ flex: 1, zIndex: 1 }}>
         <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
@@ -4183,6 +4228,7 @@ function SleepTabInner() {
         seekTo={seekTo}
         meteringAnim={meteringAnim}
         getMeteringLevel={getMeteringLevel}
+        playingDurationSecs={sleepTabDurationSecs}
       />
 
       {/* ── Sound Library Modal ── */}

@@ -5656,6 +5656,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const coolingGlow   = useRef(new Animated.Value(0.3)).current;
   const rippleAnims   = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   const lunarBreath   = useRef(new Animated.Value(0)).current;
+  const externalBreath = useRef(new Animated.Value(0)).current;
   const fluidRot1     = useRef(new Animated.Value(0)).current;
   const fluidRot2     = useRef(new Animated.Value(0)).current;
 
@@ -5779,6 +5780,12 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
     Animated.loop(Animated.sequence([
       Animated.timing(lunarBreath, { toValue: 1, duration: 4000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       Animated.timing(lunarBreath, { toValue: 0, duration: 4000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+    ])).start();
+
+    // Sacred Geometry Breath - 11s Master Loop (Resonance Breathing)
+    Animated.loop(Animated.sequence([
+      Animated.timing(externalBreath, { toValue: 1, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      Animated.timing(externalBreath, { toValue: 0, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
     ])).start();
 
     // Gyroscope listeners
@@ -6062,8 +6069,10 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               alignItems: 'center', justifyContent: 'center',
               transform: [{ translateX: pan.x }, { translateY: pan.y }]
             }}>
-              <HeroGeometricAnimation size={HERO_RS - 18} variant="home" accentColor={haloHex} opacity={0.75} onShapeChange={handleShapeChange} />
+              <HeroGeometricAnimation size={HERO_RS - 18} variant="home" accentColor={haloHex} opacity={0.75} shapeIndex={3} externalBreath={externalBreath} />
             </Animated.View>
+
+
 
             {/* ── Fluid Effect ── */}
             <Animated.View pointerEvents="none" style={{
@@ -6371,50 +6380,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                   textShadowRadius: 6,
                 }}>{remStr}</Text>
 
-                {/* ── Mathematical equation for current sacred shape ── */}
-                <Animated.View style={{
-                  marginTop: compact ? 12 : 16,
-                  alignItems: 'center',
-                  opacity: eqFade,
-                  paddingVertical: 10,
-                }}>
-                  {/* Shape name */}
-                  <Text style={{
-                    fontSize: compact ? 8.5 : 9.5,
-                    fontWeight: '800',
-                    color: `${accentHex}E0`,
-                    letterSpacing: 2.2,
-                    textTransform: 'uppercase',
-                    textAlign: 'center',
-                    marginBottom: 5,
-                    textShadowColor: 'rgba(0,0,0,0.8)',
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 3,
-                  }}>{SHAPE_MATH[geoShape]?.title}</Text>
-                  {/* Primary equation */}
-                  <Text style={{
-                    fontSize: compact ? 13 : 15,
-                    fontWeight: '700',
-                    color: '#FFFFFF',
-                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-                    textAlign: 'center',
-                    letterSpacing: 0.8,
-                    textShadowColor: accentHex,
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 12,
-                    marginBottom: 3,
-                  }}>{SHAPE_MATH[geoShape]?.eq1}</Text>
-                  {/* Secondary equation */}
-                  <Text style={{
-                    fontSize: compact ? 9.5 : 11,
-                    fontWeight: '600',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-                    textAlign: 'center',
-                    letterSpacing: 0.5,
-                    marginBottom: 4,
-                  }}>{SHAPE_MATH[geoShape]?.eq2}</Text>
-                </Animated.View>
+
               </Animated.View>
             </>
           )}
