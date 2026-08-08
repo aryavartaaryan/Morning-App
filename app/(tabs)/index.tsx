@@ -6018,6 +6018,19 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           <View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
           }}>
+            {/* ── The Outer Zone Tint ── */}
+            {/* A lightly frosted, highly transparent background for the area between the core and the outer ring */}
+            <View style={{
+               position: 'absolute',
+               width: HERO_RS,
+               height: HERO_RS,
+               borderRadius: HERO_RS / 2,
+               overflow: 'hidden',
+            }}>
+               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
+            </View>
+
             {/* ── The Core Circle ── */}
             <View style={{
                position: 'absolute',
@@ -6049,7 +6062,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               alignItems: 'center', justifyContent: 'center',
               transform: [{ translateX: pan.x }, { translateY: pan.y }]
             }}>
-              <HeroGeometricAnimation size={(HERO_RS - 12) * 0.82} variant="home" accentColor={haloHex} opacity={0.65} onShapeChange={handleShapeChange} />
+              <HeroGeometricAnimation size={HERO_RS - 18} variant="home" accentColor={haloHex} opacity={0.75} onShapeChange={handleShapeChange} />
             </Animated.View>
 
             {/* ── Fluid Effect ── */}

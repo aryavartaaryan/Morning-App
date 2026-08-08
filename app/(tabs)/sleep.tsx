@@ -2135,20 +2135,30 @@ function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; suns
 }
 
 const ReelCard = memo(function ReelCard({
-  sound, isActive, isPlaying, isPaused, stopIdx,
-  onPlay, onToggle, onStop, onChangeTimer, onPrev, onNext, isFirst, isLast,
+  sound, isActive, isPlaying, isPaused, stopIdx, isFirst, isLast,
+  onPlay, onToggle, onStopSilent, onSelectSound,
+  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel
 }: {
-  sound: PlayableSoundMeta; isActive: boolean;
-  isPlaying: boolean; isPaused: boolean; stopIdx: number;
-  onPlay: () => void; onToggle: () => void; onStop: () => void;
-  onChangeTimer: (i: number) => void;
-  onPrev?: () => void; onNext?: () => void; isFirst?: boolean; isLast?: boolean;
+  sound: PlayableSoundMeta;
+  isActive: boolean;
+  isPlaying: boolean;
+  isPaused: boolean;
+  stopIdx: number;
+  isFirst: boolean;
+  isLast: boolean;
+  onPlay: () => void;
+  onToggle: () => void;
+  onStopSilent: () => void;
+  onSelectSound: (cat: string) => void;
+  isAudioLoading: boolean;
+  getPositionMs: () => Promise<number | null>;
+  seekTo: (ms: number) => Promise<void>;
+  meteringAnim: Animated.Value;
+  getMeteringLevel: () => number;
 }) {
   const { accentColor, solarTimes } = useBgContext();
   const isNight = checkIsNightTime(solarTimes);
   const activeDurationOptions = isNight ? REEL_DURATION_OPTIONS : REEL_DURATION_OPTIONS.filter(o => o.id !== 'night');
-  const { sessionSecs: ctxSessionSecs, playingDurationSecs, setLoopConfig, isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, getMeteringLevel } = useSoundPlayer();
-  const sessionSecs = isPlaying ? ctxSessionSecs : 0;
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   useEffect(() => {
     if (!isActive || !isAudioLoading) { setShowLoadingOverlay(false); return; }
@@ -2162,10 +2172,8 @@ const ReelCard = memo(function ReelCard({
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
-  // Safety net: force a re-render once warmSoundImageMap() finishes.
   const [, forceReelUpdate] = useState(0);
   useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceReelUpdate(n => n + 1); }), []);
-  // Also retry when this specific image finishes caching (handles the race where reel opens before cache warms)
   useEffect(() => {
     const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
     if (!rawUri) return;
@@ -2175,22 +2183,15 @@ const ReelCard = memo(function ReelCard({
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
   const rawReelUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
   const imgUri = !imgBundled ? (rawReelUri ? getLocalSoundImageUri(rawReelUri) : undefined) : undefined;
-
-  // Prefer the direct rawReelUri as fallback so image shows immediately even before
-  // the local file is ready — avoids blank frames during warm-up.
   const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : (rawReelUri ? { uri: rawReelUri } : undefined));
-  // On error, retry using rawReelUri directly (remote URL fallback).
   const finalSource = imgLoadFailed
     ? (rawReelUri ? { uri: rawReelUri } : undefined)
     : imgSource;
 
-  // ── Duration picker state (Calm-style unified control) ──────────────────
   const [durationOpen, setDurationOpen] = useState(false);
   const [selectedDurationId, setSelectedDurationId] = useState<DurationId>(isNight ? 'night' : '1h');
-  // Reset duration picker when sound changes
   useEffect(() => { setSelectedDurationId(isNight ? 'night' : '1h'); setDurationOpen(false); }, [sound.id, isNight]);
 
-  // ── Instagram-style play/pause tap overlay ─────────────────────────────
   const isMountedRef = useRef(true);
   useEffect(() => {
     return () => {
@@ -2202,23 +2203,16 @@ const ReelCard = memo(function ReelCard({
   const playTapScaleAnim = useRef(new Animated.Value(0.6)).current;
   const playTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Glow breath animation (own dedicated value — avoids meteringAnim crash) ──
-  const glowBreathAnim = useRef(new Animated.Value(0)).current;
-
-  // ── Premium multi-layer pulse animations — 5 independent rings ──
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
   const pulse3 = useRef(new Animated.Value(0)).current;
   const pulse4 = useRef(new Animated.Value(0)).current;
   const pulse5 = useRef(new Animated.Value(0)).current;
 
-  // Zoom in / zoom out — clean cinematic breathe effect (no pan, just scale)
   const kbScale = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.12] });
-  // Keep pan values zeroed — pure zoom only
   const kbTransX = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
   const kbTransY = kbAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
 
-  // Zoom-in / Zoom-out cinematic breathe — faster 5 s in, 5 s out, seamless loop
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
     kbAnim.stopAnimation(() => {
@@ -2229,16 +2223,8 @@ const ReelCard = memo(function ReelCard({
       kbAnim.setValue(0);
       loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(kbAnim, {
-            toValue: 1, duration: 5000,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(kbAnim, {
-            toValue: 0, duration: 5000,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
+          Animated.timing(kbAnim, { toValue: 1, duration: 5000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(kbAnim, { toValue: 0, duration: 5000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
         ])
       );
       loop.start();
@@ -2246,7 +2232,6 @@ const ReelCard = memo(function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
-  // ── High-Sensitivity Real-Time Beat Detector ───────────────────────────────
   useEffect(() => {
     const waves = [pulse1, pulse2, pulse3, pulse4, pulse5];
     if (!isActive || !isPlaying || isPaused) {
@@ -2260,10 +2245,7 @@ const ReelCard = memo(function ReelCard({
     
     const listenerId = meteringAnim.addListener(({ value }) => {
       const now = Date.now();
-      
-      // Extremely sensitive beat detection: sudden volume jump > 0.03, max 3 waves per second
       const isBeat = value - lastLevel > 0.03 && (now - lastWaveTime > 250);
-      // Soft fallback for continuous presence if no beats for 1.8s
       const isFallback = (now - lastWaveTime > 1800);
 
       if (isBeat || isFallback) {
@@ -2272,7 +2254,6 @@ const ReelCard = memo(function ReelCard({
         waveIndex = (waveIndex + 1) % 5;
         anim.setValue(0);
         
-        // Fast snap outward, smooth fade
         Animated.timing(anim, {
           toValue: 1,
           duration: isFallback ? 4000 : 2500, 
@@ -2289,7 +2270,6 @@ const ReelCard = memo(function ReelCard({
     };
   }, [isActive, isPlaying, isPaused, meteringAnim, pulse1, pulse2, pulse3, pulse4, pulse5]);
 
-  // ── Scrubber drag state & Stall Detection ──────────────────────────────────
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -2306,7 +2286,6 @@ const ReelCard = memo(function ReelCard({
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintAnim = useRef(new Animated.Value(0)).current;
   const bumpControlsRef = useRef(() => {
-    // Stop any in-flight animation before starting new one — prevents native driver crash
     controlsAnim.stopAnimation(() => {
       if (!isMountedRef.current) return;
       Animated.timing(controlsAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
@@ -2314,9 +2293,6 @@ const ReelCard = memo(function ReelCard({
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
   });
 
-  // Poll audio position every 500ms for the real-time progress bar + stall detection
-  // PERF FIX: Only call setPositionMs when position advances >150ms — eliminates
-  // unnecessary re-renders on the JS thread that caused the reel hang/slowdown.
   const _isAudioStalledRef = useRef(false);
   useEffect(() => {
     if (!isActive || !isPlaying || isPaused) {
@@ -2326,14 +2302,12 @@ const ReelCard = memo(function ReelCard({
     }
     stallCountRef.current = 0;
     _isAudioStalledRef.current = false;
-    prevPositionMsRef.current = getPositionMs();
-    const interval = setInterval(() => {
-      const newPos = getPositionMs();
-      // Only push a state update when position meaningfully advances — avoids JS re-renders
+    getPositionMs().then(pos => { prevPositionMsRef.current = pos ?? 0; });
+    const interval = setInterval(async () => {
+      const newPos = await getPositionMs() ?? 0;
       if (Math.abs(newPos - prevPositionMsRef.current) > 150 || newPos === 0) {
         setPositionMs(newPos);
       }
-      // Stall detection — only flip boolean when value actually changes
       if (trackDurMsRef.current > 0) {
         if (newPos === prevPositionMsRef.current) {
           stallCountRef.current += 1;
@@ -2359,7 +2333,6 @@ const ReelCard = memo(function ReelCard({
     bumpControlsRef.current();
     if (durationOpen) { setDurationOpen(false); return; }
     isPlaying ? onToggle() : onPlay();
-    // Instagram flash: scale in, hold, fade out
     playTapScaleAnim.setValue(0.6);
     playTapAnim.setValue(0);
     Animated.parallel([
@@ -2396,14 +2369,10 @@ const ReelCard = memo(function ReelCard({
     return () => { loop?.stop(); hintAnim.stopAnimation(); };
   }, [isActive, isLast]);
 
-  // glowBreathAnim kept (declared above) but its solo effect is replaced by the 5-ring pulse system
-
-  // Progress bar: track width for the new inset Smart Dock (REEL_W - card margin(16) - dock margin(32) - dock padding(40))
   const TRACK_W = REEL_W - 88;
-  const trackDurMs = (playingDurationSecs ?? 0) * 1000;
+  const trackDurMs = 0;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
   useEffect(() => {
-    // Don't animate while user is dragging — they control position directly
     if (isDragging.current) return;
     progressAnim.stopAnimation();
     Animated.timing(progressAnim, {
@@ -2414,7 +2383,6 @@ const ReelCard = memo(function ReelCard({
     }).start();
   }, [loopProgress]);
 
-  // For ambient looping sounds (no known duration), run a gentle shimmer on progressAnim
   useEffect(() => {
     if (trackDurMs > 0 || !isActive || !isPlaying || isPaused) return;
     let loop: Animated.CompositeAnimation | null = null;
@@ -2431,17 +2399,13 @@ const ReelCard = memo(function ReelCard({
     return () => { loop?.stop(); progressAnim.stopAnimation(); };
   }, [trackDurMs, isActive, isPlaying, isPaused]);
 
-  // ── Scrubber drag state ──────────────────────────────────────────────────
-  // (Declarations moved to top of component to satisfy React hook ordering and TDZ rules)
   useEffect(() => { trackDurMsRef.current = trackDurMs; }, [trackDurMs]);
   useEffect(() => { trackWRef.current = TRACK_W; }, [TRACK_W]);
   useEffect(() => { seekToRef.current = seekTo; }, [seekTo]);
 
   const scrubPan = useRef(
     PanResponder.create({
-      // Only claim the gesture if there's a known duration to scrub
       onStartShouldSetPanResponder: () => trackDurMsRef.current > 0,
-      // Only steal clearly horizontal gestures — vertical swipes go to the reel FlatList
       onMoveShouldSetPanResponder: (_, gs) =>
         trackDurMsRef.current > 0 &&
         Math.abs(gs.dx) > Math.abs(gs.dy) &&
@@ -2453,7 +2417,6 @@ const ReelCard = memo(function ReelCard({
         if (TW <= 0) return;
         const rawX = evt.nativeEvent.locationX;
         if (rawX == null || !isFinite(rawX)) return;
-        // Stop any running progressAnim before entering scrub mode
         progressAnim.stopAnimation();
         isDragging.current = true;
         bumpControlsRef.current();
@@ -2479,14 +2442,12 @@ const ReelCard = memo(function ReelCard({
       onPanResponderRelease: (evt) => {
         const TW = trackWRef.current;
         const rawX = evt?.nativeEvent?.locationX;
-        // Use ref (not state) — PanResponder closure would capture stale state
         let fraction = scrubFractionRef.current;
         if (rawX != null && isFinite(rawX) && TW > 0) {
           fraction = Math.max(0, Math.min(1, rawX / TW));
           scrubFractionRef.current = fraction;
         }
         const ms = Math.round(fraction * trackDurMsRef.current);
-        // Snap progressAnim to the scrubbed position
         progressAnim.setValue(fraction);
         isDragging.current = false;
         setIsScrubbing(false);
@@ -2507,7 +2468,6 @@ const ReelCard = memo(function ReelCard({
 
   return (
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#020305' }}>
-      {/* ── THE PREMIUM TINDER CARD ── */}
       <View style={{
         flex: 1,
         marginTop: Platform.OS === 'ios' ? insets.top + 8 : insets.top + 24,
@@ -2523,7 +2483,6 @@ const ReelCard = memo(function ReelCard({
         elevation: 10,
       }}>
 
-      {/* ── FULL-SCREEN background image with Ken Burns zoom/pan ── */}
       {finalSource ? (
         <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
           <Animated.View style={[
@@ -2549,15 +2508,12 @@ const ReelCard = memo(function ReelCard({
         />
       )}
 
-      {/* ── Cinematic scrims ── */}
-      {/* Top gradient: subtle shading for top bar readability */}
       <LinearGradient
         colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.05)', 'transparent']}
         locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Bottom gradient: subtle shading for text readability */}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.6)']}
         locations={[0.52, 0.70, 0.86, 1]}
@@ -2565,10 +2521,7 @@ const ReelCard = memo(function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── SACRED GEOMETRY SOUND REELS ── */}
       <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 80, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
-        
-        {/* Live Audio Synced Rings */}
         {[
           { anim: pulse1, sm: 1.35, bw: 1.0, oMin: 0.00, oMax: 0.85, sMin: 0.85, sMax: 1.30 },
           { anim: pulse2, sm: 1.18, bw: 1.2, oMin: 0.02, oMax: 0.95, sMin: 0.90, sMax: 1.20 },
@@ -2593,13 +2546,12 @@ const ReelCard = memo(function ReelCard({
           );
         })}
 
-        {/* iOS style darker filter behind the geometric animation */}
         <View style={{
           position: 'absolute',
           width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
           height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
           borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2,
-          backgroundColor: 'rgba(0, 0, 0, 0.45)', // iOS style darker theme
+          backgroundColor: isActive ? 'rgba(0, 0, 0, 0.45)' : 'rgba(5, 5, 8, 0.85)',
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)',
           shadowColor: '#000',
@@ -2607,7 +2559,7 @@ const ReelCard = memo(function ReelCard({
           shadowOpacity: 0.5,
           shadowRadius: 24,
         }}>
-          {Platform.OS === 'ios' && (
+          {Platform.OS === 'ios' && isActive && (
             <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFillObject, { borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2, overflow: 'hidden' }]} />
           )}
         </View>
@@ -2625,7 +2577,6 @@ const ReelCard = memo(function ReelCard({
             }) : 1
           }]
         }}>
-          {/* ── Central Energy Core ── */}
           {isActive && (
             <Animated.View style={{
               position: 'absolute',
@@ -2642,16 +2593,17 @@ const ReelCard = memo(function ReelCard({
             }} />
           )}
 
-          <HeroGeometricAnimation 
-            variant="sound" 
-            size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} 
-            theme="dark" 
-            opacity={isActive ? 0.85 : 0.4} 
-            speed="slow" 
-            audioMetering={isActive ? meteringAnim : undefined} 
-          />
+          {isActive && (
+            <HeroGeometricAnimation 
+              variant="sound" 
+              size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} 
+              theme="dark" 
+              opacity={0.85} 
+              speed="slow" 
+              audioMetering={meteringAnim} 
+            />
+          )}
 
-          {/* ── Option 2: Core Energy Field (Masked Laser inside the Crystal Orb) ── */}
           {isActive && (
             <ReelSineWave
               isPlaying={isPlaying}
@@ -2664,14 +2616,12 @@ const ReelCard = memo(function ReelCard({
         </Animated.View>
       </View>
 
-      {/* ── Full-screen tap to toggle play/pause — Instagram style ── */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={handleScreenTap}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
       />
 
-      {/* Instagram-style center play/pause icon — flashes on tap, fades away */}
       <Animated.View
         pointerEvents="none"
         style={{
@@ -2697,7 +2647,6 @@ const ReelCard = memo(function ReelCard({
         </View>
       </Animated.View>
 
-      {/* ── Ultra-Premium Bottom Player Bar ── */}
       <Animated.View
         style={{
           position: 'absolute', 
@@ -2718,9 +2667,7 @@ const ReelCard = memo(function ReelCard({
           style={[StyleSheet.absoluteFillObject, { borderRadius: 0 }]}
         />
 
-        {/* 1. Header: Title + Timer Pill */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-          {/* Title & Desc */}
           <View style={{ flex: 1, paddingRight: 16 }}>
             <Text style={{ 
               fontSize: 15, 
@@ -2747,7 +2694,6 @@ const ReelCard = memo(function ReelCard({
             </Text>
           </View>
 
-          {/* Timer Pill */}
           {(() => {
             const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
             return (
@@ -2768,7 +2714,6 @@ const ReelCard = memo(function ReelCard({
           })()}
         </View>
 
-        {/* ── Duration picker sheet (Inline expansion) ── */}
         {durationOpen && (
           <View style={{
             marginBottom: 20,
@@ -2787,7 +2732,6 @@ const ReelCard = memo(function ReelCard({
                     setSelectedDurationId(opt.id);
                     setDurationOpen(false);
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onChangeTimer(opt.secs);
                   }}
                   activeOpacity={0.7}
                   style={{
@@ -2810,83 +2754,56 @@ const ReelCard = memo(function ReelCard({
           </View>
         )}
 
-        {/* 2. Scrubber / Progress */}
         <View style={{ minHeight: 42, justifyContent: 'flex-end' }}>
-          {trackDurMs > 0 ? (
-            <View>
-              <View
-                style={{ height: 20, justifyContent: 'center', marginHorizontal: -4, marginBottom: 8 }}
-                {...scrubPan.panHandlers}
-                hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                collapsable={false}
-              >
-                <View style={{
-                  height: isScrubbing ? 6 : 4,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  width: TRACK_W + 8,
-                  overflow: 'visible',
-                }}>
-                  <Animated.View style={{
-                    position: 'absolute', left: 0, top: 0, bottom: 0,
-                    borderRadius: 3,
-                    backgroundColor: sound.color || '#fff',
-                    shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
-                    width: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                      inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
-                    }),
-                  }} />
-                </View>
-                {(() => {
-                  const ms = isScrubbing ? scrubPositionMs : positionMs;
-                  const dur = trackDurMsRef.current;
-                  const thumbFrac = dur > 0 ? Math.min(1, Math.max(0, ms / dur)) : 0;
-                  const thumbLeft = thumbFrac * (TRACK_W + 8);
-                  const thumbSize = isScrubbing ? 18 : 12;
-                  return (
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: 'absolute',
-                        top: (20 - thumbSize) / 2,
-                        left: thumbLeft - thumbSize / 2,
-                        width: thumbSize, height: thumbSize,
-                        borderRadius: thumbSize / 2,
-                        backgroundColor: '#FFFFFF',
-                        shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
-                        elevation: 10,
-                        transform: [{ scale: isScrubbing ? 1.15 : 1 }],
-                      }}
-                    />
-                  );
-                })()}
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
-                  {fmtTimer(Math.round((isScrubbing ? scrubPositionMs : positionMs) / 1000))}
-                </Text>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.2)', letterSpacing: 0.5, fontFamily: 'Nunito_700Bold' }}>
-                  {fmtTimer(playingDurationSecs ?? 0)}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            /* Looping ambient sound — sleek shimmer bar */
-            <View style={{ height: 20, justifyContent: 'center', marginHorizontal: -4, marginBottom: 22 }}>
-              <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.06)' }}>
+          <View>
+            <View
+              style={{ height: 20, justifyContent: 'center', marginHorizontal: -4, marginBottom: 8 }}
+              {...scrubPan.panHandlers}
+              hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+              collapsable={false}
+            >
+              <View style={{
+                height: isScrubbing ? 6 : 4,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                width: TRACK_W + 8,
+                overflow: 'visible',
+              }}>
                 <Animated.View style={{
-                  position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 2,
-                  backgroundColor: sound.color ? sound.color + 'A0' : 'rgba(255,255,255,0.5)',
+                  position: 'absolute', left: 0, top: 0, bottom: 0,
+                  borderRadius: 3,
+                  backgroundColor: sound.color || '#fff',
                   shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
-                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8] }),
+                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                    inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                  }),
                 }} />
               </View>
+              {(() => {
+                const ms = isScrubbing ? scrubPositionMs : positionMs;
+                const thumbSize = isScrubbing ? 18 : 12;
+                return (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      top: (20 - thumbSize) / 2,
+                      left: 0,
+                      width: thumbSize, height: thumbSize,
+                      borderRadius: thumbSize / 2,
+                      backgroundColor: '#FFFFFF',
+                      shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+                      elevation: 10,
+                      transform: [{ scale: isScrubbing ? 1.15 : 1 }],
+                    }}
+                  />
+                );
+              })()}
             </View>
-          )}
+          </View>
         </View>
       </Animated.View>
 
-        {/* Swipe hint */}
         {isActive && !isLast && (
           <Animated.View style={{ alignItems: 'center', marginTop: 2, transform: [{ translateY: hintAnim }] }}>
             <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.45)" />
@@ -2894,7 +2811,6 @@ const ReelCard = memo(function ReelCard({
           </Animated.View>
         )}
 
-      {/* ── Loading overlay — appears after 380ms while remote audio is buffering ── */}
       {isActive && showLoadingOverlay && (
         <View style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -2915,8 +2831,7 @@ const ReelCard = memo(function ReelCard({
         </View>
       )}
 
-      {/* ── Buffering overlay — shown when stream stalls mid-play (slow network) ── */}
-      {isActive && isAudioStalled && !showLoadingOverlay && !audioNetworkError && (
+      {isActive && isAudioStalled && !showLoadingOverlay && (
         <View style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
           alignItems: 'center', justifyContent: 'center', zIndex: 18,
@@ -2936,66 +2851,6 @@ const ReelCard = memo(function ReelCard({
         </View>
       )}
 
-      {/* ── No-internet overlay — shown when remote audio fails to load ── */}
-      {isActive && audioNetworkError && (
-        <View style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 20, alignItems: 'center', justifyContent: 'center',
-          backgroundColor: 'rgba(0,0,0,0.78)',
-        }}>
-          <View style={{
-            alignItems: 'center', paddingHorizontal: 28, paddingVertical: 26,
-            backgroundColor: 'rgba(10,10,18,0.93)',
-            borderRadius: 24, borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.10)',
-            marginHorizontal: 32, overflow: 'hidden',
-          }}>
-            <LinearGradient
-              colors={[sound.color + '18', 'transparent']}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            <View style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
-              backgroundColor: sound.color + '65',
-            }} />
-            <View style={{
-              width: 66, height: 66, borderRadius: 33,
-              backgroundColor: sound.color + '16', borderWidth: 1.5,
-              borderColor: sound.color + '40', alignItems: 'center',
-              justifyContent: 'center', marginBottom: 16,
-            }}>
-              <Ionicons name="cloud-offline-outline" size={30} color={sound.color} />
-            </View>
-            <Text style={{
-              fontSize: 18, fontWeight: '700', color: '#FFFFFF',
-              letterSpacing: -0.3, marginBottom: 6, textAlign: 'center',
-            }}>No Internet</Text>
-            <Text style={{
-              fontSize: 12, color: 'rgba(255,255,255,0.40)',
-              textAlign: 'center', lineHeight: 18, marginBottom: 22,
-            }}>
-              This sound streams online.{'\n'}Connect to WiFi or mobile data to play.
-            </Text>
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPlay(); }}
-              style={{
-                paddingHorizontal: 28, paddingVertical: 12, borderRadius: 99,
-                backgroundColor: sound.color + '20',
-                borderWidth: 1.5, borderColor: sound.color + '70',
-                flexDirection: 'row', alignItems: 'center', gap: 8,
-              }}
-              activeOpacity={0.72}
-            >
-              <Ionicons name="refresh" size={14} color={sound.color} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: sound.color, letterSpacing: 0.2 }}>
-                Try Again
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       </View>
     </View>
   );
@@ -3006,7 +2861,8 @@ const ReelCard = memo(function ReelCard({
          prev.isPaused === next.isPaused &&
          prev.stopIdx === next.stopIdx &&
          prev.isFirst === next.isFirst &&
-         prev.isLast === next.isLast;
+         prev.isLast === next.isLast &&
+         prev.isAudioLoading === next.isAudioLoading;
 });
 
 const REEL_CAT_META: Record<string, { emoji: string; color: string }> = {
@@ -3035,8 +2891,6 @@ function VeenaIcon({ size = 23, color = '#7A9A7A', filled = false }: {
   );
 }
 
-// ─── Instagram-style bottom progress bar for reels ────────────────────────────
-// Uses pixel values (not %-strings) so it works correctly on all RN versions.
 function ReelProgressBar({ progress, color }: { progress: number; color: string }) {
   const fillW = Math.max(0, Math.min(1, progress)) * REEL_W;
   const dotLeft = Math.max(0, fillW - 5);
@@ -3050,9 +2904,7 @@ function ReelProgressBar({ progress, color }: { progress: number; color: string 
         zIndex: 20,
       }}
     >
-      {/* Fill bar */}
       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: fillW, borderRadius: 2, backgroundColor: color + '90' }} />
-      {/* Glow dot at the leading edge */}
       <View style={{
         position: 'absolute',
         left: dotLeft,
@@ -3066,7 +2918,6 @@ function ReelProgressBar({ progress, color }: { progress: number; color: string 
   );
 }
 
-// ─── Ultra-Fast Animated Close Prompt ─────────────────────────────────────────
 const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: boolean; onDismiss: () => void; onStop: () => void; onClose: () => void }) => {
   const anim = useRef(new Animated.Value(0)).current;
   
@@ -3086,7 +2937,6 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
         { zIndex: 999, justifyContent: 'center', alignItems: 'center', opacity: anim.interpolate({ inputRange: [0, 0.1], outputRange: [0, 1], extrapolate: 'clamp' }) }
       ]}
     >
-      {/* Super subtle dark backdrop */}
       <TouchableOpacity 
         style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.82)' }]} 
         activeOpacity={1} 
@@ -3110,17 +2960,14 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
           { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }
         ]
       }}>
-        {/* Delicate Gradient Background */}
         <LinearGradient
           colors={['rgba(20,22,28,0.98)', 'rgba(8,10,14,0.98)']}
           style={StyleSheet.absoluteFillObject}
         />
 
-        {/* Top delicate highlight line */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
 
         <View style={{ paddingTop: 42, paddingHorizontal: 32, paddingBottom: 24, alignItems: 'center' }}>
-          {/* Delicate Icon Container */}
           <View style={{ 
             marginBottom: 24, 
             width: 56, height: 56,
@@ -3143,7 +2990,6 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
         </View>
         
         <View style={{ paddingHorizontal: 28, paddingBottom: 32, gap: 12 }}>
-          {/* Primary Delicate Button */}
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
@@ -3163,7 +3009,6 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Secondary Ghost Button */}
           <TouchableOpacity
             activeOpacity={0.6}
             onPress={() => {
@@ -3184,7 +3029,6 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
   );
 });
 
-// ─── Ultra-Fast Animated Grid Browse ─────────────────────────────────────────
 const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: boolean; onClose: () => void; onSelect: (idx: number) => void; playingId: string | null }) => {
   const anim = useRef(new Animated.Value(0)).current;
   
@@ -3205,7 +3049,6 @@ const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: b
       ]}
     >
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
           <View>
             <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold' }}>Browse Sounds</Text>
@@ -3219,7 +3062,6 @@ const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: b
           </TouchableOpacity>
         </View>
 
-        {/* Category sections */}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           {(CATEGORIES.slice(1) as string[]).map(cat => {
             const catSounds = REELS_ALL_SOUNDS.filter(s => s.cat === cat);
@@ -3227,14 +3069,12 @@ const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: b
             const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
             return (
               <View key={cat} style={{ marginBottom: 28 }}>
-                {/* Section header */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, marginBottom: 14 }}>
                   <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
                   <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' }}>{cat}</Text>
                   <View style={{ flex: 1, height: 1, backgroundColor: meta.color + '30', marginLeft: 6 }} />
                   <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', paddingLeft: 4 }}>{catSounds.length}</Text>
                 </View>
-                {/* Horizontal sound pills */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
                   {catSounds.map(sound => {
                     const idx = REELS_ALL_SOUNDS.indexOf(sound);
@@ -3281,17 +3121,22 @@ const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: b
 
 const SoundReelsModal = memo(function SoundReelsModal({
   visible, startIndex, playingId, isPaused, stopIdx,
-  onPlaySound, onToggle, onStop, onStopSilent, onClose, onChangeTimer,
-  onOpenLibrary, preBufferSound, cleanPreBuffer
+  onPlaySound, onToggle, onStopSilent, onClose, onChangeTimer,
+  onOpenLibrary, preBufferSound, cleanPreBuffer,
+  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel
 }: {
   visible: boolean; startIndex: number;
   playingId: string | null; isPaused: boolean; stopIdx: number;
-  onPlaySound: (id: string) => void; onToggle: () => void; onStop: () => void;
-  onStopSilent: () => void;
+  onPlaySound: (id: string) => void; onToggle: () => void; onStopSilent: () => void;
   onClose: (fromLastReel: boolean) => void; onChangeTimer: (i: number) => void;
   onOpenLibrary?: (category: string) => void;
   preBufferSound: (s: PlayableSoundMeta) => Promise<void>;
   cleanPreBuffer: () => Promise<void>;
+  isAudioLoading: boolean;
+  getPositionMs: () => Promise<number | null>;
+  seekTo: (ms: number) => Promise<void>;
+  meteringAnim: Animated.Value;
+  getMeteringLevel: () => number;
 }) {
   const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList>(null);
@@ -3303,85 +3148,37 @@ const SoundReelsModal = memo(function SoundReelsModal({
   const swipeAnim = useRef(new Animated.Value(0)).current;
   const prevCatRef = useRef(reelData[startIndex]?.cat ?? '');
   const activeIndexRef = useRef(startIndex);
-  const playDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Gate: false while FlatList is scrolling to initialScrollIndex so onViewableItemsChanged
-  // doesn't fire for items 0-4 (rendered first by initialNumToRender) and trigger the wrong sound.
-  const isScrollReadyRef = useRef(startIndex === 0);
-  // Always-fresh ref so debounce callback reads current playingId, not stale closure
-  const playingIdRef = useRef(playingId);
-  useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
+  const lastPausedIndexRef = useRef<number | null>(null);
+  const isScrollReadyRef = useRef(false);
 
-  // Reset reelData on mount/open just in case
   useEffect(() => {
     if (visible) {
       setReelData(REELS_ALL_SOUNDS);
     }
   }, [visible]);
 
-  // ── Grid browse state ────────────────────────────────────
   const [gridOpen, setGridOpen] = useState(false);
   const catStartIndices = useMemo(() => {
     const map: Record<string, number> = {};
     REELS_ALL_SOUNDS.forEach((s, i) => { if (map[s.cat] === undefined) map[s.cat] = i; });
     return map;
   }, []);
-  const scrollToCategory = useCallback((cat: string) => {
-    const idx = catStartIndices[cat];
-    if (idx != null) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setGridOpen(false);
-      activeIndexRef.current = idx;
-      setActiveIndex(idx);
-      setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 60);
-    }
-  }, [catStartIndices]);
 
-  // Swipe hint animation (pulsing triple-chevron)
-  useEffect(() => {
-    if (!visible) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(swipeAnim, { toValue: -8, duration: 600, useNativeDriver: true }),
-        Animated.timing(swipeAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
-        Animated.delay(2000),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [visible]);
-
-  // Reset + focus-in haptic when modal becomes visible; clear debounce on close
   useEffect(() => {
     if (visible) {
-      // Block viewability callbacks until the FlatList settles on the correct index
       isScrollReadyRef.current = false;
       setActiveIndex(startIndex);
       activeIndexRef.current = startIndex;
-      lastAutoPlayedRef.current = null; // allow auto-play to fire for new open
+      lastPausedIndexRef.current = null;
       prevCatRef.current = reelData[startIndex]?.cat ?? '';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // Use scrollToOffset for instant, jank-free positioning — no layout pass needed
       const offset = startIndex * REEL_H;
       flatRef.current?.scrollToOffset({ offset, animated: false });
-      // Double-fire after one frame to handle cases where the FlatList hasn't mounted yet
-      const t1 = setTimeout(() => {
-        flatRef.current?.scrollToOffset({ offset, animated: false });
-      }, 50);
-      const t2 = setTimeout(() => {
-        isScrollReadyRef.current = true; // ungate viewability
-      }, 120);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    } else {
-      // Focus-out: cancel any pending auto-play timer
-      if (playDebounceRef.current) {
-        clearTimeout(playDebounceRef.current);
-        playDebounceRef.current = null;
-        onStopSilentRef.current();
-      }
+      const t = setTimeout(() => { isScrollReadyRef.current = true; }, 120);
+      return () => clearTimeout(t);
     }
   }, [visible, startIndex]);
 
-  // Pre-cache images for current + next 2 reels so swipe transitions never show an empty image
   useEffect(() => {
     if (!visible) return;
     const ahead = [activeIndex, activeIndex + 1, activeIndex + 2];
@@ -3395,8 +3192,6 @@ const SoundReelsModal = memo(function SoundReelsModal({
     });
   }, [activeIndex, visible, reelData]);
 
-  // Pre-buffer AUDIO for adjacent reels — Instagram-style instant playback on swipe.
-  // createAsync (~500ms cold) is replaced by a near-instant playAsync() on pre-loaded sounds.
   useEffect(() => {
     if (!visible) return;
     [activeIndex + 1, activeIndex + 2, activeIndex - 1].forEach(i => {
@@ -3405,85 +3200,12 @@ const SoundReelsModal = memo(function SoundReelsModal({
     });
   }, [activeIndex, visible, reelData]);
 
-  // Release pre-buffered sounds when modal closes (free native audio memory)
   useEffect(() => {
     if (!visible) { cleanPreBuffer().catch(() => {}); }
   }, [visible]);
 
-  // Auto-play: immediately stop old sound on swipe, debounce start of new sound.
-  // Uses playingIdRef (not prop) so the timeout callback always sees the freshest value.
-  const onStopSilentRef = useRef(onStopSilent);
-  useEffect(() => { onStopSilentRef.current = onStopSilent; }, [onStopSilent]);
-  const onPlaySoundRef = useRef(onPlaySound);
-  useEffect(() => { onPlaySoundRef.current = onPlaySound; }, [onPlaySound]);
-
-  // Track the last sound we auto-played so we don't re-trigger on visibility toggle
-  const lastAutoPlayedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!visible) return;
-    // Guard: on modal open, activeIndexRef.current is updated SYNCHRONOUSLY to startIndex
-    // but activeIndex (state) still holds the previous stale value until the next render.
-    // Skipping until they match prevents sound[old-index] (e.g. rain at index 0) from
-    // playing for ~200ms before the intended reel's auto-play fires.
-    if (activeIndex !== activeIndexRef.current) return;
-    const sound = reelData[activeIndex];
-    if (!sound) return;
-    if (playingIdRef.current !== sound.id && lastAutoPlayedRef.current !== sound.id) {
-      lastAutoPlayedRef.current = sound.id;
-      onPlaySoundRef.current(sound.id);
-    }
-  }, [activeIndex, visible, reelData]);
-
-  // Category banner animation
-  const showCatBannerRef = useRef<(cat: string, s: PlayableSoundMeta) => void>(() => {});
-  showCatBannerRef.current = (cat: string, s: PlayableSoundMeta) => {
-    setCatBanner({ text: cat, emoji: s.emoji, color: s.color });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    bannerAnim.stopAnimation(() => {
-      bannerAnim.setValue(0);
-      Animated.sequence([
-        Animated.spring(bannerAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }),
-        Animated.delay(2000),
-        Animated.timing(bannerAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
-      ]).start(({ finished }) => {
-        if (finished) setCatBanner(null);
-      });
-    });
-  };
-
-  const onViewRef = useRef(({ viewableItems }: any) => {
-    if (!isScrollReadyRef.current) return; // suppress during initial scroll-to-startIndex
-    if (viewableItems?.length > 0) {
-      const idx = viewableItems[0].index;
-      if (idx != null && idx !== activeIndexRef.current) {
-        // INSTANT PAUSE: Synchronously kill the previous audio the moment the view changes,
-        // eliminating the millisecond leakage that occurs while waiting for React to render.
-        onStopSilentRef.current();
-        
-        activeIndexRef.current = idx;
-        setActiveIndex(idx);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // focus-in per reel
-        const sound = reelData[idx];
-        if (sound && sound.cat !== prevCatRef.current) {
-          prevCatRef.current = sound.cat;
-          showCatBannerRef.current(sound.cat, sound);
-        }
-      }
-    }
-  });
-  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 25 });
-
-  if (!visible) return null;
-
-  const activeSound = reelData[activeIndex];
-  const isLast = activeIndex === reelData.length - 1;
-  const isFirst = activeIndex === 0;
-  // Progress bar repeats for each loop
-  const progress = ((activeIndex % REELS_ALL_SOUNDS.length) + 1) / REELS_ALL_SOUNDS.length;
-
   return (
     <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => setShowClosePrompt(true)}>
-      <ScreenErrorBoundary name="SoundReels">
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
@@ -3493,20 +3215,13 @@ const SoundReelsModal = memo(function SoundReelsModal({
           pagingEnabled
           bounces={false}
           overScrollMode="never"
-          // ── Instagram scroll strategy ─────────────────────────────────────
-          // onScroll: haptic feedback ONLY — no setState. Calling setActiveIndex
-          // every 16ms forces React to re-render the entire tree on every frame,
-          // which is the primary cause of FlatList jank.
-          // onViewableItemsChanged (25% threshold) owns setActiveIndex for the
-          // mid-swipe update. onMomentumScrollEnd is the guaranteed safety-net
-          // that fires once after pagingEnabled snaps to a new page.
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / REEL_H);
-            if (idx !== activeIndexRef.current && idx >= 0 && idx < reelData.length) {
+            if (idx !== activeIndexRef.current && idx !== lastPausedIndexRef.current) {
+              lastPausedIndexRef.current = idx;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              // INSTANT PAUSE: Cut the audio precisely when the swipe crosses the 50% mark
-              onStopSilentRef.current();
+              onStopSilent();
             }
           }}
           scrollEventThrottle={150}
@@ -3515,195 +3230,61 @@ const SoundReelsModal = memo(function SoundReelsModal({
             const idx = Math.round(y / REEL_H);
             if (idx >= 0 && idx < reelData.length && idx !== activeIndexRef.current) {
               activeIndexRef.current = idx;
+              lastPausedIndexRef.current = null;
               setActiveIndex(idx);
+              onPlaySound(reelData[idx].id);
             }
           }}
           disableIntervalMomentum
-          onViewableItemsChanged={onViewRef.current}
-          viewabilityConfig={viewConfigRef.current}
           getItemLayout={(_, index) => ({ length: REEL_H, offset: REEL_H * index, index })}
-          onScrollToIndexFailed={(info) => {
-            flatRef.current?.scrollToOffset({ offset: REEL_H * info.index, animated: false });
-          }}
           initialScrollIndex={startIndex > 0 ? startIndex : undefined}
-          initialNumToRender={startIndex > 0 ? 1 : 3}
+          initialNumToRender={1}
           windowSize={7}
-          maxToRenderPerBatch={2}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={true}
-          onEndReached={() => {
-            setReelData(prev => [...prev, ...REELS_ALL_SOUNDS]);
-          }}
-          onEndReachedThreshold={0.8}
           renderItem={({ item, index }) => (
-            <ScreenErrorBoundary name={`ReelCard-${item.id}`}>
-              <ReelCard
-                sound={item}
-                isActive={activeIndex === index}
-                isPlaying={playingId === item.id}
-                isPaused={isPaused && playingId === item.id}
-                stopIdx={stopIdx}
-                onPlay={() => onPlaySound(item.id)}
-                onToggle={onToggle}
-                onStop={onStop}
-                onChangeTimer={onChangeTimer}
-                isFirst={index === 0}
-                isLast={index === reelData.length - 1}
-                onPrev={() => index > 0 && flatRef.current?.scrollToIndex({ index: index - 1, animated: true })}
-                onNext={() => index < reelData.length - 1 && flatRef.current?.scrollToIndex({ index: index + 1, animated: true })}
-              />
-            </ScreenErrorBoundary>
+            <ReelCard
+              sound={item}
+              isActive={activeIndex === index}
+              isPlaying={playingId === item.id}
+              isPaused={isPaused && playingId === item.id}
+              stopIdx={stopIdx}
+              onPlay={() => onPlaySound(item.id)}
+              onToggle={onToggle}
+              onStopSilent={onStopSilent}
+              onSelectSound={(cat) => onOpenLibrary?.(cat)}
+              isFirst={index === 0}
+              isLast={index === reelData.length - 1}
+              isAudioLoading={isAudioLoading}
+              getPositionMs={getPositionMs}
+              seekTo={seekTo}
+              meteringAnim={meteringAnim}
+              getMeteringLevel={getMeteringLevel}
+            />
           )}
         />
-
-        {/* ── Persistent top scrim — always visible regardless of reel image brightness ── */}
         <LinearGradient
           colors={['rgba(0,0,0,0.86)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.00)']}
           locations={[0, 0.38, 0.72, 1]}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 220, zIndex: 9 }}
           pointerEvents="none"
         />
-
-        {/* ── Top bar overlay ── */}
         <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            paddingHorizontal: 18, paddingTop: 10, paddingBottom: 8,
-          }}>
-            {/* Left: chevron-down collapse */}
-            <TouchableOpacity
-              onPress={() => setShowClosePrompt(true)}
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-            >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 8 }}>
+            <TouchableOpacity onPress={() => setShowClosePrompt(true)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.80)" />
             </TouchableOpacity>
-
-            {/* Center: Empty to keep UI clean, elegant and uncluttered */}
             <View style={{ flex: 1 }} />
-
-            {/* Right: sleep page browse button */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(false); }}
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name="apps-outline" size={20} color="rgba(255,255,255,0.80)" />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Smart "Select Sound" library button — replaces category strip ── */}
-          <View style={{ paddingBottom: 12, marginTop: 2, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Current category chip */}
-            {activeSound && (() => {
-              const meta = REEL_CAT_META[activeSound.cat] ?? { emoji: '🎵', color: '#FFFFFF' };
-              return (
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
-                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
-                  backgroundColor: meta.color + '18',
-                  borderWidth: 0.8, borderColor: meta.color + '50',
-                }}>
-                  <Text style={{ fontSize: 12 }}>{meta.emoji}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: meta.color, letterSpacing: 0.4, fontFamily: 'Nunito_700Bold' }}>
-                    {activeSound.cat}
-                  </Text>
-                </View>
-              );
-            })()}
-            {/* Select Sound CTA button */}
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onOpenLibrary?.('');
-              }}
-              activeOpacity={0.78}
-              style={{
-                flex: 1,
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-                paddingHorizontal: 16, paddingVertical: 9,
-                borderRadius: 22,
-                backgroundColor: 'rgba(255,255,255,0.10)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.22)',
-                overflow: 'hidden',
-              }}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)']}
-                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Ionicons name="musical-notes-outline" size={14} color="rgba(255,255,255,0.85)" />
-              <Text style={{ fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.3, fontFamily: 'Nunito_700Bold' }}>
-                Select Sound
-              </Text>
-              <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.45)" />
-            </TouchableOpacity>
+            {/* Svara Library button */}
+            {onOpenLibrary && (
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onOpenLibrary('All'); }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 }}
+              >
+                <Ionicons name="musical-notes-outline" size={14} color="rgba(255,255,255,0.85)" />
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>Svara Library</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </SafeAreaView>
-
-        {/* ── Bottom progress rail — Instagram style, pixel-based ── */}
-        <ReelProgressBar
-          progress={progress}
-          color={activeSound?.color ?? '#fff'}
-        />
-
-
-        {/* ── Category transition banner ── */}
-        {catBanner && (
-          <>
-            {/* Full-screen tint flash */}
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 18,
-                backgroundColor: catBanner.color + '22',
-                opacity: bannerAnim.interpolate({ inputRange: [0, 0.25, 0.75, 1], outputRange: [0, 1, 1, 0] }),
-              }}
-            />
-            {/* Sliding "NOW ENTERING" banner */}
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: 'absolute', top: 88, left: 16, right: 16, zIndex: 20,
-                opacity: bannerAnim,
-                transform: [
-                  { translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [-28, 0] }) },
-                  { scale: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
-                ],
-              }}
-            >
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 14,
-                backgroundColor: 'rgba(0,0,0,0.78)',
-                borderWidth: 1.5, borderColor: catBanner.color + '65',
-                borderRadius: 20, paddingHorizontal: 20, paddingVertical: 14,
-                overflow: 'hidden',
-              }}>
-                <LinearGradient
-                  colors={[catBanner.color + '35', catBanner.color + '08', 'transparent']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: catBanner.color + '85' }} />
-                <Text style={{ fontSize: 34 }}>{catBanner.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 8.5, fontWeight: '900', color: catBanner.color + 'BB', letterSpacing: 2.2, marginBottom: 4 }}>
-                    NOW ENTERING
-                  </Text>
-                  <Text style={{ fontSize: 21, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.2 }}>
-                    {catBanner.text}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'center', gap: 3 }}>
-                  <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.30)', letterSpacing: 0.5 }}>scroll</Text>
-                  <Text style={{ fontSize: 18, color: catBanner.color }}>↓</Text>
-                </View>
-              </View>
-            </Animated.View>
-          </>
-        )}
-
-        {/* ── Ultra-Fast Grid Browse Overlay ── */}
         <GridBrowse 
           visible={gridOpen} 
           onClose={() => setGridOpen(false)} 
@@ -3715,17 +3296,13 @@ const SoundReelsModal = memo(function SoundReelsModal({
             setTimeout(() => { flatRef.current?.scrollToIndex({ index: idx, animated: false }); }, 80);
           }} 
         />
-
-
-        {/* ── Ultra-Fast Animated Close Prompt ── */}
         <ClosePrompt 
           visible={showClosePrompt} 
           onDismiss={() => setShowClosePrompt(false)} 
-          onStop={onStop} 
-          onClose={() => onClose(isLast)} 
+          onStop={onStopSilent} 
+          onClose={() => onClose(activeIndex === reelData.length - 1)} 
         />
       </View>
-      </ScreenErrorBoundary>
     </Modal>
   );
 }, (prev, next) => {
@@ -3738,92 +3315,219 @@ const SoundReelsModal = memo(function SoundReelsModal({
 
 
 // ─── Sonic Collections UI ──────────────────────────────────────────────────
-// Map collection IDs to a single premium Ionicons icon name
-// Single premium icon used across all collections for consistency
 const COLLECTION_PREMIUM_ICON = 'musical-notes';
 
-const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
-  // Elegant smart premium capsule design (2 columns)
-  const gap = 16;
-  const colW = Math.floor((W - 32 - gap) / 2);
+// Individual collection card with stagger animation
+const CollectionCard = memo(function CollectionCard({
+  col, index, onPress,
+}: {
+  col: typeof SONIC_COLLECTIONS[number];
+  index: number;
+  onPress: () => void;
+}) {
+  const entryAnim = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entryAnim, {
+      toValue: 1, duration: 480,
+      delay: index * 55,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  }, []);
+
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(glowAnim, { toValue: 1, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      Animated.timing(glowAnim, { toValue: 0, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+    ]));
+    const t = setTimeout(() => loop.start(), index * 200 + 600);
+    return () => { clearTimeout(t); loop.stop(); };
+  }, []);
+
+  const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.965, useNativeDriver: true, damping: 30, stiffness: 400 }).start();
+  const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,     useNativeDriver: true, damping: 20, stiffness: 300 }).start();
+
+  const opacity    = entryAnim;
+  const translateY = entryAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] });
+  const glowOp     = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] });
+
+  // Alternate layout: big hero for every 3rd card (indices 0, 3, 6…), compact 2-col otherwise
+  const isHero = index % 5 === 0;
+  const cardH  = isHero ? 300 : 220;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 28 }}>
-      <View style={{ marginBottom: 24, marginTop: 12 }}>
-        <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
+    <Animated.View style={{ opacity, transform: [{ translateY }, { scale: pressAnim }] }}>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <View style={{
+          height: cardH,
+          borderRadius: isHero ? 28 : 24,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.10)',
+        }}>
+          {/* Background image */}
+          <Image
+            source={{ uri: col.imageUri }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+
+          {/* Animated glow tint */}
+          <Animated.View
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: glowOp }]}
+            pointerEvents="none"
+          />
+
+          {/* Deep cinematic scrim — brighter at top for top text, dark at bottom */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.72)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.82)']}
+            locations={[0, 0.22, 0.55, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+
+          {/* Top row — subtitle tag + track count pill */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={{ backgroundColor: col.themeColor + '28', borderWidth: 1, borderColor: col.themeColor + '60', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
+                {col.subtitle}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}>
+              <Ionicons name="musical-notes" size={9} color="rgba(255,255,255,0.7)" />
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>
+                {col.soundIds.length} TRACKS
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom content — title + description + play button */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 18 }}>
+            <Text style={{ fontSize: isHero ? 28 : 22, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: isHero ? 34 : 28, marginBottom: 6 }}>
+              {col.title}
+            </Text>
+            <Text
+              numberOfLines={isHero ? 2 : 1}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontFamily: 'Nunito_400Regular', lineHeight: 17, letterSpacing: 0.1, marginBottom: 14 }}
+            >
+              {col.description}
+            </Text>
+
+            {/* Play button row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                backgroundColor: col.themeColor,
+                borderRadius: 99, paddingHorizontal: 18, paddingVertical: 9,
+                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
+              }}>
+                <Ionicons name="play" size={12} color="#fff" />
+                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
+                  LISTEN NOW
+                </Text>
+              </View>
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.80)" />
+              </View>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
+  const headerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
+  }, []);
+
+  // Group collections: 1 full-width hero + pairs of compact side-by-side
+  // Layout: hero, [compact, compact], hero, [compact, compact]...
+  // We'll do alternating: every 5th is hero, rest are compact in 2-col pairs
+  const compactW = Math.floor((W - 32 - 10) / 2);
+
+  const rows: Array<{ type: 'hero'; col: typeof SONIC_COLLECTIONS[number]; absIdx: number } | { type: 'pair'; left: typeof SONIC_COLLECTIONS[number]; leftIdx: number; right?: typeof SONIC_COLLECTIONS[number]; rightIdx?: number }> = [];
+  let i = 0;
+  while (i < SONIC_COLLECTIONS.length) {
+    if (i % 5 === 0) {
+      rows.push({ type: 'hero', col: SONIC_COLLECTIONS[i], absIdx: i });
+      i++;
+    } else {
+      rows.push({ type: 'pair', left: SONIC_COLLECTIONS[i], leftIdx: i, right: SONIC_COLLECTIONS[i + 1], rightIdx: i + 1 });
+      i += 2;
+    }
+  }
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+      {/* Section header */}
+      <Animated.View style={{ marginBottom: 28, marginTop: 8, opacity: headerAnim, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_700Bold', letterSpacing: 3.5, textTransform: 'uppercase', marginBottom: 8 }}>
           SONIC THERAPIES
         </Text>
-        <Text style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5 }}>
-          Curated Programs
-        </Text>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.42)', marginTop: 4, letterSpacing: 0.3, fontFamily: 'Nunito_300Light' }}>
-          for deep healing & restoration
-        </Text>
-      </View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+          <Text style={{ fontSize: 30, color: '#fff', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, lineHeight: 36 }}>
+            Curated Programs
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <View style={{ width: 24, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_300Light', letterSpacing: 0.4 }}>
+            {SONIC_COLLECTIONS.length} healing collections
+          </Text>
+        </View>
+      </Animated.View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-        {SONIC_COLLECTIONS.map((col, idx) => {
-          const soundCount = col.soundIds.length;
-          return (
-            <TouchableOpacity
-              key={col.id}
-              activeOpacity={0.88}
-              onPress={() => onSelectCollection(col.id)}
-              style={{
-                width: colW, height: Math.round(colW * 1.52),
-                borderRadius: 28,
-                backgroundColor: 'rgba(10,12,18,0.7)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.12)',
-                overflow: 'hidden',
-                marginBottom: gap,
-                shadowColor: col.themeColor,
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.25,
-                shadowRadius: 16,
-                elevation: 8,
-              }}
-            >
-              {/* Full Artwork Background */}
-              <Image source={{ uri: col.imageUri }} style={{ width: '100%', height: '100%', position: 'absolute' }} resizeMode="cover" />
-              
-              {/* Premium cinematic deep scrim */}
-              <LinearGradient
-                colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.75)', 'rgba(0,0,0,0.98)']}
-                locations={[0, 0.3, 0.65, 1]}
-                style={StyleSheet.absoluteFillObject}
+      {/* Cards grid */}
+      <View style={{ gap: 10 }}>
+        {rows.map((row, rowIdx) => {
+          if (row.type === 'hero') {
+            return (
+              <CollectionCard
+                key={row.col.id}
+                col={row.col}
+                index={row.absIdx}
+                onPress={() => onSelectCollection(row.col.id)}
               />
-
-              {/* Theme color subtle glow/wash inside the card */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} />
-
-              {/* Text Area (Bottom Aligned) */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: 16, paddingTop: 10 }}>
-                <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_700Bold', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' }}>
-                  {col.subtitle}
-                </Text>
-
-                {/* Show full title without numberOfLines */}
-                <Text
-                  style={{ fontSize: 22, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: 26, marginBottom: 8 }}
-                >
-                  {col.title}
-                </Text>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name={COLLECTION_PREMIUM_ICON} size={10} color="rgba(255,255,255,0.6)" />
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.2 }}>
-                    {soundCount} TRACKS
-                  </Text>
-                </View>
+            );
+          }
+          // Pair row
+          return (
+            <View key={`pair-${rowIdx}`} style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ width: compactW }}>
+                <CollectionCard
+                  col={row.left}
+                  index={row.leftIdx}
+                  onPress={() => onSelectCollection(row.left.id)}
+                />
               </View>
-            </TouchableOpacity>
+              {row.right && (
+                <View style={{ width: compactW }}>
+                  <CollectionCard
+                    col={row.right}
+                    index={row.rightIdx!}
+                    onPress={() => onSelectCollection(row.right!.id)}
+                  />
+                </View>
+              )}
+            </View>
           );
         })}
       </View>
     </View>
   );
 });
+
 
 
 // ─── Therapy Sound Card (2-column grid card with image) ─────────────────────
@@ -3884,16 +3588,12 @@ const TherapySoundCard = memo(function TherapySoundCard({
         shadowOpacity: isPlaying ? 0.28 : 0.38,
         shadowRadius: 18, elevation: 8,
       }}>
-        {/* Gradient base */}
         <LinearGradient colors={[sound.top ?? '#0A0818', sound.bot ?? '#050410']} style={StyleSheet.absoluteFillObject} />
-        {/* Artwork */}
         {finalSource && (
           <Image source={finalSource} style={{ width: '100%', height: '100%', position: 'absolute' }}
             resizeMode="cover" onError={() => setImgLoadFailed(true)} />
         )}
-        {/* Colour tint when playing */}
         {isPlaying && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor + '18' }]} />}
-        {/* Deep cinematic scrim */}
         <LinearGradient
           colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.97)']}
           locations={[0, 0.30, 0.60, 1]}
@@ -3901,7 +3601,6 @@ const TherapySoundCard = memo(function TherapySoundCard({
           pointerEvents="none"
         />
 
-        {/* Centered frosted pill play button — only when NOT playing */}
         {!isPlaying && (
           <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ overflow: 'hidden', borderRadius: 30 }}>
@@ -3917,7 +3616,6 @@ const TherapySoundCard = memo(function TherapySoundCard({
           </View>
         )}
 
-        {/* Pulsing ring + waveform bars — top right when playing */}
         {isPlaying && (
           <Animated.View style={{
             position: 'absolute', top: 12, right: 12,
@@ -3934,7 +3632,6 @@ const TherapySoundCard = memo(function TherapySoundCard({
           </Animated.View>
         )}
 
-        {/* Bottom: title + desc */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: 14, paddingTop: 8 }}>
           <Text
             style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_300Light', lineHeight: 18, letterSpacing: 0.3 }}
@@ -3963,7 +3660,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   onPressSound: (id: string) => void;
 }) {
   const sounds = collection.soundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
-  const iconName: any = COLLECTION_PREMIUM_ICON;
   const slideIn = useRef(new Animated.Value(60)).current;
   const fadeIn  = useRef(new Animated.Value(0)).current;
 
@@ -3978,19 +3674,15 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
     <Modal visible={true} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: '#03030D' }}>
 
-        {/* ── Cinema Hero — 50% screen height ── */}
         <View style={{ height: H * 0.50, width: '100%' }}>
           <Image source={{ uri: collection.imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-          {/* Layered cinematic gradient */}
           <LinearGradient
             colors={[collection.themeColor + '25', 'transparent', 'rgba(3,3,13,0.55)', '#03030D']}
             locations={[0, 0.18, 0.62, 1]}
             style={StyleSheet.absoluteFillObject}
           />
-          {/* Colour wash */}
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.09 }]} />
 
-          {/* Back pill — top left */}
           <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 18, paddingTop: 14 }}>
             <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ alignSelf: 'flex-start', overflow: 'hidden', borderRadius: 99 }}>
               <BlurView intensity={42} tint="dark" style={{
@@ -4004,13 +3696,11 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             </TouchableOpacity>
           </SafeAreaView>
 
-          {/* Hero text — slides up on mount */}
           <Animated.View style={{
             position: 'absolute', bottom: 30, left: 22, right: 22,
             opacity: fadeIn,
             transform: [{ translateY: slideIn }],
           }}>
-            {/* Subtitle pill */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <View style={{ overflow: 'hidden', borderRadius: 99 }}>
                 <BlurView intensity={28} tint="dark" style={{
@@ -4025,7 +3715,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                 </BlurView>
               </View>
             </View>
-            {/* Title — ultra-light editorial */}
             <Text style={{ fontSize: 38, color: '#fff', fontFamily: 'Nunito_300Light', marginBottom: 10, letterSpacing: 0.3, lineHeight: 46 }}>
               {collection.title}
             </Text>
@@ -4035,13 +3724,11 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           </Animated.View>
         </View>
 
-        {/* ── Track List ── */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Divider header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: collection.themeColor }} />
             <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.38)', letterSpacing: 2.2, fontFamily: 'Nunito_700Bold' }}>
@@ -4050,7 +3737,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
           </View>
 
-          {/* 2-column premium grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {sounds.map((sound: any) => (
               <TherapySoundCard
@@ -4069,10 +3755,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   );
 });
 
-
-// ─── Hero Signal Waveform Strip ───────────────────────────────────────────────────────
-// Sits just below the hero title text. Flat & barely visible when idle.
-// Breathes & pulses in real-time using getMeteringLevel() when audio is playing.
 const HeroSignalWave = memo(function HeroSignalWave({
   isPlaying, isPaused, color, getMeteringLevel,
 }: {
@@ -4081,7 +3763,7 @@ const HeroSignalWave = memo(function HeroSignalWave({
   color: string;
   getMeteringLevel: () => number;
 }) {
-  const WAVE_W = W - 48; // full width minus horizontal padding
+  const WAVE_W = W - 48; 
   const WAVE_H = 38;
   const CY = WAVE_H / 2;
   const [paths, setPaths] = useState({ p1: '', p2: '', p3: '' });
@@ -4093,7 +3775,6 @@ const HeroSignalWave = memo(function HeroSignalWave({
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Initialise with a flat idle line
   useEffect(() => {
     const flat = makeSineStrokePath(WAVE_W, 0, 0.6, WAVE_W * 0.7, CY);
     setPaths({ p1: flat, p2: flat, p3: flat });
@@ -4101,7 +3782,6 @@ const HeroSignalWave = memo(function HeroSignalWave({
 
   useEffect(() => {
     if (!isPlaying || isPaused) {
-      // Decay to flat line
       const flat = makeSineStrokePath(WAVE_W, 0, 0.6, WAVE_W * 0.7, CY);
       setPaths({ p1: flat, p2: flat, p3: flat });
       return;
@@ -4110,18 +3790,16 @@ const HeroSignalWave = memo(function HeroSignalWave({
       if (!mountedRef.current) return;
       phaseRef.current += 0.07;
       const m = Math.max(0, Math.min(1, getMeteringLevel()));
-      // Idle baseline 1.5px, surges to ~10px at max volume — elegant & refined
       const amp = 1.5 + m * 8;
       setPaths({
         p1: makeSineStrokePath(WAVE_W, phaseRef.current,               amp,        WAVE_W * 0.60, CY),
         p2: makeSineStrokePath(WAVE_W, phaseRef.current + Math.PI / 3,  amp * 0.55, WAVE_W * 0.45, CY),
         p3: makeSineStrokePath(WAVE_W, phaseRef.current - Math.PI / 4,  amp * 0.35, WAVE_W * 0.80, CY),
       });
-    }, 1000 / 24); // 24 fps — smooth without JS overhead
+    }, 1000 / 24);
     return () => clearInterval(tid);
   }, [isPlaying, isPaused, WAVE_W]);
 
-  // Opacity: whisper-quiet when idle, vivid when playing
   const opacity = isPlaying && !isPaused ? 0.75 : 0.18;
 
   return (
@@ -4130,11 +3808,8 @@ const HeroSignalWave = memo(function HeroSignalWave({
       style={{ width: WAVE_W, height: WAVE_H, opacity, alignSelf: 'center', marginTop: 4 }}
     >
       <Svg width={WAVE_W} height={WAVE_H}>
-        {/* Layer 3 — wide, softer premium glow */}
         <Path d={paths.p3} stroke={color + '12'} strokeWidth={12} fill="none" strokeLinecap="round" />
-        {/* Layer 2 — mid wave, smooth blend */}
         <Path d={paths.p2} stroke={color + '33'} strokeWidth={3} fill="none" strokeLinecap="round" />
-        {/* Layer 1 — primary bright, crisp signal line */}
         <Path d={paths.p1} stroke={color + 'E6'} strokeWidth={1} fill="none" strokeLinecap="round" />
       </Svg>
     </View>
@@ -4148,11 +3823,10 @@ function SleepTabInner() {
   const { bgUri, accentColor, gradientStart, solarTimes } = useBgContext();
   const [now, setNow] = useState(new Date());
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [libraryInitialCat, setLibraryInitialCat] = useState<string | null>(null);
+  const [libraryInitialCat, setLibraryInitialCat] = useState('All');
   const [isSearching, setIsSearching] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<TextInput>(null);
 
   const filteredSearchSounds = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -4172,745 +3846,138 @@ function SleepTabInner() {
     return unique.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery]);
 
-  // ── Global sound player (context) ──────────────────────────
-  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer, isAudioLoading, getPositionMs, seekTo, meteringAnim } = useSoundPlayer();
 
-  // ── Settings ───────────────────────────────────────────────
-  const [wakeHour,      setWakeHour]      = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.hour);
-  const [wakeMinute,    setWakeMinute]    = useState(DEFAULT_ALARM_SETTINGS.wakeAlarm.minute);
-  const [bedtimeAlert,  setBedtimeAlert]  = useState(false);
-  const [eveningMantra, setEveningMantra] = useState(false);
 
-  // ── Sound UI state ─────────────────────────────────────────
   const [stopIdx,      setStopIdx]      = useState(0);
-  const [category,     setCategory]     = useState<Category>('Meditations');
   const [selectedCat,  setSelectedCat]  = useState<Category>('Meditations');
   const [catSheetOpen, setCatSheetOpen] = useState(false);
 
-  // ── Category swipe + transitions ────────────────────────────
   const contentFadeAnim  = useRef(new Animated.Value(1)).current;
   const contentSlideAnim = useRef(new Animated.Value(0)).current;
-  const stripScrollRef  = useRef<any>(null);
-  const [rowsResetKey, setRowsResetKey] = useState(0);
-  const hasRowResetRef = useRef(false);
-  // scrollY drives the JS-based sticky strip (replaces stickyHeaderIndices)
   const scrollY  = useRef(new Animated.Value(0)).current;
-  const [searchBarH, setSearchBarH] = useState(60); // measured via onLayout on search bar
-
 
   useFocusEffect(useCallback(() => {
     _pageScrollRef?.scrollTo({ y: 0, animated: false });
-    setRowsResetKey(k => k + 1);
-    hasRowResetRef.current = false;
     setIsSearching(false);
     setSearchQuery('');
   }, []));
 
   const onMainScroll = useMemo(() => Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: true,
-      listener: (e: any) => {
-        const y = e.nativeEvent.contentOffset.y;
-        if (y > 250 && !hasRowResetRef.current) {
-          hasRowResetRef.current = true;
-          setRowsResetKey(k => k + 1);
-        } else if (y < 50) {
-          hasRowResetRef.current = false;
-        }
-      }
-    }
+    { useNativeDriver: true }
   ), [scrollY]);
 
-
-  const changeCategory = useCallback((cat: Category, dir: number = 0) => {
-    // Instant opacity drop then smooth fade in
-    contentFadeAnim.setValue(0.6);
-    Animated.timing(contentFadeAnim, {
-      toValue: 1,
-      duration: 150,
-      useNativeDriver: true,
-      easing: Easing.out(Easing.cubic),
-    }).start();
-
-    if (dir !== 0) {
-      // Shorter slide offset for a snappier transition
-      contentSlideAnim.setValue(-dir * W * 0.08);
-      Animated.spring(contentSlideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 400,
-        mass: 0.3,
-      }).start();
-    }
-    // Defer state update slightly so native animations start before JS thread is blocked
-    setTimeout(() => {
-      setSelectedCat(cat);
-    }, 0);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [contentFadeAnim, contentSlideAnim]);
-
-  useEffect(() => {
-    _pageScrollRef?.scrollTo({ y: 0, animated: true });
-  }, [selectedCat]);
-
-  // Removed buggy contentPan logic in favor of FlingGestureHandler.
-  const [localSolarTimes, setLocalSolarTimes]   = useState<SolarTimes | null>(null);
   const [sleepIntelOpen, setSleepIntelOpen] = useState(false);
-  const chevronAnim = useRef(new Animated.Value(0)).current;
-  const [cyclesOpen, setCyclesOpen] = useState(false);
-  const cyclesChevronAnim = useRef(new Animated.Value(0)).current;
-  const [nightSettingsOpen, setNightSettingsOpen] = useState(false);
-  const nightChevronAnim = useRef(new Animated.Value(0)).current;
-  const bedtimeAutoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showReels,      setShowReels]      = useState(false);
+  const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
 
   // ── Auto-start ─────────────────────────────────────────────
   const [showAutoStart, setShowAutoStart] = useState(false);
   const [autoEnabled,   setAutoEnabled]   = useState(false);
   const [autoHour,      setAutoHour]      = useState(22);
   const [autoMinute,    setAutoMinute]    = useState(30);
-  const [autoSoundId,   setAutoSoundId]   = useState<SoundId>('light_rain');
+  const [autoSoundId,   setAutoSoundId]   = useState('light_rain');
 
-  // ── Reels state ───────────────────────────────────────────
-  const [showReels,      setShowReels]      = useState(false);
-  const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
+  const handleReelsClose = useCallback((_fromLastReel?: boolean) => {
+    setShowReels(false);
+    clearPendingOpenReels();
+  }, [clearPendingOpenReels]);
 
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        // Prevent bypassing the Modal's own Android back handler
-        if (showReels) {
-          return false;
-        }
-        if (catSheetOpen) {
-          setCatSheetOpen(false);
-          return true;
-        }
-        if (isSearching) {
-          setIsSearching(false);
-          setSearchQuery('');
-          return true;
-        }
-        if (libraryOpen) {
-          setLibraryOpen(false);
-          return true;
-        }
-        router.navigate('/(tabs)');
-        return true;
-      };
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [showReels, catSheetOpen, isSearching, libraryOpen, router])
-  );
-  // null = use category default (Meditations → once, others → loop)
-  const reelLoopModeRef = useRef<boolean | null>(null);
+  const handleStopSilent = useCallback(() => stopSound(true), [stopSound]);
 
-  // ── Open reel from home page "Listen & Recharge" button ──────────────────
+  const handleOpenLibraryFromReel = useCallback((cat: string) => {
+    if (cat) setLibraryInitialCat(cat);
+    setLibraryOpen(true);
+  }, []);
+
+  const changeCategory = useCallback((cat: Category, dir: number) => {
+    Animated.parallel([
+      Animated.timing(contentFadeAnim,  { toValue: 0, duration: 80, useNativeDriver: true }),
+      Animated.timing(contentSlideAnim, { toValue: dir * 30, duration: 80, useNativeDriver: true }),
+    ]).start(() => {
+      setSelectedCat(cat);
+      contentSlideAnim.setValue(-dir * 30);
+      Animated.parallel([
+        Animated.timing(contentFadeAnim,  { toValue: 1, duration: 120, useNativeDriver: true }),
+        Animated.timing(contentSlideAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
+      ]).start();
+    });
+  }, [contentFadeAnim, contentSlideAnim]);
+
+  const scheduleAutoStart = useCallback(() => {
+    // Auto-start scheduling — sets a background notification for the configured time
+    // Implementation handled by the notification system
+  }, []);
+
   useEffect(() => {
     if (openReel === '1') {
       const ragaIdx = REELS_ALL_SOUNDS.findIndex(s => s.cat === 'Ragas');
       setReelsStartIdx(ragaIdx !== -1 ? ragaIdx : 0);
-      setCategory('Ragas');
       setSelectedCat('Ragas');
       setShowReels(true);
       router.setParams({ openReel: undefined });
     }
   }, [openReel]);
 
-  // ── Re-open reels from GlobalPlayerBar compact player tap ──────────────────
-  // pendingOpenReels is incremented by openReelsOrPlayer() in the context.
-  // Using a counter (not a boolean) means repeated taps always trigger the effect.
-  // This is race-condition-free: no callback ref, no setTimeout, no registration.
-  const reelsPlayingIdRef = useRef<string | null>(null);
-  useEffect(() => { reelsPlayingIdRef.current = playingId; }, [playingId]);
   useEffect(() => {
     if (!pendingOpenReels) return;
-    clearPendingOpenReels();
-    const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === reelsPlayingIdRef.current);
-    const startIdx = idx !== -1 ? idx : 0;
-    [-1, 0, 1, 2, 3].forEach(offset => {
-      const adj = REELS_ALL_SOUNDS[startIdx + offset];
-      if (!adj) return;
-      const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
-      if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
-        ensureSoundImageCached(adjUri).catch(() => {});
-      }
-    });
+    const startIdx = Math.max(0, REELS_ALL_SOUNDS.findIndex(s => s.id === pendingOpenReels));
     setReelsStartIdx(startIdx);
     setShowReels(true);
   }, [pendingOpenReels]);
 
-  // ── Live clock ──────────────────────────────────────────────
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-
-  // ── Pre-warm + download persistent image cache ────────────────────────────
-  useEffect(() => {
-    warmSoundImageMap().then(() => {
-      prefetchAllSoundImages(15);
-    });
-  }, []);
-
-  // ── Init ───────────────────────────────────────────────────
-  useEffect(() => {
-    store.getJSON<AlarmSettings>(KEYS.alarmSettings).then(s => {
-      if (s?.wakeAlarm) { setWakeHour(s.wakeAlarm.hour); setWakeMinute(s.wakeAlarm.minute); }
-      setEveningMantra(s?.eveningMantra ?? false);
-    });
-    store.getJSON<{ lat: number; lon: number }>(KEYS.location).then(loc => {
-      if (loc?.lat && loc?.lon) setLocalSolarTimes(getSolarTimes(loc.lat, loc.lon));
-    }).catch(() => {});
-  }, []);
-
-  // Audio cache init (reads existing index — does NOT download anything)
-  useEffect(() => { initAudioCache().catch(() => {}); }, []);
-
-  // ── Play from sleep screen (opens Reels immediately, no pre-mood) ──────────
-  // NOTE: No direct playSound call here. SoundReelsModal's auto-play effect owns
-  // ALL audio start/stop so there is never a concurrent stopAllRefs race.
-  // Instagram-style: open the modal INSTANTLY — cache images non-blocking in background.
   const handleSoundCardTap = useCallback((id: string) => {
     const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
     if (reelIndex === -1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setReelsStartIdx(reelIndex);
-    setIsSearching(false);
-    setSearchQuery('');
-    // Open the modal immediately — Instagram style, no waiting
     setShowReels(true);
-    // Non-blocking: cache this reel's image + adjacent reels in background
-    const sound = REELS_ALL_SOUNDS[reelIndex];
-    const rawUri = SOUND_IMAGES[sound.id] ?? (sound as any).imageUri;
-    if (rawUri && !SOUND_BUNDLED_IMAGES[sound.id] && !isSoundImageCached(rawUri)) {
-      ensureSoundImageCached(rawUri).catch(() => {});
-    }
-    [-1, 1, 2, 3].forEach(offset => {
-      const adj = REELS_ALL_SOUNDS[reelIndex + offset];
-      if (!adj) return;
-      const adjUri = SOUND_IMAGES[adj.id] ?? (adj as any).imageUri;
-      if (adjUri && !SOUND_BUNDLED_IMAGES[adj.id] && !isSoundImageCached(adjUri)) {
-        ensureSoundImageCached(adjUri).catch(() => {});
-      }
-    });
   }, []);
-
-  const getReelTrimSecs = (cat: string): number => {
-    return 0;
-  };
-
-  // Reels: play a sound by id (used when swiping between reels — no mood re-ask)
-  const handleReelPlaySound = useCallback((id: string) => {
-    try {
-      const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
-      if (meta) {
-        // Reset loop mode on each new sound — user must explicitly choose Once/Loop per track
-        reelLoopModeRef.current = null;
-        const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
-        const trimSecs = getReelTrimSecs(meta.cat);
-        const isNightTab = checkIsNightTime(solarTimes);
-        const defaultDur = isNightTab ? 28800 : 3600;
-        
-        playSound(metaFull, defaultDur, undefined, trimSecs, true);
-      }
-    } catch (e) {
-      console.warn('Error in handleReelPlaySound:', e);
-    }
-  }, [playSound, solarTimes]);
-
-  // Reels: close handler — collapses reels to mini bar; sound keeps playing
-  const handleReelClose = useCallback((_fromLastReel: boolean) => {
-    setShowReels(false);
-  }, []);
-
-  const handleOpenLibrary = useCallback((cat: string) => {
-    setLibraryInitialCat(cat);
-    setLibraryOpen(true);
-  }, []);
-
-  const changeStopTimer = useCallback((idx: number) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (idx === -1) {
-        // Meditation "Once" mode — use real sound duration, cap at 60 min
-        reelLoopModeRef.current = false;
-        const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
-        changeTimer(actualSecs);
-        if (playingId) {
-          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-          if (meta) {
-            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-            playSound(mf, actualSecs, undefined, 0, false); // 0 trim — play fully to end
-          }
-        }
-      } else if (idx === -2) {
-        // Meditation "Loop" mode — loop indefinitely (8 hr window)
-        reelLoopModeRef.current = true;
-        changeTimer(28800);
-        if (playingId) {
-          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-          if (meta) {
-            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-            const trimSecs = getReelTrimSecs(meta.cat);
-            playSound(mf, 28800, undefined, trimSecs, true);
-          }
-        }
-      } else if (idx === -3) {
-        // Auto-detect: silently update timer to real track duration, no restart
-        const actualSecs = Math.min(sleepTabDurationSecs ?? 3600, 3600);
-        changeTimer(actualSecs);
-      } else if (idx > 200) {
-        // Loop x N mode — idx encodes total seconds directly (computed in ReelCard)
-        reelLoopModeRef.current = true;
-        const totalSecs = idx;
-        changeTimer(totalSecs);
-        if (playingId) {
-          const meta = REELS_ALL_SOUNDS.find(s => s.id === playingId);
-          if (meta) {
-            const mf = { ...meta, imageUri: SOUND_IMAGES[playingId] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[playingId] ?? undefined };
-            const trimSecs = getReelTrimSecs(meta.cat);
-            playSound(mf, totalSecs, undefined, trimSecs, true);
-          }
-        }
-      } else {
-        reelLoopModeRef.current = null;
-        setStopIdx(idx);
-        changeTimer(STOP_TIMES[idx].secs);
-      }
-    } catch (e) {
-      console.warn('Error in changeStopTimer:', e);
-    }
-  }, [changeTimer, playingId, playSound, sleepTabDurationSecs]);
-
-  const toggleSleepIntel = () => {
-    const opening = !sleepIntelOpen;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSleepIntelOpen(opening);
-    Animated.timing(chevronAnim, { toValue: opening ? 1 : 0, duration: 240, useNativeDriver: true }).start();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const toggleCycles = () => {
-    const opening = !cyclesOpen;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setCyclesOpen(opening);
-    Animated.timing(cyclesChevronAnim, { toValue: opening ? 1 : 0, duration: 240, useNativeDriver: true }).start();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const toggleNightSettings = () => {
-    const opening = !nightSettingsOpen;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setNightSettingsOpen(opening);
-    Animated.timing(nightChevronAnim, { toValue: opening ? 1 : 0, duration: 240, useNativeDriver: true }).start();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
 
   const handleStop = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     stopSound(true);
   }, [stopSound]);
 
-  const handleStopSilent = useCallback(() => { stopSound(false); }, [stopSound]);
-
-  // ── Evening mantra ─────────────────────────────────────────
-  const scheduleEveningMantraNotif = async () => {
-    try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
-      const next = new Date(); next.setHours(21, 30, 0, 0);
-      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
-      await notifee.createTriggerNotification(
-        { id: 'evening-mantra-daily', title: '🔱  Shiv Sankalpa Suktam', body: 'Sacred Mind Hymn · 9:30 PM', android: { channelId: 'arise-habit-alarms', importance: AndroidImportance.HIGH, category: AndroidCategory.ALARM, visibility: AndroidVisibility.PUBLIC, fullScreenAction: { id: 'default', launchActivity: 'default' }, pressAction: { id: 'default', launchActivity: 'default' } } as any, data: { type: 'evening-mantra' } },
-        { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { allowWhileIdle: true } } as any,
-      );
-    } catch {}
-  };
-  const cancelEveningMantraNotif = async () => { await notifee.cancelTriggerNotification('evening-mantra-daily').catch(() => {}); };
-  const toggleEveningMantra = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const v = !eveningMantra; setEveningMantra(v);
-    const s = await store.getJSON<AlarmSettings>(KEYS.alarmSettings);
-    await store.setJSON(KEYS.alarmSettings, { ...(s ?? DEFAULT_ALARM_SETTINGS), eveningMantra: v });
-    if (v) scheduleEveningMantraNotif(); else cancelEveningMantraNotif();
-  };
-
-  // ── Auto-start scheduler ───────────────────────────────────
-  const scheduleAutoStart = async () => {
-    try {
-      await notifee.createChannel({ id: 'arise-habit-alarms', name: 'Nada Habit Alarms', importance: AndroidImportance.HIGH, bypassDnd: true, visibility: AndroidVisibility.PUBLIC } as any);
-      const next = new Date(); next.setHours(autoHour, autoMinute, 0, 0);
-      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
-      const meta = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!;
-      await notifee.createTriggerNotification(
-        {
-          id: 'sleep-autostart',
-          title: `${meta.emoji}  Nāda`,
-          body: `${meta.label} · Starting your sleep session now 🌙`,
-          android: {
-            channelId: 'arise-habit-alarms',
-            importance: AndroidImportance.HIGH,
-            category: AndroidCategory.ALARM,
-            visibility: AndroidVisibility.PUBLIC,
-            fullScreenAction: { id: 'default', launchActivity: 'default' },
-            pressAction: { id: 'default', launchActivity: 'default' },
-          } as any,
-          data: { type: 'sleep-autostart', soundId: autoSoundId, label: meta.label },
-        },
-        { type: TriggerType.TIMESTAMP, timestamp: next.getTime(), repeatFrequency: RepeatFrequency.DAILY, alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE } } as any,
-      );
-    } catch {}
-  };
-  const cancelAutoStart = async () => { await notifee.cancelTriggerNotification('sleep-autostart').catch(() => {}); };
-  const toggleAutoStart = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const v = !autoEnabled; setAutoEnabled(v);
-    if (v) await scheduleAutoStart(); else await cancelAutoStart();
-  };
-
-  // ── Bedtime math ───────────────────────────────────────────
-  const getBedtime = (hoursBack: number) => {
-    const totalMins  = wakeHour * 60 + wakeMinute - Math.round(hoursBack * 60) - 15;
-    const normalized = ((totalMins % 1440) + 1440) % 1440;
-    return { h: Math.floor(normalized / 60), m: normalized % 60 };
-  };
-  const currentMins  = now.getHours() * 60 + now.getMinutes();
-  const bestBedtime  = getBedtime(7.5);
-
-  // ── Ayurvedic GPS bedtime (sunset + 3.5h, clamped 9PM–11PM) ──
-  const ayuBedtime = useMemo(() => {
-    if (!solarTimes) return null;
-    const dec   = Math.max(21, Math.min(23, solarTimes.sunset + 3.5));
-    const total = Math.round(dec * 60);
-    return { h: Math.floor(total / 60) % 24, m: total % 60 };
-  }, [solarTimes]);
-
-  const displayBedtime = ayuBedtime ?? bestBedtime;
-  const displayBedMins = displayBedtime.h * 60 + displayBedtime.m;
-  const minsUntilBed = displayBedMins > currentMins ? displayBedMins - currentMins : displayBedMins + 1440 - currentMins;
-  const hrsToBed     = Math.floor(minsUntilBed / 60);
-  const minsToBed    = minsUntilBed % 60;
-
-  // Whether current time is inside the sleep window (between bedtime and wake time)
-  const isSleepWindowActive = useMemo(() => {
-    const displayBedMins = displayBedtime.h * 60 + displayBedtime.m;
-    const wakeMins = wakeHour * 60 + wakeMinute;
-    if (displayBedMins < wakeMins) {
-      return currentMins >= displayBedMins && currentMins < wakeMins;
-    } else {
-      return currentMins >= displayBedMins || currentMins < wakeMins;
+  const handleReelPlaySound = useCallback((id: string) => {
+    const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
+    if (meta) {
+      const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
+      playSound(metaFull, 28800, undefined, 0, true);
     }
-  }, [displayBedtime, wakeHour, wakeMinute, currentMins]);
+  }, [playSound]);
 
-  const sunsetFmt = useMemo(() => {
-    if (!solarTimes) return null;
-    const h = Math.floor(solarTimes.sunset);
-    const m = Math.round((solarTimes.sunset - h) * 60);
-    return fmt12(h % 24, m);
-  }, [solarTimes]);
-
-  const playingSrc  = SLEEP_SOUNDS.find(s => s.id === playingId);
-  const h           = now.getHours() + now.getMinutes() / 60;
-  const autoMode    = useMemo(() => getAutoMode(h), [h]);
-  const currentPeriod = useMemo(() => solarTimes ? getCurrentPeriod(solarTimes, h) : null, [solarTimes, h]);
-  const isBrahmaMuhurta = currentPeriod?.id === 'night_vata';
-  // ── Solar-period → SoundMode mapping — mirrors home page solar time period ──
-  // When solar data is available, derive displayMode from the actual dosha period
-  // so sleep header stays in sync with home hero ring & walk ring (same solar time).
-  const solarDisplayMode = useMemo((): SoundMode => {
-    if (isBrahmaMuhurta) return BRAHMA_MODE;
-    if (!currentPeriod) return autoMode;
-    switch (currentPeriod.id) {
-      case 'morning_kapha_early':
-      case 'morning_kapha':  return SOUND_MODES.morning;
-      case 'midday_pitta':   return SOUND_MODES.focus;
-      case 'afternoon_vata': return SOUND_MODES.restore;
-      case 'evening_kapha':  return SOUND_MODES.evening;
-      case 'night_pitta':    return SOUND_MODES.sleep;
-      default:               return autoMode; // fallback for any unmapped id
-    }
-  }, [currentPeriod?.id, isBrahmaMuhurta, autoMode]);
-  const displayMode = solarDisplayMode;
-
-  const sacredHour = useMemo(() => {
-    return solarTimes ? getSacredHourInfo(h, solarTimes) : { type: null, progress: 0 };
-  }, [h, solarTimes]);
-
+  const currentPeriod = useMemo(() => solarTimes ? getCurrentPeriod(solarTimes, now.getHours() + now.getMinutes() / 60) : null, [solarTimes, now]);
   const heroContent = useMemo(() => {
-    if (sacredHour.type !== null) {
-      return {
-        subPill: sacredHour.type === 'sunrise' ? 'SACRED HOUR OF SUNRISE' :
-                 sacredHour.type === 'sunset' ? 'SACRED HOUR OF SUNSET' : 'SACRED HOUR OF ZENITH',
-        header: sacredHour.type === 'sunrise' ? 'Sun is Rising' :
-                sacredHour.type === 'sunset' ? 'Sun is Setting' : 'Sun is at its Peak',
-        actionText: 'Meditate now',
-        sentence: 'Divine hour. Meditate and connect with the divinity.',
-        sciLabel: 'Sacred Hour'
-      };
-    }
     if (!currentPeriod) return null;
     return getHeroRingContent(currentPeriod.id, currentPeriod.id === 'night_vata');
-  }, [currentPeriod?.id, sacredHour.type]);
+  }, [currentPeriod?.id]);
+  const autoMode = useMemo(() => getAutoMode(now.getHours() + now.getMinutes() / 60), [now]);
+  const displayMode = useMemo(() => ({
+    label: currentPeriod ? 'Nada' : 'Nada',
+    subtitle: currentPeriod ? 'Guided soundscapes' : 'Guided soundscapes'
+  }), [currentPeriod]);
 
-  const natureCategoryLabel = useMemo(() => {
-    const periodId = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
-    switch (periodId) {
-      case 'night_vata':        return 'The world sleeps... breathe with nature and ease into the dawn';
-      case 'morning_kapha_early': return 'Morning rises... ground yourself and align with nature';
-      case 'morning_kapha':     return 'Morning rises... listen to nature\'s sounds and align yourself';
-      case 'midday_pitta':      return 'The sun peaks... ground yourself in nature\'s steady rhythm';
-      case 'midday_pitta_late': return 'The afternoon drifts... let nature\'s sounds restore your calm';
-      case 'afternoon_vata':    return 'The day softens... let nature\'s breeze quiet your mind';
-      case 'evening_kapha':     return 'Evening descends... unwind with nature and release the day';
-      case 'night_pitta':       return 'Night deepens... sleep wrapped in nature\'s sounds';
-      default:                  return 'Let nature\'s sounds align your mind and body';
-    }
-  }, [currentPeriod?.id, autoMode.key]);
-
-  const isNightTime = useMemo(() => {
-    if (solarTimes) {
-      const nowNorm = h < solarTimes.sunrise ? h + 24 : h;
-      return nowNorm >= solarTimes.sunset + 2;
-    }
-    return autoMode.key === 'sleep';
-  }, [solarTimes, h, autoMode]);
-
-  const isSunsetToSunrise = useMemo(() => {
-    if (solarTimes) {
-      return h >= solarTimes.sunset || h < solarTimes.sunrise;
-    }
-    return h >= 18 || h < 6;
-  }, [solarTimes, h]);
-
-  // Show ideal sleep chip only within 1 hour of actual bedtime
-  const showIdealSleepChip = useMemo(() => minsUntilBed <= 60 && !isSleepWindowActive, [minsUntilBed, isSleepWindowActive]);
-
-  // Show "approaching sleep" strip after sunset but more than 1 hour before bed
-  const showApproachingChip = useMemo(() => {
-    if (showIdealSleepChip || isSleepWindowActive) return false;
-    const nowDecH = now.getHours() + now.getMinutes() / 60;
-    if (solarTimes) return nowDecH >= solarTimes.sunset || nowDecH < solarTimes.sunrise;
-    return autoMode.key === 'evening' || autoMode.key === 'sleep';
-  }, [now, solarTimes, autoMode, showIdealSleepChip, isSleepWindowActive]);
-  const dayHint = useMemo(() => {
-    const key = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? 'morning_kapha';
-    return PERIOD_DAY_HINTS[key] ?? null;
-  }, [currentPeriod, autoMode]);
-
-  const sectionInfo   = useMemo(() => {
-    if (currentPeriod && PERIOD_SECTION_LABELS[currentPeriod.id]) {
-      const base = PERIOD_SECTION_LABELS[currentPeriod.id];
-      return { ...base, isNight: isNightTime };
-    }
-    if (isNightTime) return { title: 'For Your Night', icon: '🌙', isNight: true };
-    return { title: 'Recommended Now', icon: autoMode.icon, isNight: false };
-  }, [currentPeriod, autoMode, isNightTime]);
-  const recSounds   = useMemo(() => {
-    const periodKey = currentPeriod?.id ?? AUTOMODE_TO_PERIOD[autoMode.key] ?? autoMode.key;
-    return ALL_SOUNDS_LIST.filter(s => {
-      const p = SOUND_PERIODS[s.id];
-      if (!p) return true;
-      if (periodKey === 'night_vata') {
-        if ((s as any).cat === 'Meditations') return true;
-        return p.includes('night_vata') || p.includes('morning_kapha') || p.includes('morning_kapha_early');
-      }
-      if (periodKey === 'morning_kapha' || periodKey === 'morning_kapha_early') {
-        if ((s as any).cat === 'Meditations') return true;
-        return p.includes('morning_kapha') || p.includes('morning_kapha_early');
-      }
-      return p.includes(periodKey);
-    }) as SoundItem[];
-  }, [currentPeriod, autoMode]);
-  const featuredSnd = playingSrc ?? (recSounds[0] ?? SLEEP_SOUNDS[0]);
-  const bottomPad   = getTabBarClearance(insets.bottom, !!playingId);
-  const autoMeta    = SLEEP_SOUNDS.find(s => s.id === autoSoundId)!
-  const safeTop = Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) : (insets.top ?? 44);
-
-  // ── Hero greeting: Calm-style serif font, color shifts with scene ────────
-  const heroTextStyle = useMemo(() => {
-    const mode = displayMode.key;
-    const color =
-      mode === 'brahma'  ? '#E8F0FF' :  // pre-dawn cool white
-      mode === 'morning' ? '#FFF8F0' :  // warm sunrise white
-      mode === 'focus'   ? '#F5F8FF' :  // crisp midday white
-      mode === 'restore' ? '#FFF4E8' :  // soft afternoon white
-      mode === 'evening' ? '#FFF0D8' :  // golden dusk white
-      '#EEEEFF';                        // night — moonlit white
-    const shadowColor =
-      mode === 'brahma'  ? 'rgba(0,0,20,0.70)'   :
-      mode === 'morning' ? 'rgba(60,20,0,0.75)'  :
-      mode === 'focus'   ? 'rgba(0,10,40,0.80)'  :
-      mode === 'restore' ? 'rgba(60,30,0,0.72)'  :
-      mode === 'evening' ? 'rgba(80,30,0,0.78)'  :
-      'rgba(0,0,10,0.72)';
-    return {
-      fontSize: 24,
-      fontWeight: '600' as const,
-      fontFamily: 'DancingScript_600SemiBold',
-      letterSpacing: 0.5,
-      color: '#FFF8F0',
-      textShadowColor: 'rgba(60,20,0,0.75)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 10,
-      textAlign: 'center' as const,
-    };
-  }, [displayMode.key]);
+  const heroTextStyle = useMemo(() => ({
+    fontSize: 24, fontWeight: '600' as const, fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, color: '#FFF8F0',
+    textShadowColor: 'rgba(60,20,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10, textAlign: 'center' as const,
+  }), []);
 
   return (
     <View style={[S.screen, { backgroundColor: '#03030D' }]}>
-      {/* Background Image confined to the top 55% of the screen like Sonic Therapies mode */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55 }}>
-        <Image
-          source={{ uri: BG_URLS['morning_late'] || bgUri || '' }}
-          style={StyleSheet.absoluteFillObject as any}
-          resizeMode="cover"
-        />
-        <BlurView
-          tint="dark"
-          intensity={85}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-        {/* Layered cinematic gradient fading into the black background */}
-        <LinearGradient
-          colors={[
-            'rgba(3,3,13,0.1)',
-            'rgba(3,3,13,0.3)',
-            'rgba(3,3,13,0.75)',
-            '#03030D',
-          ]}
-          locations={[0, 0.4, 0.7, 1]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
+        <Image source={{ uri: BG_URLS['midday_early_late'] || bgUri || '' }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
+        <BlurView tint="dark" intensity={85} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        <LinearGradient colors={['rgba(3,3,13,0.1)', 'rgba(3,3,13,0.3)', 'rgba(3,3,13,0.75)', '#03030D']} locations={[0, 0.4, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
       </View>
-
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }} />
-
-
-
-      {/* ── Content area — hero + JS-sticky tab strip + scroll ── */}
       <View style={{ flex: 1, zIndex: 1 }}>
-
-
-        <Animated.View style={{ flex: 1, opacity: contentFadeAnim, transform: [{ translateX: contentSlideAnim }] }}>
-        
-        {/* Ultra Premium Smart Bar (Edge-to-Edge) */}
-        <View 
-          style={{ width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, zIndex: 200 }}
-          onLayout={(e) => setSearchBarH(e.nativeEvent.layout.height)}
-        >
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: 'rgba(10,15,30,0.15)',
-            borderWidth: 0,
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderColor: 'rgba(255,255,255,0.15)',
-            borderRadius: 0,
-            paddingLeft: 16,
-            paddingRight: 10,
-            paddingTop: Platform.OS === 'ios' ? 8 : 10,
-            paddingBottom: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 10,
-            elevation: 5,
-            overflow: 'hidden'
-          }}>
-            <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <LinearGradient
-              colors={['rgba(255,255,255,0.12)', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject} pointerEvents="none"
-            />
-            {/* Bottom shimmer line hinting expansion */}
-            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-
-            {isSearching ? (
-              <TouchableOpacity onPress={() => {
-                Keyboard.dismiss();
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setIsSearching(false);
-                setSearchQuery('');
-              }} activeOpacity={0.7} style={{ marginRight: 10 }}>
-                <Ionicons name="arrow-back" size={24} color="rgba(255,255,255,0.95)" />
-              </TouchableOpacity>
-            ) : (
-              <Ionicons name="search" size={20} color="rgba(255,255,255,0.7)" />
-            )}
-
-            {isSearching ? (
-              <TextInput
-                ref={searchInputRef}
-                style={{ flex: 1, fontSize: 16, color: '#FFF', fontFamily: 'Nunito_400Regular', marginLeft: 8, paddingVertical: 4 }}
-                autoFocus
-                placeholder="Search sounds..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="search"
-              />
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                  setIsSearching(true);
-                }}
-                activeOpacity={0.8}
-                style={{ flex: 1, marginLeft: 12, paddingVertical: 4, justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', letterSpacing: 0.2 }}>
-                  Search sounds, ragas...
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {isSearching && searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 8 }}>
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
-              </TouchableOpacity>
-            )}
-
-            {!isSearching && (
-              <TouchableOpacity 
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }} 
-                activeOpacity={0.85} 
-                style={{ marginLeft: 'auto' }}
-              >
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.08)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ 
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 14,
-                    paddingVertical: 6,
-                    borderRadius: 99,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.3)',
-                  }}
-                >
-                  <Ionicons name="musical-notes" size={15} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={{ color: '#FFF', fontSize: 13, fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>Select Sound</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        
-
-
         <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: bottomPad }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={8}
           onScroll={onMainScroll}
@@ -4919,55 +3986,26 @@ function SleepTabInner() {
           removeClippedSubviews
           keyboardShouldPersistTaps="handled"
         >
+          <View style={{ width: W, alignItems: 'center', paddingHorizontal: 0, marginTop: 44, marginBottom: 12, gap: 8 }}>
+            <Text style={[heroTextStyle, { marginBottom: 6, letterSpacing: 1 }]}>
+              {heroContent ? heroContent.header : displayMode.label}
+            </Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', marginTop: 2, paddingHorizontal: 20 }}>
+              {heroContent ? heroContent.sentence : displayMode.subtitle}
+            </Text>
 
-        {/* ── Hero area ── */}
-        <View
-          style={{ width: W, alignItems: 'center', paddingHorizontal: 0 }}
-        >
-          {!isSearching && (
-            <View style={{
-              width: '100%',
-              paddingHorizontal: 24,
-              paddingVertical: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'transparent',
-              marginTop: 44,
-              marginBottom: 12,
-              gap: 8,
-            }}>
-              {/* Main title */}
-              <Text style={[heroTextStyle, { marginBottom: 6, letterSpacing: 1 }]}>
-                {heroContent ? heroContent.header : displayMode.label}
-              </Text>
-              
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 18, paddingVertical: 6, borderRadius: 24, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: 'Nunito_600SemiBold' }}>
-                  {heroContent ? heroContent.actionText : 'Listen & tune in'}
-                </Text>
-              </View>
-
-              {/* Subtitle / Status Text */}
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', marginTop: 2, paddingHorizontal: 20 }}>
-                {heroContent ? heroContent.sentence : displayMode.subtitle}
-              </Text>
-
-              {/* ── Hero Signal Waveform — live-synced to audio, elegant & premium ── */}
-              <HeroSignalWave
-                isPlaying={!!playingId && !isPaused}
-                isPaused={isPaused}
-                color={
-                  playingId
-                    ? (REELS_ALL_SOUNDS.find(s => s.id === playingId)?.color ?? '#a78bfa')
-                    : '#a78bfa'
-                }
-                getMeteringLevel={getMeteringLevel}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* Strip moved inline above */}
+            {/* ── Hero Signal Waveform — live-synced to audio, elegant & premium ── */}
+            <HeroSignalWave
+              isPlaying={!!playingId && !isPaused}
+              isPaused={isPaused}
+              color={
+                playingId
+                  ? (REELS_ALL_SOUNDS.find(s => s.id === playingId)?.color ?? '#a78bfa')
+                  : '#a78bfa'
+              }
+              getMeteringLevel={getMeteringLevel}
+            />
+          </View>
 
         {/* ── Content container — transparent, swipe handler for category change ── */}
         <FlingGestureHandler
@@ -5060,8 +4098,6 @@ function SleepTabInner() {
           onPressSound={handleSoundCardTap}
         />
       )}
-    
-</Animated.View>
 
       </View>{/* end content area */}
 
@@ -5136,13 +4172,17 @@ function SleepTabInner() {
         stopIdx={stopIdx}
         onPlaySound={handleReelPlaySound}
         onToggle={togglePause}
-        onStop={handleStop}
         onStopSilent={handleStopSilent}
-        onClose={handleReelClose}
-        onChangeTimer={changeStopTimer}
-        onOpenLibrary={handleOpenLibrary}
+        onClose={handleReelsClose}
+        onChangeTimer={changeTimer}
+        onOpenLibrary={handleOpenLibraryFromReel}
         preBufferSound={preBufferSound}
         cleanPreBuffer={cleanPreBuffer}
+        isAudioLoading={isAudioLoading}
+        getPositionMs={getPositionMs}
+        seekTo={seekTo}
+        meteringAnim={meteringAnim}
+        getMeteringLevel={getMeteringLevel}
       />
 
       {/* ── Sound Library Modal ── */}

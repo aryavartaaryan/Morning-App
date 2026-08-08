@@ -529,9 +529,9 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>Your biggest obstacle?</Text>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>We'll help you overcome these challenges.</Text>
-            <View style={{ width: '100%' }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {tags4.map(t => (
-                <PremiumSurveySlimRow key={t.label} label={t.label} icon={t.icon} isSelected={q4 === t.label} onPress={() => handleSelectSingle(setQ4, t.label, 3)} />
+                <PremiumSurveyGridItem key={t.label} label={t.label} icon={t.icon} isSelected={q4 === t.label} onPress={() => handleSelectSingle(setQ4, t.label, 3)} />
               ))}
             </View>
           </View>
@@ -541,9 +541,9 @@ function OnboardingSurveyScreen({ onComplete }: { onComplete: () => void }) {
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <Text style={{ fontSize: 28, color: '#ffffff', fontFamily: 'Nunito_800ExtraBold', marginBottom: 6, letterSpacing: 0.5, textAlign: 'center' }}>Your current rhythm?</Text>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_400Regular', marginBottom: 28, textAlign: 'center' }}>To set an achievable wellness goal.</Text>
-            <View style={{ width: '100%' }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {tags2.map(t => (
-                <PremiumSurveySlimRow key={t.label} label={t.label} icon={t.icon} isSelected={q2 === t.label} onPress={() => setQ2(t.label)} />
+                <PremiumSurveyGridItem key={t.label} label={t.label} icon={t.icon} isSelected={q2 === t.label} onPress={() => setQ2(t.label)} />
               ))}
             </View>
           </View>

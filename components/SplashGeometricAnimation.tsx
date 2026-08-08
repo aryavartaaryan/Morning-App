@@ -34,8 +34,8 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
   
   // -- Shared Values --
   const binduScale = useSharedValue(0);
-  const torusProgress = useSharedValue(0);
-  const torusCollapse = useSharedValue(0);
+  const gyroTime = useSharedValue(0);
+  const gyroFade = useSharedValue(0);
   const shatkonaProgress = useSharedValue(0);
   const breath = useSharedValue(0);
   const rot = useSharedValue(0);
@@ -47,22 +47,23 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
       withDelay(4000, withTiming(1.5, { duration: 2000, easing: Easing.inOut(Easing.ease) }))
     );
 
-    // 2. Torus forms, orbits, and draws
-    torusProgress.value = withDelay(
-      500,
-      withTiming(1, { duration: 2500, easing: Easing.out(Easing.cubic) })
+    // 2. Ultra-Premium 3D Gyroscope / Astrolabe spins and aligns
+    // It takes 3.2 seconds to explode outward, spin wildly in 3D, and align perfectly flat.
+    gyroTime.value = withDelay(
+      300,
+      withTiming(1, { duration: 3200, easing: Easing.out(Easing.cubic) })
     );
 
-    // 3. Torus collapses
-    torusCollapse.value = withDelay(
-      3200,
-      withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.cubic) })
+    // 3. Gyroscope Fades out smoothly once aligned
+    gyroFade.value = withDelay(
+      3400,
+      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.cubic) })
     );
 
-    // 4. Shatkona draws
+    // 4. Intricate Stroked Shatkona Draws Itself (The part you loved)
     shatkonaProgress.value = withDelay(
-      3800,
-      withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.ease) })
+      3500,
+      withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) })
     );
 
     // 5. Global breath
@@ -99,7 +100,6 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
   const R = S * 0.28;
   const path1 = poly(pts(hw, hw, R, 3, Math.PI / 6));
   const path2 = poly(pts(hw, hw, R, 3, -Math.PI / 6));
-  
   const PATH_LEN = S * 1.5;
 
   // -- Animated Styles & Props --
@@ -124,50 +124,74 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
     fillOpacity: interpolate(shatkonaProgress.value, [0.8, 1], [0, 0.15]),
   }));
 
-  // Generate 12 Torus Circles
-  const NUM_TORUS = 12;
-  const torusCircles = Array.from({ length: NUM_TORUS }).map((_, i) => {
-    const angle = (i * Math.PI * 2) / NUM_TORUS;
-    
-    const animatedProps = useAnimatedProps(() => {
-      // Expand distance from center, then collapse
-      const dist = interpolate(torusProgress.value, [0, 1], [0, S * 0.22]) * 
-                   interpolate(torusCollapse.value, [0, 1], [1, 0]);
-      
-      const cx = hw + dist * Math.cos(angle + torusProgress.value * Math.PI);
-      const cy = hw + dist * Math.sin(angle + torusProgress.value * Math.PI);
-      
-      const r = interpolate(torusProgress.value, [0, 1], [0, S * 0.18]) *
-                interpolate(torusCollapse.value, [0, 1], [1, 0.2]);
-
-      const dashOff = interpolate(torusProgress.value, [0, 1], [S * 2, 0]);
-      const op = interpolate(torusCollapse.value, [0, 0.8, 1], [1, 0.5, 0]);
-
-      return {
-        cx,
-        cy,
-        r,
-        strokeDashoffset: dashOff,
-        opacity: op,
-      };
-    });
-
-    return (
-      <AnimatedCircle
-        key={i}
-        animatedProps={animatedProps}
-        stroke={GOLD_2}
-        strokeWidth="1.2"
-        fill="none"
-        strokeDasharray={S * 2}
-      />
-    );
-  });
+  // -- 3D Gyroscope Rings Configuration --
+  // We define 5 rings that spin on different 3D axes and eventually align to 0deg.
+  const gyroRings = [
+    { r: S * 0.38, strokeWidth: 1, dash: [4, 8], xRot: 1080, yRot: -720, zRot: 1440, color: GOLD_1 },
+    { r: S * 0.33, strokeWidth: 2, dash: [1, 0], xRot: -720, yRot: 1440, zRot: -1080, color: GOLD_2 },
+    { r: S * 0.28, strokeWidth: 1.5, dash: [12, 6], xRot: 1440, yRot: 1080, zRot: 720, color: GOLD_1 },
+    { r: S * 0.23, strokeWidth: 0.5, dash: [2, 4], xRot: -1440, yRot: -1080, zRot: -720, color: WHITE },
+    { r: S * 0.18, strokeWidth: 2.5, dash: [20, 10], xRot: 720, yRot: -1440, zRot: 1080, color: GOLD_2 },
+  ];
 
   return (
     <View style={{ position: 'absolute', width: S, height: S, opacity, justifyContent: 'center', alignItems: 'center' }} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, globalStyle]}>
-        <Svg width={S} height={S}>
+        
+        {/* Phase 1: Ultra Premium 3D Gyroscope Alignment */}
+        <Animated.View style={[StyleSheet.absoluteFill, { position: 'absolute', zIndex: 1 }]} pointerEvents="none">
+          {gyroRings.map((ring, i) => {
+            const ringStyle = useAnimatedStyle(() => {
+              // Spin from wild angles to exactly 0deg
+              const rotX = interpolate(gyroTime.value, [0, 1], [ring.xRot, 0]) + 'deg';
+              const rotY = interpolate(gyroTime.value, [0, 1], [ring.yRot, 0]) + 'deg';
+              const rotZ = interpolate(gyroTime.value, [0, 1], [ring.zRot, 0]) + 'deg';
+              // Explode scale from 0 to 1
+              const scale = interpolate(gyroTime.value, [0, 0.4, 1], [0.1, 1.1, 1]);
+              const fade = interpolate(gyroFade.value, [0, 1], [1, 0]);
+
+              return {
+                transform: [
+                  { perspective: 800 },
+                  { rotateX: rotX },
+                  { rotateY: rotY },
+                  { rotateZ: rotZ },
+                  { scale: scale }
+                ],
+                opacity: fade,
+              };
+            });
+
+            // Path draws itself while spinning
+            const ringProps = useAnimatedProps(() => {
+              const circumference = 2 * Math.PI * ring.r;
+              return {
+                strokeDashoffset: interpolate(gyroTime.value, [0, 0.8, 1], [circumference, 0, 0]),
+                strokeDasharray: ring.dash[0] === 1 && ring.dash[1] === 0 ? [circumference, circumference] : ring.dash,
+              };
+            });
+
+            return (
+              <Animated.View key={`gyro_${i}`} style={[StyleSheet.absoluteFill, ringStyle, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Svg width={S} height={S}>
+                  <AnimatedCircle
+                    cx={hw} cy={hw} r={ring.r}
+                    stroke={ring.color}
+                    strokeWidth={ring.strokeWidth}
+                    fill="none"
+                    animatedProps={ringProps}
+                  />
+                  {/* Subtle node points on the rings */}
+                  <Circle cx={hw} cy={hw - ring.r} r={ring.strokeWidth * 2} fill={WHITE} />
+                  <Circle cx={hw} cy={hw + ring.r} r={ring.strokeWidth * 2} fill={WHITE} />
+                </Svg>
+              </Animated.View>
+            );
+          })}
+        </Animated.View>
+
+        {/* Phase 2: Intricate Stroked Shatkona (World Class) */}
+        <Svg width={S} height={S} style={{ position: 'absolute', zIndex: 2 }}>
           <Defs>
             <RadialGradient id="glow" cx="50%" cy="50%" rx="50%" ry="50%">
               <Stop offset="0%" stopColor={GOLD_1} stopOpacity="0.5" />
@@ -184,10 +208,7 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
             }))}
           />
 
-          {/* Torus Circles */}
-          {torusCircles}
-
-          {/* Shatkona */}
+          {/* Stroked Shatkona */}
           <AnimatedPath
             d={path1}
             stroke={GOLD_1}
@@ -229,7 +250,8 @@ export function SplashGeometricAnimation({ size, opacity = 0.85 }: Props) {
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 1,
         shadowRadius: 15,
-        elevation: 5
+        elevation: 5,
+        zIndex: 3
       }, binduStyle]} />
     </View>
   );
