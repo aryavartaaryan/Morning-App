@@ -736,6 +736,7 @@ function GlobalPlayerBar() {
     togglePause,
     stopSound,
     openReelsOrPlayer,
+    playingDurationSecs,
   } = useSoundPlayer();
   const slideAnim = useRef(new Animated.Value(100)).current;
   // Persist last-known meta so the bar never flickers during sound transitions
@@ -783,9 +784,16 @@ function GlobalPlayerBar() {
   const label = isMix
     ? mixedSounds.map((s) => s.emoji).join(" ")
     : displayMeta.label;
+    
+  const durSecs = playingDurationSecs;
+  const durationText = durSecs 
+    ? (durSecs >= 3600 ? `${Math.floor(durSecs / 3600)} hr ${Math.floor((durSecs % 3600) / 60)} min` : `${Math.floor(durSecs / 60)} min`) 
+    : 'Live';
+    
   const subLine = isPaused
     ? "Paused"
-    : `${fmtTimer(sessionSecs)}`;
+    : `Playing • ${durationText}`;
+    
   const accentColor = displayMeta.color || "#00e5ff"; // default electric blue
 
   return (

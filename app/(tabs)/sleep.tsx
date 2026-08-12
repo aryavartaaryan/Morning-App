@@ -468,20 +468,18 @@ export type SonicCollection = {
 
 export const SONIC_COLLECTIONS: SonicCollection[] = [
   // ─── Deity ───────────────────────────────────────────────────────────────
-  { id: 'shiva_resonance', title: 'Shiva Resonance', subtitle: 'COSMIC CALM', description: 'Vibrations of the Adiyogi. Dissolve stress and tune into deep, unshakeable stillness.', imageUri: 'https://images.pexels.com/photos/8695034/pexels-photo-8695034.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash'] },
+  { id: 'shiva_resonance', title: 'Shiva Resonance', subtitle: 'COSMIC CALM', description: 'Vibrations of the Adiyogi. Dissolve stress and tune into deep, unshakeable stillness.', imageUri: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash', 'naad_om_shivaya_meditation'] },
   { id: 'divine_devi', title: 'Divine Devi', subtitle: 'NURTURING ENERGY', description: 'The supreme feminine energy. Soothing chants to restore emotional balance and grace.', imageUri: 'https://images.pexels.com/photos/6325998/pexels-photo-6325998.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini', 'cdn_surya_sukta'] },
   { id: 'vishnu_krishna', title: 'Vishnu & Krishna', subtitle: 'PRESERVATION & JOY', description: 'Mantras and flutes of the preserver. Cultivate inner peace and joyous calm.', imageUri: 'https://images.pexels.com/photos/13598583/pexels-photo-13598583.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#38bdf8', soundIds: ['naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'naad_muladhara_flute', 'cdn_auspicious_mantras'] },
   { id: 'ganesha_blessings', title: 'Ganesha & Vedic Stotras', subtitle: 'REMOVING OBSTACLES', description: 'Clear the mental clutter of the day. Rest easy under divine protection.', imageUri: 'https://images.pexels.com/photos/5418306/pexels-photo-5418306.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f97316', soundIds: ['stotra_bhagya', 'cdn_auspicious_mantras', 'cdn_surya_sukta', 'naad_om_namah_shivaya', 'mantra_gayatri'] },
-  { id: 'hanuman_shakti', title: 'Hanuman Shakti', subtitle: 'FEARLESS STRENGTH', description: 'Devotional vibrations of the ultimate devotee. Invoke courage and pure-hearted surrender.', imageUri: 'https://images.pexels.com/photos/10232750/pexels-photo-10232750.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fb923c', soundIds: ['cdn_kaal_bhairav', 'mantra_shivtandav', 'stotra_shiv_sankalpa', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'naad_om_shivaya_meditation'] },
   // ─── Nature ──────────────────────────────────────────────────────────────
   { id: 'monsoon_slumber', title: 'Monsoon Slumber', subtitle: "NATURE'S WASH", description: 'Let the rhythm of falling water cleanse your thoughts and carry you to sleep.', imageUri: 'https://images.pexels.com/photos/459451/pexels-photo-459451.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#60a5fa', soundIds: ['light_rain', 'heavy_rain', 'rain_thunder', 'jungle_rain', 'jungle_storm', 'flowing_water', 'cdn_monsoon_megh', 'cdn_monsoon_temple', 'night_jungle_chiangmai', 'naad_flute_rain_ambiance'] },
   { id: 'ocean_shores', title: 'Ocean & Shores', subtitle: 'TIDAL THERAPY', description: 'The timeless healing rhythm of waves. Let the ocean carry you into deep rest.', imageUri: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#22d3ee', soundIds: ['sea_waves', 'rocky_shore', 'harbor_waves', 'flowing_water', 'gentle_wind', 'wanderlust', 'city_night', 'campfire', 'forest_breeze', 'night_forest'] },
   { id: 'sacred_birds', title: 'Sacred Bird Songs', subtitle: "INDIA'S DAWN CHORUS", description: "The peacock, koel, cuckoo and eagle — nature's most sacred musicians at daybreak.", imageUri: 'https://images.pexels.com/photos/8538423/pexels-photo-8538423.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#4ade80', soundIds: ['morning_birds', 'spring_birds', 'forest_birds', 'peacock_wild', 'peacock_call', 'koel_bird', 'cuckoo_forest', 'cuckoo_birds_forest', 'cuckoo_chime', 'india_countryside_birds', 'eagle_feather'] },
   // ─── Instruments ─────────────────────────────────────────────────────────
-  { id: 'sitar_masters', title: 'Sitar Masters', subtitle: 'STRING VIBRATIONS', description: 'Strings tuned to ancient ragas. Let the sitar dissolve the boundary between music and silence.', imageUri: 'https://images.pexels.com/photos/372281/pexels-photo-372281.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fbbf24', soundIds: ['sitar_radiance', 'sitar_calm', 'sitar_long', 'sitar', 'indian_sitar_raga', 'sitar_summer_raga', 'sitar_radiance_med', 'sitar_radiance_sleep', 'sitar_tanpura_sarangi', 'sitar_tanpura_bgm', 'naad_sitar_moonlight', 'naad_sitar_temple', 'naad_sitar_holistic', 'naad_sitar_holistic_med', 'naad_sitar_holistic_sleep', 'naad_raga_sparkle', 'naad_raga_sparkle_sleep', 'naad_aar_sitar_classical', 'naad_aar_sitar_flute', 'naad_golden_sitar_432', 'naad_sitar_vibes_i', 'naad_sitar_vibes_ii', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_short_classical_sitar', 'naad_indian_sitar_tune', 'naad_sitar_type_beat', 'cdn_sitar_tabla_soul'] },
+  { id: 'sitar_tanpura', title: 'Sitar & Tanpura', subtitle: 'STRING RESONANCE', description: 'Strings tuned to ancient ragas and sustained drone. Dissolve the boundary between music and silence.', imageUri: 'https://images.pexels.com/photos/372281/pexels-photo-372281.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fbbf24', soundIds: ['sitar_radiance', 'sitar_calm', 'sitar_long', 'sitar', 'indian_sitar_raga', 'sitar_summer_raga', 'sitar_radiance_med', 'sitar_radiance_sleep', 'sitar_tanpura_sarangi', 'sitar_tanpura_bgm', 'naad_sitar_moonlight', 'naad_sitar_temple', 'naad_sitar_holistic', 'naad_sitar_holistic_med', 'naad_sitar_holistic_sleep', 'naad_raga_sparkle', 'naad_raga_sparkle_sleep', 'naad_aar_sitar_classical', 'naad_aar_sitar_flute', 'naad_golden_sitar_432', 'naad_sitar_vibes_i', 'naad_sitar_vibes_ii', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_short_classical_sitar', 'naad_indian_sitar_tune', 'naad_sitar_type_beat', 'cdn_sitar_tabla_soul', 'tanpura_sacred_432hz', 'tanpura_breath', 'tanpura_loop', 'raga_tanpura_drone', 'tanpura_mystic', 'tanpura_mystic_sleep', 'tanpura_mystic_meditation', 'tanpura_serene', 'veena_raga', 'veena_classical', 'naad_hang_drum_tabla', 'naad_hang_flute_meditation', 'om_shanti'] },
   { id: 'bansuri_flutes', title: 'Bansuri & Flutes', subtitle: 'BREATH OF GOD', description: 'The flute speaks what words cannot. Ancient bamboo breath for deep mental stillness.', imageUri: 'https://images.pexels.com/photos/5386063/pexels-photo-5386063.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#34d399', soundIds: ['bansuri_forest', 'bansuri_melody', 'bansuri_melody_sleep', 'bansuri_tarana', 'bansuri_tarana_sleep', 'bamboo_flute', 'andean_flute', 'native_flute', 'native_flute_echo', 'morning_flute', 'naad_zen_bamboo_flow', 'naad_zen_bamboo_flow_sleep', 'naad_ancestors_flute', 'naad_relaxing_flute', 'naad_relaxing_flute_sleep', 'naad_pure_flute_melody', 'naad_emotional_flute', 'naad_wind_mountain_raga', 'naad_summer_flute_tabla', 'naad_flute_tabla_remastered', 'naad_bansuri_tabla_fusion', 'naad_sitar_flute_tabla_soft', 'naad_indian_flute_tabla_mix', 'naad_indian_flute_tabla_mix_sleep', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
   { id: 'tabla_rhythms', title: 'Tabla Rhythms', subtitle: 'HEARTBEAT OF INDIA', description: 'Ancient percussion that syncs your heartbeat with the cosmos. Pure rhythmic meditation.', imageUri: 'https://images.pexels.com/photos/10491567/pexels-photo-10491567.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f59e0b', soundIds: ['indian_beats', 'naad_tabla_110', 'naad_tabla_flute_i', 'naad_tabla_flute_i_sleep', 'naad_tabla_flute_ii', 'naad_tabla_flute_iii', 'naad_tabla_flute_strings_i', 'naad_tabla_flute_strings_ii', 'naad_calming_tabla_flute', 'naad_sitar_tabla_flute', 'naad_sitar_tabla_flute_sleep', 'naad_indian_flute_tabla_mix', 'naad_festive_dholak_dance', 'naad_tabla_dance', 'naad_old_gold_tabla', 'naad_rhythm_riot', 'cdn_naad_sangam', 'cdn_naad_targan'] },
-  { id: 'tanpura_drone', title: 'Tanpura & Drone', subtitle: 'THE ETERNAL HUM', description: 'The sustained resonance of the tanpura — the sound of the universe holding its breath.', imageUri: 'https://images.pexels.com/photos/18411177/pexels-photo-18411177.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#c084fc', soundIds: ['tanpura_sacred_432hz', 'tanpura_breath', 'tanpura_loop', 'raga_tanpura_drone', 'tanpura_mystic', 'tanpura_mystic_sleep', 'tanpura_mystic_meditation', 'tanpura_serene', 'veena_raga', 'veena_classical', 'sitar_tanpura_sarangi', 'naad_hang_drum_tabla', 'naad_hang_flute_meditation', 'om_shanti'] },
   // ─── Ragas & World ───────────────────────────────────────────────────────
   { id: 'classical_ragas', title: 'Classical Ragas', subtitle: 'RAGA THERAPY', description: 'Ragas designed for specific hours of the day. Science and spirituality in perfect harmony.', imageUri: 'https://images.pexels.com/photos/7382218/pexels-photo-7382218.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f97316', soundIds: ['cdn_yaman_mental', 'cdn_bhimpalasi', 'cdn_bhimpalasi_sleep', 'cdn_hansdhwani_432', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_calm_sunrise', 'cdn_jogiya_morning', 'cdn_yaman_jugalbandi', 'cdn_darbari_silence', 'cdn_bageshree_sleep', 'cdn_eternal_union', 'cdn_carnatic_essence', 'cdn_carnatic_flow', 'cdn_what_are_ragas', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_raga_sparkle', 'naad_wind_mountain_raga'] },
   { id: 'world_strings', title: 'World Strings', subtitle: 'GLOBAL RESONANCE', description: 'String instruments from across the world. Diverse cultures, one universal sound.', imageUri: 'https://images.pexels.com/photos/3775601/pexels-photo-3775601.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['sargija_eastern', 'naad_traditional_koto', 'naad_indian_fusion', 'world_ambient', 'tagore_festival', 'heaven_tune', 'naad_bhajan_flute_tabla', 'cdn_naad_targan', 'spiritual_journey', 'reincarnation_tones'] },
@@ -497,7 +495,7 @@ export const SONIC_COLLECTIONS: SonicCollection[] = [
   // ─── Vedic Mantras Library ───────────────────────────────────────────────
   { id: 'vedic_mantras', title: 'Vedic Mantras Library', subtitle: 'ANCIENT WISDOM', description: 'The complete Vedic canon — Suktams, Upanishads, and sacred stotrams for deep spiritual immersion.', imageUri: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#c084fc', soundIds: ['med_om_chanting_new', 'med_om_chanting_new_sleep', 'med_tanpura_new', 'med_tanpura_new_sleep', 'med_ayushya_suktam', 'med_bhriguvalli', 'med_bhu_suktam', 'med_brahmananda_valli', 'med_devi_suktam', 'med_durga_suktam_1', 'med_durga_suktam_2', 'med_purusha_suktam', 'med_hiranyagarbha', 'med_ishavasya', 'med_mahanyasa', 'med_mahanyasa_sleep', 'med_mantrapushpam', 'med_medha_suktam', 'med_narayana_suktam', 'med_nasadeeya', 'med_navagraha', 'med_neela_suktam', 'med_samana_suktam', 'med_shanti_path', 'med_shikshavalli', 'med_shree_suktam', 'med_sri_chakra', 'med_sri_rudram_full', 'med_sri_rudram_namakam', 'med_sri_rudram_namo', 'med_sri_suktam', 'med_sudarshana', 'med_sudarshana_sleep', 'med_suryanamaskara', 'med_suryopanishad', 'med_swasti_vachan', 'med_vaidyanatha', 'med_rudri_path', 'med_vel_muruga', 'cdn_ultra_vedic_morning_prayers', 'cdn_ultra_vedic_healing_chant'] },
   // ─── Divine Bhajans & Stotras ────────────────────────────────────────────
-  { id: 'divine_bhajans', title: 'Divine Bhajans & Stotras', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_vishnu_sahasranamam', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_atma_rama', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'med_ashta_lakshmi', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras'] },
+  { id: 'divine_bhajans', title: 'Divine Bhajans & Stotras', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_vishnu_sahasranamam', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras'] },
 ];
 
 
@@ -539,6 +537,7 @@ const PERIOD_CHIP_LABELS: Record<string, { label: string; hint: string }> = {
   morning_kapha_early: { label: 'Morning Rise · Yoga & Meditation', hint: 'Gentle movement and mindfulness practice.' },
   morning_kapha:  { label: 'Morning Rise · Anabolic Phase',  hint: 'Move, nourish, build strength & meditation hour. Imperfect perfection, elegance, and a premium effect.' },
   midday_pitta:   { label: 'Peak Deep Work · Body Phase',    hint: 'Peak focus — tackle what matters most' },
+  midday_pitta_late: { label: 'Energy Dip Phase',            hint: 'Natural rest cycle — digestion takes priority' },
   afternoon_vata: { label: 'Creative Flow · Neural Peak',    hint: 'Create, move and express freely' },
   evening_kapha:  { label: 'Wind Down · Recovery Phase',     hint: 'Ease into rest, connect and unwind' },
   night_pitta:    { label: 'Deep Rest · Body Repair Phase',  hint: 'Your body heals and rebuilds now' },
@@ -550,6 +549,7 @@ const PERIOD_DAY_HINTS: Record<string, { icon: string; name: string; line1: stri
   morning_kapha_early: { icon: '🧘', name: 'Yoga & Meditation', line1: 'Ground your nervous system.', line2: 'Perfect time for mindfulness and gentle stretching.', color: '#34d399' },
   morning_kapha: { icon: '🌅', name: 'Morning Rise',      line1: 'Listen to birds as the day opens up.',           line2: 'Nature calibrated your body to thrive with these sounds. Start your day strong — they will make your whole system work properly.', color: '#f59e0b' },
   midday_pitta:  { icon: '☀️', name: 'Deep Work Time',    line1: 'Your body is at peak focus right now.',          line2: 'As per your body rhythm, this is the deepest work window. Listen to sounds as you work — they sharpen output and keep you in flow.', color: '#fb923c' },
+  midday_pitta_late: { icon: '🍃', name: 'Energy Dip Phase', line1: 'Your body enters a natural rest cycle.',      line2: 'Digestion takes priority over focus. Take a brief restorative pause.', color: '#f59e0b' },
   afternoon_vata:{ icon: '🌬️', name: 'Creative Flow',     line1: 'A natural window for creativity and expression.', line2: 'Let flowing ragas and world music carry you. Create, move, and feel freely — your mind is primed for it right now.', color: '#a78bfa' },
   evening_kapha: { icon: '🌇', name: 'Evening Wind Down', line1: 'Listen to sounds or meditate with mantras.',     line2: 'Sacred ragas and nature sounds help your nervous system recover. Use meditation categories — let the day dissolve gently.', color: '#60a5fa' },
   night_pitta:   { icon: '🌙', name: 'Rest & Recover',    line1: 'This is the calm-down recovery period.',        line2: 'Sounds help the body heal deeply. Use nature sounds or ragas crafted by ancient yogis — your body rebuilds itself in silence.', color: '#10b981' },
@@ -879,6 +879,9 @@ function FeaturedCard({
     }
     Animated.timing(pulse, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [isPlaying, isPaused]);
+
+  const [, forceFeatUpdate] = useState(0);
+  useEffect(() => subscribeToWarm(() => forceFeatUpdate(n => n + 1)), []);
 
   const imgBundledFeat = SOUND_BUNDLED_IMAGES[sound.id];
   const imgUri = imgBundledFeat ?? (SOUND_IMAGES[sound.id] ? { uri: getLocalSoundImageUri(SOUND_IMAGES[sound.id]) } : null);
@@ -1301,7 +1304,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
       />
 
       {/* ── Row: tabs ── */}
-      <View style={{ marginHorizontal: 0, marginVertical: 0, backgroundColor: 'rgba(10,15,30,0.4)', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 4, paddingHorizontal: 4, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+      <View style={{ marginHorizontal: 0, marginVertical: 0, backgroundColor: 'rgba(10,15,30,0.4)', paddingVertical: 4, paddingHorizontal: 4, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative' }}>
           {/* ── Glowing sliding pill background ── */}
           <Animated.View
@@ -2736,21 +2739,30 @@ const ReelCard = memo(function ReelCard({
               collapsable={false}
             >
               <View style={{
-                height: isScrubbing ? 6 : 4,
-                borderRadius: 3,
-                backgroundColor: 'rgba(255,255,255,0.1)',
+                height: isScrubbing ? 8 : 4,
+                borderRadius: 4,
+                backgroundColor: 'rgba(255,255,255,0.15)',
                 width: TRACK_W + 8,
                 overflow: 'visible',
               }}>
                 <Animated.View style={{
                   position: 'absolute', left: 0, top: 0, bottom: 0,
-                  borderRadius: 3,
+                  borderRadius: 4,
                   backgroundColor: sound.color || '#fff',
-                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
                   width: (isScrubbing ? dragFraction : progressAnim).interpolate({
                     inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
                   }),
                 }} />
+                <Animated.View style={{
+                  position: 'absolute', left: 0, top: 0, bottom: 0,
+                  borderRadius: 4,
+                  backgroundColor: sound.color || '#fff',
+                  opacity: 0.6,
+                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
+                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                    inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                  }),
+                }} pointerEvents="none" />
               </View>
               {(() => {
                 const ms = isScrubbing ? scrubPositionMs : positionMs;
@@ -2765,7 +2777,9 @@ const ReelCard = memo(function ReelCard({
                       width: thumbSize, height: thumbSize,
                       borderRadius: thumbSize / 2,
                       backgroundColor: '#FFFFFF',
-                      shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+                      borderWidth: 2,
+                      borderColor: sound.color || 'rgba(255,255,255,0.5)',
+                      shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
                       elevation: 10,
                       transform: [{ scale: isScrubbing ? 1.15 : 1 }],
                     }}
@@ -2896,9 +2910,10 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
   
   useEffect(() => {
     if (visible) {
-      Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 70, friction: 12 }).start();
+      // Snap instantly — no animation delay on open
+      anim.setValue(1);
     } else {
-      Animated.timing(anim, { toValue: 0, duration: 200, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+      Animated.timing(anim, { toValue: 0, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
     }
   }, [visible]);
 
@@ -2968,7 +2983,7 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onDismiss();
-              setTimeout(() => onClose(), 150);
+              onClose();
             }}
           >
             <LinearGradient
@@ -2988,12 +3003,25 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onStop();
               onDismiss();
-              setTimeout(() => onClose(), 150);
+              onClose();
             }}
             style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 12, color: 'rgba(255,100,100,0.6)', fontFamily: 'Nunito_400Regular', letterSpacing: 1.2 }}>
               End Soundscape
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.6}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onDismiss();
+            }}
+            style={{ paddingVertical: 10, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular', letterSpacing: 1.2 }}>
+              Cancel
             </Text>
           </TouchableOpacity>
         </View>
@@ -3147,6 +3175,20 @@ const SoundReelsModal = memo(function SoundReelsModal({
     }
   }, [visible]);
 
+  const libBtnAnim = useRef(new Animated.Value(0)).current;
+  const entryAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Snap to fully visible in one frame — no animation delay at all
+      entryAnim.setValue(1);
+      Animated.timing(libBtnAnim, { toValue: 1, duration: 250, delay: 80, useNativeDriver: true }).start();
+    } else {
+      libBtnAnim.setValue(0);
+      entryAnim.setValue(0);
+    }
+  }, [visible]);
+
   const [gridOpen, setGridOpen] = useState(false);
   const catStartIndices = useMemo(() => {
     const map: Record<string, number> = {};
@@ -3195,14 +3237,21 @@ const SoundReelsModal = memo(function SoundReelsModal({
   }, [visible]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent navigationBarTranslucent onRequestClose={() => setShowClosePrompt(true)}>
+    <Modal visible={visible} animationType="none" transparent={true} statusBarTranslucent navigationBarTranslucent
+      onRequestClose={() => {
+        onStopSilent();
+        setShowClosePrompt(true);
+      }}
+    >
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatRef}
           data={reelData}
           keyExtractor={(item, index) => item.id + '_' + index}
           showsVerticalScrollIndicator={false}
-          pagingEnabled
+          snapToInterval={REEL_H}
+          snapToAlignment="start"
+          decelerationRate="fast"
           bounces={false}
           overScrollMode="never"
           onScroll={(e) => {
@@ -3258,66 +3307,26 @@ const SoundReelsModal = memo(function SoundReelsModal({
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 220, zIndex: 9 }}
           pointerEvents="none"
         />
-        <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-          <BlurView intensity={60} tint="dark" style={{ 
-            paddingHorizontal: 16, paddingBottom: 12, paddingTop: 10,
-            borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
-            backgroundColor: 'rgba(10,12,24,0.4)',
-            flexDirection: 'row', alignItems: 'center', gap: 10
-          }}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.10)', 'transparent']}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            
-            <TouchableOpacity onPress={() => setShowClosePrompt(true)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}>
-              <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.80)" />
+        {/* Floating Premium Library Button */}
+        {onOpenLibrary && (
+          <Animated.View style={{ position: 'absolute', top: Math.max(60, (Platform.OS === 'ios' ? insets.top + 8 : insets.top + 24) + 16), right: 16, zIndex: 10, opacity: libBtnAnim }}>
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onOpenLibrary('All'); }}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)'
+              }}
+            >
+              <Ionicons name="musical-notes" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.2 }}>
+                Svara Library
+              </Text>
             </TouchableOpacity>
-
-            {onOpenLibrary && (
-              <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onOpenLibrary('All'); }}
-                activeOpacity={0.8}
-                style={{ 
-                  flexDirection: 'row', alignItems: 'center', gap: 6, 
-                  backgroundColor: 'rgba(255,255,255,0.08)', 
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', 
-                  borderRadius: 99, paddingHorizontal: 14, paddingVertical: 10,
-                  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8
-                }}
-              >
-                <Ionicons name="musical-notes" size={16} color="#a78bfa" />
-                <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
-                  Library
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={{ 
-              flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: 'rgba(255,255,255,0.06)', 
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', 
-              borderRadius: 99, paddingHorizontal: 14, height: 40,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8
-            }}>
-              <Ionicons name="search" size={16} color="rgba(255,255,255,0.5)" />
-              <TextInput
-                style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular' }}
-                placeholder="Search..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => { setSearchQuery(''); Keyboard.dismiss(); }}>
-                  <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.6)" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </BlurView>
-        </SafeAreaView>
+          </Animated.View>
+        )}
         <GridBrowse 
           visible={gridOpen} 
           onClose={() => setGridOpen(false)} 
@@ -3355,11 +3364,12 @@ const COLLECTION_PREMIUM_ICON = 'musical-notes';
 
 // Individual Cinematic Collection Card
 const CinematicCollectionCard = memo(function CinematicCollectionCard({
-  col, index, onPress,
+  col, index, onPress, layoutMode = 'grid'
 }: {
   col: typeof SONIC_COLLECTIONS[number];
   index: number;
   onPress: () => void;
+  layoutMode?: 'hero' | 'grid';
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
@@ -3376,9 +3386,9 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
   const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.95, useNativeDriver: true, damping: 25, stiffness: 350 }).start();
   const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,     useNativeDriver: true, damping: 20, stiffness: 280 }).start();
 
-  // 2-column grid item width
-  const CARD_W = (W - 32 - 16) / 2;
-  const CARD_H = 340; // Tall portrait ratio
+  const isHero = layoutMode === 'hero';
+  const CARD_W = isHero ? (W - 32) : Math.floor((W - 16 * 2 - 12) / 2);
+  const CARD_H = isHero ? 460 : Math.round(CARD_W * 1.52); 
 
   return (
     <Animated.View style={{ 
@@ -3397,9 +3407,9 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
       >
         <View style={{
           width: CARD_W, height: CARD_H,
-          borderRadius: 24, overflow: 'hidden',
+          borderRadius: isHero ? 32 : 22, overflow: 'hidden',
           backgroundColor: '#0A0A0F',
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: isHero ? 1 : 0, borderColor: 'rgba(255,255,255,0.08)',
           shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
           shadowOpacity: 0.3, shadowRadius: 20, elevation: 8,
         }}>
@@ -3413,56 +3423,271 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
           {/* Top gradient for tag readability */}
           <LinearGradient
             colors={['rgba(0,0,0,0.6)', 'transparent']}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 90 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: isHero ? 120 : 90 }}
+            pointerEvents="none"
+          />
+
+          <LinearGradient
+            colors={['rgba(0,0,0,0.0)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.60)', 'rgba(0,0,0,0.97)']}
+            locations={[0, 0.30, 0.60, 1]}
+            style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
           />
 
           {/* Top Info - Category & Track Count */}
-          <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ position: 'absolute', top: isHero ? 16 : 10, left: isHero ? 16 : 10, right: isHero ? 16 : 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ 
               backgroundColor: col.themeColor + '30',
-              borderWidth: 1, borderColor: col.themeColor + '50',
-              borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
-              alignSelf: 'flex-start'
+              borderWidth: isHero ? 1 : 0, borderColor: col.themeColor + '50',
+              borderRadius: 8, paddingHorizontal: isHero ? 10 : 6, paddingVertical: isHero ? 4 : 3,
+              alignSelf: 'flex-start', maxWidth: isHero ? '80%' : '70%'
             }}>
-              <Text style={{ fontSize: 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
+              <Text numberOfLines={1} style={{ fontSize: isHero ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
                 {col.subtitle}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8 }}>
-              <Ionicons name="musical-notes" size={8} color="rgba(255,255,255,0.8)" />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_700Bold' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: isHero ? 4 : 3, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: isHero ? 10 : 6, paddingVertical: isHero ? 4 : 3, borderRadius: 8 }}>
+              <Ionicons name="musical-notes" size={isHero ? 12 : 8} color="rgba(255,255,255,0.8)" />
+              <Text style={{ fontSize: isHero ? 12 : 9, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_700Bold' }}>
+                {col.soundIds.length} {isHero ? 'tracks' : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom Area */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
+            <View style={{ padding: isHero ? 24 : 10, paddingBottom: isHero ? 28 : 12, paddingTop: isHero ? 28 : 12 }}>
+              {/* Subtle top border mapped to theme color */}
+              {isHero && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: col.themeColor, opacity: 0.8 }} />}
+              
+              <Text style={{ fontSize: isHero ? 36 : 20, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: isHero ? 42 : 24, marginBottom: isHero ? 8 : 2, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
+                {col.title}
+              </Text>
+
+              <Text style={{ fontSize: isHero ? 14 : 11, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', lineHeight: isHero ? 22 : 14, marginBottom: isHero ? 20 : 8 }}>
+                {col.description}
+              </Text>
+
+              {/* Action Button */}
+              {isHero ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, flex: 1,
+                    backgroundColor: col.themeColor, borderRadius: 18, paddingVertical: 14,
+                    shadowColor: col.themeColor, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 5
+                  }}>
+                    <Ionicons name="play" size={14} color="#fff" />
+                    <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 1 }}>
+                      EXPLORE COLLECTION
+                    </Text>
+                  </View>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+                  </View>
+                </View>
+              ) : (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  backgroundColor: col.themeColor, borderRadius: 10, paddingVertical: 6,
+                  shadowColor: col.themeColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6
+                }}>
+                  <Text style={{ fontSize: 9, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
+                    EXPLORE
+                  </Text>
+                  <Ionicons name="arrow-forward" size={10} color="#fff" />
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+// ─── Neon Glass Grid Collection Card ─────────────────────────────────────────
+const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
+  col, index, onPress, isWide = false,
+}: {
+  col: typeof SONIC_COLLECTIONS[number];
+  index: number;
+  onPress: () => void;
+  isWide?: boolean;
+}) {
+  const entryAnim = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entryAnim, {
+      toValue: 1, duration: 700,
+      delay: Math.min(index, 12) * 60,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2400 + index * 300, useNativeDriver: false, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2400 + index * 300, useNativeDriver: false, easing: Easing.inOut(Easing.sin) }),
+      ])
+    ).start();
+  }, []);
+
+  const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true, damping: 22, stiffness: 380 }).start();
+  const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,    useNativeDriver: true, damping: 18, stiffness: 260 }).start();
+
+  const CARD_W = isWide ? W - 32 : Math.floor((W - 32 - 10) / 2);
+  const CARD_H = isWide ? Math.round(CARD_W * 0.58) : Math.round(CARD_W * 1.45);
+
+  const borderOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.90] });
+  const glowOpacity   = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.22] });
+
+  return (
+    <Animated.View style={{
+      opacity: entryAnim,
+      width: CARD_W,
+      transform: [
+        { translateY: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+        { scale: pressAnim },
+      ],
+    }}>
+      <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+        {/* Outer neon glow border */}
+        <Animated.View style={{
+          position: 'absolute', top: -1.5, left: -1.5, right: -1.5, bottom: -1.5,
+          borderRadius: 24,
+          borderWidth: 1.5,
+          borderColor: col.themeColor,
+          opacity: borderOpacity,
+          shadowColor: col.themeColor,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 12,
+        }} pointerEvents="none" />
+
+        <View style={{
+          width: CARD_W, height: CARD_H,
+          borderRadius: 22, overflow: 'hidden',
+          backgroundColor: '#06060C',
+          shadowColor: col.themeColor,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 18,
+          elevation: 10,
+        }}>
+          {/* Background photo */}
+          <Image
+            source={{ uri: col.imageUri }}
+            style={{ width: '100%', height: '100%', position: 'absolute' }}
+            resizeMode="cover"
+          />
+
+          {/* Dark gradient overlay */}
+          <LinearGradient
+            colors={['rgba(4,4,12,0.55)', 'rgba(4,4,12,0.05)', 'rgba(4,4,12,0.72)', 'rgba(4,4,12,0.97)']}
+            locations={[0, 0.28, 0.58, 1]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+
+          {/* Neon color wash */}
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: glowOpacity }]}
+          />
+
+          {/* ── TOP: neon badge pill + track count ── */}
+          <View style={{
+            position: 'absolute', top: 12, left: 12, right: 12,
+            flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: 'rgba(6,6,16,0.75)',
+              borderWidth: 1, borderColor: col.themeColor + '80',
+              borderRadius: 99,
+              paddingHorizontal: 9, paddingVertical: 4,
+              shadowColor: col.themeColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 6,
+            }}>
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: col.themeColor, shadowColor: col.themeColor, shadowOpacity: 1, shadowRadius: 4 }} />
+              <Text numberOfLines={1} style={{ fontSize: isWide ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase', maxWidth: isWide ? 200 : 90 }}>
+                {col.subtitle}
+              </Text>
+            </View>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 3,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+              borderRadius: 99, paddingHorizontal: 8, paddingVertical: 4,
+            }}>
+              <Ionicons name="musical-note" size={isWide ? 11 : 9} color="rgba(255,255,255,0.75)" />
+              <Text style={{ fontSize: isWide ? 11 : 9, color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito_700Bold' }}>
                 {col.soundIds.length}
               </Text>
             </View>
           </View>
 
-          {/* Bottom Frosted Glass Area */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
-            <BlurView intensity={75} tint="dark" style={{ padding: 16, paddingBottom: 18, paddingTop: 20 }}>
-              {/* Subtle top border mapped to theme color */}
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: col.themeColor, opacity: 0.8 }} />
-              
-              <Text style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', lineHeight: 28, marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                {col.title}
-              </Text>
+          {/* ── BOTTOM: frosted glass info panel ── */}
+          <View style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            padding: isWide ? 18 : 12,
+            paddingBottom: isWide ? 20 : 14,
+          }}>
+            {/* Neon top accent line */}
+            <View style={{
+              position: 'absolute', top: 0, left: isWide ? 18 : 12, right: isWide ? 18 : 12,
+              height: 1, backgroundColor: col.themeColor, opacity: 0.7,
+              shadowColor: col.themeColor, shadowOpacity: 0.8, shadowRadius: 4,
+            }} />
 
-              <Text numberOfLines={3} style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular', lineHeight: 16, marginBottom: 14 }}>
+            <Text
+              numberOfLines={isWide ? 1 : 2}
+              style={{
+                fontSize: isWide ? 26 : 19,
+                color: '#fff',
+                fontFamily: 'DancingScript_600SemiBold',
+                lineHeight: isWide ? 30 : 23,
+                marginBottom: isWide ? 4 : 3,
+                textShadowColor: col.themeColor + '60',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
+              }}>
+              {col.title}
+            </Text>
+
+            {isWide && (
+              <Text numberOfLines={2} style={{
+                fontSize: 12, color: 'rgba(255,255,255,0.62)',
+                fontFamily: 'Nunito_400Regular', lineHeight: 17, marginBottom: 14,
+              }}>
                 {col.description}
               </Text>
+            )}
 
-              {/* Action Button */}
+            {/* CTA Row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: isWide ? 0 : 6 }}>
               <View style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                backgroundColor: col.themeColor, borderRadius: 12, paddingVertical: 8,
-                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6
+                flexDirection: 'row', alignItems: 'center', gap: isWide ? 7 : 5,
+                backgroundColor: col.themeColor + '22',
+                borderWidth: 1, borderColor: col.themeColor + '60',
+                borderRadius: 99, paddingHorizontal: isWide ? 16 : 10, paddingVertical: isWide ? 9 : 6,
+                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 8,
               }}>
-                <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
-                  EXPLORE
+                <Text style={{ fontSize: isWide ? 12 : 9, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
+                  {isWide ? 'EXPLORE COLLECTION' : 'EXPLORE'}
                 </Text>
-                <Ionicons name="arrow-forward" size={12} color="#fff" />
+                <Ionicons name="arrow-forward" size={isWide ? 13 : 10} color={col.themeColor} />
               </View>
-            </BlurView>
+
+              <View style={{
+                width: isWide ? 40 : 30, height: isWide ? 40 : 30, borderRadius: isWide ? 20 : 15,
+                backgroundColor: col.themeColor,
+                alignItems: 'center', justifyContent: 'center',
+                shadowColor: col.themeColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 10,
+              }}>
+                <Ionicons name="play" size={isWide ? 16 : 12} color="#fff" style={{ marginLeft: 2 }} />
+              </View>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -3471,38 +3696,25 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 });
 
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
-  const headerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
-  }, []);
+  if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 60 }}>
-      {/* Premium Header */}
-      <Animated.View style={{ marginBottom: 24, marginTop: 12, opacity: headerAnim, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_700Bold', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' }}>
-          SONIC THERAPIES
-        </Text>
-        <Text style={{ fontSize: 34, color: '#fff', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, lineHeight: 40, textAlign: 'center' }}>
-          Curated Programs
-        </Text>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_300Light', letterSpacing: 0.5, textAlign: 'center', marginTop: 6 }}>
-          {SONIC_COLLECTIONS.length} fully immersive healing journeys
-        </Text>
-      </Animated.View>
-
-      {/* 2-Column Grid */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' }}>
-        {SONIC_COLLECTIONS.map((col, idx) => (
-          <CinematicCollectionCard
-            key={col.id}
-            col={col}
-            index={idx}
-            onPress={() => onSelectCollection(col.id)}
-          />
-        ))}
-      </View>
+    <View style={{ paddingHorizontal: 16, paddingBottom: 60, paddingTop: 8 }}>
+      {SONIC_COLLECTIONS.map((col, idx) => {
+        if (idx % 2 !== 0) return null;
+        const nextCol = SONIC_COLLECTIONS[idx + 1];
+        return (
+          <View key={col.id} style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+            <NeonGlassCollectionCard col={col} index={idx} onPress={() => onSelectCollection(col.id)} />
+            {nextCol ? (
+              <NeonGlassCollectionCard col={nextCol} index={idx + 1} onPress={() => onSelectCollection(nextCol.id)} />
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+          </View>
+        );
+      })}
+      <View style={{ height: 24 }} />
     </View>
   );
 });
@@ -3906,19 +4118,6 @@ function SleepTabInner() {
     setShowReels(true);
   }, [pendingOpenReels, playingId]);
 
-  const handleSoundCardTap = useCallback((id: string) => {
-    const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
-    if (reelIndex === -1) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setReelsStartIdx(reelIndex);
-    setShowReels(true);
-  }, []);
-
-  const handleStop = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    stopSound(true);
-  }, [stopSound]);
-
   const handleReelPlaySound = useCallback((id: string) => {
     const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
     if (meta) {
@@ -3926,6 +4125,22 @@ function SleepTabInner() {
       playSound(metaFull, 28800, undefined, 0, true);
     }
   }, [playSound]);
+
+  const handleSoundCardTap = useCallback((id: string) => {
+    const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
+    if (reelIndex === -1) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setReelsStartIdx(reelIndex);
+    // Show the reel FIRST — instant UI response
+    setShowReels(true);
+    // Start audio AFTER the UI has opened so it never blocks rendering
+    setTimeout(() => handleReelPlaySound(id), 0);
+  }, [handleReelPlaySound]);
+
+  const handleStop = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    stopSound(true);
+  }, [stopSound]);
 
   const currentPeriod = useMemo(() => solarTimes ? getCurrentPeriod(solarTimes, now.getHours() + now.getMinutes() / 60) : null, [solarTimes, now]);
   const heroContent = useMemo(() => {
@@ -3943,15 +4158,24 @@ function SleepTabInner() {
     textShadowColor: 'rgba(60,20,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 10, textAlign: 'center' as const,
   }), []);
 
+  const [, forceHeroBgUpdate] = useState(0);
+  useEffect(() => subscribeToWarm(() => forceHeroBgUpdate(n => n + 1)), []);
+
+  const rawHeroBgUri = (playingId && SOUND_IMAGES[playingId])
+    ? SOUND_IMAGES[playingId]
+    : (BG_URLS['sleep_hero'] || bgUri || '');
+  const cachedHeroBgUri = rawHeroBgUri ? getLocalSoundImageUri(rawHeroBgUri) : '';
+
   return (
     <View style={[S.screen, { backgroundColor: '#03030D' }]}>
       <Animated.View style={{ 
-        position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.55,
+        position: 'absolute', top: 0, left: 0, right: 0, height: H * 0.50,
+        borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.15)',
         transform: [{ translateY: Animated.multiply(scrollY, -1) }]
       }}>
-        <Image source={{ uri: BG_URLS['midday_early_late'] || bgUri || '' }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
-        <BlurView tint="dark" intensity={85} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-        <LinearGradient colors={['rgba(3,3,13,0.1)', 'rgba(3,3,13,0.3)', 'rgba(3,3,13,0.75)', '#03030D']} locations={[0, 0.4, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        <Image source={{ uri: cachedHeroBgUri || rawHeroBgUri || '' }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
+        <BlurView tint="dark" intensity={20} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        <LinearGradient colors={['transparent', 'transparent', '#03030D']} locations={[0, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
       </Animated.View>
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent', zIndex: 10 }}>
@@ -3968,37 +4192,20 @@ function SleepTabInner() {
             pointerEvents="none"
           />
 
-          {/* Svara Library Button */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-            activeOpacity={0.8}
-            style={{ 
-              flexDirection: 'row', alignItems: 'center', gap: 6, 
-              backgroundColor: 'rgba(255,255,255,0.08)', 
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', 
-              borderRadius: 99, paddingHorizontal: 16, paddingVertical: 10,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8
-            }}
-          >
-            <Ionicons name="musical-notes" size={16} color="#a78bfa" />
-            <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
-              Svara Library
-            </Text>
-          </TouchableOpacity>
-
-          {/* Medium Sized Search Bar */}
-          <View style={{ 
+          {/* Premium Rectangular Search Bar */}
+          <BlurView intensity={60} tint="dark" style={{ 
             flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-            backgroundColor: 'rgba(255,255,255,0.06)', 
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', 
-            borderRadius: 99, paddingHorizontal: 14, height: 40,
-            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8
+            backgroundColor: 'rgba(255,255,255,0.12)', 
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', 
+            borderRadius: 6, paddingHorizontal: 12, height: 42,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6,
+            overflow: 'hidden'
           }}>
-            <Ionicons name="search" size={16} color="rgba(255,255,255,0.5)" />
+            <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
             <TextInput
-              style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular' }}
+              style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular', padding: 0 }}
               placeholder="Search sounds..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
@@ -4012,10 +4219,30 @@ function SleepTabInner() {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
-                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.6)" />
+                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             )}
-          </View>
+          </BlurView>
+
+          {/* Slimmer Premium Library Button */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+            activeOpacity={0.8}
+          >
+            <BlurView intensity={60} tint="dark" style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: 6, 
+              backgroundColor: 'rgba(167, 139, 250, 0.25)',
+              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.5)', 
+              borderRadius: 6, paddingHorizontal: 12, height: 42,
+              shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6,
+              overflow: 'hidden'
+            }}>
+              <Ionicons name="musical-notes" size={14} color="#e2e8f0" />
+              <Text style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
+                Library
+              </Text>
+            </BlurView>
+          </TouchableOpacity>
         </BlurView>
       </SafeAreaView>
       <View style={{ flex: 1, zIndex: 1 }}>
@@ -4031,25 +4258,32 @@ function SleepTabInner() {
           removeClippedSubviews
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: W, alignItems: 'center', paddingHorizontal: 0, marginTop: 44, marginBottom: 12, gap: 8 }}>
-            <Text style={[heroTextStyle, { marginBottom: 6, letterSpacing: 1 }]}>
+          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 16, marginBottom: 16, minHeight: H * 0.50 - 100 }}>
+            {/* Small top category tag */}
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 16 }}>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 3, textTransform: 'uppercase' }}>
+                SONIC THERAPIES
+              </Text>
+            </View>
+
+            {/* Main Greeting / Period Header */}
+            <Text style={[heroTextStyle, { fontSize: 38, lineHeight: 44, marginBottom: 8, letterSpacing: 0 }]}>
               {heroContent ? heroContent.header : displayMode.label}
             </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', marginTop: 2, paddingHorizontal: 20 }}>
+
+            {/* Sentence */}
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.5, fontWeight: '300', fontFamily: 'Nunito_300Light', textAlign: 'center', marginBottom: 16, paddingHorizontal: 10, lineHeight: 20 }}>
               {heroContent ? heroContent.sentence : displayMode.subtitle}
             </Text>
 
-            {/* ── Hero Signal Waveform — live-synced to audio, elegant & premium ── */}
-            <HeroSignalWave
-              isPlaying={!!playingId && !isPaused}
-              isPaused={isPaused}
-              color={
-                playingId
-                  ? (REELS_ALL_SOUNDS.find(s => s.id === playingId)?.color ?? '#a78bfa')
-                  : '#a78bfa'
-              }
-              getMeteringLevel={getMeteringLevel}
-            />
+            {/* Sub-header string unifying the "Curated Programs" text */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.6, marginBottom: 20 }}>
+              <Ionicons name="musical-notes" size={12} color="#fff" />
+              <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>
+                Curated Programs • {SONIC_COLLECTIONS.length} immersive journeys
+              </Text>
+            </View>
+
           </View>
 
         {/* ── Content container — transparent, swipe handler for category change ── */}

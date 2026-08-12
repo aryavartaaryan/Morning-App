@@ -45,7 +45,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import type { MoodKey } from '@/components/MoodSheet';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
-import { SplashGeometricAnimation } from '@/components/SplashGeometricAnimation';
+
 
 // Prevent the native splash from auto-hiding.
 // We dismiss it dynamically when leaving the 'gate' phase to avoid flashes.
@@ -142,7 +142,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
            Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
            Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
         ]),
-        Animated.delay(5000), // Hold for a full 5 seconds so the user can absorb the mantra and geometry
+        Animated.delay(1800), // Hold briefly to let the user feel the calm, then dismiss
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -207,7 +207,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
 
         {/* Cosmic Geometric Animation — let it breathe cleanly without video behind it */}
         <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <SplashGeometricAnimation size={SW * 1.0} opacity={0.65} />
+          <HeroGeometricAnimation size={SW * 1.0} opacity={0.65} variant="splash" />
         </Animated.View>
 
         {/* Ultra Premium "NADA" Text */}
@@ -219,7 +219,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
             letterSpacing: 24, 
             opacity: 0.95,
             paddingLeft: 24 // To balance the high letter spacing
-          }}>SVARA</Text>
+          }}>Svara</Text>
           
           <Text style={{ 
             fontSize: 10, 
@@ -280,7 +280,7 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: footerOp, color: 'rgba(255,255,255,0.3)', letterSpacing: 8 }]}>SVARA  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp, color: 'rgba(255,255,255,0.3)', letterSpacing: 8 }]}>Svara  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -715,7 +715,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
     }).catch(() => {});
 
     Audio.Sound.createAsync(
-      { uri: 'https://audio.onesutralabs.com/Tanpura.mp3' },
+      require('../assets/sounds/tibetan-bowl.m4a'),
       { shouldPlay: true, isLooping: true, isMuted: false, volume: 0.65 }
     ).then(({ sound }) => {
       if (isCancelled) {
@@ -726,7 +726,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       }
     }).catch((e) => { console.log("Failed to load setup audio 1", e); });
 
-    Audio.Sound.createAsync(
+    /* Audio.Sound.createAsync(
       { uri: 'https://audio.onesutralabs.com/om.mp3' },
       { shouldPlay: true, isLooping: true, isMuted: false, volume: 0.65 }
     ).then(({ sound }) => {
@@ -736,7 +736,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
         soundRef2.current = sound;
         sound.setIsMutedAsync(isMutedRef.current).catch(() => {});
       }
-    }).catch((e) => { console.log("Failed to load setup audio 2", e); });
+    }).catch((e) => { console.log("Failed to load setup audio 2", e); }); */
 
     return () => {
       isCancelled = true;
@@ -906,7 +906,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       }} />
 
       <View style={DS.center}>
-        <Text style={[DS.appName, { color: softSkyBlue, textShadowColor: skyBlue }]}>SVARA</Text>
+        <Text style={[DS.appName, { color: softSkyBlue, textShadowColor: skyBlue }]}>Svara</Text>
         <View style={{ height: 60, justifyContent: 'center', marginBottom: 20 }}>
           <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
         </View>

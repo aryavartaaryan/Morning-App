@@ -426,7 +426,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       }
       const { sound } = await Audio.Sound.createAsync(
         resolvedSrc,
-        { isLooping: true, volume: globalVolumeRef.current, shouldPlay: false },
+        { isLooping: true, volume: globalVolumeRef.current, shouldPlay: false, progressUpdateIntervalMillis: 200, isMeteringEnabled: true } as any,
       );
       // Only store if slot is still free and not actively playing
       if (!mixRefs.current.has(meta.id) && !preBufferRef.current.has(meta.id)) {

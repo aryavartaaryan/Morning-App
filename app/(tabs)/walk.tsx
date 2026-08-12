@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Easing, TouchableOpacity, Dimensions, Platform, ScrollView
+  View, Text, StyleSheet, Animated, Easing, TouchableOpacity, Dimensions, Platform, ScrollView, Image
 } from 'react-native';
-import Svg, { Circle, Rect, Path, G, Defs, RadialGradient, Stop, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Rect, Path, G, Defs, RadialGradient, LinearGradient as SvgLinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Gyroscope } from 'expo-sensors';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-// ── Sensor imports (Optional Live Compass) ──
-let Magnetometer: any = null;
-try { 
-  Magnetometer = require('expo-sensors').Magnetometer;
-} catch (_) {}
+import * as Location from 'expo-location';
 
 // ── Design Tokens ──
 const COLORS = {
@@ -31,53 +29,69 @@ const FONTS = {
   sans: Platform.OS === 'ios' ? 'System' : 'sans-serif',
 };
 
-// ── Vastu Zone Data ──
-type ZoneId = 'deepwork' | 'wfh' | 'eat' | 'sleep';
+// ── Spatial Zone Data ──
+type ZoneId = 'meditate' | 'deepwork' | 'wfh' | 'eat' | 'sleep';
 
 const ZONES: Record<ZoneId, {
   id: ZoneId;
-  direction: string;
-  sanskrit: string;
   title: string;
   tip: string;
   why: string;
-  angle: number;
+  zones: { direction: string; sanskrit: string; angle: number }[];
 }> = {
+  meditate: {
+    id: 'meditate',
+    title: 'Meditation & Mindfulness',
+    tip: 'Face Northeast or East during meditation for maximum nervous system coherence.',
+    why: 'These channels carry the most spiritually potent, clear energy, perfect for inner stillness.',
+    zones: [
+      { direction: 'Northeast', sanskrit: 'Ishaan', angle: 45 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+    ]
+  },
   deepwork: {
     id: 'deepwork',
-    direction: 'Northeast',
-    sanskrit: 'Ishaan',
     title: 'Deep Work & Focus',
-    tip: 'Your Northeast corner carries the clearest energy — ideal for focused, deep work.',
-    why: 'Considered the most spiritually potent zone; associated with clarity, wisdom, and calm energy.',
-    angle: 45,
+    tip: 'Your Northeast or East corner carries the clearest energy — ideal for focused, deep work.',
+    why: 'Considered the most spiritually potent axis; associated with clarity, wisdom, and calm energy.',
+    zones: [
+      { direction: 'Northeast', sanskrit: 'Ishaan', angle: 45 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+    ]
   },
   wfh: {
     id: 'wfh',
-    direction: 'North',
-    sanskrit: 'Uttar',
     title: 'Career & WFH',
-    tip: 'Face North while working to align with the direction of growth and wealth.',
+    tip: 'Face North or East while working to align with the direction of growth and wealth.',
     why: 'Direction of wealth and career growth (governed by Kubera).',
-    angle: 0,
+    zones: [
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
   },
   eat: {
     id: 'eat',
-    direction: 'West',
-    sanskrit: 'Paschim',
     title: 'Eating & Dining',
-    tip: 'Dining in the West supports stability and physical gains.',
+    tip: 'Dining in the West or East supports stability and physical gains.',
     why: 'Supports gains and stability, perfect for the dining area.',
-    angle: 270,
+    zones: [
+      { direction: 'West', sanskrit: 'Paschim', angle: 270 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+    ]
   },
   sleep: {
     id: 'sleep',
-    direction: 'Southwest',
-    sanskrit: 'Nairutya',
     title: 'Sleeping & Relaxing',
-    tip: 'Place your bed in the Southwest for deep, grounded rest.',
+    tip: 'Place your bed in the Southwest or South for deep, grounded rest.',
     why: 'Heaviest, most stable direction — ideal for the master bedroom and deep rest.',
-    angle: 225,
+    zones: [
+      { direction: 'Southwest', sanskrit: 'Nairutya', angle: 225 },
+      { direction: 'South', sanskrit: 'Dakshin', angle: 180 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
   },
 };
 
@@ -89,17 +103,17 @@ const SECONDARY_ZONES = [
 ];
 
 // ── Sacred Geometry Yantra Component ──
-const VastuYantraSVG = ({ size, activeZoneData, pulseAnim }: { size: number, activeZoneData: any, pulseAnim: Animated.Value }) => {
+const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
   const r = size / 2;
   const center = r;
 
-  // Generates an 8-petaled lotus/star path
-  const generateLotus = (outerR: number, innerR: number) => {
+  // Generates a sleek sacred geometry (Metatron's cube-inspired or sleek 12-point star)
+  const generateSleekStar = (outerR: number, innerR: number) => {
     let d = '';
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * 45 - 90) * (Math.PI / 180);
-      const nextAngle = ((i + 1) * 45 - 90) * (Math.PI / 180);
-      const midAngle = ((i + 0.5) * 45 - 90) * (Math.PI / 180);
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * 30 - 90) * (Math.PI / 180);
+      const nextAngle = ((i + 1) * 30 - 90) * (Math.PI / 180);
+      const midAngle = ((i + 0.5) * 30 - 90) * (Math.PI / 180);
 
       const x1 = center + innerR * Math.cos(angle);
       const y1 = center + innerR * Math.sin(angle);
@@ -109,106 +123,150 @@ const VastuYantraSVG = ({ size, activeZoneData, pulseAnim }: { size: number, act
       const y3 = center + innerR * Math.sin(nextAngle);
 
       if (i === 0) d += `M ${x1} ${y1} `;
-      d += `Q ${x2} ${y2} ${x3} ${y3} `;
+      d += `L ${x2} ${y2} L ${x3} ${y3} `; // Sharp lines instead of curves for premium look
     }
     return d + 'Z';
   };
 
   const AnimatedSvgCircle = Animated.createAnimatedComponent(Circle);
-
-  let isFlipped = false;
-  if (activeZoneData) {
-    const angle = activeZoneData.angle;
-    isFlipped = angle > 135 && angle < 315; // Flip text so it remains readable
-  }
+  const rotInterpolate = compassRotAnim.interpolate({ inputRange: [-36000, 36000], outputRange: ['-36000deg', '36000deg'] });
+  const innerRotInterpolate = compassInnerRotAnim.interpolate({ inputRange: [-36000, 36000], outputRange: ['-36000deg', '36000deg'] });
 
   return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Defs>
-          <RadialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={COLORS.gold} stopOpacity="0.15" />
-            <Stop offset="100%" stopColor={COLORS.gold} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      
+      {/* ── Outer Layer (Obsidian Base, Instant Rotation) ── */}
+      <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rotInterpolate }] }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Defs>
+            <RadialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={COLORS.gold} stopOpacity="0.25" />
+              <Stop offset="100%" stopColor={COLORS.gold} stopOpacity="0" />
+            </RadialGradient>
+            <SvgLinearGradient id="obsidianEtch" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#3A3A4A" stopOpacity="0.7" />
+              <Stop offset="50%" stopColor="#1F1F2E" stopOpacity="0.9" />
+              <Stop offset="100%" stopColor="#0B0B14" stopOpacity="1" />
+            </SvgLinearGradient>
+          </Defs>
 
-        {/* Ambient Glow */}
-        <AnimatedSvgCircle cx={center} cy={center} r={r * 0.9} fill="url(#centerGlow)" opacity={pulseAnim as any} />
+          {/* Ambient Glow */}
+          <AnimatedSvgCircle cx={center} cy={center} r={r * 0.9} fill="url(#centerGlow)" opacity={pulseAnim as any} />
 
-        {/* Outer Rings */}
-        <Circle cx={center} cy={center} r={r - 2} fill="none" stroke={COLORS.goldMuted} strokeWidth={0.5} />
-        <Circle cx={center} cy={center} r={r - 12} fill="none" stroke={COLORS.gold} strokeWidth={1} />
-        <Circle cx={center} cy={center} r={r - 16} fill="none" stroke={COLORS.goldMuted} strokeWidth={0.5} />
+          {/* Outer Rings (Obsidian) */}
+          <Circle cx={center} cy={center} r={r - 2} fill="none" stroke="url(#obsidianEtch)" strokeWidth={0.5} opacity={0.5} />
+          <Circle cx={center} cy={center} r={r - 12} fill="none" stroke="url(#obsidianEtch)" strokeWidth={1.5} />
+          <Circle cx={center} cy={center} r={r - 16} fill="none" stroke="url(#obsidianEtch)" strokeWidth={0.5} opacity={0.5} />
 
-        {/* 16-point geometric division lines */}
-        {[...Array(16)].map((_, i) => {
-          const angle = (i * 22.5) * (Math.PI / 180);
-          const x1 = center + (r - 16) * Math.cos(angle);
-          const y1 = center + (r - 16) * Math.sin(angle);
-          const isMain = i % 2 === 0;
-          const innerRadius = isMain ? r * 0.4 : r * 0.6;
-          const x2 = center + innerRadius * Math.cos(angle);
-          const y2 = center + innerRadius * Math.sin(angle);
+          {/* 16-point geometric division lines */}
+          {[...Array(16)].map((_, i) => {
+            const angle = (i * 22.5) * (Math.PI / 180);
+            const x1 = center + (r - 16) * Math.cos(angle);
+            const y1 = center + (r - 16) * Math.sin(angle);
+            const isMain = i % 2 === 0;
+            const innerRadius = isMain ? r * 0.4 : r * 0.6;
+            const x2 = center + innerRadius * Math.cos(angle);
+            const y2 = center + innerRadius * Math.sin(angle);
+            return (
+              <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#obsidianEtch)" strokeWidth={0.8} opacity={0.6} />
+            );
+          })}
+
+          {/* Outer Lotus */}
+          <Path d={generateSleekStar(r - 20, r * 0.65)} fill="none" stroke="url(#obsidianEtch)" strokeWidth={1.2} />
+        </Svg>
+        
+        {/* Secondary Direction Labels */}
+        {SECONDARY_ZONES.map((sz, i) => {
+          const rad = (sz.angle - 90) * (Math.PI / 180);
+          const radius = r * 0.85 - 28;
+          const x = radius * Math.cos(rad);
+          const y = radius * Math.sin(rad);
           return (
-            <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={COLORS.goldFaint} strokeWidth={0.5} />
+            <View key={i} style={[styles.secondaryLabelWrapper, { transform: [{ translateX: x }, { translateY: y }] }]}>
+              <Text style={[styles.secondaryLabel, { color: '#3A3A4A' }]}>{sz.direction}</Text>
+            </View>
           );
         })}
+      </Animated.View>
 
-        {/* Outer Lotus */}
-        <Path d={generateLotus(r - 24, r * 0.55)} fill="none" stroke={COLORS.goldMuted} strokeWidth={1} />
-        
-        {/* Inner Lotus */}
-        <Path d={generateLotus(r * 0.55, r * 0.3)} fill="none" stroke={COLORS.gold} strokeWidth={0.8} />
+      {/* ── Inner Parallax Layer (Dark Gold, Breathing, Delayed Rotation) ── */}
+      <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: innerRotInterpolate }, { scale: breathingScaleAnim }] }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Defs>
+            <SvgLinearGradient id="darkGoldEtch" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={COLORS.goldMuted} stopOpacity="0.5" />
+              <Stop offset="100%" stopColor="#1A150A" stopOpacity="0.9" />
+            </SvgLinearGradient>
+          </Defs>
+          {/* Inner Lotus */}
+          <Path d={generateSleekStar(r * 0.55, r * 0.3)} fill="none" stroke="url(#darkGoldEtch)" strokeWidth={1.5} />
 
-        {/* Brahmasthan (Center Square) */}
-        <Rect
-          x={center - r * 0.2}
-          y={center - r * 0.2}
-          width={r * 0.4}
-          height={r * 0.4}
-          fill="none"
-          stroke={COLORS.gold}
-          strokeWidth={1}
-          transform={`rotate(45 ${center} ${center})`}
-        />
-        <Circle cx={center} cy={center} r={r * 0.05} fill={COLORS.gold} opacity={0.8} />
+          {/* Brahmasthan (Center Square) */}
+          <Rect
+            x={center - r * 0.2}
+            y={center - r * 0.2}
+            width={r * 0.4}
+            height={r * 0.4}
+            fill="none"
+            stroke="url(#darkGoldEtch)"
+            strokeWidth={1.5}
+            transform={`rotate(45 ${center} ${center})`}
+          />
+          <Circle cx={center} cy={center} r={r * 0.05} fill="url(#darkGoldEtch)" opacity={0.7} />
+        </Svg>
+      </Animated.View>
 
-        {/* Active Highlight Overlay with Rotated Text */}
-        {activeZoneData !== null && (
-          <G transform={`rotate(${activeZoneData.angle - 90} ${center} ${center})`}>
-            {/* Draw a subtle wedge for the active zone */}
-            <Path
-              d={`M ${center} ${center} L ${center + r} ${center - r * 0.4} A ${r} ${r} 0 0 1 ${center + r} ${center + r * 0.4} Z`}
-              fill={COLORS.saffron}
-              opacity={0.15}
-            />
-            {/* Highlight Line */}
-            <Line x1={center} y1={center} x2={center + r - 12} y2={center} stroke={COLORS.saffron} strokeWidth={1.5} />
-            <Circle cx={center + r - 12} cy={center} r={4} fill={COLORS.saffron} />
-            
-            <SvgText
-              x={center + r - 24}
-              y={center}
-              fill={COLORS.saffron}
-              fontSize={10}
-              fontFamily={FONTS.sans}
-              fontWeight="800"
-              letterSpacing={1.5}
-              textAnchor={isFlipped ? "start" : "end"}
-              alignmentBaseline="middle"
-              transform={isFlipped ? `rotate(180 ${center + r - 24} ${center})` : undefined}
-            >
-              {activeZoneData.title.toUpperCase()}
-            </SvgText>
-          </G>
-        )}
-      </Svg>
+      {/* ── Active Highlight Overlay (Ember, Breathing, Instant Rotation) ── */}
+      {activeZoneData !== null && (
+        <Animated.View style={{ position: 'absolute', width: size, height: size, transform: [{ rotate: rotInterpolate }, { scale: breathingScaleAnim }] }}>
+          <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {activeZoneData.zones.map((zone: any, index: number) => {
+              const angle = zone.angle;
+              const isFlipped = angle > 135 && angle < 315;
+              return (
+                <G key={index} transform={`rotate(${angle - 90} ${center} ${center})`}>
+                  <Defs>
+                    <RadialGradient id={`wedgeGlow-${index}`} cx="50%" cy="50%" r="50%">
+                      <Stop offset="0%" stopColor={COLORS.saffron} stopOpacity="0.7" />
+                      <Stop offset="100%" stopColor={COLORS.saffron} stopOpacity="0" />
+                    </RadialGradient>
+                  </Defs>
+                  <Path
+                    d={`M ${center} ${center} L ${center + r} ${center - r * 0.4} A ${r} ${r} 0 0 1 ${center + r} ${center + r * 0.4} Z`}
+                    fill={`url(#wedgeGlow-${index})`}
+                  />
+                  <Line x1={center} y1={center} x2={center + r - 8} y2={center} stroke={COLORS.saffron} strokeWidth={3} />
+                  
+                  <Circle cx={center + r - 8} cy={center} r={4.5} fill="#FFF" />
+                  <Circle cx={center + r - 8} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={1.5} opacity={0.9} />
+                  
+                  <SvgText
+                    x={center + r - 26}
+                    y={center}
+                    fill="#FFF"
+                    fontSize={10.5}
+                    fontFamily={FONTS.sans}
+                    fontWeight="900"
+                    letterSpacing={2}
+                    textAnchor={isFlipped ? "start" : "end"}
+                    alignmentBaseline="middle"
+                    transform={isFlipped ? `rotate(180 ${center + r - 26} ${center})` : undefined}
+                  >
+                    {zone.direction.toUpperCase()}
+                  </SvgText>
+                </G>
+              );
+            })}
+          </Svg>
+        </Animated.View>
+      )}
     </View>
   );
 };
 
 // ── Main Screen Component ──
-export default function VastuYantraScreen() {
+export default function HarmonyCompassScreen() {
   const insets = useSafeAreaInsets();
   const [selectedZone, setSelectedZone] = useState<ZoneId | null>(null);
   const [heading, setHeading] = useState(0); // For live compass
@@ -216,21 +274,60 @@ export default function VastuYantraScreen() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Animations
-  const pulseAnim = useRef(new Animated.Value(0.5)).current;
+  const pulseAnim = useRef(new Animated.Value(0.1)).current;
   const compassRotAnim = useRef(new Animated.Value(0)).current;
+  const compassInnerRotAnim = useRef(new Animated.Value(0)).current;
+  const breathingScaleAnim = useRef(new Animated.Value(1)).current;
+  const lastHapticZone = useRef(-1);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Breathing Glow Animation
+  // Stardust Parallax
+  const gyroX = useRef(new Animated.Value(0)).current;
+  const gyroY = useRef(new Animated.Value(0)).current;
+
+  // Gyroscope Setup
+  useEffect(() => {
+    Gyroscope.setUpdateInterval(50);
+    const subscription = Gyroscope.addListener((data) => {
+      Animated.spring(gyroX, { toValue: -data.y * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
+      Animated.spring(gyroY, { toValue: -data.x * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // 4-7-8 Breathing Rhythm (Inhale 4s, Hold 7s, Exhale 8s)
   useEffect(() => {
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.4, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 7000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+        ]),
+        Animated.sequence([
+          Animated.timing(breathingScaleAnim, { toValue: 1.05, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(breathingScaleAnim, { toValue: 1.05, duration: 7000, useNativeDriver: true }),
+          Animated.timing(breathingScaleAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+        ])
       ])
     ).start();
   }, []);
 
-  // Compass smoothing with wrap-around correction
+  // Compass smoothing with parallax lag and Haptic Ticking
   useEffect(() => {
+    if (!isCompassActive) return;
+
+    // Fire Haptic Tick on 16 cardinal/sub-cardinal divisions (every 22.5 degrees)
+    const currentZone = Math.round(heading / 22.5);
+    if (currentZone !== lastHapticZone.current) {
+      if (lastHapticZone.current !== -1) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      lastHapticZone.current = currentZone;
+    }
+
     let target = -heading;
     let prev = compassRotAnim as any;
     let currentVal = prev._value || 0;
@@ -239,28 +336,96 @@ export default function VastuYantraScreen() {
     while (target - currentVal > 180) target -= 360;
     while (target - currentVal < -180) target += 360;
 
+    // Instant/smooth rotation for Outer Layer
     Animated.spring(compassRotAnim, {
       toValue: target,
       friction: 12,
       tension: 40,
       useNativeDriver: true,
     }).start();
-  }, [heading]);
 
-  // Live Magnetometer (Phase 2 feature)
+    // Slower, delayed rotation for Inner Layer (Parallax Physics)
+    Animated.spring(compassInnerRotAnim, {
+      toValue: target,
+      friction: 18,
+      tension: 10,
+      useNativeDriver: true,
+    }).start();
+  }, [heading, isCompassActive]);
+
+  // Calming Idle Rotation (When Compass is Off)
+  useEffect(() => {
+    let active = true;
+    const startIdle = () => {
+      if (!active) return;
+      let currentOuter = (compassRotAnim as any)._value || 0;
+      let currentInner = (compassInnerRotAnim as any)._value || 0;
+      
+      Animated.parallel([
+        Animated.timing(compassRotAnim, {
+          toValue: currentOuter + 360,
+          duration: 120000, // 2 minutes per rotation (Deeply calming)
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(compassInnerRotAnim, {
+          toValue: currentInner - 360, // Reverse parallax flow
+          duration: 180000, // 3 minutes per rotation
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ]).start(({ finished }) => {
+        if (finished && active) startIdle();
+      });
+    };
+
+    if (!isCompassActive) {
+      startIdle();
+    }
+    
+    return () => {
+      active = false;
+      compassRotAnim.stopAnimation();
+      compassInnerRotAnim.stopAnimation();
+    };
+  }, [isCompassActive]);
+
+  // Fluid Info Card Entry Animation
+  useEffect(() => {
+    if (selectedZone) {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic)
+      }).start();
+    }
+  }, [selectedZone]);
+
+  // Live Compass (Phase 2 feature) - Using OS Sensor Fusion for True Heading
   useEffect(() => {
     let sub: any;
-    if (Magnetometer && isCompassActive) {
-      Magnetometer.setUpdateInterval(100);
-      sub = Magnetometer.addListener((data: any) => {
-        let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
-        angle = angle >= 0 ? angle : angle + 360;
-        angle = Math.round(angle);
-        setHeading(angle);
-      });
+    if (isCompassActive) {
+      (async () => {
+        // Request permissions first
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Location permission to use the true compass was denied');
+          return;
+        }
+
+        // Use watchHeadingAsync for OS-calibrated sensor fusion (True North)
+        sub = await Location.watchHeadingAsync((data) => {
+          let h = data.trueHeading !== -1 ? data.trueHeading : data.magHeading;
+          if (h >= 0) {
+            setHeading(Math.round(h));
+          }
+        });
+      })();
     }
     return () => {
-      if (sub) sub.remove();
+      if (sub && sub.remove) sub.remove();
     };
   }, [isCompassActive]);
 
@@ -279,13 +444,11 @@ export default function VastuYantraScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Texture */}
-      <View style={[StyleSheet.absoluteFill, styles.bgTexture]} pointerEvents="none" />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 40) }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 40) }]}>
-          <Text style={styles.headerTitle}>Vastu Yantra</Text>
+          <Text style={styles.headerTitle}>Harmony Compass</Text>
           <Text style={styles.headerSubtitle}>Sacred Space Intelligence</Text>
         </View>
 
@@ -293,16 +456,20 @@ export default function VastuYantraScreen() {
         <View style={{ zIndex: 10, marginHorizontal: 32, marginBottom: 20 }}>
           <TouchableOpacity 
             activeOpacity={0.8}
-            style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setDropdownOpen(!dropdownOpen);
             }}
           >
-            <Text style={styles.dropdownButtonText}>
-              {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT VASTU PROTOCOL'}
-            </Text>
-            <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.gold} />
+            <LinearGradient 
+              colors={['#101018', '#0B0B14']} 
+              style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT SPATIAL PROTOCOL'}
+              </Text>
+              <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.saffron} />
+            </LinearGradient>
           </TouchableOpacity>
           
           {dropdownOpen && (
@@ -313,7 +480,7 @@ export default function VastuYantraScreen() {
                   style={[styles.dropdownItem, index !== Object.values(ZONES).length - 1 && styles.dropdownItemBorder]}
                   onPress={() => handleZoneSelect(z.id)}
                 >
-                  <Text style={[styles.dropdownItemText, selectedZone === z.id && { color: COLORS.saffron }]}>
+                  <Text style={[styles.dropdownItemText, selectedZone === z.id && { color: COLORS.saffron }]} >
                     {z.title.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -322,60 +489,82 @@ export default function VastuYantraScreen() {
           )}
         </View>
 
-        {/* Yantra Area */}
         <View style={styles.yantraContainer}>
-          {/* The rotating compass ring */}
-          <Animated.View style={[styles.yantraWrapper, { transform: [{ rotate: compassRotAnim.interpolate({ inputRange: [-36000, 36000], outputRange: ['-36000deg', '36000deg'] }) }] }]}>
-            <VastuYantraSVG 
-              size={W * 0.85} 
-              activeZoneData={activeZoneData} 
-              pulseAnim={pulseAnim} 
-            />
-            
-            {/* Secondary Direction Labels placed statically around the ring */}
-            {SECONDARY_ZONES.map((sz, i) => {
-              const rad = (sz.angle - 90) * (Math.PI / 180);
-              const radius = W * 0.425 - 28;
-              const x = radius * Math.cos(rad);
-              const y = radius * Math.sin(rad);
-              return (
-                <View key={i} style={[styles.secondaryLabelWrapper, { transform: [{ translateX: x }, { translateY: y }] }]}>
-                  <Text style={styles.secondaryLabel}>{sz.direction}</Text>
-                </View>
-              );
-            })}
+          {/* Gyroscope Stardust Particles */}
+          <Animated.View pointerEvents="none" style={{
+            position: 'absolute', top: -30, left: -30, right: -30, bottom: -30,
+            transform: [{ translateX: gyroX }, { translateY: gyroY }],
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Svg width={W} height={W}>
+              {Array.from({ length: 24 }).map((_, i) => {
+                const angle = (i * Math.PI * 2) / 24 + (i % 2 === 0 ? 0.2 : -0.2);
+                const radius = (W * 0.3) + (i % 3) * 20;
+                const x = W / 2 + Math.cos(angle) * radius;
+                const y = W / 2 + Math.sin(angle) * radius;
+                return (
+                  <Circle key={`star_${i}`} cx={x} cy={y} r={1 + (i % 2) * 1.5} fill="#FFFFFF" opacity={0.1 + (i % 4) * 0.15} />
+                );
+              })}
+            </Svg>
           </Animated.View>
+
+          <HarmonyCompassSVG 
+            size={W * 0.85} 
+            activeZoneData={activeZoneData} 
+            pulseAnim={pulseAnim} 
+            compassRotAnim={compassRotAnim}
+            compassInnerRotAnim={compassInnerRotAnim}
+            breathingScaleAnim={breathingScaleAnim}
+          />
         </View>
 
         {/* Inline Info Card (Displays strictly below the Yantra) */}
         {activeZoneData && (
-          <View style={styles.infoCard}>
-            <TouchableOpacity style={styles.closeButton} onPress={clearSelection}>
-              <Ionicons name="close" size={24} color={COLORS.goldMuted} />
-            </TouchableOpacity>
+          <Animated.View style={{ 
+            opacity: fadeAnim, 
+            transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] 
+          }}>
+            <LinearGradient colors={['#101018', '#0B0B14']} style={styles.infoCard}>
+              <TouchableOpacity style={styles.closeButton} onPress={clearSelection}>
+                <Ionicons name="close" size={24} color={'#3A3A4A'} />
+              </TouchableOpacity>
 
-            <Text style={styles.sheetSanskrit}>{activeZoneData.sanskrit} Corner</Text>
-            <Text style={styles.sheetTitle}>{activeZoneData.direction}</Text>
-            
-            <View style={styles.sheetDivider} />
+              <Text style={styles.sheetSanskrit}>
+                {activeZoneData.zones.map((z: any) => z.sanskrit).join(' / ')}
+              </Text>
+              <Text style={styles.sheetTitle}>
+                {activeZoneData.zones.map((z: any) => z.direction).join(' / ')}
+              </Text>
+              
+              <View style={styles.sheetDivider} />
 
-            <Text style={styles.sheetTipTitle}>VASTU TIP</Text>
-            <Text style={styles.sheetTipText}>{activeZoneData.tip}</Text>
+              <Text style={styles.sheetTipTitle}>HARMONY TIP</Text>
+              <Text style={styles.sheetTipText}>{activeZoneData.tip}</Text>
 
-            <Text style={styles.sheetWhyTitle}>WHY IT WORKS</Text>
-            <Text style={styles.sheetWhyText}>{activeZoneData.why}</Text>
-          </View>
+              <Text style={styles.sheetWhyTitle}>WHY IT WORKS</Text>
+              <Text style={styles.sheetWhyText}>{activeZoneData.why}</Text>
+            </LinearGradient>
+          </Animated.View>
         )}
 
         {/* Footer Controls */}
         <View style={styles.footer}>
           <TouchableOpacity 
             style={[styles.compassToggle, isCompassActive && styles.compassToggleActive]}
-            onPress={() => setIsCompassActive(!isCompassActive)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              setIsCompassActive(!isCompassActive);
+            }}
           >
-            <Text style={[styles.compassToggleText, isCompassActive && { color: COLORS.bg }]}>
-              {isCompassActive ? 'LIVE ALIGNMENT ON' : 'ENABLE LIVE COMPASS'}
-            </Text>
+            <LinearGradient 
+              colors={isCompassActive ? ['#1A150A', '#0B0B14'] : ['#101018', '#0B0B14']} 
+              style={styles.compassToggleInner}
+            >
+              <Text style={[styles.compassToggleText, isCompassActive && { color: COLORS.saffron }]}>
+                {isCompassActive ? 'LIVE ALIGNMENT ON' : 'ENABLE LIVE COMPASS'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
           <Text style={styles.footerNote}>
             Align your physical space with natural energetic currents.
@@ -391,14 +580,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.bg,
-  },
-  bgTexture: {
-    opacity: 0.1,
-    backgroundColor: 'transparent',
-    borderStyle: 'dotted',
-    borderWidth: 2,
-    borderColor: COLORS.gold,
-    borderRadius: 1,
   },
   header: {
     alignItems: 'center',
@@ -425,36 +606,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(20,20,30,0.8)',
     borderWidth: 1,
-    borderColor: COLORS.goldMuted,
+    borderColor: '#1F1F2E',
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
   },
   dropdownButtonActive: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    borderColor: COLORS.gold,
+    borderColor: '#2A2A35',
   },
   dropdownButtonText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '800',
-    color: COLORS.gold,
-    letterSpacing: 1.5,
+    color: 'rgba(237,230,214,0.7)',
+    letterSpacing: 2,
   },
   dropdownList: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(20,20,30,0.95)',
+    backgroundColor: '#0B0B14',
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: '#1F1F2E',
     borderTopWidth: 0,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    overflow: 'hidden',
   },
   dropdownItem: {
     paddingHorizontal: 20,
@@ -462,20 +648,20 @@ const styles = StyleSheet.create({
   },
   dropdownItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
+    borderBottomColor: '#101018',
   },
   dropdownItemText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.ivory,
+    color: 'rgba(237,230,214,0.5)',
     letterSpacing: 1,
   },
 
   yantraContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 20,
+    marginVertical: 40,
   },
   yantraWrapper: {
     alignItems: 'center',
@@ -494,15 +680,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   
-  // Inline Info Card Styles
   infoCard: {
     marginHorizontal: 20,
     marginTop: 10,
     padding: 24,
-    backgroundColor: 'rgba(20, 20, 30, 0.6)',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: COLORS.goldFaint,
+    borderColor: '#1F1F2E',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.8,
+    shadowRadius: 24,
   },
   closeButton: {
     position: 'absolute',
@@ -528,7 +717,7 @@ const styles = StyleSheet.create({
   },
   sheetDivider: {
     height: 1,
-    backgroundColor: COLORS.goldFaint,
+    backgroundColor: '#1F1F2E',
     width: '100%',
     marginBottom: 24,
   },
@@ -536,7 +725,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans,
     fontSize: 10,
     fontWeight: '800',
-    color: COLORS.gold,
+    color: 'rgba(237,230,214,0.4)',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -551,7 +740,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans,
     fontSize: 10,
     fontWeight: '800',
-    color: COLORS.goldMuted,
+    color: 'rgba(237,230,214,0.3)',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -568,21 +757,28 @@ const styles = StyleSheet.create({
     paddingTop: 32,
   },
   compassToggle: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: '#1F1F2E',
     marginBottom: 16,
+    overflow: 'hidden',
+  },
+  compassToggleInner: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   compassToggleActive: {
-    backgroundColor: COLORS.gold,
+    borderColor: COLORS.saffron,
+    shadowColor: COLORS.saffron,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   compassToggleText: {
     fontFamily: FONTS.sans,
     fontSize: 10,
     fontWeight: '800',
-    color: COLORS.gold,
+    color: 'rgba(237,230,214,0.5)',
     letterSpacing: 2,
   },
   footerNote: {

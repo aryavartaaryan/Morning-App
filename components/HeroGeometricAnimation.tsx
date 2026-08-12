@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing } from 'react-native';
 import Svg, {
   Circle as SvgCircle, Path as SvgPath, G as SvgG,
-  Defs, LinearGradient, Stop, Line as SvgLine, Text as SvgText,
+  Defs, LinearGradient, RadialGradient, Stop, Line as SvgLine, Text as SvgText,
 } from 'react-native-svg';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -102,6 +102,12 @@ export function HeroGeometricAnimation({
   const rotE = useRef(new Animated.Value(0)).current; // CW  42s (slowest)
   const rotF = useRef(new Animated.Value(0)).current; // CCW 28s
 
+  // ── Golden Shimmer (Independent Twinkling) ────────────────────────────────
+  const shim1 = useRef(new Animated.Value(0)).current;
+  const shim2 = useRef(new Animated.Value(0)).current;
+  const shim3 = useRef(new Animated.Value(0)).current;
+  const shim4 = useRef(new Animated.Value(0)).current;
+
   // ── Per-shape opacity ─────────────────────────────────────────────────────
   const op0 = useRef(new Animated.Value(1)).current;
   const op1 = useRef(new Animated.Value(0)).current;
@@ -136,6 +142,18 @@ export function HeroGeometricAnimation({
     Animated.loop(Animated.timing(rotD, { toValue: 1, duration: SD, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rotE, { toValue: 1, duration: SE, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(Animated.timing(rotF, { toValue: 1, duration: SF, easing: Easing.linear, useNativeDriver: true })).start();
+
+    // Shimmer loops
+    const runShimmer = (anim: Animated.Value, dur: number) => {
+      Animated.loop(Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: dur * 1.2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+    };
+    runShimmer(shim1, 1400);
+    runShimmer(shim2, 1900);
+    runShimmer(shim3, 2300);
+    runShimmer(shim4, 2800);
 
     // Breath
     const BREATH_DUR = isHome ? 11000 : isSound ? 8000 : 11000;
@@ -244,6 +262,24 @@ export function HeroGeometricAnimation({
   const bindOp = pulse.interpolate({ inputRange: [0,1], outputRange: [0.28, 0.95] });
   const bindSc = pulse.interpolate({ inputRange: [0,1], outputRange: [0.55, 1.6] });
 
+  // ── Magnetic Liquid & Sand Mandala Drivers ──
+  const liquidScale = activeBreath.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.05] });
+  const particleSc  = activeBreath.interpolate({ inputRange: [0, 1], outputRange: [1.6, 0.40] });
+  const particleOp  = activeBreath.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 0.9] });
+
+  // ── Nebula Core (Galaxy center) drivers ──
+  const nebulaCoreSc    = activeBreath.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.3] });
+  const nebulaCoreOp    = activeBreath.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.2, 0.5, 1.0] });
+  const galaxyArmSc     = activeBreath.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.1] });
+  const galaxyEdgeSc    = activeBreath.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.15] });
+  const galaxyEdgeOp    = activeBreath.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.15, 0.7] });
+
+  // ── Shimmer Opacities ──
+  const sOp1 = shim1.interpolate({ inputRange: [0, 1], outputRange: [0.1, 1] });
+  const sOp2 = shim2.interpolate({ inputRange: [0, 1], outputRange: [0.1, 1] });
+  const sOp3 = shim3.interpolate({ inputRange: [0, 1], outputRange: [0.1, 1] });
+  const sOp4 = shim4.interpolate({ inputRange: [0, 1], outputRange: [0.1, 1] });
+
   // Circumference vibration waves
   const rip1Scale = ripple1.interpolate({ inputRange:[0,1], outputRange:[0.95,1.25] });
   const rip1Op    = ripple1.interpolate({ inputRange:[0,0.1,0.6,1], outputRange:[0,0.60,0.15,0] });
@@ -291,320 +327,158 @@ export function HeroGeometricAnimation({
         <Animated.View style={{ position:'absolute', width:S, height:S, borderRadius:S/2, borderWidth:0.8, borderColor:G3+'40', transform:[{scale:rip3Scale}], opacity:rip3Op }} />
       </>)}
 
-      {/* ── Splash nebula ── */}
-      {variant === 'splash' && (
-        <RL rot={cwC} extraStyle={{opacity:0.15}}>
-          <Svg width={S} height={S}>
-            {pts(S*0.5,S*0.5,S*0.47,28,0).map((p,i)=>(
-              <SvgCircle key={`cosmos_${i}`} cx={p.x} cy={p.y}
-                r={i%5===0?3:i%3===0?2:1.2}
-                fill={i%7===0?'#FFD700':i%4===0?'#FDB931':'#FFF'}
-                opacity={0.15+(i%6)*0.10} />
-            ))}
-          </Svg>
-        </RL>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SENTIENT GALAXY + NEBULA CORE (Universal for all variants)
+          ══════════════════════════════════════════════════════════════════ */}
+      {true && (
+        <>
+          {/* ── Nebula Core: Deep radiant glow at the galaxy center ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: nebulaCoreOp, transform: [{ scale: nebulaCoreSc }] }}>
+            <Svg width={S} height={S}>
+              <Defs>
+                {/* Hot stellar core — white-gold center bleeding to violet */}
+                <RadialGradient id="nebulaCore" cx="50%" cy="50%" rx="50%" ry="50%" fx="50%" fy="50%">
+                  <Stop offset="0%"   stopColor="#FFFFFF" stopOpacity="1.0" />
+                  <Stop offset="8%"   stopColor="#FFF7C0" stopOpacity="0.95" />
+                  <Stop offset="22%"  stopColor="#FFD700" stopOpacity="0.75" />
+                  <Stop offset="50%"  stopColor="#f59e0b" stopOpacity="0.45" />
+                  <Stop offset="75%"  stopColor="#7c3aed" stopOpacity="0.25" />
+                  <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
+                </RadialGradient>
+                {/* Outer cosmic haze */}
+                <RadialGradient id="nebulaHaze" cx="50%" cy="50%" rx="50%" ry="50%" fx="50%" fy="50%">
+                  <Stop offset="0%"   stopColor="#7c3aed" stopOpacity="0" />
+                  <Stop offset="40%"  stopColor="#4f46e5" stopOpacity="0.18" />
+                  <Stop offset="80%"  stopColor="#1e3a8a" stopOpacity="0.32" />
+                  <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
+                </RadialGradient>
+              </Defs>
+              {/* Cosmic outer haze */}
+              <SvgCircle cx={hw} cy={hw} r={S * 0.48} fill="url(#nebulaHaze)" />
+              {/* Hot glowing core */}
+              <SvgCircle cx={hw} cy={hw} r={S * 0.28} fill="url(#nebulaCore)" />
+            </Svg>
+          </Animated.View>
+
+          {/* ── Galaxy Arm Layer A: CW slow (logarithmic spiral arm 1) ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp1, transform: [{ scale: galaxyArmSc }] }}>
+            <RL rot={cwE} extraStyle={{ opacity: 0.9 }}>
+              <Svg width={S} height={S}>
+                {/* Inner arm: warm gold micro-stars */}
+                {Array.from({ length: 240 }, (_, i) => {
+                  const frac = i / 240;
+                  // Logarithmic spiral: r grows with angle
+                  const arms = 3;
+                  const armIdx = i % arms;
+                  const angle = (frac * Math.PI * 6) + (armIdx * (Math.PI * 2) / arms);
+                  const radius = (S * 0.06) + (S * 0.44 * frac);
+                  const x = hw + radius * Math.cos(angle);
+                  const y = hw + radius * Math.sin(angle);
+                  const r = frac < 0.2 ? 1.8 : frac < 0.5 ? 1.3 : 0.8;
+                  const op = 1.0 - frac * 0.5;
+                  const fill = frac < 0.15 ? '#FFFFFF' : frac < 0.4 ? '#FFF7C0' : frac < 0.7 ? '#FFD700' : '#fde68a';
+                  return <SvgCircle key={`ga_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
+                })}
+              </Svg>
+            </RL>
+          </Animated.View>
+
+          {/* ── Galaxy Arm Layer B: CCW medium (counter-spiral arm) ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp2, transform: [{ scale: galaxyArmSc }] }}>
+            <RL rot={ccwB} extraStyle={{ opacity: 0.85 }}>
+              <Svg width={S} height={S}>
+                {Array.from({ length: 180 }, (_, i) => {
+                  const frac = i / 180;
+                  const arms = 2;
+                  const armIdx = i % arms;
+                  const angle = (frac * Math.PI * 4) + (armIdx * Math.PI) + Math.PI / 4;
+                  const radius = (S * 0.08) + (S * 0.42 * frac);
+                  const x = hw + radius * Math.cos(angle);
+                  const y = hw + radius * Math.sin(angle);
+                  const r = frac < 0.25 ? 1.6 : frac < 0.55 ? 1.1 : 0.7;
+                  const op = 1.0 - frac * 0.45;
+                  const fill = frac < 0.2 ? '#FFF7C0' : frac < 0.5 ? '#fde68a' : '#f59e0b';
+                  return <SvgCircle key={`gb_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
+                })}
+              </Svg>
+            </RL>
+          </Animated.View>
+
+          {/* ── Galaxy Arm Layer C: CW fast (dense inner arms) ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp3, transform: [{ scale: galaxyArmSc }] }}>
+            <RL rot={cwD} extraStyle={{ opacity: 0.8 }}>
+              <Svg width={S} height={S}>
+                {Array.from({ length: 150 }, (_, i) => {
+                  const frac = i / 150;
+                  const arms = 4;
+                  const armIdx = i % arms;
+                  const angle = (frac * Math.PI * 3) + (armIdx * (Math.PI / 2));
+                  const radius = S * 0.04 + S * 0.36 * frac;
+                  const x = hw + radius * Math.cos(angle);
+                  const y = hw + radius * Math.sin(angle);
+                  const r = frac < 0.3 ? 2.0 : 1.2;
+                  const op = 1.0 - frac * 0.5;
+                  const fill = frac < 0.1 ? '#FFFFFF' : frac < 0.35 ? '#FFF7C0' : '#FFD700';
+                  return <SvgCircle key={`gc_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
+                })}
+              </Svg>
+            </RL>
+          </Animated.View>
+
+          {/* ── Galaxy Dust Cloud: CCW slow (volumetric scatter haze) ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp4, transform: [{ scale: galaxyEdgeSc }] }}>
+            <RL rot={ccwF} extraStyle={{ opacity: 0.7 }}>
+              <Svg width={S} height={S}>
+                {/* Outer stardust scatter — not on a perfect ring */}
+                {Array.from({ length: 350 }, (_, i) => {
+                  // Volumetric distribution: more particles toward the edge, fading at boundary
+                  const angle = (i / 350) * Math.PI * 2 * 3.7; // golden-angle-ish
+                  const rFrac = Math.sqrt(i / 350); // square root for uniform area distribution
+                  const radius = S * 0.05 + S * 0.48 * rFrac;
+                  const x = hw + radius * Math.cos(angle);
+                  const y = hw + radius * Math.sin(angle);
+                  const r = rFrac < 0.3 ? 1.4 : rFrac < 0.6 ? 0.9 : 0.5;
+                  const op = (1 - rFrac) * 0.9 + 0.1;
+                  const fill = rFrac < 0.2 ? '#FFFDE7' : rFrac < 0.5 ? '#fde68a' : '#c084fc';
+                  return <SvgCircle key={`gd_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
+                })}
+              </Svg>
+            </RL>
+          </Animated.View>
+
+          {/* ── Outer Galaxy Edge Glimmer: scattered micro-stars ── */}
+          <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: galaxyEdgeOp }}>
+            <RL rot={cwA} extraStyle={{ opacity: 0.6 }}>
+              <Svg width={S} height={S}>
+                {pts(hw, hw, S * 0.52, 100, 0).map((p, i) => (
+                  <SvgCircle key={`ge_${i}`} cx={p.x} cy={p.y}
+                    r={i % 7 === 0 ? 1.8 : i % 3 === 0 ? 1.0 : 0.5}
+                    fill={i % 5 === 0 ? '#c084fc' : i % 3 === 0 ? '#fde68a' : '#FFFFFF'}
+                    opacity={0.25 + (i % 8) * 0.1} />
+                ))}
+              </Svg>
+            </RL>
+          </Animated.View>
+
+          {/* ── Galaxy Core Supernova Flash: bright pulsing center ── */}
+          <Animated.View style={{ position: 'absolute', width: S * 0.16, height: S * 0.16, borderRadius: S * 0.08, backgroundColor: '#FFFFFF', opacity: Animated.multiply(nebulaCoreOp, 0.85 as any), transform: [{ scale: nebulaCoreSc }], shadowColor: '#FFD700', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: S * 0.15 }} />
+        </>
       )}
 
-      {/* ── Calming Warm Yellow Breathing Ring ── */}
-      {externalBreath && (
-        <Animated.View style={{
-          position: 'absolute',
-          width: S, height: S,
-          opacity: geomOpacity,
-          transform: [{ scale: (shapeIndex === 3 ? scSlow : sc) }]
-        }}>
-          <Svg width={S} height={S}>
-            {/* The outer glowing aura */}
-            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFD700" strokeWidth="2.5" opacity={0.35} />
-            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFEA70" strokeWidth="6" opacity={0.15} />
-            {/* The crisp inner edge */}
-            <SvgCircle cx={hw} cy={hw} r={S * 0.44} fill="none" stroke="#FFFFFF" strokeWidth="0.8" opacity={0.8} />
-          </Svg>
-        </Animated.View>
-      )}
 
 
-
-      {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 0 — DEEP FOCUS YANTRA (Minimalist Sri Chakra)
-          Layers: outer minimalist rings, 5 downward triangles, 4 upward triangles
-          Formula: ∑ = 5▽ ∩ 4△
-          ════════════════════════════════════════════════════════════════ */}
-      {show(0) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op0, geomOpacity), transform:[{scale:sc}] }}>
-          {/* Outer focus rings — CW slowest */}
-          <RL rot={cwE}>
-            <Svg width={S} height={S}>
-              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.30} strokeDasharray="3 12" />
-              <SvgCircle cx={hw} cy={hw} r={S*0.41} fill="none" stroke={G2} strokeWidth="0.4" opacity={0.20} />
-              {pts(hw,hw,S*0.44,12,0).map((p,i)=>(
-                <SvgCircle key={`y0_oj_${i}`} cx={p.x} cy={p.y} r={1.5} fill={G3} opacity={0.15+(i%4)*0.07} />
-              ))}
-            </Svg>
-          </RL>
-          {/* 5 Downward Shakti Triangles — CCW medium */}
-          <RL rot={ccwB}>
-            <Svg width={S} height={S}>
-              {[S*0.35, S*0.28, S*0.22, S*0.16, S*0.10].map((r,ti)=>(
-                <SvgPath key={`y0_d_${ti}`} d={poly(pts(hw,hw,r,3,Math.PI/6))}
-                  fill="none"
-                  stroke={G2} strokeWidth="0.8" strokeLinejoin="round"
-                  opacity={0.88} />
-              ))}
-              {pts(hw,hw,S*0.35,3,Math.PI/6).map((p,i)=>(
-                <SvgCircle key={`y0_dvj_${i}`} cx={p.x} cy={p.y} r={2.0} fill={G3} opacity={0.78} />
-              ))}
-            </Svg>
-          </RL>
-          {/* 4 Upward Shiva Triangles — CW fast */}
-          <RL rot={cwD}>
-            <Svg width={S} height={S}>
-              {[S*0.32, S*0.25, S*0.19, S*0.13].map((r,ti)=>(
-                <SvgPath key={`y0_u_${ti}`} d={poly(pts(hw,hw,r,3,-Math.PI/6))}
-                  fill="none"
-                  stroke={G1} strokeWidth="0.8" strokeLinejoin="round"
-                  opacity={0.92} />
-              ))}
-              {pts(hw,hw,S*0.32,3,-Math.PI/6).map((p,i)=>(
-                <SvgCircle key={`y0_uvj_${i}`} cx={p.x} cy={p.y} r={2.5} fill={G3} opacity={0.80} />
-              ))}
-            </Svg>
-          </RL>
-          {/* Central Bindu & Tight rings — CCW fastest */}
-          <RL rot={ccwF}>
-            <Svg width={S} height={S}>
-              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G2} strokeWidth="0.6" opacity={0.4} strokeDasharray="2 4" />
-              <SvgCircle cx={hw} cy={hw} r={S*0.03} fill={`${GA}0.1)`} stroke={G1} strokeWidth="0.5" opacity={0.8} />
-              <SvgCircle cx={hw} cy={hw} r={S*0.015} fill={G3} opacity={0.95} />
-            </Svg>
-          </RL>
-        </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 1 — METATRON'S CUBE
-          Layers: outer orbit (CW slow), 13 circles (CCW med),
-                  mesh lines (CW slow), star tetrahedron (CCW fast)
-          Formula: V − E + F = 2
-          ════════════════════════════════════════════════════════════════ */}
-      {show(1) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op1, geomOpacity), transform:[{scale:sc}] }}>
-          {/* Outer orbit — CW slowest */}
-          <RL rot={cwE}>
-            <Svg width={S} height={S}>
-              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.4" opacity={0.20} strokeDasharray="3 8" />
-              {pts(hw,hw,S*0.44,18,0).map((p,i)=>(
-                <SvgCircle key={`mc_o_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.5} fill={G3} opacity={0.12+(i%4)*0.08} />
-              ))}
-            </Svg>
-          </RL>
-          
-          {/* Star tetrahedron (Enlarged) + vertex jewels + Central Bindu — CCW fast */}
-          <RL rot={ccwF}>
-            <Svg width={S} height={S}>
-              <SvgPath d={poly(pts(hw,hw,S*0.42,3,-Math.PI/2))}
-                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
-              <SvgPath d={poly(pts(hw,hw,S*0.42,3, Math.PI/2))}
-                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.2" opacity={0.92} />
-              {pts(hw,hw,S*0.42,6,0).map((p,i)=>(
-                <SvgCircle key={`mc_vj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.82} />
-              ))}
-              
-              {/* Elegant Central Dot (Bindu) */}
-              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G2} strokeWidth="0.6" opacity={0.3} strokeDasharray="2 4" />
-              <SvgCircle cx={hw} cy={hw} r={6} fill={G1} opacity={0.95} />
-              <SvgCircle cx={hw} cy={hw} r={2.5} fill={G3} opacity={1} />
-            </Svg>
-          </RL>
-        </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 2 — ŚRĪ YANTRA (ENHANCED — multi-layer rotation)
-          Classic: 9 interlocking triangles. Enhanced with:
-          • Outer bhūpura (square ground) — CW slowest
-          • Two full triangle sets counter-rotating independently
-          • Inner bindu surrounded by 3 orbiting rings
-          • 8-petal + 16-petal lotus rings (CCW)
-          Formula: ∑ = 9△ ∩ 43 sub-△
-          ════════════════════════════════════════════════════════════════ */}
-      {show(2) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op2, geomOpacity), transform:[{scale:sc}] }}>
-
-          {/* Layer 1: outer rings + lotus 16 + 8 — CCW slowest */}
-          <RL rot={ccwB}>
-            <Svg width={S} height={S}>
-              {/* Outer dashed circle */}
-              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.5" opacity={0.28} strokeDasharray="5 8" />
-              {/* 16-petal outer lotus */}
-              {pts(hw,hw,S*0.41,16,0).map((p,i)=>(
-                <SvgCircle key={`sy_l16_${i}`} cx={p.x} cy={p.y} r={S*0.05}
-                  fill={`${GA}0.06)`} stroke={G4} strokeWidth="0.6" opacity={0.40} />
-              ))}
-              {/* 8-petal inner lotus */}
-              {pts(hw,hw,S*0.41,8,Math.PI/8).map((p,i)=>(
-                <SvgCircle key={`sy_l8_${i}`} cx={p.x} cy={p.y} r={S*0.04}
-                  fill={`${GA}0.08)`} stroke={G2} strokeWidth="0.7" opacity={0.50} />
-              ))}
-              {/* 16 outer jewels */}
-              {pts(hw,hw,S*0.44,16,Math.PI/16).map((p,i)=>(
-                <SvgCircle key={`sy_oj_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.15+(i%4)*0.08} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 2: Shakti (downward) triangles — CCW medium */}
-          <RL rot={ccwF}>
-            <Svg width={S} height={S}>
-              {[S*0.35, S*0.27, S*0.19, S*0.12].map((r,ti)=>(
-                <SvgPath key={`sy_d_${ti}`} d={poly(pts(hw,hw,r,3,Math.PI/6))}
-                  fill={`${GA}${[0.07,0.06,0.05,0.04][ti]})`}
-                  stroke={G2} strokeWidth={[2.2,1.8,1.5,1.2][ti]} strokeLinejoin="round"
-                  opacity={0.88+ti*0.04} />
-              ))}
-              {/* Shakti vertex jewels */}
-              {pts(hw,hw,S*0.35,3,Math.PI/6).map((p,i)=>(
-                <SvgCircle key={`sy_dvj_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.78} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 3: Shiva (upward) triangles — CW medium */}
-          <RL rot={cwA}>
-            <Svg width={S} height={S}>
-              {[S*0.38, S*0.30, S*0.22, S*0.15, S*0.08].map((r,ti)=>(
-                <SvgPath key={`sy_u_${ti}`} d={poly(pts(hw,hw,r,3,-Math.PI/6))}
-                  fill={`${GA}${[0.06,0.05,0.04,0.03,0.02][ti]})`}
-                  stroke={G1} strokeWidth={[2.2,1.8,1.5,1.2,1.0][ti]} strokeLinejoin="round"
-                  opacity={0.88+ti*0.04} />
-              ))}
-              {/* Shiva vertex jewels */}
-              {pts(hw,hw,S*0.38,3,-Math.PI/6).map((p,i)=>(
-                <SvgCircle key={`sy_uvj_${i}`} cx={p.x} cy={p.y} r={3.5} fill={G3} opacity={0.80} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 4: inner bindu concentric rings + shadow — CW fast */}
-          <RL rot={cwD}>
-            <Svg width={S} height={S}>
-              {/* Drop shadow offset */}
-              <SvgG x="0" y="2" opacity="0.35">
-                <SvgCircle cx={hw} cy={hw} r={S*0.036} fill="black" />
-              </SvgG>
-              {/* Three tight inner rings */}
-              <SvgCircle cx={hw} cy={hw} r={S*0.10} fill="none" stroke={G2} strokeWidth="0.8" opacity={0.55} strokeDasharray="2 4" />
-              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G2} strokeWidth="0.9" opacity={0.65} />
-              <SvgCircle cx={hw} cy={hw} r={S*0.036} fill={G1} opacity={0.95} />
-              {/* 6 tight orbit dots */}
-              {pts(hw,hw,S*0.08,6,0).map((p,i)=>(
-                <SvgCircle key={`sy_id_${i}`} cx={p.x} cy={p.y} r={1.8} fill={G3} opacity={0.65} />
-              ))}
-            </Svg>
-          </RL>
-
-        </Animated.View>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════
-          SHAPE 3 — SHATKONA (ENHANCED — 4 independently rotating layers)
-          Two triangles counter-rotate against each other. Inner hexagon
-          and radial web rotate on separate axes. Creates the Merkaba effect.
-          Formula: e^(iπ) + 1 = 0
-          ════════════════════════════════════════════════════════════════ */}
-      {show(3) && (
-        <Animated.View style={{ position:'absolute', width:S, height:S, opacity: Animated.multiply(op3, geomOpacity), transform:[{scale:scSlow}] }}>
-
-          {/* Layer 1: radial web + outer ring + orbit dots — CW slowest */}
-          <RL rot={cwE}>
-            <Svg width={S} height={S}>
-              {pts(hw,hw,S*0.44,48,0).map((p,i)=>(
-                <SvgPath key={`sh_r_${i}`}
-                  d={`M${hw} ${hw} L${p.x.toFixed(1)} ${p.y.toFixed(1)}`}
-                  stroke={G3} strokeWidth="0.3" opacity={0.055} />
-              ))}
-              <SvgCircle cx={hw} cy={hw} r={S*0.44} fill="none" stroke={G4} strokeWidth="0.6" opacity={0.28} strokeDasharray="3 7" />
-              {pts(hw,hw,S*0.44,12,Math.PI/12).map((p,i)=>(
-                <SvgCircle key={`sh_od_${i}`} cx={p.x} cy={p.y} r={i%3===0?2.5:1.6} fill={G3} opacity={0.12+(i%4)*0.09} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 2: UPWARD triangle — CCW medium — Shiva/fire/masculine */}
-          <RL rot={ccwB}>
-            <Svg width={S} height={S}>
-              <SvgPath d={poly(pts(hw,hw,S*0.36,3,-Math.PI/2))}
-                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.4" opacity={0.94} />
-              {pts(hw,hw,S*0.36,3,-Math.PI/2).map((p,i)=>(
-                <SvgCircle key={`sh_utj_${i}`} cx={p.x} cy={p.y} r={5.0} fill={G3} opacity={0.90} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 3: DOWNWARD triangle — CW fast — counter-rotates vs Layer 2 */}
-          <RL rot={cwA}>
-            <Svg width={S} height={S}>
-              <SvgPath d={poly(pts(hw,hw,S*0.36,3, Math.PI/2))}
-                fill={`${GA}0.08)`} stroke={G1} strokeWidth="2.4" opacity={0.94} />
-              {pts(hw,hw,S*0.36,3, Math.PI/2).map((p,i)=>(
-                <SvgCircle key={`sh_dtj_${i}`} cx={p.x} cy={p.y} r={5.0} fill={G3} opacity={0.90} />
-              ))}
-            </Svg>
-          </RL>
-
-          {/* Layer 4: inner hexagon + inner jewels + inner rings — CCW slowest */}
-          <RL rot={ccwF}>
-            <Svg width={S} height={S}>
-              {pts(hw,hw,S*0.19,6,0).map((p,i,arr)=>{
-                const n=arr[(i+1)%arr.length];
-                return <SvgPath key={`sh_h_${i}`}
-                  d={`M${p.x.toFixed(1)} ${p.y.toFixed(1)} L${n.x.toFixed(1)} ${n.y.toFixed(1)}`}
-                  stroke={G3} strokeWidth="1.2" opacity={0.65} />;
-              })}
-              {pts(hw,hw,S*0.19,6,0).map((p,i)=>(
-                <SvgCircle key={`sh_ij_${i}`} cx={p.x} cy={p.y} r={3.2} fill={G3} opacity={0.72} />
-              ))}
-              {/* Mid-orbit 12 dots */}
-              {pts(hw,hw,S*0.28,12,0).map((p,i)=>(
-                <SvgCircle key={`sh_mj_${i}`} cx={p.x} cy={p.y} r={1.5} fill={G3} opacity={0.18+(i%4)*0.08} />
-              ))}
-              <SvgCircle cx={hw} cy={hw} r={S*0.12} fill="none" stroke={G2} strokeWidth="1.0" opacity={0.68} />
-              <SvgCircle cx={hw} cy={hw} r={S*0.06} fill="none" stroke={G3} strokeWidth="0.9" opacity={0.78} />
-            </Svg>
-          </RL>
-
-        </Animated.View>
-      )}
-
-      {/* ── Always-visible dual counter-rotating stardust rings ── */}
-      <Animated.View style={{ position:'absolute', width:S, height:S, opacity: variant==='sound'?0.35:0.45, transform:[{rotate:cwC}] }}>
-        <Svg width={S} height={S}>
-          {pts(hw,hw,S*0.44,20,0).map((p,i)=>(
-            <SvgCircle key={`da_${i}`} cx={p.x} cy={p.y}
-              r={i%5===0?2.5:i%3===0?1.8:1.2} fill={G3} opacity={0.07+(i%5)*0.06} />
-          ))}
-        </Svg>
-      </Animated.View>
-      <Animated.View style={{ position:'absolute', width:S, height:S, opacity: variant==='splash'?0.40:0.30, transform:[{rotate:ccwB}] }}>
-        <Svg width={S} height={S}>
-          {pts(hw,hw,S*0.34,16,Math.PI/16).map((p,i)=>(
-            <SvgCircle key={`db_${i}`} cx={p.x} cy={p.y}
-              r={i%4===0?2.0:1.0} fill={G3} opacity={0.06+(i%4)*0.05} />
-          ))}
-        </Svg>
-      </Animated.View>
-
-      {/* ── Bindu — the sacred center point ── */}
+      {/* ── Bindu — pulsing center ── */}
       <Animated.View style={{
         position:'absolute',
         width: variant==='sound' ? 13 : 8,
         height: variant==='sound' ? 13 : 8,
         borderRadius: 7,
-        backgroundColor: G3,
-        shadowColor: G1,
+        backgroundColor: '#FFD700',
+        shadowColor: '#FFD700',
         shadowOffset: {width:0, height:0},
         shadowOpacity: 0.98,
-        shadowRadius: variant==='sound' ? 22 : 14,
+        shadowRadius: variant==='sound' ? 22 : 28,
         opacity: bindOp,
         transform: [{scale: bindSc}],
       }} />
