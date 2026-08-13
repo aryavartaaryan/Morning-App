@@ -7411,6 +7411,10 @@ const AnimatedAlmanacButton = ({ onPress }: { onPress: () => void }) => {
   );
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Main Daily Screen
+// ══════════════════════════════════════════════════════════════════════════════
+
 function DailyTab() {
   const [liveClock, setLiveClock]           = useState(new Date());
   const [headerExpanded, setHeaderExpanded] = useState(false);
@@ -7606,21 +7610,6 @@ function DailyTab() {
 
   }, [liveClock.getMinutes(), solarTimes, settings.circadianNotifs, settings.sacredHourNotifs]);
 
-  // Sync mode when period changes — disabled for now, mode stays 'normal' always
-  // useEffect(() => {
-  //   const isNight = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
-  //   setMode(isNight ? 'relax' : 'normal');
-  // }, [currentPeriod?.id]);
-
-  // Auto-open ZenModeOverlay for night periods — disabled for now
-  // useEffect(() => {
-  //   const isNight = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
-  //   if (isNight && mode === 'relax') {
-  //     const t = setTimeout(() => setZenActive(true), 600);
-  //     return () => clearTimeout(t);
-  //   }
-  // }, [mode, currentPeriod?.id]);
-
   const toggleBrahma = async () => {
     const newVal = !brahmaEnabled;
     setBrahmaEnabled(newVal);
@@ -7635,16 +7624,11 @@ function DailyTab() {
   };
 
   // ── Derived display values ───────────────────────────────────────────────
-  const isNightPeriodNow = currentPeriod ? ['evening_kapha', 'night_pitta', 'night_vata'].includes(currentPeriod.id) : false;
-  const nextPeriod = periods.filter(x => x.status === 'upcoming').sort((a, b) => a.minutesUntil - b.minutesUntil)[0] ?? null;
   const hh = liveClock.getHours();
   const mm = liveClock.getMinutes();
 
   const bgH = hh + mm / 60;
   const timeBgKey = timeBgKeyCtx || getTimedBgKey(bgH, solarTimes);
-  const isLight  = timeBgKey === 'morning' || timeBgKey === 'midday' || timeBgKey === 'afternoon';
-  const isGolden = timeBgKey === 'sunrise' || timeBgKey === 'sunrise_late' || timeBgKey === 'sandhya' || timeBgKey === 'predawn' || timeBgKey === 'twilight';
-  const isMidday = timeBgKey === 'midday';
   const solarContext = solarTimes ? (() => {
     const h    = hh + mm / 60;
     const sr   = solarTimes.sunrise;
@@ -7653,104 +7637,57 @@ function DailyTab() {
     const tmrSr = tomorrowSolarTimes?.sunrise ?? sr;
     const WIN  = 5 / 60; // ±5-minute window in decimal hours
 
-    // Polar night — sun never rises (solar.ts returns sunrise=12, sunset=12)
     if (Math.abs(ss - sr) < 0.02) {
       return { label1: '🌑 Polar Night', mainText: 'No Sunrise', label2: 'sun below horizon all day', color: 'rgba(147,197,253,0.78)', isLive: false };
     }
-    // Polar day — sun never sets (solar.ts returns sunrise=0, sunset=24)
     if (ss - sr > 23.5) {
       return { label1: '☀️ Polar Day', mainText: '24h Daylight', label2: 'sun stays above horizon', color: 'rgba(251,191,36,0.85)', isLive: false };
     }
 
-    const ZENITH_WIN_BEFORE = 20 / 60; // 20 min before zenith
-    const ZENITH_WIN_AFTER = 2 / 60; // 2 min after zenith
-    // Pitta period boundaries: solarNoon - 1h to solarNoon + 2h
+    const ZENITH_WIN_BEFORE = 20 / 60;
+    const ZENITH_WIN_AFTER = 2 / 60;
     const pittaStart = sn - 1;
     const pittaEnd   = sn + 2;
-    const inPitta    = h >= pittaStart && h < pittaEnd;
 
-    // Sunrise ±5 min live window
     if (Math.abs(h - sr) <= WIN) {
       return { label1: '🌅 Sun is', mainText: 'Rising Now', label2: fmtSolar(sr), color: 'rgba(251,146,60,0.95)', isLive: true };
     }
-    // Sunset ±5 min live window
     if (Math.abs(h - ss) <= WIN) {
       return { label1: '🌇 Sun is', mainText: 'Setting Now', label2: fmtSolar(ss), color: 'rgba(244,63,94,0.95)', isLive: true };
     }
-    // Solar Zenith live window (inside Pitta period)
     if (h - sn >= -ZENITH_WIN_BEFORE && h - sn <= ZENITH_WIN_AFTER) {
       return { label1: '☀️ Sun is', mainText: 'At Zenith Now', label2: fmtSolar(sn), color: 'rgba(251,191,36,0.98)', isLive: true };
     }
-    // Before sunrise
     if (h < sr) {
       return { label1: "Today's Sunrise", mainText: fmtSolar(sr), label2: 'will be at', color: 'rgba(251,146,60,0.78)', isLive: false };
     }
-    // After sunrise, inside Pitta start-window but before zenith → show upcoming zenith
     if (h >= pittaStart && h < sn) {
       return { label1: 'Sun reaches Zenith at', mainText: fmtSolar(sn), label2: 'Solar Noon', color: 'rgba(251,191,36,0.82)', isLive: false };
     }
-    // After zenith, still inside Pitta → show zenith was at
     if (h >= sn && h < pittaEnd) {
       return { label1: 'Sun was at Zenith at', mainText: fmtSolar(sn), label2: 'peak light passed', color: 'rgba(251,191,36,0.75)', isLive: false };
     }
-    // After sunrise, before pitta start (morning window) → show sunrise was at
     if (h < pittaStart) {
       return { label1: 'Sunrise was at', mainText: fmtSolar(sr), label2: 'this morning', color: 'rgba(253,230,138,0.80)', isLive: false };
     }
-    // After Pitta period, before sunset
     if (h < ss) {
       return { label1: "Today's Sunset", mainText: fmtSolar(ss), label2: 'will be at', color: 'rgba(147,197,253,0.78)', isLive: false };
     }
-    // Within 1 hour after sunset
     if (h < ss + 1) {
       return { label1: 'Sunset was at', mainText: fmtSolar(ss), label2: 'golden hour passed', color: 'rgba(192,132,252,0.85)', isLive: false };
     }
-    // More than 1 hour after sunset — show tomorrow's sunrise
     return { label1: "Tomorrow's Sunrise", mainText: fmtSolar(tmrSr), label2: 'will be at', color: 'rgba(251,191,36,0.72)', isLive: false };
   })() : null;
 
-  const scrim: [string, string, string] = isLight
-    ? ['rgba(0,9,30,0.20)', 'rgba(0,9,30,0.06)', 'rgba(0,9,30,0.18)']
-    : isGolden
-    ? ['rgba(0,6,20,0.12)',  'rgba(0,6,20,0.04)',  'rgba(0,6,20,0.14)']
-    : ['rgba(0,9,30,0.32)',  'rgba(0,9,30,0.10)',  'rgba(0,9,30,0.28)'];
-
-  const headerGrad: [string, string] = isLight
-    ? ['rgba(0,5,22,0.96)',  'rgba(0,5,22,0.28)']
-    : isGolden
-    ? ['rgba(0,0,0,0.88)',   'rgba(0,0,0,0.16)']
-    : ['rgba(2,2,24,0.88)',  'rgba(2,2,24,0.12)'];
-
-  // ── Render ───────────────────────────────────────────────────────────────
-  const hh12    = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
-  const ampm    = hh < 12 ? 'AM' : 'PM';
-  const mmStr   = mm.toString().padStart(2, '0');
   const heroDate = liveClock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <AppBackground />
-      <BlurView
-        tint="dark"
-        intensity={10}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
-      {/* Ultra-premium iOS frosted-glass gradient overlay */}
-      <LinearGradient
-        colors={[
-          'rgba(4,6,14,0.0)',
-          'rgba(4,6,14,0.05)',
-          'rgba(4,6,14,0.1)',
-          'rgba(4,6,14,0.15)',
-        ]}
-        locations={[0, 0.35, 0.7, 1]}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
+      <BlurView tint="dark" intensity={10} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+      <LinearGradient colors={['rgba(4,6,14,0.0)', 'rgba(4,6,14,0.05)', 'rgba(4,6,14,0.1)', 'rgba(4,6,14,0.15)']} locations={[0, 0.35, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Hero SafeArea ── */}
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
 
       {/* Premium Floating Settings Button */}
@@ -7780,304 +7717,256 @@ function DailyTab() {
         <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.95)" />
       </TouchableOpacity>
 
-        {/* ── Elegant header card — expandable ── */}
-        <View style={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 16, zIndex: 10 }}>
-          <BlurView intensity={60} tint="dark" style={{ borderRadius: 0, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,25,40,0.5)', paddingBottom: 12 }}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject} />
-            {/* Bottom shimmer line hinting expansion */}
-            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+        {/* ══ PREMIUM FLOATING HEADER PILL ══ */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, zIndex: 10 }}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setHeaderExpanded(e => !e); }}
+          >
+            <BlurView intensity={45} tint="dark" style={{
+              borderRadius: 20,
+              borderWidth: 0.5,
+              borderColor: 'rgba(255,255,255,0.12)',
+              overflow: 'hidden',
+            }}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
 
-            <TouchableOpacity 
-              activeOpacity={0.9} 
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setHeaderExpanded(e => !e);
-              }}
-            >
-              {/* Main row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 12 }}>
-
-                {/* LEFT: weather emoji + temp + condition */}
-                <View style={{ flex: 1.3, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6 }}>
+                {/* LEFT: weather */}
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {weather ? (
                     <>
-                      <Text style={{ fontSize: 24 }}>{weather.emoji}</Text>
-                      <View style={{ flexShrink: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                          <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 }}>{weather.temp}°</Text>
-                          <Text style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.65)', fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>{weather.condition}</Text>
-                        </View>
-                        {weather.city ? (
-                          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', fontWeight: '600', marginTop: 1 }} numberOfLines={1}>{weather.city}</Text>
-                        ) : null}
+                      <Text style={{ fontSize: 20 }}>{weather.emoji}</Text>
+                      <View>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 }}>{weather.temp}°</Text>
+                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 0.2 }} numberOfLines={1}>{weather.condition}</Text>
                       </View>
                     </>
                   ) : (
-                    <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: '600' }}>
-                      {weatherLoading ? 'Loading weather…' : 'Tap to load weather'}
+                    <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', fontWeight: '600' }}>
+                      {weatherLoading ? 'Loading…' : 'Tap for weather'}
                     </Text>
                   )}
                 </View>
 
-                {/* CENTER: moon + tithi */}
+                {/* CENTER: tithi + date */}
                 {(() => {
                   const hMoon = getMoonPhase(new Date());
                   const hP    = getPanchangData();
                   const ordinals = ['','1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th',''];
-                  let displayName = hP.tithiName;
+                  let tithiShort = hP.tithiName;
                   if (hP.tithiInPaksha >= 1 && hP.tithiInPaksha <= 14) {
-                     displayName = `${ordinals[hP.tithiInPaksha]} Day (${hP.tithiName})`;
+                    tithiShort = `${ordinals[hP.tithiInPaksha]} (${hP.tithiName})`;
                   } else if (hP.tithiInPaksha === 15) {
-                     displayName = hP.paksha === 'Shukla' ? 'Full Moon (Purnima)' : 'New Moon (Amavasya)';
+                    tithiShort = hP.paksha === 'Shukla' ? 'Purnima' : 'Amavasya';
                   }
                   return (
-                    <View style={{ flex: 1, alignItems: 'center', gap: 1, paddingHorizontal: 4, borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.10)' }}>
-                      <View style={{ marginBottom: 1 }}><MoonSVG tithiNum={hMoon.tithiNum} size={14} /></View>
-                      <Text style={{ fontSize: 8.5, fontWeight: '800', color: 'rgba(196,181,253,0.90)', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{displayName}</Text>
-                      <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.3 }}>{hMoon.illumination}% lit</Text>
+                    <View key="tithi" style={{ flex: 1.2, alignItems: 'center', borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 6, gap: 2 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <MoonSVG tithiNum={hMoon.tithiNum} size={12} />
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(196,181,253,0.85)', letterSpacing: 0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{tithiShort}</Text>
+                      </View>
+                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.32)', fontWeight: '600' }}>{heroDate}</Text>
                     </View>
                   );
                 })()}
 
-                {/* RIGHT: solar context */}
-                {solarContext ? (
-                  <View style={{ flex: 1.1, alignItems: 'flex-end', gap: 1, paddingRight: 32 }}>
-                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: 'rgba(255,255,255,0.42)', letterSpacing: 0.5 }}>{solarContext.label1}</Text>
-                    <Text style={{ fontSize: 12.5, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.90)', letterSpacing: -0.2 }} numberOfLines={1} adjustsFontSizeToFit>{solarContext.mainText}</Text>
-                    <Text style={{ fontSize: 7.5, fontWeight: '700', color: solarContext.color, letterSpacing: 0.5 }}>{solarContext.label2}</Text>
-                  </View>
-                ) : (
-                  <View style={{ flex: 1.1 }} />
-                )}
-                
-                <Ionicons name={headerExpanded ? "chevron-up" : "chevron-down"} size={16} color="rgba(255,255,255,0.5)" style={{ position: 'absolute', right: 12, top: '50%' }} />
+                {/* RIGHT: solar */}
+                <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 28 }}>
+                  {solarContext ? (
+                    <>
+                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.3 }}>{solarContext.label1}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.88)', letterSpacing: -0.2 }} numberOfLines={1} adjustsFontSizeToFit>{solarContext.mainText}</Text>
+                      <Text style={{ fontSize: 8, color: solarContext.color, fontWeight: '700', letterSpacing: 0.3 }}>{solarContext.label2}</Text>
+                    </>
+                  ) : null}
+                </View>
 
+                <Ionicons name={headerExpanded ? 'chevron-up' : 'chevron-down'} size={13} color="rgba(255,255,255,0.30)" style={{ position: 'absolute', right: 14, top: '50%' }} />
               </View>
-            </TouchableOpacity>
+            </BlurView>
+          </TouchableOpacity>
 
-            {/* EXPANDABLE WEATHER SECTION */}
-            {headerExpanded && weather && (
-              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+          {/* Expandable weather detail */}
+          {headerExpanded && weather && (
+            <View style={{ marginTop: 8, borderRadius: 16, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)' }}>
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <View style={{ padding: 12 }}>
                 <WeatherSection weather={weather} solarTimes={solarTimes} onMore={() => setShowFourteenDay(true)} />
               </View>
-            )}
-          </BlurView>
+            </View>
+          )}
         </View>
 
-        {/* ── Hero content — ring centred, buttons pinned to bottom ── */}
+        {/* ── Hero Content ── */}
         <View style={{ flex: 1 }}>
-
-          {/* Hero ring / GPS fallback */}
           {!solarTimes ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 34 }}>🛰</Text>
-                <Text style={{ color: '#FFFFFF40', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
-                  Enable location for{'\n'}body rhythm tracking
-                </Text>
-                <TouchableOpacity onPress={loadWeather} style={D.gpsBtn}>
-                  <Text style={{ color: ACCENT, fontWeight: '800', fontSize: 12 }}>Enable Location →</Text>
-                </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <Text style={{ fontSize: 34 }}>🛰</Text>
+              <Text style={{ color: '#FFFFFF40', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                Enable location for{'\n'}body rhythm tracking
+              </Text>
+              <TouchableOpacity onPress={loadWeather} style={D.gpsBtn}>
+                <Text style={{ color: ACCENT, fontWeight: '800', fontSize: 12 }}>Enable Location →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 60 }}>
+
+              {/* Daily Intention — top whisper */}
+              <View style={{ width: '100%', alignItems: 'center', paddingTop: 2 }}>
+                <DailyIntentionCard />
               </View>
-            ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom + 60 }}>
-                  <DailyIntentionCard />
-                  <View style={{ paddingTop: (SCREEN_H < 700) ? 12 : 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {todayFest && (
-                      <TouchableOpacity 
-                        activeOpacity={0.8}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setActiveFestDetail(todayFest); }}
-                        style={{
-                          position: 'absolute', top: -5, zIndex: 10,
-                          width: '100%', alignItems: 'center', paddingHorizontal: 20
-                        }}
-                      >
-                        <BlurView intensity={60} tint="dark" style={{
-                          paddingVertical: 12, paddingHorizontal: 20,
-                          borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-                          backgroundColor: 'rgba(20,25,40,0.5)',
-                          flexDirection: 'row', alignItems: 'center', gap: 8
-                        }}>
-                          <Text style={{ fontSize: 16 }}>{todayFest.emoji}</Text>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', letterSpacing: 1 }}>TODAY IS {todayFest.name.toUpperCase().split(' / ')[0]}</Text>
-                        </BlurView>
-                      </TouchableOpacity>
-                    )}
-                    <HeroRingDisplay period={currentPeriod} brahmaInfo={brahmaInfo} weather={weather} solarTimes={solarTimes} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }} />
-                    
-                    {/* ── Premium Smart Weather Button ── */}
-                    {weather && (
-                      <TouchableOpacity 
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          router.push('/weather');
-                        }}
-                        style={{
-                          position: 'absolute',
-                          bottom: 15, // Raised slightly since it's smaller
-                          alignSelf: 'center',
-                          shadowColor: '#60a5fa',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 8,
-                          elevation: 5,
-                          zIndex: 20,
-                        }}
-                      >
-                        <BlurView intensity={80} tint="dark" style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingVertical: 5,
-                          paddingHorizontal: 14,
-                          borderRadius: 16,
-                          borderWidth: 1,
-                          borderColor: 'rgba(96,165,250,0.35)',
-                          backgroundColor: 'rgba(20,30,50,0.6)',
-                          gap: 6
-                        }}>
-                          <Text style={{ fontSize: 14 }}>{weather.emoji}</Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{weather.temp}°</Text>
-                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '500' }}>{weather.condition}</Text>
+
+              {/* Ring + festival badge */}
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%' }}>
+                {todayFest && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setActiveFestDetail(todayFest); }}
+                    style={{ marginBottom: 10, zIndex: 10 }}
+                  >
+                    <BlurView intensity={55} tint="dark" style={{
+                      paddingVertical: 7, paddingHorizontal: 18,
+                      borderRadius: 18, borderWidth: 0.5, borderColor: 'rgba(255,215,0,0.22)',
+                      flexDirection: 'row', alignItems: 'center', gap: 8,
+                    }}>
+                      <Text style={{ fontSize: 14 }}>{todayFest.emoji}</Text>
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: 'rgba(255,220,100,0.90)', letterSpacing: 1.4 }}>
+                        TODAY · {todayFest.name.toUpperCase().split(' / ')[0]}
+                      </Text>
+                    </BlurView>
+                  </TouchableOpacity>
+                )}
+
+                <HeroRingDisplay
+                  period={currentPeriod}
+                  brahmaInfo={brahmaInfo}
+                  weather={weather}
+                  solarTimes={solarTimes}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+                />
+
+                {/* Weather pill below ring */}
+                {weather && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/weather'); }}
+                    style={{ marginTop: 16, zIndex: 20 }}
+                  >
+                    <BlurView intensity={55} tint="dark" style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      paddingVertical: 6, paddingHorizontal: 16,
+                      borderRadius: 18, borderWidth: 0.5,
+                      borderColor: 'rgba(96,165,250,0.22)',
+                      gap: 7,
+                    }}>
+                      <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                        <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800' }}>{weather.temp}°</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '500' }}>{weather.condition}</Text>
+                      </View>
+                      <View style={{ width: 0.5, height: 10, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+                      <Text style={{ color: '#93c5fd', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 }}>14-DAY →</Text>
+                    </BlurView>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Bottom: circadian card + buttons */}
+              <View style={{ width: '100%', paddingHorizontal: 20, gap: 10 }}>
+
+                {/* Thin glass circadian card */}
+                {currentPeriod && (() => {
+                  const acts   = currentPeriod.activities.slice(0, 2);
+                  const avoids = currentPeriod.avoidances.slice(0, 2);
+                  return (
+                    <View style={{
+                      borderRadius: 16, borderWidth: 0.5,
+                      borderColor: 'rgba(255,255,255,0.08)',
+                      overflow: 'hidden',
+                      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
+                    }}>
+                      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                      <LinearGradient
+                        colors={[`${accentColor}0E`, 'rgba(4,6,18,0.75)']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 0.5, backgroundColor: `${accentColor}55` }} />
+                      <View style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
+                        <Text style={{ fontSize: 7.5, fontWeight: '900', letterSpacing: 2.8, color: `${accentColor}AA`, textAlign: 'center', marginBottom: 8 }}>
+                          CIRCADIAN · {currentPeriod.startLabel}–{currentPeriod.endLabel}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#4ade80' }} />
+                              <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#4ade80BB', letterSpacing: 2 }}>CULTIVATE</Text>
+                            </View>
+                            {acts.map((a, i) => (
+                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginBottom: 4 }}>
+                                <Text style={{ fontSize: 8, color: '#4ade8050', marginTop: 1 }}>◎</Text>
+                                <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.78)', lineHeight: 12, flex: 1 }}>{a}</Text>
+                              </View>
+                            ))}
                           </View>
-                          <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 2 }} />
-                          <Text style={{ color: '#60a5fa', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>14-Day →</Text>
-                        </BlurView>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* ── Frosted Glass Circadian Card ── */}
-                  {currentPeriod && (() => {
-                    const acts = currentPeriod.activities.slice(0, 2);
-                    const avoids = currentPeriod.avoidances.slice(0, 2);
-                    return (
-                      <View style={{ marginHorizontal: 28, marginTop: (SCREEN_H < 700) ? 12 : 16, width: '100%', paddingHorizontal: 0, alignSelf: 'center' }}>
-                        <View style={{
-                          borderRadius: 20,
-                          borderWidth: 1,
-                          borderColor: 'rgba(255,255,255,0.12)',
-                          overflow: 'hidden',
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 8 },
-                          shadowOpacity: 0.4,
-                          shadowRadius: 20,
-                          elevation: 12,
-                        }}>
-                          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-                          <LinearGradient
-                            colors={[`${accentColor}18`, 'rgba(8,12,28,0.85)']}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                            style={StyleSheet.absoluteFillObject}
-                          />
-                          {/* Top accent line */}
-                          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: `${accentColor}50` }} />
-
-                          <View style={{ padding: 12 }}>
-                            {/* Phase label */}
-                            <View style={{
-                              alignSelf: 'center',
-                              backgroundColor: `${accentColor}1A`,
-                              paddingVertical: 5,
-                              paddingHorizontal: 16,
-                              borderRadius: 12,
-                              borderWidth: 1,
-                              borderColor: `${accentColor}40`,
-                              marginBottom: 12,
-                              shadowColor: accentColor,
-                              shadowOffset: { width: 0, height: 0 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 8,
-                            }}>
-                              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#FFFFFF', letterSpacing: 2.4, textAlign: 'center', textShadowColor: accentColor, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }}>
-                                CURRENT CIRCADIAN HOUR  ·  {currentPeriod.startLabel}–{currentPeriod.endLabel}
-                              </Text>
+                          <View style={{ width: 0.5, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 2 }} />
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171' }} />
+                              <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#f87171BB', letterSpacing: 2 }}>RELEASE</Text>
                             </View>
-
-                            {/* Two columns: Cultivate | Release */}
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                              {/* CULTIVATE */}
-                              <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' }} />
-                                  <Text style={{ fontSize: 7, fontWeight: '900', color: '#4ade80', letterSpacing: 1.8 }}>CULTIVATE</Text>
-                                </View>
-                                {acts.map((a, i) => (
-                                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
-                                    <Text style={{ fontSize: 10, color: '#4ade8080', marginTop: 1 }}>◎</Text>
-                                    <Text style={{ fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.85)', lineHeight: 12, flex: 1 }}>{a}</Text>
-                                  </View>
-                                ))}
+                            {avoids.map((a, i) => (
+                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginBottom: 4 }}>
+                                <Text style={{ fontSize: 8, color: '#f8717150', marginTop: 1 }}>◎</Text>
+                                <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.68)', lineHeight: 12, flex: 1 }}>{a}</Text>
                               </View>
-
-                              {/* Divider */}
-                              <View style={{ width: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 2 }} />
-
-                              {/* RELEASE */}
-                              <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' }} />
-                                  <Text style={{ fontSize: 7, fontWeight: '900', color: '#f87171', letterSpacing: 1.8 }}>RELEASE</Text>
-                                </View>
-                                {avoids.map((a, i) => (
-                                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
-                                    <Text style={{ fontSize: 10, color: '#f8717180', marginTop: 1 }}>◎</Text>
-                                    <Text style={{ fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.75)', lineHeight: 12, flex: 1 }}>{a}</Text>
-                                  </View>
-                                ))}
-                              </View>
-                            </View>
+                            ))}
                           </View>
                         </View>
                       </View>
-                    );
-                  })()}
+                    </View>
+                  );
+                })()}
 
-                  {/* ── Ultra Premium Smart Action Buttons ── */}
-                  <View style={{ flexDirection: 'row', gap: 14, marginTop: 12, marginBottom: 28, paddingHorizontal: 24, width: '100%' }}>
-                    
-                    {/* Day Almanac Button */}
-                    <TouchableOpacity
-                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-                      activeOpacity={0.8}
-                      style={{ flex: 1, borderRadius: 99, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,22,34,0.4)', shadowColor: '#FDB931', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 }}
-                    >
-                      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-                      <LinearGradient
-                        colors={['rgba(253, 185, 49, 0.2)', 'transparent']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 12 }}>
-                        <Ionicons name="book" size={16} color="#FDB931" style={{ shadowColor: '#FDB931', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6 }} />
-                        <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>Almanac</Text>
-                      </View>
-                    </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+                    activeOpacity={0.8}
+                    style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(253,185,49,0.28)', shadowColor: '#FDB931', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 10, elevation: 6 }}
+                  >
+                    <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
+                    <LinearGradient colors={['rgba(253,185,49,0.16)', 'rgba(253,185,49,0.03)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 }}>
+                      <Ionicons name="book" size={15} color="#FDB931" />
+                      <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.8 }}>Almanac</Text>
+                    </View>
+                  </TouchableOpacity>
 
-                    {/* Sounds Button */}
-                    <TouchableOpacity
-                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-                      activeOpacity={0.8}
-                      style={{ flex: 1, borderRadius: 99, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(20,22,34,0.4)', shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 }}
-                    >
-                      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-                      <LinearGradient
-                        colors={['rgba(128, 255, 255, 0.2)', 'transparent']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 12 }}>
-                        <Ionicons name="musical-notes" size={16} color="#80FFFF" style={{ shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6 }} />
-                        <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>Sounds</Text>
-                      </View>
-                    </TouchableOpacity>
-                    
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+                    activeOpacity={0.8}
+                    style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(128,255,255,0.22)', shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6 }}
+                  >
+                    <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
+                    <LinearGradient colors={['rgba(128,255,255,0.14)', 'rgba(128,255,255,0.03)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 }}>
+                      <Ionicons name="musical-notes" size={15} color="#80FFFF" />
+                      <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.8 }}>Sounds</Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-            )}
+
+              </View>
+            </View>
+          )}
         </View>
       </SafeAreaView>
 

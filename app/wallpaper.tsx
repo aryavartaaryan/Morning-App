@@ -82,39 +82,44 @@ const WallpaperCard = React.memo(({
   return (
     <Pressable onPress={onPress}>
       <Animated.View style={[
-        { width: cardW, height: cardH, borderRadius: 22, overflow: 'hidden' },
-        { transform: [{ scale }] },
-        { borderWidth, borderColor }
+        { width: cardW, height: cardH, borderRadius: 22 },
+        { transform: [{ scale }] }
       ]}>
-        <AsyncWallpaperImage bgKey={bgKey} />
-        {/* Bottom label gradient */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.65)']}
-          locations={[0.45, 1]}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
+        <Animated.View style={[
+          StyleSheet.absoluteFillObject,
+          { borderRadius: 22, overflow: 'hidden' },
+          { borderWidth, borderColor }
+        ]}>
+          <AsyncWallpaperImage bgKey={bgKey} />
+          {/* Bottom label gradient */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.65)']}
+            locations={[0.45, 1]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
 
-        {/* Active wallpaper checkmark */}
-        {isActive && (
-          <View style={cardStyles.activeBadge}>
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
-            <Ionicons name="checkmark" size={11} color="#000" />
-          </View>
-        )}
+          {/* Active wallpaper checkmark */}
+          {isActive && (
+            <View style={cardStyles.activeBadge}>
+              <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
+              <Ionicons name="checkmark" size={11} color="#000" />
+            </View>
+          )}
 
-        {/* Solar badge */}
-        {isSolar && (
-          <View style={cardStyles.solarBadge}>
-            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 12 }}>☀️</Text>
-          </View>
-        )}
+          {/* Solar badge */}
+          {isSolar && (
+            <View style={cardStyles.solarBadge}>
+              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <Text style={{ fontSize: 12 }}>☀️</Text>
+            </View>
+          )}
 
-        {/* Selected indicator at bottom */}
-        {isSelected && (
-          <View style={cardStyles.selectedDot} />
-        )}
+          {/* Selected indicator at bottom */}
+          {isSelected && (
+            <View style={cardStyles.selectedDot} />
+          )}
+        </Animated.View>
       </Animated.View>
     </Pressable>
   );

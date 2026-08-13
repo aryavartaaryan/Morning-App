@@ -339,18 +339,18 @@ export function HeroGeometricAnimation({
               <Defs>
                 {/* Hot stellar core — white-gold center bleeding to violet */}
                 <RadialGradient id="nebulaCore" cx="50%" cy="50%" rx="50%" ry="50%" fx="50%" fy="50%">
-                  <Stop offset="0%"   stopColor="#FFFFFF" stopOpacity="1.0" />
-                  <Stop offset="8%"   stopColor="#FFF7C0" stopOpacity="0.95" />
-                  <Stop offset="22%"  stopColor="#FFD700" stopOpacity="0.75" />
-                  <Stop offset="50%"  stopColor="#f59e0b" stopOpacity="0.45" />
-                  <Stop offset="75%"  stopColor="#7c3aed" stopOpacity="0.25" />
+                  <Stop offset="0%"   stopColor="#FFFFFF" stopOpacity="0.95" />
+                  <Stop offset="8%"   stopColor="#FFF7C0" stopOpacity="0.80" />
+                  <Stop offset="22%"  stopColor="#FFD700" stopOpacity="0.55" />
+                  <Stop offset="50%"  stopColor="#f59e0b" stopOpacity="0.25" />
+                  <Stop offset="75%"  stopColor="#7c3aed" stopOpacity="0.10" />
                   <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </RadialGradient>
                 {/* Outer cosmic haze */}
                 <RadialGradient id="nebulaHaze" cx="50%" cy="50%" rx="50%" ry="50%" fx="50%" fy="50%">
                   <Stop offset="0%"   stopColor="#7c3aed" stopOpacity="0" />
-                  <Stop offset="40%"  stopColor="#4f46e5" stopOpacity="0.18" />
-                  <Stop offset="80%"  stopColor="#1e3a8a" stopOpacity="0.32" />
+                  <Stop offset="40%"  stopColor="#4f46e5" stopOpacity="0.08" />
+                  <Stop offset="80%"  stopColor="#1e3a8a" stopOpacity="0.18" />
                   <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </RadialGradient>
               </Defs>
@@ -366,17 +366,17 @@ export function HeroGeometricAnimation({
             <RL rot={cwE} extraStyle={{ opacity: 0.9 }}>
               <Svg width={S} height={S}>
                 {/* Inner arm: warm gold micro-stars */}
-                {Array.from({ length: 240 }, (_, i) => {
-                  const frac = i / 240;
+                {Array.from({ length: 160 }, (_, i) => {
+                  const frac = i / 160;
                   // Logarithmic spiral: r grows with angle
                   const arms = 3;
                   const armIdx = i % arms;
                   const angle = (frac * Math.PI * 6) + (armIdx * (Math.PI * 2) / arms);
-                  const radius = (S * 0.06) + (S * 0.44 * frac);
+                  const radius = (S * 0.06) + (S * 0.38 * frac);
                   const x = hw + radius * Math.cos(angle);
                   const y = hw + radius * Math.sin(angle);
                   const r = frac < 0.2 ? 1.8 : frac < 0.5 ? 1.3 : 0.8;
-                  const op = 1.0 - frac * 0.5;
+                  const op = 0.9 - frac * 0.6;
                   const fill = frac < 0.15 ? '#FFFFFF' : frac < 0.4 ? '#FFF7C0' : frac < 0.7 ? '#FFD700' : '#fde68a';
                   return <SvgCircle key={`ga_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
                 })}
@@ -388,16 +388,16 @@ export function HeroGeometricAnimation({
           <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp2, transform: [{ scale: galaxyArmSc }] }}>
             <RL rot={ccwB} extraStyle={{ opacity: 0.85 }}>
               <Svg width={S} height={S}>
-                {Array.from({ length: 180 }, (_, i) => {
-                  const frac = i / 180;
+                {Array.from({ length: 120 }, (_, i) => {
+                  const frac = i / 120;
                   const arms = 2;
                   const armIdx = i % arms;
                   const angle = (frac * Math.PI * 4) + (armIdx * Math.PI) + Math.PI / 4;
-                  const radius = (S * 0.08) + (S * 0.42 * frac);
+                  const radius = (S * 0.08) + (S * 0.36 * frac);
                   const x = hw + radius * Math.cos(angle);
                   const y = hw + radius * Math.sin(angle);
                   const r = frac < 0.25 ? 1.6 : frac < 0.55 ? 1.1 : 0.7;
-                  const op = 1.0 - frac * 0.45;
+                  const op = 0.85 - frac * 0.55;
                   const fill = frac < 0.2 ? '#FFF7C0' : frac < 0.5 ? '#fde68a' : '#f59e0b';
                   return <SvgCircle key={`gb_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
                 })}
@@ -409,16 +409,16 @@ export function HeroGeometricAnimation({
           <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: sOp3, transform: [{ scale: galaxyArmSc }] }}>
             <RL rot={cwD} extraStyle={{ opacity: 0.8 }}>
               <Svg width={S} height={S}>
-                {Array.from({ length: 150 }, (_, i) => {
-                  const frac = i / 150;
+                {Array.from({ length: 100 }, (_, i) => {
+                  const frac = i / 100;
                   const arms = 4;
                   const armIdx = i % arms;
                   const angle = (frac * Math.PI * 3) + (armIdx * (Math.PI / 2));
-                  const radius = S * 0.04 + S * 0.36 * frac;
+                  const radius = S * 0.04 + S * 0.30 * frac;
                   const x = hw + radius * Math.cos(angle);
                   const y = hw + radius * Math.sin(angle);
                   const r = frac < 0.3 ? 2.0 : 1.2;
-                  const op = 1.0 - frac * 0.5;
+                  const op = 1.0 - frac * 0.7;
                   const fill = frac < 0.1 ? '#FFFFFF' : frac < 0.35 ? '#FFF7C0' : '#FFD700';
                   return <SvgCircle key={`gc_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
                 })}
@@ -431,15 +431,15 @@ export function HeroGeometricAnimation({
             <RL rot={ccwF} extraStyle={{ opacity: 0.7 }}>
               <Svg width={S} height={S}>
                 {/* Outer stardust scatter — not on a perfect ring */}
-                {Array.from({ length: 350 }, (_, i) => {
+                {Array.from({ length: 200 }, (_, i) => {
                   // Volumetric distribution: more particles toward the edge, fading at boundary
-                  const angle = (i / 350) * Math.PI * 2 * 3.7; // golden-angle-ish
-                  const rFrac = Math.sqrt(i / 350); // square root for uniform area distribution
-                  const radius = S * 0.05 + S * 0.48 * rFrac;
+                  const angle = (i / 200) * Math.PI * 2 * 3.7; // golden-angle-ish
+                  const rFrac = Math.sqrt(i / 200); // square root for uniform area distribution
+                  const radius = S * 0.05 + S * 0.42 * rFrac;
                   const x = hw + radius * Math.cos(angle);
                   const y = hw + radius * Math.sin(angle);
                   const r = rFrac < 0.3 ? 1.4 : rFrac < 0.6 ? 0.9 : 0.5;
-                  const op = (1 - rFrac) * 0.9 + 0.1;
+                  const op = (1 - rFrac) * 0.7 + 0.05;
                   const fill = rFrac < 0.2 ? '#FFFDE7' : rFrac < 0.5 ? '#fde68a' : '#c084fc';
                   return <SvgCircle key={`gd_${i}`} cx={x} cy={y} r={r} fill={fill} opacity={op} />;
                 })}
@@ -451,18 +451,18 @@ export function HeroGeometricAnimation({
           <Animated.View style={{ position: 'absolute', width: S, height: S, opacity: galaxyEdgeOp }}>
             <RL rot={cwA} extraStyle={{ opacity: 0.6 }}>
               <Svg width={S} height={S}>
-                {pts(hw, hw, S * 0.52, 100, 0).map((p, i) => (
+                {pts(hw, hw, S * 0.46, 64, 0).map((p, i) => (
                   <SvgCircle key={`ge_${i}`} cx={p.x} cy={p.y}
                     r={i % 7 === 0 ? 1.8 : i % 3 === 0 ? 1.0 : 0.5}
                     fill={i % 5 === 0 ? '#c084fc' : i % 3 === 0 ? '#fde68a' : '#FFFFFF'}
-                    opacity={0.25 + (i % 8) * 0.1} />
+                    opacity={0.1 + (i % 8) * 0.07} />
                 ))}
               </Svg>
             </RL>
           </Animated.View>
 
           {/* ── Galaxy Core Supernova Flash: bright pulsing center ── */}
-          <Animated.View style={{ position: 'absolute', width: S * 0.16, height: S * 0.16, borderRadius: S * 0.08, backgroundColor: '#FFFFFF', opacity: Animated.multiply(nebulaCoreOp, 0.85 as any), transform: [{ scale: nebulaCoreSc }], shadowColor: '#FFD700', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1.0, shadowRadius: S * 0.15 }} />
+          <Animated.View style={{ position: 'absolute', width: S * 0.12, height: S * 0.12, borderRadius: S * 0.06, backgroundColor: '#FFFFFF', opacity: Animated.multiply(nebulaCoreOp, 0.6 as any), transform: [{ scale: nebulaCoreSc }], shadowColor: '#FFD700', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: S * 0.1 }} />
         </>
       )}
 
