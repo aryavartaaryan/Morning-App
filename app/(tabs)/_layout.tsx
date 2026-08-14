@@ -737,6 +737,8 @@ function GlobalPlayerBar() {
     stopSound,
     openReelsOrPlayer,
     playingDurationSecs,
+    showFullPlayer,
+    isReelsOpen,
   } = useSoundPlayer();
   const slideAnim = useRef(new Animated.Value(100)).current;
   // Persist last-known meta so the bar never flickers during sound transitions
@@ -755,8 +757,10 @@ function GlobalPlayerBar() {
   const playingIdRef = useRef(playingId);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
 
+  const shouldShow = !!playingId && !showFullPlayer && !isReelsOpen;
+
   useEffect(() => {
-    if (playingId) {
+    if (shouldShow) {
       setRendered(true);
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -770,12 +774,12 @@ function GlobalPlayerBar() {
         duration: 300,
         useNativeDriver: true,
       }).start(({ finished }) => {
-        if (finished && !playingIdRef.current) {
+        if (finished) {
           setRendered(false);
         }
       });
     }
-  }, [playingId]);
+  }, [shouldShow]);
 
 
   if (!rendered || !displayMeta || stepActive) return null;
@@ -1271,6 +1275,7 @@ function CustomTabBar() {
   const { bgUri, accentColor } = useBgContext();
   const bottomPad = Math.max(Math.round(insets.bottom * 0.85), Platform.OS === "android" ? 6 : 0);
   const [hour, setHour] = useState(new Date().getHours());
+  const { isReelsOpen } = useSoundPlayer();
 
   useEffect(() => {
     const t = setInterval(() => setHour(new Date().getHours()), 60_000);
@@ -1284,21 +1289,24 @@ function CustomTabBar() {
         { paddingBottom: bottomPad, backgroundColor: 'transparent' },
       ]}
     >
-      {Platform.OS === 'ios' && (
+      {Platform.OS === 'ios' && !isReelsOpen && (
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
       )}
-      <LinearGradient
-        colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
+      {!isReelsOpen && (
+        <LinearGradient
+          colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      )}
       <FullScreenPlayer />
       <GlobalStepTracker />
       <GlobalPlayerBar />
-      <View style={styles.pill}>
-        {TABS.map((tab) => {
-          const focused =
+      {!isReelsOpen && (
+        <View style={styles.pill}>
+          {TABS.map((tab) => {
+            const focused =
             path === "/" ? tab.name === "index" : path.endsWith(tab.name);
           const focusedColor = "#FFFFFF";
           const unfocusedColor = "rgba(255,255,255,0.52)";
@@ -1399,7 +1407,8 @@ function CustomTabBar() {
             </TouchableOpacity>
           );
         })}
-      </View>
+        </View>
+      )}
     </View>
   );
 }

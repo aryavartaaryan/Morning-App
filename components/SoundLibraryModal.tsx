@@ -6,11 +6,13 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Platform,
   SafeAreaView,
   Animated,
   TextInput,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -228,6 +230,19 @@ export default function SoundLibraryModal({
     }
   }, [visible]);
 
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeId) {
+        setActiveId(null);
+      } else {
+        onClose();
+      }
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, activeId, onClose]);
+
   // Build display groups
   const displayGroups = useMemo((): DisplayGroup[] => {
     if (collections && collections.length > 0) {
@@ -277,7 +292,16 @@ export default function SoundLibraryModal({
   };
 
   return (
-    <Modal visible={visible} animationType="none" transparent onRequestClose={handleRequestClose}>
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          zIndex: visible ? 10000 : -1,
+          elevation: visible ? 998 : 0,
+        }
+      ]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       {/* Dim backdrop */}
       <TouchableOpacity
         style={S.backdrop}
@@ -334,43 +358,49 @@ export default function SoundLibraryModal({
           {/* ── Single-panel drill-down layout ─────────────── */}
           <View style={{ flex: 1 }}>
             {isSearchMode ? (
-              <ScrollView
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
-              >
-                {searchResults.length === 0 && (
+                initialNumToRender={15}
+                windowSize={5}
+                removeClippedSubviews={true}
+                ListEmptyComponent={() => (
                   <Text style={S.emptyText}>No results</Text>
                 )}
-                {searchResults.map((sound: any, idx: number) => (
+                renderItem={({ item: sound, index }) => (
                   <SoundRow
-                    key={sound.id}
                     sound={sound}
                     isPlaying={playingId === sound.id}
                     onPress={() => { onPlaySound(sound.id); }}
-                    isLast={idx === searchResults.length - 1}
-                    index={idx}
+                    isLast={index === searchResults.length - 1}
+                    index={index}
                   />
-                ))}
-              </ScrollView>
+                )}
+              />
             ) : !activeGroup ? (
-              <ScrollView
+              <FlatList
+                data={displayGroups}
+                keyExtractor={(item) => item.id}
                 style={{ flex: 1, paddingHorizontal: 16 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingVertical: 10, paddingBottom: 50 }}
-              >
-                {displayGroups.length === 0 && (
+                initialNumToRender={15}
+                windowSize={5}
+                removeClippedSubviews={true}
+                ListEmptyComponent={() => (
                   <Text style={S.emptyText}>No results</Text>
                 )}
-                {displayGroups.map(group => (
+                renderItem={({ item: group }) => (
                   <CollectionPill
-                    key={group.id}
                     group={group}
                     isActive={false}
                     onPress={() => handleSelectGroup(group.id)}
                     hasPlayingSound={group.sounds.some((s: any) => s.id === playingId)}
                   />
-                ))}
-              </ScrollView>
+                )}
+              />
             ) : (
               <View style={{ flex: 1 }}>
                 {/* Collection heading with Back button */}
@@ -398,27 +428,30 @@ export default function SoundLibraryModal({
                 </View>
                 <View style={S.divider} />
 
-                <ScrollView
+                <FlatList
+                  data={activeGroup.sounds}
+                  keyExtractor={(item) => item.id}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
-                >
-                  {activeGroup.sounds.map((sound: any, idx: number) => (
+                  initialNumToRender={15}
+                  windowSize={5}
+                  removeClippedSubviews={true}
+                  renderItem={({ item: sound, index }) => (
                     <SoundRow
-                      key={sound.id}
                       sound={sound}
                       isPlaying={playingId === sound.id}
                       onPress={() => { onPlaySound(sound.id); }}
-                      isLast={idx === activeGroup.sounds.length - 1}
-                      index={idx}
+                      isLast={index === activeGroup.sounds.length - 1}
+                      index={index}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                />
               </View>
             )}
           </View>
         </SafeAreaView>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 

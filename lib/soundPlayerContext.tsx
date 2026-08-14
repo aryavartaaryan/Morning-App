@@ -67,6 +67,8 @@ type SoundPlayerCtx = {
   getPositionMs: () => number;
   seekTo: (positionMs: number) => Promise<void>;
   setGlobalVolume: (vol: number) => Promise<void>;
+  isReelsOpen: boolean;
+  setIsReelsOpen: (open: boolean) => void;
 };
 
 const Ctx = createContext<SoundPlayerCtx | null>(null);
@@ -90,6 +92,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const networkErrorRef = useRef(false);
   const reelsOpenerRef = useRef<(() => void) | null>(null);
   const [pendingOpenReels, setPendingOpenReels] = useState(0);
+  const [isReelsOpen, setIsReelsOpen] = useState(false);
 
   const getPositionMs        = useCallback(() => positionMsRef.current, []);
   const openFullPlayer       = useCallback(() => setShowFullPlayer(true),  []);
@@ -825,6 +828,7 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
       showFullPlayer, openFullPlayer, closeFullPlayer,
       openReelsOrPlayer, registerReelsOpener, unregisterReelsOpener,
       pendingOpenReels, clearPendingOpenReels,
+      isReelsOpen, setIsReelsOpen
     }}>
       {children}
     </Ctx.Provider>
@@ -854,6 +858,8 @@ export function useSoundPlayer(): SoundPlayerCtx {
       unregisterReelsOpener: () => {},
       pendingOpenReels: 0, clearPendingOpenReels: () => {},
       getPositionMs: () => 0, seekTo: async () => {}, setGlobalVolume: async () => {},
+      isReelsOpen: false, setIsReelsOpen: () => {},
+
     };
   }
   return ctx;

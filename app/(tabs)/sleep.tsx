@@ -2768,7 +2768,7 @@ const ReelCard = memo(function ReelCard({
                 const ms = isScrubbing ? scrubPositionMs : positionMs;
                 const thumbSize = isScrubbing ? 18 : 12;
                 return (
-                  <View
+                  <Animated.View
                     pointerEvents="none"
                     style={{
                       position: 'absolute',
@@ -2781,7 +2781,13 @@ const ReelCard = memo(function ReelCard({
                       borderColor: sound.color || 'rgba(255,255,255,0.5)',
                       shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
                       elevation: 10,
-                      transform: [{ scale: isScrubbing ? 1.15 : 1 }],
+                      transform: [
+                        { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                            inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                          })
+                        },
+                        { scale: isScrubbing ? 1.15 : 1 }
+                      ],
                     }}
                   />
                 );
@@ -2910,8 +2916,7 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
   
   useEffect(() => {
     if (visible) {
-      // Snap instantly — no animation delay on open
-      anim.setValue(1);
+      Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 250, friction: 15 }).start();
     } else {
       Animated.timing(anim, { toValue: 0, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
     }
@@ -3247,19 +3252,22 @@ const SoundReelsModal = memo(function SoundReelsModal({
     return () => sub.remove();
   }, [visible, onStopSilent]);
 
-  // Always rendered — never mounted/unmounted. Visibility via pointerEvents + zIndex.
-  // This is the same pattern used by Instagram/TikTok Reels for zero-latency opening.
+  if (!visible) {
+    return null;
+  }
+
+  // Pure absolute view that mounts instantly. 
+  // By mounting/unmounting instead of persisting, initialScrollIndex applies synchronously on frame 1.
   return (
     <View
       style={[
         StyleSheet.absoluteFillObject,
         {
           backgroundColor: '#000',
-          zIndex: visible ? 9999 : -1,
-          elevation: visible ? 999 : 0,
+          zIndex: 9999,
+          elevation: 999,
         }
       ]}
-      pointerEvents={visible ? 'auto' : 'none'}
     >
       <StatusBar hidden={visible} />
       <FlatList
@@ -3365,12 +3373,14 @@ const SoundReelsModal = memo(function SoundReelsModal({
     </View>
   );
 }, (prev, next) => {
-  return prev.visible === next.visible &&
-         prev.startIndex === next.startIndex &&
-         prev.playingId === next.playingId &&
-         prev.isPaused === next.isPaused &&
-         prev.stopIdx === next.stopIdx &&
-         prev.isAudioLoading === next.isAudioLoading;
+  return (
+    prev.visible === next.visible &&
+    prev.startIndex === next.startIndex &&
+    prev.playingId === next.playingId &&
+    prev.isPaused === next.isPaused &&
+    prev.stopIdx === next.stopIdx &&
+    prev.isAudioLoading === next.isAudioLoading
+  );
 });
 
 
@@ -3552,11 +3562,10 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
   const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true, damping: 22, stiffness: 380 }).start();
   const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,    useNativeDriver: true, damping: 18, stiffness: 260 }).start();
 
-  // Width for horizontal scroll (shows 1 full card and peeks the next)
-  const CARD_W = Math.round(W * 0.72);
-  const CARD_H = Math.round(CARD_W * 1.15);
+  // Width for 2-column grid to exactly match sound therapy cards
+  const CARD_W = (W - 48) / 2;
+  const CARD_H = Math.round(CARD_W * 1.35);
 
-  const borderOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.90] });
   const glowOpacity   = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.22] });
 
   return (
@@ -3569,26 +3578,14 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
       ],
     }}>
       <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
-        {/* Outer neon glow border */}
-        <Animated.View style={{
-          position: 'absolute', top: -1.5, left: -1.5, right: -1.5, bottom: -1.5,
-          borderRadius: 24,
-          borderWidth: 1.5,
-          borderColor: col.themeColor,
-          opacity: borderOpacity,
-          shadowColor: col.themeColor,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: 12,
-        }} pointerEvents="none" />
-
         <View style={{
           width: CARD_W, height: CARD_H,
           borderRadius: 22, overflow: 'hidden',
-          backgroundColor: '#06060C',
-          shadowColor: col.themeColor,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.25,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.4,
           shadowRadius: 18,
           elevation: 10,
         }}>
@@ -3648,12 +3645,12 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
           {/* ── BOTTOM: frosted glass info panel ── */}
           <View style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
-            padding: 16,
-            paddingBottom: 18,
+            padding: 12,
+            paddingBottom: 14,
           }}>
             {/* Neon top accent line */}
             <View style={{
-              position: 'absolute', top: 0, left: 16, right: 16,
+              position: 'absolute', top: 0, left: 12, right: 12,
               height: 1, backgroundColor: col.themeColor, opacity: 0.7,
               shadowColor: col.themeColor, shadowOpacity: 0.8, shadowRadius: 4,
             }} />
@@ -3661,11 +3658,11 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
             <Text
               numberOfLines={2}
               style={{
-                fontSize: 24,
+                fontSize: 19,
                 color: '#fff',
                 fontFamily: 'DancingScript_600SemiBold',
-                lineHeight: 28,
-                marginBottom: 4,
+                lineHeight: 23,
+                marginBottom: 3,
                 textShadowColor: col.themeColor + '60',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 8,
@@ -3673,26 +3670,19 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
               {col.title}
             </Text>
 
-            <Text numberOfLines={2} style={{
-              fontSize: 11, color: 'rgba(255,255,255,0.62)',
-              fontFamily: 'Nunito_400Regular', lineHeight: 16, marginBottom: 14,
-            }}>
-              {col.description}
-            </Text>
-
             {/* CTA Row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
               <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
+                flexDirection: 'row', alignItems: 'center', gap: 5,
                 backgroundColor: col.themeColor + '22',
                 borderWidth: 1, borderColor: col.themeColor + '60',
-                borderRadius: 99, paddingHorizontal: 14, paddingVertical: 8,
+                borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6,
                 shadowColor: col.themeColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 8,
               }}>
-                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
+                <Text style={{ fontSize: 9, color: '#fff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.8 }}>
                   EXPLORE
                 </Text>
-                <Ionicons name="arrow-forward" size={12} color={col.themeColor} />
+                <Ionicons name="arrow-forward" size={10} color={col.themeColor} />
               </View>
 
               <View style={{
@@ -3711,61 +3701,26 @@ const NeonGlassCollectionCard = memo(function NeonGlassCollectionCard({
   );
 });
 
-// Group the collections into 3 rows for horizontal scrolling
-const getCollectionGroups = () => {
-  const groups = [
-    { title: "Divine Echoes", items: [] as typeof SONIC_COLLECTIONS },
-    { title: "Nature's Rhythm", items: [] as typeof SONIC_COLLECTIONS },
-    { title: "Healing Frequencies", items: [] as typeof SONIC_COLLECTIONS }
-  ];
-  
-  // Custom grouping logic for aesthetic distribution
-  SONIC_COLLECTIONS.forEach((col, i) => {
-    if (i < 4) groups[0].items.push(col); // First 4
-    else if (i < 8) groups[1].items.push(col); // Middle 4
-    else groups[2].items.push(col); // Last items
-  });
-  
-  return groups;
-};
-
+// Group the collections into 2-column grid
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
   if (SONIC_COLLECTIONS.length === 0) return null;
 
-  const groups = getCollectionGroups();
-
   return (
-    <View style={{ paddingBottom: 60, paddingTop: 8 }}>
-      {groups.map((group, groupIdx) => (
-        <View key={groupIdx} style={{ marginBottom: 32 }}>
-          {/* Row Title */}
-          <Text style={{ 
-            fontSize: 18, color: '#fff', fontFamily: 'Nunito_700Bold', 
-            paddingHorizontal: 20, marginBottom: 12, letterSpacing: 0.5 
-          }}>
-            {group.title}
-          </Text>
-          
-          {/* Horizontal Carousel */}
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 16, paddingBottom: 16, paddingTop: 8 }}
-            snapToInterval={Math.round(W * 0.72) + 16}
-            decelerationRate="fast"
-            overScrollMode="never"
-          >
-            {group.items.map((col, idx) => (
-              <NeonGlassCollectionCard 
-                key={col.id} 
-                col={col} 
-                index={idx + (groupIdx * 4)} 
-                onPress={() => onSelectCollection(col.id)} 
-              />
-            ))}
-          </ScrollView>
-        </View>
-      ))}
+    <View style={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 8 }}>
+      {SONIC_COLLECTIONS.map((col, idx) => {
+        if (idx % 2 !== 0) return null;
+        const nextCol = SONIC_COLLECTIONS[idx + 1];
+        return (
+          <View key={col.id} style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <NeonGlassCollectionCard col={col} index={idx} onPress={() => onSelectCollection(col.id)} />
+            {nextCol ? (
+              <NeonGlassCollectionCard col={nextCol} index={idx + 1} onPress={() => onSelectCollection(nextCol.id)} />
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+          </View>
+        );
+      })}
       <View style={{ height: 24 }} />
     </View>
   );
@@ -3781,6 +3736,13 @@ const TherapySoundCard = memo(function TherapySoundCard({
 }) {
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const [, forceUpdate] = useState(0);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 0.94, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }, []);
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }, []);
   useEffect(() => subscribeToWarm(() => { setImgLoadFailed(false); forceUpdate(n => n + 1); }), []);
 
   const imgBundled = SOUND_BUNDLED_IMAGES[sound.id];
@@ -3821,7 +3783,8 @@ const TherapySoundCard = memo(function TherapySoundCard({
   }, [isPlaying, isPaused]);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={{ width: cardW }}>
+    <Animated.View style={{ width: cardW, transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} activeOpacity={0.9} style={{ flex: 1 }}>
       <View style={{
         width: cardW, height: cardH, borderRadius: 28, overflow: 'hidden',
         borderWidth: isPlaying ? 1.5 : StyleSheet.hairlineWidth,
@@ -3889,6 +3852,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
         </View>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -3902,19 +3866,33 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   sessionSecs: number;
   onPressSound: (id: string) => void;
 }) {
-  const sounds = collection.soundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
-  const slideIn = useRef(new Animated.Value(60)).current;
-  const fadeIn  = useRef(new Animated.Value(0)).current;
+  const uniqueSoundIds = Array.from(new Set(collection.soundIds));
+  const sounds = uniqueSoundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
+  const { height: SCREEN_H } = Dimensions.get('screen');
+  const slideIn = useRef(new Animated.Value(SCREEN_H)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideIn, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
-      Animated.timing(fadeIn,  { toValue: 1, duration: 420, useNativeDriver: true }),
-    ]).start();
+    Animated.timing(slideIn, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true;
+    });
+    return () => sub.remove();
   }, []);
 
   return (
-    <Modal visible={true} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 9998, elevation: 998, transform: [{ translateY: slideIn }] }]}>
       <View style={{ flex: 1, backgroundColor: '#03030D' }}>
 
         <View style={{ height: H * 0.50, width: '100%' }}>
@@ -3927,7 +3905,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: collection.themeColor, opacity: 0.09 }]} />
 
           <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 18, paddingTop: 14 }}>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ alignSelf: 'flex-start', overflow: 'hidden', borderRadius: 99 }}>
+            <TouchableOpacity onPress={handleClose} activeOpacity={0.8} style={{ alignSelf: 'flex-start', overflow: 'hidden', borderRadius: 99 }}>
               <BlurView intensity={42} tint="dark" style={{
                 flexDirection: 'row', alignItems: 'center', gap: 7,
                 paddingHorizontal: 16, paddingVertical: 10,
@@ -3941,8 +3919,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
 
           <Animated.View style={{
             position: 'absolute', bottom: 30, left: 22, right: 22,
-            opacity: fadeIn,
-            transform: [{ translateY: slideIn }],
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <View style={{ overflow: 'hidden', borderRadius: 99 }}>
@@ -3994,7 +3970,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           </View>
         </ScrollView>
       </View>
-    </Modal>
+    </Animated.View>
   );
 });
 
@@ -4089,7 +4065,7 @@ function SleepTabInner() {
     return unique.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery]);
 
-  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer, isAudioLoading, getPositionMs, seekTo, meteringAnim } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer, isAudioLoading, getPositionMs, seekTo, meteringAnim, setIsReelsOpen } = useSoundPlayer();
 
 
   const [stopIdx,      setStopIdx]      = useState(0);
@@ -4114,6 +4090,10 @@ function SleepTabInner() {
   const [sleepIntelOpen, setSleepIntelOpen] = useState(false);
   const [showReels,      setShowReels]      = useState(false);
   const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
+
+  useEffect(() => {
+    setIsReelsOpen(showReels);
+  }, [showReels, setIsReelsOpen]);
 
   // ── Auto-start ─────────────────────────────────────────────
   const [showAutoStart, setShowAutoStart] = useState(false);
@@ -4391,41 +4371,46 @@ function SleepTabInner() {
       </Animated.ScrollView>
 
       {isSearching && (
-        <Animated.View style={{ position: 'absolute', top: insets.top + 65, left: 0, right: 0, bottom: 0, zIndex: 20 }}>
-          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject}>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 16 }} keyboardShouldPersistTaps="handled">
-              {filteredSearchSounds.length > 0 ? (
-                filteredSearchSounds.map((sound, idx) => {
-                  const isPlaying = playingId === sound.id;
-                  return (
-                    <TouchableOpacity 
-                      key={sound.id} 
-                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSoundCardTap(sound.id); }} 
-                      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 16 }}>
-                        <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000} adjustsFontSizeToFit={false} numberOfLines={2}>{sound.label}</MarqueeText>
-                        {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
-                      </View>
-                      {isPlaying ? (
-                        <Ionicons name="stats-chart" size={16} color={sound.color || '#FFF'} />
-                      ) : (
-                        <Ionicons name="play" size={16} color="rgba(255,255,255,0.2)" />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <View style={{ alignItems: 'center', marginTop: 40 }}>
-                  <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: 16 }} />
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, fontFamily: 'Nunito_400Regular' }}>No sounds found for "{searchQuery}"</Text>
-                </View>
-              )}
-            </ScrollView>
-          </BlurView>
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, backgroundColor: '#03030D' }}>
+          <FlatList
+            data={filteredSearchSounds}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 16 }}
+            keyboardShouldPersistTaps="handled"
+            initialNumToRender={15}
+            windowSize={5}
+            removeClippedSubviews={true}
+            renderItem={({ item: sound }) => {
+              const isPlaying = playingId === sound.id;
+              return (
+                <TouchableOpacity 
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSoundCardTap(sound.id); }} 
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' }}
+                >
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 16 }}>
+                    <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000} adjustsFontSizeToFit={false} numberOfLines={2}>{sound.label}</MarqueeText>
+                    {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
+                  </View>
+                  {isPlaying ? (
+                    <Ionicons name="stats-chart" size={16} color={sound.color || '#FFF'} />
+                  ) : (
+                    <Ionicons name="play" size={16} color="rgba(255,255,255,0.2)" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={() => (
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: 16 }} />
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, fontFamily: 'Nunito_400Regular' }}>
+                  {searchQuery.trim().length === 0 ? "Type to search premium sounds..." : `No sounds found for "${searchQuery}"`}
+                </Text>
+              </View>
+            )}
+          />
         </Animated.View>
       )}
         

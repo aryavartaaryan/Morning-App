@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList,
-  Dimensions, StatusBar, Animated, BackHandler, Platform, Image, Pressable
+  Dimensions, StatusBar, Animated, BackHandler, Platform, Pressable
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 
 import { useBgContext, BG_KEYS, BG_META, type BgKey, getTimedBgKey } from '@/lib/bgContext';
 import { getBgSourceSync, getBgSource } from '@/lib/bgImages';
@@ -32,7 +33,9 @@ function AsyncWallpaperImage({ bgKey, style }: { bgKey: string; style?: object }
     <Image
       source={{ uri: imgUri }}
       style={[StyleSheet.absoluteFillObject, style]}
-      resizeMode="cover"
+      contentFit="cover"
+      transition={250}
+      cachePolicy="memory-disk"
     />
   );
 }
@@ -167,6 +170,7 @@ export default function WallpaperSettings() {
 
   const actualActiveBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
   const [previewBgKey, setPreviewBgKey] = useState<BgKey>(actualActiveBgKey as BgKey);
+  const [heroKey, setHeroKey] = useState<BgKey>(actualActiveBgKey as BgKey);
 
   // Background crossfade
   const bgOpacity = useRef(new Animated.Value(1)).current;
@@ -194,12 +198,15 @@ export default function WallpaperSettings() {
   }, [wallpaperMode, bgKey]);
 
   const animatePreviewChange = (newKey: BgKey) => {
+    // Instantly trigger expo-image native crossfade (ZERO lag)
+    setPreviewBgKey(newKey);
+    
+    // Elegantly crossfade the typography independently
     Animated.sequence([
-      Animated.timing(heroAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(heroAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
     ]).start(() => {
-      prevBgKey.current = previewBgKey;
-      setPreviewBgKey(newKey);
-      Animated.timing(heroAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      setHeroKey(newKey);
+      Animated.timing(heroAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
     });
   };
 
@@ -244,7 +251,7 @@ export default function WallpaperSettings() {
     activeCategory === 'all' ? true : getCategoryOfKey(key) === activeCategory
   );
 
-  const previewMeta = BG_META[previewBgKey] ?? BG_META[BG_KEYS[0]];
+  const heroMeta = BG_META[heroKey] ?? BG_META[BG_KEYS[0]];
   const isPreviewingActive = previewBgKey === actualActiveBgKey;
 
   // Show/hide apply button
@@ -351,10 +358,10 @@ export default function WallpaperSettings() {
         { top: Math.max(insets.top + 8, 24) + 72 },
         { opacity: heroAnim, transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }
       ]}>
-        <Text style={S.heroTimeLabel}>{dynamicTimes[previewBgKey] || (previewMeta as any)?.time || ''}</Text>
-        <Text style={S.heroName}>{(previewMeta as any)?.label ?? ''}</Text>
-        {(previewMeta as any)?.sub && (
-          <Text style={S.heroSub}>{(previewMeta as any)?.emoji} {(previewMeta as any)?.sub}</Text>
+        <Text style={S.heroTimeLabel}>{dynamicTimes[heroKey] || (heroMeta as any)?.time || ''}</Text>
+        <Text style={S.heroName}>{(heroMeta as any)?.label ?? ''}</Text>
+        {(heroMeta as any)?.sub && (
+          <Text style={S.heroSub}>{(heroMeta as any)?.emoji} {(heroMeta as any)?.sub}</Text>
         )}
         {isSolar && previewBgKey === bgKey && (
           <View style={S.solarLivePill}>
@@ -472,6 +479,9 @@ export default function WallpaperSettings() {
             snapToInterval={CARD_W + 12}
             decelerationRate="fast"
             style={{ height: CARD_H + 12 }}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={11}
             renderItem={renderCard}
           />
         ) : (
@@ -482,6 +492,9 @@ export default function WallpaperSettings() {
             keyExtractor={item => item}
             contentContainerStyle={{ paddingHorizontal: 10 }}
             style={{ maxHeight: CARD_W * 1.3 * 2 + 48 }}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={11}
             renderItem={({ item: key }) => (
               <View style={{ flex: 1, marginHorizontal: 6, marginBottom: 12 }}>
                 <WallpaperCard
@@ -529,15 +542,15 @@ const S = StyleSheet.create({
     alignItems: 'center', paddingHorizontal: 28, zIndex: 5,
   },
   heroTimeLabel: {
-    fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 3, marginBottom: 10, textTransform: 'uppercase',
+    fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 4, marginBottom: 12, textTransform: 'uppercase',
   },
   heroName: {
-    fontSize: 36, fontWeight: '200', color: '#fff',
-    letterSpacing: 0.8, textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
-    marginBottom: 6,
+    fontSize: 42, fontWeight: '100', color: '#fff',
+    letterSpacing: 1.2, textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12,
+    marginBottom: 4,
   },
   heroSub: {
     fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.65)',

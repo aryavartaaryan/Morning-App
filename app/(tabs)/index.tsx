@@ -6151,44 +6151,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           <View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
           }}>
-            {/* ── The Outer Zone Tint ── */}
-            {/* A lightly frosted, highly transparent background for the area between the core and the outer ring */}
-            <View style={{
-               position: 'absolute',
-               width: HERO_RS,
-               height: HERO_RS,
-               borderRadius: HERO_RS / 2,
-               overflow: 'hidden',
-            }}>
-               <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
-            </View>
+            {/* ── Inner zones removed for Minimalist Zen UI ── */}
 
-            {/* ── The Core Circle ── */}
-            <View style={{
-               position: 'absolute',
-               width: HERO_RS * 0.72,
-               height: HERO_RS * 0.72,
-               borderRadius: HERO_RS * 0.36,
-               top: HERO_RS * 0.14,
-               left: HERO_RS * 0.14,
-               overflow: 'hidden',
-               borderWidth: 1.5,
-               borderColor: `${haloHex}40`,
-               shadowColor: haloHex,
-               shadowOffset: { width: 0, height: 0 },
-               shadowOpacity: 0.5,
-               shadowRadius: 20,
-            }}>
-               <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(10,15,25,0.4)' }]} />
-               {/* Bubble inner glow (Premium Neon / Sky Blue) */}
-               <LinearGradient
-                 colors={[`${haloHex}25`, `${ringHex}05`, 'transparent', `${haloHex}15`]}
-                 start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-                 style={StyleSheet.absoluteFillObject} />
-            </View>
-            
             {/* ── Sacred Geometric Yantra — CENTREPIECE MEDITATION VISUAL ── */}
             <Animated.View pointerEvents="none" style={{
               position: 'absolute', width: HERO_RS, height: HERO_RS,
@@ -7734,26 +7698,8 @@ function DailyTab() {
                 start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
-
-                {/* LEFT: weather */}
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  {weather ? (
-                    <>
-                      <Text style={{ fontSize: 20 }}>{weather.emoji}</Text>
-                      <View>
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 }}>{weather.temp}°</Text>
-                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 0.2 }} numberOfLines={1}>{weather.condition}</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', fontWeight: '600' }}>
-                      {weatherLoading ? 'Loading…' : 'Tap for weather'}
-                    </Text>
-                  )}
-                </View>
-
-                {/* CENTER: tithi + date */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
+                {/* LEFT: tithi + date */}
                 {(() => {
                   const hMoon = getMoonPhase(new Date());
                   const hP    = getPanchangData();
@@ -7765,28 +7711,28 @@ function DailyTab() {
                     tithiShort = hP.paksha === 'Shukla' ? 'Purnima' : 'Amavasya';
                   }
                   return (
-                    <View key="tithi" style={{ flex: 1.2, alignItems: 'center', borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 6, gap: 2 }}>
+                    <View key="tithi" style={{ alignItems: 'flex-start', gap: 2 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <MoonSVG tithiNum={hMoon.tithiNum} size={12} />
-                        <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(196,181,253,0.85)', letterSpacing: 0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{tithiShort}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(196,181,253,0.95)', letterSpacing: 0.3 }} numberOfLines={1}>{tithiShort}</Text>
                       </View>
-                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.32)', fontWeight: '600' }}>{heroDate}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>{heroDate}</Text>
                     </View>
                   );
                 })()}
 
                 {/* RIGHT: solar */}
-                <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 28 }}>
+                <View style={{ alignItems: 'flex-end', paddingRight: 24 }}>
                   {solarContext ? (
                     <>
-                      <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.38)', fontWeight: '600', letterSpacing: 0.3 }}>{solarContext.label1}</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.88)', letterSpacing: -0.2 }} numberOfLines={1} adjustsFontSizeToFit>{solarContext.mainText}</Text>
-                      <Text style={{ fontSize: 8, color: solarContext.color, fontWeight: '700', letterSpacing: 0.3 }}>{solarContext.label2}</Text>
+                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 0.3 }}>{solarContext.label1}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.95)', letterSpacing: -0.2 }} numberOfLines={1}>{solarContext.mainText}</Text>
+                      <Text style={{ fontSize: 9, color: solarContext.color, fontWeight: '800', letterSpacing: 0.3 }}>{solarContext.label2}</Text>
                     </>
                   ) : null}
                 </View>
 
-                <Ionicons name={headerExpanded ? 'chevron-up' : 'chevron-down'} size={13} color="rgba(255,255,255,0.30)" style={{ position: 'absolute', right: 14, top: '50%' }} />
+                <Ionicons name={headerExpanded ? 'chevron-up' : 'chevron-down'} size={14} color="rgba(255,255,255,0.40)" style={{ position: 'absolute', right: 12, top: 22 }} />
               </View>
             </BlurView>
           </TouchableOpacity>
@@ -7815,7 +7761,7 @@ function DailyTab() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 60 }}>
+            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 10 }}>
 
               {/* Daily Intention — top whisper */}
               <View style={{ width: '100%', alignItems: 'center', paddingTop: 2 }}>
@@ -7856,7 +7802,7 @@ function DailyTab() {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/weather'); }}
-                    style={{ marginTop: 16, zIndex: 20 }}
+                    style={{ marginTop: -15, zIndex: 20 }}
                   >
                     <BlurView intensity={55} tint="dark" style={{
                       flexDirection: 'row', alignItems: 'center',
@@ -7877,93 +7823,79 @@ function DailyTab() {
                 )}
               </View>
 
-              {/* Bottom: circadian card + buttons */}
-              <View style={{ width: '100%', paddingHorizontal: 20, gap: 10 }}>
-
-                {/* Thin glass circadian card */}
+              {/* Bottom: unified control panel */}
+              <View style={{ width: '100%', paddingHorizontal: 16 }}>
                 {currentPeriod && (() => {
                   const acts   = currentPeriod.activities.slice(0, 2);
                   const avoids = currentPeriod.avoidances.slice(0, 2);
                   return (
                     <View style={{
-                      borderRadius: 16, borderWidth: 0.5,
-                      borderColor: 'rgba(255,255,255,0.08)',
+                      borderRadius: 24, borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.12)',
                       overflow: 'hidden',
-                      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
+                      shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.4, shadowRadius: 20, elevation: 12,
                     }}>
-                      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                      <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
                       <LinearGradient
-                        colors={[`${accentColor}0E`, 'rgba(4,6,18,0.75)']}
+                        colors={[`${accentColor}1A`, 'rgba(6,9,26,0.85)']}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFillObject}
                       />
-                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 0.5, backgroundColor: `${accentColor}55` }} />
-                      <View style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
-                        <Text style={{ fontSize: 7.5, fontWeight: '900', letterSpacing: 2.8, color: `${accentColor}AA`, textAlign: 'center', marginBottom: 8 }}>
-                          CIRCADIAN · {currentPeriod.startLabel}–{currentPeriod.endLabel}
+                      {/* Top highlight */}
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 2, color: `${accentColor}DD`, textAlign: 'center', marginBottom: 12 }}>
+                          {currentPeriod.startLabel}–{currentPeriod.endLabel}
                         </Text>
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                        
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
                           <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
                               <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#4ade80' }} />
-                              <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#4ade80BB', letterSpacing: 2 }}>CULTIVATE</Text>
+                              <Text style={{ fontSize: 7, fontWeight: '900', color: '#4ade80CC', letterSpacing: 1.5 }}>CULTIVATE</Text>
                             </View>
                             {acts.map((a, i) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginBottom: 4 }}>
-                                <Text style={{ fontSize: 8, color: '#4ade8050', marginTop: 1 }}>◎</Text>
-                                <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.78)', lineHeight: 12, flex: 1 }}>{a}</Text>
-                              </View>
+                              <Text key={i} style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', lineHeight: 14, marginBottom: 4 }}>• {a}</Text>
                             ))}
                           </View>
-                          <View style={{ width: 0.5, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 2 }} />
+                          <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
                           <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
                               <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171' }} />
-                              <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#f87171BB', letterSpacing: 2 }}>RELEASE</Text>
+                              <Text style={{ fontSize: 7, fontWeight: '900', color: '#f87171CC', letterSpacing: 1.5 }}>RELEASE</Text>
                             </View>
                             {avoids.map((a, i) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginBottom: 4 }}>
-                                <Text style={{ fontSize: 8, color: '#f8717150', marginTop: 1 }}>◎</Text>
-                                <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.68)', lineHeight: 12, flex: 1 }}>{a}</Text>
-                              </View>
+                              <Text key={i} style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)', lineHeight: 14, marginBottom: 4 }}>• {a}</Text>
                             ))}
                           </View>
+                        </View>
+
+                        {/* Action Buttons inside the panel */}
+                        <View style={{ flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: 12 }}>
+                          <TouchableOpacity
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+                            activeOpacity={0.7}
+                            style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                          >
+                            <Ionicons name="book" size={14} color="#FDB931" />
+                            <Text style={{ fontSize: 12, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Almanac</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+                            activeOpacity={0.7}
+                            style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                          >
+                            <Ionicons name="musical-notes" size={14} color="#80FFFF" />
+                            <Text style={{ fontSize: 12, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Sounds</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     </View>
                   );
                 })()}
-
-                {/* Action Buttons */}
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 6 }}>
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-                    activeOpacity={0.8}
-                    style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(253,185,49,0.28)', shadowColor: '#FDB931', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 10, elevation: 6 }}
-                  >
-                    <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
-                    <LinearGradient colors={['rgba(253,185,49,0.16)', 'rgba(253,185,49,0.03)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 }}>
-                      <Ionicons name="book" size={15} color="#FDB931" />
-                      <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.8 }}>Almanac</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-                    activeOpacity={0.8}
-                    style={{ flex: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(128,255,255,0.22)', shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6 }}
-                  >
-                    <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
-                    <LinearGradient colors={['rgba(128,255,255,0.14)', 'rgba(128,255,255,0.03)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15 }}>
-                      <Ionicons name="musical-notes" size={15} color="#80FFFF" />
-                      <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF', letterSpacing: 0.8 }}>Sounds</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
               </View>
             </View>
           )}

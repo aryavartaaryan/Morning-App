@@ -135,28 +135,34 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       
-      {/* ── Outer Layer (Obsidian Base, Instant Rotation) ── */}
+      {/* ── Outer Layer (Bioluminescent Void Base, Instant Rotation) ── */}
       <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rotInterpolate }] }}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
-            <RadialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={COLORS.gold} stopOpacity="0.25" />
-              <Stop offset="100%" stopColor={COLORS.gold} stopOpacity="0" />
+            <RadialGradient id="voidGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#000000" stopOpacity="1" />
+              <Stop offset="80%" stopColor="#000000" stopOpacity="0.8" />
+              <Stop offset="100%" stopColor={COLORS.bg} stopOpacity="0" />
             </RadialGradient>
-            <SvgLinearGradient id="obsidianEtch" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#3A3A4A" stopOpacity="0.7" />
-              <Stop offset="50%" stopColor="#1F1F2E" stopOpacity="0.9" />
-              <Stop offset="100%" stopColor="#0B0B14" stopOpacity="1" />
-            </SvgLinearGradient>
+            <RadialGradient id="centerPulse" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={COLORS.saffron} stopOpacity="0.15" />
+              <Stop offset="100%" stopColor={COLORS.saffron} stopOpacity="0" />
+            </RadialGradient>
           </Defs>
 
-          {/* Ambient Glow */}
-          <AnimatedSvgCircle cx={center} cy={center} r={r * 0.9} fill="url(#centerGlow)" opacity={pulseAnim as any} />
+          {/* Absolute Black Void */}
+          <Circle cx={center} cy={center} r={r * 0.95} fill="url(#voidGlow)" />
 
-          {/* Outer Rings (Obsidian) */}
-          <Circle cx={center} cy={center} r={r - 2} fill="none" stroke="url(#obsidianEtch)" strokeWidth={0.5} opacity={0.5} />
-          <Circle cx={center} cy={center} r={r - 12} fill="none" stroke="url(#obsidianEtch)" strokeWidth={1.5} />
-          <Circle cx={center} cy={center} r={r - 16} fill="none" stroke="url(#obsidianEtch)" strokeWidth={0.5} opacity={0.5} />
+          {/* Bioluminescent Breathing Aura */}
+          <AnimatedSvgCircle cx={center} cy={center} r={r * 0.9} fill="url(#centerPulse)" opacity={pulseAnim as any} />
+
+          {/* Outer Rings (Glowing Energy) */}
+          <Circle cx={center} cy={center} r={r - 2} fill="none" stroke={COLORS.ivory} strokeWidth={0.5} opacity={0.15} />
+          
+          <Circle cx={center} cy={center} r={r - 12} fill="none" stroke={COLORS.saffron} strokeWidth={4} opacity={0.3} /> {/* Aura */}
+          <Circle cx={center} cy={center} r={r - 12} fill="none" stroke={COLORS.ivory} strokeWidth={1} opacity={0.8} /> {/* Core */}
+          
+          <Circle cx={center} cy={center} r={r - 16} fill="none" stroke={COLORS.ivory} strokeWidth={0.5} opacity={0.2} />
 
           {/* 16-point geometric division lines */}
           {[...Array(16)].map((_, i) => {
@@ -168,15 +174,19 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
             const x2 = center + innerRadius * Math.cos(angle);
             const y2 = center + innerRadius * Math.sin(angle);
             return (
-              <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#obsidianEtch)" strokeWidth={0.8} opacity={0.6} />
+              <G key={i}>
+                <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={COLORS.saffron} strokeWidth={3} opacity={0.2} />
+                <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={COLORS.ivory} strokeWidth={0.5} opacity={0.6} />
+              </G>
             );
           })}
 
           {/* Outer Lotus */}
-          <Path d={generateSleekStar(r - 20, r * 0.65)} fill="none" stroke="url(#obsidianEtch)" strokeWidth={1.2} />
+          <Path d={generateSleekStar(r - 20, r * 0.65)} fill="none" stroke={COLORS.saffron} strokeWidth={4} opacity={0.15} />
+          <Path d={generateSleekStar(r - 20, r * 0.65)} fill="none" stroke={COLORS.ivory} strokeWidth={1} opacity={0.5} />
         </Svg>
         
-        {/* Secondary Direction Labels */}
+        {/* Secondary Direction Labels (Glowing Celestial Coordinates) */}
         {SECONDARY_ZONES.map((sz, i) => {
           const rad = (sz.angle - 90) * (Math.PI / 180);
           const radius = r * 0.85 - 28;
@@ -184,23 +194,24 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
           const y = radius * Math.sin(rad);
           return (
             <View key={i} style={[styles.secondaryLabelWrapper, { transform: [{ translateX: x }, { translateY: y }] }]}>
-              <Text style={[styles.secondaryLabel, { color: '#3A3A4A' }]}>{sz.direction}</Text>
+              <Text style={[styles.secondaryLabel, { 
+                color: COLORS.ivory, 
+                textShadowColor: COLORS.saffron,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
+                opacity: 0.9
+              }]}>{sz.direction}</Text>
             </View>
           );
         })}
       </Animated.View>
 
-      {/* ── Inner Parallax Layer (Dark Gold, Breathing, Delayed Rotation) ── */}
+      {/* ── Inner Parallax Layer (Bright Bioluminescence, Breathing, Delayed Rotation) ── */}
       <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: innerRotInterpolate }, { scale: breathingScaleAnim }] }}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <Defs>
-            <SvgLinearGradient id="darkGoldEtch" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={COLORS.goldMuted} stopOpacity="0.5" />
-              <Stop offset="100%" stopColor="#1A150A" stopOpacity="0.9" />
-            </SvgLinearGradient>
-          </Defs>
           {/* Inner Lotus */}
-          <Path d={generateSleekStar(r * 0.55, r * 0.3)} fill="none" stroke="url(#darkGoldEtch)" strokeWidth={1.5} />
+          <Path d={generateSleekStar(r * 0.55, r * 0.3)} fill="none" stroke={COLORS.saffron} strokeWidth={6} opacity={0.25} />
+          <Path d={generateSleekStar(r * 0.55, r * 0.3)} fill="none" stroke={COLORS.ivory} strokeWidth={1.5} opacity={0.9} />
 
           {/* Brahmasthan (Center Square) */}
           <Rect
@@ -209,11 +220,23 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
             width={r * 0.4}
             height={r * 0.4}
             fill="none"
-            stroke="url(#darkGoldEtch)"
+            stroke={COLORS.saffron}
+            strokeWidth={6}
+            opacity={0.3}
+            transform={`rotate(45 ${center} ${center})`}
+          />
+          <Rect
+            x={center - r * 0.2}
+            y={center - r * 0.2}
+            width={r * 0.4}
+            height={r * 0.4}
+            fill="none"
+            stroke={COLORS.ivory}
             strokeWidth={1.5}
             transform={`rotate(45 ${center} ${center})`}
           />
-          <Circle cx={center} cy={center} r={r * 0.05} fill="url(#darkGoldEtch)" opacity={0.7} />
+          <Circle cx={center} cy={center} r={r * 0.05} fill={COLORS.saffron} opacity={0.8} />
+          <Circle cx={center} cy={center} r={r * 0.02} fill="#FFF" />
         </Svg>
       </Animated.View>
 
@@ -228,7 +251,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                 <G key={index} transform={`rotate(${angle - 90} ${center} ${center})`}>
                   <Defs>
                     <RadialGradient id={`wedgeGlow-${index}`} cx="50%" cy="50%" r="50%">
-                      <Stop offset="0%" stopColor={COLORS.saffron} stopOpacity="0.7" />
+                      <Stop offset="0%" stopColor={COLORS.saffron} stopOpacity="0.8" />
                       <Stop offset="100%" stopColor={COLORS.saffron} stopOpacity="0" />
                     </RadialGradient>
                   </Defs>
@@ -236,16 +259,17 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                     d={`M ${center} ${center} L ${center + r} ${center - r * 0.4} A ${r} ${r} 0 0 1 ${center + r} ${center + r * 0.4} Z`}
                     fill={`url(#wedgeGlow-${index})`}
                   />
-                  <Line x1={center} y1={center} x2={center + r - 8} y2={center} stroke={COLORS.saffron} strokeWidth={3} />
+                  <Line x1={center} y1={center} x2={center + r - 8} y2={center} stroke={COLORS.saffron} strokeWidth={6} opacity={0.5} />
+                  <Line x1={center} y1={center} x2={center + r - 8} y2={center} stroke="#FFF" strokeWidth={2} />
                   
                   <Circle cx={center + r - 8} cy={center} r={4.5} fill="#FFF" />
-                  <Circle cx={center + r - 8} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={1.5} opacity={0.9} />
+                  <Circle cx={center + r - 8} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={2} opacity={1} />
                   
                   <SvgText
                     x={center + r - 26}
                     y={center}
                     fill="#FFF"
-                    fontSize={10.5}
+                    fontSize={11}
                     fontFamily={FONTS.sans}
                     fontWeight="900"
                     letterSpacing={2}

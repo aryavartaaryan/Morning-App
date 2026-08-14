@@ -133,7 +133,7 @@ export function DailyIntentionCard() {
       
       {/* ── HOME SCREEN UI ── */}
       <TouchableOpacity activeOpacity={0.8} onPress={handleHomeCardPress} style={styles.homeCardWrapper}>
-        <BlurView intensity={60} tint="dark" style={styles.premiumGlassCard}>
+        <View style={styles.transparentWhisper}>
           {!hasIntention ? (
             <View style={styles.homeContentCenter}>
               <Text style={styles.homePrefixText}>Today I will...</Text>
@@ -151,7 +151,7 @@ export function DailyIntentionCard() {
               <Text style={styles.homeIntentionText}>{activeItem.text}</Text>
             </View>
           )}
-        </BlurView>
+        </View>
       </TouchableOpacity>
 
       {/* ── WRITE MODAL (MIDDLE SCREEN) ── */}
@@ -284,25 +284,18 @@ export function DailyIntentionCard() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: -20, // Perfectly balanced between the top header and hero ring
-    left: 20,
-    right: 20,
+    width: '100%',
     zIndex: 100, elevation: 100,
     alignItems: 'center',
+    marginBottom: 10,
   },
   homeCardWrapper: {
     width: '100%',
     alignItems: 'center',
   },
-  premiumGlassCard: {
+  transparentWhisper: {
     paddingVertical: 5,
     paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(20,25,40,0.5)',
     width: '100%',
     alignItems: 'center',
   },
@@ -313,19 +306,28 @@ const styles = StyleSheet.create({
   },
   homePrefixText: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   homePrefixTextLight: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '400',
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   homePlaceholderText: {
     fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   homeIntentionText: {
     fontSize: 14,
@@ -333,6 +335,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   
   // MODALS
