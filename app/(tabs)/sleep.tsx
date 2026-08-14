@@ -2180,8 +2180,10 @@ const ReelCard = memo(function ReelCard({
       Animated.timing(externalBreath, { toValue: 0, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
     ])).start();
   }, [isActive, externalBreath]);
-  const [positionMs, setPositionMs] = useState(0);
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const initialPos = (isActive && !isPaused) ? getPositionMs() : 0;
+  const [positionMs, setPositionMs] = useState(initialPos);
+  const initialFraction = trackDurMs > 0 ? Math.max(0, Math.min(1, initialPos / trackDurMs)) : 0;
+  const progressAnim = useRef(new Animated.Value(initialFraction)).current;
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
@@ -2916,7 +2918,7 @@ const ClosePrompt = memo(({ visible, onDismiss, onStop, onClose }: { visible: bo
   
   useEffect(() => {
     if (visible) {
-      Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 250, friction: 15 }).start();
+      anim.setValue(1);
     } else {
       Animated.timing(anim, { toValue: 0, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
     }
@@ -3245,12 +3247,11 @@ const SoundReelsModal = memo(function SoundReelsModal({
   useEffect(() => {
     if (!visible) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      onStopSilent();
       setShowClosePrompt(true);
       return true; // Consumed — prevents default back navigation
     });
     return () => sub.remove();
-  }, [visible, onStopSilent]);
+  }, [visible]);
 
   if (!visible) {
     return null;
@@ -3869,15 +3870,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   const uniqueSoundIds = Array.from(new Set(collection.soundIds));
   const sounds = uniqueSoundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
   const { height: SCREEN_H } = Dimensions.get('screen');
-  const slideIn = useRef(new Animated.Value(SCREEN_H)).current;
-
-  useEffect(() => {
-    Animated.timing(slideIn, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+  const slideIn = useRef(new Animated.Value(0)).current;
 
   const handleClose = () => {
     onClose();
@@ -3947,6 +3940,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: collection.themeColor }} />
@@ -4307,7 +4301,6 @@ function SleepTabInner() {
           onScroll={onMainScroll}
           overScrollMode="never"
           nestedScrollEnabled
-          removeClippedSubviews
           keyboardShouldPersistTaps="handled"
         >
           <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 24, marginBottom: 16, minHeight: H * 0.45 - 100 }}>
@@ -4379,7 +4372,6 @@ function SleepTabInner() {
             keyboardShouldPersistTaps="handled"
             initialNumToRender={15}
             windowSize={5}
-            removeClippedSubviews={true}
             renderItem={({ item: sound }) => {
               const isPlaying = playingId === sound.id;
               return (

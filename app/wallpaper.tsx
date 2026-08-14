@@ -479,9 +479,10 @@ export default function WallpaperSettings() {
             snapToInterval={CARD_W + 12}
             decelerationRate="fast"
             style={{ height: CARD_H + 12 }}
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            windowSize={11}
+            initialNumToRender={100}
+            maxToRenderPerBatch={100}
+            windowSize={100}
+            removeClippedSubviews={false}
             renderItem={renderCard}
           />
         ) : (
@@ -492,9 +493,10 @@ export default function WallpaperSettings() {
             keyExtractor={item => item}
             contentContainerStyle={{ paddingHorizontal: 10 }}
             style={{ maxHeight: CARD_W * 1.3 * 2 + 48 }}
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            windowSize={11}
+            initialNumToRender={100}
+            maxToRenderPerBatch={100}
+            windowSize={100}
+            removeClippedSubviews={false}
             renderItem={({ item: key }) => (
               <View style={{ flex: 1, marginHorizontal: 6, marginBottom: 12 }}>
                 <WallpaperCard

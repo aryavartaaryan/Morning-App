@@ -212,21 +212,11 @@ export default function SoundLibraryModal({
   // Open / close animation
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        damping: 28,
-        stiffness: 260,
-        mass: 0.9,
-        useNativeDriver: true,
-      }).start();
+      slideAnim.setValue(0);
       setActiveId(initialCategory ?? null);
       setSearchQuery('');
     } else {
-      Animated.timing(slideAnim, {
-        toValue: SCREEN_H,
-        duration: 220,
-        useNativeDriver: true,
-      }).start();
+      slideAnim.setValue(SCREEN_H);
     }
   }, [visible]);
 
@@ -365,7 +355,6 @@ export default function SoundLibraryModal({
                 contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
                 initialNumToRender={15}
                 windowSize={5}
-                removeClippedSubviews={true}
                 ListEmptyComponent={() => (
                   <Text style={S.emptyText}>No results</Text>
                 )}
@@ -388,7 +377,6 @@ export default function SoundLibraryModal({
                 contentContainerStyle={{ paddingVertical: 10, paddingBottom: 50 }}
                 initialNumToRender={15}
                 windowSize={5}
-                removeClippedSubviews={true}
                 ListEmptyComponent={() => (
                   <Text style={S.emptyText}>No results</Text>
                 )}
@@ -435,7 +423,6 @@ export default function SoundLibraryModal({
                   contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
                   initialNumToRender={15}
                   windowSize={5}
-                  removeClippedSubviews={true}
                   renderItem={({ item: sound, index }) => (
                     <SoundRow
                       sound={sound}

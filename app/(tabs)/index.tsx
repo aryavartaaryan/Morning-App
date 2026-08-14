@@ -7761,7 +7761,7 @@ function DailyTab() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 10 }}>
+            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 75 }}>
 
               {/* Daily Intention — top whisper */}
               <View style={{ width: '100%', alignItems: 'center', paddingTop: 2 }}>
@@ -7769,7 +7769,7 @@ function DailyTab() {
               </View>
 
               {/* Ring + festival badge */}
-              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%' }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', paddingBottom: 30 }}>
                 {todayFest && (
                   <TouchableOpacity
                     activeOpacity={0.85}
