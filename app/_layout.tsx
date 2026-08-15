@@ -259,20 +259,10 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           </View>
 
           {/* Mantra - Ultra Premium Layout (Cleaner, softer, silver) */}
-          <Animated.View style={{ marginTop: 42, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 20 }}>
-            {/* Devanagari Script - Muted but elegant */}
-            <Text style={{ fontSize: 17, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 32, marginBottom: 14, fontWeight: '300', letterSpacing: 4 }}>
-              असतो मा सद्गमय ।{'\n'}तमसो मा ज्योतिर्गमय ।{'\n'}मृत्योर्मा अमृतं गमय ॥
-            </Text>
-            
-            {/* Transliteration */}
-            <Text style={{ fontSize: 12, color: '#e4e4e7', fontFamily: 'Nunito_400Regular', textAlign: 'center', lineHeight: 22, fontStyle: 'italic', opacity: 0.80, letterSpacing: 1.5 }}>
-              "Asato Ma Sadgamaya, Tamaso Ma Jyotir Gamaya,{'\n'}Mrityor Ma Amritam Gamaya"
-            </Text>
-            
-            {/* Translation */}
-            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'Nunito_300Light', textAlign: 'center', lineHeight: 18, marginTop: 14, letterSpacing: 2, textTransform: 'uppercase' }}>
-              Lead us from the unreal to the real,{'\n'}from darkness to light, from death to immortality.
+          <Animated.View style={{ marginTop: 64, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 30 }}>
+            {/* Translation only, for maximum minimal premium aesthetic */}
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_300Light', textAlign: 'center', lineHeight: 24, letterSpacing: 3, textTransform: 'uppercase' }}>
+              Lead us from the unreal to the real,{'\n'}from darkness to light,{'\n'}from death to immortality.
             </Text>
           </Animated.View>
         </Animated.View>

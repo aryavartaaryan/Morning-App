@@ -6147,178 +6147,21 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Inner zone — minimalist Apple/iOS dark glass (Matches Intention Card) ── */}
-          <View pointerEvents="none" style={{
-            position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-          }}>
-            {/* ── Inner zones removed for Minimalist Zen UI ── */}
-
-            {/* ── Sacred Geometric Yantra — CENTREPIECE MEDITATION VISUAL ── */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: HERO_RS, height: HERO_RS,
-              alignItems: 'center', justifyContent: 'center',
-              transform: [{ translateX: pan.x }, { translateY: pan.y }]
-            }}>
-              <HeroGeometricAnimation size={HERO_RS - 18} variant="home" accentColor={haloHex} opacity={0.75} shapeIndex={3} externalBreath={externalBreath} />
-            </Animated.View>
-
-
-
-            {/* ── Fluid Effect ── */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: HERO_RS * 1.6, height: HERO_RS * 1.6,
-              top: -HERO_RS * 0.3, left: -HERO_RS * 0.3,
-              opacity: 0.35,
-              transform: [{ rotate: fluidRot1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-            }}>
-               <LinearGradient colors={[`${accentHex}00`, `${accentHex}60`, `${ringHex}00`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, borderRadius: HERO_RS }} />
-            </Animated.View>
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: HERO_RS * 1.6, height: HERO_RS * 1.6,
-              top: -HERO_RS * 0.3, left: -HERO_RS * 0.3,
-              opacity: 0.3,
-              transform: [{ rotate: fluidRot2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }) }, { translateX: HERO_RS * 0.1 }],
-            }}>
-               <LinearGradient colors={[`${ringHex}00`, `${haloHex}50`, `${accentHex}00`]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={{ flex: 1, borderRadius: HERO_RS }} />
-            </Animated.View>
-            {/* ── Lunar breathing — gentle silver glow inhaling & exhaling every 8s ── */}
-            {nightMode && (
-              <Animated.View pointerEvents="none" style={{
-                position: 'absolute', width: HERO_RS, height: HERO_RS, borderRadius: HERO_RS / 2,
-                backgroundColor: `${accentHex}10`,
-                opacity: lunarBreath.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }),
-              }} />
-            )}
-            {/* ── Moonwater ripples — 3 rings expanding from center like moonlight on still water ── */}
-            {nightMode && rippleAnims.map((anim, i) => {
-              const scale   = anim.interpolate({ inputRange: [0, 1], outputRange: [0.06, 0.94] });
-              const opacity = anim.interpolate({ inputRange: [0, 0.14, 0.55, 1], outputRange: [0, 0.20, 0.08, 0] });
-              return (
-                <Animated.View key={i} pointerEvents="none" style={{
-                  position: 'absolute', width: HERO_RS, height: HERO_RS,
-                  borderRadius: HERO_RS / 2,
-                  borderWidth: 1, borderColor: accentHex,
-                  top: 0, left: 0,
-                  transform: [{ scale }], opacity,
-                }} />
-              );
-            })}
-            {/* ── Weather animations have been removed to keep the dark glass lens perfectly clean and minimalist ── */}
-            {/* ── Glass highlight — frosted arc at top simulating lens refraction ── */}
-            {nightMode && (
-              <View pointerEvents="none" style={{
-                position: 'absolute',
-                width: HERO_RS * 0.38, height: HERO_RS * 0.09,
-                borderRadius: HERO_RS * 0.18,
-                backgroundColor: 'rgba(255,255,255,0.055)',
-                top: HERO_RS * 0.07, left: HERO_RS * 0.31,
-              }} />
-            )}
-          </View>
-
-          {/* ── Gyroscope Stardust Particles ── */}
+          {/* ── Option 1: Minimal Ethereal Breathing Orb ── */}
           <Animated.View pointerEvents="none" style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            transform: [{ translateX: gyroX }, { translateY: gyroY }]
+            position: 'absolute', width: HERO_RS, height: HERO_RS,
+            alignItems: 'center', justifyContent: 'center',
           }}>
-            <Svg width={HERO_RS} height={HERO_RS}>
-              {Array.from({ length: 14 }).map((_, i) => {
-                const angle = (i * Math.PI * 2) / 14 + (i % 2 === 0 ? 0.2 : -0.2);
-                const radius = HERO_R + 12 + (i % 3) * 6;
-                const x = HERO_RS / 2 + Math.cos(angle) * radius;
-                const y = HERO_RS / 2 + Math.sin(angle) * radius;
-                return (
-                  <SvgCircle key={`star_${i}`} cx={x} cy={y} r={1.2 + (i % 2) * 0.8} fill="#FFFFFF" opacity={0.3 + (i % 4) * 0.15} />
-                );
-              })}
-            </Svg>
+            <Animated.View style={{
+              width: HERO_RS * 0.8, height: HERO_RS * 0.8,
+              borderRadius: HERO_RS * 0.4,
+              backgroundColor: accentHex,
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.4] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.95, 1.25] }) }],
+              shadowColor: accentHex, shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1, shadowRadius: HERO_RS * 0.3,
+            }} />
           </Animated.View>
-
-          {/* ── SVG ring — precision compass instrument design ── */}
-          <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
-            <Defs>
-              <SvgLinearGradient id="heroMetal" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <Stop offset="0%" stopColor={ringHex} stopOpacity="1" />
-                 <Stop offset="30%" stopColor="#FFFFFF" stopOpacity="0.9" />
-                 <Stop offset="60%" stopColor={haloHex} stopOpacity="0.9" />
-                 <Stop offset="100%" stopColor={ringHex} stopOpacity="1" />
-              </SvgLinearGradient>
-              <SvgLinearGradient id="sunGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <Stop offset="0%" stopColor="#FDE68A" stopOpacity="1" />
-                 <Stop offset="50%" stopColor="#F59E0B" stopOpacity="1" />
-                 <Stop offset="100%" stopColor="#D97706" stopOpacity="1" />
-              </SvgLinearGradient>
-            </Defs>
-
-            {/* Track rings (Single) */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={`${ringHex}18`} strokeWidth={HERO_STR} />
-
-            {/* Outer ghost ring — precision instrument second rail */}
-            <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R + 8} fill="none" stroke={`${accentHex}20`} strokeWidth={0.8} strokeDasharray="4 8" />
-
-            {/* Cooling glow (night mode) */}
-            {nightMode && (
-              <Animated.View style={{ position: 'absolute', width: HERO_RS, height: HERO_RS, opacity: coolingGlow }}>
-                <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
-                  <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={HERO_STR+8} strokeLinecap="round" opacity={0.35} />
-                </Svg>
-              </Animated.View>
-            )}
-
-            {/* ── Sacred Hour OR Main Progress Arc ── */}
-            {sacredHour.type !== null ? (
-              <>
-                {/* Sacred Hour - Glowing Single Ring */}
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#sunGlow)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C * (1 - sacredHour.progress))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={0.85} />
-
-                {/* The Literal Sun Orb - Enhanced */}
-                {(() => {
-                  let sunAngle = 0;
-                  if (sacredHour.type === 'sunrise') {
-                     // Rises on the left: -180 deg to -90 deg
-                     sunAngle = -Math.PI + (Math.PI * 0.5 * sacredHour.progress);
-                  } else if (sacredHour.type === 'sunset') {
-                     // Sets on the right: -90 deg to 0 deg
-                     sunAngle = -Math.PI * 0.5 + (Math.PI * 0.5 * sacredHour.progress);
-                  } else {
-                     // Zenith hovers across the top
-                     sunAngle = -Math.PI * 0.6 + (Math.PI * 0.2 * sacredHour.progress);
-                  }
-                  const px = HERO_RS/2 + Math.cos(sunAngle) * HERO_R;
-                  const py = HERO_RS/2 + Math.sin(sunAngle) * HERO_R;
-                  return (
-                    <SvgG>
-                      <SvgCircle cx={px} cy={py} r={28} fill="#F59E0B" opacity={0.15} />
-                      <SvgCircle cx={px} cy={py} r={18} fill="#FBBF24" opacity={0.35} />
-                      <SvgCircle cx={px} cy={py} r={10} fill="#FDE68A" opacity={0.7} />
-                      <SvgCircle cx={px} cy={py} r={4.5} fill="#FFFFFF" opacity={1} />
-                    </SvgG>
-                  );
-                })()}
-              </>
-            ) : (
-              <>
-                {/* Main crisp arc — metallic sweep - Single Ring */}
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke="url(#heroMetal)" strokeWidth={HERO_STR} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={1} />
-                
-                {/* Inner neon sliver on outer ring */}
-                <SvgCircle cx={HERO_RS/2} cy={HERO_RS/2} r={HERO_R} fill="none" stroke={accentHex} strokeWidth={1.5} strokeLinecap="round" strokeDasharray={String(HERO_C)} strokeDashoffset={String(HERO_C*(1-prog))} transform={`rotate(-90,${HERO_RS/2},${HERO_RS/2})`} opacity={nightMode ? 0.88 : 0.78} />
-
-                {/* ── Glowing particles at the arc leading edges ── */}
-                {prog > 0.01 && prog < 0.999 && (() => {
-                  const angle = (prog * 2 * Math.PI) - Math.PI / 2;
-                  const pxOut = HERO_RS/2 + Math.cos(angle) * HERO_R;
-                  const pyOut = HERO_RS/2 + Math.sin(angle) * HERO_R;
-                  return (<>
-                    {/* Outer Edge Particle */}
-                    <SvgCircle cx={pxOut} cy={pyOut} r={7} fill={accentHex} opacity={0.25} />
-                    <SvgCircle cx={pxOut} cy={pyOut} r={4} fill={accentHex} opacity={0.5} />
-                    <SvgCircle cx={pxOut} cy={pyOut} r={2.2} fill="#FFFFFF" opacity={0.96} />
-                  </>);
-                })()}
-              </>
-            )}
-          </Svg>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
 
@@ -6430,17 +6273,18 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 {/* Main phase name — the hero text */}
                 <Text
                   style={{
-                    fontSize: compact ? 19 : 24,
+                    fontSize: compact ? 32 : 46,
                     fontWeight: '600',
                     color: '#FFFFFF',
                     textAlign: 'center',
                     fontFamily: 'DancingScript_600SemiBold',
-                    textShadowColor: 'rgba(0,0,0,0.98)',
-                    textShadowOffset: { width: 0, height: 2 },
-                    textShadowRadius: 16,
-                    letterSpacing: 1.2,
-                    lineHeight: compact ? 27 : 34,
-                    marginBottom: compact ? 10 : 14,
+                    textShadowColor: accentHex,
+                    textShadowOffset: { width: 0, height: 4 },
+                    textShadowRadius: 24,
+                    letterSpacing: 1.5,
+                    lineHeight: compact ? 42 : 56,
+                    marginBottom: compact ? 16 : 24,
+                    marginTop: 8,
                   }}
                   numberOfLines={2}
                 >{heroContent.header}</Text>
@@ -7823,75 +7667,52 @@ function DailyTab() {
                 )}
               </View>
 
-              {/* Bottom: unified control panel */}
-              <View style={{ width: '100%', paddingHorizontal: 16 }}>
+              {/* Bottom: unified control panel (Ethereal Redesign) */}
+              <View style={{ width: '100%', paddingHorizontal: 24, paddingBottom: 16 }}>
                 {currentPeriod && (() => {
                   const acts   = currentPeriod.activities.slice(0, 2);
                   const avoids = currentPeriod.avoidances.slice(0, 2);
                   return (
-                    <View style={{
-                      borderRadius: 24, borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.12)',
-                      overflow: 'hidden',
-                      shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.4, shadowRadius: 20, elevation: 12,
-                    }}>
-                      <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-                      <LinearGradient
-                        colors={[`${accentColor}1A`, 'rgba(6,9,26,0.85)']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      {/* Top highlight */}
-                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                    <View style={{ gap: 24 }}>
                       
-                      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 2, color: `${accentColor}DD`, textAlign: 'center', marginBottom: 12 }}>
-                          {currentPeriod.startLabel}–{currentPeriod.endLabel}
-                        </Text>
-                        
-                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#4ade80' }} />
-                              <Text style={{ fontSize: 7, fontWeight: '900', color: '#4ade80CC', letterSpacing: 1.5 }}>CULTIVATE</Text>
-                            </View>
-                            {acts.map((a, i) => (
-                              <Text key={i} style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', lineHeight: 14, marginBottom: 4 }}>• {a}</Text>
-                            ))}
-                          </View>
-                          <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171' }} />
-                              <Text style={{ fontSize: 7, fontWeight: '900', color: '#f87171CC', letterSpacing: 1.5 }}>RELEASE</Text>
-                            </View>
-                            {avoids.map((a, i) => (
-                              <Text key={i} style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)', lineHeight: 14, marginBottom: 4 }}>• {a}</Text>
-                            ))}
-                          </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '900', color: '#4ade80', letterSpacing: 1.5, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>CULTIVATE</Text>
+                          {acts.map((a, i) => (
+                            <Text key={i} style={{ fontSize: 12, fontWeight: '500', color: '#FFFFFF', lineHeight: 18, marginBottom: 4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6 }}>• {a}</Text>
+                          ))}
                         </View>
-
-                        {/* Action Buttons inside the panel */}
-                        <View style={{ flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: 12 }}>
-                          <TouchableOpacity
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-                            activeOpacity={0.7}
-                            style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                          >
-                            <Ionicons name="book" size={14} color="#FDB931" />
-                            <Text style={{ fontSize: 12, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Almanac</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-                            activeOpacity={0.7}
-                            style={{ flex: 1, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                          >
-                            <Ionicons name="musical-notes" size={14} color="#80FFFF" />
-                            <Text style={{ fontSize: 12, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Sounds</Text>
-                          </TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '900', color: '#f87171', letterSpacing: 1.5, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>RELEASE</Text>
+                          {avoids.map((a, i) => (
+                            <Text key={i} style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18, marginBottom: 4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6 }}>• {a}</Text>
+                          ))}
                         </View>
+                      </View>
+
+                      {/* Floating Glass Pills */}
+                      <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <TouchableOpacity
+                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+                          activeOpacity={0.7}
+                          style={{ flex: 1, overflow: 'hidden', borderRadius: 99, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 }}
+                        >
+                          <BlurView intensity={35} tint="light" style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                            <Ionicons name="book" size={16} color="#FDB931" />
+                            <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Almanac</Text>
+                          </BlurView>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+                          activeOpacity={0.7}
+                          style={{ flex: 1, overflow: 'hidden', borderRadius: 99, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 }}
+                        >
+                          <BlurView intensity={35} tint="light" style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                            <Ionicons name="musical-notes" size={16} color="#80FFFF" />
+                            <Text style={{ fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' }}>Sounds</Text>
+                          </BlurView>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   );
