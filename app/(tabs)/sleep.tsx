@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTransition, forwardRef, useImperativeHandle } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Pressable,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
@@ -3161,6 +3161,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
   meteringAnim: Animated.Value;
   getMeteringLevel: () => number;
   playingDurationSecs: number | null;
+  isLibraryOpen: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList>(null);
@@ -3296,6 +3297,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
         decelerationRate="fast"
         bounces={false}
         overScrollMode="never"
+        scrollEnabled={!isLibraryOpen}
         onScroll={(e) => {
           const y = e.nativeEvent.contentOffset.y;
           const idx = Math.round(y / REEL_H);
@@ -3349,26 +3351,45 @@ const SoundReelsModal = memo(function SoundReelsModal({
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 220, zIndex: 9 }}
         pointerEvents="none"
       />
-      {/* Floating Premium Library Button */}
-      {onOpenLibrary && (
-        <Animated.View style={{ position: 'absolute', top: Math.max(60, (Platform.OS === 'ios' ? insets.top + 8 : insets.top + 24) + 16), right: 16, zIndex: 10, opacity: libBtnAnim }}>
+      {/* Premium Header */}
+      <Animated.View style={{ 
+        position: 'absolute', 
+        top: Math.max(40, Platform.OS === 'ios' ? insets.top : insets.top + 10), 
+        left: 0, right: 0, 
+        paddingHorizontal: 16, 
+        zIndex: 10, 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        opacity: libBtnAnim 
+      }}>
+        {/* Back / Close Button */}
+        <TouchableOpacity 
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); closePromptRef.current?.show(); }}
+          style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)' }}
+        >
+          <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.9)" />
+        </TouchableOpacity>
+
+        {/* Sound Menu Button */}
+        {onOpenLibrary && (
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onOpenLibrary('All'); }}
             activeOpacity={0.7}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
               backgroundColor: 'rgba(255,255,255,0.08)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)'
+              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)'
             }}
           >
-            <Ionicons name="musical-notes" size={14} color="rgba(255,255,255,0.85)" />
-            <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.2 }}>
-              Svara Library
+            <Ionicons name="list" size={16} color="rgba(255,255,255,0.9)" />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.3 }}>
+              Sound Menu
             </Text>
           </TouchableOpacity>
-        </Animated.View>
-      )}
+        )}
+      </Animated.View>
       <GridBrowse
         visible={gridOpen}
         onClose={() => setGridOpen(false)}
@@ -3689,7 +3710,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
   const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
   const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
 
-  const cardW = Math.floor((W - 16 * 2 - 12) / 2);
+  const cardW = Math.floor((W - 20 * 2 - 12) / 2);
   const cardH = Math.round(cardW * 1.52);
 
   // Waveform bars for playing state
@@ -4425,6 +4446,7 @@ function SleepTabInner() {
         meteringAnim={meteringAnim}
         getMeteringLevel={getMeteringLevel}
         playingDurationSecs={sleepTabDurationSecs}
+        isLibraryOpen={libraryOpen}
       />
 
       {/* ── Sound Library Modal ── */}
