@@ -3146,7 +3146,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
   visible, startIndex, playingId, isPaused, stopIdx,
   onPlaySound, onToggle, onStopSilent, onClose, onChangeTimer,
   onOpenLibrary, preBufferSound, cleanPreBuffer,
-  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, playingDurationSecs
+  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, playingDurationSecs, isLibraryOpen
 }: {
   visible: boolean; startIndex: number;
   playingId: string | null; isPaused: boolean; stopIdx: number;
