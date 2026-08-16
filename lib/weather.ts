@@ -106,7 +106,13 @@ function realWeatherCode(
   return modelCode;
 }
 
-export async function fetchWeather(): Promise<WeatherData | null> {
+let cachedWeather: WeatherData | null = null;
+let lastFetchTime = 0;
+
+export async function fetchWeather(force = false): Promise<WeatherData | null> {
+  if (!force && cachedWeather && Date.now() - lastFetchTime < 15 * 60 * 1000) {
+    return cachedWeather;
+  }
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return null;
@@ -193,7 +199,7 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       };
     });
 
-    return {
+    const finalData = {
       temp: Math.round(c.temperature_2m),
       feelsLike: Math.round(c.apparent_temperature),
       humidity: Math.round(c.relative_humidity_2m),
@@ -211,6 +217,9 @@ export async function fetchWeather(): Promise<WeatherData | null> {
       windSpeed: Math.round(c.wind_speed_10m ?? 0),
       windGusts: Math.round(c.wind_gusts_10m ?? 0),
     };
+    cachedWeather = finalData;
+    lastFetchTime = Date.now();
+    return finalData;
   } catch {
     return null;
   }

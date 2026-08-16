@@ -5510,7 +5510,7 @@ function SunriseSunsetStrip({ solarTimes }: { solarTimes: SolarTimes }) {
   return (
     <View style={{ marginHorizontal: 24, marginTop: 6, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(251,146,60,0.30)', backgroundColor: 'rgba(6,15,40,0.40)', overflow: 'hidden' }}>
       <LinearGradient colors={['rgba(251,146,60,0.12)', 'rgba(96,165,250,0.07)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(251,146,60,0.50)' }} />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(251,146,60,0.50)' }} />
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 14 }}>
         <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
           <Text style={{ fontSize: 15 }}>🌅</Text>
@@ -5772,7 +5772,7 @@ function getSolarRingPalette(
 // ── Hero Geometric Animation (Imported) ──
 
 function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarTimes }: { period: DoshaPeriod | null; brahmaInfo?: BrahmaMuhurtaInfo | null; weather?: WeatherData | null; onPress?: () => void; compact?: boolean; solarTimes?: SolarTimes | null }) {
-  const HERO_RS  = compact ? 271 : 343;
+  const HERO_RS  = compact ? 236 : 298;
   const HERO_STR = 6;
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
@@ -7527,10 +7527,7 @@ function DailyTab() {
 
         {/* ══ PREMIUM FLOATING HEADER PILL ══ */}
         <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, zIndex: 10 }}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setHeaderExpanded(e => !e); }}
-          >
+          <View>
             <BlurView intensity={45} tint="dark" style={{
               borderRadius: 20,
               borderWidth: 0.5,
@@ -7575,21 +7572,9 @@ function DailyTab() {
                     </>
                   ) : null}
                 </View>
-
-                <Ionicons name={headerExpanded ? 'chevron-up' : 'chevron-down'} size={14} color="rgba(255,255,255,0.40)" style={{ position: 'absolute', right: 12, top: 22 }} />
               </View>
             </BlurView>
-          </TouchableOpacity>
-
-          {/* Expandable weather detail */}
-          {headerExpanded && weather && (
-            <View style={{ marginTop: 8, borderRadius: 16, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)' }}>
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <View style={{ padding: 12 }}>
-                <WeatherSection weather={weather} solarTimes={solarTimes} onMore={() => setShowFourteenDay(true)} />
-              </View>
-            </View>
-          )}
+          </View>
         </View>
 
         {/* ── Hero Content ── */}

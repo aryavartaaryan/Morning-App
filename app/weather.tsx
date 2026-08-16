@@ -83,34 +83,30 @@ export default function WeatherScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.scrollContent}>
             
-            {/* 1. Main Current Weather Section */}
-            <View style={styles.mainCurrent}>
-              <Text style={styles.mainEmoji}>{weather.emoji}</Text>
-              <View style={styles.tempRow}>
-                <Text style={styles.mainTemp}>{weather.temp}</Text>
-                <Text style={styles.degSymbol}>°</Text>
+            {/* Top Section: Main + Metrics Side by Side */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View style={styles.mainCurrent}>
+                <Text style={styles.mainEmoji}>{weather.emoji}</Text>
+                <View style={styles.tempRow}>
+                  <Text style={styles.mainTemp}>{weather.temp}</Text>
+                  <Text style={styles.degSymbol}>°</Text>
+                </View>
+                <Text style={styles.conditionText}>{weather.condition}</Text>
+                <Text style={styles.feelsLike}>Feels like {weather.feelsLike}°</Text>
               </View>
-              <Text style={styles.conditionText}>{weather.condition}</Text>
-              <Text style={styles.feelsLike}>Feels like {weather.feelsLike}°</Text>
+              
+              <View style={{ width: '45%', gap: 10 }}>
+                <MetricTile icon="💧" label="Humid" value={`${weather.humidity}%`} />
+                <MetricTile icon="💨" label="Wind" value={`${weather.windSpeed || 0}k/h`} />
+              </View>
             </View>
 
-            {/* 2. Extra Metrics Tiles */}
-            <View style={styles.metricsGrid}>
-              <MetricTile icon="💧" label="Humidity" value={`${weather.humidity}%`} />
-              <MetricTile icon="💨" label="Wind" value={`${weather.windSpeed || 0} km/h`} />
-              <MetricTile icon="☁️" label="Cloud Cover" value={`${weather.cloudCover || 0}%`} />
-              <MetricTile icon="☔" label="Precipitation" value={`${weather.precipitation || 0} mm`} />
-            </View>
-
-            {/* 3. 24-Hour Forecast */}
+            {/* Middle Section: 24-Hour Forecast */}
             <View style={styles.sectionCard}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>24-Hour Forecast</Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll} contentContainerStyle={{ paddingHorizontal: 16 }}>
                 {weather.hourly.map((h, i) => (
                   <View key={i} style={styles.hourlyItem}>
                     <Text style={styles.hourlyTime}>{i === 0 ? 'Now' : `${h.hour}:00`}</Text>
@@ -122,23 +118,18 @@ export default function WeatherScreen() {
               </ScrollView>
             </View>
 
-            {/* 4. 14-Day Forecast */}
-            <View style={[styles.sectionCard, { marginBottom: 60 }]}>
+            {/* Bottom Section: 7-Day Forecast (Trimmed to fit screen) */}
+            <View style={[styles.sectionCard, { flex: 1, marginBottom: 20 }]}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>14-Day Outlook</Text>
-              </View>
               <View style={styles.dailyContainer}>
-                {weather.daily.map((d, i) => (
+                {weather.daily.slice(0, 7).map((d, i) => (
                   <View key={i} style={styles.dailyRow}>
                     <Text style={styles.dailyDay}>{d.dayLabel}</Text>
                     <View style={styles.dailyEmojiContainer}>
                       <Text style={styles.dailyRowEmoji}>{d.emoji}</Text>
-                      {d.precipitation > 0 && <Text style={styles.dailyRowPrecip}>{d.precipitation}mm</Text>}
                     </View>
                     <View style={styles.dailyTemps}>
                       <Text style={styles.dailyMin}>{d.minTemp}°</Text>
-                      {/* Visual Temp Bar */}
                       <View style={styles.tempBarContainer}>
                         <LinearGradient 
                           colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.8)']} 
@@ -152,8 +143,7 @@ export default function WeatherScreen() {
                 ))}
               </View>
             </View>
-
-          </ScrollView>
+          </View>
         )}
       </SafeAreaView>
     </View>
@@ -384,7 +374,7 @@ const styles = StyleSheet.create({
   dailyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
