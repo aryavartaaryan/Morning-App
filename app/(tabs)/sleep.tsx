@@ -2137,6 +2137,14 @@ function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; suns
   return h >= 18 || h < 6;
 }
 
+function formatTimeMs(ms: number): string {
+  if (isNaN(ms) || ms <= 0) return '0:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 const ReelCard = memo(function ReelCard({
   sound, isActive, isPlaying, isPaused, stopIdx, isFirst, isLast,
   onPlay, onToggle, onStopSilent, onSelectSound,

@@ -6153,13 +6153,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             alignItems: 'center', justifyContent: 'center',
           }}>
             <Animated.View style={{
-              width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              borderRadius: HERO_RS * 0.44,
-              backgroundColor: 'rgba(251, 191, 36, 0.08)', // Premium transparent gold
-              borderWidth: 1.5,
-              borderColor: 'rgba(251, 191, 36, 0.45)', // Shining golden ring edge
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.3, 0.85] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.18] }) }],
+              width: HERO_RS, height: HERO_RS,
+              borderRadius: HERO_RS / 2,
+              backgroundColor: 'rgba(251, 191, 36, 0.12)', // Premium transparent gold filling entire hero
+              borderWidth: 2,
+              borderColor: 'rgba(251, 191, 36, 0.6)', // Shining golden boundary
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.35, 0.95] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.08] }) }],
             }} />
           </Animated.View>
 
