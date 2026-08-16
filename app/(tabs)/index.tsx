@@ -6041,11 +6041,10 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const { accentColor: appAccent } = useBgContext();
   
   // Premium Bubble Effect: Use app theme color with neon/sky blue highlights for a calming effect
-  // Premium Transparent Sparkling Gold Effect
-  const baseColor = '#FDE047'; // Sparkling yellow-gold
-  const ringHex   = '#FDE047';
-  const haloHex   = '#FEF08A'; // Shiny bright gold aura
-  const accentHex = '#FDE047';
+  const baseColor = appAccent || '#00D4B8';
+  const ringHex   = baseColor;
+  const haloHex   = '#80FFFF'; // Sky blue / cyan neon glow
+  const accentHex = baseColor;
   
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
@@ -6154,25 +6153,14 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             alignItems: 'center', justifyContent: 'center',
           }}>
             <Animated.View style={{
-              width: HERO_RS * 0.8, height: HERO_RS * 0.8,
-              borderRadius: HERO_RS * 0.4,
-              backgroundColor: 'rgba(253, 224, 71, 0.12)', // High transparency gold base
-              borderWidth: 0, // Explicitly no outline
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.3, 0.7] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.95, 1.25] }) }],
-              shadowColor: '#FEF08A', 
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.9, 
-              shadowRadius: HERO_RS * 0.35,
-              overflow: 'hidden',
-            }}>
-              {/* Premium shining gradient fill to make the entire ring sparkling gold */}
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.6)', 'rgba(253, 224, 71, 0.25)', 'transparent']}
-                start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
-                style={{ flex: 1, borderRadius: HERO_RS * 0.4 }}
-              />
-            </Animated.View>
+              width: HERO_RS * 0.88, height: HERO_RS * 0.88,
+              borderRadius: HERO_RS * 0.44,
+              backgroundColor: 'rgba(251, 191, 36, 0.08)', // Premium transparent gold
+              borderWidth: 1.5,
+              borderColor: 'rgba(251, 191, 36, 0.45)', // Shining golden ring edge
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.3, 0.85] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.18] }) }],
+            }} />
           </Animated.View>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
@@ -7670,9 +7658,9 @@ function DailyTab() {
                   const acts   = currentPeriod.activities.slice(0, 2);
                   const avoids = currentPeriod.avoidances.slice(0, 2);
                   return (
-                    <View style={{ gap: 24 }}>
+                    <View>
                       
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16, marginTop: 12, marginBottom: 12 }}>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 9, fontWeight: '900', color: '#4ade80', letterSpacing: 1.5, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 }}>CULTIVATE</Text>
                           {acts.map((a, i) => (

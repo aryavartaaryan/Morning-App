@@ -2341,7 +2341,7 @@ const ReelCard = memo(function ReelCard({
   }, [isActive, isLast]);
 
   // trackDurMs is now passed directly as a prop
-  const TRACK_W = REEL_W - 88;
+  const TRACK_W = REEL_W - 48;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
 
   useEffect(() => {
@@ -2351,7 +2351,7 @@ const ReelCard = memo(function ReelCard({
       const frac = trackDurMs > 0 ? Math.max(0, Math.min(1, pos / trackDurMs)) : 0;
       progressAnim.setValue(frac);
     }
-  }, [isActive, playingId, trackDurMs]);
+  }, [isActive, isPlaying, trackDurMs]);
 
   useEffect(() => {
     if (isDragging.current) return;
@@ -2435,17 +2435,8 @@ const ReelCard = memo(function ReelCard({
     <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#020305' }}>
       <View style={{
         flex: 1,
-        marginTop: Platform.OS === 'ios' ? insets.top + 8 : insets.top + 24,
-        marginBottom: Platform.OS === 'ios' ? insets.bottom + 12 : insets.bottom + 24,
-        marginHorizontal: 8,
-        borderRadius: 40,
         overflow: 'hidden',
         backgroundColor: '#0A0C10',
-        shadowColor: sound.color || '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.35,
-        shadowRadius: 30,
-        elevation: 10,
       }}>
 
       {finalSource ? (
@@ -2474,14 +2465,8 @@ const ReelCard = memo(function ReelCard({
       )}
 
       <LinearGradient
-        colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.05)', 'transparent']}
-        locations={[0, 0.3, 1]}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.6)']}
-        locations={[0.52, 0.70, 0.86, 1]}
+        colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.05)', 'transparent']}
+        locations={[0, 0.25, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -2520,17 +2505,8 @@ const ReelCard = memo(function ReelCard({
           width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
           height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
           borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2,
-          backgroundColor: isActive ? 'rgba(0, 0, 0, 0.45)' : 'rgba(5, 5, 8, 0.85)',
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.5,
-          shadowRadius: 24,
+          backgroundColor: 'transparent',
         }}>
-          {Platform.OS === 'ios' && isActive && (
-            <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFillObject, { borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2, overflow: 'hidden' }]} />
-          )}
         </View>
 
         <Animated.View style={{
@@ -2625,78 +2601,179 @@ const ReelCard = memo(function ReelCard({
           bottom: 0, 
           left: 0, right: 0,
           zIndex: 8, opacity: controlsAnim,
-          backgroundColor: 'rgba(8, 10, 14, 0.85)',
-          borderRadius: 0,
-          padding: 20,
-          borderTopWidth: 1,
-          borderColor: 'rgba(255,255,255,0.08)',
-          shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 15
+          paddingHorizontal: 24,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 24 : 32,
         }}
       >
         <LinearGradient
-          colors={[sound.color ? sound.color + '15' : 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.01)']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: 0 }]}
+          colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', '#000000']}
+          locations={[0, 0.4, 0.7, 1]}
+          style={[StyleSheet.absoluteFillObject, { top: -200 }]}
+          pointerEvents="none"
         />
 
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-          <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={{ 
-              fontSize: 15, 
-              fontWeight: '700', 
-              color: 'rgba(255,255,255,0.95)', 
-              fontFamily: 'Nunito_700Bold', 
-              marginBottom: 4, 
-              letterSpacing: 0.3, 
-              lineHeight: 20,
-              textShadowColor: 'rgba(0,0,0,0.6)',
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 4
-            }}>
-              {sound.label}
-            </Text>
-            <Text style={{ 
-              fontSize: 11, 
-              color: 'rgba(255,255,255,0.45)', 
-              fontFamily: 'Nunito_400Regular', 
-              lineHeight: 16,
-              letterSpacing: 0.2
-            }}>
-              {sound.desc}
-            </Text>
-          </View>
-
-          {(() => {
-            const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
-            return (
-              <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
-                activeOpacity={0.7}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  paddingHorizontal: 14, paddingVertical: 10, borderRadius: 99,
-                  backgroundColor: durationOpen ? sound.color + '25' : 'rgba(255,255,255,0.06)',
-                  borderWidth: 1, borderColor: durationOpen ? sound.color + '50' : 'rgba(255,255,255,0.1)'
-                }}
-              >
-                <Ionicons name={opt.icon} size={14} color={durationOpen ? sound.color : 'rgba(255,255,255,0.8)'} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: durationOpen ? '#FFF' : 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })()}
+        {/* Title & Subtitle */}
+        <View style={{ alignItems: 'center', marginBottom: 36 }}>
+          <Text style={{ 
+            fontSize: 22, 
+            fontWeight: '700', 
+            color: '#FFFFFF', 
+            fontFamily: 'Nunito_700Bold', 
+            letterSpacing: 1.2,
+            textShadowColor: 'rgba(0,0,0,0.8)',
+            textShadowOffset: { width: 0, height: 2 },
+            textShadowRadius: 10,
+            textAlign: 'center',
+          }}>
+            {sound.label}
+          </Text>
+          <Text style={{ 
+            fontSize: 10, 
+            fontWeight: '700', 
+            color: 'rgba(255,255,255,0.6)', 
+            fontFamily: 'Nunito_700Bold',
+            letterSpacing: 3, 
+            textTransform: 'uppercase',
+            marginTop: 8,
+            textAlign: 'center',
+          }}>
+            {sound.desc}
+          </Text>
         </View>
 
+        {/* Scrubber Area */}
+        <View style={{ minHeight: 24, justifyContent: 'center', marginBottom: 8 }}>
+          <View
+            style={{ height: 32, justifyContent: 'center', marginHorizontal: -4 }}
+            {...scrubPan.panHandlers}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+            collapsable={false}
+          >
+            <View style={{
+              height: isScrubbing ? 6 : 3,
+              borderRadius: 3,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              width: TRACK_W + 8,
+              overflow: 'visible',
+            }}>
+              <Animated.View style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0,
+                borderRadius: 3,
+                backgroundColor: sound.color || '#fff',
+                width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                  inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                }),
+              }} />
+              <Animated.View style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0,
+                borderRadius: 3,
+                backgroundColor: sound.color || '#fff',
+                opacity: 0.6,
+                shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
+                width: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                  inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                }),
+              }} pointerEvents="none" />
+            </View>
+            {(() => {
+              const ms = isScrubbing ? scrubPositionMs : positionMs;
+              const thumbSize = isScrubbing ? 16 : 10;
+              return (
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: (32 - thumbSize) / 2,
+                    left: 0,
+                    width: thumbSize, height: thumbSize,
+                    borderRadius: thumbSize / 2,
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 2,
+                    borderColor: sound.color || 'rgba(255,255,255,0.5)',
+                    shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+                    elevation: 10,
+                    transform: [
+                      { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({
+                          inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
+                        })
+                      },
+                      { scale: isScrubbing ? 1.15 : 1 }
+                    ],
+                  }}
+                />
+              );
+            })()}
+          </View>
+        </View>
+
+        {/* Time Text */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2, marginBottom: 24 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_700Bold' }}>
+            {formatTimeMs(isScrubbing ? scrubPositionMs : positionMs)}
+          </Text>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_700Bold' }}>
+            {formatTimeMs(trackDurMs)}
+          </Text>
+        </View>
+
+        {/* Bottom Controls Row: Empty(left), Play(center), Duration(right) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          
+          <View style={{ width: 80 }} />
+
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
+            activeOpacity={0.6}
+            style={{
+              width: 64, height: 64, borderRadius: 32,
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+              alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {Platform.OS === 'ios' && <BlurView intensity={30} tint="light" style={[StyleSheet.absoluteFillObject, { borderRadius: 32 }]} />}
+            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={26} color="#FFFFFF" style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }} />
+          </TouchableOpacity>
+
+          <View style={{ width: 80, alignItems: 'flex-end' }}>
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+                backgroundColor: durationOpen ? sound.color + '25' : 'rgba(255,255,255,0.08)',
+                borderWidth: StyleSheet.hairlineWidth, borderColor: durationOpen ? sound.color + '50' : 'rgba(255,255,255,0.15)'
+              }}
+            >
+              {(() => {
+                const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
+                return (
+                  <>
+                    <Ionicons name={opt.icon} size={14} color={durationOpen ? sound.color : 'rgba(255,255,255,0.9)'} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: durationOpen ? '#FFF' : 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>{opt.label}</Text>
+                  </>
+                );
+              })()}
+            </TouchableOpacity>
+          </View>
+
+        </View>
+
+        {/* Duration Dropdown Menu */}
         {durationOpen && (
           <View style={{
-            marginBottom: 20,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
-            overflow: 'hidden'
+            position: 'absolute', right: 24, bottom: Platform.OS === 'ios' ? insets.bottom + 104 : 112,
+            width: 160,
+            backgroundColor: 'rgba(12,14,18,0.95)',
+            borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 30,
+            overflow: 'hidden', zIndex: 10
           }}>
-            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)', letterSpacing: 2, textAlign: 'center', paddingTop: 16, paddingBottom: 8 }}>SESSION LENGTH</Text>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5, textAlign: 'center', paddingTop: 14, paddingBottom: 8 }}>TIMER</Text>
             {activeDurationOptions.map((opt, idx) => {
               const isSelected = selectedDurationId === opt.id;
-              const isFirst = idx === 0;
               return (
                 <TouchableOpacity
                   key={opt.id}
@@ -2708,89 +2785,19 @@ const ReelCard = memo(function ReelCard({
                   activeOpacity={0.7}
                   style={{
                     flexDirection: 'row', alignItems: 'center',
-                    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+                    paddingHorizontal: 16, paddingVertical: 14, gap: 10,
                     backgroundColor: isSelected ? sound.color + '15' : 'transparent',
-                    borderTopWidth: isFirst ? 0 : StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.04)',
+                    borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.04)',
                   }}
                 >
-                  <Ionicons name={opt.icon} size={16} color={isSelected ? sound.color : 'rgba(255,255,255,0.3)'} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>{opt.label}</Text>
-                  </View>
-                  {isSelected && (
-                    <Ionicons name="checkmark-circle" size={16} color={sound.color} />
-                  )}
+                  <Ionicons name={opt.icon} size={16} color={isSelected ? sound.color : 'rgba(255,255,255,0.4)'} />
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: isSelected ? '700' : '600', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }}>{opt.label}</Text>
+                  {isSelected && <Ionicons name="checkmark" size={16} color={sound.color} />}
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
-
-        <View style={{ minHeight: 42, justifyContent: 'flex-end' }}>
-          <View>
-            <View
-              style={{ height: 20, justifyContent: 'center', marginHorizontal: -4, marginBottom: 8 }}
-              {...scrubPan.panHandlers}
-              hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
-              collapsable={false}
-            >
-              <View style={{
-                height: isScrubbing ? 8 : 4,
-                borderRadius: 4,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                width: TRACK_W + 8,
-                overflow: 'visible',
-              }}>
-                <Animated.View style={{
-                  position: 'absolute', left: 0, top: 0, bottom: 0,
-                  borderRadius: 4,
-                  backgroundColor: sound.color || '#fff',
-                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                    inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
-                  }),
-                }} />
-                <Animated.View style={{
-                  position: 'absolute', left: 0, top: 0, bottom: 0,
-                  borderRadius: 4,
-                  backgroundColor: sound.color || '#fff',
-                  opacity: 0.6,
-                  shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
-                  width: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                    inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
-                  }),
-                }} pointerEvents="none" />
-              </View>
-              {(() => {
-                const ms = isScrubbing ? scrubPositionMs : positionMs;
-                const thumbSize = isScrubbing ? 18 : 12;
-                return (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      top: (20 - thumbSize) / 2,
-                      left: 0,
-                      width: thumbSize, height: thumbSize,
-                      borderRadius: thumbSize / 2,
-                      backgroundColor: '#FFFFFF',
-                      borderWidth: 2,
-                      borderColor: sound.color || 'rgba(255,255,255,0.5)',
-                      shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
-                      elevation: 10,
-                      transform: [
-                        { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({
-                            inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp',
-                          })
-                        },
-                        { scale: isScrubbing ? 1.15 : 1 }
-                      ],
-                    }}
-                  />
-                );
-              })()}
-            </View>
-          </View>
-        </View>
       </Animated.View>
 
 
@@ -3849,7 +3856,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 9998, elevation: 998, transform: [{ translateY: slideIn }] }]}>
-      <View style={{ flex: 1, backgroundColor: '#03030D' }}>
+      <BlurView intensity={90} tint="dark" style={{ flex: 1, backgroundColor: 'rgba(3, 3, 13, 0.55)' }}>
 
         {/* Top Header / Nav */}
         <SafeAreaView style={{ paddingTop: 14, paddingHorizontal: 16 }}>
@@ -3912,7 +3919,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             ))}
           </View>
         </ScrollView>
-      </View>
+      </BlurView>
     </Animated.View>
   );
 });
@@ -4154,7 +4161,7 @@ function SleepTabInner() {
           style={[StyleSheet.absoluteFillObject, { transform: [{ scale: 1.2 }] }]} 
           resizeMode="cover" 
         />
-        <BlurView tint="dark" intensity={120} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
         
         {/* Soft color washes for the aura */}
         <LinearGradient 

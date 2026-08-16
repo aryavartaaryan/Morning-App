@@ -1,0 +1,9 @@
+★ eas-cli@22.0.0 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+Can't read JSON file: /Users/hotelnamastebharatinn/.expo/state.json
+├─ File: /Users/hotelnamastebharatinn/.expo/state.json
+└─ Cause: Error: EPERM: operation not permitted, open '/Users/hotelnamastebharatinn/.expo/state.json'
+    Error: account:view command failed.

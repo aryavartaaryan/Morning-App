@@ -154,8 +154,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "777e545a-a1c8-4e9d-9f77-0759fd475408"
+        "projectId": "4efc9f74-75a7-4d39-8960-4201b01a6255"
       }
-    }
+    },
+    "owner": "omsvara"
   }
 }
