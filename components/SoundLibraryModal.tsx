@@ -31,7 +31,7 @@ type DisplayGroup = {
 };
 
 // ─── Animated Sound Row ───────────────────────────────────────────────────────
-function SoundRow({
+export function SoundRow({
   sound,
   isPlaying,
   onPress,
@@ -108,7 +108,7 @@ function SoundRow({
 }
 
 // ─── Playing Pulse Dots ───────────────────────────────────────────────────────
-function PlayingPulse({ color }: { color: string }) {
+export function PlayingPulse({ color }: { color: string }) {
   const a1 = useRef(new Animated.Value(0.3)).current;
   const a2 = useRef(new Animated.Value(0.6)).current;
   const a3 = useRef(new Animated.Value(1)).current;

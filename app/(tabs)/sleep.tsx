@@ -29,7 +29,7 @@ import { getLocalSoundImageUri, isSoundImageCached, isWarmDone, warmSoundImageMa
 import { initAudioCache } from '@/lib/soundAudioCache';
 import { useFocusEffect } from 'expo-router';
 import { getTabBarClearance } from '@/lib/tabBarSpacing';
-import SoundLibraryModal from '@/components/SoundLibraryModal';
+import SoundLibraryModal, { SoundRow } from '@/components/SoundLibraryModal';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { MarqueeText } from '@/components/MarqueeText';
 
@@ -2343,32 +2343,26 @@ const ReelCard = memo(function ReelCard({
   // trackDurMs is now passed directly as a prop
   const TRACK_W = REEL_W - 88;
   const loopProgress = trackDurMs > 0 ? Math.min(1, positionMs / trackDurMs) : 0;
+
+  useEffect(() => {
+    if (isActive) {
+      const pos = getPositionMs();
+      setPositionMs(pos);
+      const frac = trackDurMs > 0 ? Math.max(0, Math.min(1, pos / trackDurMs)) : 0;
+      progressAnim.setValue(frac);
+    }
+  }, [isActive, playingId, trackDurMs]);
+
   useEffect(() => {
     if (isDragging.current) return;
     progressAnim.stopAnimation();
     Animated.timing(progressAnim, {
       toValue: loopProgress,
-      duration: 450,
+      duration: 100,
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
   }, [loopProgress]);
-
-  useEffect(() => {
-    if (trackDurMs > 0 || !isActive || !isPlaying || isPaused) return;
-    let loop: Animated.CompositeAnimation | null = null;
-    progressAnim.stopAnimation(() => {
-      progressAnim.setValue(0);
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(progressAnim, { toValue: 0.65, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-          Animated.timing(progressAnim, { toValue: 0.05, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        ])
-      );
-      loop!.start();
-    });
-    return () => { loop?.stop(); progressAnim.stopAnimation(); };
-  }, [trackDurMs, isActive, isPlaying, isPaused]);
 
   useEffect(() => { trackDurMsRef.current = trackDurMs; }, [trackDurMs]);
   useEffect(() => { trackWRef.current = TRACK_W; }, [TRACK_W]);
@@ -2799,12 +2793,7 @@ const ReelCard = memo(function ReelCard({
         </View>
       </Animated.View>
 
-        {isActive && !isLast && (
-          <Animated.View style={{ alignItems: 'center', marginTop: 2, transform: [{ translateY: hintAnim }] }}>
-            <Ionicons name="chevron-up" size={14} color="rgba(255,255,255,0.45)" />
-            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, marginTop: 1, textTransform: 'uppercase' }}>Swipe up for next</Text>
-          </Animated.View>
-        )}
+
 
       {isActive && showLoadingOverlay && (
         <View style={{
@@ -3205,7 +3194,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
     if (visible) {
       // Snap to fully visible in one frame — no animation delay at all
       entryAnim.setValue(1);
-      Animated.timing(libBtnAnim, { toValue: 1, duration: 250, delay: 80, useNativeDriver: true }).start();
+      libBtnAnim.setValue(1);
     } else {
       libBtnAnim.setValue(0);
       entryAnim.setValue(0);
@@ -3297,7 +3286,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
         decelerationRate="fast"
         bounces={false}
         overScrollMode="never"
-        scrollEnabled={!isLibraryOpen}
+        scrollEnabled={false}
         onScroll={(e) => {
           const y = e.nativeEvent.contentOffset.y;
           const idx = Math.round(y / REEL_H);
@@ -3354,9 +3343,9 @@ const SoundReelsModal = memo(function SoundReelsModal({
       {/* Premium Header */}
       <Animated.View style={{ 
         position: 'absolute', 
-        top: Math.max(40, Platform.OS === 'ios' ? insets.top : insets.top + 10), 
+        top: Platform.OS === 'ios' ? insets.top + 20 : insets.top + 36, 
         left: 0, right: 0, 
-        paddingHorizontal: 16, 
+        paddingHorizontal: 24, 
         zIndex: 10, 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
@@ -3885,19 +3874,19 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           keyboardShouldPersistTaps="handled"
         >
           {/* Elegant Premium Header */}
-          <View style={{ marginBottom: 20, alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <View style={{ marginBottom: 16, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: collection.themeColor, shadowColor: collection.themeColor, shadowOpacity: 0.8, shadowRadius: 6 }} />
               <Text style={{ fontSize: 10, fontWeight: '700', color: collection.themeColor, letterSpacing: 2.5, fontFamily: 'Nunito_700Bold', textTransform: 'uppercase' }}>
                 {collection.subtitle || 'Premium Collection'}
               </Text>
             </View>
             
-            <Text style={{ fontSize: 38, color: '#fff', fontFamily: 'DancingScript_600SemiBold', marginBottom: 8, textAlign: 'center', letterSpacing: 0.5, textShadowColor: collection.themeColor + '40', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12 }}>
+            <Text style={{ fontSize: 34, color: '#fff', fontFamily: 'DancingScript_600SemiBold', marginBottom: 6, textAlign: 'center', letterSpacing: 0.5, textShadowColor: collection.themeColor + '40', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12 }}>
               {collection.title}
             </Text>
             
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 20, fontFamily: 'Nunito_300Light', textAlign: 'center', paddingHorizontal: 10 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 18, fontFamily: 'Nunito_400Regular', textAlign: 'center', paddingHorizontal: 10 }}>
               {collection.description}
             </Text>
           </View>
@@ -4263,20 +4252,20 @@ function SleepTabInner() {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 24, marginBottom: 16, minHeight: H * 0.45 - 100 }}>
+          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 16, marginBottom: 24 }}>
             {/* Main Greeting */}
             <Text style={{
-              fontSize: 46, color: '#fff', fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1, textAlign: 'center', marginBottom: 16,
+              fontSize: 42, color: '#fff', fontFamily: 'DancingScript_600SemiBold', 
+              letterSpacing: 1, textAlign: 'center', marginBottom: 12,
               textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12
             }}>
               Sonic Therapies
             </Text>
 
             {/* Tiny Circadian Subtext */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: 0.7 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: 0.8 }}>
               <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff', shadowColor: '#fff', shadowOpacity: 0.8, shadowRadius: 4 }} />
-              <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_400Regular', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 Currently in your {heroContent ? heroContent.header.toLowerCase() : displayMode.label.toLowerCase()} phase
               </Text>
             </View>
@@ -4332,26 +4321,16 @@ function SleepTabInner() {
             keyboardShouldPersistTaps="handled"
             initialNumToRender={15}
             windowSize={5}
-            renderItem={({ item: sound }) => {
+            renderItem={({ item: sound, index }) => {
               const isPlaying = playingId === sound.id;
               return (
-                <TouchableOpacity 
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSoundCardTap(sound.id); }} 
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' }}
-                >
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sound.color ? sound.color + '20' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 18 }}>{sound.emoji || '🎵'}</Text>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 16 }}>
-                    <MarqueeText style={{ fontSize: 16, fontWeight: '600', color: isPlaying ? (sound.color || '#FFF') : '#E5E5E5', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' }} active={isPlaying} duration={8000} adjustsFontSizeToFit={false} numberOfLines={2}>{sound.label}</MarqueeText>
-                    {sound.desc ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Nunito_400Regular' }} numberOfLines={1}>{sound.desc}</Text> : null}
-                  </View>
-                  {isPlaying ? (
-                    <Ionicons name="stats-chart" size={16} color={sound.color || '#FFF'} />
-                  ) : (
-                    <Ionicons name="play" size={16} color="rgba(255,255,255,0.2)" />
-                  )}
-                </TouchableOpacity>
+                <SoundRow
+                  sound={sound}
+                  isPlaying={isPlaying}
+                  onPress={() => { handleSoundCardTap(sound.id); }}
+                  isLast={index === filteredSearchSounds.length - 1}
+                  index={index}
+                />
               );
             }}
             ListEmptyComponent={() => (

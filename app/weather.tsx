@@ -83,30 +83,34 @@ export default function WeatherScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             
-            {/* Top Section: Main + Metrics Side by Side */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <View style={styles.mainCurrent}>
-                <Text style={styles.mainEmoji}>{weather.emoji}</Text>
-                <View style={styles.tempRow}>
-                  <Text style={styles.mainTemp}>{weather.temp}</Text>
-                  <Text style={styles.degSymbol}>°</Text>
-                </View>
-                <Text style={styles.conditionText}>{weather.condition}</Text>
-                <Text style={styles.feelsLike}>Feels like {weather.feelsLike}°</Text>
+            {/* 1. Main Current Weather Section */}
+            <View style={styles.mainCurrent}>
+              <Text style={styles.mainEmoji}>{weather.emoji}</Text>
+              <View style={styles.tempRow}>
+                <Text style={styles.mainTemp}>{weather.temp}</Text>
+                <Text style={styles.degSymbol}>°</Text>
               </View>
-              
-              <View style={{ width: '45%', gap: 10 }}>
-                <MetricTile icon="💧" label="Humid" value={`${weather.humidity}%`} />
-                <MetricTile icon="💨" label="Wind" value={`${weather.windSpeed || 0}k/h`} />
-              </View>
+              <Text style={styles.conditionText}>{weather.condition}</Text>
+              <Text style={styles.feelsLike}>Feels like {weather.feelsLike}°</Text>
             </View>
 
-            {/* Middle Section: 24-Hour Forecast */}
+            {/* 2. Extra Metrics Tiles */}
+            <View style={styles.metricsGrid}>
+              <MetricTile icon="💧" label="Humidity" value={`${weather.humidity}%`} />
+              <MetricTile icon="💨" label="Wind" value={`${weather.windSpeed || 0} km/h`} />
+              <MetricTile icon="☁️" label="Cloud Cover" value={`${weather.cloudCover || 0}%`} />
+              <MetricTile icon="☔" label="Precipitation" value={`${weather.precipitation || 0} mm`} />
+            </View>
+
+            {/* 3. 24-Hour Forecast */}
             <View style={styles.sectionCard}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>24-Hour Forecast</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
                 {weather.hourly.map((h, i) => (
                   <View key={i} style={styles.hourlyItem}>
                     <Text style={styles.hourlyTime}>{i === 0 ? 'Now' : `${h.hour}:00`}</Text>
@@ -118,18 +122,23 @@ export default function WeatherScreen() {
               </ScrollView>
             </View>
 
-            {/* Bottom Section: 7-Day Forecast (Trimmed to fit screen) */}
-            <View style={[styles.sectionCard, { flex: 1, marginBottom: 20 }]}>
+            {/* 4. 14-Day Forecast */}
+            <View style={[styles.sectionCard, { marginBottom: 60 }]}>
               <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>14-Day Outlook</Text>
+              </View>
               <View style={styles.dailyContainer}>
-                {weather.daily.slice(0, 7).map((d, i) => (
+                {weather.daily.map((d, i) => (
                   <View key={i} style={styles.dailyRow}>
                     <Text style={styles.dailyDay}>{d.dayLabel}</Text>
                     <View style={styles.dailyEmojiContainer}>
                       <Text style={styles.dailyRowEmoji}>{d.emoji}</Text>
+                      {d.precipitation > 0 && <Text style={styles.dailyRowPrecip}>{d.precipitation}mm</Text>}
                     </View>
                     <View style={styles.dailyTemps}>
                       <Text style={styles.dailyMin}>{d.minTemp}°</Text>
+                      {/* Visual Temp Bar */}
                       <View style={styles.tempBarContainer}>
                         <LinearGradient 
                           colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.8)']} 
@@ -143,7 +152,8 @@ export default function WeatherScreen() {
                 ))}
               </View>
             </View>
-          </View>
+
+          </ScrollView>
         )}
       </SafeAreaView>
     </View>
@@ -242,20 +252,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   mainCurrent: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    marginTop: 5,
+    marginBottom: 20,
   },
   mainEmoji: {
-    fontSize: 100,
+    fontSize: 72,
     shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 15,
+    elevation: 8,
   },
   tempRow: {
     flexDirection: 'row',
@@ -263,42 +273,42 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   mainTemp: {
-    fontSize: 96,
+    fontSize: 72,
     fontWeight: '200',
     color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-thin',
-    letterSpacing: -4,
+    letterSpacing: -3,
   },
   degSymbol: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: '300',
     color: 'rgba(255,255,255,0.6)',
-    marginTop: 15,
+    marginTop: 10,
   },
   conditionText: {
-    fontSize: 24,
-    fontWeight: '500',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#FFF',
-    marginTop: -10,
-    letterSpacing: 1,
+    marginTop: -5,
+    letterSpacing: 0.5,
   },
   feelsLike: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
-    marginTop: 8,
+    marginTop: 4,
     fontWeight: '500',
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 15,
   },
   metricTile: {
     width: '48%',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
@@ -320,46 +330,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionCard: {
-    borderRadius: 30,
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 30,
+    marginBottom: 15,
   },
   sectionHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
   hourlyScroll: {
-    padding: 20,
+    padding: 12,
   },
   hourlyItem: {
     alignItems: 'center',
-    marginRight: 24,
+    marginRight: 16,
   },
   hourlyTime: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   hourlyEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 24,
+    marginBottom: 6,
   },
   hourlyTemp: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   hourlyPrecip: {
@@ -374,7 +384,7 @@ const styles = StyleSheet.create({
   dailyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
@@ -382,7 +392,7 @@ const styles = StyleSheet.create({
   dailyDay: {
     width: 60,
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   dailyEmojiContainer: {
@@ -406,16 +416,16 @@ const styles = StyleSheet.create({
   },
   dailyMin: {
     color: 'rgba(255,255,255,0.6)',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    width: 35,
+    width: 30,
   },
   tempBarContainer: {
     flex: 1,
     height: 6,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 3,
-    marginHorizontal: 15,
+    marginHorizontal: 12,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
@@ -426,9 +436,9 @@ const styles = StyleSheet.create({
   },
   dailyMax: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    width: 35,
+    width: 30,
     textAlign: 'right',
   },
 });

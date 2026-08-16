@@ -835,22 +835,20 @@ function GlobalPlayerBar() {
             <Text style={GP.emojiTxt}>{displayMeta.emoji}</Text>
           </View>
 
-          {/* Info */}
-          <View style={GP.infoCol}>
+          {/* Info & Waveform */}
+          <View style={{ flex: 1, justifyContent: 'center' }}>
             <Text style={GP.name} numberOfLines={1}>
               {label}
             </Text>
-            <Text style={GP.sub} numberOfLines={1}>
-              {subLine}
-            </Text>
-          </View>
-
-          {/* Waveform */}
-          <View style={GP.waveWrap}>
-            <WaveformBars
-              color={accentColor}
-              active={!isPaused && !!playingId}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <WaveformBars
+                color={accentColor}
+                active={!isPaused && !!playingId}
+              />
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                {isPaused ? 'Paused' : 'Playing'}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
 

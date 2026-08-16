@@ -5772,7 +5772,7 @@ function getSolarRingPalette(
 // ── Hero Geometric Animation (Imported) ──
 
 function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarTimes }: { period: DoshaPeriod | null; brahmaInfo?: BrahmaMuhurtaInfo | null; weather?: WeatherData | null; onPress?: () => void; compact?: boolean; solarTimes?: SolarTimes | null }) {
-  const HERO_RS  = compact ? 236 : 298;
+  const HERO_RS  = compact ? 262 : 331;
   const HERO_STR = 6;
   const HERO_R   = (HERO_RS - HERO_STR * 2) / 2;
   const HERO_C   = 2 * Math.PI * HERO_R;
@@ -6041,10 +6041,11 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const { accentColor: appAccent } = useBgContext();
   
   // Premium Bubble Effect: Use app theme color with neon/sky blue highlights for a calming effect
-  const baseColor = appAccent || '#00D4B8';
-  const ringHex   = baseColor;
-  const haloHex   = '#80FFFF'; // Sky blue / cyan neon glow
-  const accentHex = baseColor;
+  // Premium Transparent Sparkling Gold Effect
+  const baseColor = '#FDE047'; // Sparkling yellow-gold
+  const ringHex   = '#FDE047';
+  const haloHex   = '#FEF08A'; // Shiny bright gold aura
+  const accentHex = '#FDE047';
   
   const [hR, hG, hB] = hexToRgb(haloHex);
   const [rR, rG, rB] = hexToRgb(ringHex);
@@ -6155,12 +6156,23 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <Animated.View style={{
               width: HERO_RS * 0.8, height: HERO_RS * 0.8,
               borderRadius: HERO_RS * 0.4,
-              backgroundColor: accentHex,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.4] }),
+              backgroundColor: 'rgba(253, 224, 71, 0.12)', // High transparency gold base
+              borderWidth: 0, // Explicitly no outline
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.3, 0.7] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.95, 1.25] }) }],
-              shadowColor: accentHex, shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1, shadowRadius: HERO_RS * 0.3,
-            }} />
+              shadowColor: '#FEF08A', 
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.9, 
+              shadowRadius: HERO_RS * 0.35,
+              overflow: 'hidden',
+            }}>
+              {/* Premium shining gradient fill to make the entire ring sparkling gold */}
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.6)', 'rgba(253, 224, 71, 0.25)', 'transparent']}
+                start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }}
+                style={{ flex: 1, borderRadius: HERO_RS * 0.4 }}
+              />
+            </Animated.View>
           </Animated.View>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
@@ -7598,7 +7610,7 @@ function DailyTab() {
               </View>
 
               {/* Ring + festival badge */}
-              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', paddingBottom: 30 }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', paddingBottom: 45 }}>
                 {todayFest && (
                   <TouchableOpacity
                     activeOpacity={0.85}
