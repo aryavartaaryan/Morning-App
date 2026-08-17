@@ -2614,7 +2614,7 @@ const ReelCard = memo(function ReelCard({
         }}
       >
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)', '#000000']}
+          colors={['transparent', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.4)']}
           locations={[0, 0.4, 0.7, 1]}
           style={[StyleSheet.absoluteFillObject, { top: -200 }]}
           pointerEvents="none"
@@ -3350,7 +3350,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
         )}
       />
       <LinearGradient
-        colors={['rgba(0,0,0,0.86)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.00)']}
+        colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.05)', 'transparent']}
         locations={[0, 0.38, 0.72, 1]}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 220, zIndex: 9 }}
         pointerEvents="none"
@@ -3864,7 +3864,16 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 9998, elevation: 998, transform: [{ translateY: slideIn }] }]}>
-      <BlurView intensity={90} tint="dark" style={{ flex: 1, backgroundColor: 'rgba(3, 3, 13, 0.55)' }}>
+      <View style={{ flex: 1, backgroundColor: '#03030D' }}>
+        
+        {/* Premium Collection-Specific Background */}
+        <Image
+          source={{ uri: collection.imageUri }}
+          style={[StyleSheet.absoluteFillObject, { opacity: 0.8, transform: [{ scale: 1.1 }] }]}
+          resizeMode="cover"
+        />
+        <BlurView tint="dark" intensity={120} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(3, 3, 13, 0.4)' }]} pointerEvents="none" />
 
         {/* Top Header / Nav */}
         <SafeAreaView style={{ paddingTop: 14, paddingHorizontal: 16 }}>
@@ -3927,7 +3936,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             ))}
           </View>
         </ScrollView>
-      </BlurView>
+      </View>
     </Animated.View>
   );
 });
@@ -4267,18 +4276,31 @@ function SleepTabInner() {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 16, marginBottom: 24 }}>
+          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 40, marginBottom: 40 }}>
+            
+            {/* Welcome Text */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, opacity: 0.9 }}>
+              <View style={{ width: 30, height: 1, backgroundColor: '#fff', opacity: 0.4 }} />
+              <Text style={{
+                fontSize: 11, color: '#fff', fontFamily: 'Nunito_700Bold', 
+                letterSpacing: 4, textTransform: 'uppercase', textAlign: 'center'
+              }}>
+                Welcome to Svara
+              </Text>
+              <View style={{ width: 30, height: 1, backgroundColor: '#fff', opacity: 0.4 }} />
+            </View>
+
             {/* Main Greeting */}
             <Text style={{
-              fontSize: 42, color: '#fff', fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1, textAlign: 'center', marginBottom: 12,
-              textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12
+              fontSize: 56, color: '#fff', fontFamily: 'DancingScript_600SemiBold', 
+              letterSpacing: 1, textAlign: 'center', marginBottom: 16,
+              textShadowColor: 'rgba(255,255,255,0.3)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 24
             }}>
               Sonic Therapies
             </Text>
 
             {/* Tiny Circadian Subtext */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: 0.8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: 0.7 }}>
               <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff', shadowColor: '#fff', shadowOpacity: 0.8, shadowRadius: 4 }} />
               <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 Currently in your {heroContent ? heroContent.header.toLowerCase() : displayMode.label.toLowerCase()} phase
