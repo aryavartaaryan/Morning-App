@@ -1,704 +1,425 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  FlatList,
-  Platform,
-  SafeAreaView,
-  Animated,
-  TextInput,
-  Dimensions,
-  BackHandler,
+  View, Text, StyleSheet, Modal, TouchableOpacity,
+  FlatList, Animated, TextInput, Dimensions, BackHandler,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type DisplayGroup = {
-  id: string;
-  title: string;
-  subtitle?: string;
-  themeColor: string;
-  sounds: any[];
+  id: string; title: string; subtitle?: string;
+  themeColor: string; sounds: any[];
 };
 
-// ─── Animated Sound Row ───────────────────────────────────────────────────────
-export function SoundRow({
-  sound,
-  isPlaying,
-  onPress,
-  isLast,
-  index,
-}: {
-  sound: any;
-  isPlaying: boolean;
-  onPress: () => void;
-  isLast?: boolean;
-  index: number;
-}) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(6)).current;
+// ── Playing Pulse Bars ────────────────────────────────────────────────────────
+export function PlayingPulse({ color }: { color: string }) {
+  const a1 = useRef(new Animated.Value(0.3)).current;
+  const a2 = useRef(new Animated.Value(0.6)).current;
+  const a3 = useRef(new Animated.Value(1.0)).current;
+  useEffect(() => {
+    const pulse = (v: Animated.Value, delay: number) =>
+      Animated.loop(Animated.sequence([
+        Animated.timing(v, { toValue: 1,    duration: 380, delay, useNativeDriver: true }),
+        Animated.timing(v, { toValue: 0.25, duration: 380,        useNativeDriver: true }),
+      ]));
+    pulse(a1, 0).start(); pulse(a2, 125).start(); pulse(a3, 250).start();
+  }, []);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', height: 20, gap: 2.5 }}>
+      {[a1, a2, a3].map((v, i) => (
+        <Animated.View key={i} style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: color, opacity: v }} />
+      ))}
+    </View>
+  );
+}
 
+// ── Animated Sound Row ────────────────────────────────────────────────────────
+export function SoundRow({ sound, isPlaying, onPress, onAddQueue, isLast, index }: {
+  sound: any; isPlaying: boolean; onPress: () => void;
+  onAddQueue?: () => void; isLast?: boolean; index: number;
+}) {
+  const opacity    = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 180,
-        delay: index * 30,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 180,
-        delay: index * 30,
-        useNativeDriver: true,
-      }),
+      Animated.timing(opacity,    { toValue: 1, duration: 220, delay: index * 22, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 220, delay: index * 22, useNativeDriver: true }),
     ]).start();
   }, []);
-
+  const accentColor = sound.color || '#a78bfa';
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
       <TouchableOpacity
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onPress();
-        }}
-        activeOpacity={0.65}
-        style={[S.row, isPlaying && { backgroundColor: 'rgba(255,255,255,0.04)' }]}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
+        activeOpacity={0.6}
+        style={[SR.row, isPlaying && { backgroundColor: accentColor + '12' }]}
       >
-        {/* Left: playing indicator bar */}
-        <View style={[S.playingBar, { backgroundColor: isPlaying ? (sound.color || '#fff') : 'transparent' }]} />
-
-        <Text style={S.rowEmoji}>{sound.emoji || '🎵'}</Text>
-
-        <View style={[S.rowBody, !isLast && S.rowDivider]}>
+        <View style={[SR.accentBar, {
+          backgroundColor: isPlaying ? accentColor : 'transparent',
+          ...(isPlaying ? { shadowColor: accentColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 8 } : {}),
+        }]} />
+        <Text style={SR.emoji}>{sound.emoji || '🎵'}</Text>
+        <View style={[SR.body, !isLast && SR.bodyDivider]}>
           <View style={{ flex: 1 }}>
-            <Text
-              style={[S.rowTitle, isPlaying && { color: sound.color || '#FFFFFF' }]}
-              numberOfLines={1}
-            >
+            <Text style={[SR.title, isPlaying && { color: accentColor, fontWeight: '600' }]} numberOfLines={1}>
               {sound.label}
             </Text>
-            {sound.desc ? (
-              <Text style={S.rowDesc} numberOfLines={1}>
-                {sound.desc}
-              </Text>
-            ) : null}
+            {sound.desc ? <Text style={SR.desc} numberOfLines={1}>{sound.desc}</Text> : null}
           </View>
-
-          {isPlaying ? (
-            <PlayingPulse color={sound.color || '#fff'} />
-          ) : (
-            <View style={S.playBtn}>
-              <Ionicons name="play" size={11} color="rgba(255,255,255,0.25)" />
-            </View>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {onAddQueue && (
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onAddQueue(); }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="add" size={20} color="rgba(255,255,255,0.35)" />
+              </TouchableOpacity>
+            )}
+            {isPlaying ? <PlayingPulse color={accentColor} /> : (
+              <View style={SR.playBtn}>
+                <Ionicons name="play" size={10} color="rgba(255,255,255,0.22)" style={{ marginLeft: 1 }} />
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-// ─── Playing Pulse Dots ───────────────────────────────────────────────────────
-export function PlayingPulse({ color }: { color: string }) {
-  const a1 = useRef(new Animated.Value(0.3)).current;
-  const a2 = useRef(new Animated.Value(0.6)).current;
-  const a3 = useRef(new Animated.Value(1)).current;
-
+// ── Collection Card (premium dark glass) ──────────────────────────────────────
+function CollectionCard({ group, index, playingId, onPress }: {
+  group: DisplayGroup; index: number; playingId: string | null; onPress: () => void;
+}) {
+  const opacity    = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(18)).current;
+  const hasPlaying = group.sounds.some((s: any) => s.id === playingId);
+  const color      = group.themeColor;
   useEffect(() => {
-    const pulse = (v: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(v, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-          Animated.timing(v, { toValue: 0.3, duration: 400, useNativeDriver: true }),
-        ])
-      );
-    pulse(a1, 0).start();
-    pulse(a2, 133).start();
-    pulse(a3, 266).start();
+    Animated.parallel([
+      Animated.timing(opacity,    { toValue: 1, duration: 320, delay: index * 45, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 320, delay: index * 45, useNativeDriver: true }),
+    ]).start();
   }, []);
-
-  const barStyle = (v: Animated.Value) => ({
-    width: 3,
-    height: 13,
-    borderRadius: 2,
-    backgroundColor: color,
-    marginHorizontal: 1.5,
-    opacity: v,
-  });
-
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14, height: 20 }}>
-      <Animated.View style={barStyle(a1)} />
-      <Animated.View style={barStyle(a2)} />
-      <Animated.View style={barStyle(a3)} />
-    </View>
-  );
-}
-
-// ─── Collection Pill ──────────────────────────────────────────────────────────
-function CollectionPill({
-  group,
-  isActive,
-  onPress,
-  hasPlayingSound,
-}: {
-  group: DisplayGroup;
-  isActive: boolean;
-  onPress: () => void;
-  hasPlayingSound: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      activeOpacity={0.7}
-      style={[S.pill, isActive && { borderColor: group.themeColor + 'CC' }]}
-    >
-      {isActive && (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: group.themeColor + '14', borderRadius: 12 },
-          ]}
-        />
-      )}
-      <View style={[S.pillDot, { backgroundColor: isActive ? group.themeColor : 'rgba(255,255,255,0.15)' }]} />
-      <Text
-        style={[S.pillText, isActive && { color: '#fff', fontWeight: '600' }]}
-        numberOfLines={1}
+    <Animated.View style={[CC.wrapper, { opacity, transform: [{ translateY }] }]}>
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress(); }}
+        activeOpacity={0.65} style={CC.card}
       >
-        {group.title}
-      </Text>
-      <Text style={[S.pillCount, isActive && { color: group.themeColor }]}>
-        {group.sounds.length}
-      </Text>
-    </TouchableOpacity>
+        {/* Left accent bar with glow */}
+        <View style={[CC.accentBar, {
+          backgroundColor: color,
+          shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 6,
+        }]} />
+        {/* Ambient glow if playing */}
+        {hasPlaying && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: color + '0C', borderRadius: 14 }]} />
+        )}
+        {/* Color swatch dot */}
+        <View style={[CC.swatch, { backgroundColor: color + '28', borderColor: color + '50' }]}>
+          <View style={[CC.swatchDot, { backgroundColor: color }]} />
+        </View>
+        {/* Labels */}
+        <View style={{ flex: 1 }}>
+          <Text style={CC.title} numberOfLines={1}>{group.title}</Text>
+          {group.subtitle
+            ? <Text style={CC.subtitle} numberOfLines={1}>{group.subtitle}</Text>
+            : null}
+        </View>
+        {/* Right: playing pulse + count chip + chevron */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {hasPlaying && (
+            <View style={[CC.playingChip, { borderColor: color + '60', backgroundColor: color + '18' }]}>
+              <PlayingPulse color={color} />
+            </View>
+          )}
+          <View style={[CC.countChip, { borderColor: color + '30' }]}>
+            <Text style={[CC.countText, { color }]}>{group.sounds.length}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.28)" />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Main Modal ────────────────────────────────────────────────────────────────
 export default function SoundLibraryModal({
-  visible,
-  onClose,
-  sounds,
-  collections,
-  playingId,
-  onPlaySound,
-  initialCategory,
+  visible, onClose, sounds, collections, playingId, onPlaySound, onAddQueue, initialCategory,
 }: {
-  visible: boolean;
-  onClose: () => void;
-  sounds: any[];
-  collections?: any[];
-  playingId: string | null;
-  onPlaySound: (id: string) => void;
-  initialCategory?: string | null;
+  visible: boolean; onClose: () => void; sounds: any[]; collections?: any[];
+  playingId: string | null; onPlaySound: (id: string) => void;
+  onAddQueue?: (id: string) => void; initialCategory?: string | null;
 }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const [activeId, setActiveId]       = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
+  const slideAnim  = useRef(new Animated.Value(SCREEN_H)).current;
+  const backdropOp = useRef(new Animated.Value(0)).current;
 
-  // Open / close animation
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(0);
       setActiveId(initialCategory ?? null);
       setSearchQuery('');
+      Animated.parallel([
+        Animated.spring(slideAnim,  { toValue: 0, damping: 22, stiffness: 260, useNativeDriver: true }),
+        Animated.timing(backdropOp, { toValue: 1, duration: 260, useNativeDriver: true }),
+      ]).start();
     } else {
-      slideAnim.setValue(SCREEN_H);
+      Animated.parallel([
+        Animated.timing(slideAnim,  { toValue: SCREEN_H, duration: 280, useNativeDriver: true }),
+        Animated.timing(backdropOp, { toValue: 0,         duration: 200, useNativeDriver: true }),
+      ]).start();
     }
   }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (activeId) {
-        setActiveId(null);
-      } else {
-        onClose();
-      }
+      if (activeId) setActiveId(null); else onClose();
       return true;
     });
     return () => sub.remove();
   }, [visible, activeId, onClose]);
 
-  // Build display groups
   const displayGroups = useMemo((): DisplayGroup[] => {
     if (collections && collections.length > 0) {
       return collections.map(col => ({
-        id: col.id,
-        title: col.title,
-        subtitle: col.subtitle,
-        themeColor: col.themeColor || '#FFFFFF',
-        sounds: col.soundIds
-          .map((id: string) => sounds.find(s => s.id === id))
-          .filter(Boolean),
+        id: col.id, title: col.title, subtitle: col.subtitle,
+        themeColor: col.themeColor || '#a78bfa',
+        sounds: col.soundIds.map((id: string) => sounds.find(s => s.id === id)).filter(Boolean),
       }));
     }
     const cats = new Set<string>();
     sounds.forEach(s => { if (s.cat) cats.add(s.cat); });
     return Array.from(cats).sort().map(cat => ({
-      id: cat,
-      title: cat,
-      subtitle: undefined,
-      themeColor: '#FFFFFF',
+      id: cat, title: cat, subtitle: undefined, themeColor: '#a78bfa',
       sounds: sounds.filter(s => s.cat === cat),
     }));
   }, [collections, sounds]);
 
-  // Filter sounds for search mode
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
-    return sounds.filter(s => 
+    return sounds.filter(s =>
       s.label?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
     );
   }, [sounds, searchQuery]);
 
-  const activeGroup = displayGroups.find(g => g.id === activeId) ?? null;
+  const activeGroup  = displayGroups.find(g => g.id === activeId) ?? null;
   const isSearchMode = searchQuery.length > 0;
 
-  const handleSelectGroup = (id: string) => {
-    setActiveId(prev => prev === id ? null : id);
-  };
-
-  const handleRequestClose = () => {
-    if (activeId) {
-      setActiveId(null);
-    } else {
-      onClose();
-    }
-  };
-
   return (
-    <View
-      style={[
-        StyleSheet.absoluteFillObject,
-        {
-          zIndex: visible ? 10000 : -1,
-          elevation: visible ? 998 : 0,
-        }
-      ]}
-      pointerEvents={visible ? 'auto' : 'none'}
+    // Native Modal = background scroll completely blocked (bug fix)
+    <Modal
+      visible={visible} transparent animationType="none" statusBarTranslucent
+      onRequestClose={() => { if (activeId) setActiveId(null); else onClose(); }}
     >
-      {/* Dim backdrop */}
-      <TouchableOpacity
-        style={S.backdrop}
-        activeOpacity={1}
-        onPress={handleRequestClose}
-      />
+      <View style={M.root}>
+        {/* Dim backdrop */}
+        <Animated.View style={[M.backdrop, { opacity: backdropOp }]}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+        </Animated.View>
 
-      <Animated.View style={[S.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Deep black glass base */}
-        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
-        <LinearGradient
-          colors={['#0A0A0C', '#080808']}
-          style={[StyleSheet.absoluteFillObject, { opacity: 0.96 }]}
-        />
+        {/* Sheet */}
+        <Animated.View style={[M.sheet, { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom }]}>
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(6,6,10,0.92)' }]} />
 
-        <SafeAreaView style={{ flex: 1 }}>
-          {/* ── Handle ─────────────────────────────────────────────────── */}
-          <View style={S.handle} />
+          {/* Drag handle */}
+          <View style={M.handle} />
 
-          {/* ── Header ─────────────────────────────────────────────────── */}
-          <View style={S.header}>
-            <View>
-              <Text style={S.headerTitle}>Svara Library</Text>
-              <Text style={S.headerSub}>
-                {displayGroups.length} collections · {sounds.length} sounds
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={S.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
+          {/* ── Header ────────────────────────────────────────────── */}
+          <View style={[M.header, { paddingTop: insets.top > 0 ? 8 : 16 }]}>
+            {activeGroup ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <TouchableOpacity
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveId(null); }}
+                  style={M.backBtn} activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.8)" />
+                </TouchableOpacity>
+                <View style={[M.accentDot, {
+                  backgroundColor: activeGroup.themeColor,
+                  shadowColor: activeGroup.themeColor, shadowOpacity: 0.9,
+                  shadowRadius: 6, shadowOffset: { width: 0, height: 0 },
+                }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[M.headerTitle, { color: activeGroup.themeColor }]} numberOfLines={1}>
+                    {activeGroup.title}
+                  </Text>
+                  <Text style={M.headerSub}>
+                    {activeGroup.subtitle || `${activeGroup.sounds.length} sounds`}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <Text style={M.headerTitle}>Sound Library</Text>
+                <Text style={M.headerSub}>
+                  {displayGroups.length} collections · {sounds.length} sounds
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity onPress={onClose} style={M.closeBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={15} color="rgba(255,255,255,0.55)" />
             </TouchableOpacity>
           </View>
 
-          {/* ── Search ──────────────────────────────────────────────────── */}
-          <View style={S.searchWrap}>
-            <Ionicons name="search" size={14} color="rgba(255,255,255,0.3)" style={{ marginLeft: 14, marginRight: 9 }} />
-            <TextInput
-              style={S.searchInput}
-              placeholder="Search sounds & collections…"
-              placeholderTextColor="rgba(255,255,255,0.22)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 10 }}>
-                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.3)" />
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* ── Search (root only) ────────────────────────────────── */}
+          {!activeGroup && (
+            <View style={M.searchWrap}>
+              <Ionicons name="search" size={14} color="rgba(255,255,255,0.28)" style={{ marginRight: 9 }} />
+              <TextInput
+                style={M.searchInput}
+                placeholder="Search sounds & collections…"
+                placeholderTextColor="rgba(255,255,255,0.20)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 8 }}>
+                  <Ionicons name="close-circle" size={15} color="rgba(255,255,255,0.28)" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
-          {/* ── Divider ─────────────────────────────────────────────────── */}
-          <View style={S.divider} />
+          <View style={M.divider} />
 
-          {/* ── Single-panel drill-down layout ─────────────── */}
+          {/* ── Content ───────────────────────────────────────────── */}
           <View style={{ flex: 1 }}>
             {isSearchMode ? (
               <FlatList
-                data={searchResults}
-                keyExtractor={(item) => item.id}
+                data={searchResults} keyExtractor={item => item.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
-                initialNumToRender={15}
-                windowSize={5}
-                ListEmptyComponent={() => (
-                  <Text style={S.emptyText}>No results</Text>
-                )}
+                initialNumToRender={20}
+                ListEmptyComponent={() => <Text style={M.emptyText}>No results for "{searchQuery}"</Text>}
                 renderItem={({ item: sound, index }) => (
                   <SoundRow
-                    sound={sound}
-                    isPlaying={playingId === sound.id}
-                    onPress={() => { onPlaySound(sound.id); }}
-                    isLast={index === searchResults.length - 1}
-                    index={index}
+                    sound={sound} isPlaying={playingId === sound.id}
+                    onPress={() => onPlaySound(sound.id)}
+                    onAddQueue={onAddQueue ? () => onAddQueue(sound.id) : undefined}
+                    isLast={index === searchResults.length - 1} index={index}
                   />
                 )}
               />
             ) : !activeGroup ? (
               <FlatList
-                data={displayGroups}
-                keyExtractor={(item) => item.id}
-                style={{ flex: 1, paddingHorizontal: 16 }}
+                data={displayGroups} keyExtractor={item => item.id}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 10, paddingBottom: 50 }}
-                initialNumToRender={15}
-                windowSize={5}
-                ListEmptyComponent={() => (
-                  <Text style={S.emptyText}>No results</Text>
-                )}
-                renderItem={({ item: group }) => (
-                  <CollectionPill
-                    group={group}
-                    isActive={false}
-                    onPress={() => handleSelectGroup(group.id)}
-                    hasPlayingSound={group.sounds.some((s: any) => s.id === playingId)}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 60 }}
+                initialNumToRender={12}
+                ListEmptyComponent={() => <Text style={M.emptyText}>No collections</Text>}
+                renderItem={({ item: group, index }) => (
+                  <CollectionCard
+                    group={group} index={index} playingId={playingId}
+                    onPress={() => setActiveId(group.id)}
                   />
                 )}
               />
             ) : (
-              <View style={{ flex: 1 }}>
-                {/* Collection heading with Back button */}
-                <View style={[S.rightHeader, { paddingHorizontal: 16, paddingVertical: 12 }]}>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setActiveId(null);
-                    }} 
-                    style={{ marginRight: 12, paddingVertical: 4, paddingRight: 8, flexDirection: 'row', alignItems: 'center' }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
-                  </TouchableOpacity>
-                  <View style={[S.rightHeaderDot, { backgroundColor: activeGroup.themeColor }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[S.rightHeaderTitle, { color: activeGroup.themeColor, fontSize: 14 }]} numberOfLines={1}>
-                      {activeGroup.title}
-                    </Text>
-                    {activeGroup.subtitle ? (
-                      <Text style={S.rightHeaderSub} numberOfLines={1}>{activeGroup.subtitle}</Text>
-                    ) : null}
-                  </View>
-                  <Text style={S.rightHeaderCount}>{activeGroup.sounds.length}</Text>
-                </View>
-                <View style={S.divider} />
-
-                <FlatList
-                  data={activeGroup.sounds}
-                  keyExtractor={(item) => item.id}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
-                  initialNumToRender={15}
-                  windowSize={5}
-                  renderItem={({ item: sound, index }) => (
-                    <SoundRow
-                      sound={sound}
-                      isPlaying={playingId === sound.id}
-                      onPress={() => { onPlaySound(sound.id); }}
-                      isLast={index === activeGroup.sounds.length - 1}
-                      index={index}
-                    />
-                  )}
-                />
-              </View>
+              <FlatList
+                data={activeGroup.sounds} keyExtractor={item => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 6, paddingBottom: 60 }}
+                initialNumToRender={20}
+                renderItem={({ item: sound, index }) => (
+                  <SoundRow
+                    sound={sound} isPlaying={playingId === sound.id}
+                    onPress={() => onPlaySound(sound.id)}
+                    onAddQueue={onAddQueue ? () => onAddQueue(sound.id) : undefined}
+                    isLast={index === activeGroup.sounds.length - 1} index={index}
+                  />
+                )}
+              />
             )}
           </View>
-        </SafeAreaView>
-      </Animated.View>
-    </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const S = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.72)',
-  },
+const M = StyleSheet.create({
+  root:    { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.78)' },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '100%',
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    height: SCREEN_H * 0.92,
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: -10 },
-    elevation: 30,
+    shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 50,
+    shadowOffset: { width: 0, height: -12 }, elevation: 30,
   },
   handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 4,
+    width: 38, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignSelf: 'center', marginTop: 12, marginBottom: 4,
   },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 16,
-    paddingBottom: 14,
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, gap: 10 },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center', justifyContent: 'center', marginRight: 10,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-  headerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    marginTop: 2,
-    letterSpacing: 0.3,
-  },
+  accentDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.15 },
+  headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.32)', marginTop: 2, letterSpacing: 0.3 },
   closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center', justifyContent: 'center',
   },
-
-  // Search
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    height: 38,
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 16, marginBottom: 14, height: 42,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 13, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, fontSize: 14.5, color: '#FFF', paddingVertical: 0, letterSpacing: 0.1 },
+  divider:    { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.07)' },
+  emptyText:  { fontSize: 14, color: 'rgba(255,255,255,0.28)', textAlign: 'center', marginTop: 40, letterSpacing: 0.2 },
+});
+
+const CC = StyleSheet.create({
+  wrapper: { marginBottom: 8 },
+  card: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 11,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FFF',
-    paddingVertical: 0,
-  },
-
-  // Dividers
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  colDivider: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-
-  // Two-column layout
-  leftCol: {
-    width: 142,
-    paddingHorizontal: 10,
-  },
-  rightCol: {
-    flex: 1,
-    position: 'relative',
-  },
-  rightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  rightHeaderDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 10,
-  },
-  rightHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  rightHeaderSub: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  rightHeaderCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    marginLeft: 8,
-  },
-
-  // Collection pill
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    paddingVertical: 11,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  pillDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 8,
-    flexShrink: 0,
-  },
-  pillText: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.55)',
-    flex: 1,
-    letterSpacing: 0.1,
-  },
-  pillCount: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.25)',
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-
-  // Sound row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 16,
-    borderRadius: 0,
-    overflow: 'hidden',
-  },
-  playingBar: {
-    width: 2.5,
-    height: '70%',
-    borderRadius: 2,
-    marginLeft: 10,
-    marginRight: 2,
-    flexShrink: 0,
-    minHeight: 20,
-  },
-  rowEmoji: {
-    fontSize: 15,
-    width: 30,
-    textAlign: 'center',
-    marginLeft: 6,
-  },
-  rowBody: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    marginLeft: 8,
-  },
-  rowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  rowTitle: {
-    fontSize: 13.5,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.78)',
-    letterSpacing: 0.1,
-    marginBottom: 2,
-  },
-  rowDesc: {
-    fontSize: 11.5,
-    color: 'rgba(255,255,255,0.3)',
-  },
-  playBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-
-  // Empty state
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  emptyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 14, paddingRight: 16,
+    overflow: 'hidden', gap: 12,
   },
-  emptyStateTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.4)',
-    marginBottom: 6,
-  },
-  emptyStateDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.2)',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.3)',
-    textAlign: 'center',
-    marginTop: 20,
-  },
+  accentBar: { width: 3, height: '100%', borderRadius: 2, position: 'absolute', left: 0, top: 0, bottom: 0 },
+  swatch:    { width: 42, height: 42, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginLeft: 14, flexShrink: 0 },
+  swatchDot: { width: 14, height: 14, borderRadius: 7 },
+  title:     { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.1 },
+  subtitle:  { fontSize: 11.5, color: 'rgba(255,255,255,0.35)', marginTop: 3, letterSpacing: 0.4, textTransform: 'uppercase' },
+  playingChip:  { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  countChip:    { borderWidth: StyleSheet.hairlineWidth, borderRadius: 7, paddingHorizontal: 9, paddingVertical: 3, minWidth: 28, alignItems: 'center' },
+  countText:    { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.2 },
+});
+
+const SR = StyleSheet.create({
+  row:         { flexDirection: 'row', alignItems: 'center', paddingRight: 16, minHeight: 58, overflow: 'hidden' },
+  accentBar:   { width: 3, height: 36, borderRadius: 2, marginLeft: 0, marginRight: 4, flexShrink: 0 },
+  emoji:       { fontSize: 16, width: 34, textAlign: 'center', marginLeft: 4 },
+  body:        { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 15, marginLeft: 8 },
+  bodyDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  title:       { fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.82)', letterSpacing: 0.1, marginBottom: 2 },
+  desc:        { fontSize: 11.5, color: 'rgba(255,255,255,0.28)', letterSpacing: 0.1 },
+  playBtn:     { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.08)' },
 });

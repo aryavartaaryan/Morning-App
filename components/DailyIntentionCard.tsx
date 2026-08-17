@@ -35,7 +35,16 @@ export function DailyIntentionCard() {
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const breatheAnim = useRef(new Animated.Value(0)).current;
   
+  // Gentle breathing float for displayed intention text
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(breatheAnim, { toValue: -4, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(breatheAnim, { toValue: 0,  duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])).start();
+  }, []);
+
   useEffect(() => {
     load();
   }, []);
@@ -135,21 +144,21 @@ export function DailyIntentionCard() {
       <TouchableOpacity activeOpacity={0.8} onPress={handleHomeCardPress} style={styles.homeCardWrapper}>
         <View style={styles.transparentWhisper}>
           {!hasIntention ? (
-            <View style={styles.homeContentCenter}>
-              <Text style={styles.homePrefixText}>Today I will...</Text>
-              <Text style={styles.homePlaceholderText}>set your intention here</Text>
-            </View>
+        <Animated.View style={[styles.homeContentCenter, { transform: [{ translateY: breatheAnim }] }]}>
+            <Text style={styles.homePrefixText}>Today I will...</Text>
+            <Text style={styles.homePlaceholderText}>set your intention here</Text>
+          </Animated.View>
           ) : isLogged ? (
-            <View style={styles.homeContentCenter}>
+          <Animated.View style={[styles.homeContentCenter, { transform: [{ translateY: breatheAnim }] }]}>
               <Text style={styles.homePrefixTextLight}>Intention complete</Text>
               <Text style={styles.homeIntentionText}>{activeItem.text}</Text>
               <Text style={styles.homePrefixTextLight}>See you tomorrow</Text>
-            </View>
+            </Animated.View>
           ) : (
-            <View style={styles.homeContentCenter}>
+          <Animated.View style={[styles.homeContentCenter, { transform: [{ translateY: breatheAnim }] }]}>
               <Text style={styles.homePrefixText}>Today I will...</Text>
               <Text style={styles.homeIntentionText}>{activeItem.text}</Text>
-            </View>
+            </Animated.View>
           )}
         </View>
       </TouchableOpacity>

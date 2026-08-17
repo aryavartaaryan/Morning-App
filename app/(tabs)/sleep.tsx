@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
-import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G } from 'react-native-svg';
+import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G, RadialGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
@@ -1754,18 +1754,38 @@ const makeSineStrokePath = (W: number, phase: number, amplitude: number, wavelen
 };
 
 // Circular sine path for the circumference of the sacred geometry
-const makeCircularSinePath = (cx: number, cy: number, baseRadius: number, phase: number, amplitude: number, numWaves: number): string => {
-  const pts: string[] = [];
-  const steps = 180; // High resolution for smoothness
-  for (let i = 0; i <= steps; i++) {
-    const angle = (i / steps) * Math.PI * 2;
-    // Add sine wave variation to radius
-    const r = baseRadius + amplitude * Math.sin(numWaves * angle + phase);
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-    pts.push(i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : `L${x.toFixed(1)} ${y.toFixed(1)}`);
+// Smooth polar sine path using cubic bezier approximation for ultra-premium look
+const makeCircularSinePath = (
+  cx: number, cy: number, baseRadius: number,
+  phase: number, amplitude: number, numWaves: number,
+  harmonics: number = 0, harmonicAmp: number = 0, twist: number = 0
+): string => {
+  const STEPS = 240; // Ultra-high resolution
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const angle = (i / STEPS) * Math.PI * 2;
+    // Primary wave + harmonic overtone for organic complexity
+    const primary = amplitude * Math.sin(numWaves * angle + phase);
+    const harmonic = harmonics > 0 ? harmonicAmp * Math.sin(harmonics * angle + phase * 1.3) : 0;
+    // Twist warps the angular position slightly for a swirling effect
+    const warpedAngle = angle + twist * Math.sin(3 * angle + phase * 0.5);
+    const r = baseRadius + primary + harmonic;
+    pts.push({ x: cx + r * Math.cos(warpedAngle), y: cy + r * Math.sin(warpedAngle) });
   }
-  return pts.join(' ');
+  // Build cubic bezier path for ultra-smooth curves
+  let d = `M${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x.toFixed(2)} ${cp1y.toFixed(2)},${cp2x.toFixed(2)} ${cp2y.toFixed(2)},${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+  return d + ' Z';
 };
 
 // Sacred geometry dot positions on a ring
@@ -2029,9 +2049,10 @@ function MasterSacredOrb({ size, color, colorTop, soundId, active, paused, pulse
   );
 }
 
-// ─── Real-time Sinewave Visualizer for Sound Reel ──────────────────────────
-// Renders 3 layered sine waves synced to live audio via getMeteringLevel().
-// Sits just above the bottom player bar, BEHIND the sacred geometry orb.
+// ─── Ultra-Premium Audio-Reactive Circular Visualizer ─────────────────────────
+// 6-layer system with: beat-snap amplitude, exponential smoothing,
+// per-layer phase offset, harmonic overtones, and specular highlight ring.
+// All path updates happen off the JS animation thread via setNativeProps.
 const ReelSineWave = memo(function ReelSineWave({
   isPlaying, isPaused, color, getMeteringLevel, size,
 }: {
@@ -2043,17 +2064,23 @@ const ReelSineWave = memo(function ReelSineWave({
 }) {
   const CX = size * 0.5;
   const CY = size * 0.5;
-  const BASE_RADIUS = size * 0.46; // Circumference of the orb
-  
-  const p1Ref = useRef<any>(null);
-  const p2Ref = useRef<any>(null);
-  const p3Ref = useRef<any>(null);
-  const p4Ref = useRef<any>(null);
+  const BASE_RADIUS = size * 0.465;
+
+  // 6 wave layers + 1 specular ring
+  const l1 = useRef<any>(null); // outermost ambient bloom
+  const l2 = useRef<any>(null); // wide glow
+  const l3 = useRef<any>(null); // mid glow
+  const l4 = useRef<any>(null); // core wave
+  const l5 = useRef<any>(null); // crisp inner ring
+  const l6 = useRef<any>(null); // white specular center line
+  const lSpec = useRef<any>(null); // specular highlight half-ring
+
   const phaseRef = useRef(0);
+  const smoothAmpRef = useRef(0); // exponentially smoothed amplitude
+  const peakAmpRef = useRef(0);   // peak hold for beat-snap glow
   const mountedRef = useRef(true);
 
-  // Provide initial path so Svg Path doesn't crash on mount
-  const initialPath = useMemo(() => makeCircularSinePath(CX, CY, BASE_RADIUS, 0, 0, 1), [CX, CY, BASE_RADIUS]);
+  const flatPath = useMemo(() => makeCircularSinePath(CX, CY, BASE_RADIUS, 0, 0, 1), [CX, CY, BASE_RADIUS]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2062,56 +2089,81 @@ const ReelSineWave = memo(function ReelSineWave({
 
   useEffect(() => {
     if (!isPlaying || isPaused) {
-      // Flat idle line (perfect circle)
-      const fl = makeCircularSinePath(CX, CY, BASE_RADIUS, 0, 0, 1);
-      p1Ref.current?.setNativeProps({ d: fl });
-      p2Ref.current?.setNativeProps({ d: fl });
-      p3Ref.current?.setNativeProps({ d: fl });
-      p4Ref.current?.setNativeProps({ d: fl });
+      [l1, l2, l3, l4, l5, l6, lSpec].forEach(r => r.current?.setNativeProps({ d: flatPath }));
+      smoothAmpRef.current = 0;
+      peakAmpRef.current = 0;
       return;
     }
+
+    const FPS = 60;
+    const INTERVAL = 1000 / FPS;
     const tid = setInterval(() => {
       if (!mountedRef.current) return;
-      phaseRef.current += 0.08; // Elegant floating circular wave
-      const m = Math.max(0, Math.min(1, getMeteringLevel()));
-      // Premium elegant vibration (small amplitude, high frequency/numWaves)
-      const amp = 1 + m * 5; 
-      
-      const p1 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current, amp, 32);
-      const p2 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current * -1.2, amp * 0.8, 24);
-      const p3 = makeCircularSinePath(CX, CY, BASE_RADIUS, phaseRef.current * 0.8, amp * 0.6, 36);
-      
-      p1Ref.current?.setNativeProps({ d: p1 });
-      p2Ref.current?.setNativeProps({ d: p2 });
-      p3Ref.current?.setNativeProps({ d: p3 });
-      p4Ref.current?.setNativeProps({ d: p3 }); // p4 shares p3's shape but with larger glow
-    }, 1000 / 30);
-    return () => clearInterval(tid);
-  }, [isPlaying, isPaused, CX, CY, BASE_RADIUS]);
 
-  const waveOpacity = isPlaying && !isPaused ? 1 : 0.3; // Slightly visible when paused for elegance
+      // Advance phases at different speeds (prime-ratio offsets = no repeating lock)
+      phaseRef.current += 0.072;
+      const ph = phaseRef.current;
+
+      const raw = Math.max(0, Math.min(1, getMeteringLevel()));
+
+      // Exponential smoothing: fast attack (α=0.45), slow decay (α=0.08)
+      const α = raw > smoothAmpRef.current ? 0.45 : 0.08;
+      smoothAmpRef.current = smoothAmpRef.current * (1 - α) + raw * α;
+      const m = smoothAmpRef.current;
+
+      // Peak hold for beat-snap: decay by 2% per frame
+      peakAmpRef.current = Math.max(peakAmpRef.current * 0.982, m);
+      const peak = peakAmpRef.current;
+
+      // Amplitude tiers: idle → active layers
+      const idle = 0.6;        // always-on gentle idle wave even when audio is low
+      const baseAmp = idle + m * (size * 0.022);    // max ~2.2% of size
+      const peakBonus = (peak - m) * size * 0.018;  // extra push on beat transients
+
+      // Wave shapes: each layer uses different wave/harmonic counts
+      // Layer 1 — outermost ambient bloom (slow, few waves)
+      l1.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS + size * 0.038, ph * 0.55, baseAmp * 1.25 + peakBonus * 1.8, 12, 6, baseAmp * 0.22, 0.012) });
+      // Layer 2 — wide glow
+      l2.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS + size * 0.018, ph * 0.72, baseAmp * 1.1 + peakBonus * 1.4, 18, 9, baseAmp * 0.18, 0.008) });
+      // Layer 3 — mid glow (counter-rotating feel via negative phase speed)
+      l3.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS + size * 0.006, ph * -0.91, baseAmp * 0.9 + peakBonus, 24, 12, baseAmp * 0.14, 0) });
+      // Layer 4 — core primary wave
+      l4.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS, ph, baseAmp * 0.75 + peakBonus * 0.8, 32, 16, baseAmp * 0.1, 0) });
+      // Layer 5 — tight crisp ring (high-frequency shimmer)
+      l5.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS - size * 0.004, ph * 1.37, baseAmp * 0.55 + peakBonus * 0.6, 48, 0, 0, 0) });
+      // Layer 6 — white specular laser line (thinnest, sharpest)
+      l6.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS - size * 0.001, ph * 1.61, baseAmp * 0.4, 36, 18, baseAmp * 0.08, 0) });
+      // Specular: a ghost offset ring — creates perceived depth/3D
+      lSpec.current?.setNativeProps({ d: makeCircularSinePath(CX, CY, BASE_RADIUS * 0.98, ph * 0.5 + Math.PI * 0.33, baseAmp * 0.35 + peakBonus * 0.4, 20, 10, baseAmp * 0.1, 0) });
+    }, INTERVAL);
+    return () => clearInterval(tid);
+  }, [isPlaying, isPaused, CX, CY, BASE_RADIUS, size]);
 
   return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        width: size, height: size,
-        opacity: waveOpacity,
-        zIndex: 10,
-      }}
-    >
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, zIndex: 10, opacity: isPlaying && !isPaused ? 1 : 0.25 }}>
       <Svg width={size} height={size}>
+        <Defs>
+          <RadialGradient id="waveGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+            <Stop offset="0%" stopColor={color} stopOpacity="0" />
+            <Stop offset="75%" stopColor={color} stopOpacity="0.12" />
+            <Stop offset="100%" stopColor={color} stopOpacity="0.3" />
+          </RadialGradient>
+        </Defs>
         <G>
-          {/* Layer 4 — ultra wide, ambient deep glow */}
-          <Path ref={p4Ref} d={initialPath} stroke={color} strokeWidth={24} opacity={0.15} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Layer 3 — medium premium glow */}
-          <Path ref={p3Ref} d={initialPath} stroke={color} strokeWidth={12} opacity={0.35} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Layer 2 — crisp vibrant core */}
-          <Path ref={p2Ref} d={initialPath} stroke={color} strokeWidth={3} opacity={0.75} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Layer 1 — brilliant white-hot laser center */}
-          <Path ref={p1Ref} d={initialPath} stroke="#ffffff" strokeWidth={1.5} opacity={1.0} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* L1 — Outermost ambient bloom: widest strokeWidth, very low opacity */}
+          <Path ref={l1} d={flatPath} stroke={color} strokeWidth={40} opacity={0.07} fill="none" />
+          {/* L2 — Wide warm halo */}
+          <Path ref={l2} d={flatPath} stroke={color} strokeWidth={22} opacity={0.14} fill="none" />
+          {/* L3 — Mid atmospheric glow */}
+          <Path ref={l3} d={flatPath} stroke={color} strokeWidth={12} opacity={0.28} fill="none" />
+          {/* L4 — Core primary wave: most vivid */}
+          <Path ref={l4} d={flatPath} stroke={color} strokeWidth={4.5} opacity={0.75} fill="none" strokeLinecap="round" />
+          {/* L5 — Crisp high-freq shimmer ring */}
+          <Path ref={l5} d={flatPath} stroke={color} strokeWidth={1.8} opacity={0.90} fill="none" strokeLinecap="round" />
+          {/* L6 — White specular laser center */}
+          <Path ref={l6} d={flatPath} stroke="#FFFFFF" strokeWidth={1.0} opacity={0.95} fill="none" strokeLinecap="round" />
+          {/* Specular ghost offset ring — perceived depth */}
+          <Path ref={lSpec} d={flatPath} stroke="rgba(255,255,255,0.35)" strokeWidth={0.7} opacity={0.6} fill="none" strokeLinecap="round" />
         </G>
       </Svg>
     </View>
@@ -2481,30 +2533,56 @@ const ReelCard = memo(function ReelCard({
 
       <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 80, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
         
-        {isActive && (isPlaying && !isPaused) && (
+        {isActive && (
           <>
-            {/* Core audio-reactive glow */}
+            {/* ── Cinematic base glow — always breathing, explodes on beat ── */}
             <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: 280, height: 280, borderRadius: 140,
+              position: 'absolute', width: 320, height: 320, borderRadius: 160,
               backgroundColor: sound.color || '#a78bfa',
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.15, 0.45] }),
-              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.35] }) }],
-              shadowColor: sound.color || '#a78bfa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 35
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.2, 0.6, 1], outputRange: [0.04, 0.10, 0.28, 0.55] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.42] }) }],
+              shadowColor: sound.color || '#a78bfa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 60,
             }} />
-            
-            {/* Ultra-premium cinematic rings reacting instantly via Native Driver */}
+
+            {/* ── 7-ring staggered halo system — each ring phase-offset for liquid motion ── */}
             {[
-              { bw: 2.0, oMin: 0.10, oMax: 0.70, sMin: 1.00, sMax: 1.45 },
-              { bw: 1.0, oMin: 0.05, oMax: 0.45, sMin: 1.15, sMax: 1.70 },
-              { bw: 0.5, oMin: 0.00, oMax: 0.20, sMin: 1.25, sMax: 1.95 },
-            ].map((r, i) => (
-              <Animated.View key={`sr${i}`} pointerEvents="none" style={{
-                position: 'absolute', width: 280, height: 280, borderRadius: 140,
-                borderWidth: r.bw, borderColor: sound.color || '#a78bfa',
-                opacity: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [r.oMin, r.oMax] }),
-                transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [r.sMin, r.sMax] }) }]
+              // [borderWidth, opacityMin, opacityMax, scaleMin, scaleMax, ringDiameter]
+              [2.5,  0.70, 0.95, 1.000, 1.000, 280], // ring 0: tight inner glow ring — always on
+              [1.5,  0.08, 0.65, 1.000, 1.080, 280], // ring 1: first breathing ring
+              [1.0,  0.04, 0.50, 1.050, 1.180, 300], // ring 2
+              [0.8,  0.02, 0.38, 1.100, 1.280, 310], // ring 3
+              [0.6,  0.01, 0.28, 1.160, 1.400, 325], // ring 4
+              [0.5,  0.00, 0.18, 1.220, 1.550, 340], // ring 5
+              [0.35, 0.00, 0.10, 1.300, 1.720, 360], // ring 6: outermost ghost ring
+            ].map(([bw, oMin, oMax, sMin, sMax, diam], i) => (
+              <Animated.View key={`ring${i}`} pointerEvents="none" style={{
+                position: 'absolute',
+                width: diam as number, height: diam as number,
+                borderRadius: (diam as number) / 2,
+                borderWidth: bw as number,
+                borderColor: i === 0 ? (sound.color || '#a78bfa') : (sound.color || '#a78bfa'),
+                shadowColor: sound.color || '#a78bfa',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: i < 2 ? 0.9 : 0.5,
+                shadowRadius: i < 2 ? 18 : 8,
+                opacity: i === 0
+                  // Ring 0 is always at high opacity for the "base line" look
+                  ? meteringAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.35, 0.55, 0.85] })
+                  : meteringAnim.interpolate({ inputRange: [0, 0.15, 1], outputRange: [oMin as number, (oMin as number) * 2.5, oMax as number] }),
+                transform: [{ scale: i === 0
+                  ? meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.02] })
+                  : meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [sMin as number, sMax as number] })
+                }],
               }} />
             ))}
+
+            {/* ── Beat-flash bloom: a wide instantaneous burst on loud transients ── */}
+            <Animated.View pointerEvents="none" style={{
+              position: 'absolute', width: 380, height: 380, borderRadius: 190,
+              borderWidth: 1, borderColor: sound.color || '#a78bfa',
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.5, 0.75, 1], outputRange: [0, 0, 0.06, 0.22] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1.0, 1.3, 1.9] }) }],
+            }} />
           </>
         )}
 
@@ -2524,25 +2602,42 @@ const ReelCard = memo(function ReelCard({
           alignItems: 'center',
           justifyContent: 'center',
           transform: [{
+            // Premium: deep breath — 0.92 idle, 1.28 max (was 1.0-1.15)
             scale: isActive ? meteringAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 1.15]
+              inputRange: [0, 0.3, 0.7, 1],
+              outputRange: [0.92, 0.97, 1.12, 1.28],
+              extrapolate: 'clamp',
             }) : 1
           }]
         }}>
           {isActive && (
+            // Volumetric inner glow: a large soft orb that dramatically throbs
             <Animated.View style={{
               position: 'absolute',
-              width: 30, height: 30,
-              borderRadius: 15,
+              width: 80, height: 80, borderRadius: 40,
               backgroundColor: sound.color ?? '#fff',
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.15, 0.6, 1] }),
-              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 2.5] }) }],
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.25, 0.6, 1], outputRange: [0.06, 0.18, 0.55, 0.90] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.5, 1.2, 3.8] }) }],
               shadowColor: sound.color ?? '#fff',
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 1,
-              shadowRadius: 20,
+              shadowRadius: 40,
               zIndex: 0,
+            }} />
+          )}
+          {isActive && (
+            // Tight pinpoint specular center — stays small but intensely bright
+            <Animated.View style={{
+              position: 'absolute',
+              width: 12, height: 12, borderRadius: 6,
+              backgroundColor: '#FFFFFF',
+              opacity: meteringAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.7, 1.0] }),
+              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.8] }) }],
+              shadowColor: '#FFFFFF',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 1,
+              shadowRadius: 16,
+              zIndex: 2,
             }} />
           )}
 
@@ -4243,21 +4338,30 @@ function SleepTabInner() {
             )}
           </BlurView>
 
-          {/* Slimmer Premium Library Button */}
+          {/* ── Premium Library Button ── */}
           <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-            activeOpacity={0.8}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setLibraryOpen(true); }}
+            activeOpacity={0.75}
           >
-            <BlurView intensity={60} tint="dark" style={{ 
-              flexDirection: 'row', alignItems: 'center', gap: 6, 
-              backgroundColor: 'rgba(167, 139, 250, 0.25)',
-              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.5)', 
-              borderRadius: 6, paddingHorizontal: 12, height: 42,
-              shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6,
-              overflow: 'hidden'
+            <BlurView intensity={55} tint="dark" style={{
+              flexDirection: 'row', alignItems: 'center', gap: 7,
+              backgroundColor: 'rgba(139, 92, 246, 0.18)',
+              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.55)',
+              borderRadius: 22, paddingHorizontal: 14, height: 42,
+              shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.45, shadowRadius: 12,
+              overflow: 'hidden',
             }}>
-              <Ionicons name="musical-notes" size={14} color="#e2e8f0" />
-              <Text style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
+              {/* Inner glow highlight */}
+              <View style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                backgroundColor: 'rgba(200,180,255,0.3)', borderRadius: 1,
+              }} />
+              <Ionicons name="musical-notes" size={15} color="rgba(220,210,255,0.95)" />
+              <Text style={{
+                fontSize: 13.5, color: 'rgba(220,210,255,0.95)',
+                fontFamily: 'Nunito_700Bold', letterSpacing: 0.6,
+              }}>
                 Library
               </Text>
             </BlurView>
@@ -4350,7 +4454,7 @@ function SleepTabInner() {
       </Animated.ScrollView>
 
       {isSearching && (
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, backgroundColor: '#03030D' }}>
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, backgroundColor: '#03030D' }}>
           <FlatList
             data={filteredSearchSounds}
             keyExtractor={(item) => item.id}

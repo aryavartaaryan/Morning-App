@@ -5786,6 +5786,24 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   const fluidRot1     = useRef(new Animated.Value(0)).current;
   const fluidRot2     = useRef(new Animated.Value(0)).current;
 
+  // ── Golden particle field — 12 tiny dust motes floating upward ──
+  const PARTICLE_COUNT = 12;
+  const particleAnims = useRef(
+    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      y:   new Animated.Value(0),
+      x:   new Animated.Value(0),
+      op:  new Animated.Value(0),
+      scl: Math.random() * 0.6 + 0.4,
+      startX: (Math.random() * 0.7 + 0.15), // 0.15–0.85 of ring width
+      delay: Math.floor(i * 500),
+      duration: 4000 + Math.floor(Math.random() * 3000),
+    }))
+  ).current;
+
+  // ── Phase transition ripple ──
+  const phaseRipple = useRef(new Animated.Value(0)).current;
+  const prevPeriodId = useRef<string | null>(null);
+
   // Parallax Gyroscope
   const gyroX = useRef(new Animated.Value(0)).current;
   const gyroY = useRef(new Animated.Value(0)).current;
@@ -5919,6 +5937,26 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
     const subscription = Gyroscope.addListener((data) => {
       Animated.spring(gyroX, { toValue: -data.y * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
       Animated.spring(gyroY, { toValue: -data.x * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
+    });
+
+    // ── Golden particle field animation ──
+    particleAnims.forEach((p) => {
+      const loop = () => {
+        p.y.setValue(0); p.op.setValue(0); p.x.setValue(0);
+        Animated.sequence([
+          Animated.delay(p.delay),
+          Animated.parallel([
+            Animated.timing(p.y,  { toValue: -1, duration: p.duration, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(p.x,  { toValue: (Math.random() - 0.5) * 0.3, duration: p.duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+            Animated.sequence([
+              Animated.timing(p.op, { toValue: 0.8, duration: 600, useNativeDriver: true }),
+              Animated.timing(p.op, { toValue: 0.8, duration: p.duration - 1200, useNativeDriver: true }),
+              Animated.timing(p.op, { toValue: 0, duration: 600, useNativeDriver: true }),
+            ]),
+          ]),
+        ]).start(() => loop());
+      };
+      setTimeout(() => loop(), p.delay);
     });
 
     return () => {
@@ -6075,6 +6113,16 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   // Wrapper adds padding so the outer aura glow is not clipped
   const MOON_RS = HERO_RS + 28;
 
+  // ── Phase transition ripple — fires when circadian period changes ──
+  const currentPeriodId = period?.id ?? null;
+  useEffect(() => {
+    if (prevPeriodId.current !== null && prevPeriodId.current !== currentPeriodId) {
+      phaseRipple.setValue(0);
+      Animated.timing(phaseRipple, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    }
+    prevPeriodId.current = currentPeriodId;
+  }, [currentPeriodId]);
+
   // ── Body rhythm slides: unique non-repetitive content that cycles inside ring ──
   const hour = now.getHours();
   const bodySlides: Array<{ label: string; emoji: string; title: string; sub: string }> = React.useMemo(() => {
@@ -6147,21 +6195,63 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Option 1: Minimal Ethereal Breathing Orb ── */}
+          {/* ── Premium Golden Breathing Glow — NO border (avoids Android polygon glitch) ── */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS,
             alignItems: 'center', justifyContent: 'center',
           }}>
+            {/* Outer golden aura */}
             <Animated.View style={{
-              width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              borderRadius: HERO_RS * 0.44,
-              backgroundColor: 'rgba(251, 191, 36, 0.08)', // Premium transparent gold
-              borderWidth: 1.5,
-              borderColor: 'rgba(251, 191, 36, 0.45)', // Shining golden ring edge
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.3, 0.85] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.18] }) }],
+              position: 'absolute',
+              width: HERO_RS * 0.92, height: HERO_RS * 0.92,
+              borderRadius: HERO_RS * 0.46,
+              backgroundColor: 'rgba(251,191,36,0.12)',
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.2, 0.7] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.94, 1.15] }) }],
             }} />
+            {/* Inner warm gold shimmer */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: HERO_RS * 0.65, height: HERO_RS * 0.65,
+              borderRadius: HERO_RS * 0.325,
+              backgroundColor: 'rgba(253,230,138,0.10)',
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.1, 0.45] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.97, 1.08] }) }],
+            }} />
+
+            {/* ── Golden dust particles — float upward inside ring ── */}
+            {particleAnims.map((p, i) => (
+              <Animated.View
+                key={`particle-${i}`}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  bottom: HERO_RS * 0.1,
+                  left: HERO_RS * p.startX,
+                  width: p.scl * 3,
+                  height: p.scl * 3,
+                  borderRadius: p.scl * 1.5,
+                  backgroundColor: '#FDE68A',
+                  opacity: p.op,
+                  transform: [
+                    { translateY: p.y.interpolate({ inputRange: [0, -1], outputRange: [0, HERO_RS * 0.7] }) },
+                    { translateX: p.x.interpolate({ inputRange: [-0.3, 0.3], outputRange: [-20, 20] }) },
+                    { scale: p.scl },
+                  ],
+                }}
+              />
+            ))}
           </Animated.View>
+
+          {/* ── Phase transition ripple overlay ── */}
+          <Animated.View pointerEvents="none" style={{
+            position: 'absolute',
+            width: HERO_RS, height: HERO_RS,
+            borderRadius: HERO_RS / 2,
+            backgroundColor: accentHex,
+            opacity: phaseRipple.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.18, 0] }),
+            transform: [{ scale: phaseRipple.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.3] }) }],
+          }} />
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
 
