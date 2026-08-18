@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList,
-  Dimensions, StatusBar, Animated, BackHandler, Platform, Pressable
+  Dimensions, StatusBar, Animated, BackHandler, Pressable
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,33 +14,12 @@ import { Image } from 'expo-image';
 import { useBgContext, BG_KEYS, BG_META, type BgKey, getTimedBgKey } from '@/lib/bgContext';
 import { getBgSourceSync, getBgSource } from '@/lib/bgImages';
 
-// ─── AsyncWallpaperImage ─────────────────────────────────────────────────────
-function AsyncWallpaperImage({ bgKey, style }: { bgKey: string; style?: object }) {
-  const [imgUri, setImgUri] = React.useState<string | null>(() => getBgSourceSync(bgKey));
+// ─── Utilities ────────────────────────────────────────────────────────────────
+const { width, height } = Dimensions.get('window');
+const GOLD = '#F5A623';
+const CARD_W = (width - 48) / 3.2; // Smaller, more elegant cards for a premium slider
+const CARD_H = CARD_W * 1.8;       // Taller aspect ratio for modern feel
 
-  React.useEffect(() => {
-    let mounted = true;
-    getBgSource(bgKey).then(uri => {
-      if (mounted && uri) setImgUri(uri);
-    });
-    return () => { mounted = false; };
-  }, [bgKey]);
-
-  if (!imgUri || imgUri.length < 5)
-    return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#0a0a0f' }, style]} />;
-
-  return (
-    <Image
-      source={{ uri: imgUri }}
-      style={[StyleSheet.absoluteFillObject, style]}
-      contentFit="cover"
-      transition={250}
-      cachePolicy="memory-disk"
-    />
-  );
-}
-
-// ─── Category helper ─────────────────────────────────────────────────────────
 const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' => {
   if (key.includes('morning') || key.includes('predawn') || key.includes('sunrise') || key.includes('brahma')) return 'morning';
   if (key.includes('day') || key.includes('noon')) return 'day';
@@ -48,111 +27,109 @@ const getCategoryOfKey = (key: string): 'morning' | 'day' | 'sunset' | 'night' =
   return 'night';
 };
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const { width, height } = Dimensions.get('window');
-const GOLD = '#F5A623';
-const CARD_W = (width - 56) / 2;   // 2 cards perfectly side by side
-const CARD_H = CARD_W * 1.55;       // 2:3 portrait ratio
-
 const CATEGORIES = [
-  { id: 'all', label: 'All', emoji: '✦' },
-  { id: 'morning', label: 'Morning', emoji: '🌅' },
-  { id: 'day', label: 'Day', emoji: '☀️' },
-  { id: 'sunset', label: 'Sunset', emoji: '🌇' },
-  { id: 'night', label: 'Night', emoji: '🌙' },
+  { id: 'all',     label: 'All' },
+  { id: 'morning', label: 'Morning' },
+  { id: 'day',     label: 'Day' },
+  { id: 'sunset',  label: 'Sunset' },
+  { id: 'night',   label: 'Night' },
 ];
 
-// ─── WallpaperCard sub-component (isolated to prevent full-list re-renders) ─
+// ─── AsyncWallpaperImage ──────────────────────────────────────────────────────
+function AsyncWallpaperImage({ bgKey }: { bgKey: string }) {
+  const [imgUri, setImgUri] = React.useState<string | null>(() => getBgSourceSync(bgKey));
+  React.useEffect(() => {
+    let mounted = true;
+    getBgSource(bgKey).then(uri => { if (mounted && uri) setImgUri(uri); });
+    return () => { mounted = false; };
+  }, [bgKey]);
+  if (!imgUri || imgUri.length < 5)
+    return <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#050505' }]} />;
+  return (
+    <Image
+      source={{ uri: imgUri }}
+      style={StyleSheet.absoluteFillObject}
+      contentFit="cover"
+      transition={200}
+      cachePolicy="memory-disk"
+    />
+  );
+}
+
+// ─── WallpaperCard ────────────────────────────────────────────────────────────
 const WallpaperCard = React.memo(({
   bgKey, isSelected, isActive, isSolar, onPress, cardW, cardH
 }: {
   bgKey: string; isSelected: boolean; isActive: boolean; isSolar: boolean;
   onPress: () => void; cardW: number; cardH: number;
 }) => {
-  const scale = useRef(new Animated.Value(isSelected ? 1.04 : 1)).current;
-  const borderAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
+  const selectAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: isSelected ? 1.04 : 1, useNativeDriver: true, tension: 140, friction: 8 }),
-      Animated.timing(borderAnim, { toValue: isSelected ? 1 : 0, duration: 200, useNativeDriver: false }),
-    ]).start();
+    Animated.spring(selectAnim, { toValue: isSelected ? 1 : 0, useNativeDriver: true, tension: 160, friction: 12 }).start();
   }, [isSelected]);
 
-  const borderColor = borderAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.9)'] });
-  const borderWidth = borderAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 2] });
+  const scale = selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
+  const opacity = selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
 
   return (
-    <Pressable onPress={onPress}>
-      <Animated.View style={[
-        { width: cardW, height: cardH, borderRadius: 22 },
-        { transform: [{ scale }] }
-      ]}>
-        <Animated.View style={[
-          StyleSheet.absoluteFillObject,
-          { borderRadius: 22, overflow: 'hidden' },
-          { borderWidth, borderColor }
-        ]}>
+    <Pressable onPress={onPress} style={{ marginHorizontal: 6 }}>
+      <Animated.View style={{ width: cardW, height: cardH, borderRadius: 16, transform: [{ scale }], opacity }}>
+        <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
           <AsyncWallpaperImage bgKey={bgKey} />
-          {/* Bottom label gradient */}
+          
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.65)']}
-            locations={[0.45, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            locations={[0.5, 1]}
             style={StyleSheet.absoluteFillObject}
             pointerEvents="none"
           />
 
-          {/* Active wallpaper checkmark */}
+          {/* Selection Crisp Border */}
+          <Animated.View style={[
+            StyleSheet.absoluteFillObject, 
+            { borderRadius: 16, borderWidth: 1.5, borderColor: '#fff', opacity: selectAnim }
+          ]} />
+
+          {/* Active Checkmark */}
           {isActive && (
-            <View style={cardStyles.activeBadge}>
-              <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
-              <Ionicons name="checkmark" size={11} color="#000" />
+            <View style={CS.activeBadge}>
+              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFillObject} />
+              <Ionicons name="checkmark" size={10} color="#000" />
             </View>
           )}
 
-          {/* Solar badge */}
+          {/* Solar indicator */}
           {isSolar && (
-            <View style={cardStyles.solarBadge}>
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
-              <Text style={{ fontSize: 12 }}>☀️</Text>
+            <View style={CS.solarBadge}>
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <Text style={{ fontSize: 10 }}>☀️</Text>
             </View>
           )}
-
-          {/* Selected indicator at bottom */}
-          {isSelected && (
-            <View style={cardStyles.selectedDot} />
-          )}
-        </Animated.View>
+        </View>
       </Animated.View>
     </Pressable>
   );
 });
 
-const cardStyles = StyleSheet.create({
+const CS = StyleSheet.create({
   activeBadge: {
-    position: 'absolute', top: 10, right: 10,
-    width: 22, height: 22, borderRadius: 11,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    position: 'absolute', top: 8, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   solarBadge: {
-    position: 'absolute', top: 10, left: 10,
-    width: 28, height: 28, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  selectedDot: {
-    position: 'absolute', bottom: 10, alignSelf: 'center',
-    width: 20, height: 3, borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    position: 'absolute', top: 8, left: 8,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
 });
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function WallpaperSettings() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router   = useRouter();
+  const insets   = useSafeAreaInsets();
+  const isMounted = useRef(true);
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { router.back(); return true; });
@@ -160,59 +137,38 @@ export default function WallpaperSettings() {
   }, [router]));
 
   const { wallpaperMode, manualBgKey, setWallpaperMode, setManualBgKey, bgKey, solarTimes } = useBgContext();
+  const isSolar = wallpaperMode === 'solar';
+  const actualActiveBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'morning' | 'day' | 'sunset' | 'night'>('all');
-  const [layoutMode, setLayoutMode] = useState<'horizontal' | 'grid'>('horizontal');
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'info'>('success');
-  const isMounted = useRef(true);
+  const [previewKey, setPreviewKey]         = useState<BgKey>(actualActiveBgKey as BgKey);
+  const [heroKey, setHeroKey]               = useState<BgKey>(actualActiveBgKey as BgKey);
+  const [toastVisible, setToastVisible]     = useState(false);
+  const [toastMsg, setToastMsg]             = useState('');
+  const [dynamicTimes, setDynamicTimes]     = useState<Partial<Record<BgKey, string>>>({});
 
-  const actualActiveBgKey = wallpaperMode === 'manual' ? manualBgKey : bgKey;
-  const [previewBgKey, setPreviewBgKey] = useState<BgKey>(actualActiveBgKey as BgKey);
-  const [heroKey, setHeroKey] = useState<BgKey>(actualActiveBgKey as BgKey);
-
-  // Background crossfade
-  const bgOpacity = useRef(new Animated.Value(1)).current;
-  const prevBgKey = useRef<BgKey>(previewBgKey);
-
-  // Toast animation
-  const toastAnim = useRef(new Animated.Value(0)).current;
-
-  // Apply button animation
+  // Animations
+  const heroAnim  = useRef(new Animated.Value(1)).current;
   const applyAnim = useRef(new Animated.Value(0)).current;
-
-  // Hero text animations
-  const heroAnim = useRef(new Animated.Value(1)).current;
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const panelAnim = useRef(new Animated.Value(60)).current;
+  const panelOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     isMounted.current = true;
+    Animated.parallel([
+      Animated.spring(panelAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 14, delay: 50 }),
+      Animated.timing(panelOpacity, { toValue: 1, duration: 500, useNativeDriver: true, delay: 50 }),
+    ]).start();
     return () => { isMounted.current = false; };
   }, []);
 
-  // Sync solar preview
+  // Sync solar
   useEffect(() => {
-    if (wallpaperMode === 'solar' && bgKey) {
-      animatePreviewChange(bgKey as BgKey);
-    }
-  }, [wallpaperMode, bgKey]);
+    if (isSolar && bgKey) changePreview(bgKey as BgKey);
+  }, [isSolar, bgKey]);
 
-  const animatePreviewChange = (newKey: BgKey) => {
-    // Instantly trigger expo-image native crossfade (ZERO lag)
-    setPreviewBgKey(newKey);
-    
-    // Elegantly crossfade the typography independently
-    Animated.sequence([
-      Animated.timing(heroAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
-    ]).start(() => {
-      setHeroKey(newKey);
-      Animated.timing(heroAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-    });
-  };
-
-  // Dynamic solar time ranges
-  const [dynamicTimes, setDynamicTimes] = useState<Partial<Record<BgKey, string>>>({});
-
+  // Dynamic time labels
   useEffect(() => {
     if (!solarTimes) return;
     const map: Partial<Record<BgKey, { start: number; end: number }>> = {};
@@ -224,295 +180,216 @@ export default function WallpaperSettings() {
     }
     const fmt = (hr: number) => {
       let hh = Math.floor(hr), mm = Math.round((hr - hh) * 60);
-      if (mm === 60) { hh += 1; mm = 0; }
-      hh = hh % 24;
-      const ampm = hh >= 12 ? 'PM' : 'AM';
-      const dispH = hh % 12 === 0 ? 12 : hh % 12;
-      const dispM = mm.toString().padStart(2, '0');
-      return dispM === '00' ? `${dispH} ${ampm}` : `${dispH}:${dispM} ${ampm}`;
+      if (mm === 60) { hh += 1; mm = 0; } hh = hh % 24;
+      const ap = hh >= 12 ? 'PM' : 'AM';
+      const dh = hh % 12 === 0 ? 12 : hh % 12;
+      const dm = mm.toString().padStart(2, '0');
+      return dm === '00' ? `${dh} ${ap}` : `${dh}:${dm} ${ap}`;
     };
     const res: Partial<Record<BgKey, string>> = {};
-    for (const k of BG_KEYS) {
-      if (map[k]) res[k] = `${fmt(map[k]!.start)} – ${fmt(map[k]!.end)}`;
-    }
+    for (const k of BG_KEYS) { if (map[k]) res[k] = `${fmt(map[k]!.start)} – ${fmt(map[k]!.end)}`; }
     setDynamicTimes(res);
   }, [solarTimes]);
 
-  const showToast = (msg: string, type: 'success' | 'info') => {
-    setToastMsg(msg); setToastType(type); setToastVisible(true);
+  // Apply button show/hide
+  const isPreviewingActive = previewKey === actualActiveBgKey;
+  useEffect(() => {
+    Animated.timing(applyAnim, { 
+      toValue: isPreviewingActive ? 0 : 1, 
+      duration: 200, 
+      useNativeDriver: true 
+    }).start();
+  }, [isPreviewingActive]);
+
+  const changePreview = (newKey: BgKey) => {
+    setPreviewKey(newKey); // instant image crossfade
+    Animated.timing(heroAnim, { toValue: 0, duration: 110, useNativeDriver: true }).start(() => {
+      setHeroKey(newKey);
+      Animated.timing(heroAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    });
+  };
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg); setToastVisible(true);
+    toastAnim.setValue(0);
     Animated.sequence([
-      Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }),
-      Animated.delay(2000),
+      Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, tension: 100, friction: 10 }),
+      Animated.delay(1800),
       Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start(() => { if (isMounted.current) setToastVisible(false); });
   };
 
-  const filteredKeys = BG_KEYS.filter(key =>
-    activeCategory === 'all' ? true : getCategoryOfKey(key) === activeCategory
-  );
-
-  const heroMeta = BG_META[heroKey] ?? BG_META[BG_KEYS[0]];
-  const isPreviewingActive = previewBgKey === actualActiveBgKey;
-
-  // Show/hide apply button
-  useEffect(() => {
-    Animated.spring(applyAnim, {
-      toValue: isPreviewingActive ? 0 : 1,
-      useNativeDriver: true,
-      tension: 120,
-      friction: 8,
-    }).start();
-  }, [isPreviewingActive]);
-
   const handleApply = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setWallpaperMode('manual');
-    setManualBgKey(previewBgKey);
-    showToast('✓  Wallpaper Applied', 'success');
+    setManualBgKey(previewKey);
+    showToast('Wallpaper applied');
   };
 
   const handleToggleSolar = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (wallpaperMode === 'solar') {
+    if (isSolar) {
       setWallpaperMode('manual');
-      setManualBgKey(previewBgKey);
-      showToast('Pinned to this wallpaper', 'info');
+      setManualBgKey(previewKey);
+      showToast('Switched to Manual');
     } else {
       setWallpaperMode('solar');
-      animatePreviewChange(bgKey as BgKey);
-      showToast('✦  Auto-Solar Active', 'success');
+      changePreview(bgKey as BgKey);
+      showToast('Auto-Solar Active');
     }
   };
 
-  const handleCardPress = (key: BgKey) => {
-    if (key === previewBgKey) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    animatePreviewChange(key);
-  };
-
-  const toggleLayout = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLayoutMode(prev => prev === 'horizontal' ? 'grid' : 'horizontal');
-  };
-
-  const renderCard = ({ item: key }: { item: string }) => (
-    <View style={{ marginHorizontal: 6, marginBottom: 12 }}>
-      <WallpaperCard
-        bgKey={key}
-        isSelected={key === previewBgKey}
-        isActive={key === actualActiveBgKey}
-        isSolar={wallpaperMode === 'solar' && key === bgKey}
-        onPress={() => handleCardPress(key as BgKey)}
-        cardW={layoutMode === 'horizontal' ? CARD_W : CARD_W}
-        cardH={layoutMode === 'horizontal' ? CARD_H : CARD_W * 1.3}
-      />
-    </View>
+  const filteredKeys = BG_KEYS.filter(k =>
+    activeCategory === 'all' ? true : getCategoryOfKey(k) === activeCategory
   );
 
-  const isSolar = wallpaperMode === 'solar';
+  const heroMeta = (BG_META as any)[heroKey] ?? (BG_META as any)[BG_KEYS[0]];
+
+  const renderCard = ({ item: key }: { item: string }) => (
+    <WallpaperCard
+      key={key}
+      bgKey={key}
+      isSelected={key === previewKey}
+      isActive={key === actualActiveBgKey}
+      isSolar={isSolar && key === bgKey}
+      onPress={() => { if (key !== previewKey) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); changePreview(key as BgKey); } }}
+      cardW={CARD_W}
+      cardH={CARD_H}
+    />
+  );
+
+  const TOP = Math.max(insets.top + 8, 24);
 
   return (
     <View style={S.screen}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Full-screen wallpaper preview ── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]}>
-        <AsyncWallpaperImage bgKey={previewBgKey} />
-      </Animated.View>
+      {/* ── Background ── */}
+      <View style={StyleSheet.absoluteFillObject}>
+        <AsyncWallpaperImage bgKey={previewKey} />
+      </View>
 
-      {/* ── Cinematic gradient overlay ── */}
+      {/* ── Extreme minimalist cinematic gradient ── */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.45)', 'transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.97)']}
-        locations={[0, 0.18, 0.42, 0.68, 1]}
+        colors={['rgba(0,0,0,0.55)', 'transparent', 'transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.95)']}
+        locations={[0, 0.2, 0.45, 0.75, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* ── Header row ── */}
-      <View style={[S.header, { top: Math.max(insets.top + 8, 24) }]}>
-        {/* Back */}
+      {/* ── Header ── */}
+      <View style={[S.header, { top: TOP }]}>
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
-          style={S.iconBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={S.headerIcon}
+          hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
         >
-          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <Ionicons name="chevron-back" size={22} color="rgba(255,255,255,0.92)" />
+          <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
 
-        {/* Page title */}
-        <View style={S.headerTitleWrap}>
-          <Text style={S.headerTitle}>WALLPAPER</Text>
-        </View>
-
-        {/* Layout toggle */}
-        <TouchableOpacity onPress={toggleLayout} style={S.iconBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <Ionicons name={layoutMode === 'horizontal' ? 'grid-outline' : 'albums-outline'} size={18} color="rgba(255,255,255,0.9)" />
-        </TouchableOpacity>
+        {/* Set Button seamlessly integrated into Top Right */}
+        <Animated.View style={{ opacity: applyAnim, pointerEvents: isPreviewingActive ? 'none' : 'auto' }}>
+          <TouchableOpacity onPress={handleApply} activeOpacity={0.8} style={S.setBtn}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <Text style={S.setText}>Set</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
-      {/* ── Hero info ── */}
+      {/* ── Hero Typography ── */}
       <Animated.View style={[
-        S.heroBlock,
-        { top: Math.max(insets.top + 8, 24) + 72 },
-        { opacity: heroAnim, transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }
+        S.hero, { top: TOP + 80 },
+        { opacity: heroAnim, transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }
       ]}>
-        <Text style={S.heroTimeLabel}>{dynamicTimes[heroKey] || (heroMeta as any)?.time || ''}</Text>
-        <Text style={S.heroName}>{(heroMeta as any)?.label ?? ''}</Text>
-        {(heroMeta as any)?.sub && (
-          <Text style={S.heroSub}>{(heroMeta as any)?.emoji} {(heroMeta as any)?.sub}</Text>
+        {dynamicTimes[heroKey] ? (
+          <View style={S.timeChip}>
+            <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Text style={S.timeChipText}>{dynamicTimes[heroKey]}</Text>
+          </View>
+        ) : null}
+        <Text style={S.heroName}>{heroMeta?.label ?? ''}</Text>
+        {heroMeta?.sub && (
+          <Text style={S.heroSub}>{heroMeta?.sub}</Text>
         )}
-        {isSolar && previewBgKey === bgKey && (
-          <View style={S.solarLivePill}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-            <Text style={{ fontSize: 10 }}>☀️</Text>
-            <Text style={S.solarLiveText}>LIVE</Text>
+        {isSolar && previewKey === bgKey && (
+          <View style={S.livePill}>
+            <View style={S.liveDot} />
+            <Text style={S.liveText}>AUTO-SOLAR</Text>
           </View>
         )}
-      </Animated.View>
-
-      {/* ── Apply Wallpaper floating button ── */}
-      <Animated.View style={[
-        S.applyWrap,
-        { bottom: height * 0.455 },
-        {
-          opacity: applyAnim,
-          transform: [{ scale: applyAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
-          pointerEvents: isPreviewingActive ? 'none' : 'auto',
-        }
-      ]}>
-        <TouchableOpacity onPress={handleApply} activeOpacity={0.88} style={S.applyBtn}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.96)', 'rgba(240,240,240,0.94)']}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <Ionicons name="color-wand" size={17} color="#111" />
-          <Text style={S.applyText}>Set as Wallpaper</Text>
-        </TouchableOpacity>
       </Animated.View>
 
       {/* ── Toast ── */}
       {toastVisible && (
         <Animated.View style={[
-          S.toast, { top: insets.top + 72 },
-          {
-            opacity: toastAnim,
-            transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }]
-          }
+          S.toast, { top: TOP + 40 },
+          { opacity: toastAnim, transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }] }
         ]}>
-          <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <View style={S.toastInner}>
-            <Ionicons
-              name={toastType === 'success' ? 'checkmark-circle' : 'information-circle'}
-              size={15} color={toastType === 'success' ? '#4ade80' : 'rgba(255,255,255,0.7)'}
-            />
-            <Text style={S.toastText}>{toastMsg}</Text>
-          </View>
+          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
+          <Text style={S.toastText}>{toastMsg}</Text>
         </Animated.View>
       )}
 
-      {/* ── Bottom controls panel ── */}
-      <View style={[S.panel, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+      {/* ── Bottom Panel ── */}
+      <Animated.View style={[
+        S.panel, { paddingBottom: Math.max(insets.bottom + 8, 20) },
+        { transform: [{ translateY: panelAnim }], opacity: panelOpacity }
+      ]}>
 
-        {/* Auto-Solar control */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleToggleSolar}
-          style={[S.solarRow, isSolar && S.solarRowActive]}
-        >
-          <BlurView intensity={isSolar ? 45 : 30} tint="dark" style={StyleSheet.absoluteFillObject} />
-          {isSolar && (
-            <LinearGradient
-              colors={['rgba(245,166,35,0.14)', 'rgba(245,166,35,0.03)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
-          <View style={S.solarIcon}>
-            <Text style={{ fontSize: 20 }}>{isSolar ? '☀️' : '📍'}</Text>
-          </View>
-          <View style={S.solarText}>
-            <Text style={S.solarTitle}>Auto-Solar Sync</Text>
-            <Text style={S.solarDesc}>
-              {isSolar ? 'Synced to your local sky' : 'Pinned to a wallpaper'}
+        {/* Action Bar (Solar Toggle) */}
+        <View style={S.actionBar}>
+          <TouchableOpacity
+            onPress={handleToggleSolar}
+            activeOpacity={0.8}
+            style={[S.solarPill, isSolar && S.solarPillOn]}
+          >
+            <BlurView intensity={isSolar ? 40 : 20} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name={isSolar ? "sunny" : "contrast-outline"} size={14} color={isSolar ? GOLD : 'rgba(255,255,255,0.8)'} />
+            <Text style={[S.solarPillText, isSolar && S.solarPillTextOn]}>
+              {isSolar ? 'Auto-Solar Active' : 'Enable Auto-Solar'}
             </Text>
-          </View>
-          {/* Custom switch */}
-          <View style={[S.switchTrack, isSolar && S.switchTrackOn]}>
-            <Animated.View style={[S.switchKnob, isSolar ? S.switchKnobOn : S.switchKnobOff]} />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
 
-        {/* Category filter row */}
+        {/* Minimal Categories */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={S.catScroll}
-          style={{ marginVertical: 16 }}
+          contentContainerStyle={S.catRow}
         >
           {CATEGORIES.map(cat => {
-            const active = activeCategory === cat.id;
+            const on = activeCategory === cat.id;
             return (
               <TouchableOpacity
                 key={cat.id}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveCategory(cat.id as any); }}
-                style={[S.catPill, active && S.catPillActive]}
                 activeOpacity={0.8}
+                style={S.catItem}
               >
-                <Text style={[S.catText, active && S.catTextActive]}>
-                  {cat.emoji}{'  '}{cat.label}
-                </Text>
+                <Text style={[S.catText, on && S.catTextOn]}>{cat.label.toUpperCase()}</Text>
+                {on && <View style={S.catDot} />}
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Wallpaper cards */}
-        {layoutMode === 'horizontal' ? (
-          <FlatList
-            data={filteredKeys}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={item => item}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-            snapToInterval={CARD_W + 12}
-            decelerationRate="fast"
-            style={{ height: CARD_H + 12 }}
-            initialNumToRender={100}
-            maxToRenderPerBatch={100}
-            windowSize={100}
-            removeClippedSubviews={false}
-            renderItem={renderCard}
-          />
-        ) : (
-          <FlatList
-            data={filteredKeys}
-            numColumns={2}
-            showsVerticalScrollIndicator={false}
-            keyExtractor={item => item}
-            contentContainerStyle={{ paddingHorizontal: 10 }}
-            style={{ maxHeight: CARD_W * 1.3 * 2 + 48 }}
-            initialNumToRender={100}
-            maxToRenderPerBatch={100}
-            windowSize={100}
-            removeClippedSubviews={false}
-            renderItem={({ item: key }) => (
-              <View style={{ flex: 1, marginHorizontal: 6, marginBottom: 12 }}>
-                <WallpaperCard
-                  bgKey={key}
-                  isSelected={key === previewBgKey}
-                  isActive={key === actualActiveBgKey}
-                  isSolar={isSolar && key === bgKey}
-                  onPress={() => handleCardPress(key as BgKey)}
-                  cardW={(width - 56) / 2}
-                  cardH={CARD_W * 1.3}
-                />
-              </View>
-            )}
-          />
-        )}
-      </View>
+        {/* Cards */}
+        <FlatList
+          data={filteredKeys}
+          horizontal
+          keyExtractor={item => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 18 }}
+          snapToInterval={CARD_W + 12}
+          decelerationRate="fast"
+          style={{ height: CARD_H + 8 }}
+          initialNumToRender={100}
+          maxToRenderPerBatch={100}
+          windowSize={100}
+          removeClippedSubviews={false}
+          renderItem={renderCard}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -521,127 +398,86 @@ export default function WallpaperSettings() {
 const S = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
 
+  // Header
   header: {
-    position: 'absolute', left: 20, right: 20,
-    zIndex: 20, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
+    position: 'absolute', left: 24, right: 24, zIndex: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  iconBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
+  headerIcon: {
+    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
-  headerTitleWrap: { flex: 1, alignItems: 'center' },
-  headerTitle: {
-    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 3.5,
+  setBtn: {
+    paddingHorizontal: 18, paddingVertical: 8,
+    borderRadius: 20, overflow: 'hidden',
+  },
+  setText: {
+    fontSize: 13, fontWeight: '700', color: '#111', letterSpacing: 0.3,
   },
 
-  heroBlock: {
-    position: 'absolute', left: 0, right: 0,
-    alignItems: 'center', paddingHorizontal: 28, zIndex: 5,
+  // Hero
+  hero: {
+    position: 'absolute', left: 0, right: 0, zIndex: 5,
+    alignItems: 'center', paddingHorizontal: 24,
   },
-  heroTimeLabel: {
-    fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 4, marginBottom: 12, textTransform: 'uppercase',
+  timeChip: {
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 14, overflow: 'hidden',
+    marginBottom: 16,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  timeChipText: {
+    fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 2.5, textTransform: 'uppercase',
   },
   heroName: {
-    fontSize: 42, fontWeight: '100', color: '#fff',
-    letterSpacing: 1.2, textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12,
-    marginBottom: 4,
+    fontSize: 48, fontWeight: '200', color: '#fff',
+    letterSpacing: 0.5, textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 16,
+    marginBottom: 8,
   },
   heroSub: {
-    fontSize: 13, fontWeight: '300', color: 'rgba(255,255,255,0.65)',
-    letterSpacing: 0.5, textAlign: 'center', fontStyle: 'italic',
+    fontSize: 14, fontWeight: '300', color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.5, textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
   },
-  solarLivePill: {
-    marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: `${GOLD}55`,
+  livePill: {
+    marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  solarLiveText: {
-    fontSize: 10, fontWeight: '700', color: GOLD, letterSpacing: 2,
-  },
+  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: GOLD, shadowColor: GOLD, shadowOpacity: 0.8, shadowRadius: 4 },
+  liveText: { fontSize: 10, fontWeight: '700', color: GOLD, letterSpacing: 2 },
 
-  applyWrap: {
-    position: 'absolute', alignSelf: 'center', zIndex: 30,
-  },
-  applyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 9,
-    paddingHorizontal: 30, paddingVertical: 15,
-    borderRadius: 99, overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3, shadowRadius: 20, elevation: 12,
-  },
-  applyText: {
-    fontSize: 15, fontWeight: '700', color: '#111', letterSpacing: 0.3,
-  },
-
+  // Toast
   toast: {
     position: 'absolute', alignSelf: 'center', zIndex: 999,
-    borderRadius: 50, overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 20, overflow: 'hidden',
   },
-  toastInner: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    paddingHorizontal: 18, paddingVertical: 11,
-  },
-  toastText: { fontSize: 13, fontWeight: '500', color: '#fff', letterSpacing: 0.3 },
+  toastText: { fontSize: 12, fontWeight: '600', color: '#111', letterSpacing: 0.3 },
 
+  // Bottom Panel
   panel: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    justifyContent: 'flex-end', zIndex: 10,
+    position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
   },
 
-  solarRow: {
-    marginHorizontal: 20, marginBottom: 4,
-    borderRadius: 18, overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 14,
+  // Action Bar
+  actionBar: {
+    flexDirection: 'row', justifyContent: 'center', marginBottom: 24,
   },
-  solarRowActive: { borderColor: `${GOLD}50` },
-  solarIcon: { width: 36, alignItems: 'center' },
-  solarText: { flex: 1 },
-  solarTitle: { fontSize: 15, fontWeight: '600', color: '#fff', letterSpacing: 0.2 },
-  solarDesc: { fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  solarPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 24, overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  solarPillOn: { borderColor: `${GOLD}50` },
+  solarPillText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)', letterSpacing: 0.5 },
+  solarPillTextOn: { color: GOLD },
 
-  switchTrack: {
-    width: 44, height: 26, borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    padding: 3, justifyContent: 'center',
-  },
-  switchTrackOn: { backgroundColor: GOLD },
-  switchKnob: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
-  },
-  switchKnobOff: { alignSelf: 'flex-start' },
-  switchKnobOn: { alignSelf: 'flex-end' },
-
-  catScroll: { paddingHorizontal: 20, gap: 10 },
-  catPill: {
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  catPillActive: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    shadowColor: '#fff', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15, shadowRadius: 8,
-    borderColor: 'rgba(255,255,255,0.8)',
-  },
-  catText: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.2 },
-  catTextActive: { color: '#111', fontWeight: '700' },
+  // Categories
+  catRow: { paddingHorizontal: 24, gap: 24, marginBottom: 20 },
+  catItem: { alignItems: 'center' },
+  catText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5 },
+  catTextOn: { color: '#fff', fontWeight: '800' },
+  catDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff', marginTop: 4 },
 });

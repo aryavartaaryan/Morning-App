@@ -37,12 +37,6 @@ type SoundPlayerCtx = {
   playingDurationSecs: number | null;
   playingMeta: PlayableSoundMeta | null;
   mixedSounds: PlayableSoundMeta[];
-  soundQueue: PlayableSoundMeta[];
-  addToQueue: (meta: PlayableSoundMeta) => void;
-  removeFromQueue: (id: string) => void;
-  playNext: () => void;
-  playPrevious: () => void;
-  clearQueue: () => void;
   playSound: (meta: PlayableSoundMeta, durationSecs: number, onStop?: () => void, trimLastSecs?: number, shouldLoop?: boolean) => Promise<void>;
   addToMix: (meta: PlayableSoundMeta) => Promise<void>;
   removeFromMix: (id: string) => Promise<void>;
@@ -86,15 +80,6 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   const [playingDurationSecs, setPlayingDurSecs] = useState<number | null>(null);
   const [playingMeta, setPlayingMeta]         = useState<PlayableSoundMeta | null>(null);
   const [mixedSounds, setMixedSounds]   = useState<PlayableSoundMeta[]>([]);
-  
-  const soundQueueRef = useRef<PlayableSoundMeta[]>([]);
-  const [soundQueue, setSoundQueueState] = useState<PlayableSoundMeta[]>([]);
-  const setSoundQueue = useCallback((update: any) => {
-    const next = typeof update === 'function' ? update(soundQueueRef.current) : update;
-    soundQueueRef.current = next;
-    setSoundQueueState(next);
-  }, []);
-
   const meteringAnimRef = useRef(new Animated.Value(0));
   const meteringRef = useRef(0);
   const positionMsRef = useRef(0);
@@ -683,35 +668,6 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
     if (mixRefs.current.size > 0 && !isPausedRef.current) startTimer(secs);
   }, [startTimer]);
 
-  const addToQueue = useCallback((meta: PlayableSoundMeta) => {
-    setSoundQueue((prev: PlayableSoundMeta[]) => {
-      if (prev.some(s => s.id === meta.id)) return prev;
-      return [...prev, meta];
-    });
-  }, [setSoundQueue]);
-
-  const removeFromQueue = useCallback((id: string) => {
-    setSoundQueue((prev: PlayableSoundMeta[]) => prev.filter(s => s.id !== id));
-  }, [setSoundQueue]);
-
-  const clearQueue = useCallback(() => {
-    setSoundQueue([]);
-  }, [setSoundQueue]);
-
-  const playNext = useCallback(() => {
-    const nextMeta = soundQueueRef.current[0];
-    if (!nextMeta) return;
-    setSoundQueue((prev: PlayableSoundMeta[]) => prev.slice(1));
-    playSound(nextMeta, sessionSecs, stopCbRef.current || undefined);
-  }, [setSoundQueue, sessionSecs, playSound]);
-
-  const playPrevious = useCallback(() => {
-    if (mixRefs.current.size > 0) {
-      const p = Array.from(mixRefs.current.values()).map(s => s.setPositionAsync(0));
-      Promise.all(p).catch(() => {});
-    }
-  }, []);
-
   const setLoopConfig = useCallback((shouldLoop: boolean, trimMs: number, totalSecs: number) => {
     noLoopRef.current = !shouldLoop;
     reelTrimMsRef.current = trimMs;
@@ -864,7 +820,6 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       playingId, isPaused, sessionSecs, playingDurationSecs: playingDurationSecs, playingMeta, mixedSounds,
-      soundQueue, addToQueue, removeFromQueue, playNext, playPrevious, clearQueue,
       playSound, addToMix, removeFromMix, togglePause, stopSound, changeTimer, setLoopConfig, meteringAnim: meteringAnimRef.current, getMeteringLevel: () => meteringRef.current,
       isAudioLoading, audioNetworkError, getPositionMs, seekTo, setGlobalVolume,
       preBufferSound, cleanPreBuffer,
@@ -890,7 +845,6 @@ export function useSoundPlayer(): SoundPlayerCtx {
     return {
       playingId: null, isPaused: false, sessionSecs: 21 * 60,
       playingDurationSecs: null, playingMeta: null, mixedSounds: [],
-      soundQueue: [], addToQueue: () => {}, removeFromQueue: () => {}, playNext: () => {}, playPrevious: () => {}, clearQueue: () => {},
       playSound: async () => {}, addToMix: async () => {}, removeFromMix: async () => {},
       togglePause: async () => {}, stopSound: async () => {}, changeTimer: () => {},
       setLoopConfig: () => {}, meteringAnim: new Animated.Value(0),
