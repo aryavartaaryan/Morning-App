@@ -2585,71 +2585,10 @@ const ReelCard = memo(function ReelCard({
             }} />
             
             {/* New Arrangement of Stars Animation */}
-            <StarArrangementVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} size={48} />
+            <StarArrangementVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} />
           </>
         )}
-        <View style={{
-          position: 'absolute',
-          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
-          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
-          borderRadius: ((Dimensions.get('window').height < 800 ? 238 : 302) * 0.95) / 2,
-          backgroundColor: 'transparent',
-        }}>
-        </View>
 
-        <Animated.View style={{
-          position: 'absolute',
-          width: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
-          height: (Dimensions.get('window').height < 800 ? 238 : 302) * 0.95,
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: [{
-            scale: isActive ? meteringAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 1.15]
-            }) : 1
-          }]
-        }}>
-          {isActive && (
-            <Animated.View style={{
-              position: 'absolute',
-              width: 30, height: 30,
-              borderRadius: 15,
-              backgroundColor: sound.color ?? '#fff',
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.15, 0.6, 1] }),
-              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 2.5] }) }],
-              shadowColor: sound.color ?? '#fff',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1,
-              shadowRadius: 20,
-              zIndex: 0,
-            }} />
-          )}
-
-          {isActive && (
-            <HeroGeometricAnimation 
-              variant="sound" 
-              size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95} 
-              theme="dark" 
-              opacity={0.85} 
-              speed="slow" 
-              audioMetering={meteringAnim} 
-              shapeIndex={3}
-              externalBreath={externalBreath}
-              isActive={isActive}
-            />
-          )}
-
-          {isActive && (
-            <ReelSineWave
-              isPlaying={isPlaying}
-              isPaused={isPaused}
-              color={sound.color ?? '#a78bfa'}
-              getMeteringLevel={getMeteringLevel}
-              size={(Dimensions.get('window').height < 800 ? 238 : 302) * 0.95}
-            />
-          )}
-        </Animated.View>
       </View>
 
       <TouchableOpacity
@@ -2701,35 +2640,31 @@ const ReelCard = memo(function ReelCard({
         />
 
         {/* Top of controls: Title & Subtitle left aligned */}
-        <BlurView intensity={30} tint="dark" style={{ 
-          marginBottom: 24, alignItems: 'flex-start', paddingHorizontal: 20, paddingVertical: 14,
-          borderRadius: 24, overflow: 'hidden', alignSelf: 'flex-start',
-          borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)'
-        }}>
+        <View style={{ marginBottom: 28, alignItems: 'flex-start', paddingHorizontal: 4 }}>
           <Text style={{ 
-            fontSize: 26, 
+            fontSize: 22, 
             fontWeight: '800', 
             color: '#FFFFFF', 
             fontFamily: 'Nunito_800ExtraBold', 
             letterSpacing: 0.5,
-            textShadowColor: 'rgba(0,0,0,0.8)',
+            textShadowColor: 'rgba(0,0,0,0.6)',
             textShadowOffset: { width: 0, height: 2 },
-            textShadowRadius: 10,
+            textShadowRadius: 8,
           }}>
             {sound.label}
           </Text>
           <Text style={{ 
-            fontSize: 12, 
+            fontSize: 11, 
             fontWeight: '700', 
-            color: 'rgba(255,255,255,0.8)', 
+            color: 'rgba(255,255,255,0.7)', 
             fontFamily: 'Nunito_700Bold',
-            letterSpacing: 2, 
+            letterSpacing: 3, 
             textTransform: 'uppercase',
-            marginTop: 4,
+            marginTop: 6,
           }}>
             {sound.desc}
           </Text>
-        </BlurView>
+        </View>
 
         {/* Scrubber Area */}
         <View style={{ minHeight: 24, justifyContent: 'center', marginBottom: 12 }}>
@@ -2807,16 +2742,15 @@ const ReelCard = memo(function ReelCard({
         </View>
 
         {/* Primary Controls Row: Prev, Play, Next */}
-        <BlurView intensity={30} tint="dark" style={{ 
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, marginBottom: 28,
-          paddingVertical: 14, paddingHorizontal: 40, borderRadius: 100, alignSelf: 'center',
-          borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden'
+        <View style={{ 
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, marginBottom: 32,
+          paddingVertical: 8, alignSelf: 'center'
         }}>
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
             activeOpacity={0.6}
             disabled={!hasPrev}
-            style={{ opacity: hasPrev ? 1 : 0.3 }}
+            style={{ opacity: hasPrev ? 1 : 0.4 }}
           >
             <Ionicons name="play-skip-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
@@ -2825,26 +2759,26 @@ const ReelCard = memo(function ReelCard({
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
             activeOpacity={0.8}
             style={{
-              width: 76, height: 76, borderRadius: 38,
-              backgroundColor: 'rgba(255,255,255,0.12)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
+              width: 80, height: 80, borderRadius: 40,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
               alignItems: 'center', justifyContent: 'center',
               overflow: 'hidden',
             }}
           >
-            {Platform.OS === 'ios' && <BlurView intensity={50} tint="light" style={[StyleSheet.absoluteFillObject, { borderRadius: 38 }]} />}
-            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={32} color="#FFFFFF" style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }} />
+            {Platform.OS === 'ios' && <BlurView intensity={50} tint="light" style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]} />}
+            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={34} color="#FFFFFF" style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
             activeOpacity={0.6}
             disabled={!hasNext}
-            style={{ opacity: hasNext ? 1 : 0.3 }}
+            style={{ opacity: hasNext ? 1 : 0.4 }}
           >
             <Ionicons name="play-skip-forward" size={28} color="#FFFFFF" />
           </TouchableOpacity>
-        </BlurView>
+        </View>
 
         {/* Footer Pill: Queue on left, Timer on right */}
         <BlurView intensity={40} tint="dark" style={{ 
@@ -4590,9 +4524,26 @@ function SleepTabInner() {
 
   return (
     <View style={[S.screen, { backgroundColor: '#03030D' }]}>
-      {/* Pure OLED Black Background for Option 1 Minimalist Look */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000' }]} />
-
+      {/* Fully Visible Immersive Background Image */}
+      <Animated.View style={{ 
+        position: 'absolute', top: 0, left: 0, right: 0, height: H,
+        transform: [{ translateY: Animated.multiply(scrollY, -0.5) }] // Parallax effect
+      }}>
+        {/* Base image scaled up without blur so it is completely visible through the screen */}
+        <Image 
+          source={{ uri: cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg' }} 
+          style={[StyleSheet.absoluteFillObject, { transform: [{ scale: 1.1 }] }]} 
+          resizeMode="cover" 
+        />
+        
+        {/* Only a very subtle dark wash to ensure white text remains readable, without hiding the image */}
+        <LinearGradient 
+          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.5)']} 
+          locations={[0, 0.5, 1]} 
+          style={StyleSheet.absoluteFillObject} 
+          pointerEvents="none" 
+        />
+      </Animated.View>
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent', zIndex: 10 }}>
         <BlurView intensity={60} tint="dark" style={{ 

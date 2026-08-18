@@ -8,8 +8,12 @@ import {
 } from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, FlatList,
-  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder, BackHandler
+  Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder, BackHandler, LayoutAnimation, UIManager
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6227,6 +6231,16 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             position: 'absolute', width: HERO_RS, height: HERO_RS,
             alignItems: 'center', justifyContent: 'center',
           }}>
+            {/* Inner tinted glass core (creates a premium filled look without being heavy) */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: HERO_RS * 0.92, height: HERO_RS * 0.92,
+              borderRadius: HERO_RS * 0.46,
+              backgroundColor: accentHex,
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.07] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.12] }) }],
+            }} />
+
             {/* Outer dynamic breathing ring */}
             <Animated.View style={{
               position: 'absolute',
@@ -6234,8 +6248,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               borderRadius: HERO_RS * 0.46,
               borderWidth: 2,
               borderColor: accentHex,
-              backgroundColor: 'rgba(255,255,255,0.02)', // Nearly transparent inner
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.2, 0.85] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.2, 0.75] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.12] }) }],
             }} />
 
@@ -7328,6 +7341,19 @@ function DailyTab() {
 
   // Premium Breathe & Reveal entrance effect synced with SplashOverlay
   useEffect(() => {
+    const triggerAutoExpand = () => {
+      setTimeout(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setWidgetExpanded(true);
+        Animated.timing(widgetAnim, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+        setTimeout(() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setWidgetExpanded(false);
+          Animated.timing(widgetAnim, { toValue: 0, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+        }, 3500);
+      }, 800);
+    };
+
     if (isDailyTabFirstLaunch) {
       isDailyTabFirstLaunch = false;
       const sub = DeviceEventEmitter.addListener('splashFadeOut', () => {
@@ -7337,6 +7363,7 @@ function DailyTab() {
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }).start();
+        triggerAutoExpand();
       });
       // Fallback in case splash screen is skipped (e.g. after download screen)
       const fallbackTimer = setTimeout(() => {
@@ -7679,30 +7706,39 @@ function DailyTab() {
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
                 />
 
-                {/* ── SMART CONTEXT PILL — weather + top activity merged ── */}
+                {/* ── SMART CONTEXT PILL — weather merged ── */}
                 {(weather || currentPeriod) && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -12, zIndex: 20 }}>
-                    <BlurView intensity={65} tint="dark" style={{
-                      flexDirection: 'row', alignItems: 'center',
-                      paddingVertical: 8, paddingHorizontal: 18,
-                      borderRadius: 99, borderWidth: 0.5,
-                      borderColor: 'rgba(255,255,255,0.14)',
-                      gap: 12,
-                    }}>
-                      {/* Weather side */}
-                      {weather && (
-                        <TouchableOpacity
-                          activeOpacity={0.75}
-                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/weather'); }}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                          <Text style={{ fontSize: 14 }}>{weather.emoji}</Text>
-                          <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '800' }}>{weather.temp}°</Text>
-                          <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10 }}>{weather.condition}</Text>
-                        </TouchableOpacity>
-                      )}
-                    </BlurView>
-                  </View>
+                  <Animated.View 
+                    pointerEvents={widgetExpanded ? 'none' : 'auto'}
+                    style={{ 
+                      flexDirection: 'row', alignItems: 'center', marginTop: -12, zIndex: 20,
+                      opacity: widgetAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0] }),
+                      transform: [
+                        { scale: widgetAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0.9] }) },
+                        { translateY: widgetAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) }
+                      ]
+                    }}
+                  >
+                    {weather && (
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/weather'); }}
+                        style={{ overflow: 'hidden', borderRadius: 99, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.14)' }}
+                      >
+                        <BlurView intensity={65} tint="dark" style={{
+                          flexDirection: 'row', alignItems: 'center',
+                          paddingVertical: 7, paddingHorizontal: 16,
+                          gap: 6,
+                        }}>
+                          <Text style={{ fontSize: 13 }}>{weather.emoji}</Text>
+                          <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800' }}>{weather.temp}°</Text>
+                          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 2 }} />
+                          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600' }}>{weather.condition}</Text>
+                          <Ionicons name="chevron-forward" size={11} color="rgba(255,255,255,0.4)" style={{ marginLeft: 2 }} />
+                        </BlurView>
+                      </TouchableOpacity>
+                    )}
+                  </Animated.View>
                 )}
               </View>
 
@@ -7716,8 +7752,9 @@ function DailyTab() {
                       activeOpacity={0.88}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         const toValue = widgetExpanded ? 0 : 1;
-                        Animated.spring(widgetAnim, { toValue, useNativeDriver: false, tension: 80, friction: 12 }).start();
+                        Animated.timing(widgetAnim, { toValue, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
                         setWidgetExpanded(e => !e);
                       }}
                     >
@@ -7739,13 +7776,13 @@ function DailyTab() {
                         </View>
 
                         {/* Expanded body — morphs open */}
-                        <Animated.View style={{
-                          maxHeight: widgetAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 200] }),
-                          opacity: widgetAnim,
-                          overflow: 'hidden',
-                        }}>
-                          <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 18 }} />
-                          <View style={{ flexDirection: 'row', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16, gap: 16 }}>
+                        {widgetExpanded && (
+                          <Animated.View style={{
+                            opacity: widgetAnim,
+                            overflow: 'hidden',
+                          }}>
+                            <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 18 }} />
+                            <View style={{ flexDirection: 'row', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16, gap: 16 }}>
                             {/* CULTIVATE column */}
                             <View style={{ flex: 1 }}>
                               <Text style={{ fontSize: 8, fontWeight: '900', color: '#4ade80', letterSpacing: 2, marginBottom: 10 }}>CULTIVATE</Text>
@@ -7770,6 +7807,7 @@ function DailyTab() {
                             </View>
                           </View>
                         </Animated.View>
+                        )}
                       </BlurView>
                     </TouchableOpacity>
                   </View>
