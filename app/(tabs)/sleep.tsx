@@ -2879,7 +2879,7 @@ const ReelCard = memo(function ReelCard({
               );
             })()}
           </TouchableOpacity>
-        </View>
+        </BlurView>
 
         {/* Duration Dropdown Menu */}
         {durationOpen && (
