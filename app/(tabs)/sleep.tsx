@@ -3776,10 +3776,15 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-        decelerationRate="fast"
+        decelerationRate={0.985}
         snapToInterval={RECENT_CARD_SIZE + 12}
         snapToAlignment="start"
         nestedScrollEnabled
+        alwaysBounceHorizontal
+        bounces
+        scrollEventThrottle={16}
+        directionalLockEnabled
+        disableIntervalMomentum={false}
       >
         {sounds.map((sound, idx) => (
           <RecentCard
@@ -4365,6 +4370,10 @@ function SleepTabInner() {
     _pageScrollRef?.scrollTo({ y: 0, animated: false });
     setIsSearching(false);
     setSearchQuery('');
+    // Refresh recently played every time the page comes into focus
+    store.getJSON<string[]>(KEYS.recentSounds).then(ids => {
+      if (ids && ids.length > 0) setRecentSoundIds(ids);
+    });
   }, []));
 
   const onMainScroll = useMemo(() => Animated.event(
@@ -4523,27 +4532,22 @@ function SleepTabInner() {
   const cachedHeroBgUri = rawHeroBgUri ? getLocalSoundImageUri(rawHeroBgUri) : '';
 
   return (
-    <View style={[S.screen, { backgroundColor: '#03030D' }]}>
-      {/* Fully Visible Immersive Background Image */}
-      <Animated.View style={{ 
-        position: 'absolute', top: 0, left: 0, right: 0, height: H,
-        transform: [{ translateY: Animated.multiply(scrollY, -0.5) }] // Parallax effect
-      }}>
-        {/* Base image scaled up without blur so it is completely visible through the screen */}
-        <Image 
-          source={{ uri: cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg' }} 
-          style={[StyleSheet.absoluteFillObject, { transform: [{ scale: 1.1 }] }]} 
-          resizeMode="cover" 
-        />
-        
-        {/* Only a very subtle dark wash to ensure white text remains readable, without hiding the image */}
-        <LinearGradient 
-          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.5)']} 
-          locations={[0, 0.5, 1]} 
-          style={StyleSheet.absoluteFillObject} 
-          pointerEvents="none" 
-        />
-      </Animated.View>
+    <View style={[S.screen, { backgroundColor: '#060610' }]}>
+      {/* Premium Background: Subtly visible image with dark overlay for depth */}
+      <Image
+        source={{ uri: cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg' }}
+        style={[StyleSheet.absoluteFillObject, { opacity: 0.18 }]}
+        resizeMode="cover"
+        blurRadius={8}
+      />
+      {/* Deep dark overlay to keep it premium & OLED-friendly */}
+      <LinearGradient
+        colors={['rgba(6,6,18,0.82)', 'rgba(6,6,18,0.70)', 'rgba(6,6,18,0.92)']}
+        locations={[0, 0.4, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent', zIndex: 10 }}>
         <BlurView intensity={60} tint="dark" style={{ 
