@@ -2588,27 +2588,52 @@ const ReelCard = memo(function ReelCard({
           zIndex: 8, opacity: controlsAnim,
         }}
       >
-        <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
-          <Text 
+        {/* Title and Timer Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flex: 1, paddingRight: 16 }}>
+            <Text 
+              style={{ 
+                fontSize: 16, 
+                fontWeight: '800', 
+                color: '#FFFFFF', 
+                fontFamily: 'Nunito_800ExtraBold', 
+                letterSpacing: 0.5,
+                textShadowColor: 'rgba(0,0,0,0.8)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 10,
+                textAlign: 'left',
+              }}
+              numberOfLines={2}
+            >
+              {sound.label}
+            </Text>
+          </View>
+          
+          {/* Ultra-Smart Timer Pill */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
+            activeOpacity={0.7}
             style={{ 
-              fontSize: 20, 
-              fontWeight: '800', 
-              color: '#FFFFFF', 
-              fontFamily: 'Nunito_800ExtraBold', 
-              letterSpacing: 0.3,
-              textShadowColor: 'rgba(0,0,0,0.8)',
-              textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 10,
-              textAlign: 'left',
-              lineHeight: 26
+              flexDirection: 'row', alignItems: 'center', gap: 6, 
+              backgroundColor: 'rgba(255,255,255,0.1)', 
+              paddingHorizontal: 12, paddingVertical: 6, 
+              borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' 
             }}
           >
-            {sound.label}
-          </Text>
+            {(() => {
+              const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
+              return (
+                <>
+                  <Ionicons name={opt.icon} size={14} color={durationOpen ? sound.color : 'rgba(255,255,255,0.9)'} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: durationOpen ? '#FFF' : 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>{opt.label}</Text>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
         </View>
 
         {/* Scrubber Area */}
-        <View style={{ minHeight: 24, justifyContent: 'center', marginBottom: 12 }}>
+        <View style={{ minHeight: 24, justifyContent: 'center', marginBottom: 4 }}>
           <View
             style={{ height: 32, justifyContent: 'center', marginHorizontal: -4 }}
             {...scrubPan.panHandlers}
@@ -2682,7 +2707,7 @@ const ReelCard = memo(function ReelCard({
 
         {/* ── Primary Controls ── */}
         <View style={{ 
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, marginBottom: 20,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40,
           alignSelf: 'center'
         }}>
           <TouchableOpacity
@@ -2718,45 +2743,10 @@ const ReelCard = memo(function ReelCard({
           </TouchableOpacity>
         </View>
 
-        {/* Footer Pill: Queue on left, Timer on right */}
-        <BlurView intensity={35} tint="dark" style={{ 
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-          paddingHorizontal: 20, paddingVertical: 14, 
-          borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.04)',
-          alignSelf: 'stretch', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)'
-        }}>
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onQueue?.(); }}
-            activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-          >
-            <Ionicons name="list" size={20} color="rgba(255,255,255,0.8)" />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>Up Next</Text>
-          </TouchableOpacity>
-
-          <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
-            activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-          >
-            {(() => {
-              const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
-              return (
-                <>
-                  <Ionicons name={opt.icon} size={18} color={durationOpen ? sound.color : 'rgba(255,255,255,0.8)'} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: durationOpen ? '#FFF' : 'rgba(255,255,255,0.9)', letterSpacing: 0.2 }}>{opt.label}</Text>
-                </>
-              );
-            })()}
-          </TouchableOpacity>
-        </BlurView>
-
         {/* Duration Dropdown Menu */}
         {durationOpen && (
           <View style={{
-            position: 'absolute', right: 24, bottom: 90,
+            position: 'absolute', right: 16, bottom: 130,
             width: 160,
             backgroundColor: 'rgba(12,14,18,0.95)',
             borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
