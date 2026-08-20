@@ -2588,19 +2588,6 @@ const ReelCard = memo(function ReelCard({
           zIndex: 8, opacity: controlsAnim,
         }}
       >
-        <BlurView
-          intensity={55}
-          tint="dark"
-          style={{
-            borderRadius: 28,
-            paddingHorizontal: 16,
-            paddingVertical: 18,
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.08)',
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            overflow: 'hidden'
-          }}
-        >
         <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
           <Text 
             style={{ 
@@ -2684,7 +2671,7 @@ const ReelCard = memo(function ReelCard({
         </View>
 
         {/* Time Text */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2, marginBottom: 20 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2, marginBottom: 12 }}>
           <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_700Bold' }}>
             {formatTimeMs(isScrubbing ? scrubPositionMs : positionMs)}
           </Text>
@@ -2732,11 +2719,11 @@ const ReelCard = memo(function ReelCard({
         </View>
 
         {/* Footer Pill: Queue on left, Timer on right */}
-        <View style={{ 
+        <BlurView intensity={35} tint="dark" style={{ 
           flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
           paddingHorizontal: 20, paddingVertical: 14, 
-          borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)',
-          alignSelf: 'stretch'
+          borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.04)',
+          alignSelf: 'stretch', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)'
         }}>
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onQueue?.(); }}
@@ -2764,7 +2751,6 @@ const ReelCard = memo(function ReelCard({
               );
             })()}
           </TouchableOpacity>
-        </View>
         </BlurView>
 
         {/* Duration Dropdown Menu */}

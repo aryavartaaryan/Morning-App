@@ -7761,35 +7761,12 @@ function DailyTab() {
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
                 />
 
-                {/* ── Premium Bio-Stress Scan Button ── */}
-                <TouchableOpacity
-                  onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-                  activeOpacity={0.85}
-                  style={{ marginTop: 2, marginBottom: 2, alignSelf: 'center' }}
-                >
-                  <BlurView intensity={55} tint="dark" style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 8,
-                    paddingVertical: 10, paddingHorizontal: 20,
-                    borderRadius: 99,
-                    overflow: 'hidden',
-                    borderWidth: 1,
-                    borderColor: `${currentPeriod?.color ?? '#34d399'}55`,
-                  }}>
-                    {/* Pulse dot */}
-                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: currentPeriod?.color ?? '#34d399', shadowColor: currentPeriod?.color ?? '#34d399', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6 }} />
-                    <Ionicons name="pulse" size={15} color={currentPeriod?.color ?? '#34d399'} />
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>Stress Scan</Text>
-                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.25)' }} />
-                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600' }}>45 sec</Text>
-                  </BlurView>
-                </TouchableOpacity>
-
                 {/* ── SMART CONTEXT PILL — weather ── */}
                 {(weather || currentPeriod) && (
                   <Animated.View 
                     pointerEvents={insightVisible ? 'none' : 'auto'}
                     style={{ 
-                      flexDirection: 'row', alignItems: 'center', marginTop: -12, zIndex: 20,
+                      flexDirection: 'row', alignItems: 'center', marginTop: 8, zIndex: 20,
                       opacity: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0] }),
                       transform: [
                         { scale: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0.9] }) },
@@ -7911,8 +7888,8 @@ function DailyTab() {
                 );
               })()}
 
-              {/* ── VISIONOS FLOATING GLASS DOCK ── */}
-              <View style={{ width: '100%', paddingHorizontal: 32, paddingBottom: 4, marginTop: 6 }}>
+              {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns ── */}
+              <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: 4, marginTop: 6 }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -7920,25 +7897,41 @@ function DailyTab() {
                   borderColor: 'rgba(255,255,255,0.16)',
                   overflow: 'hidden',
                 }}>
+
                   {/* Almanac */}
                   <TouchableOpacity
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
                     activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
                   >
-                    <Ionicons name="book-outline" size={18} color="#FDB931" />
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.75)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
+                    <Ionicons name="book-outline" size={17} color="#FDB931" />
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
+                  </TouchableOpacity>
+
+                  {/* ── STRESS SCAN — centre, prominent ── */}
+                  <TouchableOpacity
+                    onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+                    activeOpacity={0.75}
+                    style={{ flex: 1.3, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)', backgroundColor: `${currentPeriod?.color ?? '#34d399'}12` }}
+                  >
+                    {/* Live pulse dot */}
+                    <View style={{ position: 'relative', alignItems: 'center' }}>
+                      <Ionicons name="pulse" size={19} color={currentPeriod?.color ?? '#34d399'} />
+                      <View style={{ position: 'absolute', top: -2, right: -6, width: 6, height: 6, borderRadius: 3, backgroundColor: currentPeriod?.color ?? '#34d399', shadowColor: currentPeriod?.color ?? '#34d399', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4 }} />
+                    </View>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: currentPeriod?.color ?? '#34d399', marginTop: 4, letterSpacing: 0.5 }}>Stress Scan</Text>
                   </TouchableOpacity>
 
                   {/* Sounds */}
                   <TouchableOpacity
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
                     activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 13 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}
                   >
-                    <Ionicons name="musical-notes-outline" size={18} color="#80FFFF" />
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.75)', marginTop: 4, letterSpacing: 0.3 }}>Sounds</Text>
+                    <Ionicons name="musical-notes-outline" size={17} color="#80FFFF" />
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginTop: 4, letterSpacing: 0.3 }}>Sounds</Text>
                   </TouchableOpacity>
+
                 </BlurView>
               </View>
             </View>
