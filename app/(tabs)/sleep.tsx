@@ -2145,90 +2145,44 @@ function formatTimeMs(ms: number): string {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-const StarArrangementVisualizer = memo(({ meteringAnim, color, size = 320 }: { meteringAnim: Animated.Value, color: string, size?: number }) => {
-  // Layer 1: Inner tight core ring
-  const innerStars = useMemo(() => Array.from({ length: 24 }).map((_, i) => i), []);
-  // Layer 2: Middle glowing ring with mixed sizes
-  const midStars = useMemo(() => Array.from({ length: 36 }).map((_, i) => i), []);
-  // Layer 3: Outer burst particles (elongated shooting stars)
-  const outerStars = useMemo(() => Array.from({ length: 48 }).map((_, i) => i), []);
+const HarmonicParticleWaveVisualizer = memo(({ meteringAnim, color }: { meteringAnim: Animated.Value, color: string }) => {
+  const particles = useMemo(() => Array.from({ length: 24 }).map((_, i) => i), []);
+  const W = Dimensions.get('window').width;
+  const spread = W * 0.75; // 75% of screen width
+  const step = spread / 23;
   
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
-      
-      {/* Inner Dense Ring */}
-      <Animated.View style={{ 
-        position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center',
-        transform: [
-          { scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.2] }) },
-          { rotate: '15deg' }
-        ] 
-      }}>
-        {innerStars.map(i => {
-          const angle = (i * 360) / 24;
-          return (
-            <Animated.View key={`in-${i}`} style={{
-              position: 'absolute', width: 2, height: 2, borderRadius: 1, backgroundColor: color,
-              transform: [
-                { rotate: `${angle}deg` },
-                { translateY: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [-(size * 0.2), -(size * 0.28)] }) }
-              ],
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.15, 0.6, 1] })
-            }} />
-          );
-        })}
-      </Animated.View>
-
-      {/* Middle Rotating Ring */}
-      <Animated.View style={{ 
-        position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center',
-        transform: [
-          { scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.45] }) }
-        ] 
-      }}>
-        {midStars.map(i => {
-          const angle = (i * 360) / 36;
-          const starSize = i % 3 === 0 ? 4 : 2; // Organic mix of sizes
-          return (
-            <Animated.View key={`mid-${i}`} style={{
-              position: 'absolute', width: starSize, height: starSize, borderRadius: starSize/2, backgroundColor: color,
-              shadowColor: color, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
-              transform: [
-                { rotate: `${angle}deg` },
-                { translateY: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [-(size * 0.32), -(size * 0.45)] }) }
-              ],
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.1, 0.5, 0.9] })
-            }} />
-          );
-        })}
-      </Animated.View>
-
-      {/* Outer Burst (Shooting stars) */}
-      <Animated.View style={{ 
-        position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center',
-        transform: [
-          { scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.9] }) },
-          { rotate: '-10deg' }
-        ] 
-      }}>
-        {outerStars.map(i => {
-          const angle = (i * 360) / 48;
-          // Add random-looking scatter offsets
-          const offset = (i % 5) * 12; 
-          return (
-            <Animated.View key={`out-${i}`} style={{
-              position: 'absolute', width: 2, height: 8, borderRadius: 1, backgroundColor: color, // Elongated like motion blur
-              transform: [
-                { rotate: `${angle}deg` },
-                { translateY: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [-(size * 0.38 + offset), -(size * 0.65 + offset * 1.5)] }) }
-              ],
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0.15, 0.5] })
-            }} />
-          );
-        })}
-      </Animated.View>
-
-    </View>
+    <Animated.View style={{ 
+      width: spread, height: 60, alignItems: 'center', justifyContent: 'center',
+      opacity: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] })
+    }} pointerEvents="none">
+      {particles.map(i => {
+        // Sine wave offset based on index (1.5 periods)
+        const phase = (i / 23) * Math.PI * 3;
+        
+        // Base sine wave value (-1 to 1)
+        const sinVal = Math.sin(phase);
+        
+        const size = (i % 4 === 0) ? 4 : (i % 2 === 0 ? 3 : 2.5);
+        const xPos = (i * step) - (spread / 2);
+        
+        return (
+          <Animated.View key={i} style={{
+            position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: color,
+            shadowColor: color, shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+            transform: [
+              { translateX: xPos },
+              { translateY: meteringAnim.interpolate({ 
+                  // Multiply sine wave by metering amplitude (max 30px displacement)
+                  inputRange: [0, 1], outputRange: [0, sinVal * 35] 
+                }) 
+              },
+              { scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, (i % 2===0 ? 1.6 : 1.2)] }) }
+            ]
+          }} />
+        );
+      })}
+    </Animated.View>
   );
 });
 
@@ -2572,23 +2526,20 @@ const ReelCard = memo(function ReelCard({
         pointerEvents="none"
       />
 
-      <View style={{ position: 'absolute', top: ((REEL_H - REEL_W) / 2) - 80, left: 0, width: REEL_W, height: REEL_W, alignItems: 'center', justifyContent: 'center', zIndex: 1 }} pointerEvents="none">
+      {/* ── HARMONIC PARTICLE WAVE VISUALIZER ── */}
+      <View 
+        style={{ 
+          position: 'absolute', 
+          bottom: Platform.OS === 'ios' ? insets.bottom + 230 : 240,
+          left: 0, right: 0, 
+          alignItems: 'center', 
+          zIndex: 1 
+        }} 
+        pointerEvents="none"
+      >
         {isActive && (isPlaying && !isPaused) && (
-          <>
-            {/* Core audio-reactive glow */}
-            <Animated.View pointerEvents="none" style={{
-              position: 'absolute', width: 280, height: 280, borderRadius: 140,
-              backgroundColor: sound.color || '#a78bfa',
-              opacity: meteringAnim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.1, 0.35] }),
-              transform: [{ scale: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.25] }) }],
-              shadowColor: sound.color || '#a78bfa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 35
-            }} />
-            
-            {/* New Arrangement of Stars Animation */}
-            <StarArrangementVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} />
-          </>
+          <HarmonicParticleWaveVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} />
         )}
-
       </View>
 
       <TouchableOpacity
@@ -2622,47 +2573,50 @@ const ReelCard = memo(function ReelCard({
         </View>
       </Animated.View>
 
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)', '#000000']}
+        locations={[0, 0.25, 0.6, 1]}
+        style={[StyleSheet.absoluteFillObject, { top: undefined, height: 400, zIndex: 7 }]}
+        pointerEvents="none"
+      />
+
       <Animated.View
         style={{
           position: 'absolute', 
-          bottom: 0, 
-          left: 0, right: 0,
+          bottom: Platform.OS === 'ios' ? insets.bottom + 12 : 24, 
+          left: 16, right: 16,
           zIndex: 8, opacity: controlsAnim,
-          paddingHorizontal: 24,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 24 : 32,
         }}
       >
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.4)']}
-          locations={[0, 0.4, 0.7, 1]}
-          style={[StyleSheet.absoluteFillObject, { top: -200 }]}
-          pointerEvents="none"
-        />
-
-        {/* Top of controls: Title & Subtitle left aligned */}
-        <View style={{ marginBottom: 28, alignItems: 'flex-start', paddingHorizontal: 4 }}>
-          <Text style={{ 
-            fontSize: 22, 
-            fontWeight: '800', 
-            color: '#FFFFFF', 
-            fontFamily: 'Nunito_800ExtraBold', 
-            letterSpacing: 0.5,
-            textShadowColor: 'rgba(0,0,0,0.6)',
-            textShadowOffset: { width: 0, height: 2 },
-            textShadowRadius: 8,
-          }}>
+        <BlurView
+          intensity={55}
+          tint="dark"
+          style={{
+            borderRadius: 28,
+            paddingHorizontal: 16,
+            paddingVertical: 18,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.08)',
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            overflow: 'hidden'
+          }}
+        >
+        <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
+          <Text 
+            style={{ 
+              fontSize: 20, 
+              fontWeight: '800', 
+              color: '#FFFFFF', 
+              fontFamily: 'Nunito_800ExtraBold', 
+              letterSpacing: 0.3,
+              textShadowColor: 'rgba(0,0,0,0.8)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 10,
+              textAlign: 'left',
+              lineHeight: 26
+            }}
+          >
             {sound.label}
-          </Text>
-          <Text style={{ 
-            fontSize: 11, 
-            fontWeight: '700', 
-            color: 'rgba(255,255,255,0.7)', 
-            fontFamily: 'Nunito_700Bold',
-            letterSpacing: 3, 
-            textTransform: 'uppercase',
-            marginTop: 6,
-          }}>
-            {sound.desc}
           </Text>
         </View>
 
@@ -2702,7 +2656,7 @@ const ReelCard = memo(function ReelCard({
             </View>
             {(() => {
               const ms = isScrubbing ? scrubPositionMs : positionMs;
-              const thumbSize = isScrubbing ? 16 : 12;
+              const thumbSize = isScrubbing ? 16 : 14;
               return (
                 <Animated.View
                   pointerEvents="none"
@@ -2713,9 +2667,7 @@ const ReelCard = memo(function ReelCard({
                     width: thumbSize, height: thumbSize,
                     borderRadius: thumbSize / 2,
                     backgroundColor: '#FFFFFF',
-                    borderWidth: 2,
-                    borderColor: sound.color || 'rgba(255,255,255,0.8)',
-                    shadowColor: sound.color, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+                    shadowColor: sound.color || '#FFF', shadowOpacity: 0.6, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
                     elevation: 10,
                     transform: [
                       { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({
@@ -2741,10 +2693,10 @@ const ReelCard = memo(function ReelCard({
           </Text>
         </View>
 
-        {/* Primary Controls Row: Prev, Play, Next */}
+        {/* ── Primary Controls ── */}
         <View style={{ 
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, marginBottom: 32,
-          paddingVertical: 8, alignSelf: 'center'
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, marginBottom: 20,
+          alignSelf: 'center'
         }}>
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
@@ -2752,22 +2704,21 @@ const ReelCard = memo(function ReelCard({
             disabled={!hasPrev}
             style={{ opacity: hasPrev ? 1 : 0.4 }}
           >
-            <Ionicons name="play-skip-back" size={28} color="#FFFFFF" />
+            <Ionicons name="play-skip-back" size={26} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
             activeOpacity={0.8}
             style={{
-              width: 80, height: 80, borderRadius: 40,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+              width: 72, height: 72, borderRadius: 36,
+              backgroundColor: '#FFFFFF',
               alignItems: 'center', justifyContent: 'center',
-              overflow: 'hidden',
+              shadowColor: 'rgba(0,0,0,0.5)', shadowOpacity: 1, shadowRadius: 15, shadowOffset: { width: 0, height: 6 },
+              elevation: 10
             }}
           >
-            {Platform.OS === 'ios' && <BlurView intensity={50} tint="light" style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]} />}
-            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={34} color="#FFFFFF" style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }} />
+            <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={34} color="#000000" style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -2776,16 +2727,16 @@ const ReelCard = memo(function ReelCard({
             disabled={!hasNext}
             style={{ opacity: hasNext ? 1 : 0.4 }}
           >
-            <Ionicons name="play-skip-forward" size={28} color="#FFFFFF" />
+            <Ionicons name="play-skip-forward" size={26} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         {/* Footer Pill: Queue on left, Timer on right */}
-        <BlurView intensity={40} tint="dark" style={{ 
+        <View style={{ 
           flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-          paddingHorizontal: 20, paddingVertical: 12, 
-          borderRadius: 30, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)',
-          alignSelf: 'stretch', overflow: 'hidden'
+          paddingHorizontal: 20, paddingVertical: 14, 
+          borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)',
+          alignSelf: 'stretch'
         }}>
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onQueue?.(); }}
@@ -2813,12 +2764,13 @@ const ReelCard = memo(function ReelCard({
               );
             })()}
           </TouchableOpacity>
+        </View>
         </BlurView>
 
         {/* Duration Dropdown Menu */}
         {durationOpen && (
           <View style={{
-            position: 'absolute', right: 24, bottom: Platform.OS === 'ios' ? insets.bottom + 104 : 112,
+            position: 'absolute', right: 24, bottom: 90,
             width: 160,
             backgroundColor: 'rgba(12,14,18,0.95)',
             borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
@@ -3278,7 +3230,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
       lastPausedIndexRef.current = null;
       prevCatRef.current = reelData[startIndex]?.cat ?? '';
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const offset = startIndex * REEL_H;
+      const offset = startIndex * REEL_W;
       flatRef.current?.scrollToOffset({ offset, animated: false });
       const t = setTimeout(() => { isScrollReadyRef.current = true; }, 120);
       return () => clearTimeout(t);
@@ -3342,35 +3294,17 @@ const SoundReelsModal = memo(function SoundReelsModal({
         ref={flatRef}
         data={reelData}
         keyExtractor={(item, index) => item.id + '_' + index}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={REEL_H}
+        showsHorizontalScrollIndicator={false}
+        horizontal={true}
+        snapToInterval={REEL_W}
         snapToAlignment="start"
         decelerationRate="fast"
         bounces={false}
         overScrollMode="never"
+        pagingEnabled={true}
         scrollEnabled={false}
-        onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          const idx = Math.round(y / REEL_H);
-          if (idx !== activeIndexRef.current && idx !== lastPausedIndexRef.current) {
-            lastPausedIndexRef.current = idx;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onStopSilent();
-          }
-        }}
-        scrollEventThrottle={150}
-        onMomentumScrollEnd={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          const idx = Math.round(y / REEL_H);
-          if (idx >= 0 && idx < reelData.length && idx !== activeIndexRef.current) {
-            activeIndexRef.current = idx;
-            lastPausedIndexRef.current = null;
-            setActiveIndex(idx);
-            onPlaySound(reelData[idx].id);
-          }
-        }}
         disableIntervalMomentum
-        getItemLayout={(_, index) => ({ length: REEL_H, offset: REEL_H * index, index })}
+        getItemLayout={(_, index) => ({ length: REEL_W, offset: REEL_W * index, index })}
         initialScrollIndex={startIndex > 0 ? startIndex : undefined}
         initialNumToRender={1}
         windowSize={7}
@@ -3387,12 +3321,22 @@ const SoundReelsModal = memo(function SoundReelsModal({
             onSelectSound={(cat) => onOpenLibrary?.(cat)}
             onNext={() => {
               if (index < reelData.length - 1) {
-                flatRef.current?.scrollToIndex({ index: index + 1, animated: true });
+                const nextIdx = index + 1;
+                activeIndexRef.current = nextIdx;
+                lastPausedIndexRef.current = null;
+                setActiveIndex(nextIdx);
+                onPlaySound(reelData[nextIdx].id);
+                flatRef.current?.scrollToIndex({ index: nextIdx, animated: true });
               }
             }}
             onPrev={() => {
               if (index > 0) {
-                flatRef.current?.scrollToIndex({ index: index - 1, animated: true });
+                const prevIdx = index - 1;
+                activeIndexRef.current = prevIdx;
+                lastPausedIndexRef.current = null;
+                setActiveIndex(prevIdx);
+                onPlaySound(reelData[prevIdx].id);
+                flatRef.current?.scrollToIndex({ index: prevIdx, animated: true });
               }
             }}
             hasNext={index < reelData.length - 1}
@@ -3776,15 +3720,11 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-        decelerationRate={0.985}
-        snapToInterval={RECENT_CARD_SIZE + 12}
-        snapToAlignment="start"
+        decelerationRate="normal"
         nestedScrollEnabled
         alwaysBounceHorizontal
         bounces
         scrollEventThrottle={16}
-        directionalLockEnabled
-        disableIntervalMomentum={false}
       >
         {sounds.map((sound, idx) => (
           <RecentCard
@@ -4312,6 +4252,7 @@ function SleepTabInner() {
   const [now, setNow] = useState(new Date());
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryInitialCat, setLibraryInitialCat] = useState('All');
+  const [libraryAction, setLibraryAction] = useState<'play' | 'queue'>('play');
   const [isSearching, setIsSearching] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -4372,9 +4313,16 @@ function SleepTabInner() {
     setSearchQuery('');
     // Refresh recently played every time the page comes into focus
     store.getJSON<string[]>(KEYS.recentSounds).then(ids => {
-      if (ids && ids.length > 0) setRecentSoundIds(ids);
+      setRecentSoundIds(ids || []);
     });
   }, []));
+
+  // Also aggressively refresh recently played when playingId changes
+  useEffect(() => {
+    store.getJSON<string[]>(KEYS.recentSounds).then(ids => {
+      setRecentSoundIds(ids || []);
+    });
+  }, [playingId]);
 
   const onMainScroll = useMemo(() => Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -4407,6 +4355,7 @@ function SleepTabInner() {
 
   const handleOpenLibraryFromReel = useCallback((cat: string) => {
     if (cat) setLibraryInitialCat(cat);
+    setLibraryAction('play');
     setLibraryOpen(true);
   }, []);
 
@@ -4447,6 +4396,12 @@ function SleepTabInner() {
   }, [pendingOpenReels, playingId]);
 
   const handleReelPlaySound = useCallback((id: string, isFromQueueAutoAdvance = false) => {
+    setRecentSoundIds(prev => {
+      const updated = [id, ...prev.filter(x => x !== id)].slice(0, 10);
+      store.setJSON(KEYS.recentSounds, updated);
+      return updated;
+    });
+
     const meta = REELS_ALL_SOUNDS.find(s => s.id === id);
     if (meta) {
       const metaFull = { ...meta, imageUri: SOUND_IMAGES[id] ?? (meta as any).imageUri, imageBundled: SOUND_BUNDLED_IMAGES[id] ?? undefined };
@@ -4485,20 +4440,15 @@ function SleepTabInner() {
   }, [playSound]);
 
   const handleSoundCardTap = useCallback((id: string) => {
+    Keyboard.dismiss();
     const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
     if (reelIndex === -1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setReelsStartIdx(reelIndex);
     // Show the reel FIRST — instant UI response
     setShowReels(true);
-    // Start audio AFTER the UI has opened so it never blocks rendering
-    setTimeout(() => handleReelPlaySound(id), 0);
-    // Track recently played — move to front, cap at 10
-    setRecentSoundIds(prev => {
-      const updated = [id, ...prev.filter(x => x !== id)].slice(0, 10);
-      store.setJSON(KEYS.recentSounds, updated);
-      return updated;
-    });
+    // Start audio synchronously so React batches the state updates, preventing 1-frame icon glitches
+    handleReelPlaySound(id);
   }, [handleReelPlaySound]);
 
 
@@ -4532,18 +4482,18 @@ function SleepTabInner() {
   const cachedHeroBgUri = rawHeroBgUri ? getLocalSoundImageUri(rawHeroBgUri) : '';
 
   return (
-    <View style={[S.screen, { backgroundColor: '#060610' }]}>
-      {/* Premium Background: Subtly visible image with dark overlay for depth */}
+    <View style={[S.screen, { backgroundColor: '#030308' }]}>
+      {/* Premium Background: Richly visible image with soft blur */}
       <Image
         source={{ uri: cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg' }}
-        style={[StyleSheet.absoluteFillObject, { opacity: 0.18 }]}
+        style={[StyleSheet.absoluteFillObject, { opacity: 0.65 }]}
         resizeMode="cover"
-        blurRadius={8}
+        blurRadius={12}
       />
-      {/* Deep dark overlay to keep it premium & OLED-friendly */}
+      {/* Deep glassy overlay to ensure text legibility while keeping image visible */}
       <LinearGradient
-        colors={['rgba(6,6,18,0.82)', 'rgba(6,6,18,0.70)', 'rgba(6,6,18,0.92)']}
-        locations={[0, 0.4, 1]}
+        colors={['rgba(3,3,8,0.45)', 'rgba(3,3,8,0.15)', 'rgba(3,3,8,0.85)', '#030308']}
+        locations={[0, 0.3, 0.65, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -4868,15 +4818,26 @@ function SleepTabInner() {
           setLibraryOpen(false);
           const meta = ALL_SOUNDS_LIST.find(s => s.id === id);
           if (meta) {
-            setSleepQueue(q => {
-              // If not playing anything, start playing immediately
-              if (!playingId && q.length === 0) {
-                handleSoundCardTap(id);
-                return q;
+            if (libraryAction === 'queue') {
+              // Just add it to the queue
+              setSleepQueue(q => [...q, meta]);
+              return;
+            }
+
+            // Otherwise, it's a 'play' action
+            if (showReels) {
+              // We are INSIDE the sound session. Instantly play and switch the reel!
+              const idx = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
+              if (idx >= 0) {
+                setReelsStartIdx(idx);
+                // The useEffect in SoundReelsModal will automatically snap to the new start index.
+                // We just need to trigger the audio to play!
+                handleReelPlaySound(id);
               }
-              // Otherwise, add to queue
-              return [...q, meta];
-            });
+            } else {
+              // OUTSIDE the sound session. Open the session and play.
+              handleSoundCardTap(id);
+            }
           }
         }}
       />
@@ -4901,6 +4862,11 @@ function SleepTabInner() {
             setSleepQueue(q => q.slice(index + 1));
             handleSoundCardTap(item.id);
           }
+        }}
+        onAddSounds={() => {
+          setQueueSheetOpen(false);
+          setLibraryAction('queue');
+          setLibraryOpen(true);
         }}
       />
 

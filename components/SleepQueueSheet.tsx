@@ -17,9 +17,10 @@ type Props = {
   onRemove: (index: number) => void;
   onClear: () => void;
   onPlayNow: (index: number) => void;
+  onAddSounds: () => void;
 };
 
-export default function SleepQueueSheet({ visible, queue, playingId, onClose, onRemove, onClear, onPlayNow }: Props) {
+export default function SleepQueueSheet({ visible, queue, playingId, onClose, onRemove, onClear, onPlayNow, onAddSounds }: Props) {
   const insets = useSafeAreaInsets();
   const sheetAnim = useRef(new Animated.Value(H)).current;
   const isAnimating = useRef(false);
@@ -69,6 +70,10 @@ export default function SleepQueueSheet({ visible, queue, playingId, onClose, on
               <Text style={S.headerSub}>{queue.length} sounds in queue</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onAddSounds(); }} style={[S.clearBtn, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                <Ionicons name="add" size={14} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={[S.clearTxt, { color: '#FFF' }]}>Add</Text>
+              </TouchableOpacity>
               {queue.length > 0 && (
                 <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClear(); }} style={S.clearBtn}>
                   <Text style={S.clearTxt}>Clear</Text>
@@ -91,9 +96,13 @@ export default function SleepQueueSheet({ visible, queue, playingId, onClose, on
             <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
               <Ionicons name="list" size={48} color="rgba(255,255,255,0.1)" />
               <Text style={{ marginTop: 16, fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Queue is empty</Text>
-              <Text style={{ marginTop: 8, fontSize: 13, color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginHorizontal: 40 }}>
-                Add sounds from the Svara library to create your custom playlist.
+              <Text style={{ marginTop: 8, fontSize: 13, color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginHorizontal: 40, marginBottom: 24 }}>
+                Add sounds from the library to create your custom playlist.
               </Text>
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onAddSounds(); }} style={S.addBigBtn}>
+                <Ionicons name="add-circle" size={18} color="#000" />
+                <Text style={S.addBigBtnTxt}>Add Sounds to Queue</Text>
+              </TouchableOpacity>
             </View>
           }
           renderItem={({ item, index }) => {
@@ -133,8 +142,10 @@ const S = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, fontFamily: 'Nunito_800ExtraBold' },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '600' },
   closeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  clearBtn: { paddingHorizontal: 16, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  clearBtn: { flexDirection: 'row', paddingHorizontal: 16, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   clearTxt: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
+  addBigBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
+  addBigBtnTxt: { fontSize: 14, fontWeight: '800', color: '#000' },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)' },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.03)' },
   rowActive: { backgroundColor: 'rgba(255,255,255,0.03)' },

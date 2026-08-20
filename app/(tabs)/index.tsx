@@ -48,6 +48,8 @@ import { getTodayWakeLog, getStreak, markCardShown, type WakeLogEntry, type Sunr
 import { ToastLogger } from '@/lib/toastLogger';
 import { ScreenErrorBoundary, withScreenBoundary } from '@/components/ScreenErrorBoundary';
 import { DailyIntentionCard } from '@/components/DailyIntentionCard';
+import StressScanner from '@/components/StressScanner';
+import { ALL_SLEEP_SOUNDS } from '@/lib/sleepSoundsData';
 
 const ACCENT = '#00D4B8';
 const SCREEN_W = Dimensions.get('window').width;
@@ -379,7 +381,7 @@ function FestivalDetailModal({ festival, onClose }: { festival: Festival; onClos
     onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
     onPanResponderRelease: () => {
       Animated.spring(touchScale, { toValue: 1, useNativeDriver: true }).start();
-      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
     }
   }), []);
 
@@ -5859,7 +5861,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
       onPanResponderRelease: (e, gestureState) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Animated.spring(touchScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
-        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
         
         const isTap = Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10;
         const touchX = e.nativeEvent.locationX;
@@ -5875,7 +5877,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
       },
       onPanResponderTerminate: () => {
         Animated.spring(touchScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
-        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: true }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
       },
     })
   ).current;
@@ -6109,14 +6111,35 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   
   const { accentColor: appAccent } = useBgContext();
   
-  // Premium Bubble Effect: Use app theme color with neon/sky blue highlights for a calming effect
-  const baseColor = appAccent || '#00D4B8';
-  const ringHex   = baseColor;
-  const haloHex   = '#80FFFF'; // Sky blue / cyan neon glow
-  const accentHex = baseColor;
+  // Premium animated color transition based on Circadian Period
+  const baseColor = period?.color || appAccent || '#00D4B8';
+  const [currentColor, setCurrentColor] = React.useState(baseColor);
+  const [prevColor, setPrevColor] = React.useState(baseColor);
+  const colorAnim = React.useRef(new Animated.Value(1)).current;
   
-  const [hR, hG, hB] = hexToRgb(haloHex);
-  const [rR, rG, rB] = hexToRgb(ringHex);
+  React.useEffect(() => {
+    if (baseColor !== currentColor) {
+      setPrevColor(currentColor);
+      setCurrentColor(baseColor);
+      colorAnim.setValue(0);
+      Animated.timing(colorAnim, {
+        toValue: 1,
+        duration: 3500, // Luxurious 3.5s crossfade
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: false // JS interpolation is safe here since we split nodes
+      }).start();
+    }
+  }, [baseColor, currentColor, colorAnim]);
+  
+  const accentHex = colorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [prevColor, currentColor]
+  });
+
+  const accentHex60 = colorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [prevColor + '99', currentColor + '99']
+  });
 
 
   const rem    = period?.minutesRemaining ?? 0;
@@ -6212,7 +6235,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   }, [totalSlides, sacredHour.type]);
 
   return (
-    <View style={{ alignItems: 'center', marginTop: compact ? 12 : 16 }}>
+    <View style={{ alignItems: 'center', marginTop: compact ? 4 : 6 }}>
       {/* Outer wrapper sized to contain aura glow overflow */}
       <View style={{ width: MOON_RS, height: MOON_RS, alignItems: 'center', justifyContent: 'center' }}>
 
@@ -6226,7 +6249,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Premium Golden Breathing Glow — NO border (avoids Android polygon glitch) ── */}
+          {/* ── Premium Golden Breathing Glow — Nested to safely mix JS & Native animations ── */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS,
             alignItems: 'center', justifyContent: 'center',
@@ -6235,55 +6258,51 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              borderRadius: HERO_RS * 0.44,
-              backgroundColor: accentHex,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.03, 0.09] }),
-            }} />
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.08] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.02] }) }],
+            }}>
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, backgroundColor: accentHex }} />
+            </Animated.View>
 
             {/* Inner glass ring — delicate thin border */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              borderRadius: HERO_RS * 0.44,
-              borderWidth: 0.8,
-              borderColor: accentHex,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.12, 0.35] }),
-            }} />
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.35] }),
+            }}>
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, borderWidth: 0.8, borderColor: accentHex }} />
+            </Animated.View>
 
             {/* Outer breathing ring — the main glowing edge */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.97, height: HERO_RS * 0.97,
-              borderRadius: HERO_RS * 0.485,
-              borderWidth: 1.5,
-              borderColor: accentHex,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.25, 0.85] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.20, 0.55] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.97, 1.08] }) }],
-            }} />
+            }}>
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.485, borderWidth: 1.5, borderColor: accentHex }} />
+            </Animated.View>
 
             {/* Outermost halo glow ring */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 1.05, height: HERO_RS * 1.05,
-              borderRadius: HERO_RS * 0.525,
-              borderWidth: 1,
-              borderColor: accentHex,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.04, 0.18] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.05, 0.18] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.14] }) }],
-            }} />
-
-            {/* Golden dust particles removed per user request */}
+            }}>
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.525, borderWidth: 1, borderColor: accentHex }} />
+            </Animated.View>
           </Animated.View>
 
           {/* ── Phase transition ripple overlay ── */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute',
             width: HERO_RS, height: HERO_RS,
-            borderRadius: HERO_RS / 2,
-            backgroundColor: accentHex,
-            opacity: phaseRipple.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.18, 0] }),
+            opacity: phaseRipple.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.25, 0] }),
             transform: [{ scale: phaseRipple.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.3] }) }],
-          }} />
+          }}>
+            <Animated.View style={{ flex: 1, borderRadius: HERO_RS / 2, backgroundColor: accentHex }} />
+          </Animated.View>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
 
@@ -6298,13 +6317,15 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
           {sacredHour.type !== null ? (
             <>
               {/* Premium Glow Behind Text */}
-              <Animated.View style={{ position: 'absolute', width: HERO_RS * 0.6, height: HERO_RS * 0.6, borderRadius: HERO_RS * 0.3, backgroundColor: accentHex, opacity: coolingGlow }} />
+              <Animated.View style={{ position: 'absolute', width: HERO_RS * 0.6, height: HERO_RS * 0.6, opacity: coolingGlow }}>
+                <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.3, backgroundColor: accentHex }} />
+              </Animated.View>
               
               <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 3, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' }}>
                 {sacredHour.type === 'sunrise' ? 'First Light' : sacredHour.type === 'sunset' ? 'Dusk Transition' : 'Solar Zenith'}
               </Text>
 
-              <Text style={{
+              <Animated.Text style={{
                 fontSize: compact ? 26 : 32,
                 fontWeight: '900',
                 color: '#FFFFFF',
@@ -6318,13 +6339,13 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 marginBottom: 20,
               }}>
                 {sacredHour.type === 'sunrise' ? 'Awaken' : sacredHour.type === 'sunset' ? 'Release' : 'Align'}
-              </Text>
+              </Animated.Text>
 
               {/* Premium Meditate Badge */}
-              <View style={{
+              <Animated.View style={{
                 backgroundColor: 'rgba(255,255,255,0.15)',
                 borderWidth: 1,
-                borderColor: `${accentHex}60`,
+                borderColor: accentHex60,
                 paddingVertical: 10,
                 paddingHorizontal: 24,
                 borderRadius: 30,
@@ -6338,7 +6359,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 4 }} />
                 <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF', letterSpacing: 2 }}>MEDITATE</Text>
-              </View>
+              </Animated.View>
             </>
           ) : period === null || !heroContent ? (
             // Calibrating
@@ -6356,7 +6377,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               }}>
 
                 {/* BODY RHYTHM — catchy, premium, glowing badge */}
-                <View style={{
+                {/* BODY RHYTHM — catchy, premium, glowing badge */}
+                <Animated.View style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
@@ -6365,16 +6387,17 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                   paddingVertical: compact ? 4 : 5,
                   borderRadius: 99,
                   borderWidth: 1,
-                  borderColor: `${accentHex}60`,
+                  borderColor: accentHex60,
                   backgroundColor: 'rgba(0,0,0,0.45)',
                 }}>
                   {/* Live pulse dot */}
                   <Animated.View style={{
-                    width: 5, height: 5, borderRadius: 2.5,
-                    backgroundColor: accentHex,
+                    width: 5, height: 5,
                     opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.6, 1] }),
-                  }} />
-                  <Text style={{
+                  }}>
+                    <Animated.View style={{ flex: 1, borderRadius: 2.5, backgroundColor: accentHex }} />
+                  </Animated.View>
+                  <Animated.Text style={{
                     fontSize: compact ? 9 : 11,
                     fontWeight: '900',
                     color: '#FFFFFF',
@@ -6385,11 +6408,12 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                     textShadowRadius: 8,
                   }}>
                     {heroContent.sciLabel ? 'Body Rhythm' : 'Now'}
-                  </Text>
-                </View>
+                  </Animated.Text>
+                </Animated.View>
 
                 {/* Main phase name — the hero text */}
-                <Text
+                {/* Main phase name — the hero text */}
+                <Animated.Text
                   style={{
                     fontSize: compact ? 22 : 28,
                     fontWeight: '600',
@@ -6407,10 +6431,10 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                   numberOfLines={2}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
-                >{heroContent.header}</Text>
+                >{heroContent.header}</Animated.Text>
 
                 {/* Divider — clean accent line (no shadow to avoid Android polygon glitch) */}
-                <View style={{
+                <Animated.View style={{
                   height: 1,
                   width: compact ? 48 : 60,
                   backgroundColor: accentHex,
@@ -7314,14 +7338,41 @@ function DailyTab() {
   const [mode, setMode]                     = useState<'normal' | 'relax'>('normal');
   const [zenActive, setZenActive]           = useState(false);
   const [sheetOpen, setSheetOpen]           = useState(false);
-  const [widgetExpanded, setWidgetExpanded]   = useState(false);
-  const widgetAnim                            = useRef(new Animated.Value(0)).current;
   const insightRevealAnim                    = useRef(new Animated.Value(0)).current;
   const [insightVisible, setInsightVisible]   = useState(false);
+  const insightTimeoutRef                    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showStressScanner, setShowStressScanner] = useState(false);
+
+  const triggerInsightReveal = React.useCallback((isManual = false) => {
+    if (insightTimeoutRef.current) clearTimeout(insightTimeoutRef.current);
+    
+    // If manual tap, show immediately, else wait 1s
+    const delay = isManual ? 0 : 1000;
+    
+    setTimeout(() => {
+      setInsightVisible(true);
+      Animated.timing(insightRevealAnim, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+
+      // Hold for 5s then fade out
+      insightTimeoutRef.current = setTimeout(() => {
+        Animated.timing(insightRevealAnim, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }).start(() => setInsightVisible(false));
+      }, 5000);
+    }, delay);
+  }, [insightRevealAnim]);
 
   const [showStory, setShowStory]           = useState(false);
   const insets                              = useSafeAreaInsets();
-  const { playingId: soundPlayingId }       = useSoundPlayer();
+  const { playingId: soundPlayingId, playSound }       = useSoundPlayer();
   const weatherLastFetched  = useRef<number>(0);
   const retryTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const weatherFetchingRef   = useRef(false);
@@ -7349,30 +7400,6 @@ function DailyTab() {
 
   // Premium Breathe & Reveal entrance effect synced with SplashOverlay
   useEffect(() => {
-    const triggerInsightReveal = () => {
-      setTimeout(() => {
-        setInsightVisible(true);
-        // Fade + slide up in
-        Animated.parallel([
-          Animated.timing(insightRevealAnim, {
-            toValue: 1,
-            duration: 700,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start();
-
-        // Hold 3s then fade out
-        setTimeout(() => {
-          Animated.timing(insightRevealAnim, {
-            toValue: 0,
-            duration: 600,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }).start(() => setInsightVisible(false));
-        }, 3200);
-      }, 1000);
-    };
 
     if (isDailyTabFirstLaunch) {
       isDailyTabFirstLaunch = false;
@@ -7589,6 +7616,14 @@ function DailyTab() {
 
   const heroDate = liveClock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  const handleStressSoundPlay = React.useCallback((soundId: string) => {
+    const sound = ALL_SLEEP_SOUNDS.find((s: any) => s.id === soundId);
+    if (sound) {
+      setShowStressScanner(false);
+      setTimeout(() => playSound(sound as any, 20 * 60), 400);
+    }
+  }, [playSound]);
+
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <AppBackground />
@@ -7690,15 +7725,15 @@ function DailyTab() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 75 }}>
+            <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 52 }}>
 
               {/* Daily Intention — top whisper */}
-              <View style={{ width: '100%', alignItems: 'center', paddingTop: 2 }}>
+              <View style={{ width: '100%', alignItems: 'center', paddingTop: 0 }}>
                 <DailyIntentionCard />
               </View>
 
               {/* Ring + festival badge — fixed height container so widget expansion below never shifts it */}
-              <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingBottom: 12 }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingBottom: 2 }}>
                 {todayFest && (
                   <TouchableOpacity
                     activeOpacity={0.85}
@@ -7726,16 +7761,39 @@ function DailyTab() {
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
                 />
 
+                {/* ── Premium Bio-Stress Scan Button ── */}
+                <TouchableOpacity
+                  onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+                  activeOpacity={0.85}
+                  style={{ marginTop: 2, marginBottom: 2, alignSelf: 'center' }}
+                >
+                  <BlurView intensity={55} tint="dark" style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    paddingVertical: 10, paddingHorizontal: 20,
+                    borderRadius: 99,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: `${currentPeriod?.color ?? '#34d399'}55`,
+                  }}>
+                    {/* Pulse dot */}
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: currentPeriod?.color ?? '#34d399', shadowColor: currentPeriod?.color ?? '#34d399', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6 }} />
+                    <Ionicons name="pulse" size={15} color={currentPeriod?.color ?? '#34d399'} />
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>Stress Scan</Text>
+                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600' }}>45 sec</Text>
+                  </BlurView>
+                </TouchableOpacity>
+
                 {/* ── SMART CONTEXT PILL — weather ── */}
                 {(weather || currentPeriod) && (
                   <Animated.View 
-                    pointerEvents={widgetExpanded ? 'none' : 'auto'}
+                    pointerEvents={insightVisible ? 'none' : 'auto'}
                     style={{ 
                       flexDirection: 'row', alignItems: 'center', marginTop: -12, zIndex: 20,
-                      opacity: widgetAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0] }),
+                      opacity: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0] }),
                       transform: [
-                        { scale: widgetAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0.9] }) },
-                        { translateY: widgetAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) }
+                        { scale: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0.9] }) },
+                        { translateY: insightRevealAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) }
                       ]
                     }}
                   >
@@ -7768,7 +7826,7 @@ function DailyTab() {
                 const avoids = currentPeriod.avoidances.slice(0, 2);
                 const accentC = currentPeriod.color || '#a78bfa';
                 return (
-                  <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 14 }}>
+                  <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 6 }}>
 
                     {/* ── CINEMATIC FLOATING INSIGHT REVEAL (3s auto) ── */}
                     {insightVisible && (
@@ -7800,7 +7858,7 @@ function DailyTab() {
                           {/* Header */}
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: accentC }} />
-                            <Text style={{ fontSize: 10, fontWeight: '900', color: accentC, letterSpacing: 2.5, textTransform: 'uppercase' }}>Your Flow State</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '900', color: accentC, letterSpacing: 2.5, textTransform: 'uppercase' }}>Active Bio-State</Text>
                           </View>
                           {/* Two columns */}
                           <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -7831,10 +7889,7 @@ function DailyTab() {
                       activeOpacity={0.88}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        const toValue = widgetExpanded ? 0 : 1;
-                        Animated.timing(widgetAnim, { toValue, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-                        setWidgetExpanded(e => !e);
+                        triggerInsightReveal(true);
                       }}
                     >
                       <BlurView intensity={55} tint="dark" style={{
@@ -7847,46 +7902,9 @@ function DailyTab() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 13 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' }} />
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.5 }}>Flow State</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.90)', letterSpacing: 0.5 }}>Active Bio-State</Text>
                           </View>
-                          <Animated.View style={{ transform: [{ rotate: widgetAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) }] }}>
-                            <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.5)" />
-                          </Animated.View>
                         </View>
-
-                        {/* Expanded body — morphs open */}
-                        {widgetExpanded && (
-                          <Animated.View style={{
-                            opacity: widgetAnim,
-                            overflow: 'hidden',
-                          }}>
-                            <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 18 }} />
-                            <View style={{ flexDirection: 'row', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16, gap: 16 }}>
-                            {/* CULTIVATE column */}
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 8, fontWeight: '900', color: '#4ade80', letterSpacing: 2, marginBottom: 10 }}>CULTIVATE</Text>
-                              {acts.map((a, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7, marginBottom: 8 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#4ade80', marginTop: 5 }} />
-                                  <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#FFFFFFDD', lineHeight: 17, flex: 1 }}>{a}</Text>
-                                </View>
-                              ))}
-                            </View>
-                            {/* Divider */}
-                            <View style={{ width: 0.5, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 2 }} />
-                            {/* RELEASE column */}
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 8, fontWeight: '900', color: '#f87171', letterSpacing: 2, marginBottom: 10 }}>RELEASE</Text>
-                              {avoids.map((a, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7, marginBottom: 8 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171', marginTop: 5 }} />
-                                  <Text style={{ fontSize: 11.5, fontWeight: '500', color: 'rgba(255,255,255,0.75)', lineHeight: 17, flex: 1 }}>{a}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        </Animated.View>
-                        )}
                       </BlurView>
                     </TouchableOpacity>
                   </View>
@@ -7894,7 +7912,7 @@ function DailyTab() {
               })()}
 
               {/* ── VISIONOS FLOATING GLASS DOCK ── */}
-              <View style={{ width: '100%', paddingHorizontal: 32, paddingBottom: 10, marginTop: 14 }}>
+              <View style={{ width: '100%', paddingHorizontal: 32, paddingBottom: 4, marginTop: 6 }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -7978,6 +7996,14 @@ function DailyTab() {
       <ZenModeOverlay
         visible={zenActive}
         onClose={() => { setZenActive(false); setMode('normal'); }}
+      />
+
+      {/* ── Bio-Stress Scanner Modal ── */}
+      <StressScanner
+        visible={showStressScanner}
+        onClose={() => setShowStressScanner(false)}
+        onPlaySound={handleStressSoundPlay}
+        accentColor={currentPeriod?.color ?? '#34d399'}
       />
     </Animated.View>
   );
