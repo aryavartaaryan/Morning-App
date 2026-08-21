@@ -2519,26 +2519,50 @@ const ReelCard = memo(function ReelCard({
         />
       )}
 
+      {/* Aurora top overlay: tinted with sound color, clear in the middle to show image */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']}
-        locations={[0, 0.2, 0.6, 1]}
+        colors={[
+          (sound.color || '#6366f1') + 'CC',
+          (sound.color || '#6366f1') + '22',
+          'transparent',
+          'transparent',
+        ]}
+        locations={[0, 0.25, 0.5, 1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* Subtle dark vignette on edges */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.55)', 'transparent', 'transparent', 'rgba(0,0,0,0.2)']}
+        locations={[0, 0.15, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* ── HARMONIC PARTICLE WAVE VISUALIZER ── */}
-      <View 
-        style={{ 
-          position: 'absolute', 
-          bottom: Platform.OS === 'ios' ? insets.bottom + 230 : 240,
-          left: 0, right: 0, 
-          alignItems: 'center', 
-          zIndex: 1 
-        }} 
+      {/* ── SPLIT LINE: Liquid Waveform Visualizer sits exactly at the 60% split ── */}
+      <View
+        style={{
+          position: 'absolute',
+          top: '58%',
+          left: 0, right: 0,
+          alignItems: 'center',
+          zIndex: 5,
+        }}
         pointerEvents="none"
       >
+        {/* Aurora glow line at split */}
+        <View style={{
+          width: '100%', height: 1,
+          backgroundColor: (sound.color || '#a78bfa') + '55',
+          marginBottom: 10,
+          shadowColor: sound.color || '#a78bfa',
+          shadowOpacity: 0.8, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }
+        }} />
         {isActive && (isPlaying && !isPaused) && (
           <HarmonicParticleWaveVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} />
+        )}
+        {isActive && (!isPlaying || isPaused) && (
+          <View style={{ width: '75%', height: 1, backgroundColor: (sound.color || '#a78bfa') + '40' }} />
         )}
       </View>
 
@@ -2573,102 +2597,109 @@ const ReelCard = memo(function ReelCard({
         </View>
       </Animated.View>
 
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)', '#000000']}
-        locations={[0, 0.25, 0.6, 1]}
-        style={[StyleSheet.absoluteFillObject, { top: undefined, height: 400, zIndex: 7 }]}
+      {/* ── SPLIT AURORA: Bottom Stage (bottom 40%) ── */}
+      <View
+        style={{
+          position: 'absolute',
+          top: '60%',
+          left: 0, right: 0, bottom: 0,
+          zIndex: 6,
+        }}
         pointerEvents="none"
-      />
+      >
+        <LinearGradient
+          colors={[
+            'transparent',
+            (sound.color || '#111118') + '18',
+            '#0A0B10',
+            '#07080D',
+          ]}
+          locations={[0, 0.15, 0.4, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </View>
 
-      {/* ── PREMIUM PLAYER CARD ── */}
+      {/* ── SPLIT AURORA: Player Controls ── */}
       <Animated.View
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? insets.bottom + 72 : 80,
-          left: 20, right: 20,
-          zIndex: 8, opacity: controlsAnim,
+          bottom: 0,
+          left: 0, right: 0,
+          top: '62%',
+          zIndex: 9, opacity: controlsAnim,
+          paddingHorizontal: 28,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 16 : 28,
+          paddingTop: 20,
+          justifyContent: 'space-between',
         }}
       >
-        <BlurView
-          intensity={70}
-          tint="dark"
-          style={{
-            borderRadius: 32,
-            overflow: 'hidden',
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: 'rgba(255,255,255,0.18)',
-            paddingHorizontal: 22,
-            paddingTop: 22,
-            paddingBottom: 20,
-            backgroundColor: 'rgba(0,0,0,0.25)',
-          }}
-        >
-          {/* Row 1: Title + Timer Pill */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 17,
-                fontWeight: '800',
-                color: '#FFFFFF',
-                fontFamily: 'Nunito_800ExtraBold',
-                letterSpacing: 0.2,
-                textAlign: 'left',
-                paddingRight: 12,
-              }}
-              numberOfLines={2}
-            >
-              {sound.label}
-            </Text>
+        {/* Row 1: Title + Timer Pill */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 22,
+              fontWeight: '800',
+              color: '#FFFFFF',
+              fontFamily: 'Nunito_800ExtraBold',
+              letterSpacing: 0.3,
+              textAlign: 'left',
+              paddingRight: 12,
+              textShadowColor: 'rgba(0,0,0,0.6)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 8,
+            }}
+            numberOfLines={2}
+          >
+            {sound.label}
+          </Text>
 
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
-              activeOpacity={0.75}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 5,
-                backgroundColor: durationOpen ? (sound.color + '30') : 'rgba(255,255,255,0.10)',
-                paddingHorizontal: 12, paddingVertical: 7,
-                borderRadius: 30,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: durationOpen ? sound.color : 'rgba(255,255,255,0.2)',
-              }}
-            >
-              {(() => {
-                const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
-                return (
-                  <>
-                    <Ionicons name={opt.icon} size={13} color={durationOpen ? sound.color : 'rgba(255,255,255,0.85)'} />
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.85)', letterSpacing: 0.3 }}>{opt.label}</Text>
-                  </>
-                );
-              })()}
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: durationOpen ? (sound.color + '30') : 'rgba(255,255,255,0.08)',
+              paddingHorizontal: 12, paddingVertical: 7,
+              borderRadius: 30,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: durationOpen ? sound.color : 'rgba(255,255,255,0.18)',
+              marginTop: 3,
+            }}
+          >
+            {(() => {
+              const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
+              return (
+                <>
+                  <Ionicons name={opt.icon} size={13} color={durationOpen ? sound.color : 'rgba(255,255,255,0.8)'} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.8)', letterSpacing: 0.3 }}>{opt.label}</Text>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
+        </View>
 
-          {/* Row 2: Scrubber */}
+        {/* Row 2+3: Scrubber + Time */}
+        <View>
           <View
-            style={{ height: 28, justifyContent: 'center', marginBottom: 2 }}
+            style={{ height: 28, justifyContent: 'center' }}
             {...scrubPan.panHandlers}
-            hitSlop={{ top: 12, bottom: 12, left: 0, right: 0 }}
+            hitSlop={{ top: 14, bottom: 14, left: 0, right: 0 }}
             collapsable={false}
           >
-            {/* Track background */}
-            <View style={{ height: isScrubbing ? 4 : 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.14)', width: TRACK_W + 8, overflow: 'visible' }}>
-              {/* Filled track */}
+            <View style={{ height: isScrubbing ? 4 : 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)', width: TRACK_W + 8, overflow: 'visible' }}>
               <Animated.View style={{
                 position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
                 backgroundColor: sound.color || '#fff',
                 width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
               }} />
-              {/* Glow */}
               <Animated.View style={{
                 position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
-                backgroundColor: sound.color || '#fff', opacity: 0.5,
-                shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 8,
+                backgroundColor: sound.color || '#fff', opacity: 0.45,
+                shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10,
                 width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
               }} pointerEvents="none" />
             </View>
-            {/* Thumb */}
             {(() => {
               const thumbSize = isScrubbing ? 14 : 11;
               return (
@@ -2676,8 +2707,7 @@ const ReelCard = memo(function ReelCard({
                   position: 'absolute', top: (28 - thumbSize) / 2, left: 0,
                   width: thumbSize, height: thumbSize, borderRadius: thumbSize / 2,
                   backgroundColor: '#FFFFFF',
-                  shadowColor: sound.color || '#FFF', shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
-                  elevation: 8,
+                  shadowColor: sound.color || '#FFF', shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
                   transform: [
                     { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }) },
                     { scale: isScrubbing ? 1.2 : 1 }
@@ -2687,65 +2717,65 @@ const ReelCard = memo(function ReelCard({
             })()}
           </View>
 
-          {/* Row 3: Time labels */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 1, marginBottom: 18 }}>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)', letterSpacing: 0.3 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 1, marginTop: 4 }}>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.4 }}>
               {formatTimeMs(isScrubbing ? scrubPositionMs : positionMs)}
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)', letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.4 }}>
               {formatTimeMs(trackDurMs)}
             </Text>
           </View>
+        </View>
 
-          {/* Row 4: Playback Controls */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 44 }}>
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
-              activeOpacity={0.6}
-              disabled={!hasPrev}
-              style={{ opacity: hasPrev ? 1 : 0.3, padding: 4 }}
-            >
-              <Ionicons name="play-skip-back" size={24} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
+        {/* Row 4: Playback Controls */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 48 }}>
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
+            activeOpacity={0.6}
+            disabled={!hasPrev}
+            style={{ opacity: hasPrev ? 1 : 0.25, padding: 6 }}
+          >
+            <Ionicons name="play-skip-back" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
-              activeOpacity={0.85}
-              style={{
-                width: 66, height: 66, borderRadius: 33,
-                backgroundColor: '#FFFFFF',
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 },
-                elevation: 12,
-              }}
-            >
-              {isActive && isAudioLoading && !isPlaying ? (
-                <ActivityIndicator size="small" color="#000" />
-              ) : (
-                <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={30} color="#000000" style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }} />
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
+            activeOpacity={0.85}
+            style={{
+              width: 70, height: 70, borderRadius: 35,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: sound.color || '#fff',
+              shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 6 },
+              elevation: 16,
+            }}
+          >
+            {isActive && isAudioLoading && !isPlaying ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={32} color="#000000" style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }} />
+            )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
-              activeOpacity={0.6}
-              disabled={!hasNext}
-              style={{ opacity: hasNext ? 1 : 0.3, padding: 4 }}
-            >
-              <Ionicons name="play-skip-forward" size={24} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-          </View>
-        </BlurView>
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
+            activeOpacity={0.6}
+            disabled={!hasNext}
+            style={{ opacity: hasNext ? 1 : 0.25, padding: 6 }}
+          >
+            <Ionicons name="play-skip-forward" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
 
         {/* Duration Dropdown */}
         {durationOpen && (
           <View style={{
-            position: 'absolute', right: 0, bottom: '100%', marginBottom: 10,
+            position: 'absolute', right: 0, top: 50,
             width: 160,
-            backgroundColor: 'rgba(12,14,18,0.96)',
+            backgroundColor: 'rgba(10,11,16,0.97)',
             borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)',
-            shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.6, shadowRadius: 30,
-            overflow: 'hidden', zIndex: 10,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 30,
+            overflow: 'hidden', zIndex: 20,
           }}>
             <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.3)', letterSpacing: 1.8, textAlign: 'center', paddingTop: 14, paddingBottom: 8 }}>TIMER</Text>
             {activeDurationOptions.map((opt, idx) => {
@@ -2763,7 +2793,7 @@ const ReelCard = memo(function ReelCard({
                   }}
                 >
                   <Ionicons name={opt.icon} size={15} color={isSelected ? sound.color : 'rgba(255,255,255,0.4)'} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.65)' }}>{opt.label}</Text>
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>{opt.label}</Text>
                   {isSelected && <Ionicons name="checkmark" size={14} color={sound.color} />}
                 </TouchableOpacity>
               );
@@ -2771,6 +2801,9 @@ const ReelCard = memo(function ReelCard({
           </View>
         )}
       </Animated.View>
+
+
+
 
 
 

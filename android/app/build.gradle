@@ -179,6 +179,12 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // CameraX — used by PpgScannerModule for silent frame analysis (no shutter)
+    implementation "androidx.camera:camera-core:1.3.4"
+    implementation "androidx.camera:camera-camera2:1.3.4"
+    implementation "androidx.camera:camera-lifecycle:1.3.4"
+    implementation "androidx.camera:camera-view:1.3.4"     // PreviewView for live preview
 }
 
 apply plugin: 'com.google.gms.google-services'
