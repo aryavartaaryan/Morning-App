@@ -1,691 +1,623 @@
 /**
- * StressScanner.tsx — v3 "Clinical Edition — Reliable Finger Detection"
+ * StressScanner.tsx — v4 "Clean & Reliable"
  *
- * KEY FIX: Uses expo-file-system to measure JPEG file size as the PPG proxy.
- *   A finger-on-torch frame is nearly solid red → compresses dramatically →
- *   file is ~60-70% SMALLER than a scene.  This reliable size difference
- *   drives both finger detection AND the PPG heartbeat signal.
- *
- * STATE MACHINE:
- *   idle → waiting → calibrating → scanning → processing → results
- *                                           ↘ paused → scanning (resume)
- *                                                     ↘ failed
+ * KEY PRINCIPLES:
+ *  1. Live camera preview visible so user sees finger placement
+ *  2. ZERO flickering — setState called ONLY when status truly changes
+ *  3. Simple state machine: idle → waiting → scanning → paused → results / failed
+ *  4. expo-file-system for JPEG size (reliable proxy for blood-volume / PPG signal)
+ *  5. Torch stays ON during waiting + scanning phases
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions,
-  Animated, Easing, Platform, ScrollView, ActivityIndicator,
+  View, Text, Modal, TouchableOpacity, StyleSheet,
+  Dimensions, Animated, Easing, Platform, ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import Svg, { Path } from 'react-native-svg';
 
 const { width: W } = Dimensions.get('window');
 
-// ── Timing constants ──────────────────────────────────────────────────────────
-const CAPTURE_INTERVAL_MS  = 350;   // ~2.9 fps
-const CALIBRATION_MS       = 2500;  // 2.5 s to build "no finger" baseline
-const FINGER_CONFIRM_MS    = 1800;  // 1.8 s of consistent finger frames
-const SCAN_DURATION_MS     = 45000; // 45 s of real PPG
-const WAIT_TIMEOUT_MS      = 30000; // give up waiting for finger
-const PULSE_TIMEOUT_MS     = 12000; // give up locking on pulse
-const RESUME_TIMEOUT_MS    = 10000; // give up if finger not replaced
-const FINGER_SIZE_RATIO    = 0.60;  // threshold = baseline * 0.60
-const MIN_PEAKS            = 18;    // minimum beats for valid HRV
-const PEAK_MIN_GAP_FRAMES  = 4;     // ~1.4 s gap floor (prevents false peaks)
-const CAM_STARTUP_DELAY_MS = 2000;  // wait for camera to fully initialize
+// ── Timing constants ───────────────────────────────────────────────────────
+const CAPTURE_INTERVAL_MS  = 250;   // 4 fps — fast but stable
+const CALIBRATION_FRAMES   = 2;     // ~500ms to build baseline
+const FINGER_HOLD_MS       = 1000;  // hold 1 s → scan starts
+const SCAN_DURATION_MS     = 45000;
+const RESUME_TIMEOUT_S     = 10;
+const FINGER_RATIO         = 0.48;  // threshold = baseline * 0.48
+const FINGER_ABS_MAX       = 12000; // absolute ceiling: if baseline < this, use it directly
+const MIN_PEAKS            = 15;    // reduced for robustness
+const PEAK_MIN_GAP         = 2;     // 2 samples @ 250ms = 500ms → max 120 BPM
 
-type ScanState =
-  | 'idle' | 'waiting' | 'calibrating' | 'scanning'
-  | 'paused' | 'processing' | 'results' | 'failed' | 'no_permission';
+type Phase = 'idle'|'waiting'|'scanning'|'paused'|'processing'|'results'|'failed'|'noperm';
+type FailReason = 'no_finger'|'no_pulse'|'signal_noisy'|'finger_removed'|null;
 
-type FailReason =
-  | 'no_finger' | 'no_pulse' | 'signal_noisy' | 'finger_removed' | null;
-
-// ── Stress tiers ──────────────────────────────────────────────────────────────
+// ── Stress analysis ────────────────────────────────────────────────────────
 type StressTier = {
-  score: number; label: string; subtitle: string; color: string;
-  gradient: readonly [string, string, string];
-  emoji: string; hrv: number; advice: string[];
-  sounds: string[]; breathTechnique: string; affirmation: string;
+  score:number; label:string; subtitle:string; color:string;
+  gradient:readonly[string,string,string]; emoji:string; hrv:number;
+  advice:string[]; sounds:string[]; breathTechnique:string; affirmation:string;
 };
-
-function getStressTier(rmssd: number): StressTier {
-  const score = Math.round(Math.max(0, Math.min(100,
-    rmssd > 60 ? 5  : rmssd > 50 ? 14 : rmssd > 42 ? 24 :
-    rmssd > 35 ? 35 : rmssd > 28 ? 48 : rmssd > 20 ? 60 :
-    rmssd > 14 ? 72 : rmssd > 8  ? 85 : 95
+function getStressTier(rmssd:number): StressTier {
+  const score = Math.round(Math.max(0,Math.min(100,
+    rmssd>60?5:rmssd>50?14:rmssd>42?24:rmssd>35?35:
+    rmssd>28?48:rmssd>20?60:rmssd>14?72:rmssd>8?85:95
   )));
-  if (score <= 20) return {
-    score, label: 'Deep Calm', subtitle: 'Parasympathetic Dominance',
-    color: '#34d399', gradient: ['#064E3B', '#065F46', '#047857'] as const, emoji: '🧘', hrv: Math.round(rmssd),
-    advice: ['Your nervous system is in perfect recovery mode.','This is the ideal window for deep creative work or meditation.','Consider journaling to anchor this state into memory.','Your cortisol is at its natural daily low — protect this window.'],
-    sounds: ['cdn_yaman_mental','tibetan_dreams','tanpura_breath'],
-    breathTechnique: '4-7-8 Breathing — Inhale 4s · Hold 7s · Exhale 8s',
-    affirmation: 'You are at peace. Your body is fully restored.',
-  };
-  if (score <= 38) return {
-    score, label: 'Balanced', subtitle: 'Healthy Autonomic Rhythm',
-    color: '#60a5fa', gradient: ['#1E3A5F', '#1D4ED8', '#2563EB'] as const, emoji: '⚖️', hrv: Math.round(rmssd),
-    advice: ['Your stress response is well-regulated right now.','An excellent state for focus, productivity, and decision-making.','Stay hydrated — even mild dehydration shifts HRV downward.','A 10-minute walk will push this score even higher.'],
-    sounds: ['cdn_calm_sunrise','flute_scale','sitar_calm'],
-    breathTechnique: 'Box Breathing — Inhale 4s · Hold 4s · Exhale 4s · Hold 4s',
-    affirmation: 'You are grounded. Your mind is clear and ready.',
-  };
-  if (score <= 55) return {
-    score, label: 'Mildly Elevated', subtitle: 'Light Sympathetic Activation',
-    color: '#fbbf24', gradient: ['#78350F', '#B45309', '#D97706'] as const, emoji: '🌤️', hrv: Math.round(rmssd),
-    advice: ['Your sympathetic nervous system is slightly elevated.','Common after screen time, coffee, or mild social stress.','Try stepping away from screens for 10 minutes.','Slow, deliberate breathing can restore HRV within minutes.'],
-    sounds: ['cdn_yaman_mental','tanpura_mystic_meditation','om_shanti'],
-    breathTechnique: 'Resonance Breathing — Inhale 5s · Exhale 5s (10 cycles)',
-    affirmation: 'You notice, and in noticing, you return to calm.',
-  };
-  if (score <= 70) return {
-    score, label: 'Elevated Stress', subtitle: 'Sympathetic Stress Response',
-    color: '#f97316', gradient: ['#7C2D12', '#C2410C', '#EA580C'] as const, emoji: '⚡', hrv: Math.round(rmssd),
-    advice: ['Your cortisol and adrenaline are elevated right now.','Avoid high-stakes decisions — your risk perception is skewed.','Splash cold water on your face to trigger the dive reflex.','Even 5 minutes of slow music reduces cortisol measurably.'],
-    sounds: ['om_shanti','tibetan_dreams','cdn_hansdhwani_432'],
-    breathTechnique: '4-6 Breathing — Inhale 4s · Exhale 6s (activates vagus nerve)',
-    affirmation: 'This feeling is temporary. Your body knows how to return.',
-  };
-  return {
-    score, label: 'High Stress', subtitle: 'Autonomic Suppression Detected',
-    color: '#ef4444', gradient: ['#7F1D1D', '#B91C1C', '#DC2626'] as const, emoji: '🔴', hrv: Math.round(rmssd),
-    advice: ['Your nervous system is in full fight-or-flight mode.','Do NOT make important decisions in this state.','Stop all screens immediately — blue light amplifies cortisol.','Lie down, close your eyes, and breathe for 5 minutes.'],
-    sounds: ['om_shanti','tibetan_dreams','cdn_yaman_mental'],
-    breathTechnique: 'Physiological Sigh — Double inhale through nose · Long slow exhale',
-    affirmation: 'You are safe. Right now, in this moment, you are safe.',
-  };
+  if(score<=20) return { score, label:'Deep Calm', subtitle:'Parasympathetic Dominance',
+    color:'#34d399', gradient:['#064E3B','#065F46','#047857'] as const, emoji:'🧘', hrv:Math.round(rmssd),
+    advice:['Your nervous system is in perfect recovery mode.','Ideal window for creative work or meditation.','Consider journaling to anchor this state.','Cortisol is at its daily low — protect this window.'],
+    sounds:['cdn_yaman_mental','tibetan_dreams','tanpura_breath'],
+    breathTechnique:'4-7-8 — Inhale 4s · Hold 7s · Exhale 8s', affirmation:'You are at peace. Your body is fully restored.' };
+  if(score<=38) return { score, label:'Balanced', subtitle:'Healthy Autonomic Rhythm',
+    color:'#60a5fa', gradient:['#1E3A5F','#1D4ED8','#2563EB'] as const, emoji:'⚖️', hrv:Math.round(rmssd),
+    advice:['Stress response is well-regulated.','Excellent for focus and decision-making.','Stay hydrated — dehydration drops HRV.','A 10-minute walk will push this even higher.'],
+    sounds:['cdn_calm_sunrise','flute_scale','sitar_calm'],
+    breathTechnique:'Box Breathing — 4s in · 4s hold · 4s out · 4s hold', affirmation:'You are grounded. Your mind is clear.' };
+  if(score<=55) return { score, label:'Mildly Elevated', subtitle:'Light Sympathetic Activation',
+    color:'#fbbf24', gradient:['#78350F','#B45309','#D97706'] as const, emoji:'🌤️', hrv:Math.round(rmssd),
+    advice:['Sympathetic system slightly elevated.','Common after screen time or coffee.','Step away from screens for 10 min.','Slow breathing restores HRV within minutes.'],
+    sounds:['cdn_yaman_mental','tanpura_mystic_meditation','om_shanti'],
+    breathTechnique:'Resonance Breathing — 5s in · 5s out (10 cycles)', affirmation:'You notice, and in noticing, you return to calm.' };
+  if(score<=70) return { score, label:'Elevated Stress', subtitle:'Sympathetic Stress Response',
+    color:'#f97316', gradient:['#7C2D12','#C2410C','#EA580C'] as const, emoji:'⚡', hrv:Math.round(rmssd),
+    advice:['Cortisol and adrenaline are elevated.','Avoid high-stakes decisions right now.','Splash cold water — triggers dive reflex.','5 min of slow music reduces cortisol measurably.'],
+    sounds:['om_shanti','tibetan_dreams','cdn_hansdhwani_432'],
+    breathTechnique:'4-6 Breathing — Inhale 4s · Exhale 6s (vagus nerve)', affirmation:'This is temporary. Your body knows how to return.' };
+  return { score, label:'High Stress', subtitle:'Autonomic Suppression Detected',
+    color:'#ef4444', gradient:['#7F1D1D','#B91C1C','#DC2626'] as const, emoji:'🔴', hrv:Math.round(rmssd),
+    advice:['Full fight-or-flight mode detected.','Do NOT make important decisions now.','Stop all screens — blue light amplifies cortisol.','Lie down, close your eyes, breathe for 5 min.'],
+    sounds:['om_shanti','tibetan_dreams','cdn_yaman_mental'],
+    breathTechnique:'Physiological Sigh — Double inhale · Long slow exhale', affirmation:'You are safe. Right now, in this moment, you are safe.' };
 }
 
-// ── Signal processing ─────────────────────────────────────────────────────────
-function iirLowPass(signal: number[], alpha = 0.20): number[] {
-  const out: number[] = []; let prev = signal[0] ?? 0;
-  for (const v of signal) { const s = alpha * v + (1 - alpha) * prev; out.push(s); prev = s; }
-  return out;
+// ── Signal processing ──────────────────────────────────────────────────────
+function iirLP(signal:number[], a=0.20): number[] {
+  const out:number[]=[]; let p=signal[0]??0;
+  for(const v of signal){const s=a*v+(1-a)*p; out.push(s); p=s;} return out;
 }
-function detectPeaks(signal: number[], minGap: number): number[] {
-  const peaks: number[] = [];
-  for (let i = 2; i < signal.length - 2; i++) {
-    if (signal[i] > signal[i-1] && signal[i] > signal[i-2] &&
-        signal[i] > signal[i+1] && signal[i] > signal[i+2]) {
-      if (peaks.length === 0 || i - peaks[peaks.length-1] >= minGap) peaks.push(i);
-    }
-  }
-  return peaks;
+function detectPeaks(sig:number[], minGap:number): number[] {
+  const pk:number[]=[];
+  for(let i=2;i<sig.length-2;i++){
+    if(sig[i]>sig[i-1]&&sig[i]>sig[i-2]&&sig[i]>sig[i+1]&&sig[i]>sig[i+2])
+      if(!pk.length||i-pk[pk.length-1]>=minGap) pk.push(i);
+  } return pk;
 }
-function calcRMSSD(peaks: number[], frameMs: number): number {
-  if (peaks.length < 3) return 0;
-  const rr = peaks.slice(1).map((p, i) => (p - peaks[i]) * frameMs);
-  const valid = rr.filter(r => r > 300 && r < 2000);
-  if (valid.length < 2) return 0;
-  const diffs = valid.slice(1).map((r, i) => Math.pow(r - valid[i], 2));
-  return Math.sqrt(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+function calcRMSSD(peaks:number[], fms:number): number {
+  if(peaks.length<3) return 0;
+  const rr=peaks.slice(1).map((p,i)=>(p-peaks[i])*fms).filter(r=>r>300&&r<2000);
+  if(rr.length<2) return 0;
+  const d=rr.slice(1).map((r,i)=>Math.pow(r-rr[i],2));
+  return Math.sqrt(d.reduce((a,b)=>a+b)/d.length);
 }
-const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+const delay=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 
-// ── Curated sounds ────────────────────────────────────────────────────────────
-const STRESS_SOUNDS = [
-  { id: 'cdn_yaman_mental',          label: 'Raga Yaman Mental Reset', emoji: '🪕', color: '#a78bfa', desc: 'Emotional balance & calm — scientifically tuned' },
-  { id: 'tibetan_dreams',            label: 'Tibetan Dreams',          emoji: '🧘', color: '#818cf8', desc: 'Deep Himalayan soundscape — lowers cortisol' },
-  { id: 'tanpura_breath',            label: 'Tanpura Breath',          emoji: '🌬️', color: '#a78bfa', desc: 'Soft drone — entrains slow brainwaves' },
-  { id: 'cdn_calm_sunrise',          label: 'Calm Sunrise Flow',       emoji: '☀️', color: '#fde68a', desc: 'Indian fusion for peaceful focus' },
-  { id: 'flute_scale',               label: 'Flute Meditation',        emoji: '🎶', color: '#6ee7b7', desc: 'Gentle flute scale for calm mind' },
-  { id: 'sitar_calm',                label: 'Calm Sitar',              emoji: '🪕', color: '#fcd34d', desc: 'Soft sitar for deep relaxation' },
-  { id: 'cdn_hansdhwani_432',        label: 'Raag Hansdhwani 432Hz',   emoji: '🎻', color: '#f59e0b', desc: 'Remove negative energy — healing resonance' },
-  { id: 'om_shanti',                 label: 'Om Shanti',               emoji: '🕉️', color: '#c084fc', desc: 'Vedic peace chant — deeply soothing' },
-  { id: 'tanpura_mystic_meditation', label: 'Mystic Tanpura',          emoji: '🌌', color: '#818cf8', desc: 'Ethereal mystic waves — parasympathetic activator' },
+// ── Sound catalog ──────────────────────────────────────────────────────────
+const SOUNDS=[
+  {id:'cdn_yaman_mental',label:'Raga Yaman',emoji:'🪕',color:'#a78bfa',desc:'Emotional balance — scientifically tuned'},
+  {id:'tibetan_dreams',label:'Tibetan Dreams',emoji:'🧘',color:'#818cf8',desc:'Deep Himalayan soundscape — lowers cortisol'},
+  {id:'tanpura_breath',label:'Tanpura Breath',emoji:'🌬️',color:'#a78bfa',desc:'Soft drone — entrains slow brainwaves'},
+  {id:'cdn_calm_sunrise',label:'Calm Sunrise',emoji:'☀️',color:'#fde68a',desc:'Indian fusion for peaceful focus'},
+  {id:'om_shanti',label:'Om Shanti',emoji:'🕉️',color:'#c084fc',desc:'Vedic peace chant — deeply soothing'},
+  {id:'cdn_hansdhwani_432',label:'Hansdhwani 432Hz',emoji:'🎻',color:'#f59e0b',desc:'Healing resonance — removes negative energy'},
+  {id:'tanpura_mystic_meditation',label:'Mystic Tanpura',emoji:'🌌',color:'#818cf8',desc:'Ethereal waves — parasympathetic activator'},
 ];
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// ── Props ──────────────────────────────────────────────────────────────────
 export interface StressScannerProps {
-  visible: boolean; onClose: () => void;
-  onPlaySound?: (soundId: string) => void;
-  accentColor?: string;
+  visible: boolean; onClose: ()=>void;
+  onPlaySound?: (id:string)=>void; accentColor?: string;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-export default function StressScanner({ visible, onClose, onPlaySound, accentColor = '#34d399' }: StressScannerProps) {
+// ══════════════════════════════════════════════════════════════════════════
+export default function StressScanner({
+  visible, onClose, onPlaySound, accentColor='#34d399',
+}: StressScannerProps) {
+
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanState, setScanState]       = useState<ScanState>('idle');
+
+  // ── UI state (changed ONLY on meaningful transitions) ──────────────────
+  const [phase, setPhase]               = useState<Phase>('idle');
+  const [isFingerOn, setIsFingerOn]     = useState(false);
+  const [isCalibrating, setIsCalibrating] = useState(false);
   const [cameraReady, setCameraReady]   = useState(false);
+  const [liveHR, setLiveHR]             = useState<number|null>(null);
+  const [scanPct, setScanPct]           = useState(0);          // 0-1
+  const [resumeSecs, setResumeSecs]     = useState(RESUME_TIMEOUT_S);
+  const [result, setResult]             = useState<StressTier|null>(null);
   const [failReason, setFailReason]     = useState<FailReason>(null);
-  const [fingerPct, setFingerPct]       = useState(0);
-  const [pulsePct, setPulsePct]         = useState(0);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [resumeCountdown, setResumeCountdown] = useState(10);
-  const [result, setResult]             = useState<StressTier | null>(null);
-  const [liveHR, setLiveHR]             = useState<number | null>(null);
   const [waveform, setWaveform]         = useState<number[]>([]);
-  // Debug: live frame size so user/dev can see detection is working
-  const [frameSize, setFrameSize]       = useState<number | null>(null);
-  const [threshold, setThreshold]       = useState<number | null>(null);
+  const [holdPct, setHoldPct]           = useState(0);          // 0-1 fill before scan starts
 
-  const cameraRef        = useRef<CameraView>(null);
-  const stateRef         = useRef<ScanState>('idle');
-  const cameraReadyRef   = useRef(false);
-  const signalBuffer     = useRef<number[]>([]);
-  const baselineSizes    = useRef<number[]>([]);
-  const baselineAvg      = useRef<number>(0);
-  const fingerConsecMs   = useRef(0);
-  const lastFrameTime    = useRef(0);
-  const captureRunning   = useRef(false);
-  const scanStartMs      = useRef(0);
-  const waitStartMs      = useRef(0);
-  const calibStartMs     = useRef(0);
-  const phaseTimeoutId   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resumeIntervalId = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ── Refs — NO re-renders ───────────────────────────────────────────────
+  const cameraRef         = useRef<CameraView>(null);
+  const phaseRef          = useRef<Phase>('idle');
+  const cameraReadyRef    = useRef(false);
+  const running           = useRef(false);
+  const fingerOnRef       = useRef(false);
+  const fingerHoldStart   = useRef<number|null>(null);
+  const baselineAvg       = useRef(0);
+  const signalBuf         = useRef<number[]>([]);
+  const scanStart         = useRef(0);
+  const scanPctRef        = useRef(0);   // mirror of scanPct for use inside closures
+  const resumeTimer       = useRef<ReturnType<typeof setInterval>|null>(null);
+  const scanProgressTimer = useRef<ReturnType<typeof setInterval>|null>(null);
 
-  const pulseRingAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim      = useRef(new Animated.Value(0)).current;
-  const fadeAnim      = useRef(new Animated.Value(0)).current;
-  const beatAnim      = useRef(new Animated.Value(1)).current;
+  // ── Animations ─────────────────────────────────────────────────────────
+  const ringScale  = useRef(new Animated.Value(1)).current;
+  const glowAnim   = useRef(new Animated.Value(0)).current;
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const beatAnim   = useRef(new Animated.Value(1)).current;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  const go = useCallback((s: ScanState) => { stateRef.current = s; setScanState(s); }, []);
-  const clearPT = () => { if (phaseTimeoutId.current) { clearTimeout(phaseTimeoutId.current); phaseTimeoutId.current = null; } };
-  const clearRI = () => { if (resumeIntervalId.current) { clearInterval(resumeIntervalId.current); resumeIntervalId.current = null; } };
-  const stopAll = useCallback(() => { captureRunning.current = false; clearPT(); clearRI(); }, []);
+  // ── Heartbeat animation ────────────────────────────────────────────────
+  useEffect(()=>{
+    if(liveHR){
+      const beatDur = 60000 / liveHR;
+      const loop = Animated.loop(Animated.sequence([
+        Animated.timing(beatAnim,{toValue:1.15,duration:beatDur*0.2,useNativeDriver:true}),
+        Animated.timing(beatAnim,{toValue:1.0,duration:beatDur*0.8,useNativeDriver:true})
+      ]));
+      loop.start();
+      return ()=>loop.stop();
+    }
+  },[liveHR, beatAnim]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const go = useCallback((p: Phase) => {
+    phaseRef.current = p; setPhase(p);
+  }, []);
+
+  const stopAll = useCallback(() => {
+    running.current = false;
+    if(resumeTimer.current){ clearInterval(resumeTimer.current); resumeTimer.current=null; }
+    if(scanProgressTimer.current){ clearInterval(scanProgressTimer.current); scanProgressTimer.current=null; }
+  }, []);
 
   const resetAll = useCallback(() => {
     stopAll();
-    signalBuffer.current = []; baselineSizes.current = []; baselineAvg.current = 0;
-    fingerConsecMs.current = 0; cameraReadyRef.current = false;
-    setCameraReady(false); setFingerPct(0); setPulsePct(0); setScanProgress(0);
-    setLiveHR(null); setWaveform([]); setResult(null); setFailReason(null);
-    setFrameSize(null); setThreshold(null);
-    glowAnim.setValue(0); pulseRingAnim.setValue(1);
+    signalBuf.current=[]; baselineAvg.current=0;
+    fingerOnRef.current=false; fingerHoldStart.current=null;
+    cameraReadyRef.current=false;
+    setIsFingerOn(false); setIsCalibrating(false); setCameraReady(false);
+    setLiveHR(null); setScanPct(0); setHoldPct(0);
+    setResult(null); setFailReason(null); setWaveform([]);
+    glowAnim.setValue(0); ringScale.setValue(1);
   }, [stopAll]);
 
-  // ── Modal lifecycle ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (visible) {
-      go('idle'); resetAll();
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  // ── Modal lifecycle ────────────────────────────────────────────────────
+  useEffect(()=>{
+    if(visible){
+      resetAll(); go('idle');
+      Animated.timing(fadeAnim,{toValue:1,duration:350,useNativeDriver:true}).start();
     } else {
       stopAll(); fadeAnim.setValue(0);
     }
-  }, [visible]);
+  },[visible]);
 
-  // ── Pulse ring ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (['waiting','calibrating','scanning'].includes(scanState)) {
-      const loop = Animated.loop(Animated.sequence([
-        Animated.timing(pulseRingAnim, { toValue: 1.10, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulseRingAnim, { toValue: 1.00, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]));
-      loop.start(); return () => loop.stop();
+  // ── Ring pulse during active phases ────────────────────────────────────
+  useEffect(()=>{
+    if(['waiting','scanning'].includes(phase)){
+      const loop=Animated.loop(Animated.sequence([
+        Animated.timing(ringScale,{toValue:1.06,duration:1000,easing:Easing.inOut(Easing.sin),useNativeDriver:true}),
+        Animated.timing(ringScale,{toValue:1.00,duration:1000,easing:Easing.inOut(Easing.sin),useNativeDriver:true}),
+      ])); loop.start(); return ()=>loop.stop();
     }
-    pulseRingAnim.setValue(1);
-  }, [scanState]);
+    ringScale.setValue(1);
+  },[phase]);
 
-  const flashBeat = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(beatAnim, { toValue: 1.22, duration: 80, useNativeDriver: true }),
-      Animated.timing(beatAnim, { toValue: 1.00, duration: 220, useNativeDriver: true }),
-    ]).start();
-  }, []);
+  // ── Camera ready ───────────────────────────────────────────────────────
+  const onCameraReady = useCallback(()=>{
+    cameraReadyRef.current=true; setCameraReady(true);
+  },[]);
 
-  // ── Camera ready callback ──────────────────────────────────────────────────
-  const onCameraReady = useCallback(() => {
-    cameraReadyRef.current = true;
-    setCameraReady(true);
-  }, []);
-
-  // ── CORE: capture one frame → file size ───────────────────────────────────
-  const captureFrame = useCallback(async (): Promise<number | null> => {
-    if (!cameraRef.current || !cameraReadyRef.current) return null;
+  // ── Capture one frame → file size ─────────────────────────────────────
+  const captureFrame = useCallback(async():Promise<number|null>=>{
+    if(!cameraRef.current||!cameraReadyRef.current) return null;
     try {
-      const pic = await cameraRef.current.takePictureAsync({ quality: 0.08, exif: false } as any);
-      const uri: string | undefined = (pic as any)?.uri ?? undefined;
-      if (!uri) return null;
+      const pic = await cameraRef.current.takePictureAsync({quality:0.08,exif:false} as any);
+      const uri:string|undefined = (pic as any)?.uri;
+      if(!uri) return null;
       const info = await FileSystem.getInfoAsync(uri);
-      FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
-      return info.exists ? (info as any).size ?? null : null;
+      FileSystem.deleteAsync(uri,{idempotent:true}).catch(()=>{});
+      return info.exists?(info as any).size??null:null;
     } catch { return null; }
-  }, []);
+  },[]);
 
-  // ── CORE: main sequential capture loop ────────────────────────────────────
-  const captureLoop = useCallback(async () => {
-    captureRunning.current = true;
+  // ── Process scan signal → result ───────────────────────────────────────
+  const processScan = useCallback(()=>{
+    go('processing');
+    setTimeout(()=>{
+      const buf=signalBuf.current;
+      if(buf.length<40){setFailReason('signal_noisy');go('failed');return;}
+      const filtered=iirLP(buf);
+      const peaks=detectPeaks(filtered,PEAK_MIN_GAP);
+      if(peaks.length<MIN_PEAKS){setFailReason('signal_noisy');go('failed');return;}
+      const rmssd=calcRMSSD(peaks,CAPTURE_INTERVAL_MS);
+      const rrAvg=peaks.slice(1).map((p,i)=>(p-peaks[i])*CAPTURE_INTERVAL_MS).reduce((a,b)=>a+b)/(peaks.length-1);
+      const bpm=Math.round(60000/rrAvg);
+      if(rmssd<=0||bpm<30||bpm>220){setFailReason('signal_noisy');go('failed');return;}
+      setResult(getStressTier(rmssd)); setLiveHR(bpm); go('results');
+      Animated.timing(glowAnim,{toValue:1,duration:1200,useNativeDriver:true}).start();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },2200);
+  },[go]);
 
-    // Wait for camera hardware to fully initialize
-    await delay(CAM_STARTUP_DELAY_MS);
-    if (!captureRunning.current) return;
-
-    while (captureRunning.current) {
-      const t0   = Date.now();
-      const size = await captureFrame();
-      const now  = Date.now();
-      if (!captureRunning.current) break;
-
-      if (size !== null) setFrameSize(size);
-
-      const state = stateRef.current;
-
-      // ── WAITING ────────────────────────────────────────────────────────────
-      if (state === 'waiting') {
-        const elapsed = now - waitStartMs.current;
-
-        if (size === null) {
-          lastFrameTime.current = now;
-          await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-          continue;
-        }
-
-        // Phase 1: build baseline
-        if (elapsed < CALIBRATION_MS) {
-          baselineSizes.current.push(size);
-          baselineAvg.current = baselineSizes.current.reduce((a,b)=>a+b) / baselineSizes.current.length;
-        } else {
-          // Phase 2: detect finger
-          const thresh = baselineAvg.current * FINGER_SIZE_RATIO;
-          setThreshold(thresh);
-          const fingerOn = size < thresh;
-
-          if (fingerOn) {
-            const dt = now - (lastFrameTime.current || now);
-            fingerConsecMs.current += dt;
-            setFingerPct(Math.min(1, fingerConsecMs.current / FINGER_CONFIRM_MS));
-            if (fingerConsecMs.current >= FINGER_CONFIRM_MS) {
-              clearPT();
-              signalBuffer.current = [];
-              calibStartMs.current = now;
-              go('calibrating');
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-          } else {
-            fingerConsecMs.current = 0;
-            setFingerPct(0);
-          }
-        }
+  // ── Start the 45s scan countdown ──────────────────────────────────────
+  const beginScanning = useCallback(()=>{
+    scanStart.current=Date.now();
+    go('scanning');
+    setHoldPct(0);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    scanProgressTimer.current=setInterval(()=>{
+      const elapsed=Date.now()-scanStart.current;
+      const pct=Math.min(1,elapsed/SCAN_DURATION_MS);
+      scanPctRef.current=pct;   // keep ref in sync
+      setScanPct(pct);
+      if(elapsed>=SCAN_DURATION_MS){
+        if(scanProgressTimer.current){clearInterval(scanProgressTimer.current);scanProgressTimer.current=null;}
+        processScan();
       }
+    },500);
+  },[go,processScan]);
 
-      // ── CALIBRATING ────────────────────────────────────────────────────────
-      else if (state === 'calibrating') {
-        if (size === null) {
-          lastFrameTime.current = now;
-          await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-          continue;
-        }
-        const thresh = baselineAvg.current * FINGER_SIZE_RATIO;
-        // Finger removed?
-        if (size >= thresh && (now - calibStartMs.current) > 1000) {
-          fingerConsecMs.current = 0;
-          setFingerPct(0); setPulsePct(0);
-          waitStartMs.current = now;
-          go('waiting');
-          setPhaseTimeout('waiting');
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          lastFrameTime.current = now;
-          await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-          continue;
-        }
-
-        signalBuffer.current.push(-size); // invert: smaller = more red = pulse peak
-        if (signalBuffer.current.length >= 10) {
-          const filtered = iirLowPass(signalBuffer.current);
-          const peaks    = detectPeaks(filtered, PEAK_MIN_GAP_FRAMES);
-          setPulsePct(Math.min(1, peaks.length / 5));
-          if (peaks.length >= 5) {
-            const rp = peaks.slice(-4);
-            const avgRR = rp.slice(1).map((p,i)=>(p-rp[i])*CAPTURE_INTERVAL_MS).reduce((a,b)=>a+b) / (rp.length-1);
-            const hr = Math.round(60000 / avgRR);
-            if (hr >= 40 && hr <= 200) {
-              clearPT();
-              setLiveHR(hr);
-              scanStartMs.current = now;
-              go('scanning');
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }
-          }
-          // pulse timeout
-          if ((now - calibStartMs.current) > PULSE_TIMEOUT_MS && peaks.length < 3) {
-            stopAll(); setFailReason('no_pulse'); go('failed');
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-          }
-        }
-      }
-
-      // ── SCANNING ───────────────────────────────────────────────────────────
-      else if (state === 'scanning') {
-        if (size === null) {
-          lastFrameTime.current = now;
-          await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-          continue;
-        }
-        const thresh  = baselineAvg.current * FINGER_SIZE_RATIO;
-        const elapsed = now - scanStartMs.current;
-        if (size >= thresh) {
-          go('paused');
-          startResumeCountdown();
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          lastFrameTime.current = now;
-          await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-          continue;
-        }
-        signalBuffer.current.push(-size);
-        // Update live HR every ~3 s
-        if (signalBuffer.current.length % 9 === 0) {
-          const filtered = iirLowPass(signalBuffer.current.slice(-60));
-          const peaks    = detectPeaks(filtered, PEAK_MIN_GAP_FRAMES);
-          if (peaks.length >= 2) {
-            const rp = peaks.slice(-3);
-            const avgRR = rp.slice(1).map((p,i)=>(p-rp[i])*CAPTURE_INTERVAL_MS).reduce((a,b)=>a+b) / Math.max(1,rp.length-1);
-            const hr = Math.round(60000 / avgRR);
-            if (hr >= 40 && hr <= 200) { setLiveHR(hr); flashBeat(); }
-          }
-          const wSlice = signalBuffer.current.slice(-30);
-          const wMin = Math.min(...wSlice), wMax = Math.max(...wSlice), wRange = wMax - wMin || 1;
-          setWaveform(wSlice.map(v => (v - wMin) / wRange));
-        }
-        setScanProgress(Math.min(1, elapsed / SCAN_DURATION_MS));
-        if (elapsed >= SCAN_DURATION_MS) {
-          go('processing');
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          processScan();
-          break;
-        }
-      }
-
-      // ── PAUSED ────────────────────────────────────────────────────────────
-      else if (state === 'paused') {
-        if (size !== null) {
-          const thresh = baselineAvg.current * FINGER_SIZE_RATIO;
-          if (size < thresh) {
-            clearRI(); setResumeCountdown(10);
-            calibStartMs.current = now;
-            signalBuffer.current = [];
-            go('calibrating');
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-        }
-      }
-
-      lastFrameTime.current = now;
-      await delay(Math.max(20, CAPTURE_INTERVAL_MS - (Date.now() - t0)));
-    }
-  }, [captureFrame, flashBeat, go, stopAll]);
-
-  // ── Phase timeout setter ───────────────────────────────────────────────────
-  const setPhaseTimeout = useCallback((phase: 'waiting') => {
-    clearPT();
-    phaseTimeoutId.current = setTimeout(() => {
-      if (stateRef.current === phase) {
-        stopAll(); setFailReason('no_finger'); go('failed');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-    }, WAIT_TIMEOUT_MS);
-  }, [stopAll, go]);
-
-  const startResumeCountdown = useCallback(() => {
-    clearRI();
-    let remaining = 10; setResumeCountdown(remaining);
-    resumeIntervalId.current = setInterval(() => {
-      remaining--; setResumeCountdown(remaining);
-      if (remaining <= 0) {
-        clearRI();
-        if (stateRef.current === 'paused') {
+  // ── Pause scan (finger removed) ───────────────────────────────────────
+  const pauseScan = useCallback(()=>{
+    if(scanProgressTimer.current){clearInterval(scanProgressTimer.current);scanProgressTimer.current=null;}
+    go('paused');
+    let secs=RESUME_TIMEOUT_S; setResumeSecs(secs);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    resumeTimer.current=setInterval(()=>{
+      secs--;setResumeSecs(secs);
+      if(secs<=0){
+        if(resumeTimer.current){clearInterval(resumeTimer.current);resumeTimer.current=null;}
+        if(phaseRef.current==='paused'){
           stopAll(); setFailReason('finger_removed'); go('failed');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
       }
-    }, 1000);
-  }, [stopAll, go]);
+    },1000);
+  },[go,stopAll]);
 
-  // ── Process completed signal ───────────────────────────────────────────────
-  const processScan = useCallback(() => {
-    setTimeout(() => {
-      const buf = signalBuffer.current;
-      if (buf.length < 50) { setFailReason('signal_noisy'); go('failed'); return; }
-      const filtered = iirLowPass(buf);
-      const peaks    = detectPeaks(filtered, PEAK_MIN_GAP_FRAMES);
-      if (peaks.length < MIN_PEAKS) { setFailReason('signal_noisy'); go('failed'); return; }
-      const rmssd = calcRMSSD(peaks, CAPTURE_INTERVAL_MS);
-      const rrAvg = peaks.slice(1).map((p,i)=>(p-peaks[i])*CAPTURE_INTERVAL_MS).reduce((a,b)=>a+b) / (peaks.length-1);
-      const bpm   = Math.round(60000 / rrAvg);
-      if (rmssd <= 0 || bpm < 30 || bpm > 220) { setFailReason('signal_noisy'); go('failed'); return; }
-      setResult(getStressTier(rmssd)); setLiveHR(bpm); go('results');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Animated.timing(glowAnim, { toValue: 1, duration: 1200, useNativeDriver: true }).start();
-    }, 2200);
-  }, [go]);
+  // ── Resume from paused ────────────────────────────────────────────────
+  const resumeScan = useCallback(()=>{
+    if(resumeTimer.current){clearInterval(resumeTimer.current);resumeTimer.current=null;}
+    // Use scanPctRef (not state) to avoid stale closure bug
+    scanStart.current=Date.now()-scanPctRef.current*SCAN_DURATION_MS;
+    go('scanning');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scanProgressTimer.current=setInterval(()=>{
+      const elapsed=Date.now()-scanStart.current;
+      const pct=Math.min(1,elapsed/SCAN_DURATION_MS);
+      scanPctRef.current=pct;
+      setScanPct(pct);
+      if(elapsed>=SCAN_DURATION_MS){
+        if(scanProgressTimer.current){clearInterval(scanProgressTimer.current);scanProgressTimer.current=null;}
+        processScan();
+      }
+    },500);
+  },[go,processScan]);
 
-  // ── Begin scan ────────────────────────────────────────────────────────────
-  const beginScan = useCallback(async () => {
-    if (!permission?.granted) {
-      const r = await requestPermission();
-      if (!r.granted) { go('no_permission'); return; }
+  // ══ MAIN CAPTURE LOOP ═════════════════════════════════════════════════
+  const captureLoop = useCallback(async()=>{
+    running.current=true;
+
+    // Poll until camera is hardware-ready (max 3 s)
+    setIsCalibrating(true);
+    for(let i=0; i<30 && !cameraReadyRef.current && running.current; i++){
+      await delay(100);
+    }
+    if(!running.current) return;
+
+    // ── Phase 1: fast 2-frame calibration (~500ms) ──
+    const frames:number[]=[];
+    for(let i=0; i<CALIBRATION_FRAMES && running.current; i++){
+      const sz=await captureFrame();
+      if(sz!==null) frames.push(sz);
+      if(i<CALIBRATION_FRAMES-1) await delay(CAPTURE_INTERVAL_MS);
+    }
+    if(!running.current) return;
+
+    if(frames.length>=1){
+      baselineAvg.current=frames.reduce((a,b)=>a+b)/frames.length;
+    } else {
+      baselineAvg.current=25000; // fallback
+    }
+    setIsCalibrating(false);
+
+    // ── Phase 2: main detection + PPG loop ──
+    while(running.current){
+      const sz_t0=Date.now();
+      const sz=await captureFrame();
+      if(!running.current) break;
+
+      const cur=phaseRef.current;
+
+      if(sz===null){
+        await delay(Math.max(50, CAPTURE_INTERVAL_MS-(Date.now()-sz_t0)));
+        continue;
+      }
+
+      // Smart threshold: ratio-based OR absolute floor (protects against dark rooms)
+      const ratioThreshold = baselineAvg.current * FINGER_RATIO;
+      const threshold = baselineAvg.current > FINGER_ABS_MAX
+        ? ratioThreshold                    // well-lit room: use ratio
+        : Math.min(ratioThreshold, 6000);  // dark room: hard cap at 6000 bytes
+      const fingerNow = sz < threshold;
+
+      // ── Update finger status ONLY on change ──
+      if(fingerNow!==fingerOnRef.current){
+        fingerOnRef.current=fingerNow;
+        setIsFingerOn(fingerNow);
+
+        if(fingerNow){
+          fingerHoldStart.current=Date.now();
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else {
+          fingerHoldStart.current=null;
+          setHoldPct(0);
+
+          if(cur==='scanning'){
+            pauseScan();
+          } else if(cur==='waiting'){
+            // reset hold bar
+          }
+        }
+      }
+
+      // ── Waiting: track hold duration, launch scan ──
+      if(cur==='waiting' && fingerNow && fingerHoldStart.current){
+        const held=Date.now()-fingerHoldStart.current;
+        const hp=Math.min(1,held/FINGER_HOLD_MS);
+        setHoldPct(hp);
+        if(held>=FINGER_HOLD_MS){
+          fingerHoldStart.current=null;
+          signalBuf.current=[];
+          beginScanning();
+        }
+      }
+
+      // ── Scanning: collect PPG signal, update waveform & BPM ──
+      if(cur==='scanning'){
+        signalBuf.current.push(-sz); // invert: smaller = more red = peak
+        const buf=signalBuf.current;
+        if(buf.length%6===0){ // update every ~3 s
+          const fl=iirLP(buf.slice(-60));
+          const pk=detectPeaks(fl,PEAK_MIN_GAP);
+          if(pk.length>=2){
+            const rp=pk.slice(-3);
+            const avgRR=rp.slice(1).map((p,i)=>(p-rp[i])*CAPTURE_INTERVAL_MS).reduce((a,b)=>a+b)/Math.max(1,rp.length-1);
+            const bpm=Math.round(60000/avgRR);
+            if(bpm>=40&&bpm<=200) setLiveHR(bpm);
+          }
+          const sl=buf.slice(-24);
+          const mn=Math.min(...sl),mx=Math.max(...sl),rng=mx-mn||1;
+          setWaveform(sl.map(v=>(v-mn)/rng));
+        }
+      }
+
+      // ── Paused: detect finger return ──
+      if(cur==='paused' && fingerNow){
+        if(resumeTimer.current){clearInterval(resumeTimer.current);resumeTimer.current=null;}
+        resumeScan();
+      }
+
+      await delay(Math.max(50, CAPTURE_INTERVAL_MS - (Date.now() - sz_t0)));
+    }
+  },[captureFrame,beginScanning,pauseScan,resumeScan]);
+
+  // ── Begin flow ─────────────────────────────────────────────────────────
+  const beginScan = useCallback(async()=>{
+    if(!permission?.granted){
+      const r=await requestPermission();
+      if(!r.granted){go('noperm');return;}
     }
     resetAll();
-    waitStartMs.current = Date.now();
     go('waiting');
-    setPhaseTimeout('waiting');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     captureLoop();
-  }, [permission, requestPermission, resetAll, go, setPhaseTimeout, captureLoop]);
+  },[permission,requestPermission,resetAll,go,captureLoop]);
 
-  const retry = useCallback(() => { resetAll(); go('idle'); }, [resetAll, go]);
-  const handleClose = useCallback(() => { stopAll(); onClose(); }, [stopAll, onClose]);
+  const retry = useCallback(()=>{resetAll();go('idle');},[resetAll,go]);
+  const handleClose = useCallback(()=>{stopAll();onClose();},[stopAll,onClose]);
 
-  // ── Camera component — rendered off-screen so it's always active ──────────
-  const CameraNode = (
-    <View pointerEvents="none" style={{ position: 'absolute', top: -200, left: -200, width: 120, height: 120 }}>
-      <CameraView
-        ref={cameraRef}
-        style={{ width: 120, height: 120 }}
-        facing="back"
-        enableTorch={true}
-        onCameraReady={onCameraReady}
-      />
-    </View>
-  );
+  // ══ RENDER HELPERS ════════════════════════════════════════════════════
 
-  // ── Render: IDLE ──────────────────────────────────────────────────────────
-  const renderIdle = () => (
-    <Animated.View style={[S.phase, { opacity: fadeAnim }]}>
-      <View style={S.heroIcon}>
-        <LinearGradient colors={['#065F46','#047857']} style={S.heroIconGrad}>
-          <Ionicons name="pulse" size={48} color="#34d399" />
+  // The heart shaped live camera — shown during waiting, scanning, paused
+  const renderCamera=(showWave=false)=>{
+    const torchOn=phase==='waiting'||phase==='scanning'||phase==='paused';
+    return (
+      <View style={{ alignItems: 'center', marginVertical: 30 }}>
+        <Animated.View style={[S.camRingOuter,{transform:[{scale:ringScale}]}]}>
+          <View style={S.camCircle}>
+            {(phase==='waiting'||phase==='scanning'||phase==='paused')&&(
+              <CameraView
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                enableTorch={torchOn}
+                onCameraReady={onCameraReady}
+              />
+            )}
+            
+            {/* Dark overlay during scanning to show waveform/BPM */}
+            {showWave&&(
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' }]}>
+                {liveHR ? (
+                  <>
+                    <Animated.Text style={[S.camBPM,{color: '#fff', transform:[{scale:beatAnim}]}]}>{liveHR}</Animated.Text>
+                    <Text style={S.camBPMUnit}>BPM</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[S.camBPM,{color: '#fff'}]}>00</Text>
+                    <Text style={S.camBPMUnit}>BPM</Text>
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* Paused overlay */}
+            {phase==='paused'&&(
+              <View style={[StyleSheet.absoluteFill,{backgroundColor:'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center'}]}>
+                <Ionicons name="pause-circle" size={48} color="#f97316" />
+              </View>
+            )}
+            
+            {/* SVG Mask to create the Heart shape over the full rect */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Svg width="100%" height="100%" viewBox="0 0 240 240">
+                <Path
+                  fill="#000000"
+                  fillRule="evenodd"
+                  d="M0 0 H240 V240 H0 V0 Z M120 215.5l-14.5-13.2C54 153.6 20 122.8 20 85C20 54.2 44.2 30 75 30c17.4 0 34.1 8.1 45 20.9C130.9 38.1 147.6 30 165 30c30.8 0 55 24.2 55 55 0 37.8-34 68.6-85.5 115.4L120 215.5z"
+                />
+              </Svg>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Status text directly below the heart */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+          <Text style={{ fontSize: 13 }}>
+            {isCalibrating ? '⚙️' : (isFingerOn ? '❤️' : '👆')}
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: isFingerOn ? '#ff3b30' : '#fff' }}>
+            {isCalibrating ? 'Initializing camera...' : (isFingerOn ? 'Finger detected' : 'No finger detected')}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ── IDLE ───────────────────────────────────────────────────────────────
+  const renderIdle=()=>(
+    <Animated.View style={[S.phase,{opacity:fadeAnim}]}>
+      <View style={S.idleIconWrap}>
+        <LinearGradient colors={['#065F46','#047857']} style={S.idleIcon}>
+          <Ionicons name="pulse" size={44} color={accentColor} />
         </LinearGradient>
       </View>
       <Text style={S.bigTitle}>Bio-Stress Scanner</Text>
       <Text style={S.bigSub}>PPG · RMSSD · HRV Analysis</Text>
+
       <View style={S.instrBox}>
-        <Text style={S.instrHeader}>HOW TO SCAN</Text>
+        <Text style={S.instrHdr}>HOW TO USE</Text>
         {[
-          { color: '#34d399', text: 'Tap "Start Scan" — torch turns on automatically' },
-          { color: '#60a5fa', text: 'Cover the back camera lens fully with your fingertip' },
-          { color: '#fbbf24', text: 'Scanning only starts once your finger is detected' },
-          { color: '#c084fc', text: 'Breathe normally · Stay still · Takes 45 seconds' },
-        ].map((r, i) => (
+          {c:'#34d399',t:'Tap "Start" — the torch turns on automatically'},
+          {c:'#60a5fa',t:'Cover the back camera lens fully with your fingertip'},
+          {c:'#fbbf24',t:'Hold steady for 2 seconds — scan starts automatically'},
+          {c:'#c084fc',t:'Stay still · Breathe normally · Takes 45 seconds'},
+        ].map((r,i)=>(
           <View key={i} style={S.instrRow}>
-            <View style={[S.instrDot, { backgroundColor: r.color }]} />
-            <Text style={S.instrText}>{r.text}</Text>
+            <View style={[S.instrDot,{backgroundColor:r.c}]} />
+            <Text style={S.instrTxt}>{r.t}</Text>
           </View>
         ))}
       </View>
       <View style={S.sciPill}>
-        <Text style={S.sciText}>🔬  Same PPG + RMSSD science used by Oura Ring, Welltory & Apple Watch</Text>
+        <Text style={S.sciTxt}>🔬  Same PPG + RMSSD science as Oura Ring, Welltory & Apple Watch</Text>
       </View>
       <TouchableOpacity style={S.startBtn} onPress={beginScan} activeOpacity={0.85}>
         <LinearGradient colors={['#047857','#059669','#10b981']} start={{x:0,y:0}} end={{x:1,y:1}} style={S.startBtnGrad}>
-          <Ionicons name="scan" size={18} color="#fff" />
+          <Ionicons name="scan" size={17} color="#fff" />
           <Text style={S.startBtnTxt}>Start Bio-Stress Scan</Text>
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
 
-  // ── Render: WAITING ───────────────────────────────────────────────────────
-  const renderWaiting = () => {
-    const hasBaseline = baselineAvg.current > 0;
-    const thresh = baselineAvg.current * FINGER_SIZE_RATIO;
-    const isFingerFrame = frameSize !== null && baselineAvg.current > 0 && frameSize < thresh;
-    return (
-      <View style={S.phase}>
-        {CameraNode}
-        <Text style={S.stateLabel}>
-          {!cameraReady ? 'INITIALIZING CAMERA…' : !hasBaseline ? 'CALIBRATING BASELINE…' : 'WAITING FOR YOUR FINGER'}
-        </Text>
-        <View style={S.scanRingWrap}>
-          <Animated.View style={[S.outerRing, { transform: [{ scale: pulseRingAnim }], borderColor: isFingerFrame ? '#34d39950' : '#34d39920' }]} />
-          <Animated.View style={[S.outerRing2, { transform: [{ scale: pulseRingAnim }], borderColor: '#34d39910' }]} />
-          <LinearGradient colors={['#064E3B','#047857']} style={S.centerDisc}>
-            <Ionicons name="finger-print" size={52} color={isFingerFrame ? '#34d399' : '#34d39950'} />
-          </LinearGradient>
-          {fingerPct > 0 && (
-            <View style={S.fingerConfBadge}>
-              <Text style={S.fingerConfTxt}>Detecting… {Math.round(fingerPct * 100)}%</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={S.confBarWrap}>
-          <View style={S.confBarLabel}>
-            <Text style={S.confBarKey}>Finger Confidence</Text>
-            <Text style={[S.confBarKey, { color: '#34d399' }]}>{Math.round(fingerPct * 100)}%</Text>
-          </View>
-          <View style={S.confTrack}>
-            <View style={[S.confFill, { width: `${Math.round(fingerPct * 100)}%`, backgroundColor: '#34d399' }]} />
-          </View>
-        </View>
-
-        {/* Live detection debug */}
-        {hasBaseline && frameSize !== null && (
-          <View style={[S.debugPill, { borderColor: isFingerFrame ? '#34d39940' : '#ffffff10' }]}>
-            <View style={[S.debugDot, { backgroundColor: isFingerFrame ? '#34d399' : '#ffffff30' }]} />
-            <Text style={[S.debugTxt, { color: isFingerFrame ? '#34d399' : 'rgba(255,255,255,0.3)' }]}>
-              {isFingerFrame ? 'FINGER DETECTED' : 'No signal — cover the lens fully'}
-            </Text>
-          </View>
-        )}
-
-        <Text style={S.hintText}>Place your fingertip firmly over the{'\n'}back camera lens + flashlight</Text>
-        <TouchableOpacity style={S.cancelBtn} onPress={handleClose}>
-          <Text style={S.cancelTxt}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // ── Render: CALIBRATING ───────────────────────────────────────────────────
-  const renderCalibrating = () => (
+  // ── WAITING ────────────────────────────────────────────────────────────
+  const renderWaiting=()=>(
     <View style={S.phase}>
-      {CameraNode}
-      <Text style={[S.stateLabel, { color: '#60a5fa80' }]}>FINGER DETECTED — LOCKING ON PULSE</Text>
-      <View style={S.scanRingWrap}>
-        <Animated.View style={[S.outerRing, { transform: [{ scale: pulseRingAnim }], borderColor: '#60a5fa40' }]} />
-        <LinearGradient colors={['#1E3A5F','#1D4ED8']} style={S.centerDisc}>
-          <Animated.Text style={{ fontSize: 36, transform: [{ scale: beatAnim }] }}>❤️</Animated.Text>
-        </LinearGradient>
-      </View>
-      <View style={S.confBarWrap}>
-        <View style={S.confBarLabel}>
-          <Text style={S.confBarKey}>Pulse Lock</Text>
-          <Text style={[S.confBarKey, { color: '#60a5fa' }]}>{Math.round(pulsePct * 100)}%</Text>
+      {renderCamera()}
+
+      <View style={{ flex: 1 }} />
+
+      {/* Instruction Card (Matching the Reference UI) */}
+      <View style={S.instructionCard}>
+        <Text style={S.instructionCardTxt}>
+          Cover the camera with your finger until{'\n'}<Text style={{color:'#ff3b30'}}>❤️</Text> turns red
+        </Text>
+        <View style={S.instructionPhoneMock}>
+          <View style={S.phoneLensBox}>
+            <View style={S.phoneLens1} />
+            <View style={S.phoneLens2} />
+          </View>
+          {/* A simple hand icon placed over the lens */}
+          <Ionicons name="hand-right" size={60} color="#ffb088" style={{ position: 'absolute', top: 40, left: 30, transform: [{rotate: '-15deg'}] }} />
         </View>
-        <View style={S.confTrack}>
-          <View style={[S.confFill, { width: `${Math.round(pulsePct * 100)}%`, backgroundColor: '#60a5fa' }]} />
-        </View>
       </View>
-      <Text style={S.hintText}>Keep completely still{'\n'}Locking on to your heartbeat…</Text>
     </View>
   );
 
-  // ── Render: SCANNING ──────────────────────────────────────────────────────
-  const renderScanning = () => {
-    const secsLeft = Math.ceil(SCAN_DURATION_MS / 1000 * (1 - scanProgress));
-    return (
-      <View style={S.phase}>
-        {CameraNode}
-        <Text style={[S.stateLabel, { color: '#34d39980' }]}>SCANNING YOUR BIO-SIGNAL</Text>
-        <View style={S.waveformContainer}>
-          {waveform.length > 0 ? (
-            <View style={S.waveformInner}>
-              {waveform.map((v, i) => (
-                <View key={i} style={[S.waveBar, { height: Math.max(4, v * 44), backgroundColor: '#34d399' + Math.round((0.4 + v * 0.6) * 255).toString(16).padStart(2,'0') }]} />
-              ))}
-            </View>
-          ) : <ActivityIndicator size="small" color="#34d39966" />}
-        </View>
-        {liveHR && (
-          <View style={S.liveHRBadge}>
-            <Animated.Text style={[S.liveHRNum, { transform: [{ scale: beatAnim }] }]}>{liveHR}</Animated.Text>
-            <Text style={S.liveHRUnit}>BPM</Text>
-          </View>
-        )}
-        <View style={S.confBarWrap}>
-          <View style={S.confBarLabel}>
-            <Text style={S.confBarKey}>Collecting Signal</Text>
-            <Text style={[S.confBarKey, { color: '#34d399' }]}>{secsLeft}s left</Text>
-          </View>
-          <View style={S.confTrack}>
-            <View style={[S.confFill, { width: `${Math.round(scanProgress * 100)}%`, backgroundColor: '#34d399' }]} />
-          </View>
-        </View>
-        <Text style={S.hintText}>Keep your finger still{'\n'}Breathe normally · Do not move</Text>
-      </View>
-    );
-  };
-
-  // ── Render: PAUSED ────────────────────────────────────────────────────────
-  const renderPaused = () => (
+  // ── SCANNING ────────────────────────────────────────────────────────────
+  const secsLeft=Math.ceil(SCAN_DURATION_MS/1000*(1-scanPct));
+  const renderScanning=()=>(
     <View style={S.phase}>
-      {CameraNode}
-      <View style={[S.centerDisc, { backgroundColor: '#7C2D12', borderRadius: 80, width: 160, height: 160, alignSelf: 'center', marginVertical: 32 }]}>
-        <Ionicons name="hand-left-outline" size={52} color="#f97316" />
-      </View>
-      <Text style={[S.stateLabel, { color: '#f97316' }]}>FINGER REMOVED — REPLACE TO RESUME</Text>
-      <View style={S.confBarWrap}>
-        <View style={S.confBarLabel}>
-          <Text style={S.confBarKey}>Progress saved</Text>
-          <Text style={[S.confBarKey, { color: '#f97316' }]}>Cancel in {resumeCountdown}s</Text>
+      {renderCamera(true)}
+      <View style={{ flex: 1 }} />
+      <View style={S.scanBar}>
+        <View style={S.scanBarLabel}>
+          <Text style={S.scanBarKey}>Collecting Signal</Text>
+          <Text style={[S.scanBarKey,{color:accentColor}]}>{secsLeft}s remaining</Text>
         </View>
-        <View style={S.confTrack}>
-          <View style={[S.confFill, { width: `${(resumeCountdown / 10) * 100}%`, backgroundColor: '#f97316' }]} />
+        <View style={S.scanTrack}>
+          <View style={[S.scanFill,{width:`${Math.round(scanPct*100)}%`,backgroundColor:accentColor}]} />
         </View>
       </View>
-      <TouchableOpacity style={[S.cancelBtn, { marginTop: 24 }]} onPress={() => { stopAll(); setFailReason('finger_removed'); go('failed'); }}>
+    </View>
+  );
+
+  // ── PAUSED ─────────────────────────────────────────────────────────────
+  const renderPaused=()=>(
+    <View style={S.phase}>
+      <Text style={[S.phaseTag,{color:'#f97316cc'}]}>⚠️  SCAN PAUSED — REPLACE FINGER</Text>
+      {renderCamera()}
+      <View style={[S.statusBadge,{backgroundColor:'rgba(249,115,22,0.10)',borderColor:'rgba(249,115,22,0.35)'}]}>
+        <View style={[S.statusDot,{backgroundColor:'#f97316'}]} />
+        <Text style={[S.statusTxt,{color:'#f97316'}]}>Finger undetected — cancelling in {resumeSecs}s</Text>
+      </View>
+      <Text style={S.hintTxt}>Replace your finger to continue scanning{'\n'}Your progress is saved</Text>
+      <TouchableOpacity style={S.cancelBtn} onPress={()=>{stopAll();setFailReason('finger_removed');go('failed');}}>
         <Text style={S.cancelTxt}>Cancel Scan</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // ── Render: PROCESSING ────────────────────────────────────────────────────
-  const renderProcessing = () => (
-    <View style={[S.phase, { justifyContent: 'center', alignItems: 'center', gap: 24 }]}>
-      <ActivityIndicator size="large" color="#34d399" />
+  // ── PROCESSING ─────────────────────────────────────────────────────────
+  const renderProcessing=()=>(
+    <View style={[S.phase,{justifyContent:'center',alignItems:'center',gap:22}]}>
+      <ActivityIndicator size="large" color={accentColor} />
       <Text style={S.bigTitle}>Analyzing Signal</Text>
-      <Text style={[S.bigSub, { textAlign: 'center' }]}>Calculating RR intervals · RMSSD · HRV{'\n'}Building your Bio-Stress profile…</Text>
+      <Text style={[S.bigSub,{textAlign:'center',maxWidth:W-80}]}>Calculating RR intervals · RMSSD · HRV{'\n'}Building your Bio-Stress profile…</Text>
     </View>
   );
 
-  // ── Render: FAILED ────────────────────────────────────────────────────────
-  const renderFailed = () => {
-    const msgs = {
-      no_finger:      { icon: '👆', title: 'No Finger Detected', body: 'Cover the back camera lens completely with your fingertip so it blocks all light.' },
-      no_pulse:       { icon: '❓', title: 'Pulse Not Found', body: 'Gentle but firm pressure. Make sure the lens is fully covered. Avoid pressing too hard.' },
-      signal_noisy:   { icon: '📡', title: 'Signal Too Noisy', body: 'Too much movement detected. Find a resting, still position and try again.' },
-      finger_removed: { icon: '✋', title: 'Scan Interrupted', body: 'Finger left the lens too long. Scan was cancelled to avoid inaccurate data.' },
+  // ── FAILED ─────────────────────────────────────────────────────────────
+  const renderFailed=()=>{
+    const msgs={
+      no_finger:     {icon:'👆',t:'No Finger Detected',b:'Cover the back lens completely with your fingertip so it blocks all light.'},
+      no_pulse:      {icon:'❓',t:'Pulse Not Found',b:'Apply gentle but firm pressure. Ensure the lens is fully covered.'},
+      signal_noisy:  {icon:'📡',t:'Signal Too Noisy',b:'Too much movement detected. Try again from a still position.'},
+      finger_removed:{icon:'✋',t:'Scan Interrupted',b:'Finger left the lens too long. Scan cancelled to protect accuracy.'},
     };
-    const m = failReason ? msgs[failReason] : msgs.signal_noisy;
-    return (
-      <View style={[S.phase, { justifyContent: 'center', alignItems: 'center', gap: 16 }]}>
-        <Text style={{ fontSize: 52 }}>{m.icon}</Text>
-        <Text style={S.bigTitle}>{m.title}</Text>
-        <Text style={[S.hintText, { textAlign: 'center', maxWidth: W - 80 }]}>{m.body}</Text>
+    const m=failReason?msgs[failReason]:msgs.signal_noisy;
+    return(
+      <View style={[S.phase,{justifyContent:'center',alignItems:'center',gap:16}]}>
+        <Text style={{fontSize:52}}>{m.icon}</Text>
+        <Text style={S.bigTitle}>{m.t}</Text>
+        <Text style={[S.hintTxt,{textAlign:'center',maxWidth:W-60}]}>{m.b}</Text>
         <View style={S.failPill}>
-          <Text style={S.failPillTxt}>🔬 No data was fabricated. Your scan was rejected to protect accuracy.</Text>
+          <Text style={S.failTxt}>🔬 No data was fabricated. Scan rejected to protect accuracy.</Text>
         </View>
         <TouchableOpacity style={S.startBtn} onPress={retry} activeOpacity={0.85}>
           <LinearGradient colors={['#047857','#059669']} style={S.startBtnGrad}>
-            <Ionicons name="refresh" size={18} color="#fff" />
+            <Ionicons name="refresh" size={17} color="#fff" />
             <Text style={S.startBtnTxt}>Try Again</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -694,68 +626,72 @@ export default function StressScanner({ visible, onClose, onPlaySound, accentCol
     );
   };
 
-  // ── Render: RESULTS ───────────────────────────────────────────────────────
-  const renderResults = () => {
-    if (!result) return null;
-    return (
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        <Animated.View style={{ opacity: glowAnim }}>
+  // ── RESULTS ────────────────────────────────────────────────────────────
+  const renderResults=()=>{
+    if(!result) return null;
+    return(
+      <ScrollView style={{flex:1}} contentContainerStyle={{paddingBottom:40}} showsVerticalScrollIndicator={false}>
+        <Animated.View style={{opacity:glowAnim}}>
           <LinearGradient colors={result.gradient} start={{x:0,y:0}} end={{x:1,y:1}} style={S.scoreCard}>
             <Text style={S.scoreLabel}>BIO-STRESS INDEX</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
+            <View style={{flexDirection:'row',alignItems:'flex-end',gap:4}}>
               <Text style={S.scoreNum}>{result.score}</Text>
               <Text style={S.scoreSlash}>/100</Text>
             </View>
-            <Text style={{ fontSize: 38, marginVertical: 8 }}>{result.emoji}</Text>
+            <Text style={{fontSize:36,marginVertical:8}}>{result.emoji}</Text>
             <Text style={S.scoreTier}>{result.label}</Text>
             <Text style={S.scoreSub}>{result.subtitle}</Text>
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-              <View style={[S.metaPill, { borderColor: result.color + '60' }]}>
-                <Text style={[S.metaVal, { color: result.color }]}>{result.hrv} ms</Text>
+            <View style={{flexDirection:'row',gap:12,marginTop:16}}>
+              <View style={[S.metaPill,{borderColor:result.color+'60'}]}>
+                <Text style={[S.metaVal,{color:result.color}]}>{result.hrv} ms</Text>
                 <Text style={S.metaKey}>HRV (RMSSD)</Text>
               </View>
-              {liveHR && (
-                <View style={[S.metaPill, { borderColor: result.color + '60' }]}>
-                  <Text style={[S.metaVal, { color: result.color }]}>{liveHR}</Text>
-                  <Text style={S.metaKey}>Heart Rate</Text>
+              {liveHR&&(
+                <View style={[S.metaPill,{borderColor:result.color+'60'}]}>
+                  <Text style={[S.metaVal,{color:result.color}]}>{liveHR}</Text>
+                  <Text style={S.metaKey}>Heart Rate BPM</Text>
                 </View>
               )}
             </View>
           </LinearGradient>
+
           <View style={S.section}>
-            <View style={S.sectionHdr}><View style={[S.sectionDot, { backgroundColor: result.color }]} /><Text style={S.sectionTitle}>WHAT YOUR BODY IS SAYING</Text></View>
-            {result.advice.map((tip, i) => (
-              <View key={i} style={[S.adviceRow, { borderLeftColor: result.color + '60' }]}>
-                <Text style={S.adviceText}>{tip}</Text>
+            <View style={S.secHdr}><View style={[S.secDot,{backgroundColor:result.color}]}/><Text style={S.secTitle}>WHAT YOUR BODY IS SAYING</Text></View>
+            {result.advice.map((tip,i)=>(
+              <View key={i} style={[S.advRow,{borderLeftColor:result.color+'60'}]}>
+                <Text style={S.advTxt}>{tip}</Text>
               </View>
             ))}
           </View>
-          <View style={[S.breathCard, { borderColor: result.color + '40' }]}>
-            <Text style={[S.breathLabel, { color: result.color }]}>🫁  RECOMMENDED TECHNIQUE</Text>
-            <Text style={S.breathText}>{result.breathTechnique}</Text>
+
+          <View style={[S.breathCard,{borderColor:result.color+'40'}]}>
+            <Text style={[S.breathLabel,{color:result.color}]}>🫁  RECOMMENDED TECHNIQUE</Text>
+            <Text style={S.breathTxt}>{result.breathTechnique}</Text>
           </View>
-          <View style={S.affirmCard}><Text style={S.affirmText}>"{result.affirmation}"</Text></View>
+
+          <View style={S.affirmCard}><Text style={S.affirmTxt}>"{result.affirmation}"</Text></View>
+
           <View style={S.section}>
-            <View style={S.sectionHdr}><View style={[S.sectionDot, { backgroundColor: '#c084fc' }]} /><Text style={S.sectionTitle}>HEALING SOUNDS FOR YOU</Text></View>
-            <Text style={S.soundSub}>Curated vibrations clinically shown to lower cortisol</Text>
-            {STRESS_SOUNDS.filter(s => result.sounds.includes(s.id)).map(sound => (
-              <TouchableOpacity key={sound.id} style={S.soundRow} activeOpacity={0.8}
-                onPress={() => { onPlaySound?.(sound.id); Haptics.selectionAsync(); }}>
-                <LinearGradient colors={[sound.color + '22', sound.color + '08']} start={{x:0,y:0.5}} end={{x:1,y:0.5}} style={S.soundRowGrad}>
-                  <Text style={{ fontSize: 24, width: 32, textAlign: 'center' }}>{sound.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={S.soundName}>{sound.label}</Text>
-                    <Text style={S.soundDesc}>{sound.desc}</Text>
+            <View style={S.secHdr}><View style={[S.secDot,{backgroundColor:'#c084fc'}]}/><Text style={S.secTitle}>HEALING SOUNDS FOR YOU</Text></View>
+            {SOUNDS.filter(s=>result.sounds.includes(s.id)).map(snd=>(
+              <TouchableOpacity key={snd.id} style={S.sndRow} activeOpacity={0.8}
+                onPress={()=>{onPlaySound?.(snd.id);Haptics.selectionAsync();}}>
+                <LinearGradient colors={[snd.color+'20',snd.color+'08']} start={{x:0,y:0.5}} end={{x:1,y:0.5}} style={S.sndGrad}>
+                  <Text style={{fontSize:24,width:32,textAlign:'center'}}>{snd.emoji}</Text>
+                  <View style={{flex:1}}>
+                    <Text style={S.sndName}>{snd.label}</Text>
+                    <Text style={S.sndDesc}>{snd.desc}</Text>
                   </View>
-                  <View style={[S.playBtn, { backgroundColor: sound.color + '30', borderColor: sound.color + '60' }]}>
-                    <Ionicons name="play" size={14} color={sound.color} />
+                  <View style={[S.playBtn,{backgroundColor:snd.color+'30',borderColor:snd.color+'60'}]}>
+                    <Ionicons name="play" size={13} color={snd.color} />
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
             ))}
           </View>
+
           <TouchableOpacity style={S.rescanBtn} onPress={retry} activeOpacity={0.85}>
-            <Ionicons name="refresh" size={16} color="rgba(255,255,255,0.6)" />
+            <Ionicons name="refresh" size={15} color="rgba(255,255,255,0.5)" />
             <Text style={S.rescanTxt}>Scan Again</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -763,123 +699,144 @@ export default function StressScanner({ visible, onClose, onPlaySound, accentCol
     );
   };
 
-  // ── Render: NO PERMISSION ────────────────────────────────────────────────
-  const renderNoPermission = () => (
-    <View style={[S.phase, { justifyContent: 'center', alignItems: 'center', gap: 20 }]}>
+  // ── NO PERMISSION ──────────────────────────────────────────────────────
+  const renderNoPerm=()=>(
+    <View style={[S.phase,{justifyContent:'center',alignItems:'center',gap:20}]}>
       <Ionicons name="videocam-off" size={52} color="#ef4444" />
       <Text style={S.bigTitle}>Camera Required</Text>
-      <Text style={S.hintText}>Enable camera access in Settings to use the stress scanner.</Text>
+      <Text style={S.hintTxt}>Enable camera access in Settings to use the stress scanner.</Text>
       <TouchableOpacity style={S.cancelBtn} onPress={handleClose}><Text style={S.cancelTxt}>Close</Text></TouchableOpacity>
     </View>
   );
 
-  const headerLabel = {
-    idle: '💚  Bio-Stress Scanner', waiting: '👆  Place Your Finger',
-    calibrating: '🔍  Locking On Pulse', scanning: '🟢  Live Scan Active',
-    paused: '⚠️  Scan Paused', processing: '⚙️  Processing',
-    results: '📊  Scan Results', failed: '❌  Scan Failed',
-    no_permission: '🔒  Permission Required',
-  }[scanState];
+  const phaseTitle={
+    idle:'Measure', waiting:'Measure',
+    scanning:'Measure', paused:'Paused',
+    processing:'Processing', results:'Results',
+    failed:'Error', noperm:'Error',
+  }[phase];
 
-  return (
+  return(
     <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen" onRequestClose={handleClose}>
-      <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={['rgba(2,10,18,0.98)','rgba(3,16,10,0.97)','rgba(2,10,18,0.98)']} style={S.container}>
-        <View style={S.header}>
-          <Text style={S.headerTxt}>{headerLabel}</Text>
-          <TouchableOpacity onPress={handleClose} style={S.closeBtn}>
-            <Ionicons name="close" size={20} color="rgba(255,255,255,0.55)" />
-          </TouchableOpacity>
+      <View style={S.backdrop}>
+        <View style={S.container}>
+          {/* Header */}
+          <View style={S.header}>
+            <TouchableOpacity onPress={handleClose} style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+              <Text style={S.headerTxt}>{phaseTitle}</Text>
+            </TouchableOpacity>
+            <View style={{flexDirection: 'row', gap: 16}}>
+              <Ionicons name="notifications" size={20} color="#fff" />
+              <Ionicons name="help-circle" size={22} color="#fff" />
+            </View>
+          </View>
+
+          <View style={{flex:1,paddingHorizontal:20}}>
+            {phase==='idle'       &&renderIdle()}
+            {phase==='waiting'    &&renderWaiting()}
+            {phase==='scanning'   &&renderScanning()}
+            {phase==='paused'     &&renderPaused()}
+            {phase==='processing' &&renderProcessing()}
+            {phase==='results'    &&renderResults()}
+            {phase==='failed'     &&renderFailed()}
+            {phase==='noperm'     &&renderNoPerm()}
+          </View>
         </View>
-        <View style={{ flex: 1, paddingHorizontal: 20 }}>
-          {scanState === 'idle'          && renderIdle()}
-          {scanState === 'waiting'       && renderWaiting()}
-          {scanState === 'calibrating'   && renderCalibrating()}
-          {scanState === 'scanning'      && renderScanning()}
-          {scanState === 'paused'        && renderPaused()}
-          {scanState === 'processing'    && renderProcessing()}
-          {scanState === 'results'       && renderResults()}
-          {scanState === 'failed'        && renderFailed()}
-          {scanState === 'no_permission' && renderNoPermission()}
-        </View>
-      </LinearGradient>
+      </View>
     </Modal>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-const S = StyleSheet.create({
-  container:   { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 },
-  headerTxt:   { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
-  closeBtn:    { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
-  phase:       { flex: 1, paddingTop: 8 },
-  heroIcon:    { alignSelf: 'center', marginBottom: 20 },
-  heroIconGrad:{ width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
-  bigTitle:    { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: 0.2 },
-  bigSub:      { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.4)', textAlign: 'center', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4, marginBottom: 24 },
-  instrBox:    { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 18, marginBottom: 14, gap: 12 },
-  instrHeader: { fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.35)', letterSpacing: 2, marginBottom: 4 },
-  instrRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  instrDot:    { width: 7, height: 7, borderRadius: 3.5, marginTop: 5, flexShrink: 0 },
-  instrText:   { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 19 },
-  sciPill:     { backgroundColor: 'rgba(52,211,153,0.07)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(52,211,153,0.18)', padding: 12, marginBottom: 22 },
-  sciText:     { fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 15, textAlign: 'center' },
-  startBtn:    { borderRadius: 16, overflow: 'hidden' },
-  startBtnGrad:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
-  startBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
-  stateLabel:  { fontSize: 10, fontWeight: '900', color: 'rgba(52,211,153,0.65)', letterSpacing: 2, textAlign: 'center', marginBottom: 28 },
-  scanRingWrap:{ alignSelf: 'center', width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: 36 },
-  outerRing:   { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1.5 },
-  outerRing2:  { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1 },
-  centerDisc:  { width: 148, height: 148, borderRadius: 74, alignItems: 'center', justifyContent: 'center' },
-  fingerConfBadge: { position: 'absolute', bottom: -28, backgroundColor: 'rgba(52,211,153,0.12)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)' },
-  fingerConfTxt:   { fontSize: 11, fontWeight: '700', color: '#34d399' },
-  debugPill:   { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 12, alignSelf: 'center' },
-  debugDot:    { width: 7, height: 7, borderRadius: 3.5 },
-  debugTxt:    { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
-  confBarWrap: { gap: 8, marginBottom: 20 },
-  confBarLabel:{ flexDirection: 'row', justifyContent: 'space-between' },
-  confBarKey:  { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
-  confTrack:   { height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' },
-  confFill:    { height: 4, borderRadius: 2 },
-  hintText:    { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  cancelBtn:   { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
-  cancelTxt:   { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
-  waveformContainer: { height: 60, backgroundColor: 'rgba(52,211,153,0.04)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(52,211,153,0.12)', marginBottom: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  waveformInner:     { flexDirection: 'row', alignItems: 'flex-end', height: 50, gap: 2, paddingHorizontal: 8 },
-  waveBar:           { width: 5, borderRadius: 2 },
-  liveHRBadge: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginBottom: 16 },
-  liveHRNum:   { fontSize: 48, fontWeight: '900', color: '#34d399' },
-  liveHRUnit:  { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.45)', marginBottom: 8 },
-  failPill:    { backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', padding: 14, maxWidth: W - 60 },
-  failPillTxt: { fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 18 },
-  scoreCard:   { borderRadius: 24, padding: 28, alignItems: 'center', marginBottom: 18 },
-  scoreLabel:  { fontSize: 10, fontWeight: '900', color: 'rgba(255,255,255,0.5)', letterSpacing: 2.5, marginBottom: 8 },
-  scoreNum:    { fontSize: 76, fontWeight: '900', color: '#fff', lineHeight: 84 },
-  scoreSlash:  { fontSize: 20, fontWeight: '600', color: 'rgba(255,255,255,0.4)', marginBottom: 12 },
-  scoreTier:   { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
-  scoreSub:    { fontSize: 12, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, marginBottom: 16 },
-  metaPill:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 12, borderWidth: 1, padding: 12, alignItems: 'center' },
-  metaVal:     { fontSize: 20, fontWeight: '800' },
-  metaKey:     { fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginTop: 2 },
-  section:     { marginBottom: 18 },
-  sectionHdr:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionDot:  { width: 6, height: 6, borderRadius: 3 },
-  sectionTitle:{ fontSize: 10, fontWeight: '900', color: 'rgba(255,255,255,0.4)', letterSpacing: 2 },
-  adviceRow:   { borderLeftWidth: 2, paddingLeft: 14, paddingVertical: 8, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 4 },
-  adviceText:  { fontSize: 14, color: 'rgba(255,255,255,0.78)', lineHeight: 20 },
-  breathCard:  { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, padding: 18, marginBottom: 14 },
-  breathLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginBottom: 8 },
-  breathText:  { fontSize: 15, fontWeight: '600', color: '#fff', lineHeight: 22 },
-  affirmCard:  { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: 20, marginBottom: 18, alignItems: 'center' },
-  affirmText:  { fontSize: 16, fontStyle: 'italic', color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 24 },
-  soundSub:    { fontSize: 12, color: 'rgba(255,255,255,0.3)', marginBottom: 12 },
-  soundRow:    { borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
-  soundRowGrad:{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  soundName:   { fontSize: 14, fontWeight: '700', color: '#fff', marginBottom: 2 },
-  soundDesc:   { fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 16 },
-  playBtn:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  rescanBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', marginTop: 4 },
-  rescanTxt:   { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
+// ── Styles ─────────────────────────────────────────────────────────────────
+const CIRCLE=240;
+const S=StyleSheet.create({
+  backdrop:    {flex:1,backgroundColor:'#000000'},
+  container:   {flex:1,backgroundColor:'#000000',paddingTop:Platform.OS==='ios'?58:36},
+  header:      {flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingBottom:14},
+  headerTxt:   {fontSize:18,fontWeight:'800',color:'#fff',marginLeft: 4},
+  closeBtn:    {width:32,height:32,borderRadius:16,backgroundColor:'rgba(255,255,255,0.07)',alignItems:'center',justifyContent:'center'},
+  phase:       {flex:1,paddingTop:4},
+
+  // ── Idle
+  idleIconWrap:{alignSelf:'center',marginBottom:18},
+  idleIcon:    {width:90,height:90,borderRadius:45,alignItems:'center',justifyContent:'center'},
+  bigTitle:    {fontSize:22,fontWeight:'800',color:'#fff',textAlign:'center',letterSpacing:0.1},
+  bigSub:      {fontSize:11,fontWeight:'600',color:'rgba(255,255,255,0.35)',textAlign:'center',letterSpacing:1.8,textTransform:'uppercase',marginTop:3,marginBottom:20},
+  instrBox:    {backgroundColor:'rgba(255,255,255,0.03)',borderRadius:14,borderWidth:1,borderColor:'rgba(255,255,255,0.07)',padding:16,marginBottom:12,gap:11},
+  instrHdr:    {fontSize:9,fontWeight:'900',color:'rgba(255,255,255,0.3)',letterSpacing:2,marginBottom:2},
+  instrRow:    {flexDirection:'row',alignItems:'flex-start',gap:10},
+  instrDot:    {width:6,height:6,borderRadius:3,marginTop:5,flexShrink:0},
+  instrTxt:    {flex:1,fontSize:13,color:'rgba(255,255,255,0.68)',lineHeight:18},
+  sciPill:     {backgroundColor:'rgba(52,211,153,0.06)',borderRadius:10,borderWidth:1,borderColor:'rgba(52,211,153,0.15)',padding:11,marginBottom:20},
+  sciTxt:      {fontSize:11,color:'rgba(255,255,255,0.4)',lineHeight:16,textAlign:'center'},
+  startBtn:    {borderRadius:14,overflow:'hidden'},
+  startBtnGrad:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:10,paddingVertical:15},
+  startBtnTxt: {fontSize:15,fontWeight:'800',color:'#fff',letterSpacing:0.1},
+
+  // ── Camera ring
+  camRingOuter:{alignSelf:'center',width:CIRCLE,height:CIRCLE,alignItems:'center',justifyContent:'center'},
+  camCircle:   {width:CIRCLE,height:CIRCLE,overflow:'hidden',backgroundColor:'#0a0a0a'},
+  camBPM:      {fontSize:52,fontWeight:'800',letterSpacing:-1},
+  camBPMUnit:  {fontSize:16,fontWeight:'600',color:'rgba(255,255,255,0.8)'},
+
+  instructionCard: {backgroundColor:'#1c1c1e',borderRadius:16,padding:20,marginBottom:30},
+  instructionCardTxt: {fontSize:15,fontWeight:'600',color:'#fff',lineHeight:22},
+  instructionPhoneMock: {alignSelf:'center',marginTop:20,width:100,height:140,backgroundColor:'#3a3a3c',borderTopLeftRadius:16,borderTopRightRadius:16,overflow:'hidden'},
+  phoneLensBox: {position:'absolute',top:10,left:10,width:24,height:48,borderRadius:12,backgroundColor:'#1c1c1e',alignItems:'center',justifyContent:'center',gap:4},
+  phoneLens1: {width:14,height:14,borderRadius:7,backgroundColor:'#000'},
+  phoneLens2: {width:14,height:14,borderRadius:7,backgroundColor:'#000'},
+
+  // ── Status badge
+  phaseTag:    {fontSize:10,fontWeight:'900',letterSpacing:2,textAlign:'center',marginBottom:14,color:'rgba(255,255,255,0.35)'},
+  statusBadge: {flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderRadius:22,paddingHorizontal:16,paddingVertical:10,alignSelf:'stretch',marginBottom:14},
+  statusDot:   {width:8,height:8,borderRadius:4,flexShrink:0},
+  statusTxt:   {flex:1,fontSize:13,fontWeight:'600',lineHeight:18},
+  holdBarWrap: {gap:6,marginBottom:12},
+  holdTrack:   {height:3,backgroundColor:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden'},
+  holdFill:    {height:3,borderRadius:2},
+  holdLabel:   {fontSize:11,fontWeight:'700',textAlign:'center',letterSpacing:0.2},
+  hintTxt:     {fontSize:12,color:'rgba(255,255,255,0.35)',textAlign:'center',lineHeight:19,marginBottom:14},
+  cancelBtn:   {alignSelf:'center',paddingVertical:10,paddingHorizontal:22,borderRadius:18,backgroundColor:'rgba(255,255,255,0.04)',borderWidth:1,borderColor:'rgba(255,255,255,0.09)'},
+  cancelTxt:   {fontSize:13,fontWeight:'600',color:'rgba(255,255,255,0.35)'},
+
+  // ── Scan progress
+  scanBar:     {gap:7,marginBottom:14},
+  scanBarLabel:{flexDirection:'row',justifyContent:'space-between'},
+  scanBarKey:  {fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:'600'},
+  scanTrack:   {height:3,backgroundColor:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden'},
+  scanFill:    {height:3,borderRadius:2},
+
+  // ── Fail
+  failPill:    {backgroundColor:'rgba(239,68,68,0.07)',borderRadius:12,borderWidth:1,borderColor:'rgba(239,68,68,0.2)',padding:13,maxWidth:W-60},
+  failTxt:     {fontSize:12,color:'rgba(255,255,255,0.45)',textAlign:'center',lineHeight:18},
+
+  // ── Results
+  scoreCard:   {borderRadius:22,padding:26,alignItems:'center',marginBottom:16},
+  scoreLabel:  {fontSize:9,fontWeight:'900',color:'rgba(255,255,255,0.45)',letterSpacing:2.5,marginBottom:6},
+  scoreNum:    {fontSize:72,fontWeight:'900',color:'#fff',lineHeight:80},
+  scoreSlash:  {fontSize:19,fontWeight:'600',color:'rgba(255,255,255,0.35)',marginBottom:10},
+  scoreTier:   {fontSize:21,fontWeight:'800',color:'#fff',letterSpacing:0.2},
+  scoreSub:    {fontSize:12,color:'rgba(255,255,255,0.45)',letterSpacing:0.4,marginBottom:14},
+  metaPill:    {flex:1,backgroundColor:'rgba(0,0,0,0.22)',borderRadius:11,borderWidth:1,padding:11,alignItems:'center'},
+  metaVal:     {fontSize:19,fontWeight:'800'},
+  metaKey:     {fontSize:9,color:'rgba(255,255,255,0.35)',letterSpacing:1,marginTop:2},
+  section:     {marginBottom:16},
+  secHdr:      {flexDirection:'row',alignItems:'center',gap:7,marginBottom:10},
+  secDot:      {width:5,height:5,borderRadius:2.5},
+  secTitle:    {fontSize:9,fontWeight:'900',color:'rgba(255,255,255,0.35)',letterSpacing:2},
+  advRow:      {borderLeftWidth:2,paddingLeft:13,paddingVertical:7,marginBottom:6,backgroundColor:'rgba(255,255,255,0.015)',borderRadius:4},
+  advTxt:      {fontSize:13,color:'rgba(255,255,255,0.75)',lineHeight:19},
+  breathCard:  {backgroundColor:'rgba(255,255,255,0.03)',borderRadius:14,borderWidth:1,padding:16,marginBottom:12},
+  breathLabel: {fontSize:9,fontWeight:'900',letterSpacing:1.8,marginBottom:7},
+  breathTxt:   {fontSize:14,fontWeight:'600',color:'#fff',lineHeight:21},
+  affirmCard:  {backgroundColor:'rgba(255,255,255,0.02)',borderRadius:14,padding:18,marginBottom:16,alignItems:'center'},
+  affirmTxt:   {fontSize:15,fontStyle:'italic',color:'rgba(255,255,255,0.5)',textAlign:'center',lineHeight:23},
+  sndRow:      {borderRadius:13,overflow:'hidden',marginBottom:9},
+  sndGrad:     {flexDirection:'row',alignItems:'center',padding:13,gap:11},
+  sndName:     {fontSize:13,fontWeight:'700',color:'#fff',marginBottom:2},
+  sndDesc:     {fontSize:11,color:'rgba(255,255,255,0.38)',lineHeight:15},
+  playBtn:     {width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',borderWidth:1},
+  rescanBtn:   {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingVertical:13,borderRadius:13,backgroundColor:'rgba(255,255,255,0.04)',borderWidth:1,borderColor:'rgba(255,255,255,0.08)',marginTop:4},
+  rescanTxt:   {fontSize:13,fontWeight:'600',color:'rgba(255,255,255,0.45)'},
 });
