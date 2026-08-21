@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo, startTr
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Pressable,
   Modal, Animated, Easing, Dimensions, ImageBackground, LayoutAnimation, Image, FlatList, Platform, PanResponder,
-  ActivityIndicator, StatusBar, TextInput, Keyboard, BackHandler,
+  ActivityIndicator, StatusBar, TextInput, Keyboard, BackHandler, TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -469,9 +469,7 @@ export type SonicCollection = {
 
 export const SONIC_COLLECTIONS: SonicCollection[] = [
   // ─── Deity ───────────────────────────────────────────────────────────────
-  { id: 'shiva_resonance', title: 'Shiva Resonance', subtitle: 'COSMIC CALM', description: 'Vibrations of the Adiyogi. Dissolve stress and tune into deep, unshakeable stillness.', imageUri: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash', 'naad_om_shivaya_meditation'] },
-  { id: 'divine_devi', title: 'Divine Devi', subtitle: 'NURTURING ENERGY', description: 'The supreme feminine energy. Soothing chants to restore emotional balance and grace.', imageUri: 'https://images.pexels.com/photos/6325998/pexels-photo-6325998.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini', 'cdn_surya_sukta'] },
-  { id: 'vishnu_krishna', title: 'Vishnu & Krishna', subtitle: 'PRESERVATION & JOY', description: 'Mantras and flutes of the preserver. Cultivate inner peace and joyous calm.', imageUri: 'https://images.pexels.com/photos/35643474/pexels-photo-35643474.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#38bdf8', soundIds: ['naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'naad_muladhara_flute', 'cdn_auspicious_mantras', 'med_vishnu_sahasranamam'] },
+  { id: 'sacred_deities', title: 'Sacred Deities', subtitle: 'COSMIC ENERGY', description: 'Powerful chants and vibrations of Shiva, Vishnu, Krishna, and the Divine Feminine. Dissolve stress and restore deep balance.', imageUri: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash', 'naad_om_shivaya_meditation', 'mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini', 'cdn_surya_sukta', 'naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'naad_muladhara_flute', 'cdn_auspicious_mantras', 'med_vishnu_sahasranamam'] },
 
   // ─── Nature ──────────────────────────────────────────────────────────────
   { id: 'elemental_immersion', title: 'Elemental Immersion', subtitle: "NATURE'S EMBRACE", description: 'The timeless healing rhythm of ocean waves and cleansing rain. Let the elements wash away your thoughts and carry you into deep rest.', imageUri: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#0ea5e9', soundIds: ['sea_waves', 'light_rain', 'heavy_rain', 'rocky_shore', 'harbor_waves', 'rain_thunder', 'jungle_rain', 'jungle_storm', 'flowing_water', 'cdn_monsoon_megh', 'cdn_monsoon_temple', 'night_jungle_chiangmai', 'naad_flute_rain_ambiance', 'gentle_wind', 'wanderlust', 'city_night', 'campfire', 'forest_breeze', 'night_forest'] },
@@ -484,8 +482,7 @@ export const SONIC_COLLECTIONS: SonicCollection[] = [
 
   { id: 'world_strings', title: 'World Strings', subtitle: 'GLOBAL RESONANCE', description: 'String instruments from across the world. Diverse cultures, one universal sound.', imageUri: 'https://images.pexels.com/photos/3775601/pexels-photo-3775601.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['sargija_eastern', 'naad_traditional_koto', 'naad_indian_fusion', 'world_ambient', 'tagore_festival', 'heaven_tune', 'naad_bhajan_flute_tabla', 'cdn_naad_targan', 'spiritual_journey', 'reincarnation_tones'] },
   // ─── Healing & Sleep ─────────────────────────────────────────────────────
-  { id: 'healing_frequencies', title: 'Healing Frequencies', subtitle: '432HZ & BEYOND', description: 'Sound as medicine. Frequencies calibrated to restore cellular and spiritual harmony.', imageUri: 'https://images.pexels.com/photos/32180834/pexels-photo-32180834.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#818cf8', soundIds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'tibetan_dreams', 'reincarnation_tones', 'tanpura_sacred_432hz', 'naad_golden_sitar_432', 'cdn_hansdhwani_432', 'sitar_summer_raga', 'indian_beats', 'om_shanti', 'morning_flute', 'spiritual_journey'] },
-  { id: 'himalayan_echoes', title: 'Himalayan Echoes', subtitle: 'ANCIENT MOUNTAINS', description: 'Deep singing bowls and winds from the highest peaks to ground your energy for sleep.', imageUri: 'https://images.pexels.com/photos/2583852/pexels-photo-2583852.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#7c3aed', soundIds: ['tibetan_dreams', 'singing_bowl', 'tibetan_bowl', 'hz_432', 'reincarnation_tones', 'spiritual_journey', 'naad_om_shivaya_meditation', 'naad_hang_drum_tabla', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
+  { id: 'healing_frequencies', title: 'Healing Frequencies', subtitle: '432HZ & BEYOND', description: 'Sound as medicine. Frequencies and singing bowls calibrated to restore cellular and spiritual harmony.', imageUri: 'https://images.pexels.com/photos/32180834/pexels-photo-32180834.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#818cf8', soundIds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'tibetan_dreams', 'reincarnation_tones', 'tanpura_sacred_432hz', 'naad_golden_sitar_432', 'cdn_hansdhwani_432', 'sitar_summer_raga', 'indian_beats', 'om_shanti', 'morning_flute', 'spiritual_journey', 'naad_om_shivaya_meditation', 'naad_hang_drum_tabla', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
   { id: 'sleep_sanctuary', title: 'Sleep Sanctuary', subtitle: 'DEEP SLEEP', description: 'The most effective sounds for falling asleep fast and sleeping through the night.', imageUri: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#6366f1', soundIds: ['light_rain', 'harbor_waves', 'night_forest', 'campfire', 'bansuri_melody_sleep', 'tanpura_mystic_sleep', 'naad_shiva_panchakshara_sleep', 'naad_sitar_tabla_flute_sleep', 'naad_zen_bamboo_flow_sleep', 'naad_relaxing_flute_sleep', 'naad_tabla_flute_i_sleep', 'cdn_bageshree_sleep', 'cdn_bhimpalasi_sleep', 'naad_bhajan_flute_tabla', 'sitar_radiance_sleep', 'bansuri_tarana_sleep', 'naad_himalayan_village_flute_sleep', 'naad_sitar_holistic_sleep'] },
   { id: 'morning_awakening', title: 'Morning Awakening', subtitle: 'BRAHMA MUHURTA', description: 'The sacred pre-dawn hours. Gentle sounds to greet consciousness as it rises.', imageUri: 'https://images.pexels.com/photos/9265973/pexels-photo-9265973.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fcd34d', soundIds: ['morning_birds', 'spring_birds', 'hz_432', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_jogiya_morning', 'cdn_surya_sukta', 'tibetan_bowl', 'tanpura_sacred_432hz', 'bansuri_forest', 'sitar_radiance_med', 'tanpura_mystic_meditation', 'om_shanti'] },
   // ─── NadaUltra & New CDN ─────────────────────────────────────────────────
@@ -2314,9 +2311,15 @@ const ReelCard = memo(function ReelCard({
   const bumpControlsRef = useRef(() => {
     controlsAnim.stopAnimation(() => {
       if (!isMountedRef.current) return;
-      Animated.timing(controlsAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      Animated.timing(controlsAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     });
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+    // Only auto-hide if we are actively playing
+    hideTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      // Fade out to pure image
+      Animated.timing(controlsAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+    }, 2800);
   });
 
   const _isAudioStalledRef = useRef(false);
@@ -2372,10 +2375,18 @@ const ReelCard = memo(function ReelCard({
   }, [isPlaying, isPaused, durationOpen]);
 
   useEffect(() => {
-    controlsAnim.stopAnimation(() => {
-      Animated.timing(controlsAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    });
-    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+    if (isActive) {
+      if (isPlaying && !isPaused) {
+        // Auto-hide when playing
+        bumpControlsRef.current();
+      } else {
+        // Keep controls visible when paused or loading
+        if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+        controlsAnim.stopAnimation(() => {
+          Animated.timing(controlsAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        });
+      }
+    }
     return () => { if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; } };
   }, [isActive, isPlaying, isPaused]);
 
@@ -2486,20 +2497,24 @@ const ReelCard = memo(function ReelCard({
     })
   ).current;
 
-  return (
-    <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#020305' }}>
-      <View style={{
-        flex: 1,
-        overflow: 'hidden',
-        backgroundColor: '#0A0C10',
-      }}>
+// Actually we can just use TouchableWithoutFeedback directly.
 
-      {finalSource ? (
-        <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
-          <Animated.View style={[
-            StyleSheet.absoluteFillObject,
-            { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
-          ]}>
+
+  return (
+    <TouchableWithoutFeedback onPress={handleScreenTap}>
+      <View style={{ width: REEL_W, height: REEL_H, backgroundColor: '#020305' }}>
+        <View style={{
+          flex: 1,
+          overflow: 'hidden',
+          backgroundColor: '#0A0C10',
+        }}>
+
+        {finalSource ? (
+          <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
+            <Animated.View style={[
+              StyleSheet.absoluteFillObject,
+              { transform: [{ scale: kbScale }, { translateX: kbTransX }, { translateY: kbTransY }] },
+            ]}>
             <ExpoImage
               source={finalSource as any}
               style={{ width: REEL_W, height: REEL_H }}
@@ -2519,260 +2534,269 @@ const ReelCard = memo(function ReelCard({
         />
       )}
 
-      {/* Aurora top overlay: tinted with sound color, clear in the middle to show image */}
+      {/* ── Deep atmospheric overlay - keeps image visible ── */}
       <LinearGradient
-        colors={[
-          (sound.color || '#6366f1') + 'CC',
-          (sound.color || '#6366f1') + '22',
-          'transparent',
-          'transparent',
-        ]}
-        locations={[0, 0.25, 0.5, 1]}
+        colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.65)']}
+        locations={[0, 0.2, 0.7, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
-      {/* Subtle dark vignette on edges */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.55)', 'transparent', 'transparent', 'rgba(0,0,0,0.2)']}
-        locations={[0, 0.15, 0.7, 1]}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
-
-      {/* ── SPLIT LINE: Liquid Waveform Visualizer sits exactly at the 60% split ── */}
+      {/* Sound color ambient bloom at center */}
       <View
         style={{
           position: 'absolute',
-          top: '58%',
-          left: 0, right: 0,
-          alignItems: 'center',
-          zIndex: 5,
+          top: '25%', left: '10%', right: '10%', bottom: '25%',
+          borderRadius: 999,
+          backgroundColor: (sound.color || '#6366f1') + '18',
+          shadowColor: sound.color || '#6366f1',
+          shadowOpacity: 0.6,
+          shadowRadius: 80,
+          shadowOffset: { width: 0, height: 0 },
         }}
         pointerEvents="none"
-      >
-        {/* Aurora glow line at split */}
-        <View style={{
-          width: '100%', height: 1,
-          backgroundColor: (sound.color || '#a78bfa') + '55',
-          marginBottom: 10,
-          shadowColor: sound.color || '#a78bfa',
-          shadowOpacity: 0.8, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }
-        }} />
-        {isActive && (isPlaying && !isPaused) && (
-          <HarmonicParticleWaveVisualizer meteringAnim={meteringAnim} color={sound.color || '#ffffff'} />
-        )}
-        {isActive && (!isPlaying || isPaused) && (
-          <View style={{ width: '75%', height: 1, backgroundColor: (sound.color || '#a78bfa') + '40' }} />
-        )}
-      </View>
-
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleScreenTap}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}
       />
 
+      {/* ── ALWAYS VISIBLE PREMIUM SKIP CONTROLS ── */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: '12%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 8,
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ flexDirection: 'row', width: '100%', height: '100%', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 }} pointerEvents="box-none">
+          {/* Skip Back (Left Edge Soundwave) */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
+            activeOpacity={0.5}
+            disabled={!hasPrev}
+            style={{ 
+              width: 50, height: 120,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: hasPrev ? 0.75 : 0,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 18] }) }} />
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 28] }) }} />
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [6, 14] }) }} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Skip Forward (Right Edge Soundwave) */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
+            activeOpacity={0.5}
+            disabled={!hasNext}
+            style={{ 
+              width: 50, height: 120,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: hasNext ? 0.75 : 0,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [6, 14] }) }} />
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 28] }) }} />
+              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 18] }) }} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── CENTRAL PLAY/PAUSE CLUSTER (Rings stay, button fades) ── */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: '12%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 7,
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          {/* Core Orb Container */}
+          <View style={{ width: 172, height: 172, alignItems: 'center', justifyContent: 'center' }}>
+            {/* Outermost halo ring — slow breath */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                width: 280, height: 280,
+                borderRadius: 140,
+                borderWidth: 1,
+                borderColor: (sound.color || '#a78bfa') + '20',
+                transform: [{
+                  scale: externalBreath.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.15] })
+                }],
+              }}
+            />
+            {/* Second ring */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                width: 210, height: 210,
+                borderRadius: 105,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: (sound.color || '#a78bfa') + '40',
+                transform: [{
+                  scale: externalBreath.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.06] })
+                }],
+              }}
+            />
+            {/* Audio-reactive ring */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                width: 154, height: 154,
+                borderRadius: 77,
+                borderWidth: 1.5,
+                borderColor: (sound.color || '#a78bfa') + '80',
+                shadowColor: sound.color || '#a78bfa',
+                shadowOpacity: 0.6,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 0 },
+                transform: [{
+                  scale: isActive && isPlaying && !isPaused
+                    ? meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.1] })
+                    : externalBreath.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] })
+                }],
+              }}
+            />
+
+            {/* Core glowing orb — tap to play/pause (This fades out) */}
+            <Animated.View style={{ opacity: controlsAnim }}>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
+                activeOpacity={0.9}
+                style={{ alignItems: 'center', justifyContent: 'center' }}
+              >
+              <Animated.View
+                style={{
+                  width: 110, height: 110,
+                  borderRadius: 55,
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.18)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: sound.color || '#a78bfa',
+                  shadowOpacity: 0.7,
+                  shadowRadius: 25,
+                  shadowOffset: { width: 0, height: 0 },
+                  transform: [{
+                    scale: externalBreath.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] })
+                  }],
+                }}
+              >
+                {isActive && isAudioLoading && !isPlaying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons
+                    name={isPlaying && !isPaused ? 'pause' : 'play'}
+                    size={36}
+                    color="#FFFFFF"
+                    style={{ marginLeft: isPlaying && !isPaused ? 0 : 3, opacity: 0.9 }}
+                  />
+                )}
+              </Animated.View>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </View>
+      </View>
+
+      {/* ── CENTRAL PLAY/PAUSE BIG ANIMATION ── */}
       <Animated.View
         pointerEvents="none"
         style={{
-          position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-          alignItems: 'center', justifyContent: 'center',
-          zIndex: 6,
+          position: 'absolute',
+          top: '40%',
+          alignSelf: 'center',
+          alignItems: 'center',
+          justifyContent: 'center',
           opacity: playTapAnim,
           transform: [{ scale: playTapScaleAnim }],
+          zIndex: 50,
         }}
       >
         <View style={{
-          width: 78, height: 78, borderRadius: 39,
-          backgroundColor: 'rgba(0,0,0,0.52)',
+          width: 90, height: 90, borderRadius: 45,
+          backgroundColor: 'rgba(0,0,0,0.4)',
           alignItems: 'center', justifyContent: 'center',
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
         }}>
           <Ionicons
-            name={isPlaying && !isPaused ? 'pause' : 'play'}
-            size={36}
-            color="rgba(255,255,255,0.92)"
-            style={{ marginLeft: isPlaying && !isPaused ? 0 : 4 }}
+            name={(isPlaying && !isPaused) ? 'play' : 'pause'}
+            size={44} color="#FFF" style={{ marginLeft: (isPlaying && !isPaused) ? 4 : 0 }}
           />
         </View>
       </Animated.View>
 
-      {/* ── SPLIT AURORA: Bottom Stage (bottom 40%) ── */}
-      <View
-        style={{
-          position: 'absolute',
-          top: '60%',
-          left: 0, right: 0, bottom: 0,
-          zIndex: 6,
-        }}
-        pointerEvents="none"
-      >
-        <LinearGradient
-          colors={[
-            'transparent',
-            (sound.color || '#111118') + '18',
-            '#0A0B10',
-            '#07080D',
-          ]}
-          locations={[0, 0.15, 0.4, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </View>
-
-      {/* ── SPLIT AURORA: Player Controls ── */}
+      {/* ── BOTTOM TEXT & SCRUBBER CLUSTER ── */}
       <Animated.View
         style={{
           position: 'absolute',
-          bottom: 0,
-          left: 0, right: 0,
-          top: '62%',
+          bottom: Platform.OS === 'ios' ? insets.bottom + 36 : 44,
+          left: 24, right: 24,
+          alignItems: 'center',
           zIndex: 9, opacity: controlsAnim,
-          paddingHorizontal: 28,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 16 : 28,
-          paddingTop: 20,
-          justifyContent: 'space-between',
         }}
+        pointerEvents="box-none"
       >
-        {/* Row 1: Title + Timer Pill */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 22,
-              fontWeight: '800',
-              color: '#FFFFFF',
-              fontFamily: 'Nunito_800ExtraBold',
-              letterSpacing: 0.3,
-              textAlign: 'left',
-              paddingRight: 12,
-              textShadowColor: 'rgba(0,0,0,0.6)',
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 8,
-            }}
-            numberOfLines={2}
-          >
-            {sound.label}
-          </Text>
+        {/* Title — Ultra premium, centered, elegant font weight */}
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: '#FFFFFF',
+            letterSpacing: 0.6,
+            textAlign: 'center',
+            textShadowColor: 'rgba(0,0,0,0.85)',
+            textShadowOffset: { width: 0, height: 2 },
+            textShadowRadius: 14,
+            marginBottom: 10,
+          }}
+          numberOfLines={1}
+        >
+          {sound.label}
+        </Text>
 
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
-            activeOpacity={0.75}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: durationOpen ? (sound.color + '30') : 'rgba(255,255,255,0.08)',
-              paddingHorizontal: 12, paddingVertical: 7,
-              borderRadius: 30,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: durationOpen ? sound.color : 'rgba(255,255,255,0.18)',
-              marginTop: 3,
-            }}
-          >
-            {(() => {
-              const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
-              return (
-                <>
-                  <Ionicons name={opt.icon} size={13} color={durationOpen ? sound.color : 'rgba(255,255,255,0.8)'} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.8)', letterSpacing: 0.3 }}>{opt.label}</Text>
-                </>
-              );
-            })()}
-          </TouchableOpacity>
-        </View>
+        {/* Timer Pill */}
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
+          activeOpacity={0.75}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 5,
+            backgroundColor: durationOpen ? (sound.color + '35') : 'rgba(255,255,255,0.06)',
+            paddingHorizontal: 12, paddingVertical: 6,
+            borderRadius: 30,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: durationOpen ? sound.color : 'rgba(255,255,255,0.15)',
+            marginBottom: 32, // space above scrubber
+          }}
+        >
+          {(() => {
+            const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
+            return (
+              <>
+                <Ionicons name={opt.icon} size={11} color={durationOpen ? sound.color : 'rgba(255,255,255,0.75)'} />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.75)', letterSpacing: 0.5 }}>{opt.label}</Text>
+              </>
+            );
+          })()}
+        </TouchableOpacity>
 
-        {/* Row 2+3: Scrubber + Time */}
-        <View>
-          <View
-            style={{ height: 28, justifyContent: 'center' }}
-            {...scrubPan.panHandlers}
-            hitSlop={{ top: 14, bottom: 14, left: 0, right: 0 }}
-            collapsable={false}
-          >
-            <View style={{ height: isScrubbing ? 4 : 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)', width: TRACK_W + 8, overflow: 'visible' }}>
-              <Animated.View style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
-                backgroundColor: sound.color || '#fff',
-                width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
-              }} />
-              <Animated.View style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
-                backgroundColor: sound.color || '#fff', opacity: 0.45,
-                shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10,
-                width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
-              }} pointerEvents="none" />
-            </View>
-            {(() => {
-              const thumbSize = isScrubbing ? 14 : 11;
-              return (
-                <Animated.View pointerEvents="none" style={{
-                  position: 'absolute', top: (28 - thumbSize) / 2, left: 0,
-                  width: thumbSize, height: thumbSize, borderRadius: thumbSize / 2,
-                  backgroundColor: '#FFFFFF',
-                  shadowColor: sound.color || '#FFF', shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
-                  transform: [
-                    { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }) },
-                    { scale: isScrubbing ? 1.2 : 1 }
-                  ],
-                }} />
-              );
-            })()}
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 1, marginTop: 4 }}>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.4 }}>
-              {formatTimeMs(isScrubbing ? scrubPositionMs : positionMs)}
-            </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.4 }}>
-              {formatTimeMs(trackDurMs)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Row 4: Playback Controls */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 48 }}>
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
-            activeOpacity={0.6}
-            disabled={!hasPrev}
-            style={{ opacity: hasPrev ? 1 : 0.25, padding: 6 }}
-          >
-            <Ionicons name="play-skip-back" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
-            activeOpacity={0.85}
-            style={{
-              width: 70, height: 70, borderRadius: 35,
-              backgroundColor: '#FFFFFF',
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: sound.color || '#fff',
-              shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 6 },
-              elevation: 16,
-            }}
-          >
-            {isActive && isAudioLoading && !isPlaying ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <Ionicons name={isPlaying && !isPaused ? 'pause' : 'play'} size={32} color="#000000" style={{ marginLeft: isPlaying && !isPaused ? 0 : 3 }} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
-            activeOpacity={0.6}
-            disabled={!hasNext}
-            style={{ opacity: hasNext ? 1 : 0.25, padding: 6 }}
-          >
-            <Ionicons name="play-skip-forward" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Duration Dropdown */}
+        {/* Timer dropdown */}
         {durationOpen && (
           <View style={{
-            position: 'absolute', right: 0, top: 50,
-            width: 160,
-            backgroundColor: 'rgba(10,11,16,0.97)',
+            position: 'absolute', top: -140, // pop up above the button
+            width: 158,
+            backgroundColor: 'rgba(8,9,14,0.97)',
             borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)',
             shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.7, shadowRadius: 30,
             overflow: 'hidden', zIndex: 20,
@@ -2792,15 +2816,67 @@ const ReelCard = memo(function ReelCard({
                     borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.06)',
                   }}
                 >
-                  <Ionicons name={opt.icon} size={15} color={isSelected ? sound.color : 'rgba(255,255,255,0.4)'} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>{opt.label}</Text>
-                  {isSelected && <Ionicons name="checkmark" size={14} color={sound.color} />}
+                  <Ionicons name={opt.icon} size={14} color={isSelected ? sound.color : 'rgba(255,255,255,0.4)'} />
+                  <Text style={{ flex: 1, fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }}>{opt.label}</Text>
+                  {isSelected && <Ionicons name="checkmark" size={13} color={sound.color} />}
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
+
+        {/* Progress bar */}
+        <View style={{ width: '100%' }}>
+          <View
+            style={{ height: 28, justifyContent: 'center' }}
+            {...scrubPan.panHandlers}
+            hitSlop={{ top: 16, bottom: 16, left: 0, right: 0 }}
+            collapsable={false}
+          >
+            <View style={{ height: isScrubbing ? 4 : 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', width: TRACK_W + 8, overflow: 'visible' }}>
+              <Animated.View style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
+                backgroundColor: '#FFFFFF',
+                width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
+              }} />
+              <Animated.View style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2,
+                backgroundColor: sound.color || '#fff', opacity: 0.6,
+                shadowColor: sound.color || '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
+                width: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }),
+              }} pointerEvents="none" />
+            </View>
+            {(() => {
+              const thumbSize = isScrubbing ? 14 : 10;
+              return (
+                <Animated.View pointerEvents="none" style={{
+                  position: 'absolute', top: (28 - thumbSize) / 2, left: 0,
+                  width: thumbSize, height: thumbSize, borderRadius: thumbSize / 2,
+                  backgroundColor: '#FFFFFF',
+                  shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+                  transform: [
+                    { translateX: (isScrubbing ? dragFraction : progressAnim).interpolate({ inputRange: [0, 1], outputRange: [0, TRACK_W + 8], extrapolate: 'clamp' }) },
+                    { scale: isScrubbing ? 1.2 : 1 }
+                  ],
+                }} />
+              );
+            })()}
+          </View>
+
+          {/* Time labels */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 1, marginTop: 4 }}>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
+              {formatTimeMs(isScrubbing ? scrubPositionMs : positionMs)}
+            </Text>
+            <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
+              {formatTimeMs(trackDurMs)}
+            </Text>
+          </View>
+        </View>
       </Animated.View>
+
+      {/* ── SPLIT LINE: Liquid Waveform Visualizer sits exactly at the 60% split ── */}
+
 
 
 
@@ -2850,6 +2926,7 @@ const ReelCard = memo(function ReelCard({
 
       </View>
     </View>
+    </TouchableWithoutFeedback>
   );
 }, (prev, next) => {
   return prev.sound.id === next.sound.id &&

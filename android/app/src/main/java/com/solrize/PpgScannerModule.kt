@@ -145,8 +145,14 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Average Y (luminance) of centre 60×60 pixels, sampled every 2nd pixel.
-     * Finger on torch → bright red transmission → high Y → reliable detection.
+     * Average Y (luminance) of centre 80×80 pixels, sampled every 2nd pixel.
+     *
+     * CORRECTED PHYSICS:
+     *   Torch ON, no finger: torch light reflects straight off glass lens → sensor OVEREXPOSED → Y ≈ 220–255
+     *   Torch ON, finger ON: tissue+blood absorbs & scatters light → Y drops to ≈ 60–155
+     *   Heartbeat: extra blood volume in fingertip → brief extra absorption → Y dips slightly
+     *
+     * So: LOW Y = finger present. HIGH Y = no finger (bare lens overexposed).
      */
     private fun avgCenterBrightness(proxy: ImageProxy): Double {
         val plane     = proxy.planes[0]
@@ -157,7 +163,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
 
         val cx = proxy.width  / 2
         val cy = proxy.height / 2
-        val r  = 30
+        val r  = 40  // 80×80 centre region → more pixels → better SNR
 
         var sum = 0L; var count = 0
         var y = maxOf(0, cy - r)
@@ -165,7 +171,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             var x = maxOf(0, cx - r)
             while (x <= minOf(proxy.width - 1, cx + r)) {
                 val idx = y * rowStride + x * pixStride
-                if (idx < bytes.size) { sum += bytes[idx].toInt() and 0xFF; count++ }
+                if (idx < bytes.size) { sum += (bytes[idx].toInt() and 0xFF); count++ }
                 x += 2
             }
             y += 2
