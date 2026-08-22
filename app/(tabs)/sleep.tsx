@@ -2556,7 +2556,7 @@ const ReelCard = memo(function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── ALWAYS VISIBLE PREMIUM SKIP CONTROLS ── */}
+      {/* ── ALWAYS VISIBLE ULTRA-PREMIUM EDGE GLASS CAPSULES (Prev/Next) ── */}
       <View
         style={{
           position: 'absolute',
@@ -2567,41 +2567,43 @@ const ReelCard = memo(function ReelCard({
         }}
         pointerEvents="box-none"
       >
-        <View style={{ flexDirection: 'row', width: '100%', height: '100%', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 }} pointerEvents="box-none">
-          {/* Skip Back (Left Edge Soundwave) */}
+        <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 0 }} pointerEvents="box-none">
+          {/* Skip Back — Left Glass Handle Tab */}
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
-            activeOpacity={0.5}
+            activeOpacity={0.7}
             disabled={!hasPrev}
             style={{ 
-              width: 50, height: 120,
+              height: 48,
+              paddingLeft: 14, paddingRight: 16,
+              borderTopRightRadius: 24, borderBottomRightRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 0, borderColor: 'rgba(255,255,255,0.22)',
               alignItems: 'center', justifyContent: 'center',
-              opacity: hasPrev ? 0.75 : 0,
+              opacity: hasPrev ? 0.95 : 0,
+              shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 3, height: 4 },
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 18] }) }} />
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 28] }) }} />
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [6, 14] }) }} />
-            </View>
+            <Ionicons name="play-skip-back" size={18} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* Skip Forward (Right Edge Soundwave) */}
+          {/* Skip Forward — Right Glass Handle Tab */}
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
-            activeOpacity={0.5}
+            activeOpacity={0.7}
             disabled={!hasNext}
             style={{ 
-              width: 50, height: 120,
+              height: 48,
+              paddingLeft: 16, paddingRight: 14,
+              borderTopLeftRadius: 24, borderBottomLeftRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: StyleSheet.hairlineWidth, borderRightWidth: 0, borderColor: 'rgba(255,255,255,0.22)',
               alignItems: 'center', justifyContent: 'center',
-              opacity: hasNext ? 0.75 : 0,
+              opacity: hasNext ? 0.95 : 0,
+              shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: -3, height: 4 },
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [6, 14] }) }} />
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 28] }) }} />
-              <Animated.View style={{ width: 2.5, borderRadius: 2, backgroundColor: '#FFF', shadowColor: '#FFF', shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: {width:0, height:0}, height: meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 18] }) }} />
-            </View>
+            <Ionicons name="play-skip-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
