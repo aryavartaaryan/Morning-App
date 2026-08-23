@@ -46,8 +46,8 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         const val MAX_TEMPORAL_VARIANCE = 150.0 
         
         // Hysteresis wall-clock durations (agnostic to frame drops)
-        const val TIME_TO_CANDIDATE_MS = 150L
-        const val TIME_TO_CONFIRM_DETECTED_MS = 500L
+        const val TIME_TO_CANDIDATE_MS = 100L
+        const val TIME_TO_CONFIRM_DETECTED_MS = 400L
         const val TIME_TO_CONFIRM_LOST_MS = 300L
         
         // Durations
@@ -168,6 +168,8 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(null)
     }
     
+    private var activeCamera: androidx.camera.core.Camera? = null
+
     private fun stopScanInternal() {
         isRunning = false
         currentState = State.IDLE
@@ -179,7 +181,10 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         }
         
         teardownTorchCallback()
-        try { cameraProvider?.unbindAll() } catch (_: Exception) {}
+        try { 
+            activeCamera?.cameraControl?.enableTorch(false)
+            cameraProvider?.unbindAll() 
+        } catch (_: Exception) {}
     }
     
     private fun setupTorchCallback() {
@@ -236,13 +241,13 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         }
 
         cameraProvider?.unbindAll()
-        val camera = cameraProvider?.bindToLifecycle(
+        activeCamera = cameraProvider?.bindToLifecycle(
             activity as LifecycleOwner,
             CameraSelector.DEFAULT_BACK_CAMERA,
             *useCases.toTypedArray()
         )
         
-        val future = camera?.cameraControl?.enableTorch(true)
+        val future = activeCamera?.cameraControl?.enableTorch(true)
         future?.addListener({
             try {
                 future.get() // Will throw if torch failed to turn on
@@ -312,6 +317,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 
                 if (fingerState == FingerState.NOT_DETECTED && qualifyDuration >= activeTimeToCandidateMs) {
                     fingerState = FingerState.CANDIDATE
+                    recentMeans.clear() // Clear transition variance so we lock in instantly!
                     emitProgress("candidate", 0)
                 } else if (fingerState == FingerState.CANDIDATE && qualifyDuration >= activeTimeToConfirmMs) {
                     fingerState = FingerState.DETECTED

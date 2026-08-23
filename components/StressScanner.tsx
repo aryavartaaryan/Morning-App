@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Ani
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Polyline, Defs, LinearGradient, Stop, Mask, Rect } from 'react-native-svg';
 import { ScrollView } from 'react-native-gesture-handler';
 
 const { PpgScanner } = NativeModules;
@@ -58,6 +58,13 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
     let target = 0;
     if (p === 'candidate') target = 1;
     else if (p === 'warming_up' || p === 'measuring') {
+      if (phaseRef.current !== 'warming_up' && phaseRef.current !== 'measuring') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Animated.sequence([
+          Animated.timing(beatAnim, { toValue: 1.15, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(beatAnim, { toValue: 1.0, duration: 250, easing: Easing.in(Easing.ease), useNativeDriver: true })
+        ]).start();
+      }
       target = 2;
       if (phaseRef.current !== 'warming_up' && phaseRef.current !== 'measuring') {
         // Haptic tap on successful placement
@@ -125,19 +132,26 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     go('results');
     setLiveHR(data.heartRateBpm);
+    
+    let color = '#10b981';
+    let label = 'Low Stress';
+    let emoji = '😌';
+    let subtitle = 'Your nervous system is balanced and relaxed.';
+    
+    if (data.stressScore > 500) {
+      color = '#ef4444'; label = 'High Stress'; emoji = '⚡';
+      subtitle = 'Elevated sympathetic activity detected.';
+    } else if (data.stressScore > 150) {
+      color = '#f59e0b'; label = 'Moderate Stress'; emoji = '🤔';
+      subtitle = 'You are experiencing moderate strain.';
+    }
+    
     setResult({
-      emoji: '🌿',
-      label: 'Scan Complete',
-      subtitle: data.stressBand === 'High' ? 'High Stress Detected' : data.stressBand === 'Moderate' ? 'Moderate Stress Detected' : 'Low Stress Detected',
-      color: data.stressBand === 'High' ? '#ef4444' : data.stressBand === 'Moderate' ? '#f59e0b' : '#10b981',
-      score: data.stressScore,
-      hrv: data.rmssd,
+      ...data, color, label, emoji, subtitle,
       advice: [
         'Take 5 deep breaths focusing on exhaling slowly.',
-        'Try to relax your shoulders and jaw.',
-        'Consider a 5-minute meditation session.'
-      ],
-      sounds: ['s1', 's2']
+        'Consider a short meditation session.'
+      ]
     });
   }, [go]);
 
@@ -262,7 +276,13 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
           
           <Animated.View style={[S.heartMask, { transform: [{ scale: beatAnim }] }]} pointerEvents="none">
             <Svg width={SCAN_W} height={SCAN_H} viewBox="0 0 220 205">
-              <Path d={INVERSE_HEART} fill="#000" fillRule="evenodd" />
+              <Defs>
+                <Mask id="hole">
+                  <Rect x="-10" y="-10" width="250" height="250" fill="white" />
+                  <Path d={HEART} fill="black" />
+                </Mask>
+              </Defs>
+              <Rect x="-10" y="-10" width="250" height="250" fill="black" mask="url(#hole)" />
               <AnimatedPath d={HEART} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
             </Svg>
             
@@ -375,8 +395,12 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
           
           <View style={[S.resCard, { borderColor: result.color }]}>
             <View style={S.resRow}>
-              <Text style={S.resKey}>HRV (RMSSD)</Text>
-              <Text style={S.resVal}>{result.hrv} ms</Text>
+              <Text style={S.resKey}>HRV (RMSSD){'\n'}<Text style={{fontSize: 12, color: '#666'}}>Short-term rhythm variation</Text></Text>
+              <Text style={S.resVal}>{result.rmssd} ms</Text>
+            </View>
+            <View style={S.resRow}>
+              <Text style={S.resKey}>SDNN{'\n'}<Text style={{fontSize: 12, color: '#666'}}>Overall variability</Text></Text>
+              <Text style={S.resVal}>{result.sdnn} ms</Text>
             </View>
             <View style={S.resRow}>
               <Text style={S.resKey}>Heart Rate</Text>
@@ -409,8 +433,8 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-      <Animated.View style={[S.backdrop, { opacity: fadeAnim }]} />
+    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={handleClose}>
+      
       <View style={S.container}>
         {phase === 'idle' || phase === 'processing' || phase === 'failed' || phase === 'noperm' || phase === 'results' ? (
           <View style={S.sheet}>
@@ -434,8 +458,8 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const S = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)' },
-  container: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#111', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, height: '90%' },
+  container: { flex: 1, backgroundColor: '#000' },
+  sheet: { flex: 1, backgroundColor: '#000', paddingTop: 60, paddingHorizontal: 24, paddingBottom: 40 },
   fullScreenBlack: { flex: 1, backgroundColor: '#000', width: '100%' },
   phase: { flex: 1, display: 'flex', flexDirection: 'column' },
   scanPhase: { flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 80 },

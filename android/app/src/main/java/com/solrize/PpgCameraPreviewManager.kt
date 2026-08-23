@@ -23,7 +23,19 @@ class PpgCameraPreviewManager(
     override fun getName() = "PpgCameraPreview"
 
     override fun createViewInstance(context: ThemedReactContext): PreviewView {
-        val view = PreviewView(context).apply {
+        val view = object : PreviewView(context) {
+            override fun requestLayout() {
+                super.requestLayout()
+                post(measureAndLayout)
+            }
+            private val measureAndLayout = Runnable {
+                measure(
+                    MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+                )
+                layout(left, top, right, bottom)
+            }
+        }.apply {
             // COMPATIBLE mode works with all Android GPU configs
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             // FILL_CENTER: fills the view, centred, cropping edges
