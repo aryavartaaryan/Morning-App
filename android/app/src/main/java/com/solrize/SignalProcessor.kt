@@ -2,7 +2,6 @@ package com.solrize
 
 import com.github.psambit9791.jdsp.filter.Butterworth
 import com.github.psambit9791.jdsp.signal.peaks.FindPeak
-import com.github.psambit9791.jdsp.signal.peaks.Peak
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
@@ -13,7 +12,7 @@ data class HrvResult(
     val heartRateBpm: Int,
     val rmssd: Int,
     val sdnn: Int,
-    val stressScore: Int,
+    val stressScore: Int,    // Baevsky SI
     val stressBand: String,
     val confidence: Int
 )
@@ -25,42 +24,26 @@ class SignalProcessor {
         const val MAX_RR_MS = 1500  // 40 bpm
     }
 
-    /**
-     * Complete signal processing pipeline:
-     * 1. Resample to fixed 30fps
-     * 2. Detrend (remove DC offset)
-     * 3. 4th-Order Butterworth Bandpass (0.75Hz - 3.5Hz) using jDSP
-     * 4. Adaptive peak detection using jDSP
-     * 5. HRV math (RMSSD, SDNN)
-     */
     fun process(rawSignal: List<DataPoint>): HrvResult? {
         if (rawSignal.size < 300) return null
 
         val resampled = resample(rawSignal, TARGET_FPS)
         if (resampled.size < 300) return null
 
-        // jDSP doesn't have a dedicated detrending function for moving averages
-        // out-of-the-box in its standard filter package without polynomial fitting,
-        // so we manually detrend with a rolling average to zero-center the signal
-        // before applying the Butterworth filter to prevent initial transient spikes.
         val detrended = detrend(resampled, TARGET_FPS.toInt())
 
-        // Use jDSP for 4th-order Butterworth bandpass (0.75 - 3.5 Hz)
         val bw = Butterworth(TARGET_FPS)
         val filtered = bw.bandPassFilter(detrended, 4, 0.75, 3.5)
 
-        // Use jDSP for Peak Detection
         val fp = FindPeak(filtered)
         val peaksObj = fp.detectPeaks()
-        
-        // Filter peaks by requiring at least 300ms distance (9 frames at 30fps)
         val jdspPeaks = peaksObj.filterByPeakDistance(9)
         
-        val rrIntervals = computeRRIntervals(jdspPeaks.toList(), TARGET_FPS)
+        val rrIntervalsMs = computeRRIntervals(jdspPeaks.toList(), TARGET_FPS)
 
-        if (rrIntervals.size < 15) return null
+        if (rrIntervalsMs.size < 50) return null
 
-        return computeHrv(rrIntervals)
+        return computeHrv(rrIntervalsMs)
     }
 
     private fun resample(signal: List<DataPoint>, targetFps: Double): DoubleArray {
@@ -94,7 +77,6 @@ class SignalProcessor {
         return result
     }
 
-    // Moving average detrending (custom implementation)
     private fun detrend(signal: DoubleArray, windowSize: Int): DoubleArray {
         val result = DoubleArray(signal.size)
         for (i in signal.indices) {
@@ -121,33 +103,82 @@ class SignalProcessor {
         return rr
     }
 
-    private fun computeHrv(rrIntervals: List<Double>): HrvResult {
+    private fun computeHrv(rrIntervalsMs: List<Double>): HrvResult {
         var sumRR = 0.0
-        for (rr in rrIntervals) sumRR += rr
-        val meanRR = sumRR / rrIntervals.size
+        for (rr in rrIntervalsMs) sumRR += rr
+        val meanRR = sumRR / rrIntervalsMs.size
         val bpm = (60000.0 / meanRR).toInt()
 
         var sumSqDiff = 0.0
-        for (i in 1 until rrIntervals.size) {
-            val diff = rrIntervals[i] - rrIntervals[i-1]
+        for (i in 1 until rrIntervalsMs.size) {
+            val diff = rrIntervalsMs[i] - rrIntervalsMs[i-1]
             sumSqDiff += diff * diff
         }
-        val rmssd = sqrt(sumSqDiff / (rrIntervals.size - 1)).toInt()
+        val rmssd = sqrt(sumSqDiff / (rrIntervalsMs.size - 1)).toInt()
 
         var sumSqDev = 0.0
-        for (rr in rrIntervals) {
+        for (rr in rrIntervalsMs) {
             val dev = rr - meanRR
             sumSqDev += dev * dev
         }
-        val sdnn = sqrt(sumSqDev / rrIntervals.size).toInt()
+        val sdnn = sqrt(sumSqDev / rrIntervalsMs.size).toInt()
 
-        var score = 100 - ((rmssd - 20).toDouble() / 60.0 * 100.0)
-        score = score.coerceIn(1.0, 99.0)
-        val stressScore = score.toInt()
+        // -----------------------------------------------------
+        // Baevsky Stress Index (SI)
+        // Formula: SI = AMo / (2 * MxDMn * Mo)
+        // -----------------------------------------------------
+        
+        // 1. Bucket RR intervals into 50ms bins (0.05s bins)
+        val binWidthMs = 50.0
+        val binCounts = mutableMapOf<Int, Int>()
+        
+        var minRR = Double.MAX_VALUE
+        var maxRR = Double.MIN_VALUE
+        
+        for (rr in rrIntervalsMs) {
+            if (rr < minRR) minRR = rr
+            if (rr > maxRR) maxRR = rr
+            
+            // e.g. 810ms / 50ms = 16 (which represents the bin 800-850ms)
+            val binIdx = (rr / binWidthMs).toInt()
+            binCounts[binIdx] = (binCounts[binIdx] ?: 0) + 1
+        }
+        
+        // Find the modal bin (Mo)
+        var maxCount = 0
+        var modalBinIdx = 0
+        for ((binIdx, count) in binCounts) {
+            if (count > maxCount) {
+                maxCount = count
+                modalBinIdx = binIdx
+            }
+        }
+        
+        // Mo is the representative value of the modal bin, in SECONDS
+        // We take the midpoint of the bin. For bin 16 (800-850ms), midpoint is 825ms = 0.825s
+        val moSeconds = (modalBinIdx * binWidthMs + (binWidthMs / 2)) / 1000.0
+        
+        // AMo is the percentage of all RR intervals that fell into the modal bin (0 to 100%)
+        val amoPercent = (maxCount.toDouble() / rrIntervalsMs.size) * 100.0
+        
+        // MxDMn is the variation range in SECONDS
+        // Note: some literature uses (max(RR) - min(RR)), but to avoid outliers skewing MxDMn heavily, 
+        // researchers sometimes use the span of the bins, or just literal max-min. We use actual max-min.
+        val mxdmnSeconds = (maxRR - minRR) / 1000.0
+        
+        // Safety check to prevent division by zero or extremely tiny variations
+        val safeMxdmn = if (mxdmnSeconds < 0.001) 0.001 else mxdmnSeconds
+        val safeMo = if (moSeconds < 0.001) 0.001 else moSeconds
+        
+        var si = amoPercent / (2.0 * safeMxdmn * safeMo)
+        
+        // Cap SI at 999 to prevent UI overflow on extreme cases
+        si = si.coerceIn(0.0, 999.0)
+        val stressIndex = si.toInt()
 
         val band = when {
-            stressScore > 70 -> "High"
-            stressScore > 40 -> "Moderate"
+            stressIndex > 500 -> "High"
+            stressIndex > 150 -> "Moderate"
             else -> "Low"
         }
 
@@ -155,7 +186,7 @@ class SignalProcessor {
             heartRateBpm = bpm,
             rmssd = rmssd,
             sdnn = sdnn,
-            stressScore = stressScore,
+            stressScore = stressIndex,
             stressBand = band,
             confidence = 100
         )

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Animated, Platform, Easing, requireNativeComponent } from 'react-native';
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Svg, { Path, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { ScrollView } from 'react-native-gesture-handler';
 
@@ -19,12 +20,11 @@ const SOUNDS = [
 
 type Phase = 'idle' | 'waiting' | 'candidate' | 'warming_up' | 'measuring' | 'processing' | 'results' | 'failed' | 'noperm';
 
-const accentColor = '#f43f5e';
-const SCAN_W = 200;
-const SCAN_H = 190;
+const SCAN_W = 220;
+const SCAN_H = 205;
 
-const HEART = "M100,170 C25,125 0,80 20,48 C32,26 58,22 80,36 C88,42 95,54 100,68 C105,54 112,42 120,36 C142,22 168,26 180,48 C200,80 175,125 100,170 Z";
-const INVERSE_HEART = `M-5,-5 H205 V195 H-5 Z ${HEART}`;
+const HEART = "M110,185 C25,135 0,85 20,50 C35,25 65,20 85,35 C95,43 102,55 110,70 C118,55 125,43 135,35 C155,20 185,25 200,50 C220,85 195,135 110,185 Z";
+const INVERSE_HEART = `M-5,-5 H225 V215 H-5 Z ${HEART}`;
 
 export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -33,23 +33,58 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   const [failReason, setFailReason] = useState<string|null>(null);
   const [liveHR, setLiveHR] = useState<number|null>(null);
   
-  // Graph state
   const [signalData, setSignalData] = useState<number[]>([]);
+  
+  // Track beat timestamps for live BPM
+  const beatTimes = useRef<number[]>([]);
 
   const phaseRef = useRef<Phase>('idle');
   const progListener = useRef<any>(null);
   const resListener = useRef<any>(null);
   const errListener = useRef<any>(null);
+  const beatListener = useRef<any>(null);
 
   const beatAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  // State-driven color animations
+  const colorAnim = useRef(new Animated.Value(0)).current; // 0 = neutral, 1 = amber, 2 = green, 3 = red
 
-  const go = useCallback((p: Phase) => { phaseRef.current = p; setPhase(p); }, []);
+  const go = useCallback((p: Phase) => {
+    phaseRef.current = p;
+    setPhase(p);
+    
+    // Animate color based on state
+    let target = 0;
+    if (p === 'candidate') target = 1;
+    else if (p === 'warming_up' || p === 'measuring') {
+      target = 2;
+      if (phaseRef.current !== 'warming_up' && phaseRef.current !== 'measuring') {
+        // Haptic tap on successful placement
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Pop animation
+        Animated.sequence([
+          Animated.timing(beatAnim, { toValue: 1.05, duration: 150, useNativeDriver: true }),
+          Animated.timing(beatAnim, { toValue: 1, duration: 150, useNativeDriver: true })
+        ]).start();
+      }
+    }
+    else if (p === 'failed' || p === 'noperm') target = 3;
+    
+    Animated.timing(colorAnim, {
+      toValue: target,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: false
+    }).start();
+
+  }, [colorAnim, beatAnim]);
 
   const stopAll = useCallback(() => {
     progListener.current?.remove(); progListener.current = null;
     resListener.current?.remove(); resListener.current = null;
     errListener.current?.remove(); errListener.current = null;
+    beatListener.current?.remove(); beatListener.current = null;
     PpgScanner?.stopScan().catch(() => {});
   }, []);
 
@@ -58,7 +93,8 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
     setScanPct(0); setResult(null); setFailReason(null); setLiveHR(null);
     setSignalData([]);
     beatAnim.setValue(1);
-  }, [stopAll]);
+    colorAnim.setValue(0);
+  }, [stopAll, colorAnim, beatAnim]);
 
   useEffect(() => {
     if (visible) { resetAll(); go('idle'); Animated.timing(fadeAnim, {toValue: 1, duration: 350, useNativeDriver: true}).start(); }
@@ -66,6 +102,7 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   }, [visible]);
 
   const onProgress = useCallback((data: any) => {
+    if (phaseRef.current === 'results') return;
     const { phase: p, progress, liveValue } = data;
     
     if (liveValue) {
@@ -76,22 +113,16 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
       });
     }
 
-    if (p === 'warming_up') {
-      go('warming_up');
+    if (p === 'warming_up' || p === 'measuring') {
+      go(p);
       setScanPct(progress / 100);
-    } else if (p === 'measuring') {
-      go('measuring');
-      setScanPct(progress / 100);
-    } else if (p === 'candidate') {
-      go('candidate');
-    } else if (p === 'waiting') {
-      go('waiting');
-    } else if (p === 'processing') {
-      go('processing');
+    } else if (p === 'candidate' || p === 'waiting' || p === 'processing') {
+      go(p);
     }
   }, [go]);
 
   const onResult = useCallback((data: any) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     go('results');
     setLiveHR(data.heartRateBpm);
     setResult({
@@ -110,47 +141,83 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
     });
   }, [go]);
 
-  const onError = useCallback((data: any) => {
+  const onError = useCallback((data: any) => { if (phaseRef.current === 'results') return;
     if (data.code === 'E_NO_PERMISSION') {
       go('noperm');
+    } else if (data.code === 'signal_lost') {
+      // Signal lost mid-scan
+      setFailReason(data.message);
+      go('waiting'); // go back to waiting, but we could show a toast. For now, waiting clears it, let's keep it simple.
     } else {
       setFailReason(data.message || 'Unknown error');
       go('failed');
     }
   }, [go]);
 
+  const onBeat = useCallback(() => {
+    if (phaseRef.current === 'warming_up' || phaseRef.current === 'measuring') {
+      const now = Date.now();
+      beatTimes.current.push(now);
+      if (beatTimes.current.length > 5) beatTimes.current.shift();
+      if (beatTimes.current.length >= 3) {
+        const first = beatTimes.current[0];
+        const last = beatTimes.current[beatTimes.current.length - 1];
+        const avgInterval = (last - first) / (beatTimes.current.length - 1);
+        const bpm = Math.round(60000 / avgInterval);
+        if (bpm > 40 && bpm < 200) setLiveHR(bpm);
+      }
+      
+      Animated.sequence([
+        Animated.timing(beatAnim, { toValue: 1.08, duration: 100, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(beatAnim, { toValue: 1.0, duration: 100, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+        Animated.delay(50),
+        Animated.timing(beatAnim, { toValue: 1.04, duration: 100, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(beatAnim, { toValue: 1.0, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+      ]).start();
+    }
+  }, [beatAnim]);
+
   const beginScan = useCallback(async () => {
     go('waiting');
     progListener.current = PpgEmitter.addListener('ppgProgress', onProgress);
     resListener.current = PpgEmitter.addListener('ppgResult', onResult);
     errListener.current = PpgEmitter.addListener('ppgError', onError);
+    beatListener.current = PpgEmitter.addListener('ppgBeat', onBeat);
     try {
       await PpgScanner.startScan();
     } catch (e: any) {
       if (e.code === 'E_NO_PERMISSION') go('noperm');
       else { setFailReason(e.message); go('failed'); }
     }
-  }, [resetAll, go, onProgress, onResult, onError]);
+  }, [resetAll, go, onProgress, onResult, onError, onBeat]);
 
-  // Premium heartbeat animation during scan
+  // Idle breathing animation when in NOT_DETECTED
   useEffect(() => {
-    if (phase === 'warming_up' || phase === 'measuring') {
+    if (phase === 'waiting') {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(beatAnim, { toValue: 1.1, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-          Animated.timing(beatAnim, { toValue: 1.0, duration: 150, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-          Animated.delay(100),
-          Animated.timing(beatAnim, { toValue: 1.05, duration: 150, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-          Animated.timing(beatAnim, { toValue: 1.0, duration: 550, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+          Animated.timing(beatAnim, { toValue: 1.03, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(beatAnim, { toValue: 1.0, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ])
       );
       loop.start();
       return () => loop.stop();
     }
-    Animated.spring(beatAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
-  }, [phase]);
+    // Note: We don't force it to 1 here because the per-beat animation might be running in measuring state.
+  }, [phase, beatAnim]);
 
   const handleClose = useCallback(() => { stopAll(); onClose(); }, [stopAll, onClose]);
+
+  // Color interpolation
+  const strokeColor = colorAnim.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: ['#4b5563', '#fbbf24', '#10b981', '#ef4444']
+  });
+  
+  const strokeWidth = colorAnim.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [2, 4, 4, 3]
+  });
 
   // Construct graph path
   let points = '';
@@ -170,11 +237,11 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   const renderIdle = () => (
     <View style={S.phase}>
       <View style={S.heroGroup}>
-        <Ionicons name="pulse" size={64} color={accentColor} />
+        <Ionicons name="pulse" size={64} color="#f43f5e" />
         <Text style={S.bigTitle}>Bio-Stress Scan</Text>
         <Text style={S.desc}>Cover the back camera and flash entirely with your index finger.</Text>
       </View>
-      <TouchableOpacity style={[S.startBtn, { backgroundColor: accentColor }]} onPress={beginScan}>
+      <TouchableOpacity style={[S.startBtn, { backgroundColor: '#f43f5e' }]} onPress={beginScan}>
         <Text style={S.startTxt}>Start Scan</Text>
       </TouchableOpacity>
       <TouchableOpacity style={S.cancelBtn} onPress={handleClose}><Text style={S.cancelTxt}>Cancel</Text></TouchableOpacity>
@@ -188,22 +255,21 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
         {/* The Heart Camera View */}
         <View style={S.heartWrapper}>
           {Platform.OS === 'android' && (
-            <View style={StyleSheet.absoluteFill}>
-              <PpgCameraPreview style={{ flex: 1 }} />
+            <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+              <PpgCameraPreview style={{ width: '100%', height: '100%' }} />
             </View>
           )}
           
           <Animated.View style={[S.heartMask, { transform: [{ scale: beatAnim }] }]} pointerEvents="none">
-            <Svg width={SCAN_W} height={SCAN_H} viewBox="0 0 200 190">
-              {/* This cuts the transparent hole exactly in the shape of the heart */}
+            <Svg width={SCAN_W} height={SCAN_H} viewBox="0 0 220 205">
               <Path d={INVERSE_HEART} fill="#000" fillRule="evenodd" />
-              <Path d={HEART} fill="none" stroke={accentColor} strokeWidth="3" />
+              <AnimatedPath d={HEART} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
             </Svg>
             
             {/* Overlay Text Inside the Heart */}
             {(phase === 'warming_up' || phase === 'measuring') && (
               <View style={S.bpmOverlay}>
-                <Text style={S.bpmValue}>--</Text>
+                <Text style={S.bpmValue}>{liveHR || '--'}</Text>
                 <Text style={S.bpmLabel}>BPM</Text>
               </View>
             )}
@@ -216,9 +282,9 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
             <Svg width="100%" height="100%">
               <Defs>
                 <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0" stopColor={accentColor} stopOpacity="0" />
-                  <Stop offset="0.5" stopColor={accentColor} stopOpacity="1" />
-                  <Stop offset="1" stopColor={accentColor} stopOpacity="0" />
+                  <Stop offset="0" stopColor="#10b981" stopOpacity="0" />
+                  <Stop offset="0.5" stopColor="#10b981" stopOpacity="1" />
+                  <Stop offset="1" stopColor="#10b981" stopOpacity="0" />
                 </LinearGradient>
               </Defs>
               <Polyline points={points} fill="none" stroke="url(#grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -231,18 +297,21 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
       {/* Bottom Status & Instruction Card */}
       <View style={S.bottomSection}>
         {phase === 'waiting' || phase === 'candidate' ? (
-          <View style={{ alignItems: 'center', marginBottom: 30 }}>
-            <Ionicons name="finger-print-outline" size={24} color="#fff" style={{ marginBottom: 8 }} />
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+          <View style={{ alignItems: 'center', marginBottom: 30, minHeight: 60 }}>
+            <Ionicons name={phase === 'candidate' ? 'scan-outline' : 'finger-print-outline'} size={24} color={phase === 'candidate' ? '#fbbf24' : '#fff'} style={{ marginBottom: 8 }} />
+            <Text style={{ color: phase === 'candidate' ? '#fbbf24' : '#fff', fontSize: 16, fontWeight: '600' }}>
               {phase === 'candidate' ? 'Hold still...' : '👆 No finger detected'}
             </Text>
+            {failReason && phase === 'waiting' && (
+              <Text style={{ color: '#ef4444', fontSize: 14, marginTop: 8 }}>{failReason}</Text>
+            )}
           </View>
         ) : (
-          <View style={{ alignItems: 'center', marginBottom: 30 }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+          <View style={{ alignItems: 'center', marginBottom: 30, minHeight: 60 }}>
+            <Text style={{ color: '#10b981', fontSize: 16, fontWeight: '600' }}>
               {phase === 'warming_up' ? 'Warming Up Sensor' : 'Collecting Data'}
             </Text>
-            <Text style={{ color: accentColor, fontSize: 14, fontWeight: '700', marginTop: 4 }}>
+            <Text style={{ color: '#10b981', fontSize: 14, fontWeight: '700', marginTop: 4 }}>
               {Math.round(scanPct * 100)}%
             </Text>
           </View>
@@ -250,10 +319,9 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
 
         <View style={S.premiumCard}>
           <Text style={S.cardTitle}>
-            Cover the camera with your finger until <Text style={{ color: accentColor }}>❤️</Text> turns red
+            Cover the camera with your finger until <Text style={{ color: '#10b981' }}>❤️</Text> turns green
           </Text>
           <View style={S.cardIllustration}>
-            {/* Placeholder for hand illustration */}
             <Ionicons name="phone-portrait-outline" size={48} color="#444" />
             <Ionicons name="hand-right" size={32} color="#888" style={{ position: 'absolute', top: 20, right: '30%' }} />
           </View>
@@ -268,7 +336,7 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
 
   const renderProcessing = () => (
     <View style={[S.phase, { justifyContent: 'center', alignItems: 'center' }]}>
-      <ActivityIndicator size="large" color={accentColor} />
+      <ActivityIndicator size="large" color="#10b981" />
       <Text style={[S.bigTitle, { marginTop: 24 }]}>Analyzing HRV...</Text>
     </View>
   );
@@ -276,7 +344,7 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   const renderFailed = () => (
     <View style={[S.phase, { justifyContent: 'center', alignItems: 'center', gap: 20 }]}>
       <Ionicons name="warning-outline" size={52} color="#ef4444" />
-      <Text style={S.bigTitle}>Scan Failed</Text>
+      <Text style={S.bigTitle}>Scan Interrupted</Text>
       <Text style={S.desc}>{failReason}</Text>
       <TouchableOpacity style={[S.startBtn, { backgroundColor: '#333' }]} onPress={() => { resetAll(); go('idle'); }}>
         <Text style={S.startTxt}>Try Again</Text>
@@ -315,10 +383,17 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
               <Text style={S.resVal}>{liveHR} BPM</Text>
             </View>
             <View style={[S.resRow, { borderBottomWidth: 0, marginTop: 12 }]}>
-              <Text style={S.resKey}>Stress Score</Text>
-              <Text style={[S.resVal, { color: result.color, fontSize: 24 }]}>{result.score}/100</Text>
+              <Text style={S.resKey}>Baevsky Stress Index</Text>
+              <Text style={[S.resVal, { color: result.color, fontSize: 24 }]}>{result.score}</Text>
             </View>
           </View>
+          
+          <Text style={S.sectionTitle}>What does this mean?</Text>
+          <Text style={{ color: '#9ca3af', fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
+            The Baevsky Stress Index (SI) is a clinical measure of autonomic nervous system balance based on your Heart Rate Variability. 
+            Scores between 50-150 indicate low stress and good recovery. Scores above 500 indicate high sympathetic activity (elevated stress).
+            This is a general wellness indicator, not a diagnostic value.
+          </Text>
           
           <Text style={S.sectionTitle}>Recommendations</Text>
           {result.advice.map((adv: any, i: number) => (
@@ -354,6 +429,8 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
     </Modal>
   );
 }
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const S = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)' },

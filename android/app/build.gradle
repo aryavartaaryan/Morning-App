@@ -82,6 +82,21 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
+    packagingOptions {
+        pickFirst 'META-INF/DEPENDENCIES'
+        pickFirst 'META-INF/LICENSE'
+        pickFirst 'META-INF/LICENSE.txt'
+        pickFirst 'META-INF/license.txt'
+        pickFirst 'META-INF/LICENSE.md'
+        pickFirst 'META-INF/license.md'
+        pickFirst 'META-INF/NOTICE'
+        pickFirst 'META-INF/NOTICE.txt'
+        pickFirst 'META-INF/notice.txt'
+        pickFirst 'META-INF/NOTICE.md'
+        pickFirst 'META-INF/notice.md'
+        pickFirst 'META-INF/ASL2.0'
+        pickFirst("META-INF/*.kotlin_module") 
+    }
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -189,5 +204,10 @@ dependencies {
 
 apply plugin: 'com.google.gms.google-services'
 dependencies {
-    implementation 'com.github.psambit9791:jdsp:3.1.1'
+    implementation('com.github.psambit9791:jdsp:3.1.1') {
+        exclude group: 'org.apache.maven.surefire'
+        exclude group: 'junit'
+        exclude group: 'org.junit.jupiter'
+        exclude group: 'org.junit.platform'
+    }
 }

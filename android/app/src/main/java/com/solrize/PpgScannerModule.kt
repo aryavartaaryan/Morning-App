@@ -3,8 +3,11 @@ package com.solrize
 import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.CameraManager
+import android.content.Context
 import android.util.Log
 import android.util.Size
+import android.view.WindowManager
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -16,6 +19,8 @@ import java.util.LinkedList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.pow
+import android.os.Handler
+import android.os.Looper
 
 class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -30,36 +35,37 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         
         // --- TUNABLE CONSTANTS FOR FINGER DETECTION ---
         // Mean channel intensity expected from a finger absorbing flashlight.
-        const val INTENSITY_THRESHOLD_MIN = 10.0
-        const val INTENSITY_THRESHOLD_MAX = 180.0
+        // We widen this slightly because different skin tones have different absolute reflectances.
+        const val INTENSITY_THRESHOLD_MIN = 5.0
+        const val INTENSITY_THRESHOLD_MAX = 220.0
         
         // Maximum allowed spatial variance across the frame ROI.
-        // Finger pressed against lens scatters light evenly (low variance < 400).
-        // Walls, floors, or waving hands produce textures/edges (high variance > 1000).
         const val MAX_SPATIAL_VARIANCE = 500.0 
         
         // Maximum allowed temporal variance over a 15-frame window.
-        // Stable finger contact has tiny pulse fluctuations.
-        // Moving the phone or waving hand causes massive frame-to-frame swings.
         const val MAX_TEMPORAL_VARIANCE = 150.0 
         
-        // Hysteresis frames
-        const val FRAMES_TO_CANDIDATE = 5
-        const val FRAMES_TO_CONFIRM_DETECTED = 15 // 5+10
-        const val FRAMES_TO_CONFIRM_LOST = 10
+        // Hysteresis wall-clock durations (agnostic to frame drops)
+        const val TIME_TO_CANDIDATE_MS = 150L
+        const val TIME_TO_CONFIRM_DETECTED_MS = 500L
+        const val TIME_TO_CONFIRM_LOST_MS = 300L
         
         // Durations
         const val WARMUP_DURATION_MS = 10_000L
         const val MEASURE_DURATION_MS = 60_000L
+        
+        // Watchdog
+        const val WATCHDOG_TIMEOUT_MS = 2500L
     }
 
     private var cameraProvider: ProcessCameraProvider? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile private var isRunning = false
     @Volatile private var previewSurfaceProvider: Preview.SurfaceProvider? = null
     
-    private var lastFrameTs = 0L
+    @Volatile private var lastFrameProcessedTs = 0L
     
     // Main scan state machine
     private enum class State { IDLE, WAITING, WARMUP, MEASURING }
@@ -69,14 +75,33 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     // Finger detection state machine
     private enum class FingerState { NOT_DETECTED, CANDIDATE, DETECTED }
     private var fingerState = FingerState.NOT_DETECTED
-    private var validFrameCount = 0
-    private var invalidFrameCount = 0
+    private var qualifyingStartMs = 0L
+    private var invalidStartMs = 0L
     private val recentMeans = LinkedList<Double>()
+    private var lastBeatTs = 0L
     
     private val signalData = mutableListOf<DataPoint>()
     private var lastProgressPct = -1
+    
+    private var torchCallback: CameraManager.TorchCallback? = null
 
     override fun getName() = "PpgScanner"
+
+    private var latestAfState: Int = -1
+
+    private val watchdogRunnable = object : Runnable {
+        override fun run() {
+            if (!isRunning) return
+            val now = System.currentTimeMillis()
+            if (lastFrameProcessedTs > 0 && now - lastFrameProcessedTs > WATCHDOG_TIMEOUT_MS) {
+                Log.e(TAG, "Watchdog triggered: no frames for ${now - lastFrameProcessedTs}ms")
+                emitError("camera_interrupted", "The camera was interrupted or stopped unexpectedly.")
+                stopScanInternal()
+            } else {
+                mainHandler.postDelayed(this, 1000)
+            }
+        }
+    }
 
     fun setPreviewSurfaceProvider(provider: Preview.SurfaceProvider?) {
         previewSurfaceProvider = provider
@@ -104,6 +129,13 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             promise.reject("E_NO_PERMISSION", "Camera permission required")
             return
         }
+        
+        // Prevent screen from sleeping/dozing mid-scan
+        activity.runOnUiThread {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        
+        setupTorchCallback()
 
         val future = ProcessCameraProvider.getInstance(reactContext)
         future.addListener({
@@ -113,12 +145,15 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 
                 isRunning = true
                 currentState = State.WAITING
+                lastFrameProcessedTs = System.currentTimeMillis()
                 
                 fingerState = FingerState.NOT_DETECTED
-                validFrameCount = 0
-                invalidFrameCount = 0
+                qualifyingStartMs = 0L
+                invalidStartMs = 0L
                 recentMeans.clear()
                 signalData.clear()
+                
+                mainHandler.postDelayed(watchdogRunnable, WATCHDOG_TIMEOUT_MS)
                 
                 promise.resolve(null)
             } catch (e: Exception) {
@@ -129,25 +164,65 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun stopScan(promise: Promise) {
+        stopScanInternal()
+        promise.resolve(null)
+    }
+    
+    private fun stopScanInternal() {
         isRunning = false
         currentState = State.IDLE
+        mainHandler.removeCallbacks(watchdogRunnable)
+        
+        val activity = reactContext.currentActivity
+        activity?.runOnUiThread {
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        
+        teardownTorchCallback()
         try { cameraProvider?.unbindAll() } catch (_: Exception) {}
-        promise.resolve(null)
+    }
+    
+    private fun setupTorchCallback() {
+        val manager = reactContext.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+        if (manager == null) return
+        
+        torchCallback = object : CameraManager.TorchCallback() {
+            override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+                if (isRunning && !enabled) {
+                    // Torch was disabled mid-scan, likely due to thermal throttling
+                    Log.w(TAG, "Torch was disabled mid-scan. Thermal throttling?")
+                    emitError("torch_disabled", "Your phone paused the flash to prevent overheating. Please try again in a few minutes.")
+                    stopScanInternal()
+                }
+            }
+        }
+        manager.registerTorchCallback(torchCallback!!, mainHandler)
+    }
+    
+    private fun teardownTorchCallback() {
+        if (torchCallback != null) {
+            val manager = reactContext.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+            manager?.unregisterTorchCallback(torchCallback!!)
+            torchCallback = null
+        }
     }
 
     private fun rebindCamera(activity: android.app.Activity) {
         val analysisBuilder = ImageAnalysis.Builder()
+            // The image analyzer resolves resolution implicitly if omitted, but let's request 320x240 safely:
             .setTargetResolution(Size(320, 240))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
             
-        // Lock AE, AWB, AF to prevent them from fighting the PPG signal.
-        // AF_MODE_OFF additionally ensures the lens stays at a fixed physical focus distance, 
-        // acting as a pseudo-proximity lock (Signal 4).
         val ext = Camera2Interop.Extender(analysisBuilder)
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, true)
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, true)
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO) // Try to focus so we can read failure state
+        
+        ext.setSessionCaptureCallback(object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {
+            override fun onCaptureCompleted(session: android.hardware.camera2.CameraCaptureSession, request: android.hardware.camera2.CaptureRequest, result: android.hardware.camera2.TotalCaptureResult) {
+                // We don't have direct access to write to the proxy tag bundle here, so we'll store the latest state
+                latestAfState = result.get(android.hardware.camera2.CaptureResult.CONTROL_AF_STATE) ?: -1
+            }
+        })
 
         val analysis = analysisBuilder.build()
         analysis.setAnalyzer(cameraExecutor) { proxy -> processFrame(proxy) }
@@ -166,7 +241,18 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             CameraSelector.DEFAULT_BACK_CAMERA,
             *useCases.toTypedArray()
         )
-        camera?.cameraControl?.enableTorch(true)
+        
+        val future = camera?.cameraControl?.enableTorch(true)
+        future?.addListener({
+            try {
+                future.get() // Will throw if torch failed to turn on
+                Log.d(TAG, "Torch successfully enabled via CameraX")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enable torch via future", e)
+                emitError("hardware_error", "Couldn't access your flash. Check that no other app is using the camera and try again.")
+                stopScanInternal()
+            }
+        }, ContextCompat.getMainExecutor(reactContext))
     }
     
     data class FrameStats(val mean: Double, val spatialVariance: Double)
@@ -176,9 +262,8 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             val now = System.currentTimeMillis()
             if (!isRunning) return
             
-            if (now - lastFrameTs < FRAME_INTERVAL_MS - 5) return 
-            lastFrameTs = now
-
+            lastFrameProcessedTs = now
+            
             val stats = extractGreenChannelStats(proxy)
             
             recentMeans.add(stats.mean)
@@ -189,21 +274,46 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 recentMeans.sumOf { (it - tMean).pow(2) } / (recentMeans.size - 1)
             } else 0.0
 
-            // Multi-signal fusion detection logic
             val isIntensityOk = stats.mean in INTENSITY_THRESHOLD_MIN..INTENSITY_THRESHOLD_MAX
             val isSpatialOk = stats.spatialVariance <= MAX_SPATIAL_VARIANCE
             val isTemporalOk = fingerState == FingerState.NOT_DETECTED || tVar <= MAX_TEMPORAL_VARIANCE
             
+            // Treat the lens being physically unable to focus (CONTROL_AF_STATE_NOT_FOCUSED_LOCKED = 5) 
+            // as a POSITIVE confidence booster, since a finger pressed flat on a lens is closer than the minimum macro distance
+            val hasProximityConfidence = latestAfState == android.hardware.camera2.CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED || latestAfState == android.hardware.camera2.CaptureResult.CONTROL_AF_STATE_INACTIVE
+            
+            // It remains a booster, not a hard gate, allowing graceful degradation
             val isQualifying = isIntensityOk && isSpatialOk && isTemporalOk
             
+            val activeTimeToCandidateMs = if (hasProximityConfidence) TIME_TO_CANDIDATE_MS / 2 else TIME_TO_CANDIDATE_MS
+            val activeTimeToConfirmMs = if (hasProximityConfidence) TIME_TO_CONFIRM_DETECTED_MS / 2 else TIME_TO_CONFIRM_DETECTED_MS
+            
+            // Very simple real-time beat detection strictly for UI animation.
+            // A real heartbeat causes a sudden drop in green reflection (blood absorbs green light).
+            if (isQualifying && recentMeans.size >= 5) {
+                val pastMean = recentMeans[recentMeans.size - 5]
+                val diff = stats.mean - pastMean
+                if (diff < -1.0 && now - lastBeatTs > 350) {
+                    lastBeatTs = now
+                    emitEvent("ppgBeat", Arguments.createMap())
+                }
+            }
+            
+            // Log for structured telemetry
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Frame stats: mean=${String.format("%.2f", stats.mean)}, spatialVar=${String.format("%.2f", stats.spatialVariance)}, temporalVar=${String.format("%.2f", tVar)} | qualify=$isQualifying")
+            }
+            
             if (isQualifying) {
-                invalidFrameCount = 0
-                validFrameCount++
+                invalidStartMs = 0L
+                if (qualifyingStartMs == 0L) qualifyingStartMs = now
                 
-                if (fingerState == FingerState.NOT_DETECTED && validFrameCount >= FRAMES_TO_CANDIDATE) {
+                val qualifyDuration = now - qualifyingStartMs
+                
+                if (fingerState == FingerState.NOT_DETECTED && qualifyDuration >= activeTimeToCandidateMs) {
                     fingerState = FingerState.CANDIDATE
                     emitProgress("candidate", 0)
-                } else if (fingerState == FingerState.CANDIDATE && validFrameCount >= FRAMES_TO_CONFIRM_DETECTED) {
+                } else if (fingerState == FingerState.CANDIDATE && qualifyDuration >= activeTimeToConfirmMs) {
                     fingerState = FingerState.DETECTED
                     
                     if (currentState == State.WAITING || currentState == State.IDLE) {
@@ -213,10 +323,12 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                     }
                 }
             } else {
-                validFrameCount = 0
-                invalidFrameCount++
+                qualifyingStartMs = 0L
+                if (invalidStartMs == 0L) invalidStartMs = now
                 
-                if (fingerState != FingerState.NOT_DETECTED && invalidFrameCount >= FRAMES_TO_CONFIRM_LOST) {
+                val invalidDuration = now - invalidStartMs
+                
+                if (fingerState != FingerState.NOT_DETECTED && invalidDuration >= TIME_TO_CONFIRM_LOST_MS) {
                     fingerState = FingerState.NOT_DETECTED
                     
                     if (currentState == State.WARMUP || currentState == State.MEASURING) {
@@ -229,7 +341,6 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 }
             }
 
-            // Only collect data if the finger is firmly DETECTED
             if (fingerState == FingerState.DETECTED) {
                 when (currentState) {
                     State.WARMUP -> {
@@ -259,7 +370,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Frame error", e)
+            Log.e(TAG, "Unhandled exception in frame processing", e)
         } finally {
             proxy.close()
         }
@@ -301,7 +412,6 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                     val uVal = (uBuffer[uIdx].toInt() and 0xFF).toDouble() - 128.0
                     val vVal = (vBuffer[vIdx].toInt() and 0xFF).toDouble() - 128.0
 
-                    // G = Y - 0.344*U - 0.714*V
                     var gVal = yVal - 0.344 * uVal - 0.714 * vVal
                     if (gVal < 0) gVal = 0.0
                     if (gVal > 255) gVal = 255.0
@@ -324,6 +434,9 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     private fun processSignalAndEmitResult() {
         emitProgress("processing", 100)
         
+        // BUG 2 FIX: Actually shut down the camera/torch so it stops processing frames and burning battery
+        stopScanInternal()
+        
         Thread {
             try {
                 val processor = SignalProcessor()
@@ -344,6 +457,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                     emitError("signal_noisy", "We couldn't get a clean reading. Please keep your finger still.")
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Unhandled exception in signal processing thread", e)
                 emitError("processing_error", "An error occurred while calculating your score.")
             }
         }.start()
@@ -379,8 +493,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod fun removeListeners(count: Int) {}
 
     override fun onCatalystInstanceDestroy() {
-        isRunning = false
+        stopScanInternal()
         cameraExecutor.shutdown()
-        try { cameraProvider?.unbindAll() } catch (_: Exception) {}
     }
 }
