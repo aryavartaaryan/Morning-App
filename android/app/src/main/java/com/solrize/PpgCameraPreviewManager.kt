@@ -1,55 +1,58 @@
 package com.solrize
 
+import android.content.Context
+import android.widget.FrameLayout
+import android.view.View.MeasureSpec
 import androidx.camera.view.PreviewView
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
 
-/**
- * PpgCameraPreviewManager
- *
- * Exposes a native Android CameraX PreviewView to React Native as 'PpgCameraPreview'.
- * When mounted, it registers its SurfaceProvider with PpgScannerModule so the camera
- * session includes a live preview alongside the silent ImageAnalysis stream.
- *
- * Lifecycle:
- *   Mount   → setPreviewSurfaceProvider(view.surfaceProvider)
- *   Unmount → setPreviewSurfaceProvider(null)
- */
+class PpgCameraPreviewWrapper(context: Context) : FrameLayout(context) {
+    val previewView = PreviewView(context).apply {
+        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        scaleType = PreviewView.ScaleType.FILL_CENTER
+    }
+
+    init {
+        val params = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        addView(previewView, params)
+    }
+
+    private val measureAndLayout = Runnable {
+        measure(
+            MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+        )
+        layout(left, top, right, bottom)
+    }
+
+    override fun requestLayout() {
+        super.requestLayout()
+        post(measureAndLayout)
+    }
+}
+
 class PpgCameraPreviewManager(
     private val reactContext: ReactApplicationContext
-) : SimpleViewManager<PreviewView>() {
+) : SimpleViewManager<PpgCameraPreviewWrapper>() {
 
     override fun getName() = "PpgCameraPreview"
 
-    override fun createViewInstance(context: ThemedReactContext): PreviewView {
-        val view = object : PreviewView(context) {
-            override fun requestLayout() {
-                super.requestLayout()
-                post(measureAndLayout)
-            }
-            private val measureAndLayout = Runnable {
-                measure(
-                    MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
-                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
-                )
-                layout(left, top, right, bottom)
-            }
-        }.apply {
-            // COMPATIBLE mode works with all Android GPU configs
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            // FILL_CENTER: fills the view, centred, cropping edges
-            scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
-        // Register with the running scanner module
+    override fun createViewInstance(context: ThemedReactContext): PpgCameraPreviewWrapper {
+        val wrapper = PpgCameraPreviewWrapper(context)
+        
         reactContext
             .getNativeModule(PpgScannerModule::class.java)
-            ?.setPreviewSurfaceProvider(view.surfaceProvider)
+            ?.setPreviewSurfaceProvider(wrapper.previewView.surfaceProvider)
 
-        return view
+        return wrapper
     }
 
-    override fun onDropViewInstance(view: PreviewView) {
+    override fun onDropViewInstance(view: PpgCameraPreviewWrapper) {
         reactContext
             .getNativeModule(PpgScannerModule::class.java)
             ?.setPreviewSurfaceProvider(null)
