@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Animated, Platform, Easing, requireNativeComponent } from 'react-native';
+import { View, Text, PermissionsAndroid, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Animated, Platform, Easing, requireNativeComponent } from 'react-native';
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -145,9 +145,24 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
       color = '#f59e0b'; label = 'Moderate Stress'; emoji = '🤔';
       subtitle = 'You are experiencing moderate strain.';
     }
+
+    let hrvColor = '#3b82f6';
+    let hrvLabel = 'Typical / Normal';
+    let hrvSubtitle = 'In line with the general healthy adult average.';
+    
+    if (data.rmssd < 19) {
+      hrvColor = '#8b5cf6';
+      hrvLabel = 'Lower than typical';
+      hrvSubtitle = 'Lower parasympathetic activity than the general adult average.';
+    } else if (data.rmssd > 75) {
+      hrvColor = '#0ea5e9';
+      hrvLabel = 'Higher than typical';
+      hrvSubtitle = 'Generally favorable, often seen in fit individuals.';
+    }
     
     setResult({
       ...data, color, label, emoji, subtitle,
+      hrvColor, hrvLabel, hrvSubtitle,
       advice: [
         'Take 5 deep breaths focusing on exhaling slowly.',
         'Consider a short meditation session.'
@@ -192,6 +207,17 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
   }, [beatAnim]);
 
   const beginScan = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          go('noperm');
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    }
     go('waiting');
     progListener.current = PpgEmitter.addListener('ppgProgress', onProgress);
     resListener.current = PpgEmitter.addListener('ppgResult', onResult);
@@ -276,13 +302,11 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
           
           <Animated.View style={[S.heartMask, { transform: [{ scale: beatAnim }] }]} pointerEvents="none">
             <Svg width={SCAN_W} height={SCAN_H} viewBox="0 0 220 205">
-              <Defs>
-                <Mask id="hole">
-                  <Rect x="-10" y="-10" width="250" height="250" fill="white" />
-                  <Path d={HEART} fill="black" />
-                </Mask>
-              </Defs>
-              <Rect x="-10" y="-10" width="250" height="250" fill="black" mask="url(#hole)" />
+              <Path 
+                d={`M-10,-10 L-10,250 L250,250 L250,-10 Z ${HEART}`} 
+                fill="#000" 
+                fillRule="nonzero" 
+              />
               <AnimatedPath d={HEART} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
             </Svg>
             
@@ -395,20 +419,35 @@ export default function StressScanner({ visible, onClose, onPlaySound }: any) {
           
           <View style={[S.resCard, { borderColor: result.color }]}>
             <View style={S.resRow}>
-              <Text style={S.resKey}>HRV (RMSSD){'\n'}<Text style={{fontSize: 12, color: '#666'}}>Short-term rhythm variation</Text></Text>
-              <Text style={S.resVal}>{result.rmssd} ms</Text>
-            </View>
-            <View style={S.resRow}>
-              <Text style={S.resKey}>SDNN{'\n'}<Text style={{fontSize: 12, color: '#666'}}>Overall variability</Text></Text>
-              <Text style={S.resVal}>{result.sdnn} ms</Text>
-            </View>
-            <View style={S.resRow}>
               <Text style={S.resKey}>Heart Rate</Text>
               <Text style={S.resVal}>{liveHR} BPM</Text>
             </View>
             <View style={[S.resRow, { borderBottomWidth: 0, marginTop: 12 }]}>
               <Text style={S.resKey}>Baevsky Stress Index</Text>
-              <Text style={[S.resVal, { color: result.color, fontSize: 24 }]}>{result.score}</Text>
+              <Text style={[S.resVal, { color: result.color, fontSize: 24 }]}>{result.stressScore}</Text>
+            </View>
+          </View>
+
+          <Text style={S.sectionTitle}>Heart Rate Variability (HRV)</Text>
+          <View style={[S.resCard, { borderColor: result.hrvColor, backgroundColor: '#161b22' }]}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: result.hrvColor, marginBottom: 4 }}>{result.hrvLabel}</Text>
+            
+            <View style={S.resRow}>
+              <Text style={S.resKey}>RMSSD (Short-term)</Text>
+              <Text style={S.resVal}>{result.rmssd} ms</Text>
+            </View>
+            <View style={[S.resRow, { borderBottomWidth: 0 }]}>
+              <Text style={S.resKey}>SDNN (Overall)</Text>
+              <Text style={S.resVal}>{result.sdnn} ms</Text>
+            </View>
+            
+            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#333' }}>
+              <Text style={{ color: '#9ca3af', fontSize: 13, lineHeight: 20 }}>
+                {result.hrvSubtitle} 
+              </Text>
+              <Text style={{ color: '#6b7280', fontSize: 13, lineHeight: 20, marginTop: 8, fontStyle: 'italic' }}>
+                Note: This compares to the general population (Nunan et al.). A single reading is just one data point. Tracking your personal trend over time is far more meaningful.
+              </Text>
             </View>
           </View>
           
