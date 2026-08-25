@@ -46,13 +46,21 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
         const val MAX_TEMPORAL_VARIANCE = 150.0 
         
         // Hysteresis wall-clock durations (agnostic to frame drops)
-        const val TIME_TO_CANDIDATE_MS = 100L
-        const val TIME_TO_CONFIRM_DETECTED_MS = 400L
+        const val TIME_TO_CANDIDATE_MS    = 100L
         const val TIME_TO_CONFIRM_LOST_MS = 300L
+        // Pulsatility gate: require ~3.5 s of real periodic signal (autocorrelation)
+        // before confirming DETECTED. Prevents false-positives from still objects that
+        // pass brightness/uniformity checks but have no actual heartbeat. Adds ~3-4 s
+        // of lock-in latency — the correct tradeoff for measurement credibility.
+        const val PULSATILITY_WINDOW_MS   = 3_500L
+        const val PULSATILITY_THRESHOLD   = 0.12    // normalized autocorrelation minimum
         
         // Durations
         const val WARMUP_DURATION_MS = 10_000L
-        const val MEASURE_DURATION_MS = 60_000L
+        // 30 s ultra-short-term HRV window (Salahuddin et al. 2007; Pecchia et al. 2011).
+        // PRODUCT DECISION: accepted modest accuracy tradeoff vs 60 s to reduce friction.
+        // SignalProcessor's 50-interval gate still enforces minimum data quality.
+        const val MEASURE_DURATION_MS = 30_000L
         
         // Watchdog
         const val WATCHDOG_TIMEOUT_MS = 2500L
@@ -77,7 +85,8 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
     private var fingerState = FingerState.NOT_DETECTED
     private var qualifyingStartMs = 0L
     private var invalidStartMs = 0L
-    private val recentMeans = LinkedList<Double>()
+    private val recentMeans = LinkedList<Double>()  // 15-frame temporal variance window
+    private val pulsatilityBuffer = LinkedList<Double>()  // up to 150 frames for AC check
     private var lastBeatTs = 0L
     
     private val signalData = mutableListOf<DataPoint>()
@@ -151,6 +160,7 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 qualifyingStartMs = 0L
                 invalidStartMs = 0L
                 recentMeans.clear()
+                pulsatilityBuffer.clear()
                 signalData.clear()
                 
                 mainHandler.postDelayed(watchdogRunnable, WATCHDOG_TIMEOUT_MS)
@@ -291,7 +301,6 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             val isQualifying = isIntensityOk && isSpatialOk && isTemporalOk
             
             val activeTimeToCandidateMs = if (hasProximityConfidence) TIME_TO_CANDIDATE_MS / 2 else TIME_TO_CANDIDATE_MS
-            val activeTimeToConfirmMs = if (hasProximityConfidence) TIME_TO_CONFIRM_DETECTED_MS / 2 else TIME_TO_CONFIRM_DETECTED_MS
             
             // Very simple real-time beat detection strictly for UI animation.
             // A real heartbeat causes a sudden drop in green reflection (blood absorbs green light).
@@ -312,31 +321,56 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
             if (isQualifying) {
                 invalidStartMs = 0L
                 if (qualifyingStartMs == 0L) qualifyingStartMs = now
-                
+
+                // Accumulate signal for pulsatility check during CANDIDATE state
+                if (fingerState == FingerState.CANDIDATE) {
+                    pulsatilityBuffer.add(stats.mean)
+                    if (pulsatilityBuffer.size > 150) pulsatilityBuffer.removeFirst()
+                }
+
                 val qualifyDuration = now - qualifyingStartMs
-                
+
                 if (fingerState == FingerState.NOT_DETECTED && qualifyDuration >= activeTimeToCandidateMs) {
                     fingerState = FingerState.CANDIDATE
-                    recentMeans.clear() // Clear transition variance so we lock in instantly!
+                    recentMeans.clear()       // clear variance buffer so temporal check resets cleanly
+                    pulsatilityBuffer.clear() // fresh pulsatility window for this candidate
                     emitProgress("candidate", 0)
-                } else if (fingerState == FingerState.CANDIDATE && qualifyDuration >= activeTimeToConfirmMs) {
-                    fingerState = FingerState.DETECTED
-                    
-                    if (currentState == State.WAITING || currentState == State.IDLE) {
-                        currentState = State.WARMUP
-                        stateStartTime = now
-                        signalData.clear()
+
+                } else if (fingerState == FingerState.CANDIDATE && qualifyDuration >= activeTimeToCandidateMs + PULSATILITY_WINDOW_MS) {
+                    // We have collected enough signal — run the autocorrelation pulsatility check.
+                    // This is the genuine gate: static checks (brightness/uniformity/stability) alone
+                    // cannot distinguish a real fingertip from any still, smooth object on the lens.
+                    // Only a periodic pulsatile waveform (40-200bpm range) confirms a living finger.
+                    if (hasPulsatileSignal(pulsatilityBuffer.toList())) {
+                        // ✓ Real heartbeat confirmed — transition to DETECTED
+                        fingerState = FingerState.DETECTED
+                        if (currentState == State.WAITING || currentState == State.IDLE) {
+                            currentState = State.WARMUP
+                            stateStartTime = now
+                            signalData.clear()
+                        }
+                    } else {
+                        // ✗ No periodic signal found — this is NOT a real finger.
+                        // Reset to NOT_DETECTED and emit a specific "no heartbeat" message
+                        // rather than generic "no finger" — because the object IS covering
+                        // the lens, it's just not producing a real pulse.
+                        Log.d(TAG, "Pulsatility check failed — not a real finger")
+                        fingerState = FingerState.NOT_DETECTED
+                        qualifyingStartMs = 0L
+                        pulsatilityBuffer.clear()
+                        emitProgress("no_pulse", 0)
                     }
                 }
             } else {
                 qualifyingStartMs = 0L
                 if (invalidStartMs == 0L) invalidStartMs = now
-                
+
                 val invalidDuration = now - invalidStartMs
-                
+
                 if (fingerState != FingerState.NOT_DETECTED && invalidDuration >= TIME_TO_CONFIRM_LOST_MS) {
                     fingerState = FingerState.NOT_DETECTED
-                    
+                    pulsatilityBuffer.clear()
+
                     if (currentState == State.WARMUP || currentState == State.MEASURING) {
                         emitError("signal_lost", "Signal lost. Please keep your finger firmly on the camera.")
                         currentState = State.WAITING
@@ -467,6 +501,49 @@ class PpgScannerModule(private val reactContext: ReactApplicationContext) :
                 emitError("processing_error", "An error occurred while calculating your score.")
             }
         }.start()
+    }
+
+    /**
+     * hasPulsatileSignal — Autocorrelation-based periodicity check.
+     *
+     * Method: Normalized autocorrelation R(τ) = Σ x[i]·x[i+τ] / (n−τ) / R(0)
+     * Lag range: 9–45 frames @ 30fps → corresponds to 200bpm–40bpm.
+     * A real fingertip PPG signal has a dominant periodic component at the heart rate
+     * that produces a clear autocorrelation peak in this range.
+     * A still object (phone case, palm, wall) has near-flat variance and no periodic
+     * autocorrelation peak — it will return false.
+     *
+     * Threshold: 0.12 (12% normalized correlation) is conservative enough to reject
+     * noise but lenient enough to detect weak-perfusion signals (cold hands, dark skin).
+     */
+    private fun hasPulsatileSignal(signal: List<Double>): Boolean {
+        val n = signal.size
+        if (n < 90) return false  // need at least ~3 s at 30fps
+
+        val mean = signal.sumOf { it } / n
+        val centered = DoubleArray(n) { signal[it] - mean }
+
+        // R(0) = average squared deviation = variance proxy
+        val r0 = centered.sumOf { it * it } / n
+        if (r0 < 0.5) {
+            // Signal is nearly flat — definitely not a pulsating finger
+            Log.d(TAG, "Pulsatility: signal too flat (r0=${String.format("%.3f", r0)})")
+            return false
+        }
+
+        // Find maximum normalized autocorrelation in the 40-200bpm lag range
+        var maxCorr = -1.0
+        var bestLag  = 0
+        for (lag in 9..45) {
+            var sum = 0.0
+            for (i in 0 until n - lag) sum += centered[i] * centered[i + lag]
+            val corr = (sum / (n - lag)) / r0
+            if (corr > maxCorr) { maxCorr = corr; bestLag = lag }
+        }
+
+        val estBpm = if (bestLag > 0) (1800.0 / bestLag).toInt() else 0
+        Log.d(TAG, "Pulsatility: maxCorr=${String.format("%.3f", maxCorr)} at lag=$bestLag (~${estBpm}bpm) threshold=$PULSATILITY_THRESHOLD → ${maxCorr >= PULSATILITY_THRESHOLD}")
+        return maxCorr >= PULSATILITY_THRESHOLD
     }
 
     private fun emitProgress(phase: String, pct: Int, liveValue: Double = 0.0) {

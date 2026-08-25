@@ -391,6 +391,7 @@ const SOUND_PERIODS: Record<string, string[]> = {
   tanpura_breath:       ['night_vata', 'afternoon_vata', 'evening_kapha', 'night_pitta'],
   tanpura_loop:         ['night_vata', 'morning_kapha', 'evening_kapha'],
   raga_tanpura_drone:   ['night_vata', 'morning_kapha', 'afternoon_vata', 'evening_kapha'],
+
   // ── World (afternoon & evening) ──────────────────────────────────────────
   sargija_eastern:      ['afternoon_vata', 'evening_kapha'],
   tagore_festival:      ['morning_kapha', 'midday_pitta'],
@@ -468,30 +469,20 @@ export type SonicCollection = {
 };
 
 export const SONIC_COLLECTIONS: SonicCollection[] = [
-  // ─── Deity ───────────────────────────────────────────────────────────────
-  { id: 'divine_resonance', title: 'Divine Resonance', subtitle: 'COSMIC HARMONY', description: 'Powerful ancient chants of Shiva, Devi, and Vishnu. Dissolve stress and tune into deep, unshakeable stillness.', imageUri: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash', 'naad_om_shivaya_meditation', 'mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini', 'cdn_surya_sukta', 'naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'naad_muladhara_flute', 'cdn_auspicious_mantras', 'med_vishnu_sahasranamam'] },
-  // ─── Nature ──────────────────────────────────────────────────────────────
-  { id: 'elemental_immersion', title: 'Elemental Immersion', subtitle: "NATURE'S EMBRACE", description: 'The timeless healing rhythm of ocean waves and cleansing rain. Let the elements wash away your thoughts and carry you into deep rest.', imageUri: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#0ea5e9', soundIds: ['sea_waves', 'light_rain', 'heavy_rain', 'rocky_shore', 'harbor_waves', 'rain_thunder', 'jungle_rain', 'jungle_storm', 'flowing_water', 'cdn_monsoon_megh', 'cdn_monsoon_temple', 'night_jungle_chiangmai', 'naad_flute_rain_ambiance', 'gentle_wind', 'wanderlust', 'city_night', 'campfire', 'forest_breeze', 'night_forest'] },
-  { id: 'sacred_birds', title: 'Sacred Bird Songs', subtitle: "INDIA'S DAWN CHORUS", description: "The peacock, koel, cuckoo and eagle — nature's most sacred musicians at daybreak.", imageUri: 'https://images.pexels.com/photos/8538423/pexels-photo-8538423.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#4ade80', soundIds: ['morning_birds', 'spring_birds', 'forest_birds', 'peacock_wild', 'peacock_call', 'koel_bird', 'cuckoo_forest', 'cuckoo_birds_forest', 'cuckoo_chime', 'india_countryside_birds', 'eagle_feather'] },
-  // ─── Instruments ─────────────────────────────────────────────────────────
+  { id: 'nada_ultra', title: 'NadaUltra · Premium Ragas', subtitle: 'RARE LONG-FORM', description: 'Long-form classical Indian ragas and healing tracks — professionally mastered for deep listening.', imageUri: 'https://images.pexels.com/photos/10996827/pexels-photo-10996827.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['indian_beats', 'naad_tabla_110', 'naad_tabla_flute_i', 'naad_tabla_flute_i_sleep', 'naad_tabla_flute_ii', 'naad_tabla_flute_iii', 'naad_tabla_flute_strings_i', 'naad_tabla_flute_strings_ii', 'naad_calming_tabla_flute', 'naad_sitar_tabla_flute', 'naad_sitar_tabla_flute_sleep', 'naad_indian_flute_tabla_mix', 'naad_festive_dholak_dance', 'naad_tabla_dance', 'naad_old_gold_tabla', 'naad_rhythm_riot', 'cdn_naad_sangam', 'cdn_naad_targan', 'cdn_yaman_mental', 'cdn_bhimpalasi', 'cdn_bhimpalasi_sleep', 'cdn_hansdhwani_432', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_calm_sunrise', 'cdn_jogiya_morning', 'cdn_yaman_jugalbandi', 'cdn_darbari_silence', 'cdn_bageshree_sleep', 'cdn_eternal_union', 'cdn_carnatic_essence', 'cdn_carnatic_flow', 'cdn_what_are_ragas', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_raga_sparkle', 'naad_wind_mountain_raga', 'cdn_ultra_brindavani_celestial', 'cdn_ultra_brindavani_thumri', 'cdn_ultra_darbari_kanaad', 'cdn_ultra_raag_lalit', 'cdn_ultra_raag_marwa', 'cdn_ultra_raag_marwa_sleep', 'cdn_ultra_raag_marwa_meditation', 'cdn_ultra_raag_patdeep', 'cdn_ultra_raag_patdeep_sleep', 'cdn_ultra_raag_puriya', 'cdn_ultra_ahir_bhairav_flute', 'cdn_ultra_ahir_bhairav_flute_sleep', 'cdn_ultra_neelambari', 'cdn_ultra_raag_bahar_528', 'cdn_ultra_raag_bahar_528_sleep', 'cdn_ultra_dopamine_healing', 'cdn_ultra_heavy_rain_night', 'cdn_hansdhwani_432_sleep', 'cdn_bhairav_soul_sleep', 'cdn_new_0', 'cdn_new_1', 'cdn_new_2', 'cdn_new_3', 'cdn_new_4', 'cdn_new_4_sleep', 'cdn_new_4_med', 'cdn_new_5', 'cdn_new_5_med', 'cdn_new_5_sleep', 'cdn_new_6', 'cdn_new_7', 'cdn_new_8', 'cdn_new_9', 'cdn_new_11', 'cdn_new_12', 'cdn_new_12_sleep', 'cdn_new_13', 'cdn_new_14', 'cdn_new_15', 'cdn_new_16', 'cdn_new_16_sleep', 'cdn_new_17', 'cdn_new_21', 'cdn_new_22', 'cdn_new_22_sleep', 'cdn_new_23', 'cdn_new_25', 'cdn_new_26', 'cdn_new_27', 'cdn_new_28', 'cdn_new_29', 'cdn_new_29_sleep', 'cdn_new_30', 'cdn_new_31', 'cdn_new_33', 'cdn_new_34', 'cdn_new_34_sleep', 'cdn_new_35', 'cdn_new_36', 'cdn_new_37', 'cdn_new_38', 'cdn_new_39', 'cdn_new_39_sleep', 'cdn_new_41', 'cdn_new_42', 'cdn_new_43', 'cdn_new_44', 'cdn_new_45', 'cdn_new_46', 'cdn_new_47', 'cdn_new_47_sleep', 'cdn_new_48', 'cdn_new_49', 'cdn_new_51', 'cdn_new_52', 'cdn_new_52_sleep', 'cdn_new_53', 'med_raga_fusions', 'med_raga_fusions_sleep', 'med_ancient_tabla', 'nc_veena_mridangam_morning', 'nc_bansuri_carnatic_fusion', 'nc_carnatic_kacheri_trio', 'nc_carnatic_veena_violin', 'nc_divine_ragas_temple', 'nc_hampi_sitar_bansuri', 'nc_sitar_tabla_relaxation', 'nc_night_raga_folk_fusion', 'nc_nisha_raga_deepam', 'nc_raga_kalyani_carnatic', 'nc_raga_deepam_veena_flute_1', 'nc_raga_deepam_veena_flute_1_sleep', 'nc_raga_deepam_veena_flute_2', 'nc_raga_deepam_veena_flute_2_sleep', 'nc_puriya_dhanashri_sunset', 'nc_raga_wash_worries', 'nc_raga_wash_worries_sleep', 'nc_sitar_raga_ambient_tabla', 'nc_south_classical_carnatic', 'nc_south_jazz_fusion', 'nc_soulful_south_classical', 'nc_soulful_south_classical_sleep', 'nc_timeless_ragas_carnatic', 'nc_temple_strings_sitar', 'nc_temple_rhythms_1hr', 'nc_sacred_temple_rhythms', 'nc_sacred_temple_rhythms_sleep', 'nc_happy_raga_bansuri', 'nc_veena_instrumental', 'nc_soft_santoor_ragas', 'nc_soft_santoor_sleep', 'nc_south_wedding_instrumental', 'nc_healing_music_deep_sleep', 'nc_sitar_overthinking_heal', 'nc_sitar_overthinking_heal_sleep', 'nc_krishna_flute_clarity', 'nc_darbari_kanaad_sitar', 'nc_sitar_432hz_deep_study', 'nc_indian_monsoon_melody', 'nc_indian_monsoon_melody_sleep', 'nc_devi_keerthanam', 'cuckoo_clock', 'cuckoo_soft'] },
+  { id: 'vedic_mantras', title: 'Vedic Mantras Library', subtitle: 'ANCIENT WISDOM', description: 'The complete Vedic canon — Suktams, Upanishads, and sacred stotrams for deep spiritual immersion.', imageUri: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#c084fc', soundIds: ['stotra_bhagya', 'cdn_auspicious_mantras', 'cdn_surya_sukta', 'naad_om_namah_shivaya', 'mantra_gayatri', 'med_om_chanting_new', 'med_om_chanting_new_sleep', 'med_tanpura_new', 'med_tanpura_new_sleep', 'med_ayushya_suktam', 'med_bhriguvalli', 'med_bhu_suktam', 'med_brahmananda_valli', 'med_devi_suktam', 'med_durga_suktam_1', 'med_durga_suktam_2', 'med_purusha_suktam', 'med_hiranyagarbha', 'med_ishavasya', 'med_mahanyasa', 'med_mahanyasa_sleep', 'med_mantrapushpam', 'med_medha_suktam', 'med_narayana_suktam', 'med_nasadeeya', 'med_navagraha', 'med_neela_suktam', 'med_samana_suktam', 'med_shanti_path', 'med_shikshavalli', 'med_shree_suktam', 'med_sri_chakra', 'med_sri_rudram_full', 'med_sri_rudram_namakam', 'med_sri_rudram_namo', 'med_sri_suktam', 'med_sudarshana', 'med_sudarshana_sleep', 'med_suryanamaskara', 'med_suryopanishad', 'med_swasti_vachan', 'med_vaidyanatha', 'med_rudri_path', 'med_vel_muruga', 'cdn_ultra_vedic_morning_prayers', 'cdn_ultra_vedic_healing_chant'] },
+  { id: 'divine_bhajans', title: 'Divine Bhajans & Stotras', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras'] },
+
   { id: 'sitar_tanpura', title: 'Sitar & Tanpura', subtitle: 'STRING RESONANCE', description: 'Strings tuned to ancient ragas and sustained drone. Dissolve the boundary between music and silence.', imageUri: 'https://images.pexels.com/photos/372281/pexels-photo-372281.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fbbf24', soundIds: ['sitar_radiance', 'sitar_calm', 'sitar_long', 'sitar', 'indian_sitar_raga', 'sitar_summer_raga', 'sitar_radiance_med', 'sitar_radiance_sleep', 'sitar_tanpura_sarangi', 'sitar_tanpura_bgm', 'naad_sitar_moonlight', 'naad_sitar_temple', 'naad_sitar_holistic', 'naad_sitar_holistic_med', 'naad_sitar_holistic_sleep', 'naad_raga_sparkle', 'naad_raga_sparkle_sleep', 'naad_aar_sitar_classical', 'naad_aar_sitar_flute', 'naad_golden_sitar_432', 'naad_sitar_vibes_i', 'naad_sitar_vibes_ii', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_short_classical_sitar', 'naad_indian_sitar_tune', 'naad_sitar_type_beat', 'cdn_sitar_tabla_soul', 'tanpura_sacred_432hz', 'tanpura_breath', 'tanpura_loop', 'raga_tanpura_drone', 'tanpura_mystic', 'tanpura_mystic_sleep', 'tanpura_mystic_meditation', 'tanpura_serene', 'veena_raga', 'veena_classical', 'naad_hang_drum_tabla', 'naad_hang_flute_meditation', 'om_shanti'] },
   { id: 'bansuri_flutes', title: 'Bansuri & Flutes', subtitle: 'BREATH OF GOD', description: 'The flute speaks what words cannot. Ancient bamboo breath for deep mental stillness.', imageUri: 'https://images.pexels.com/photos/5386063/pexels-photo-5386063.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#34d399', soundIds: ['bansuri_forest', 'bansuri_melody', 'bansuri_melody_sleep', 'bansuri_tarana', 'bansuri_tarana_sleep', 'bamboo_flute', 'andean_flute', 'native_flute', 'native_flute_echo', 'morning_flute', 'naad_zen_bamboo_flow', 'naad_zen_bamboo_flow_sleep', 'naad_ancestors_flute', 'naad_relaxing_flute', 'naad_relaxing_flute_sleep', 'naad_pure_flute_melody', 'naad_emotional_flute', 'naad_wind_mountain_raga', 'naad_summer_flute_tabla', 'naad_flute_tabla_remastered', 'naad_bansuri_tabla_fusion', 'naad_sitar_flute_tabla_soft', 'naad_indian_flute_tabla_mix', 'naad_indian_flute_tabla_mix_sleep', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
-
-  // ─── Ragas & World ───────────────────────────────────────────────────────
-
   { id: 'world_strings', title: 'World Strings', subtitle: 'GLOBAL RESONANCE', description: 'String instruments from across the world. Diverse cultures, one universal sound.', imageUri: 'https://images.pexels.com/photos/3775601/pexels-photo-3775601.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['sargija_eastern', 'naad_traditional_koto', 'naad_indian_fusion', 'world_ambient', 'tagore_festival', 'heaven_tune', 'naad_bhajan_flute_tabla', 'cdn_naad_targan', 'spiritual_journey', 'reincarnation_tones'] },
-  // ─── Healing & Sleep ─────────────────────────────────────────────────────
   { id: 'healing_frequencies', title: 'Healing Frequencies', subtitle: '432HZ & BEYOND', description: 'Sound as medicine. Ancient singing bowls and frequencies calibrated to restore cellular and spiritual harmony.', imageUri: 'https://images.pexels.com/photos/32180834/pexels-photo-32180834.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#818cf8', soundIds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'tibetan_dreams', 'reincarnation_tones', 'tanpura_sacred_432hz', 'naad_golden_sitar_432', 'cdn_hansdhwani_432', 'sitar_summer_raga', 'indian_beats', 'om_shanti', 'morning_flute', 'spiritual_journey', 'naad_om_shivaya_meditation', 'naad_hang_drum_tabla', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
   { id: 'sleep_sanctuary', title: 'Sleep Sanctuary', subtitle: 'DEEP SLEEP', description: 'The most effective sounds for falling asleep fast and sleeping through the night.', imageUri: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#6366f1', soundIds: ['light_rain', 'harbor_waves', 'night_forest', 'campfire', 'bansuri_melody_sleep', 'tanpura_mystic_sleep', 'naad_shiva_panchakshara_sleep', 'naad_sitar_tabla_flute_sleep', 'naad_zen_bamboo_flow_sleep', 'naad_relaxing_flute_sleep', 'naad_tabla_flute_i_sleep', 'cdn_bageshree_sleep', 'cdn_bhimpalasi_sleep', 'naad_bhajan_flute_tabla', 'sitar_radiance_sleep', 'bansuri_tarana_sleep', 'naad_himalayan_village_flute_sleep', 'naad_sitar_holistic_sleep'] },
   { id: 'morning_awakening', title: 'Morning Awakening', subtitle: 'BRAHMA MUHURTA', description: 'The sacred pre-dawn hours. Gentle sounds to greet consciousness as it rises.', imageUri: 'https://images.pexels.com/photos/9265973/pexels-photo-9265973.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fcd34d', soundIds: ['morning_birds', 'spring_birds', 'hz_432', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_jogiya_morning', 'cdn_surya_sukta', 'tibetan_bowl', 'tanpura_sacred_432hz', 'bansuri_forest', 'sitar_radiance_med', 'tanpura_mystic_meditation', 'om_shanti'] },
-  // ─── NadaUltra & New CDN ─────────────────────────────────────────────────
-  { id: 'nada_ultra', title: 'NadaUltra · Premium Ragas', subtitle: 'RARE LONG-FORM', description: 'Long-form classical Indian ragas and healing tracks — professionally mastered for deep listening.', imageUri: 'https://images.pexels.com/photos/10996827/pexels-photo-10996827.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['indian_beats', 'naad_tabla_110', 'naad_tabla_flute_i', 'naad_tabla_flute_i_sleep', 'naad_tabla_flute_ii', 'naad_tabla_flute_iii', 'naad_tabla_flute_strings_i', 'naad_tabla_flute_strings_ii', 'naad_calming_tabla_flute', 'naad_sitar_tabla_flute', 'naad_sitar_tabla_flute_sleep', 'naad_indian_flute_tabla_mix', 'naad_festive_dholak_dance', 'naad_tabla_dance', 'naad_old_gold_tabla', 'naad_rhythm_riot', 'cdn_naad_sangam', 'cdn_naad_targan', 'cdn_yaman_mental', 'cdn_bhimpalasi', 'cdn_bhimpalasi_sleep', 'cdn_hansdhwani_432', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_calm_sunrise', 'cdn_jogiya_morning', 'cdn_yaman_jugalbandi', 'cdn_darbari_silence', 'cdn_bageshree_sleep', 'cdn_eternal_union', 'cdn_carnatic_essence', 'cdn_carnatic_flow', 'cdn_what_are_ragas', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_raga_sparkle', 'naad_wind_mountain_raga', 'cdn_ultra_brindavani_celestial', 'cdn_ultra_brindavani_thumri', 'cdn_ultra_darbari_kanaad', 'cdn_ultra_raag_lalit', 'cdn_ultra_raag_marwa', 'cdn_ultra_raag_marwa_sleep', 'cdn_ultra_raag_marwa_meditation', 'cdn_ultra_raag_patdeep', 'cdn_ultra_raag_patdeep_sleep', 'cdn_ultra_raag_puriya', 'cdn_ultra_ahir_bhairav_flute', 'cdn_ultra_ahir_bhairav_flute_sleep', 'cdn_ultra_neelambari', 'cdn_ultra_raag_bahar_528', 'cdn_ultra_raag_bahar_528_sleep', 'cdn_ultra_dopamine_healing', 'cdn_ultra_heavy_rain_night', 'cdn_hansdhwani_432_sleep', 'cdn_bhairav_soul_sleep', 'cdn_new_0', 'cdn_new_1', 'cdn_new_2', 'cdn_new_3', 'cdn_new_4', 'cdn_new_4_sleep', 'cdn_new_4_med', 'cdn_new_5', 'cdn_new_5_med', 'cdn_new_5_sleep', 'cdn_new_6', 'cdn_new_7', 'cdn_new_8', 'cdn_new_9', 'cdn_new_11', 'cdn_new_12', 'cdn_new_12_sleep', 'cdn_new_13', 'cdn_new_14', 'cdn_new_15', 'cdn_new_16', 'cdn_new_16_sleep', 'cdn_new_17', 'cdn_new_21', 'cdn_new_22', 'cdn_new_22_sleep', 'cdn_new_23', 'cdn_new_25', 'cdn_new_26', 'cdn_new_27', 'cdn_new_28', 'cdn_new_29', 'cdn_new_29_sleep', 'cdn_new_30', 'cdn_new_31', 'cdn_new_33', 'cdn_new_34', 'cdn_new_34_sleep', 'cdn_new_35', 'cdn_new_36', 'cdn_new_37', 'cdn_new_38', 'cdn_new_39', 'cdn_new_39_sleep', 'cdn_new_41', 'cdn_new_42', 'cdn_new_43', 'cdn_new_44', 'cdn_new_45', 'cdn_new_46', 'cdn_new_47', 'cdn_new_47_sleep', 'cdn_new_48', 'cdn_new_49', 'cdn_new_51', 'cdn_new_52', 'cdn_new_52_sleep', 'cdn_new_53', 'med_raga_fusions', 'med_raga_fusions_sleep', 'med_ancient_tabla', 'nc_veena_mridangam_morning', 'nc_bansuri_carnatic_fusion', 'nc_carnatic_kacheri_trio', 'nc_carnatic_veena_violin', 'nc_divine_ragas_temple', 'nc_hampi_sitar_bansuri', 'nc_sitar_tabla_relaxation', 'nc_night_raga_folk_fusion', 'nc_nisha_raga_deepam', 'nc_raga_kalyani_carnatic', 'nc_raga_deepam_veena_flute_1', 'nc_raga_deepam_veena_flute_1_sleep', 'nc_raga_deepam_veena_flute_2', 'nc_raga_deepam_veena_flute_2_sleep', 'nc_puriya_dhanashri_sunset', 'nc_raga_wash_worries', 'nc_raga_wash_worries_sleep', 'nc_sitar_raga_ambient_tabla', 'nc_south_classical_carnatic', 'nc_south_jazz_fusion', 'nc_soulful_south_classical', 'nc_soulful_south_classical_sleep', 'nc_timeless_ragas_carnatic', 'nc_temple_strings_sitar', 'nc_temple_rhythms_1hr', 'nc_sacred_temple_rhythms', 'nc_sacred_temple_rhythms_sleep', 'nc_happy_raga_bansuri', 'nc_veena_instrumental', 'nc_soft_santoor_ragas', 'nc_soft_santoor_sleep', 'nc_south_wedding_instrumental', 'nc_healing_music_deep_sleep', 'nc_sitar_overthinking_heal', 'nc_sitar_overthinking_heal_sleep', 'nc_krishna_flute_clarity', 'nc_darbari_kanaad_sitar', 'nc_sitar_432hz_deep_study', 'nc_indian_monsoon_melody', 'nc_indian_monsoon_melody_sleep', 'nc_devi_keerthanam', 'cuckoo_clock', 'cuckoo_soft'] },
-  // ─── Carnatic South India ────────────────────────────────────────────────
 
-  // ─── Vedic Mantras Library ───────────────────────────────────────────────
-  { id: 'vedic_mantras', title: 'Vedic Mantras Library', subtitle: 'ANCIENT WISDOM', description: 'The complete Vedic canon — Suktams, Upanishads, and sacred stotrams for deep spiritual immersion.', imageUri: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#c084fc', soundIds: ['stotra_bhagya', 'cdn_auspicious_mantras', 'cdn_surya_sukta', 'naad_om_namah_shivaya', 'mantra_gayatri', 'med_om_chanting_new', 'med_om_chanting_new_sleep', 'med_tanpura_new', 'med_tanpura_new_sleep', 'med_ayushya_suktam', 'med_bhriguvalli', 'med_bhu_suktam', 'med_brahmananda_valli', 'med_devi_suktam', 'med_durga_suktam_1', 'med_durga_suktam_2', 'med_purusha_suktam', 'med_hiranyagarbha', 'med_ishavasya', 'med_mahanyasa', 'med_mahanyasa_sleep', 'med_mantrapushpam', 'med_medha_suktam', 'med_narayana_suktam', 'med_nasadeeya', 'med_navagraha', 'med_neela_suktam', 'med_samana_suktam', 'med_shanti_path', 'med_shikshavalli', 'med_shree_suktam', 'med_sri_chakra', 'med_sri_rudram_full', 'med_sri_rudram_namakam', 'med_sri_rudram_namo', 'med_sri_suktam', 'med_sudarshana', 'med_sudarshana_sleep', 'med_suryanamaskara', 'med_suryopanishad', 'med_swasti_vachan', 'med_vaidyanatha', 'med_rudri_path', 'med_vel_muruga', 'cdn_ultra_vedic_morning_prayers', 'cdn_ultra_vedic_healing_chant'] },
-  // ─── Divine Bhajans & Stotras ────────────────────────────────────────────
-  { id: 'divine_bhajans', title: 'Divine Bhajans & Stotras', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras'] },
+  { id: 'divine_resonance', title: 'Divine Resonance', subtitle: 'COSMIC HARMONY', description: 'Powerful ancient chants of Shiva, Devi, and Vishnu. Dissolve stress and tune into deep, unshakeable stillness.', imageUri: 'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#818cf8', soundIds: ['mantra_shivtandav', 'stotra_shiv_sankalpa', 'naad_shiva_nirvana_mantra', 'naad_shiva_panchakshara', 'naad_shiva_panchakshara_sleep', 'naad_om_namah_shivaya', 'naad_shiv_swarnamala', 'cdn_kaal_bhairav', 'cdn_lingashtakam', 'cdn_nirvana_shatakam', 'cdn_shiv_rudrashtakam', 'cdn_shiv_swarnamala', 'cdn_shiv_kailash', 'naad_om_shivaya_meditation', 'mantra_lalitha', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_aigiri_nandini', 'cdn_surya_sukta', 'naad_govinda_mantra', 'naad_krishna_flute_i', 'naad_krishna_flute_ii', 'naad_muladhara_flute', 'cdn_auspicious_mantras', 'med_vishnu_sahasranamam'] },
+  { id: 'elemental_immersion', title: 'Elemental Immersion', subtitle: "NATURE'S EMBRACE", description: 'The timeless healing rhythm of ocean waves and cleansing rain. Let the elements wash away your thoughts and carry you into deep rest.', imageUri: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800&q=90', themeColor: '#0ea5e9', soundIds: ['sea_waves', 'light_rain', 'heavy_rain', 'rocky_shore', 'harbor_waves', 'rain_thunder', 'jungle_rain', 'jungle_storm', 'flowing_water', 'cdn_monsoon_megh', 'cdn_monsoon_temple', 'night_jungle_chiangmai', 'naad_flute_rain_ambiance', 'gentle_wind', 'wanderlust', 'city_night', 'campfire', 'forest_breeze', 'night_forest'] },
+  { id: 'sacred_birds', title: 'Sacred Bird Songs', subtitle: "INDIA'S DAWN CHORUS", description: "The peacock, koel, cuckoo and eagle — nature's most sacred musicians at daybreak.", imageUri: 'https://images.pexels.com/photos/8538423/pexels-photo-8538423.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#4ade80', soundIds: ['morning_birds', 'spring_birds', 'forest_birds', 'peacock_wild', 'peacock_call', 'koel_bird', 'cuckoo_forest', 'cuckoo_birds_forest', 'cuckoo_chime', 'india_countryside_birds', 'eagle_feather'] }
 ];
 
 
@@ -2224,6 +2215,13 @@ const ReelCard = memo(function ReelCard({
   const kbAnim = useRef(new Animated.Value(0)).current;
 
   const externalBreath = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isActive) return;
+    Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 12000, useNativeDriver: true, easing: Easing.linear })
+    ).start();
+  }, [isActive, spinAnim]);
   useEffect(() => {
     if (!isActive) return;
     Animated.loop(Animated.sequence([
@@ -2358,20 +2356,11 @@ const ReelCard = memo(function ReelCard({
   }, [isActive, isPlaying, isPaused, getPositionMs]);
 
   const handleScreenTap = useCallback(() => {
-    bumpControlsRef.current();
     if (durationOpen) { setDurationOpen(false); return; }
-    isPlaying ? onToggle() : onPlay();
-    playTapScaleAnim.setValue(0.6);
-    playTapAnim.setValue(0);
-    Animated.parallel([
-      Animated.timing(playTapAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
-      Animated.spring(playTapScaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
-    ]).start();
-    if (playTapTimerRef.current) clearTimeout(playTapTimerRef.current);
-    playTapTimerRef.current = setTimeout(() => {
-      Animated.timing(playTapAnim, { toValue: 0, duration: 380, useNativeDriver: true }).start();
-    }, 1100);
-  }, [isPlaying, isPaused, durationOpen]);
+    // User requested touching screen anywhere should NOT cause play/pause.
+    // It should just toggle the UI visibility or bump controls.
+    bumpControlsRef.current();
+  }, [durationOpen]);
 
   useEffect(() => {
     if (isActive) {
@@ -2508,6 +2497,17 @@ const ReelCard = memo(function ReelCard({
           backgroundColor: '#0A0C10',
         }}>
 
+        {/* ── Always-visible instant gradient placeholder ─────────────── */}
+        {/* This renders immediately in the sound's theme color, ensuring   */}
+        {/* there is NEVER a blank/black frame — even before the image      */}
+        {/* arrives. It's covered by the ExpoImage once loaded.            */}
+        <LinearGradient
+          colors={[(sound.color ?? '#333333') + '40', sound.top ?? '#050505', sound.bot ?? '#000000', '#000']}
+          locations={[0, 0.3, 0.7, 1]}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+
         {finalSource ? (
           <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
             <Animated.View style={[
@@ -2521,17 +2521,13 @@ const ReelCard = memo(function ReelCard({
               transition={0}
               cachePolicy="memory-disk"
               priority="high"
+              recyclingKey={String(sound.id)}
               onError={() => setImgLoadFailed(true)}
             />
           </Animated.View>
         </View>
-      ) : (
-        <LinearGradient
-          colors={[(sound.color ?? '#333333') + '40', sound.top ?? '#050505', sound.bot ?? '#000000', '#000']}
-          locations={[0, 0.3, 0.7, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      )}
+      ) : null}
+
 
       {/* ── Deep atmospheric overlay - keeps image visible ── */}
       <LinearGradient
@@ -2647,85 +2643,123 @@ const ReelCard = memo(function ReelCard({
       </Animated.View>
 
       {/* ── BOTTOM TEXT & SCRUBBER CLUSTER ── */}
-      <Animated.View
+      <View
         style={{
           position: 'absolute',
           bottom: Platform.OS === 'ios' ? insets.bottom + 36 : 44,
           left: 24, right: 24,
           alignItems: 'center',
-          zIndex: 9, opacity: controlsAnim,
+          zIndex: 9,
         }}
         pointerEvents="box-none"
       >
-        {/* Title — Ultra premium, centered, elegant font weight */}
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: '600',
-            color: '#FFFFFF',
-            letterSpacing: 0.6,
-            textAlign: 'center',
-            textShadowColor: 'rgba(0,0,0,0.85)',
-            textShadowOffset: { width: 0, height: 2 },
-            textShadowRadius: 14,
-            marginBottom: 10,
-          }}
-          numberOfLines={1}
-        >
-          {sound.label}
-        </Text>
-
-        {/* Floating Mini-Player (Skip / Timer / Skip) */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 32 }}>
-          {/* Skip Back */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
-            activeOpacity={0.6}
-            disabled={!hasPrev}
-            style={{ opacity: hasPrev ? 0.9 : 0.25, padding: 12 }}
+        {/* Title — Fades away */}
+        <Animated.View style={{ opacity: controlsAnim }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#FFFFFF',
+              letterSpacing: 0.6,
+              textAlign: 'center',
+              textShadowColor: 'rgba(0,0,0,0.85)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 14,
+              marginBottom: 10,
+            }}
+            numberOfLines={1}
           >
-            <Ionicons name="play-skip-back" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
+            {sound.label}
+          </Text>
+        </Animated.View>
 
-          {/* Timer Pill */}
+        {/* Floating Mini-Player - ALWAYS VISIBLE, ULTRA PREMIUM GLASS */}
+        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 32, gap: 16 }}>
+          
+          {/* Timer Pill - Moved above the transport controls */}
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDurationOpen(v => !v); }}
             activeOpacity={0.75}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: durationOpen ? (sound.color + '35') : 'rgba(255,255,255,0.06)',
-              paddingHorizontal: 16, paddingVertical: 10,
-              borderRadius: 30,
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: durationOpen ? (sound.color + '40') : 'rgba(0,0,0,0.4)',
+              paddingHorizontal: 14, paddingVertical: 6,
+              borderRadius: 20,
               borderWidth: StyleSheet.hairlineWidth,
               borderColor: durationOpen ? sound.color : 'rgba(255,255,255,0.15)',
+              shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
             }}
           >
             {(() => {
               const opt = activeDurationOptions.find(o => o.id === selectedDurationId) ?? (activeDurationOptions.find(o => o.id === '1h') || activeDurationOptions[0]);
               return (
                 <>
-                  <Ionicons name={opt.icon} size={14} color={durationOpen ? sound.color : 'rgba(255,255,255,0.85)'} />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.85)', letterSpacing: 0.5 }}>{opt.label}</Text>
+                  <Ionicons name={opt.icon} size={13} color={durationOpen ? sound.color : 'rgba(255,255,255,0.9)'} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: durationOpen ? sound.color : 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>{opt.label}</Text>
                 </>
               );
             })()}
           </TouchableOpacity>
 
-          {/* Skip Forward */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
-            activeOpacity={0.6}
-            disabled={!hasNext}
-            style={{ opacity: hasNext ? 0.9 : 0.25, padding: 12 }}
-          >
-            <Ionicons name="play-skip-forward" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
+          {/* Transport Controls */}
+          <BlurView intensity={45} tint="dark" style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24,
+            paddingHorizontal: 28, paddingVertical: 14,
+            borderRadius: 40,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)',
+            shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 20, shadowOffset: { width: 0, height: 10 },
+            overflow: 'hidden'
+          }}>
+            {/* Skip Back */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPrev?.(); }}
+              activeOpacity={0.6}
+              disabled={!hasPrev}
+              style={{ opacity: hasPrev ? 1 : 0.3, padding: 8 }}
+            >
+              <Ionicons name="play-skip-back" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            {/* Play/Pause Button - Unique Premium Design */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); isPlaying ? onToggle() : onPlay(); }}
+              activeOpacity={0.8}
+              style={{
+                width: 64, height: 64, borderRadius: 32,
+                backgroundColor: sound.color ? (sound.color + '30') : 'rgba(255,255,255,0.1)',
+                borderWidth: 1.5, borderColor: sound.color ? (sound.color + '80') : 'rgba(255,255,255,0.4)',
+                alignItems: 'center', justifyContent: 'center',
+                shadowColor: sound.color || '#fff', shadowOpacity: 0.4, shadowRadius: 15, shadowOffset: { width: 0, height: 0 },
+              }}
+            >
+              {isActive && isAudioLoading && !isPlaying ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons
+                  name={(isPlaying && !isPaused) ? 'pause' : 'play'}
+                  size={32} color="#FFFFFF"
+                  style={{ marginLeft: (isPlaying && !isPaused) ? 0 : 3 }}
+                />
+              )}
+            </TouchableOpacity>
+
+            {/* Skip Forward */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onNext?.(); }}
+              activeOpacity={0.6}
+              disabled={!hasNext}
+              style={{ opacity: hasNext ? 1 : 0.3, padding: 8 }}
+            >
+              <Ionicons name="play-skip-forward" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+          </BlurView>
         </View>
 
         {/* Timer dropdown */}
         {durationOpen && (
           <View style={{
-            position: 'absolute', top: -140, // pop up above the button
+            position: 'absolute', bottom: 130, // pop up above the button
             width: 158,
             backgroundColor: 'rgba(8,9,14,0.97)',
             borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)',
@@ -2756,8 +2790,8 @@ const ReelCard = memo(function ReelCard({
           </View>
         )}
 
-        {/* Progress bar */}
-        <View style={{ width: '100%' }}>
+        {/* Progress bar — Fades away */}
+        <Animated.View style={{ width: '100%', opacity: controlsAnim }}>
           <View
             style={{ height: 28, justifyContent: 'center' }}
             {...scrubPan.panHandlers}
@@ -2803,8 +2837,8 @@ const ReelCard = memo(function ReelCard({
               {formatTimeMs(trackDurMs)}
             </Text>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
 
       {/* ── SPLIT LINE: Liquid Waveform Visualizer sits exactly at the 60% split ── */}
 
@@ -3247,23 +3281,30 @@ const SoundReelsModal = memo(function SoundReelsModal({
 
   useEffect(() => {
     if (!visible) return;
+    // Prefetch ahead images into expo-image memory cache (instant) AND disk cache (persistent)
     const ahead = [activeIndex, activeIndex + 1, activeIndex + 2];
     ahead.forEach(i => {
       const s = reelData[i];
       if (!s) return;
       const rawUri = SOUND_IMAGES[s.id] ?? (s as any).imageUri;
-      if (rawUri && !SOUND_BUNDLED_IMAGES[s.id] && !isSoundImageCached(rawUri)) {
-        ensureSoundImageCached(rawUri).catch(() => {});
-      }
+      if (!rawUri || SOUND_BUNDLED_IMAGES[s.id]) return;
+      const localUri = getLocalSoundImageUri(rawUri);
+      // expo-image memory cache: image already decoded in RAM → zero latency on render
+      ExpoImage.prefetch(localUri).catch(() => {});
+      // disk cache: ensure it's persisted for future opens
+      if (!isSoundImageCached(rawUri)) ensureSoundImageCached(rawUri).catch(() => {});
     });
   }, [activeIndex, visible, reelData]);
 
   useEffect(() => {
     if (!visible) return;
-    [activeIndex + 1, activeIndex + 2, activeIndex - 1].forEach(i => {
-      const s = reelData[i];
-      if (s) preBufferSound(s).catch(() => {});
-    });
+    const t = setTimeout(() => {
+      [activeIndex + 1, activeIndex + 2, activeIndex - 1].forEach(i => {
+        const s = reelData[i];
+        if (s) preBufferSound(s).catch(() => {});
+      });
+    }, 600); // Delay pre-buffering until after the UI has mounted instantly
+    return () => clearTimeout(t);
   }, [activeIndex, visible, reelData]);
 
   useEffect(() => {
@@ -3279,6 +3320,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
     });
     return () => sub.remove();
   }, [visible]);
+
 
   if (!visible) {
     return null;
@@ -3315,7 +3357,10 @@ const SoundReelsModal = memo(function SoundReelsModal({
         getItemLayout={(_, index) => ({ length: REEL_W, offset: REEL_W * index, index })}
         initialScrollIndex={startIndex > 0 ? startIndex : undefined}
         initialNumToRender={1}
-        windowSize={7}
+        maxToRenderPerBatch={1}
+        windowSize={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === 'android'}
         renderItem={({ item, index }) => (
           <ReelCard
             sound={item}
@@ -3693,18 +3738,22 @@ const CircularCollectionCard = memo(function CircularCollectionCard({
 });
 
 // ─── Recently Played Strip ────────────────────────────────────────────────────
-const RECENT_CARD_SIZE = Math.round(W * 0.20); // ~20vw — compact square
+const RECENT_CARD_SIZE = Math.round(W * 0.26); // ~26vw — slightly larger for easier sliding
 
 const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
   soundIds,
   playingId,
   isPaused,
   onPress,
+  isExpanded,
+  onToggleExpand,
 }: {
   soundIds: string[];
   playingId: string | null;
   isPaused: boolean;
   onPress: (id: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   if (soundIds.length === 0) return null;
 
@@ -3715,36 +3764,52 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
   if (sounds.length === 0) return null;
 
   return (
-    <View style={{ paddingTop: 2, paddingBottom: 28 }}>
-      {/* Section header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginBottom: 14 }}>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontFamily: 'Nunito_700Bold', letterSpacing: 3, textTransform: 'uppercase' }}>
-          Recently Played
-        </Text>
-        <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-        decelerationRate="normal"
-        nestedScrollEnabled
-        alwaysBounceHorizontal
-        bounces
-        scrollEventThrottle={16}
+    <View style={{ paddingTop: 8, paddingBottom: isExpanded ? 24 : 14 }}>
+      {/* Section header - Premium styled button */}
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={onToggleExpand}
+        style={{ marginHorizontal: 20, marginBottom: isExpanded ? 16 : 0, borderRadius: 12, overflow: 'hidden' }}
       >
-        {sounds.map((sound, idx) => (
-          <RecentCard
-            key={sound.id}
-            sound={sound}
-            isPlaying={playingId === sound.id}
-            isPaused={isPaused && playingId === sound.id}
-            index={idx}
-            onPress={() => onPress(sound.id)}
-          />
-        ))}
-      </ScrollView>
+        <BlurView intensity={40} tint="dark" style={{ 
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+          paddingHorizontal: 16, paddingVertical: 12,
+          backgroundColor: isExpanded ? 'rgba(167, 139, 250, 0.05)' : 'rgba(167, 139, 250, 0.12)', 
+          borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)',
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="time-outline" size={16} color="#d8b4fe" />
+            <Text style={{ fontSize: 11, color: '#f3e8ff', fontFamily: 'Nunito_700Bold', letterSpacing: 2, textTransform: 'uppercase' }}>
+              Recently Played
+            </Text>
+          </View>
+          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="rgba(255,255,255,0.5)" />
+        </BlurView>
+      </TouchableOpacity>
+
+      {isExpanded && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+          decelerationRate="normal"
+          nestedScrollEnabled
+          alwaysBounceHorizontal
+          bounces
+          scrollEventThrottle={16}
+        >
+          {sounds.map((sound, idx) => (
+            <RecentCard
+              key={sound.id}
+              sound={sound}
+              isPlaying={playingId === sound.id}
+              isPaused={isPaused && playingId === sound.id}
+              index={idx}
+              onPress={() => onPress(sound.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 });
@@ -4292,6 +4357,7 @@ function SleepTabInner() {
   const [selectedCat,  setSelectedCat]  = useState<Category>('Meditations');
   const [catSheetOpen, setCatSheetOpen] = useState(false);
   const [recentSoundIds, setRecentSoundIds] = useState<string[]>([]);
+  const [isRecentExpanded, setIsRecentExpanded] = useState(false);
 
   // Load recently played on mount
   useEffect(() => {
@@ -4308,6 +4374,7 @@ function SleepTabInner() {
     _pageScrollRef?.scrollTo({ y: 0, animated: false });
     setIsSearching(false);
     setSearchQuery('');
+    setIsRecentExpanded(false);
     // Refresh recently played every time the page comes into focus
     store.getJSON<string[]>(KEYS.recentSounds).then(ids => {
       setRecentSoundIds(ids || []);
@@ -4330,10 +4397,6 @@ function SleepTabInner() {
   const [showReels,      setShowReels]      = useState(false);
   const [reelsStartIdx,  setReelsStartIdx]  = useState(0);
 
-  useEffect(() => {
-    setIsReelsOpen(showReels);
-  }, [showReels, setIsReelsOpen]);
-
   const [queueSheetOpen, setQueueSheetOpen] = useState(false);
 
   // ── Auto-start ─────────────────────────────────────────────
@@ -4345,8 +4408,9 @@ function SleepTabInner() {
 
   const handleReelsClose = useCallback((_fromLastReel?: boolean) => {
     setShowReels(false);
+    setIsReelsOpen(false);
     clearPendingOpenReels();
-  }, [clearPendingOpenReels]);
+  }, [clearPendingOpenReels, setIsReelsOpen]);
 
   const handleStopSilent = useCallback(() => stopSound(true), [stopSound]);
 
@@ -4381,16 +4445,28 @@ function SleepTabInner() {
       setReelsStartIdx(ragaIdx !== -1 ? ragaIdx : 0);
       setSelectedCat('Ragas');
       setShowReels(true);
+      setIsReelsOpen(true);
       router.setParams({ openReel: undefined });
     }
-  }, [openReel]);
+  }, [openReel, setIsReelsOpen]);
 
   useEffect(() => {
     if (!pendingOpenReels) return;
     const startIdx = Math.max(0, REELS_ALL_SOUNDS.findIndex(s => s.id === playingId));
+    // Prefetch into expo-image memory cache + disk for instant image on re-open
+    [startIdx - 1, startIdx, startIdx + 1, startIdx + 2].forEach(i => {
+      const s = REELS_ALL_SOUNDS[i];
+      if (!s) return;
+      const rawUri = SOUND_IMAGES[s.id] ?? (s as any).imageUri;
+      if (!rawUri || SOUND_BUNDLED_IMAGES[s.id]) return;
+      const localUri = getLocalSoundImageUri(rawUri);
+      ExpoImage.prefetch(localUri).catch(() => {});
+      if (!isSoundImageCached(rawUri)) ensureSoundImageCached(rawUri).catch(() => {});
+    });
     setReelsStartIdx(startIdx);
     setShowReels(true);
-  }, [pendingOpenReels, playingId]);
+    setIsReelsOpen(true);
+  }, [pendingOpenReels, playingId, setIsReelsOpen]);
 
   const handleReelPlaySound = useCallback((id: string, isFromQueueAutoAdvance = false) => {
     setRecentSoundIds(prev => {
@@ -4441,12 +4517,45 @@ function SleepTabInner() {
     const reelIndex = REELS_ALL_SOUNDS.findIndex(s => s.id === id);
     if (reelIndex === -1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // ── INSTANT IMAGE: Call ExpoImage.prefetch() synchronously the moment
+    // the user lifts their finger. ExpoImage.prefetch() downloads and decodes
+    // the image into expo-image's own MEMORY cache. When <ExpoImage> mounts
+    // milliseconds later in the reel, it reads from RAM — zero I/O, zero network.
+    // This is exactly how Instagram Reels / Calm achieve instant image display.
+    const tappedSound = REELS_ALL_SOUNDS[reelIndex];
+    if (tappedSound) {
+      const rawUri = SOUND_IMAGES[tappedSound.id] ?? (tappedSound as any).imageUri;
+      if (rawUri && !SOUND_BUNDLED_IMAGES[tappedSound.id]) {
+        const localUri = getLocalSoundImageUri(rawUri);
+        // Fire-and-forget: prefetch into expo-image memory cache NOW
+        ExpoImage.prefetch(localUri).catch(() => {});
+        // Also kick off disk cache write if not already cached
+        if (!isSoundImageCached(rawUri)) {
+          ensureSoundImageCached(rawUri).catch(() => {});
+        }
+      }
+    }
+    // Pre-fetch adjacent sounds into expo-image memory cache too
+    [reelIndex - 1, reelIndex + 1, reelIndex + 2].forEach(i => {
+      const s = REELS_ALL_SOUNDS[i];
+      if (!s) return;
+      const rawUri = SOUND_IMAGES[s.id] ?? (s as any).imageUri;
+      if (!rawUri || SOUND_BUNDLED_IMAGES[s.id]) return;
+      const localUri = getLocalSoundImageUri(rawUri);
+      ExpoImage.prefetch(localUri).catch(() => {});
+      if (!isSoundImageCached(rawUri)) {
+        ensureSoundImageCached(rawUri).catch(() => {});
+      }
+    });
+
     setReelsStartIdx(reelIndex);
     // Show the reel FIRST — instant UI response
     setShowReels(true);
-    // Start audio synchronously so React batches the state updates, preventing 1-frame icon glitches
+    setIsReelsOpen(true);
+    // Start audio synchronously so React batches the state updates
     handleReelPlaySound(id);
-  }, [handleReelPlaySound]);
+  }, [handleReelPlaySound, setIsReelsOpen]);
 
 
   const handleStop = useCallback(() => {
@@ -4496,78 +4605,11 @@ function SleepTabInner() {
       />
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent', zIndex: 10 }}>
-        <BlurView intensity={60} tint="dark" style={{ 
-          paddingHorizontal: 16, paddingBottom: 12, paddingTop: 10,
-          borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
-          backgroundColor: 'rgba(10,12,24,0.4)',
-          flexDirection: 'row', alignItems: 'center', gap: 10
-        }}>
-          {/* Subtle top gradient */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.10)', 'transparent']}
-            style={StyleSheet.absoluteFillObject}
-            pointerEvents="none"
-          />
-
-          {/* Premium Rectangular Search Bar */}
-          <BlurView intensity={60} tint="dark" style={{ 
-            flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-            backgroundColor: 'rgba(255,255,255,0.12)', 
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', 
-            borderRadius: 6, paddingHorizontal: 12, height: 42,
-            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6,
-            overflow: 'hidden'
-          }}>
-            <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
-            <TextInput
-              style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular', padding: 0 }}
-              placeholder="Search sounds..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                setIsSearching(text.length > 0);
-              }}
-              onFocus={() => setIsSearching(true)}
-              onBlur={() => {
-                if (searchQuery.length === 0) setIsSearching(false);
-              }}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
-                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            )}
-          </BlurView>
-
-          {/* Slimmer Premium Library Button */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-            activeOpacity={0.8}
-          >
-            <BlurView intensity={60} tint="dark" style={{ 
-              flexDirection: 'row', alignItems: 'center', gap: 6, 
-              backgroundColor: 'rgba(167, 139, 250, 0.25)',
-              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.5)', 
-              borderRadius: 6, paddingHorizontal: 12, height: 42,
-              shadowColor: '#a78bfa', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6,
-              overflow: 'hidden'
-            }}>
-              <Ionicons name="musical-notes" size={14} color="#e2e8f0" />
-              <Text style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
-                Library
-              </Text>
-            </BlurView>
-          </TouchableOpacity>
-        </BlurView>
-      </SafeAreaView>
       <View style={{ flex: 1, zIndex: 1 }}>
         <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 120, paddingTop: insets.top + 16 }}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={8}
           onScroll={onMainScroll}
@@ -4575,21 +4617,74 @@ function SleepTabInner() {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginTop: 12, marginBottom: 20 }}>
+          {/* Embedded Search & Library Actions (No longer sticky, part of the hero) */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, marginBottom: 16 }}>
+            {/* Ultra Slim Search Bar */}
+            <BlurView intensity={40} tint="dark" style={{ 
+              flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: 'rgba(255,255,255,0.08)', 
+              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', 
+              borderRadius: 8, paddingHorizontal: 10, height: 32,
+              overflow: 'hidden'
+            }}>
+              <Ionicons name="search" size={14} color="rgba(255,255,255,0.6)" />
+              <TextInput
+                style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Nunito_400Regular', padding: 0 }}
+                placeholder="Search sounds..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  setIsSearching(text.length > 0);
+                }}
+                onFocus={() => setIsSearching(true)}
+                onBlur={() => {
+                  if (searchQuery.length === 0) setIsSearching(false);
+                }}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
+                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+                </TouchableOpacity>
+              )}
+            </BlurView>
+
+            {/* Ultra Slim Library Button */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+              activeOpacity={0.8}
+            >
+              <BlurView intensity={40} tint="dark" style={{ 
+                flexDirection: 'row', alignItems: 'center', gap: 5, 
+                backgroundColor: 'rgba(167, 139, 250, 0.15)',
+                borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)', 
+                borderRadius: 8, paddingHorizontal: 10, height: 32,
+                overflow: 'hidden'
+              }}>
+                <Ionicons name="musical-notes" size={12} color="#d8b4fe" />
+                <Text style={{ fontSize: 12, color: '#e9d5ff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
+                  Library
+                </Text>
+              </BlurView>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginBottom: 8 }}>
 
             {/* Welcome Greeting */}
             <Text style={{
               fontSize: 28, color: '#fff', fontFamily: 'DancingScript_600SemiBold',
               letterSpacing: 0.5, textAlign: 'left',
               textShadowColor: 'rgba(200,180,255,0.35)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20,
-              lineHeight: 34,
+              lineHeight: 32,
             }}>
               Welcome to Svara
             </Text>
 
             <Text style={{
               fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular',
-              letterSpacing: 0.3, marginTop: 4, marginBottom: 16,
+              letterSpacing: 0.3, marginTop: 2, marginBottom: 12,
             }}>
               Find your moment of calm.
             </Text>
@@ -4659,6 +4754,8 @@ function SleepTabInner() {
             playingId={playingId}
             isPaused={isPaused}
             onPress={handleSoundCardTap}
+            isExpanded={isRecentExpanded}
+            onToggleExpand={() => setIsRecentExpanded(!isRecentExpanded)}
           />
         )}
 

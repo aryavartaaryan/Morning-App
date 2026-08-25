@@ -6249,48 +6249,74 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             }}
           >
 
-          {/* ── Premium Golden Breathing Glow — Nested to safely mix JS & Native animations ── */}
+          {/* ── Smart Glass / Luminescent Bio-Dial (Option 1 + Option 2 Merge) ── */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute', width: HERO_RS, height: HERO_RS,
             alignItems: 'center', justifyContent: 'center',
           }}>
-            {/* Glass Core — ultra-transparent tinted fill */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.08] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.02] }) }],
+            
+            {/* 1. The Frosted Lens (Option 1) - Blurs the background exactly in the center circle */}
+            <View style={{
+              position: 'absolute', width: HERO_RS * 0.95, height: HERO_RS * 0.95,
+              borderRadius: HERO_RS * 0.475, overflow: 'hidden'
             }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, backgroundColor: accentHex }} />
+              <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
+              {/* Subtle inner dark tint to guarantee text contrast */}
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
+            </View>
+
+            {/* 2. The Breathing Aura Glow (Option 1) */}
+            <Animated.View style={{
+              position: 'absolute', width: HERO_RS * 1.05, height: HERO_RS * 1.05,
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.45] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.05] }) }],
+            }}>
+              <Animated.View style={{ 
+                flex: 1, borderRadius: HERO_RS * 0.525, 
+                backgroundColor: accentHex, opacity: 0.15,
+                shadowColor: accentHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 20
+              }} />
             </Animated.View>
 
-            {/* Inner glass ring — delicate thin border */}
+            {/* 3. The Precision Data Track (Option 2) - SVG Progress Ring */}
+            {/* The ring acts as a crisp, glowing boundary. */}
             <Animated.View style={{
               position: 'absolute',
-              width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.35] }),
+              width: HERO_RS, height: HERO_RS,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.75, 1] }),
+              transform: [
+                { scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [1, 1.02] }) },
+                // Slow rotation to simulate the sweeping data track
+                { rotate: pulse.interpolate({ inputRange: [1, 1.06], outputRange: ['0deg', '5deg'] }) }
+              ]
             }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, borderWidth: 0.8, borderColor: accentHex }} />
-            </Animated.View>
-
-            {/* Outer breathing ring — the main glowing edge */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: HERO_RS * 0.97, height: HERO_RS * 0.97,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.20, 0.55] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.97, 1.08] }) }],
-            }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.485, borderWidth: 1.5, borderColor: accentHex }} />
-            </Animated.View>
-
-            {/* Outermost halo glow ring */}
-            <Animated.View style={{
-              position: 'absolute',
-              width: HERO_RS * 1.05, height: HERO_RS * 1.05,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.05, 0.18] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.14] }) }],
-            }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.525, borderWidth: 1, borderColor: accentHex }} />
+              <Svg width={HERO_RS} height={HERO_RS} viewBox={`0 0 ${HERO_RS} ${HERO_RS}`}>
+                <Defs>
+                  <SvgLinearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor={accentHex} stopOpacity="1" />
+                    <Stop offset="50%" stopColor={accentHex} stopOpacity="0.4" />
+                    <Stop offset="100%" stopColor={accentHex} stopOpacity="0.1" />
+                  </SvgLinearGradient>
+                </Defs>
+                
+                {/* Background faint track */}
+                <SvgCircle
+                  cx={HERO_RS / 2} cy={HERO_RS / 2} r={HERO_RS * 0.475}
+                  stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none"
+                />
+                
+                {/* Foreground glowing progress track */}
+                {/* Assuming ~75% full for the visual "time left" sweep effect */}
+                <SvgCircle
+                  cx={HERO_RS / 2} cy={HERO_RS / 2} r={HERO_RS * 0.475}
+                  stroke="url(#trackGrad)" strokeWidth="3" fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={HERO_RS * Math.PI}
+                  strokeDashoffset={(HERO_RS * Math.PI) * 0.25}
+                  transform={`rotate(-90 ${HERO_RS/2} ${HERO_RS/2})`}
+                />
+              </Svg>
             </Animated.View>
           </Animated.View>
 
@@ -7627,8 +7653,7 @@ function DailyTab() {
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <AppBackground />
-      <BlurView tint="dark" intensity={10} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-      <LinearGradient colors={['rgba(4,6,14,0.0)', 'rgba(4,6,14,0.05)', 'rgba(4,6,14,0.1)', 'rgba(4,6,14,0.15)']} locations={[0, 0.35, 0.7, 1]} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+      {/* Background is unfiltered as per user request */}
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>

@@ -769,17 +769,19 @@ function GlobalPlayerBar() {
         bounciness: 6,
       }).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: 120,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) {
-          setRendered(false);
-        }
-      });
+      if (isReelsOpen) {
+        // Instantly hide without animation to avoid overlapping with the Reels modal
+        slideAnim.setValue(120);
+        setRendered(false);
+      } else {
+        Animated.timing(slideAnim, {
+          toValue: 120,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setRendered(false));
+      }
     }
-  }, [shouldShow]);
+  }, [shouldShow, isReelsOpen]);
 
 
   if (!rendered || !displayMeta || stepActive) return null;
