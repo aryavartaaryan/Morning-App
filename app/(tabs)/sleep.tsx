@@ -3765,27 +3765,27 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
 
   return (
     <View style={{ paddingTop: 8, paddingBottom: isExpanded ? 24 : 14 }}>
-      {/* Section header - Premium styled button */}
-      <TouchableOpacity 
-        activeOpacity={0.8}
-        onPress={onToggleExpand}
-        style={{ marginHorizontal: 20, marginBottom: isExpanded ? 16 : 0, borderRadius: 12, overflow: 'hidden' }}
-      >
-        <BlurView intensity={40} tint="dark" style={{ 
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-          paddingHorizontal: 16, paddingVertical: 12,
-          backgroundColor: isExpanded ? 'rgba(167, 139, 250, 0.05)' : 'rgba(167, 139, 250, 0.12)', 
-          borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="time-outline" size={16} color="#d8b4fe" />
-            <Text style={{ fontSize: 11, color: '#f3e8ff', fontFamily: 'Nunito_700Bold', letterSpacing: 2, textTransform: 'uppercase' }}>
+      {/* Section header - Premium slim pill button */}
+      <View style={{ paddingHorizontal: 24, marginBottom: isExpanded ? 16 : 0, alignItems: 'flex-start' }}>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={onToggleExpand}
+          style={{ borderRadius: 16, overflow: 'hidden' }}
+        >
+          <BlurView intensity={40} tint="dark" style={{ 
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            paddingHorizontal: 12, paddingVertical: 6,
+            backgroundColor: isExpanded ? 'rgba(167, 139, 250, 0.05)' : 'rgba(167, 139, 250, 0.12)', 
+            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)',
+          }}>
+            <Ionicons name="time-outline" size={12} color="#d8b4fe" />
+            <Text style={{ fontSize: 10, color: '#f3e8ff', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' }}>
               Recently Played
             </Text>
-          </View>
-          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="rgba(255,255,255,0.5)" />
-        </BlurView>
-      </TouchableOpacity>
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={12} color="rgba(255,255,255,0.5)" />
+          </BlurView>
+        </TouchableOpacity>
+      </View>
 
       {isExpanded && (
         <ScrollView
@@ -4606,10 +4606,63 @@ function SleepTabInner() {
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ flex: 1, zIndex: 1 }}>
+        {/* Sticky Search & Library Actions */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: 12, zIndex: 10 }}>
+          {/* Ultra Slim Search Bar */}
+          <BlurView intensity={40} tint="dark" style={{ 
+            flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: 'rgba(255,255,255,0.08)', 
+            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', 
+            borderRadius: 8, paddingHorizontal: 10, height: 32,
+            overflow: 'hidden'
+          }}>
+            <Ionicons name="search" size={14} color="rgba(255,255,255,0.6)" />
+            <TextInput
+              style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Nunito_400Regular', padding: 0 }}
+              placeholder="Search sounds..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setIsSearching(text.length > 0);
+              }}
+              onFocus={() => setIsSearching(true)}
+              onBlur={() => {
+                if (searchQuery.length === 0) setIsSearching(false);
+              }}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
+                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            )}
+          </BlurView>
+
+          {/* Ultra Slim Library Button */}
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+            activeOpacity={0.8}
+          >
+            <BlurView intensity={40} tint="dark" style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: 5, 
+              backgroundColor: 'rgba(167, 139, 250, 0.15)',
+              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)', 
+              borderRadius: 8, paddingHorizontal: 10, height: 32,
+              overflow: 'hidden'
+            }}>
+              <Ionicons name="musical-notes" size={12} color="#d8b4fe" />
+              <Text style={{ fontSize: 12, color: '#e9d5ff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
+                Library
+              </Text>
+            </BlurView>
+          </TouchableOpacity>
+        </View>
+
         <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: insets.top + 16 }}
+          contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={8}
           onScroll={onMainScroll}
@@ -4617,58 +4670,6 @@ function SleepTabInner() {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
         >
-          {/* Embedded Search & Library Actions (No longer sticky, part of the hero) */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, marginBottom: 16 }}>
-            {/* Ultra Slim Search Bar */}
-            <BlurView intensity={40} tint="dark" style={{ 
-              flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: 'rgba(255,255,255,0.08)', 
-              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', 
-              borderRadius: 8, paddingHorizontal: 10, height: 32,
-              overflow: 'hidden'
-            }}>
-              <Ionicons name="search" size={14} color="rgba(255,255,255,0.6)" />
-              <TextInput
-                style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Nunito_400Regular', padding: 0 }}
-                placeholder="Search sounds..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={searchQuery}
-                onChangeText={(text) => {
-                  setSearchQuery(text);
-                  setIsSearching(text.length > 0);
-                }}
-                onFocus={() => setIsSearching(true)}
-                onBlur={() => {
-                  if (searchQuery.length === 0) setIsSearching(false);
-                }}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
-                  <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
-                </TouchableOpacity>
-              )}
-            </BlurView>
-
-            {/* Ultra Slim Library Button */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-              activeOpacity={0.8}
-            >
-              <BlurView intensity={40} tint="dark" style={{ 
-                flexDirection: 'row', alignItems: 'center', gap: 5, 
-                backgroundColor: 'rgba(167, 139, 250, 0.15)',
-                borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)', 
-                borderRadius: 8, paddingHorizontal: 10, height: 32,
-                overflow: 'hidden'
-              }}>
-                <Ionicons name="musical-notes" size={12} color="#d8b4fe" />
-                <Text style={{ fontSize: 12, color: '#e9d5ff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
-                  Library
-                </Text>
-              </BlurView>
-            </TouchableOpacity>
-          </View>
 
           <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginBottom: 8 }}>
 
