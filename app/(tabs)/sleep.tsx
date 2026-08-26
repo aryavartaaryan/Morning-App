@@ -1081,7 +1081,7 @@ const CategoryBottomSheet = memo(function CategoryBottomSheet({
           </View>
 
           {/* Elegant Label */}
-          <View style={{ alignItems: 'center', marginBottom: 28, paddingHorizontal: 20 }}>
+          <View style={{ alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
               <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_600SemiBold', textTransform: 'uppercase', letterSpacing: 1.2 }}>CURRENT CATEGORY :</Text>
               <Text style={{ fontSize: 12, fontWeight: '800', color: selectedCat === 'All' ? '#FFFFFF' : (CATEGORY_META[selectedCat]?.color ?? '#FFFFFF'), fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.8, textTransform: 'uppercase' }}>{selectedCat}</Text>
@@ -1447,7 +1447,7 @@ const CategoryRows = memo(function CategoryRows({
         return (
           <View key={cat}>
             {catIdx > 0 && (
-              <View style={{ paddingHorizontal: 20, marginTop: 20, marginBottom: 28 }}>
+              <View style={{ paddingHorizontal: 20, marginTop: 20, marginBottom: 20 }}>
                 <LinearGradient
                   colors={['transparent', 'rgba(255,255,255,0.28)', 'transparent']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -1630,7 +1630,7 @@ function SoundPlayerModal({
 
               {/* Title */}
               <Text style={{ fontSize: 34, fontWeight: '200', color: '#fff', letterSpacing: -1.2, marginBottom: 5 }}>{sound.label}</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.50)', marginBottom: 28, letterSpacing: 0.1, lineHeight: 19 }}>{sound.desc}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.50)', marginBottom: 20, letterSpacing: 0.1, lineHeight: 19 }}>{sound.desc}</Text>
 
               {/* Timer pills */}
               <Text style={{ fontSize: 8, fontWeight: '400', color: '#FFFFFF28', letterSpacing: 0.8, marginBottom: 10, fontFamily: 'Nunito_400Regular' }}>Stop after</Text>
@@ -3135,7 +3135,7 @@ const GridBrowse = memo(({ visible, onClose, onSelect, playingId }: { visible: b
             if (!catSounds.length) return null;
             const meta = REEL_CAT_META[cat] ?? { emoji: '🎵', color: '#FFFFFF' };
             return (
-              <View key={cat} style={{ marginBottom: 28 }}>
+              <View key={cat} style={{ marginBottom: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, marginBottom: 14 }}>
                   <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
                   <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', fontFamily: 'Nunito_700Bold' }}>{cat}</Text>
@@ -3772,17 +3772,18 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
           onPress={onToggleExpand}
           style={{ borderRadius: 16, overflow: 'hidden' }}
         >
-          <BlurView intensity={40} tint="dark" style={{ 
-            flexDirection: 'row', alignItems: 'center', gap: 6,
-            paddingHorizontal: 12, paddingVertical: 6,
-            backgroundColor: isExpanded ? 'rgba(167, 139, 250, 0.05)' : 'rgba(167, 139, 250, 0.12)', 
-            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)',
+          <BlurView intensity={50} tint="dark" style={{ 
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            paddingHorizontal: 16, paddingVertical: 8,
+            backgroundColor: isExpanded ? 'rgba(167, 139, 250, 0.08)' : 'rgba(167, 139, 250, 0.15)', 
+            borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.3)',
+            borderRadius: 20
           }}>
-            <Ionicons name="time-outline" size={12} color="#d8b4fe" />
-            <Text style={{ fontSize: 10, color: '#f3e8ff', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' }}>
+            <Ionicons name="time-outline" size={14} color="#d8b4fe" />
+            <Text style={{ fontSize: 11, color: '#f3e8ff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' }}>
               Recently Played
             </Text>
-            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={12} color="rgba(255,255,255,0.5)" />
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.7)" />
           </BlurView>
         </TouchableOpacity>
       </View>
@@ -3973,11 +3974,11 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 60, paddingTop: 8 }}>
       {/* Section Label */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginBottom: 24 }}>
-        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontFamily: 'Nunito_700Bold', letterSpacing: 3, textTransform: 'uppercase' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4, marginBottom: 20 }}>
+        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
           Choose Your Journey
         </Text>
-        <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+        <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 1 }} />
       </View>
 
       {SONIC_COLLECTIONS.map((col, idx) => {
@@ -4606,17 +4607,17 @@ function SleepTabInner() {
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ flex: 1, zIndex: 1 }}>
-        {/* Sticky Search & Library Actions */}
+        {/* Premium Sticky Search & Library Actions (Compact) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: 12, zIndex: 10 }}>
-          {/* Ultra Slim Search Bar */}
-          <BlurView intensity={40} tint="dark" style={{ 
+          {/* Premium Pill Search Bar */}
+          <BlurView intensity={50} tint="dark" style={{ 
             flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
             backgroundColor: 'rgba(255,255,255,0.08)', 
-            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)', 
-            borderRadius: 8, paddingHorizontal: 10, height: 32,
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
+            borderRadius: 16, paddingHorizontal: 12, height: 34,
             overflow: 'hidden'
           }}>
-            <Ionicons name="search" size={14} color="rgba(255,255,255,0.6)" />
+            <Ionicons name="search" size={14} color="rgba(255,255,255,0.7)" />
             <TextInput
               style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Nunito_400Regular', padding: 0 }}
               placeholder="Search sounds..."
@@ -4634,24 +4635,24 @@ function SleepTabInner() {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
-                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.6)" />
+                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             )}
           </BlurView>
 
-          {/* Ultra Slim Library Button */}
+          {/* Premium Pill Library Button */}
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
             activeOpacity={0.8}
           >
-            <BlurView intensity={40} tint="dark" style={{ 
-              flexDirection: 'row', alignItems: 'center', gap: 5, 
+            <BlurView intensity={60} tint="dark" style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: 6, 
               backgroundColor: 'rgba(167, 139, 250, 0.15)',
-              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(167, 139, 250, 0.3)', 
-              borderRadius: 8, paddingHorizontal: 10, height: 32,
+              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.35)', 
+              borderRadius: 16, paddingHorizontal: 12, height: 34,
               overflow: 'hidden'
             }}>
-              <Ionicons name="musical-notes" size={12} color="#d8b4fe" />
+              <Ionicons name="musical-notes" size={12} color="#e9d5ff" />
               <Text style={{ fontSize: 12, color: '#e9d5ff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
                 Library
               </Text>
@@ -4671,105 +4672,70 @@ function SleepTabInner() {
           keyboardShouldPersistTaps="handled"
         >
 
-          <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginBottom: 8 }}>
-
+          <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginBottom: 12 }}>
             {/* Welcome Greeting */}
             <Text style={{
               fontSize: 28, color: '#fff', fontFamily: 'DancingScript_600SemiBold',
               letterSpacing: 0.5, textAlign: 'left',
-              textShadowColor: 'rgba(200,180,255,0.35)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20,
+              textShadowColor: 'rgba(200,180,255,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 15,
               lineHeight: 32,
             }}>
               Welcome to Svara
             </Text>
 
             <Text style={{
-              fontSize: 14, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular',
-              letterSpacing: 0.3, marginTop: 2, marginBottom: 12,
+              fontSize: 14, color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito_400Regular',
+              letterSpacing: 0.3, marginTop: 2, marginBottom: 14,
             }}>
               Find your moment of calm.
             </Text>
 
-            {/* Sonic Therapies & Circadian Phase */}
+            {/* Sonic Therapies & Circadian Phase - Ultra Slim Premium */}
             <View style={{
-              flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6, opacity: 0.85,
-              borderLeftWidth: 2, borderLeftColor: 'rgba(167, 139, 250, 0.5)', paddingLeft: 12
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              backgroundColor: 'rgba(167, 139, 250, 0.08)',
+              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.2)',
+              borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+              width: '100%', marginBottom: 4
             }}>
-              <View>
-                <Text style={{
-                  fontSize: 14, color: '#fff', fontFamily: 'Nunito_700Bold',
-                  letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4
-                }}>
-                  Sonic Therapies
+              <Text style={{
+                fontSize: 11, color: 'rgba(167, 139, 250, 0.95)', fontFamily: 'Nunito_800ExtraBold',
+                letterSpacing: 1.5, textTransform: 'uppercase'
+              }}>
+                Sonic Therapies
+              </Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#A78BFA' }} />
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  {heroContent ? heroContent.header : displayMode.label} Phase
                 </Text>
-                
-                {/* Circadian phase pill */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, opacity: 0.8 }}>
-                  <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#A78BFA', shadowColor: '#A78BFA', shadowOpacity: 1, shadowRadius: 5 }} />
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.6, textTransform: 'uppercase' }}>
-                    Currently in your {heroContent ? heroContent.header.toLowerCase() : displayMode.label.toLowerCase()} phase
-                  </Text>
-                </View>
               </View>
             </View>
 
           </View>
 
-        {/* ── Content container — transparent, swipe handler for category change ── */}
-        <FlingGestureHandler
-          direction={Directions.LEFT}
-          onHandlerStateChange={({ nativeEvent }) => {
-            if (nativeEvent.state === State.ACTIVE) {
-              const tabIdx = TAB_CATEGORIES.indexOf(selectedCat as any);
-              if (tabIdx !== -1) {
-                if (tabIdx < TAB_CATEGORIES.length - 1) {
-                  changeCategory(TAB_CATEGORIES[tabIdx + 1] as Category, -1);
-                } else {
-                  changeCategory(TAB_CATEGORIES[0] as Category, -1);
-                }
-              }
-            }
-          }}
-        >
-          <FlingGestureHandler
-            direction={Directions.RIGHT}
-            onHandlerStateChange={({ nativeEvent }) => {
-              if (nativeEvent.state === State.ACTIVE) {
-                const tabIdx = TAB_CATEGORIES.indexOf(selectedCat as any);
-                if (tabIdx !== -1) {
-                  if (tabIdx > 0) {
-                    changeCategory(TAB_CATEGORIES[tabIdx - 1] as Category, 1);
-                  } else {
-                    changeCategory(TAB_CATEGORIES[TAB_CATEGORIES.length - 1] as Category, 1);
-                  }
-                }
-              }
-            }}
-          >
-            <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
+        {/* ── Content container ── */}
+        <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
+          {/* Recently Played — shown only after first play */}
+          {recentSoundIds.length > 0 && (
+            <RecentlyPlayedStrip
+              soundIds={recentSoundIds}
+              playingId={playingId}
+              isPaused={isPaused}
+              onPress={handleSoundCardTap}
+              isExpanded={isRecentExpanded}
+              onToggleExpand={() => setIsRecentExpanded(!isRecentExpanded)}
+            />
+          )}
 
-        {/* Recently Played — shown only after first play */}
-        {recentSoundIds.length > 0 && (
-          <RecentlyPlayedStrip
-            soundIds={recentSoundIds}
-            playingId={playingId}
-            isPaused={isPaused}
-            onPress={handleSoundCardTap}
-            isExpanded={isRecentExpanded}
-            onToggleExpand={() => setIsRecentExpanded(!isRecentExpanded)}
-          />
-        )}
-
-        <SonicCollections onSelectCollection={setActiveCollectionId} />
-
-        </View>{/* end lifted container */}
-          </FlingGestureHandler>
-        </FlingGestureHandler>
+          <SonicCollections onSelectCollection={setActiveCollectionId} />
+        </View>
 
       </Animated.ScrollView>
 
       {isSearching && (
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, backgroundColor: '#03030D' }}>
+        <Animated.View style={{ position: 'absolute', top: insets.top + 62, left: 0, right: 0, bottom: 0, zIndex: 9, backgroundColor: 'rgba(3,3,13,0.95)' }}>
           <FlatList
             data={filteredSearchSounds}
             keyExtractor={(item) => item.id}

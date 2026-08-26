@@ -6254,46 +6254,43 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             position: 'absolute', width: HERO_RS, height: HERO_RS,
             alignItems: 'center', justifyContent: 'center',
           }}>
-            {/* Option 1: Glassmorphism Core — premium frosted glass lens */}
+            {/* Glass Core — ultra-transparent tinted fill */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              borderRadius: HERO_RS * 0.44,
-              overflow: 'hidden',
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.95, 1] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.02, 0.08] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.98, 1.02] }) }],
             }}>
-              <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFillObject} />
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: accentHex, opacity: 0.12 }]} />
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, backgroundColor: accentHex }} />
             </Animated.View>
 
-            {/* Inner glass ring — delicate thin border with ethereal glow */}
+            {/* Inner glass ring — delicate thin border */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.88, height: HERO_RS * 0.88,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.6, 0.9] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.35] }),
             }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, borderWidth: 1, borderColor: '#FFFFFF', shadowColor: accentHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12 }} />
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.44, borderWidth: 0.8, borderColor: accentHex }} />
             </Animated.View>
 
             {/* Outer breathing ring — the main glowing edge */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 0.97, height: HERO_RS * 0.97,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.40, 0.85] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.20, 0.55] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.97, 1.08] }) }],
             }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.485, borderWidth: 2, borderColor: accentHex, shadowColor: accentHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 15 }} />
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.485, borderWidth: 1.5, borderColor: accentHex }} />
             </Animated.View>
 
             {/* Outermost halo glow ring */}
             <Animated.View style={{
               position: 'absolute',
               width: HERO_RS * 1.05, height: HERO_RS * 1.05,
-              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.15, 0.45] }),
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.05, 0.18] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.96, 1.14] }) }],
             }}>
-              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.525, borderWidth: 1.5, borderColor: accentHex, shadowColor: accentHex, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20 }} />
+              <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.525, borderWidth: 1, borderColor: accentHex }} />
             </Animated.View>
           </Animated.View>
 
@@ -7630,17 +7627,17 @@ function DailyTab() {
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
       <AppBackground />
-      {/* Ultra Premium Multi-Layer Filter - Lightened for transparent feel */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.05)' }]} pointerEvents="none" />
+      {/* Ultra Premium Multi-Layer Filter */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.15)' }]} pointerEvents="none" />
       <LinearGradient 
         colors={[
-          'rgba(4,6,14,0.3)',  /* Very light top shadow for status bar */
+          'rgba(4,6,14,0.7)', 
+          'rgba(4,6,14,0.2)', 
           'rgba(4,6,14,0.0)', 
-          'rgba(4,6,14,0.0)', 
-          'rgba(4,6,14,0.0)', 
-          'rgba(4,6,14,0.45)'  /* Slight bottom shadow for navigation visibility */
+          'rgba(4,6,14,0.4)', 
+          'rgba(4,6,14,0.9)'
         ]} 
-        locations={[0, 0.15, 0.5, 0.85, 1]} 
+        locations={[0, 0.2, 0.5, 0.8, 1]} 
         style={StyleSheet.absoluteFillObject} 
         pointerEvents="none" 
       />
@@ -7649,78 +7646,90 @@ function DailyTab() {
 
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
 
+      {/* ══ PREMIUM INTEGRATED HEADER PILL ══ */}
+      <View style={{ paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight ?? 0) + 12 : (insets.top ?? 44) + 12, paddingBottom: 8, zIndex: 10 }}>
+        <View>
+          <BlurView intensity={45} tint="dark" style={{
+            borderRadius: 24,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255,255,255,0.15)',
+            overflow: 'hidden',
+          }}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 }}>
+              
+              {/* LEFT: Lunar Phase & Date (Western Premium Style) */}
+              {(() => {
+                const hMoon = getMoonPhase(new Date());
+                const t = hMoon.tithiNum;
+                
+                let phaseName = 'Waning Crescent';
+                if (t === 30 || t === 0) phaseName = 'New Moon';
+                else if (t < 8) phaseName = 'Waxing Crescent';
+                else if (t === 8) phaseName = 'First Quarter';
+                else if (t < 15) phaseName = 'Waxing Gibbous';
+                else if (t === 15) phaseName = 'Full Moon';
+                else if (t < 23) phaseName = 'Waning Gibbous';
+                else if (t === 23) phaseName = 'Third Quarter';
 
+                // heroDate comes formatted as "Tuesday, 25 August"
+                const dateParts = heroDate.split(',');
+                const topDateStr = (dateParts.length === 2 ? dateParts[1] : heroDate).trim().toUpperCase();
+                const dayStr = (dateParts.length === 2 ? dateParts[0] : '').toUpperCase();
 
-        {/* ══ PREMIUM FLOATING HEADER PILL ══ */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, zIndex: 10 }}>
-          <View>
-            <BlurView intensity={45} tint="dark" style={{
-              borderRadius: 20,
-              borderWidth: 0.5,
-              borderColor: 'rgba(255,255,255,0.12)',
-              overflow: 'hidden',
-            }}>
-              <LinearGradient
-                colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']}
-                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
-                {/* LEFT: tithi + date */}
-                {(() => {
-                  const hMoon = getMoonPhase(new Date());
-                  const hP    = getPanchangData();
-                  const ordinals = ['','1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th',''];
-                  let tithiShort = hP.tithiName;
-                  if (hP.tithiInPaksha >= 1 && hP.tithiInPaksha <= 14) {
-                    tithiShort = `${ordinals[hP.tithiInPaksha]} (${hP.tithiName})`;
-                  } else if (hP.tithiInPaksha === 15) {
-                    tithiShort = hP.paksha === 'Shukla' ? 'Purnima' : 'Amavasya';
-                  }
-                  return (
-                    <View key="tithi" style={{ alignItems: 'flex-start', gap: 2 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <MoonSVG tithiNum={hMoon.tithiNum} size={12} />
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(196,181,253,0.95)', letterSpacing: 0.3 }} numberOfLines={1}>{tithiShort}</Text>
-                      </View>
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700' }}>{heroDate}</Text>
+                return (
+                  <View key="tithi" style={{ alignItems: 'flex-start', flex: 1, gap: 4 }}>
+                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1.5 }}>
+                      {dayStr} {dayStr && topDateStr ? '•' : ''} {topDateStr}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <MoonSVG tithiNum={hMoon.tithiNum} size={14} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.3 }} numberOfLines={1}>
+                        {phaseName}
+                      </Text>
                     </View>
-                  );
-                })()}
-
-                {/* RIGHT: solar + settings */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    {solarContext ? (
-                      <>
-                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 0.3 }}>{solarContext.label1}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '900', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.95)', letterSpacing: -0.2 }} numberOfLines={1}>{solarContext.mainText}</Text>
-                        <Text style={{ fontSize: 9, color: solarContext.color, fontWeight: '800', letterSpacing: 0.3 }}>{solarContext.label2}</Text>
-                      </>
-                    ) : null}
                   </View>
-                  
-                  {/* Premium Settings Button */}
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    style={{
-                      width: 26, height: 26,
-                      borderRadius: 13,
-                      backgroundColor: 'rgba(255,255,255,0.08)',
-                      borderWidth: 0.5,
-                      borderColor: 'rgba(255,255,255,0.2)',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Ionicons name="settings-outline" size={14} color="rgba(255,255,255,0.85)" />
-                  </TouchableOpacity>
-                </View>
+                );
+              })()}
+
+              {/* MIDDLE/RIGHT: Solar Phase */}
+              <View style={{ alignItems: 'flex-end', justifyContent: 'center', paddingRight: 16, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.15)', marginRight: 16 }}>
+                {solarContext ? (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: solarContext.isLive ? solarContext.color : 'rgba(255,255,255,0.7)', letterSpacing: 0.5 }}>
+                        {solarContext.mainText.toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1, marginTop: 3 }}>
+                      {solarContext.label1.replace(/[^a-zA-Z\s]/g, '').trim()} {solarContext.label2}
+                    </Text>
+                  </>
+                ) : null}
               </View>
-            </BlurView>
-          </View>
+
+              {/* FAR RIGHT: Settings Button (Perfectly Integrated) */}
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/settings' as never); }}
+                style={{
+                  padding: 4,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="options-outline" size={22} color="rgba(255,255,255,0.85)" />
+              </TouchableOpacity>
+
+            </View>
+          </BlurView>
         </View>
+      </View>
 
         {/* ── Hero Content ── */}
         <View style={{ flex: 1 }}>
