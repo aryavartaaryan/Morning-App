@@ -4607,57 +4607,97 @@ function SleepTabInner() {
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ flex: 1, zIndex: 1 }}>
-        {/* Premium Sticky Search & Library Actions (Compact) */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: 12, zIndex: 10 }}>
-          {/* Premium Pill Search Bar */}
-          <BlurView intensity={50} tint="dark" style={{ 
-            flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-            backgroundColor: 'rgba(255,255,255,0.08)', 
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', 
-            borderRadius: 16, paddingHorizontal: 12, height: 34,
-            overflow: 'hidden'
+                {/* ── Option 1: The Vision Pro Glass Island ── */}
+        <View style={{ paddingHorizontal: 16, paddingTop: insets.top + 12, marginBottom: 16, zIndex: 10 }}>
+          <BlurView intensity={55} tint="dark" style={{
+            borderRadius: 28, padding: 20, overflow: 'hidden',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)'
           }}>
-            <Ionicons name="search" size={14} color="rgba(255,255,255,0.7)" />
-            <TextInput
-              style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Nunito_400Regular', padding: 0 }}
-              placeholder="Search sounds..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                setIsSearching(text.length > 0);
-              }}
-              onFocus={() => setIsSearching(true)}
-              onBlur={() => {
-                if (searchQuery.length === 0) setIsSearching(false);
-              }}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }}>
-                <Ionicons name="close-circle" size={14} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            )}
-          </BlurView>
+            {/* Header Row */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              {!isSearching ? (
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 34, color: '#fff', fontFamily: 'DancingScript_600SemiBold',
+                    letterSpacing: 0.5, textShadowColor: 'rgba(200,180,255,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 24,
+                    lineHeight: 40,
+                  }}>
+                    Welcome to Svara
+                  </Text>
+                  <Text style={{
+                    fontSize: 15, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_400Regular',
+                    letterSpacing: 0.3, marginTop: 2,
+                  }}>
+                    Find your moment of calm.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, paddingHorizontal: 16, height: 48, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                  <Ionicons name="search" size={20} color="rgba(255,255,255,0.7)" />
+                  <TextInput
+                    style={{ flex: 1, color: '#fff', fontSize: 16, fontFamily: 'Nunito_400Regular', padding: 0, marginLeft: 10 }}
+                    placeholder="Search premium sounds..."
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    value={searchQuery}
+                    onChangeText={(text) => {
+                      setSearchQuery(text);
+                    }}
+                    autoFocus
+                    onBlur={() => {
+                      if (searchQuery.length === 0) {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setIsSearching(false);
+                      }
+                    }}
+                    returnKeyType="search"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => { setSearchQuery(''); Keyboard.dismiss(); }} style={{ padding: 4 }}>
+                      <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
 
-          {/* Premium Pill Library Button */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-            activeOpacity={0.8}
-          >
-            <BlurView intensity={60} tint="dark" style={{ 
-              flexDirection: 'row', alignItems: 'center', gap: 6, 
-              backgroundColor: 'rgba(167, 139, 250, 0.15)',
-              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.35)', 
-              borderRadius: 16, paddingHorizontal: 12, height: 34,
-              overflow: 'hidden'
-            }}>
-              <Ionicons name="musical-notes" size={12} color="#e9d5ff" />
-              <Text style={{ fontSize: 12, color: '#e9d5ff', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
-                Library
+              {/* Action Buttons (Library & Search Toggle) */}
+              {!isSearching && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 16, marginTop: 4 }}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsSearching(true);
+                  }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                      <Ionicons name="search" size={18} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 42, borderRadius: 21, backgroundColor: 'rgba(167, 139, 250, 0.15)', paddingHorizontal: 16, borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.35)' }}>
+                      <Ionicons name="musical-notes" size={16} color="#e9d5ff" />
+                      <Text style={{ fontSize: 13, color: '#e9d5ff', fontFamily: 'Nunito_800ExtraBold' }}>Library</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Bottom Row: Sonic Therapies Embedded */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{
+                fontSize: 11, color: 'rgba(167, 139, 250, 0.95)', fontFamily: 'Nunito_800ExtraBold',
+                letterSpacing: 2, textTransform: 'uppercase'
+              }}>
+                Sonic Therapies
               </Text>
-            </BlurView>
-          </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#A78BFA', shadowColor: '#A78BFA', shadowOpacity: 0.8, shadowRadius: 4 }} />
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  {heroContent ? heroContent.header : displayMode.label} Phase
+                </Text>
+              </View>
+            </View>
+          </BlurView>
         </View>
 
         <Animated.ScrollView
@@ -4672,50 +4712,7 @@ function SleepTabInner() {
           keyboardShouldPersistTaps="handled"
         >
 
-          <View style={{ width: W, alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 24, marginBottom: 12 }}>
-            {/* Welcome Greeting */}
-            <Text style={{
-              fontSize: 28, color: '#fff', fontFamily: 'DancingScript_600SemiBold',
-              letterSpacing: 0.5, textAlign: 'left',
-              textShadowColor: 'rgba(200,180,255,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 15,
-              lineHeight: 32,
-            }}>
-              Welcome to Svara
-            </Text>
-
-            <Text style={{
-              fontSize: 14, color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito_400Regular',
-              letterSpacing: 0.3, marginTop: 2, marginBottom: 14,
-            }}>
-              Find your moment of calm.
-            </Text>
-
-            {/* Sonic Therapies & Circadian Phase - Ultra Slim Premium */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              backgroundColor: 'rgba(167, 139, 250, 0.08)',
-              borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.2)',
-              borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
-              width: '100%', marginBottom: 4
-            }}>
-              <Text style={{
-                fontSize: 11, color: 'rgba(167, 139, 250, 0.95)', fontFamily: 'Nunito_800ExtraBold',
-                letterSpacing: 1.5, textTransform: 'uppercase'
-              }}>
-                Sonic Therapies
-              </Text>
-              
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#A78BFA' }} />
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                  {heroContent ? heroContent.header : displayMode.label} Phase
-                </Text>
-              </View>
-            </View>
-
-          </View>
-
-        {/* ── Content container ── */}
+{/* ── Content container ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
           {/* Recently Played — shown only after first play */}
           {recentSoundIds.length > 0 && (
@@ -4735,7 +4732,7 @@ function SleepTabInner() {
       </Animated.ScrollView>
 
       {isSearching && (
-        <Animated.View style={{ position: 'absolute', top: insets.top + 62, left: 0, right: 0, bottom: 0, zIndex: 9, backgroundColor: 'rgba(3,3,13,0.95)' }}>
+        <Animated.View style={{ position: 'absolute', top: insets.top + 165, left: 0, right: 0, bottom: 0, zIndex: 9, backgroundColor: 'rgba(3,3,13,0.95)' }}>
           <FlatList
             data={filteredSearchSounds}
             keyExtractor={(item) => item.id}
