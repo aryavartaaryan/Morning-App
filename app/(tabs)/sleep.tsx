@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
+import { CalmingAura } from "@/components/CalmingAura";
 import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G, RadialGradient, Stop, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -56,100 +57,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const fmt12 = (h: number, m: number) => { const ap = h < 12 ? 'AM' : 'PM'; const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h; return `${pad(h12)}:${pad(m)} ${ap}`; };
 const fmtTimer = (s: number) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 
-const CalmingAura = () => {
-  const breathAnim = React.useRef(new Animated.Value(0)).current;
-
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathAnim, { toValue: 1, duration: 8000, useNativeDriver: true }),
-        Animated.timing(breathAnim, { toValue: 0, duration: 8000, useNativeDriver: true })
-      ])
-    ).start();
-  }, []);
-
-  const scale1 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
-  const scale2 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.95] });
-
-  // Crossfade opacities for continuous color transitioning
-  const purpleOp = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.6, 0.1, 0.6] });
-  const blueOp = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.1, 0.5, 0.1] });
-  const tealOp = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.5, 0.2] });
-
-  return (
-    <View style={[StyleSheet.absoluteFillObject, { height: 400, overflow: 'hidden' }]} pointerEvents="none">
-      
-      {/* Orb 1: Purple -> Blue */}
-      <Animated.View style={{
-        position: 'absolute', top: -50, left: -50,
-        width: 350, height: 350,
-        transform: [{ scale: scale1 }],
-        alignItems: 'center', justifyContent: 'center'
-      }}>
-        {/* Purple Layer */}
-        <Animated.View style={{ position: 'absolute', opacity: purpleOp }}>
-          <Svg height="350" width="350">
-            <Defs>
-              <RadialGradient id="purp" cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor="#C084FC" stopOpacity="0.7" />
-                <Stop offset="1" stopColor="#7E22CE" stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Rect x="0" y="0" width="350" height="350" fill="url(#purp)" />
-          </Svg>
-        </Animated.View>
-        
-        {/* Blue Layer */}
-        <Animated.View style={{ position: 'absolute', opacity: blueOp }}>
-          <Svg height="350" width="350">
-            <Defs>
-              <RadialGradient id="blue" cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor="#60A5FA" stopOpacity="0.7" />
-                <Stop offset="1" stopColor="#2563EB" stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Rect x="0" y="0" width="350" height="350" fill="url(#blue)" />
-          </Svg>
-        </Animated.View>
-      </Animated.View>
-
-      {/* Orb 2: Teal -> Purple */}
-      <Animated.View style={{
-        position: 'absolute', top: -20, right: -100,
-        width: 400, height: 400,
-        transform: [{ scale: scale2 }],
-        alignItems: 'center', justifyContent: 'center'
-      }}>
-        {/* Teal Layer */}
-        <Animated.View style={{ position: 'absolute', opacity: tealOp }}>
-          <Svg height="400" width="400">
-            <Defs>
-              <RadialGradient id="teal" cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor="#2DD4BF" stopOpacity="0.6" />
-                <Stop offset="1" stopColor="#0F766E" stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Rect x="0" y="0" width="400" height="400" fill="url(#teal)" />
-          </Svg>
-        </Animated.View>
-
-        {/* Purple Layer */}
-        <Animated.View style={{ position: 'absolute', opacity: purpleOp }}>
-          <Svg height="400" width="400">
-            <Defs>
-              <RadialGradient id="purp2" cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor="#A78BFA" stopOpacity="0.5" />
-                <Stop offset="1" stopColor="#6D28D9" stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Rect x="0" y="0" width="400" height="400" fill="url(#purp2)" />
-          </Svg>
-        </Animated.View>
-      </Animated.View>
-
-    </View>
-  );
-};
 
 // ─── Sound library ──────────────────────────────────────────────────────────
 const SLEEP_SOUNDS = [
@@ -4706,24 +4613,26 @@ function SleepTabInner() {
       <View style={{ flex: 1, zIndex: 1 }}>
         {/* Premium Sticky Search & Library Actions */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingTop: insets.top + 10, paddingBottom: 10, zIndex: 10 }}>
-          {/* Premium Pill Search Bar */}
-          <View style={{ flex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 }}>
+          {/* Smart Premium Glass Search Bar */}
+          <View style={{ flex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20 }}>
             <LinearGradient
-              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
+              colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.01)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flex: 1, borderRadius: 24, padding: 1 }}
+              style={{ flex: 1, borderRadius: 30, padding: 1 }}
             >
-              <BlurView intensity={40} tint="dark" style={{ 
-                flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-                backgroundColor: 'rgba(10,10,20,0.35)', 
-                borderRadius: 23, paddingHorizontal: 16, height: 40,
+              <BlurView intensity={70} tint="dark" style={{ 
+                flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: 'rgba(5,5,15,0.4)', 
+                borderRadius: 29, paddingHorizontal: 18, height: 44,
                 overflow: 'hidden'
               }}>
-                <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(167, 139, 250, 0.25)', alignItems: 'center', justifyContent: 'center', shadowColor: '#A78BFA', shadowOpacity: 0.8, shadowRadius: 8 }}>
+                  <Ionicons name="search" size={14} color="#E9D5FF" />
+                </View>
                 <TextInput
-                  style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_400Regular', padding: 0 }}
-                  placeholder="Search sounds..."
-                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  style={{ flex: 1, color: '#fff', fontSize: 15, fontFamily: 'Nunito_600SemiBold', padding: 0 }}
+                  placeholder="Find a sound..."
+                  placeholderTextColor="rgba(255,255,255,0.5)"
                   value={searchQuery}
                   onChangeText={(text) => {
                     setSearchQuery(text);
@@ -4737,32 +4646,32 @@ function SleepTabInner() {
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }} style={{ padding: 4 }}>
-                    <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.7)" />
+                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.8)" />
                   </TouchableOpacity>
                 )}
               </BlurView>
             </LinearGradient>
           </View>
 
-          {/* Premium Pill Library Button */}
+          {/* Smart Premium Library Button */}
           <TouchableOpacity
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
             activeOpacity={0.8}
-            style={{ shadowColor: '#A78BFA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 }}
+            style={{ shadowColor: '#A78BFA', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}
           >
             <LinearGradient
-              colors={['rgba(167, 139, 250, 0.4)', 'rgba(100, 80, 200, 0.1)']}
+              colors={['rgba(167, 139, 250, 0.6)', 'rgba(100, 80, 200, 0.1)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 24, padding: 1 }}
+              style={{ borderRadius: 30, padding: 1 }}
             >
-              <BlurView intensity={50} tint="dark" style={{ 
-                flexDirection: 'row', alignItems: 'center', gap: 6, 
-                backgroundColor: 'rgba(20,15,35,0.5)',
-                borderRadius: 23, paddingHorizontal: 14, height: 40,
+              <BlurView intensity={70} tint="dark" style={{ 
+                flexDirection: 'row', alignItems: 'center', gap: 8, 
+                backgroundColor: 'rgba(15,10,25,0.6)',
+                borderRadius: 29, paddingHorizontal: 16, height: 44,
                 overflow: 'hidden'
               }}>
-                <Ionicons name="musical-notes" size={14} color="#E9D5FF" />
-                <Text style={{ fontSize: 12, color: '#E9D5FF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 }}>
+                <Ionicons name="musical-notes" size={16} color="#E9D5FF" />
+                <Text style={{ fontSize: 13, color: '#E9D5FF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.5 }}>
                   Library
                 </Text>
               </BlurView>

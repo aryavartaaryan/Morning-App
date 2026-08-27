@@ -6715,22 +6715,14 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const vMonth    = getVedicMonth(now, weather?.lat);
   
   const [showCalendar, setShowCalendar] = useState(false);
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
-  const tFmt = (d: Date | null) => d ? d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--';
+  const tFmt = (d: Date | null) => d ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--';
+  const timeOnly = (d: Date | null) => d ? d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--';
+  
   const timings = React.useMemo(() => getExactTimings(now), [now]);
   const csr = solarTimes?.sunrise  ?? null;
   const css = solarTimes?.sunset   ?? null;
-  const csn = solarTimes?.solarNoon ?? null;
-  const cdaylight = csr !== null && css !== null ? (() => {
-    const h = Math.floor(css - csr); const m = Math.round(((css - csr) - h) * 60);
-    return `${h}h ${m}m`;
-  })() : null;
-  const curH = now.getHours() + now.getMinutes() / 60;
-  const dayPct = (csr !== null && css !== null && curH >= csr && curH <= css)
-    ? Math.max(0, Math.min(1, (curH - csr) / (css - csr)))
-    : (csr !== null && curH < csr ? 0 : (css !== null && curH > css ? 1 : null));
-
   const fmtSolar = (h: number | null) => h !== null ? new Date(new Date().setHours(Math.floor(h), (h % 1) * 60)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--';
 
   // Option 1 Colors
@@ -6738,262 +6730,175 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const GOLD_LIGHT = '#F3E5AB';
   const BG_COLOR = '#0A0A0A'; // Midnight Obsidian
 
-  const gregorianShort = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-  const tithiEnergyText = TITHI_ENERGY[p.tithiName] ?? 'Sacred cosmic alignment';
-
-  const panchangaRows = [
-    {
-      label: 'MAAS', labelFull: 'Lunar Month',
-      value: `${vMonth.name} Maas`,
-      sub: `${vMonth.en}  ·  ${(vMonth as any).season} Season`,
-      timing: `${tFmt(timings.maasStart)} → ${tFmt(timings.maasEnd)}`,
-      color: GOLD, emoji: '📅', desc: `The Vedic calendar tracks the sun's passage through the 12 rashis. You are in ${vMonth.name} (${vMonth.en}), the ${(vMonth as any).season} season month.`,
-    },
-    {
-      label: 'TITHI', labelFull: 'Lunar Phase',
-      value: p.tithiName,
-      sub: `${p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon  ·  Day ${p.tithiInPaksha}`,
-      timing: `${tFmt(timings.tithiStart)} → ${tFmt(timings.tithiEnd)}`,
-      color: GOLD_LIGHT, emoji: '🌙', desc: tithiEnergyText,
-    },
-    {
-      label: 'NAKSHATRA', labelFull: 'Lunar Mansion',
-      value: nakshatra.name,
-      sub: `Moon in ${nakshatra.en}  ·  ${nakshatra.constellation}`,
-      timing: `${tFmt(timings.nakshatraStart)} → ${tFmt(timings.nakshatraEnd)}`,
-      color: '#B0C4DE', emoji: nakshatra.emoji || '⭐', desc: `Moon transits ${nakshatra.name}, ruled by ${(nakshatra as any).planet}. Energy: ${nakshatra.energy}`,
-    },
-    {
-      label: 'YOGA', labelFull: 'Cosmic Alignment',
-      value: yoga.name,
-      sub: `Energy: ${yoga.en}`,
-      timing: `${tFmt(timings.yogaStart)} → ${tFmt(timings.yogaEnd)}`,
-      color: yoga.auspicious ? GOLD : '#8B7355', emoji: yoga.auspicious ? '✨' : '⚠️', desc: `${yoga.name} yoga. ${yoga.meaning}. ${yoga.auspicious ? 'Auspicious' : 'Inauspicious'} alignment.`,
-    },
-    {
-      label: 'VAAR', labelFull: 'Day Ruler',
-      value: vaar.vedicName,
-      sub: `${ENGLISH_DAYS[p.vaarIdx]}  ·  ${vaar.planet} Day`,
-      timing: null,
-      color: '#AA8C2C', emoji: '🪐', desc: `Ruled by ${vaar.planet}. ${vaar.energy}`,
-    },
-  ];
-
-  const todayFest = getFestivalForDate();
-  const nextEvent = lunar.daysToFull <= lunar.daysToNew
-    ? { label: lunar.daysToFull === 0 ? 'Full Moon Today!' : `Full Moon in ${lunar.daysToFull}d`, color: GOLD, icon: '🌕' }
-    : { label: lunar.daysToNew  === 0 ? 'New Moon Today!'  : `New Moon in ${lunar.daysToNew}d`,   color: GOLD_LIGHT, icon: '🌑' };
+  const tithiLabel = `${p.tithiName} (${p.paksha === 'Shukla' ? 'Waxing' : 'Waning'})`;
+  const tithiEnds = timeOnly(timings.tithiEnd);
   
+  const sunRashi = p.sunLong ? ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'][Math.floor(p.sunLong / 30)] : 'Libra';
+
+  const toggleSection = (sec: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSection(expandedSection === sec ? null : sec);
+  };
+
   return (
     <>
       <View style={{
-        marginHorizontal: 0, marginTop: 0, marginBottom: 0,
-        backgroundColor: BG_COLOR,
-        paddingVertical: 24, paddingHorizontal: 20,
-        minHeight: Dimensions.get('window').height
+        flex: 1, backgroundColor: BG_COLOR,
+        paddingTop: 54, paddingBottom: 40, paddingHorizontal: 20,
+        minHeight: SCREEN_H // Force fullscreen stretch
       }}>
         {/* Subtle Gold Ambient Background */}
-        <View style={{ position: 'absolute', top: -50, left: -50, width: 250, height: 250, borderRadius: 125, backgroundColor: GOLD, opacity: 0.04 }} />
-        <View style={{ position: 'absolute', top: 300, right: -50, width: 250, height: 250, borderRadius: 125, backgroundColor: '#B0C4DE', opacity: 0.02 }} />
+        <View style={{ position: 'absolute', top: -50, left: -50, width: 300, height: 300, borderRadius: 150, backgroundColor: GOLD, opacity: 0.04 }} />
         
-        {/* TOP ROW: Date Left, Moon Right */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-          <View style={{ flex: 1, paddingTop: 10 }}>
-            <Text style={{ fontFamily: 'Georgia', fontSize: 10, fontWeight: '700', color: GOLD, letterSpacing: 4, marginBottom: 8, textTransform: 'uppercase' }}>Jyotish Veda</Text>
-            <Text style={{ fontFamily: 'Georgia', fontSize: 32, fontWeight: '400', color: GOLD_LIGHT, letterSpacing: 0, lineHeight: 36 }}>
-              {now.toLocaleDateString('en-US', { weekday: 'long' })}
+        {/* Top Header */}
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+            <Text style={{ fontFamily: 'Georgia', fontSize: 16, fontWeight: '600', color: GOLD, letterSpacing: 3, textTransform: 'uppercase' }}>
+              Jyotish Veda
             </Text>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(243,229,171,0.6)', letterSpacing: 0.5, marginTop: 4 }}>
-              {gregorianShort}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: GOLD }} />
-              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(212,175,55,0.8)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                {vMonth.name} Maas  ·  {p.paksha}
-              </Text>
+            {/* Real-time Moon Phase in top right corner */}
+            <View style={{ position: 'absolute', right: 0, shadowColor: '#FFF', shadowOpacity: 0.4, shadowRadius: 8, elevation: 4 }}>
+              <MoonSVG tithiNum={moon.tithiNum} size={28} />
             </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, opacity: 0.7 }}>
+            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '500', letterSpacing: 0.5 }}>
+              {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </Text>
+            <View style={{ width: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 8 }} />
+            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '500', letterSpacing: 0.5 }}>
+              Vedic: Local
+            </Text>
+          </View>
+        </View>
+
+        {/* Tithi Section */}
+        <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('tithi')} style={{ alignItems: 'center', marginBottom: 20 }}>
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2, marginBottom: 6 }}>
+            TODAY'S VEDIC INSIGHT
+          </Text>
+          <Text style={{ fontFamily: 'Georgia', fontSize: 26, color: '#FFF', fontWeight: '400', letterSpacing: 2, marginBottom: 4 }}>
+            TITHI
+          </Text>
+          <Text style={{ fontFamily: 'Georgia', fontSize: 20, color: GOLD, fontWeight: '400', letterSpacing: 0.5, marginBottom: 8, textAlign: 'center' }}>
+            {tithiLabel}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.8 }}>
+            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '500' }}>Ends {tithiEnds}</Text>
+            <View style={{ width: 1, height: 10, backgroundColor: 'rgba(243,229,171,0.3)', marginHorizontal: 8 }} />
+            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '500' }}>{moon.illumination}% Illuminated</Text>
           </View>
           
-          <View style={{ alignItems: 'center' }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(212,175,55,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.25)', shadowColor: GOLD, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 15, elevation: 10 }}>
-              <MoonSVG tithiNum={moon.tithiNum} size={48} />
-            </View>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(243,229,171,0.5)', letterSpacing: 0.5, marginTop: 8, textTransform: 'uppercase' }}>
-              {moon.illumination}% lit
-            </Text>
-          </View>
-        </View>
-
-        {/* ── MOON EVENT BADGES ── */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-          {(lunar.daysToFull !== 0 && lunar.daysToNew !== 0) && (
-            <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' }}>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: GOLD_LIGHT, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {p.paksha === 'Shukla' ? '🌒 Waxing Moon' : '🌘 Waning Moon'}
-              </Text>
+          {expandedSection === 'tithi' && (
+            <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(212,175,55,0.05)', borderRadius: 12, width: '100%', borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' }}>
+              <Text style={{ fontSize: 11, color: '#FFF', marginBottom: 6, fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>START:</Text> {tFmt(timings.tithiStart)}</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>END:</Text> {tFmt(timings.tithiEnd)}</Text>
             </View>
           )}
-          <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' }}>
-            <Text style={{ fontSize: 9, fontWeight: '600', color: GOLD, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {nextEvent.icon} {nextEvent.label}
-            </Text>
-          </View>
-          {todayFest && (
-            <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' }}>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: GOLD, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {todayFest.emoji} {todayFest.name.split(' / ')[0]}
-              </Text>
-            </View>
-          )}
-        </View>
+        </TouchableOpacity>
 
         {/* 3D Solar System Rings Representation */}
-        <View style={{ alignItems: 'center', justifyContent: 'center', height: 160, marginBottom: 30, opacity: 0.9 }}>
-          <Svg width={300} height={160}>
-            {/* 
-              Center is exactly 150, 80.
-              r1=40 (rx=40, ry=14)
-              r2=70 (rx=70, ry=24.5)
-              r3=100 (rx=100, ry=35)
-              r4=130 (rx=130, ry=45.5)
-            */}
-            {/* Draw Rings Using Path to simulate Ellipse since Ellipse isn't imported */}
-            <SvgPath d="M 110,80 A 40,14 0 1,0 190,80 A 40,14 0 1,0 110,80" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" />
-            <SvgPath d="M 80,80 A 70,24.5 0 1,0 220,80 A 70,24.5 0 1,0 80,80" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" />
-            <SvgPath d="M 50,80 A 100,35 0 1,0 250,80 A 100,35 0 1,0 50,80" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.75" />
-            <SvgPath d="M 20,80 A 130,45.5 0 1,0 280,80 A 130,45.5 0 1,0 20,80" fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth="0.5" />
+        <View style={{ alignItems: 'center', justifyContent: 'center', height: 180, marginBottom: 20 }}>
+          <Svg width={300} height={180} style={{ position: 'absolute' }}>
+            {/* Concentric rings squashed to look 3D. Center is 150, 90 */}
+            <SvgCircle cx="150" cy="90" r="40" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
+            <SvgCircle cx="150" cy="90" r="70" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
+            <SvgCircle cx="150" cy="90" r="100" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.75" scaleY={0.35} transform="translate(0, 58.5)" />
+            <SvgCircle cx="150" cy="90" r="130" fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
             
-            {/* Planets exactly on the orbital paths */}
-            {/* Planet 1: ring1, angle 45deg (x=178.3, y=89.9) */}
-            <SvgCircle cx="178.3" cy="89.9" r="3" fill="#D4AF37" />
-            
-            {/* Planet 2: ring2, angle 200deg (x=84.2, y=71.6) */}
-            <SvgCircle cx="84.2" cy="71.6" r="2.5" fill="#B0C4DE" />
-            
-            {/* Planet 3: ring3, angle 330deg (x=236.6, y=62.5) */}
-            <SvgCircle cx="236.6" cy="62.5" r="4" fill="#F59E0B" />
-            
-            {/* Planet 4: ring3, angle 160deg (x=56, y=92) */}
-            <SvgCircle cx="56" cy="92" r="2.5" fill="#FFFFFF" opacity={0.6} />
-
-            {/* Planet 5: ring4, angle 120deg (x=85, y=119.4) */}
-            <SvgCircle cx="85" cy="119.4" r="3.5" fill="#EC4899" />
-            
-            {/* Planet 6: ring4, angle -20deg (x=272.2, y=64.5) */}
-            <SvgCircle cx="272.2" cy="64.5" r="3" fill="#AA8C2C" />
-
-            {/* Glowing Central Sun positioned perfectly in SVG coordinate space */}
-            <SvgCircle cx="150" cy="80" r="22" fill={GOLD} />
-            <SvgCircle cx="150" cy="80" r="25" fill="rgba(212,175,55,0.3)" />
-            <SvgCircle cx="150" cy="80" r="32" fill="rgba(212,175,55,0.1)" />
+            {/* Exactly positioned planets on the orbits. cy is computed as 90 + r*0.35*sin(theta) */}
+            <SvgCircle cx="150" cy="104" r="3" fill="#D4AF37" />     {/* r=40, angle=90, y=90+14=104 */}
+            <SvgCircle cx="220" cy="90" r="2.5" fill="#B0C4DE" />    {/* r=70, angle=0, x=150+70=220 */}
+            <SvgCircle cx="80" cy="90" r="4" fill="#F59E0B" />       {/* r=70, angle=180, x=150-70=80 */}
+            <SvgCircle cx="220.7" cy="114.7" r="3.5" fill="#EC4899" /> {/* r=100, angle=45, x=220.7, y=90+35*.707=114.7 */}
+            <SvgCircle cx="79.3" cy="65.3" r="2" fill="#FFFFFF" opacity={0.6} /> {/* r=100, angle=225, x=79.3, y=90-24.7=65.3 */}
+            <SvgCircle cx="241.9" cy="57.8" r="3" fill="#AA8C2C" />    {/* r=130, angle=315, x=241.9, y=90-32.2=57.8 */}
           </Svg>
+          
+          {/* Glowing central SUN perfectly centered at 150, 90 */}
+          <View style={{ 
+            position: 'absolute', top: 62, left: 122,
+            width: 56, height: 56, borderRadius: 28, backgroundColor: '#FDE047', 
+            alignItems: 'center', justifyContent: 'center',
+            shadowColor: '#FEF08A', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 20, elevation: 12 
+          }}>
+            <LinearGradient
+              colors={['#FEF08A', '#FDE047', '#EAB308']}
+              start={{ x: 0.2, y: 0.2 }} end={{ x: 0.8, y: 0.8 }}
+              style={{ width: 56, height: 56, borderRadius: 28 }}
+            />
+          </View>
         </View>
 
-        <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 8 }} />
-
-        {/* ── PANCHANGA ROWS ── */}
-        {panchangaRows.map((row, idx) => {
-          const isExpanded = expandedRow === idx;
-          return (
-            <View key={idx}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  Haptics.selectionAsync();
-                  setExpandedRow(isExpanded ? null : idx);
-                }}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, gap: 14 }}
-              >
-                {/* Left: Label */}
-                <View style={{ width: 85, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: GOLD, letterSpacing: 2 }}>{row.label}</Text>
-                </View>
-                {/* Center: Main value */}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: '400', color: GOLD_LIGHT, letterSpacing: 0.2 }} numberOfLines={1}>
-                    {row.value}
-                  </Text>
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(243,229,171,0.6)', marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' }} numberOfLines={1}>
-                    {row.sub}
-                  </Text>
-                </View>
-                {/* Right: expand arrow */}
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: isExpanded ? row.color + '15' : 'transparent', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isExpanded ? row.color + '40' : 'rgba(212,175,55,0.2)' }}>
-                  <Text style={{ fontSize: 12, color: isExpanded ? row.color : 'rgba(212,175,55,0.5)', fontWeight: '400', lineHeight: 16 }}>{isExpanded ? '↑' : '›'}</Text>
-                </View>
-              </TouchableOpacity>
-
-              {isExpanded && (
-                <View style={{
-                  marginBottom: 12, marginTop: 2, marginHorizontal: 4,
-                  paddingHorizontal: 16, paddingVertical: 16,
-                  borderRadius: 12,
-                  backgroundColor: row.color + '0A',
-                  borderWidth: 1,
-                  borderColor: row.color + '25',
-                }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
-                    <Text style={{ fontFamily: 'Georgia', fontSize: 11, fontWeight: '600', color: row.color, letterSpacing: 1.5, textTransform: 'uppercase' }}>{row.labelFull}</Text>
-                  </View>
-                  {row.timing && (
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(243,229,171,0.5)', letterSpacing: 0.5, marginBottom: 10, textTransform: 'uppercase' }}>
-                      {row.timing}
-                    </Text>
-                  )}
-                  <Text style={{ fontSize: 13, fontWeight: '400', color: 'rgba(243,229,171,0.85)', lineHeight: 22 }}>
-                    {row.desc}
-                  </Text>
-                </View>
-              )}
-
-              {idx < panchangaRows.length - 1 && (
-                <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.08)' }} />
-              )}
+        {/* Planetary Alignments Grid */}
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2, textAlign: 'center', marginBottom: 16 }}>
+            PLANETARY ALIGNMENTS
+          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 16 }}>
+            <View style={{ gap: 10 }}>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>SUN</Text> in {sunRashi} ☀️</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>MOON</Text> in {nakshatra.name} 🌙</Text>
             </View>
-          );
-        })}
-
-        <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginTop: 8, marginBottom: 16 }} />
-
-        {/* ── SOLAR ARC BAR ── */}
-        {csr !== null && css !== null && (
-          <View style={{ marginBottom: 20, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)', backgroundColor: 'rgba(212,175,55,0.04)', padding: 16 }}>
-            {dayPct !== null && (
-              <View style={{ marginBottom: 14 }}>
-                <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(212,175,55,0.1)', overflow: 'hidden', marginBottom: 10 }}>
-                  <LinearGradient
-                    colors={['#AA8C2C', '#D4AF37', '#F3E5AB']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={{ height: 4, width: `${Math.round(dayPct * 100)}%` as any, borderRadius: 2 }}
-                  />
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 9, color: 'rgba(243,229,171,0.5)', fontWeight: '600', letterSpacing: 1 }}>🌅 SUNRISE</Text>
-                  <Text style={{ fontSize: 9, color: GOLD, fontWeight: '700', letterSpacing: 1 }}>{Math.round(dayPct * 100)}% OF DAY</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(243,229,171,0.5)', fontWeight: '600', letterSpacing: 1 }}>SUNSET 🌆</Text>
-                </View>
-              </View>
-            )}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-              {[
-                { label: 'SUNRISE', val: fmtSolar(csr) },
-                csn !== null ? { label: 'SOLAR NOON', val: fmtSolar(csn) } : null,
-                { label: 'SUNSET', val: fmtSolar(css) },
-                cdaylight ? { label: 'DAYLIGHT', val: cdaylight } : null,
-              ].filter(Boolean).map((item: any, i) => (
-                <View key={i} style={{ alignItems: 'center' }}>
-                  <Text style={{ fontFamily: 'Georgia', fontSize: 16, fontWeight: '400', color: GOLD_LIGHT, letterSpacing: 0 }}>{item.val}</Text>
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(243,229,171,0.5)', marginTop: 6, letterSpacing: 0.8, textTransform: 'uppercase' }}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('vaar')} style={{ gap: 10, alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>VAAR</Text> is {vaar.planet} 🪐</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>MAAS</Text> is {vMonth.name} ✨</Text>
+            </TouchableOpacity>
           </View>
-        )}
+
+          {expandedSection === 'vaar' && (
+            <View style={{ marginBottom: 16, marginHorizontal: 10, padding: 12, backgroundColor: 'rgba(212,175,55,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' }}>
+              <Text style={{ fontSize: 11, color: '#FFF', marginBottom: 4, fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>DAY:</Text> {ENGLISH_DAYS[p.vaarIdx]}</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>RULED BY:</Text> {vaar.planet}</Text>
+            </View>
+          )}
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10 }}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('nakshatra')} style={{ flex: 1 }}>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>NAKSHATRA:</Text>
+              <Text style={{ fontFamily: 'Georgia', fontSize: 14, color: '#FFF' }}>{nakshatra.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.nakshatraEnd)})</Text></Text>
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('yoga')} style={{ flex: 1, alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>YOGA:</Text>
+              <Text style={{ fontFamily: 'Georgia', fontSize: 14, color: '#FFF' }}>{yoga.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.yogaEnd)})</Text></Text>
+            </TouchableOpacity>
+          </View>
+
+          {expandedSection === 'nakshatra' && (
+            <View style={{ marginTop: 16, marginHorizontal: 10, padding: 12, backgroundColor: 'rgba(212,175,55,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' }}>
+              <Text style={{ fontSize: 11, color: '#FFF', marginBottom: 6, fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>START:</Text> {tFmt(timings.nakshatraStart)}</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>END:</Text> {tFmt(timings.nakshatraEnd)}</Text>
+            </View>
+          )}
+
+          {expandedSection === 'yoga' && (
+            <View style={{ marginTop: 16, marginHorizontal: 10, padding: 12, backgroundColor: 'rgba(212,175,55,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' }}>
+              <Text style={{ fontSize: 11, color: '#FFF', marginBottom: 6, fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>START:</Text> {tFmt(timings.yogaStart)}</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}><Text style={{ color: GOLD_LIGHT }}>END:</Text> {tFmt(timings.yogaEnd)}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
+
+        {/* Footer Times */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, marginBottom: 20 }}>
+          <View>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginBottom: 2 }}>Sunrise</Text>
+            <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}>{fmtSolar(csr)}</Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginBottom: 2 }}>Sunset</Text>
+            <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}>{fmtSolar(css)}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 9, color: GOLD, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>MOON PHASE</Text>
+            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '600' }}>{p.paksha} Paksha</Text>
+          </View>
+        </View>
 
         {/* ── ACTION BUTTONS ── */}
-        <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 60 }}>
+        <View style={{ flexDirection: 'row', gap: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(212,175,55,0.15)' }}>
           {/* VEDIC CALENDAR */}
           <TouchableOpacity
             activeOpacity={0.8}

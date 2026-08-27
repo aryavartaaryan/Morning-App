@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Gyroscope } from 'expo-sensors';
 
 const { width: W, height: H } = Dimensions.get('window');
+import { CalmingAura } from "@/components/CalmingAura";
 
 import * as Location from 'expo-location';
 
@@ -530,6 +531,8 @@ export default function HarmonyCompassScreen() {
 
   return (
     <View style={styles.container}>
+      {/* ── Entire Top Zone Calming Animation ── */}
+      <CalmingAura />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 40) }} showsVerticalScrollIndicator={false}>
         {/* Header */}
