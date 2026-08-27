@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, PermissionsAndroid, StyleSheet, Modal,
   TouchableOpacity, ActivityIndicator, Animated, Platform,
-  Easing, requireNativeComponent, ScrollView,
+  Easing, requireNativeComponent, ScrollView, BackHandler, Dimensions
 } from 'react-native';
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path, Defs, LinearGradient, Stop, Polyline } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Polyline, Mask, Rect } from 'react-native-svg';
 
 const { PpgScanner } = NativeModules;
 const PpgEmitter = new NativeEventEmitter(PpgScanner);
@@ -46,10 +46,7 @@ const HEART =
   'M110,185 C25,135 0,85 20,50 C35,25 65,20 85,35 C95,43 102,55 110,70 ' +
   'C118,55 125,43 135,35 C155,20 185,25 200,50 C220,85 195,135 110,185 Z';
 
-// Compound path: fullscreen rect + heart silhouette.
-// fillRule="evenodd": rect boundary=1 crossing (odd=filled), heart boundary=2 crossings (even=transparent).
-// Winding direction is irrelevant for evenodd — avoids all winding-analysis bugs.
-const INVERSE_HEART_EVENODD = `M-5,-5 L-5,215 L225,215 L225,-5 Z ${HEART}`;
+
 
 // ─── System A — Live scanning heart colours (completely separate from results) ─
 const HEART_COLOR = {
@@ -139,10 +136,40 @@ export default function StressScanner({ visible, onClose }: any) {
     glowAnim.setValue(0);
   }, [stopAll, beatAnim, colorAnim, tintAnim, glowAnim]);
 
+  const { height: windowHeight } = Dimensions.get('window');
+  const [slideAnim] = useState(() => new Animated.Value(windowHeight)); // Start completely offscreen
+  const [mounted, setMounted] = useState(visible);
+
   useEffect(() => {
-    if (visible) { resetAll(); go('idle'); }
-    else         { stopAll(); }
-  }, [visible]);
+    if (visible) {
+      setMounted(true);
+      resetAll(); 
+      go('idle');
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.poly(4)),
+        useNativeDriver: true,
+      }).start();
+      
+      const backAction = () => {
+        handleClose();
+        return true; // prevent default back button behavior
+      };
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+      return () => backHandler.remove();
+    } else {
+      stopAll();
+      Animated.timing(slideAnim, {
+        toValue: windowHeight,
+        duration: 250,
+        easing: Easing.in(Easing.poly(4)),
+        useNativeDriver: true,
+      }).start(() => {
+        setMounted(false);
+      });
+    }
+  }, [visible, slideAnim, windowHeight]);
 
   // ─── Native event handlers ─────────────────────────────────────────────────
   const onProgress = useCallback((data: any) => {
@@ -347,17 +374,13 @@ export default function StressScanner({ visible, onClose }: any) {
 
             {/* Layer 1: Live camera feed */}
             {Platform.OS === 'android' && (
-              <PpgCameraPreview
-                style={{ position: 'absolute', top: 0, left: 0, width: SCAN_W, height: SCAN_H }}
-              />
+              <View style={{ position: 'absolute', top: 0, left: 0, width: SCAN_W, height: SCAN_H, overflow: 'hidden' }}>
+                <PpgCameraPreview style={{ flex: 1, width: '100%', height: '100%' }} />
+              </View>
             )}
 
-            {/* Layer 2: Black inverse mask with transparent heart hole (evenodd) */}
-            {/* STEP 2 VERIFIED: fillRule="evenodd" on a simple <Path> (not <Mask>)
-                works correctly on all Android versions in react-native-svg.
-                The evenodd rule does not depend on path winding direction:
-                  - 1 boundary crossing (outside heart, inside rect) → ODD → FILLED black
-                  - 2 boundary crossings (inside heart) → EVEN → transparent → camera shows */}
+            {/* Layer 2: Black inverse mask with transparent heart hole */}
+            {/* Using a bulletproof <Mask> tag instead of fillRule which frequently glitches on Android hardware acceleration. */}
             <Svg
               width={SCAN_W}
               height={SCAN_H}
@@ -365,7 +388,13 @@ export default function StressScanner({ visible, onClose }: any) {
               style={{ position: 'absolute', top: 0, left: 0 }}
               pointerEvents="none"
             >
-              <Path d={INVERSE_HEART_EVENODD} fill="#000" fillRule="evenodd" />
+              <Defs>
+                <Mask id="heartHoleMask">
+                  <Rect x="-10" y="-10" width="240" height="225" fill="#FFFFFF" />
+                  <Path d={HEART} fill="#000000" />
+                </Mask>
+              </Defs>
+              <Rect x="-10" y="-10" width="240" height="225" fill="#000000" mask="url(#heartHoleMask)" />
             </Svg>
 
             {/* Layer 3: Semi-transparent red tint over camera (DETECTED only) */}
@@ -588,22 +617,32 @@ export default function StressScanner({ visible, onClose }: any) {
 
   const isScanScreen = phase === 'waiting' || phase === 'candidate' || phase === 'scanning';
 
+  if (!mounted) return null;
+
   return (
-    <Modal visible={visible} transparent={false} animationType="slide" statusBarTranslucent onRequestClose={handleClose}>
-      <View style={S.container}>
-        {isScanScreen ? (
-          <View style={S.fullScreenBlack}>{renderScanView()}</View>
-        ) : (
-          <View style={S.sheet}>
-            {phase === 'idle'       && renderIdle()}
-            {phase === 'processing' && renderProcessing()}
-            {phase === 'results'    && renderResults()}
-            {phase === 'failed'     && renderFailed()}
-            {phase === 'noperm'     && renderNoPerm()}
-          </View>
-        )}
-      </View>
-    </Modal>
+    <Animated.View 
+      style={[
+        S.container, 
+        StyleSheet.absoluteFill, 
+        { 
+          zIndex: 99999, 
+          elevation: 99999,
+          transform: [{ translateY: slideAnim }] 
+        }
+      ]}
+    >
+      {isScanScreen ? (
+        <View style={S.fullScreenBlack}>{renderScanView()}</View>
+      ) : (
+        <View style={S.sheet}>
+          {phase === 'idle'       && renderIdle()}
+          {phase === 'processing' && renderProcessing()}
+          {phase === 'results'    && renderResults()}
+          {phase === 'failed'     && renderFailed()}
+          {phase === 'noperm'     && renderNoPerm()}
+        </View>
+      )}
+    </Animated.View>
   );
 }
 

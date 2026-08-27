@@ -1,17 +1,25 @@
 import re
 
 with open("app/(tabs)/walk.tsx", "r") as f:
-    content = f.read()
+    text = f.read()
 
-new_compass = """// ── Sacred Geometry Yantra Component ──
+# I will find where WalkScreen starts
+walk_screen_idx = text.find("export default function WalkScreen()")
+
+# I will find where HarmonyCompassSVG starts
+harmony_idx = text.find("const HarmonyCompassSVG")
+
+if walk_screen_idx != -1 and harmony_idx != -1:
+    # Get everything before HarmonyCompassSVG
+    before = text[:harmony_idx]
+    # Get everything from WalkScreen onwards
+    after = text[walk_screen_idx:]
+    
+    # Define my pristine component
+    new_compass = """// ── Sacred Geometry Yantra Component ──
 const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
   const r = size / 2;
   const center = r;
-
-  // Outer ring path
-  const generateOuterRing = () => {
-    return `M ${center} ${center - r * 0.95} A ${r * 0.95} ${r * 0.95} 0 1 1 ${center - 0.01} ${center - r * 0.95}`;
-  };
 
   // 24-point intricate star
   const generateIntricateStar = (outerR: number, innerR: number, points: number = 24) => {
@@ -42,9 +50,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
 
   const GOLD_PRIMARY = "#E6C27A";
   const GOLD_SECONDARY = "#C9A24B";
-  const DARK_BG = "#08080C";
   const GLASS_BG = "rgba(255,255,255,0.03)";
-  const PREMIUM_SHADOW = "rgba(0,0,0,0.8)";
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -213,7 +219,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                   <Line x1={center + r * 0.2} y1={center} x2={center + r * 0.92} y2={center} stroke={COLORS.saffron} strokeWidth={2.5} strokeLinecap="round" />
                   
                   {/* Glowing Node */}
-                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" />
+                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" shadowColor={COLORS.saffron} shadowRadius={5} shadowOpacity={1} />
                   <Circle cx={center + r * 0.92} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={2} opacity={0.9} />
                   
                   <SvgText
@@ -237,14 +243,12 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
     </View>
   );
 };
+
 """
+    final_text = before + new_compass + after
+    with open("app/(tabs)/walk.tsx", "w") as f:
+        f.write(final_text)
+    print("Fixed walk.tsx definitively!")
+else:
+    print("Couldn't find markers")
 
-start_idx = content.find("// ── Sacred Geometry Yantra Component ──")
-end_idx = content.find("export default function WalkScreen()")
-
-new_content = content[:start_idx] + new_compass + "\n\n" + content[end_idx:]
-
-with open("app/(tabs)/walk.tsx", "w") as f:
-    f.write(new_content)
-
-print("Compass fixed!")

@@ -3,8 +3,8 @@ import re
 with open("app/(tabs)/walk.tsx", "r") as f:
     content = f.read()
 
-new_compass = """// ── Sacred Geometry Yantra Component ──
-const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
+# Define the new component
+new_compass = """const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
   const r = size / 2;
   const center = r;
 
@@ -213,7 +213,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                   <Line x1={center + r * 0.2} y1={center} x2={center + r * 0.92} y2={center} stroke={COLORS.saffron} strokeWidth={2.5} strokeLinecap="round" />
                   
                   {/* Glowing Node */}
-                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" />
+                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" shadowColor={COLORS.saffron} shadowRadius={5} shadowOpacity={1} />
                   <Circle cx={center + r * 0.92} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={2} opacity={0.9} />
                   
                   <SvgText
@@ -239,12 +239,34 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
 };
 """
 
-start_idx = content.find("// ── Sacred Geometry Yantra Component ──")
-end_idx = content.find("export default function WalkScreen()")
+# Find the start and end of the original component
+start_idx = content.find("const HarmonyCompassSVG = ({ size, activeZoneData")
+end_idx = content.find("const AnimatedSvgCircle = Animated.createAnimatedComponent(Circle);", start_idx)
+# Let's use regex to reliably replace the component.
+pattern = re.compile(r"const HarmonyCompassSVG = \(\{.*?\}\);\s*};", re.DOTALL)
+# Actually, the original component ends at line 254 (before default export). Let's just find "const HarmonyCompassSVG" and the next `export default` or something.
 
-new_content = content[:start_idx] + new_compass + "\n\n" + content[end_idx:]
+end_idx_manual = content.find("export default function WalkScreen()", start_idx)
+
+# We can find the closing brace of HarmonyCompassSVG by counting braces, or just regex.
+def find_matching_brace(text, start):
+    count = 0
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            count += 1
+        elif text[i] == '}':
+            count -= 1
+            if count == 0:
+                return i
+    return -1
+
+brace_start = content.find("{", start_idx)
+brace_end = find_matching_brace(content, brace_start)
+
+# The new component will replace this slice
+new_content = content[:start_idx] + new_compass + content[brace_end+1:]
 
 with open("app/(tabs)/walk.tsx", "w") as f:
     f.write(new_content)
 
-print("Compass fixed!")
+print("Compass replaced successfully!")

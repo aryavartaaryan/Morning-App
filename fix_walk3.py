@@ -1,17 +1,28 @@
-import re
-
 with open("app/(tabs)/walk.tsx", "r") as f:
-    content = f.read()
+    text = f.read()
 
-new_compass = """// ── Sacred Geometry Yantra Component ──
-const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
+# Replace the component
+start_marker = "const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {"
+end_marker = "export default function HarmonyCompassScreen() {"
+
+start_idx = text.find(start_marker)
+end_idx = text.find(end_marker)
+
+if start_idx == -1 or end_idx == -1:
+    print("Failed to find markers")
+    exit(1)
+
+# We need to find the exact end of HarmonyCompassSVG. It ends just before `export default function HarmonyCompassScreen() {`
+# Let's search backwards from end_idx for `};`
+comp_end = text.rfind("};", start_idx, end_idx)
+
+if comp_end == -1:
+    print("Could not find end of component")
+    exit(1)
+
+new_compass = """const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
   const r = size / 2;
   const center = r;
-
-  // Outer ring path
-  const generateOuterRing = () => {
-    return `M ${center} ${center - r * 0.95} A ${r * 0.95} ${r * 0.95} 0 1 1 ${center - 0.01} ${center - r * 0.95}`;
-  };
 
   // 24-point intricate star
   const generateIntricateStar = (outerR: number, innerR: number, points: number = 24) => {
@@ -42,9 +53,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
 
   const GOLD_PRIMARY = "#E6C27A";
   const GOLD_SECONDARY = "#C9A24B";
-  const DARK_BG = "#08080C";
   const GLASS_BG = "rgba(255,255,255,0.03)";
-  const PREMIUM_SHADOW = "rgba(0,0,0,0.8)";
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -213,7 +222,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                   <Line x1={center + r * 0.2} y1={center} x2={center + r * 0.92} y2={center} stroke={COLORS.saffron} strokeWidth={2.5} strokeLinecap="round" />
                   
                   {/* Glowing Node */}
-                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" />
+                  <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" shadowColor={COLORS.saffron} shadowRadius={5} shadowOpacity={1} />
                   <Circle cx={center + r * 0.92} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={2} opacity={0.9} />
                   
                   <SvgText
@@ -236,15 +245,16 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
       )}
     </View>
   );
-};
+}
 """
 
-start_idx = content.find("// ── Sacred Geometry Yantra Component ──")
-end_idx = content.find("export default function WalkScreen()")
+final_text = text[:start_idx] + new_compass + "\n\n" + text[comp_end+2:]
 
-new_content = content[:start_idx] + new_compass + "\n\n" + content[end_idx:]
+# Now replace particles
+import re
+final_text = re.sub(r'\{/\*\s*Gyroscope Stardust Particles\s*\*/\}.*?</Animated\.View>', '', final_text, flags=re.DOTALL)
 
 with open("app/(tabs)/walk.tsx", "w") as f:
-    f.write(new_content)
+    f.write(final_text)
 
-print("Compass fixed!")
+print("Done")

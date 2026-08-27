@@ -1,17 +1,46 @@
 import re
 
 with open("app/(tabs)/walk.tsx", "r") as f:
-    content = f.read()
+    text = f.read()
 
-new_compass = """// ── Sacred Geometry Yantra Component ──
-const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
+# Remove particles block entirely
+text = re.sub(r'\{/\*\s*Gyroscope Stardust Particles\s*\*/\}.*?</Animated\.View>', '', text, flags=re.DOTALL)
+
+# Locate HarmonyCompassSVG
+start_str = "const HarmonyCompassSVG = ({ size, activeZoneData"
+start_idx = text.find(start_str)
+
+if start_idx == -1:
+    print("Could not find HarmonyCompassSVG")
+    exit(1)
+
+# Find the matching closing brace for the arrow function
+brace_count = 0
+found_brace = False
+end_idx = -1
+
+for i in range(start_idx, len(text)):
+    if text[i] == '{':
+        brace_count += 1
+        found_brace = True
+    elif text[i] == '}':
+        brace_count -= 1
+        if found_brace and brace_count == 0:
+            # We found the end of the component
+            end_idx = i
+            break
+
+if end_idx == -1:
+    print("Could not find end of HarmonyCompassSVG")
+    exit(1)
+
+# Ensure we eat up the trailing semicolon if it exists
+if end_idx + 1 < len(text) and text[end_idx + 1] == ';':
+    end_idx += 1
+
+new_compass = """const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, compassInnerRotAnim, breathingScaleAnim }: any) => {
   const r = size / 2;
   const center = r;
-
-  // Outer ring path
-  const generateOuterRing = () => {
-    return `M ${center} ${center - r * 0.95} A ${r * 0.95} ${r * 0.95} 0 1 1 ${center - 0.01} ${center - r * 0.95}`;
-  };
 
   // 24-point intricate star
   const generateIntricateStar = (outerR: number, innerR: number, points: number = 24) => {
@@ -42,9 +71,7 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
 
   const GOLD_PRIMARY = "#E6C27A";
   const GOLD_SECONDARY = "#C9A24B";
-  const DARK_BG = "#08080C";
   const GLASS_BG = "rgba(255,255,255,0.03)";
-  const PREMIUM_SHADOW = "rgba(0,0,0,0.8)";
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -236,15 +263,10 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
       )}
     </View>
   );
-};
-"""
+};"""
 
-start_idx = content.find("// ── Sacred Geometry Yantra Component ──")
-end_idx = content.find("export default function WalkScreen()")
-
-new_content = content[:start_idx] + new_compass + "\n\n" + content[end_idx:]
+text = text[:start_idx] + new_compass + text[end_idx + 1:]
 
 with open("app/(tabs)/walk.tsx", "w") as f:
-    f.write(new_content)
+    f.write(text)
 
-print("Compass fixed!")
