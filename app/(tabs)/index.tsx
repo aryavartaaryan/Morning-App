@@ -11,6 +11,7 @@ import {
   Switch, ImageBackground, ActivityIndicator, Modal, Dimensions, Animated, Easing, AppState, StatusBar, Platform, DeviceEventEmitter, PanResponder, BackHandler, LayoutAnimation, UIManager
 } from 'react-native';
 
+import { CalmingAura } from "@/components/CalmingAura";
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -6260,10 +6261,10 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               position: 'absolute',
               width: HERO_RS * 0.92, height: HERO_RS * 0.92,
             }}>
-              <View style={{ flex: 1, borderRadius: HERO_RS * 0.46, overflow: 'hidden' }}>
-                <BlurView intensity={75} tint="light" style={{ flex: 1 }} />
-                {/* Clean, fixed frosted overlay (removed circadian tint) */}
-                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+              <View style={{ flex: 1, borderRadius: HERO_RS * 0.46, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+                <CalmingAura />
+                {/* Clean, dark frosty tint over the aura for depth */}
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,20,0.1)' }} />
                 {/* Inner delicate border */}
                 <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: HERO_RS * 0.46, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }} />
               </View>
