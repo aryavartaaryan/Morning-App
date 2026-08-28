@@ -2048,6 +2048,7 @@ export default function RootLayout() {
                   <Stack.Screen name="meditation-timer" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
                   <Stack.Screen name="step-session" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
                   <Stack.Screen name="step-analytics" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="ayurvedic-wellness" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                 </Stack>
               </ScreenErrorBoundary>
             </BgProvider>

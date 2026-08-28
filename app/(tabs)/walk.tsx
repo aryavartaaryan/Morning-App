@@ -131,6 +131,34 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
     return d + 'Z';
   };
 
+  // Mandala Lotus Petals
+  const generatePetals = (outerR: number, innerR: number, count: number = 8) => {
+    let d = '';
+    const angleStep = (Math.PI * 2) / count;
+    for (let i = 0; i < count; i++) {
+      const angle = i * angleStep;
+      const nextAngle = (i + 1) * angleStep;
+      const midAngle = angle + angleStep / 2;
+
+      const x1 = center + innerR * Math.cos(angle);
+      const y1 = center + innerR * Math.sin(angle);
+      const x2 = center + outerR * Math.cos(midAngle);
+      const y2 = center + outerR * Math.sin(midAngle);
+      const x3 = center + innerR * Math.cos(nextAngle);
+      const y3 = center + innerR * Math.sin(nextAngle);
+
+      // Quadratic bezier for elegant petal curves
+      const cp1x = center + outerR * 0.9 * Math.cos(angle + angleStep * 0.15);
+      const cp1y = center + outerR * 0.9 * Math.sin(angle + angleStep * 0.15);
+      const cp2x = center + outerR * 0.9 * Math.cos(angle + angleStep * 0.85);
+      const cp2y = center + outerR * 0.9 * Math.sin(angle + angleStep * 0.85);
+
+      if (i === 0) d += `M ${x1} ${y1} `;
+      d += `Q ${cp1x} ${cp1y} ${x2} ${y2} Q ${cp2x} ${cp2y} ${x3} ${y3} `;
+    }
+    return d;
+  };
+
   const AnimatedSvgCircle = Animated.createAnimatedComponent(Circle);
   const rotInterpolate = compassRotAnim.interpolate({ inputRange: [-36000, 36000], outputRange: ['-36000deg', '36000deg'] });
   // Make the inner ring rotate in the opposite direction for a cool mechanical effect
@@ -138,74 +166,84 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
 
   const GOLD_PRIMARY = "#E6C27A";
   const GOLD_SECONDARY = "#C9A24B";
-  const GLASS_BG = "rgba(255,255,255,0.03)";
+  const GLASS_BG = "rgba(255,255,255,0.02)";
 
-    // 3D Parallax interpolation
+  // 3D Parallax interpolation
   const rotX = gyroY ? gyroY.interpolate({ inputRange: [-15, 15], outputRange: ['-25deg', '25deg'], extrapolate: 'clamp' }) : '0deg';
-  const rotY = gyroX ? gyroX.interpolate({ inputRange: [-15, 15], outputRange: ['-25deg', '25deg'], extrapolate: 'clamp' }) : '0deg';
+  const rotY = gyroX ? gyroX.interpolate({ inputRange: [-15, 15], outputRange: [-25, 25] }).interpolate({ inputRange: [-25, 25], outputRange: ['-25deg', '25deg'], extrapolate: 'clamp' }) : '0deg';
 
   return (
-    <Animated.View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ perspective: 1000 }, { rotateX: rotX }, { rotateY: rotY }] }}>
+    <Animated.View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ perspective: 1200 }, { rotateX: rotX }, { rotateY: rotY }] }}>
       
-      {/* ── Background Aura ── */}
+      {/* ── Background Aura (Breathing Animation Only Here) ── */}
       <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ scale: breathingScaleAnim }] }}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
             <RadialGradient id="premiumAura" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={GOLD_SECONDARY} stopOpacity="0.15" />
-              <Stop offset="70%" stopColor={GOLD_SECONDARY} stopOpacity="0.05" />
+              <Stop offset="0%" stopColor={GOLD_SECONDARY} stopOpacity="0.25" />
+              <Stop offset="50%" stopColor={GOLD_SECONDARY} stopOpacity="0.08" />
               <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0" />
             </RadialGradient>
           </Defs>
-          <AnimatedSvgCircle cx={center} cy={center} r={r} fill="url(#premiumAura)" opacity={pulseAnim as any} />
+          <AnimatedSvgCircle cx={center} cy={center} r={r * 1.1} fill="url(#premiumAura)" opacity={pulseAnim as any} />
         </Svg>
       </Animated.View>
 
-      {/* ── Outer Bezel (Slow Rotation) ── */}
+      {/* ── Outer Bezel (Rotates based on compass heading) ── */}
       <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rotInterpolate }] }}>
         <View style={{
           width: size * 0.98, height: size * 0.98, borderRadius: size / 2,
-          borderWidth: 1, borderColor: "rgba(230,194,122,0.15)",
-          shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20,
-          backgroundColor: COLORS.bg, elevation: 10
+          borderWidth: 1, borderColor: "rgba(230,194,122,0.25)",
+          shadowColor: "#000", shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.7, shadowRadius: 30,
+          backgroundColor: COLORS.bg, elevation: 15
         }}>
-          {/* Keep the original glass tint on top of the solid background */}
-          <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: size / 2, backgroundColor: GLASS_BG }} />
+          {/* Glass tint on top of solid background */}
+          <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: size / 2, backgroundColor: GLASS_BG, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
         </View>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: 'absolute' }}>
           <Defs>
             <SvgLinearGradient id="bezelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.8" />
-              <Stop offset="25%" stopColor={GOLD_SECONDARY} stopOpacity="0.3" />
-              <Stop offset="50%" stopColor={GOLD_PRIMARY} stopOpacity="0.6" />
-              <Stop offset="75%" stopColor={GOLD_SECONDARY} stopOpacity="0.3" />
-              <Stop offset="100%" stopColor={GOLD_PRIMARY} stopOpacity="0.8" />
+              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.9" />
+              <Stop offset="25%" stopColor={GOLD_SECONDARY} stopOpacity="0.4" />
+              <Stop offset="50%" stopColor={GOLD_PRIMARY} stopOpacity="0.7" />
+              <Stop offset="75%" stopColor={GOLD_SECONDARY} stopOpacity="0.4" />
+              <Stop offset="100%" stopColor={GOLD_PRIMARY} stopOpacity="0.9" />
             </SvgLinearGradient>
             
             <SvgLinearGradient id="innerBezel" x1="100%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor="#FFF" stopOpacity="0.2" />
-              <Stop offset="50%" stopColor="#FFF" stopOpacity="0.0" />
-              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.3" />
+              <Stop offset="0%" stopColor="#FFF" stopOpacity="0.3" />
+              <Stop offset="50%" stopColor="#FFF" stopOpacity="0.05" />
+              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.4" />
             </SvgLinearGradient>
+
+            <RadialGradient id="glowShadow" cx="50%" cy="50%" r="50%">
+              <Stop offset="80%" stopColor="#000" stopOpacity="0" />
+              <Stop offset="100%" stopColor="#000" stopOpacity="0.5" />
+            </RadialGradient>
           </Defs>
 
           {/* Thick Outer Ring */}
           <Circle cx={center} cy={center} r={r * 0.9} fill="none" stroke="url(#bezelGradient)" strokeWidth={3} />
-          {/* Inner Accent Ring */}
-          <Circle cx={center} cy={center} r={r * 0.88} fill="none" stroke="url(#innerBezel)" strokeWidth={1} opacity={0.6} />
-          {/* Dotted Tick Marks */}
-          <Circle cx={center} cy={center} r={r * 0.83} fill="none" stroke={GOLD_SECONDARY} strokeWidth={1} strokeDasharray="2, 6" opacity={0.5} />
+          {/* Inner Bezel Accent */}
+          <Circle cx={center} cy={center} r={r * 0.88} fill="none" stroke="url(#innerBezel)" strokeWidth={1.5} opacity={0.7} />
+          {/* Shadow Ring for Depth */}
+          <Circle cx={center} cy={center} r={r * 0.86} fill="none" stroke="url(#glowShadow)" strokeWidth={4} />
+          {/* Fine Tick Marks */}
+          <Circle cx={center} cy={center} r={r * 0.83} fill="none" stroke={GOLD_SECONDARY} strokeWidth={1} strokeDasharray="1, 4" opacity={0.6} />
           
+          {/* 64-Point Micro Ticks */}
+          <Circle cx={center} cy={center} r={r * 0.78} fill="none" stroke={GOLD_PRIMARY} strokeWidth={0.5} strokeDasharray="2, 6" opacity={0.3} />
+
           {/* 8-Point Compass Marks */}
           {[...Array(8)].map((_, i) => {
             const angle = (i * 45) * (Math.PI / 180);
             const x1 = center + (r * 0.9) * Math.cos(angle);
             const y1 = center + (r * 0.9) * Math.sin(angle);
-            const x2 = center + (r * 0.8) * Math.cos(angle);
-            const y2 = center + (r * 0.8) * Math.sin(angle);
+            const x2 = center + (r * 0.79) * Math.cos(angle);
+            const y2 = center + (r * 0.79) * Math.sin(angle);
             const isCardinal = i % 2 === 0;
             return (
-              <Line key={`tick_${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={isCardinal ? GOLD_PRIMARY : GOLD_SECONDARY} strokeWidth={isCardinal ? 2 : 1} opacity={isCardinal ? 0.9 : 0.5} />
+              <Line key={`tick_${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={isCardinal ? GOLD_PRIMARY : GOLD_SECONDARY} strokeWidth={isCardinal ? 2.5 : 1} opacity={isCardinal ? 1 : 0.6} />
             );
           })}
         </Svg>
@@ -213,79 +251,92 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
         {/* Direction Labels */}
         {['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].map((dir, i) => {
           const rad = (i * 45 - 90) * (Math.PI / 180);
-          const radius = r * 0.72;
+          const radius = r * 0.69;
           const x = radius * Math.cos(rad);
           const y = radius * Math.sin(rad);
           const isCardinal = i % 2 === 0;
           return (
             <View key={i} style={{ position: 'absolute', transform: [{ translateX: x }, { translateY: y }] }}>
               <Text style={{
-                color: isCardinal ? GOLD_PRIMARY : GOLD_SECONDARY,
-                fontSize: isCardinal ? 14 : 10,
-                fontWeight: isCardinal ? '900' : '600',
+                color: isCardinal ? '#FFF' : GOLD_PRIMARY,
+                fontSize: isCardinal ? 15 : 11,
+                fontWeight: isCardinal ? '900' : '700',
                 fontFamily: FONTS.serif,
-                letterSpacing: 1,
-                opacity: isCardinal ? 1 : 0.6,
-                textShadowColor: 'rgba(0,0,0,0.8)',
-                textShadowOffset: { width: 0, height: 2 },
-                textShadowRadius: 4
+                letterSpacing: 1.5,
+                opacity: isCardinal ? 1 : 0.8,
+                textShadowColor: 'rgba(230,194,122,0.4)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 6
               }}>{dir}</Text>
             </View>
           );
         })}
       </Animated.View>
 
-      {/* ── Middle Intricate Yantra Layer (Counter-Rotation) ── */}
-      <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: innerRotInterpolate }, { scale: breathingScaleAnim }] }}>
+      {/* ── Middle Intricate Yantra Layer (Counter-Rotation, No scale breathing) ── */}
+      <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: innerRotInterpolate }] }}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
             <SvgLinearGradient id="yantraGold" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.4" />
-              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.1" />
+              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.5" />
+              <Stop offset="50%" stopColor={GOLD_SECONDARY} stopOpacity="0.2" />
+              <Stop offset="100%" stopColor={GOLD_PRIMARY} stopOpacity="0.4" />
             </SvgLinearGradient>
             <SvgLinearGradient id="yantraGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.7" />
-              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.2" />
+              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.8" />
+              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.3" />
+            </SvgLinearGradient>
+            <SvgLinearGradient id="petalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={GOLD_PRIMARY} stopOpacity="0.15" />
+              <Stop offset="100%" stopColor={GOLD_SECONDARY} stopOpacity="0.05" />
             </SvgLinearGradient>
           </Defs>
 
-          {/* 24-point Sri-Yantra Inspired Gear */}
-          <Path d={generateIntricateStar(r * 0.6, r * 0.5, 24)} fill="url(#yantraGold)" stroke="url(#yantraGlow)" strokeWidth={1} />
-          <Path d={generateIntricateStar(r * 0.55, r * 0.45, 12)} fill="none" stroke="url(#yantraGlow)" strokeWidth={1.5} opacity={0.8} />
+          {/* 16-petal Outer Lotus (Vastu Mandala Motif) */}
+          <Path d={generatePetals(r * 0.6, r * 0.45, 16)} fill="url(#petalGradient)" stroke="url(#yantraGlow)" strokeWidth={1} />
+          {/* 8-petal Inner Lotus */}
+          <Path d={generatePetals(r * 0.5, r * 0.35, 8)} fill="url(#petalGradient)" stroke={GOLD_PRIMARY} strokeWidth={1.5} opacity={0.9} />
           
-          {/* Concentric Inner Circles */}
-          <Circle cx={center} cy={center} r={r * 0.42} fill="none" stroke={GOLD_SECONDARY} strokeWidth={1} opacity={0.3} />
-          <Circle cx={center} cy={center} r={r * 0.38} fill="none" stroke={GOLD_PRIMARY} strokeWidth={0.5} strokeDasharray="4, 4" opacity={0.6} />
+          {/* 24-point Sri-Yantra Inspired Star */}
+          <Path d={generateIntricateStar(r * 0.45, r * 0.38, 24)} fill="url(#yantraGold)" stroke="url(#yantraGlow)" strokeWidth={1.2} />
+          <Path d={generateIntricateStar(r * 0.40, r * 0.32, 12)} fill="none" stroke="#FFF" strokeWidth={0.8} opacity={0.4} />
+          
+          {/* Concentric Inner Blueprint Circles */}
+          <Circle cx={center} cy={center} r={r * 0.32} fill="none" stroke={GOLD_SECONDARY} strokeWidth={1.5} opacity={0.6} />
+          <Circle cx={center} cy={center} r={r * 0.29} fill="none" stroke={GOLD_PRIMARY} strokeWidth={0.5} strokeDasharray="3, 3" opacity={0.8} />
+          <Circle cx={center} cy={center} r={r * 0.26} fill="none" stroke={GOLD_SECONDARY} strokeWidth={1} opacity={0.4} />
         </Svg>
       </Animated.View>
 
-      {/* ── Inner Brahmasthan & Core ── */}
+      {/* ── Inner Brahmasthan & Core (No scale breathing) ── */}
       <Animated.View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: innerRotInterpolate }] }}>
         <View style={{
-          width: r * 0.6, height: r * 0.6,
-          backgroundColor: "rgba(10,10,15,0.8)",
-          borderRadius: r * 0.3,
-          borderWidth: 1, borderColor: "rgba(201,162,75,0.3)",
+          width: r * 0.5, height: r * 0.5,
+          backgroundColor: "rgba(10,10,15,0.9)",
+          borderRadius: r * 0.25,
+          borderWidth: 1.5, borderColor: "rgba(230,194,122,0.4)",
           alignItems: 'center', justifyContent: 'center',
-          shadowColor: GOLD_PRIMARY, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10,
+          shadowColor: GOLD_PRIMARY, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 15,
         }}>
-          <Svg width={r * 0.6} height={r * 0.6} viewBox={`0 0 ${r * 0.6} ${r * 0.6}`} style={{ position: 'absolute' }}>
+          <Svg width={r * 0.5} height={r * 0.5} viewBox={`0 0 ${r * 0.5} ${r * 0.5}`} style={{ position: 'absolute' }}>
              {/* Intersecting Squares for Vastu Purusha Mandala */}
              <Rect
-                x={r * 0.15} y={r * 0.15} width={r * 0.3} height={r * 0.3}
-                fill="none" stroke={GOLD_PRIMARY} strokeWidth={1} opacity={0.7}
+                x={r * 0.125} y={r * 0.125} width={r * 0.25} height={r * 0.25}
+                fill="none" stroke={GOLD_PRIMARY} strokeWidth={1.2} opacity={0.8}
              />
              <Rect
-                x={r * 0.15} y={r * 0.15} width={r * 0.3} height={r * 0.3}
-                fill="none" stroke={GOLD_PRIMARY} strokeWidth={1} opacity={0.7}
-                transform={`rotate(45 ${r * 0.3} ${r * 0.3})`}
+                x={r * 0.125} y={r * 0.125} width={r * 0.25} height={r * 0.25}
+                fill="none" stroke={GOLD_PRIMARY} strokeWidth={1.2} opacity={0.8}
+                transform={`rotate(45 ${r * 0.25} ${r * 0.25})`}
              />
-             {/* Center Jewel */}
-             <Circle cx={r * 0.3} cy={r * 0.3} r={4} fill={GOLD_PRIMARY} />
-             <Circle cx={r * 0.3} cy={r * 0.3} r={12} fill="none" stroke={GOLD_PRIMARY} strokeWidth={0.5} opacity={0.5} />
+             {/* Complex Center Jewel (Bindu) */}
+             <Circle cx={r * 0.25} cy={r * 0.25} r={8} fill="url(#yantraGlow)" />
+             <Circle cx={r * 0.25} cy={r * 0.25} r={4} fill="#FFF" />
+             <Circle cx={r * 0.25} cy={r * 0.25} r={14} fill="none" stroke={GOLD_PRIMARY} strokeWidth={0.8} opacity={0.6} strokeDasharray="2, 2" />
           </Svg>
         </View>
       </Animated.View>
+
 
       {/* ── Active Highlight Overlay (Dynamic Vastu Energy Flow) ── */}
       {activeZoneData !== null && (
@@ -441,43 +492,6 @@ export default function HarmonyCompassScreen() {
       useNativeDriver: true,
     }).start();
   }, [heading, isCompassActive]);
-
-  // Calming Idle Rotation (When Compass is Off)
-  useEffect(() => {
-    let active = true;
-    const startIdle = () => {
-      if (!active) return;
-      let currentOuter = (compassRotAnim as any)._value || 0;
-      let currentInner = (compassInnerRotAnim as any)._value || 0;
-      
-      Animated.parallel([
-        Animated.timing(compassRotAnim, {
-          toValue: currentOuter + 360,
-          duration: 120000, // 2 minutes per rotation (Deeply calming)
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-        Animated.timing(compassInnerRotAnim, {
-          toValue: currentInner - 360, // Reverse parallax flow
-          duration: 180000, // 3 minutes per rotation
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ]).start(({ finished }) => {
-        if (finished && active) startIdle();
-      });
-    };
-
-    if (!isCompassActive) {
-      startIdle();
-    }
-    
-    return () => {
-      active = false;
-      compassRotAnim.stopAnimation();
-      compassInnerRotAnim.stopAnimation();
-    };
-  }, [isCompassActive]);
 
   // Fluid Info Card Entry Animation
   useEffect(() => {

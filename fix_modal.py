@@ -1,4 +1,16 @@
+import re
 
+with open('scratch_redesign.tsx', 'r') as f:
+    content = f.read()
+
+western_explainer = ""
+with open('components/MetabolicStoryModal.tsx', 'r') as f:
+    orig = f.read()
+    match = re.search(r'(const WESTERN_EXPLAINER:.*?};)\n\nexport default function', orig, re.DOTALL)
+    if match:
+        western_explainer = match.group(1)
+
+new_code = r"""
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, Modal, TouchableOpacity,
@@ -20,108 +32,7 @@ const DOSHA_COLOR: Record<string, string> = {
   vata:  '#a78bfa',
 };
 
-const WESTERN_EXPLAINER: Record<string, {
-  headline: string; tagline: string; what: string;
-  whyMatters: string; analogy: string;
-  topFact: { icon: string; label: string; value: string }[];
-}> = {
-  morning_kapha_early: {
-    headline: 'Your Body is Grounding & Waking',
-    tagline: 'Yoga & Meditation Hour · Cortisol rising · Best time for mindfulness',
-    what: 'Right now, your body is transitioning from sleep to wakefulness. Cortisol is beginning its ascent. Ayurveda calls this early Kapha — the quiet, grounding phase before the active day.',
-    whyMatters: 'Mindfulness and gentle movement in THIS window regulate your nervous system for the entire day. It sets your baseline stress response.',
-    analogy: '🌅  The engine is warming up. Don\'t redline it immediately. Let it idle smoothly with breathwork and stretching.',
-    topFact: [
-      { icon: '🧘', label: 'Nervous Sys', value: 'Highly receptive' },
-      { icon: '📈', label: 'Cortisol', value: 'Morning rise' },
-      { icon: '🌱', label: 'Mindset', value: 'Open for intention' },
-    ],
-  },
-  morning_kapha: {
-    headline: 'Your Body is in Build Mode',
-    tagline: 'Peak Anabolic Window · Testosterone highest · Best time to move',
-    what: 'Right now, your body is pumping its highest testosterone and growth hormone. Joints are freshly lubricated. Muscles are primed to grow. Ayurveda calls this Kapha — the heavy, building, earthy phase.',
-    whyMatters: 'Exercise in THIS window builds 23% more muscle than the same workout at 6 PM. Your anabolic hormones will never be higher today.',
-    analogy: '🏗️  Your body is a construction site. The foreman just arrived. Workers are energised. Build NOW.',
-    topFact: [
-      { icon: '💪', label: 'Testosterone', value: '+25% above evening' },
-      { icon: '🦴', label: 'Joints', value: 'Max lubrication' },
-      { icon: '🧠', label: 'Cortisol', value: 'Rising — alert' },
-    ],
-  },
-  midday_pitta: {
-    headline: 'Your Digestive Fire is at Peak',
-    tagline: 'Metabolism Maximum · Best meal window · Cognitive peak',
-    what: "Right now (10 AM–2 PM), stomach acid is at lowest pH — meaning most powerful. Digestive enzymes at maximum. Liver detox running at full speed. Ayurveda calls this Pitta — fire, transformation, intensity.",
-    whyMatters: 'Eating your largest meal NOW means 30% better nutrient absorption vs 7 PM. The same food eaten at night becomes fat.',
-    analogy: '🔥  Your stomach is a furnace. At noon it burns white-hot. By evening it\'s embers. Feed it when HOT.',
-    topFact: [
-      { icon: '🔬', label: 'Stomach Acid', value: 'Strongest of the day' },
-      { icon: '⚡', label: 'Insulin', value: '+30% vs evening' },
-      { icon: '🧠', label: 'Cognition', value: 'Peak for decisions' },
-    ],
-  },
-  afternoon_vata: {
-    headline: 'Your Nervous System is Alive',
-    tagline: 'Creativity peak · Athletic performance rising · Move now',
-    what: 'Right now (2–6 PM), your nervous system is highly sensitive. Reaction time improves. Creativity surges. Lungs reach peak capacity around 4–5 PM. Ayurveda calls this Vata — air, movement, velocity.',
-    whyMatters: 'Athletic records are most broken between 4–6 PM — body temperature, reaction time, and muscle coordination all peak here.',
-    analogy: '🌬️  Your nervous system is a sail. The afternoon wind fills it perfectly. Move, create, communicate.',
-    topFact: [
-      { icon: '🎨', label: 'Creativity', value: 'Highest of the day' },
-      { icon: '🏃', label: 'Athletic Peak', value: '4–5 PM window' },
-      { icon: '🫁', label: 'Lung Capacity', value: 'Maximum' },
-    ],
-  },
-  evening_kapha: {
-    headline: 'Your Body is Slowing Down — Let It',
-    tagline: 'Melatonin rising · Blue light most damaging · Rest begins',
-    what: 'Right now (6–10 PM), melatonin is being produced as light fades. Core temperature is starting its 1°C nightly drop. Cortisol at its daily low. Ayurveda calls this evening Kapha — heavy, stable, quiet.',
-    whyMatters: 'Blue light NOW suppresses melatonin by 50%, delaying sleep 1–3 hours. Your body is trying to wind down — screens are fighting that every evening.',
-    analogy: '🌙  Your body is a city at dusk. Shops are closing. The night shift is about to clock in. Stop the noise.',
-    topFact: [
-      { icon: '😴', label: 'Melatonin', value: 'Rising — protect it' },
-      { icon: '🌡️', label: 'Core Temp', value: 'Descending for sleep' },
-      { icon: '📱', label: 'Blue Light', value: 'Most damaging NOW' },
-    ],
-  },
-  night_pitta: {
-    headline: 'Your Body is Running Its Night Shift',
-    tagline: 'Growth Hormone peak · Liver detox max · Sleep IS medicine',
-    what: "Right now (10 PM–2 AM), if you're asleep, extraordinary work is happening. Growth Hormone peaks during deep sleep. Liver detox enzymes at maximum. Autophagy — the body's self-cleaning — fully active.",
-    whyMatters: "Every hour of deep sleep here is your body's only chance to detox, repair DNA, and build muscle for that day. Missing it isn't just tiredness.",
-    analogy: '🏭  Your body is a factory. Daytime = production. Now = night shift maintenance. If you stay up — the crew can\'t work.',
-    topFact: [
-      { icon: '🏋️', label: 'Growth Hormone', value: 'Peaks in deep sleep' },
-      { icon: '🧹', label: 'Autophagy', value: 'Self-cleaning max' },
-      { icon: '🔬', label: 'DNA Repair', value: 'Enzymes most active' },
-    ],
-  },
-  night_vata: {
-    headline: 'The Sacred Pre-Dawn Window',
-    tagline: 'Brahma Muhurta · Meditation peak · Mind most open',
-    what: 'Right now (2–6 AM), your brainwaves are in alpha-theta — the same state meditators spend years trying to achieve. The subconscious boundary is thinnest. Ayurveda calls this Brahma Muhurta — the Creator\'s hour.',
-    whyMatters: 'Meditation in THIS window is 10–20× more effective than midday. BDNF (brain growth hormone) is elevated — new intentions embed deeply.',
-    analogy: '🌅  Your mind is a calm lake before sunrise. No wind, no boats. Whatever you drop in (intentions, mantras) sinks straight to the bottom.',
-    topFact: [
-      { icon: '🧘', label: 'Brainwaves', value: 'Alpha-theta peak' },
-      { icon: '🌱', label: 'BDNF', value: 'Elevated — best learning' },
-      { icon: '🕐', label: 'Brahma Muhurta', value: '96 min before sunrise' },
-    ],
-  },
-  midday_pitta_late: {
-    headline: 'Your Body is in Digest Mode',
-    tagline: 'Post-Solar Dip · Digestive Blood Flow · Rest & Digest',
-    what: "Right now (post-solar noon), blood flow is heavily diverted to your digestive tract to process your main meal. Your body experiences a natural cortisol dip. Ayurveda identifies this as the later part of Pitta — where the fire turns inward to transform food into fuel.",
-    whyMatters: 'Pushing for high cognitive output now causes unnecessary stress. By taking a brief restorative pause or doing low-cognitive tasks, you allow digestion to finish efficiently.',
-    analogy: '🔋 Your battery is briefly redirecting power to the internal engine. Let the engine run smoothly before hitting the accelerator again.',
-    topFact: [
-      { icon: '🩸', label: 'Blood Flow', value: 'Diverted to gut' },
-      { icon: '📉', label: 'Cortisol', value: 'Natural afternoon dip' },
-      { icon: '🧘', label: 'Focus', value: 'Shifted internally' },
-    ],
-  },
-};
+WESTERN_EXPLAINER_PLACEHOLDER
 
 export default function MetabolicStoryModal({
   period,
@@ -376,3 +287,10 @@ const S = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   }
 });
+"""
+
+final_code = new_code.replace('WESTERN_EXPLAINER_PLACEHOLDER', western_explainer)
+
+with open('components/MetabolicStoryModal.tsx', 'w') as f:
+    f.write(final_code)
+

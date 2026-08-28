@@ -3766,26 +3766,37 @@ const RecentlyPlayedStrip = memo(function RecentlyPlayedStrip({
   if (sounds.length === 0) return null;
 
   return (
-    <View style={{ paddingTop: 8, paddingBottom: isExpanded ? 24 : 14 }}>
-      {/* Section header - Premium slim pill button */}
+    <View style={{ paddingTop: 0, paddingBottom: isExpanded ? 24 : 14 }}>
+      {/* Section header - Ultra Premium Glowing Capsule */}
       <View style={{ paddingHorizontal: 24, marginBottom: isExpanded ? 16 : 0, alignItems: 'center' }}>
         <TouchableOpacity 
           activeOpacity={0.8}
           onPress={onToggleExpand}
           style={{ paddingVertical: 4 }}
         >
-          <View style={{ 
-            flexDirection: 'row', alignItems: 'center', gap: 6,
-            paddingHorizontal: 12, paddingVertical: 6,
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            borderRadius: 20,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
-          }}>
-            <Ionicons name="time-outline" size={11} color="rgba(255,255,255,0.8)" />
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
-              Recently Played
-            </Text>
-            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={11} color="rgba(255,255,255,0.6)" />
+          <View style={{ shadowColor: '#A78BFA', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}>
+            <LinearGradient
+              colors={['rgba(167, 139, 250, 0.5)', 'rgba(100, 80, 200, 0.05)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 30, padding: 1 }}
+            >
+              <BlurView intensity={60} tint="dark" style={{ 
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                paddingHorizontal: 16, paddingVertical: 6,
+                backgroundColor: 'rgba(10,10,20,0.6)',
+                borderRadius: 29,
+                overflow: 'hidden'
+              }}>
+                {/* Glowing Audio Core */}
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E9D5FF', shadowColor: '#FFF', shadowOpacity: 1, shadowRadius: 6 }} />
+                
+                <Text style={{ fontSize: 9, color: '#E9D5FF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  Recently Played
+                </Text>
+                
+                <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={12} color="rgba(233,213,255,0.5)" />
+              </BlurView>
+            </LinearGradient>
           </View>
         </TouchableOpacity>
       </View>
@@ -4592,16 +4603,16 @@ function SleepTabInner() {
 
   return (
     <View style={[S.screen, { backgroundColor: '#030308' }]}>
-      {/* Premium Background: Richly visible image with soft blur */}
+      {/* Premium Background: Highly visible image with elegant soft blur */}
       <Image
         source={{ uri: cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg' }}
-        style={[StyleSheet.absoluteFillObject, { opacity: 0.65 }]}
+        style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
         resizeMode="cover"
-        blurRadius={12}
+        blurRadius={6}
       />
-      {/* Deep glassy overlay to ensure text legibility while keeping image visible */}
+      {/* Sleek, ultra-transparent glassy overlay */}
       <LinearGradient
-        colors={['rgba(3,3,8,0.45)', 'rgba(3,3,8,0.15)', 'rgba(3,3,8,0.85)', '#030308']}
+        colors={['rgba(3,3,8,0.25)', 'rgba(3,3,8,0.05)', 'rgba(3,3,8,0.5)', 'rgba(3,3,8,0.85)']}
         locations={[0, 0.3, 0.65, 1]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
@@ -4615,70 +4626,63 @@ function SleepTabInner() {
       <View style={{ flex: 1, zIndex: 1 }}>
         <View style={{ flex: 1, display: activeCollectionId ? 'none' : 'flex' }}>
           {/* Premium Sticky Search & Library Actions */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingTop: insets.top + 10, paddingBottom: 10, zIndex: 10 }}>
-          {/* Ultra Premium Glass Search Bar */}
-          <View style={{ flex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flex: 1, borderRadius: 24, padding: 1 }}
-            >
-              <BlurView intensity={40} tint="dark" style={{ 
-                flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-                backgroundColor: 'rgba(20,20,35,0.3)', 
-                borderRadius: 23, paddingHorizontal: 16, height: 42,
-                overflow: 'hidden'
-              }}>
-                <Ionicons name="search" size={16} color="rgba(255,255,255,0.6)" />
-                <TextInput
-                  style={{ flex: 1, color: '#fff', fontSize: 15, fontFamily: 'Nunito_600SemiBold', padding: 0 }}
-                  placeholder="Find a sound..."
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={searchQuery}
-                  onChangeText={(text) => {
-                    setSearchQuery(text);
-                    setIsSearching(text.length > 0);
-                  }}
-                  onFocus={() => setIsSearching(true)}
-                  onBlur={() => {
-                    if (searchQuery.length === 0) setIsSearching(false);
-                  }}
-                  returnKeyType="search"
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }} style={{ padding: 4 }}>
-                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.8)" />
-                  </TouchableOpacity>
-                )}
-              </BlurView>
-            </LinearGradient>
-          </View>
+          {/* Unified Dynamic Island Header (Ultra Premium) */}
+          <View style={{ paddingHorizontal: 24, paddingTop: insets.top + 8, paddingBottom: 6, zIndex: 10 }}>
+            <View style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 24 }}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.02)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ borderRadius: 32, padding: 1 }}
+              >
+                <BlurView intensity={50} tint="dark" style={{ 
+                  flexDirection: 'row', alignItems: 'center', 
+                  backgroundColor: 'rgba(10,10,25,0.4)', 
+                  borderRadius: 31, height: 46,
+                  overflow: 'hidden'
+                }}>
+                  {/* Search Section */}
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: 18 }}>
+                    <Ionicons name="search" size={18} color="rgba(255,255,255,0.7)" />
+                    <TextInput
+                      style={{ flex: 1, color: '#fff', fontSize: 15, fontFamily: 'Nunito_600SemiBold', padding: 0, marginLeft: 10 }}
+                      placeholder="Find a sound..."
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                      value={searchQuery}
+                      onChangeText={(text) => {
+                        setSearchQuery(text);
+                        setIsSearching(text.length > 0);
+                      }}
+                      onFocus={() => setIsSearching(true)}
+                      onBlur={() => {
+                        if (searchQuery.length === 0) setIsSearching(false);
+                      }}
+                      returnKeyType="search"
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }} style={{ paddingHorizontal: 8 }}>
+                        <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.8)" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
-          {/* Ultra Premium Library Button */}
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
-            activeOpacity={0.8}
-            style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 24, padding: 1 }}
-            >
-              <BlurView intensity={40} tint="dark" style={{ 
-                flexDirection: 'row', alignItems: 'center', gap: 8, 
-                backgroundColor: 'rgba(20,20,35,0.3)',
-                borderRadius: 23, paddingHorizontal: 16, height: 42,
-                overflow: 'hidden'
-              }}>
-                <Ionicons name="musical-notes" size={16} color="rgba(255,255,255,0.9)" />
-                <Text style={{ fontSize: 13, color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5 }}>
-                  Library
-                </Text>
-              </BlurView>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+                  {/* Vertical Divider */}
+                  <View style={{ width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+
+                  {/* Library Button Section */}
+                  <TouchableOpacity
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setLibraryOpen(true); }}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, height: '100%', backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  >
+                    <Ionicons name="musical-notes" size={16} color="rgba(255,255,255,0.9)" />
+                    <Text style={{ marginLeft: 6, fontSize: 13, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.5 }}>
+                      Library
+                    </Text>
+                  </TouchableOpacity>
+                </BlurView>
+              </LinearGradient>
+            </View>
+          </View>
 
         <Animated.ScrollView
           ref={(r) => { _pageScrollRef = r; }}
@@ -4695,43 +4699,38 @@ function SleepTabInner() {
 {/* ── Content container ── */}
         <View style={{ backgroundColor: 'transparent', paddingTop: 4 }}>
           
-          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, marginBottom: 12, marginTop: 4, overflow: 'visible' }}>
+          <View style={{ width: W, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, marginBottom: 6, marginTop: 0, overflow: 'visible' }}>
             
-            {/* Ultra Premium Phase Badge */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, zIndex: 1, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#D8B4FE', shadowColor: '#D8B4FE', shadowOpacity: 1, shadowRadius: 6 }} />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                CURRENTLY IN YOUR {heroContent ? heroContent.header.toUpperCase() : displayMode.label.toUpperCase()} PHASE
-              </Text>
-            </View>
-
-            {/* Glowing Premium Title */}
-            <View style={{ position: 'relative', alignItems: 'center', zIndex: 1, marginBottom: 2 }}>
+            {/* Glowing Premium Title (No zigzag!) */}
+            <View style={{ position: 'relative', alignItems: 'center', zIndex: 1, marginBottom: 4 }}>
               <Text style={{
                 position: 'absolute', top: 0,
-                fontSize: 36, color: 'transparent', fontFamily: 'DancingScript_600SemiBold',
-                textShadowColor: 'rgba(255, 255, 255, 0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16,
-                lineHeight: 46, textAlign: 'center'
+                fontSize: 38, color: 'transparent', fontFamily: 'DancingScript_600SemiBold',
+                textShadowColor: 'rgba(255, 255, 255, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 18,
+                lineHeight: 48, textAlign: 'center'
               }}>
                 Sonic Therapies
               </Text>
               <Text style={{
-                fontSize: 36, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold',
+                fontSize: 38, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold',
                 letterSpacing: 0.5, textAlign: 'center',
                 textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
-                lineHeight: 46,
+                lineHeight: 48,
               }}>
                 Sonic Therapies
               </Text>
             </View>
 
-            {/* Minimalist Editorial Subtitle */}
-            <View style={{ zIndex: 1 }}>
-              <Text style={{
-                fontSize: 10, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_700Bold',
-                letterSpacing: 4, textTransform: 'uppercase', textAlign: 'center'
-              }}>
-                FIND YOUR MOMENT OF CALM
+            {/* Ultra Slim, Smart Single-Line Subtitle & Phase */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', zIndex: 1, opacity: 0.85 }}>
+              <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
+                {heroContent ? heroContent.header.toUpperCase() : displayMode.label.toUpperCase()} PHASE
+              </Text>
+              
+              <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#D8B4FE', marginHorizontal: 10 }} />
+              
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_700Bold', letterSpacing: 2, textTransform: 'uppercase' }}>
+                FIND YOUR CALM
               </Text>
             </View>
           </View>
