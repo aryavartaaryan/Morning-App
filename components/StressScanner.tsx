@@ -380,7 +380,6 @@ export default function StressScanner({ visible, onClose }: any) {
             )}
 
             {/* Layer 2: Black inverse mask with transparent heart hole */}
-            {/* Using a bulletproof <Mask> tag instead of fillRule which frequently glitches on Android hardware acceleration. */}
             <Svg
               width={SCAN_W}
               height={SCAN_H}
@@ -388,13 +387,11 @@ export default function StressScanner({ visible, onClose }: any) {
               style={{ position: 'absolute', top: 0, left: 0 }}
               pointerEvents="none"
             >
-              <Defs>
-                <Mask id="heartHoleMask">
-                  <Rect x="-10" y="-10" width="240" height="225" fill="#FFFFFF" />
-                  <Path d={HEART} fill="#000000" />
-                </Mask>
-              </Defs>
-              <Rect x="-10" y="-10" width="240" height="225" fill="#000000" mask="url(#heartHoleMask)" />
+              <Path 
+                d={`M-10,-10 L230,-10 L230,225 L-10,225 Z ${HEART}`}
+                fill="#000000"
+                fillRule="evenodd"
+              />
             </Svg>
 
             {/* Layer 3: Semi-transparent red tint over camera (DETECTED only) */}

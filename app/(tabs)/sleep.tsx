@@ -4631,9 +4631,9 @@ function SleepTabInner() {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: 6, zIndex: 10 }}>
             {/* Seamless Search */}
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 24 }}>
-              <Ionicons name="search" size={20} color="rgba(255,255,255,0.9)" />
+              <Ionicons name="search" size={18} color="rgba(255,255,255,0.9)" />
               <TextInput
-                style={{ flex: 1, color: '#fff', fontSize: 16, fontFamily: 'Nunito_700Bold', marginLeft: 12, paddingVertical: 4 }}
+                style={{ flex: 1, color: '#fff', fontSize: 14, fontFamily: 'Nunito_700Bold', marginLeft: 12, paddingVertical: 4 }}
                 placeholder="Start listening today..."
                 placeholderTextColor="rgba(255,255,255,0.8)"
                 value={searchQuery}
@@ -4649,13 +4649,13 @@ function SleepTabInner() {
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); Keyboard.dismiss(); }} style={{ paddingHorizontal: 4 }}>
-                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.8)" />
+                  <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.8)" />
                 </TouchableOpacity>
               )}
             </View>
             {/* Seamless Library */}
-            <TouchableOpacity onPress={() => setLibraryOpen(true)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-               <Ionicons name="library" size={20} color="#fff" />
+            <TouchableOpacity onPress={() => setLibraryOpen(true)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+               <Ionicons name="library" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -4681,7 +4681,7 @@ function SleepTabInner() {
               <Text style={{
                 fontSize: 42, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold',
                 letterSpacing: -1, lineHeight: 46, textAlign: 'left',
-                textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 12
+                textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8
               }}>
                 Sonic{'\n'}Therapies
               </Text>
