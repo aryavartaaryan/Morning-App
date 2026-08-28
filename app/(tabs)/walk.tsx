@@ -167,8 +167,11 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
           width: size * 0.98, height: size * 0.98, borderRadius: size / 2,
           borderWidth: 1, borderColor: "rgba(230,194,122,0.15)",
           shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20,
-          backgroundColor: GLASS_BG, elevation: 10
-        }} />
+          backgroundColor: COLORS.bg, elevation: 10
+        }}>
+          {/* Keep the original glass tint on top of the solid background */}
+          <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: size / 2, backgroundColor: GLASS_BG }} />
+        </View>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: 'absolute' }}>
           <Defs>
             <SvgLinearGradient id="bezelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
