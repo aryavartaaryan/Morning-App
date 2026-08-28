@@ -5834,14 +5834,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
     }))
   ).current;
 
-  // ── 7-Second Harmonic Resonance Wave ──
-  const sevenSecWave = useRef(new Animated.Value(0)).current;
-
-  // ── Phase transition multi-tier ripples ──
+  // ── Phase transition ripple ──
   const phaseRipple = useRef(new Animated.Value(0)).current;
-  const phaseRippleOuter = useRef(new Animated.Value(0)).current;
-  const phaseShockwave = useRef(new Animated.Value(0)).current;
-  const phaseSurgeScale = useRef(new Animated.Value(1)).current;
   const prevPeriodId = useRef<string | null>(null);
 
   // Parallax Gyroscope
@@ -6174,83 +6168,12 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
   // Wrapper adds padding so the outer aura glow is not clipped
   const MOON_RS = HERO_RS + 28;
 
-  // ── 7-Second signature ambient pulse — runs harmonically without disturbing ring breathing ──
-  useEffect(() => {
-    let alive = true;
-    const interval = setInterval(() => {
-      if (!alive) return;
-      sevenSecWave.setValue(0);
-      Animated.timing(sevenSecWave, {
-        toValue: 1,
-        duration: 2800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }, 7000);
-
-    return () => {
-      alive = false;
-      clearInterval(interval);
-    };
-  }, []);
-
   // ── Phase transition ripple — fires when circadian period changes ──
   const currentPeriodId = period?.id ?? null;
   useEffect(() => {
     if (prevPeriodId.current !== null && prevPeriodId.current !== currentPeriodId) {
-      try {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (_) {}
-
       phaseRipple.setValue(0);
-      phaseRippleOuter.setValue(0);
-      phaseShockwave.setValue(0);
-      phaseSurgeScale.setValue(1);
-
-      Animated.parallel([
-        // Tier 1: Core expanding energy bloom
-        Animated.timing(phaseRipple, {
-          toValue: 1,
-          duration: 2800,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        // Tier 2: Staggered outer halo shockwave
-        Animated.sequence([
-          Animated.delay(180),
-          Animated.timing(phaseRippleOuter, {
-            toValue: 1,
-            duration: 2600,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        // Tier 3: Radiant celestial perimeter ring
-        Animated.sequence([
-          Animated.delay(320),
-          Animated.timing(phaseShockwave, {
-            toValue: 1,
-            duration: 2400,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ]),
-        // Tier 4: Majestic organic heart-swell of the ring core
-        Animated.sequence([
-          Animated.timing(phaseSurgeScale, {
-            toValue: 1.045,
-            duration: 650,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(phaseSurgeScale, {
-            toValue: 1,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
+      Animated.timing(phaseRipple, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     }
     prevPeriodId.current = currentPeriodId;
   }, [currentPeriodId]);
@@ -6323,8 +6246,8 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             pointerEvents="box-only"
             style={{ 
               width: HERO_RS, height: HERO_RS,
-              opacity: 1,
-              transform: [{ scale: touchScale }, { scale: phaseSurgeScale }]
+              opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.12, 1] }),
+              transform: [{ scale: touchScale }]
             }}
           >
 
@@ -6339,107 +6262,23 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               width: HERO_RS * 0.92, height: HERO_RS * 0.92,
             }}>
               <View style={{ flex: 1, borderRadius: HERO_RS * 0.46, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-                {/* Deep velvety dark backing for maximum contrast against wallpaper */}
-                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(7, 9, 20, 0.55)' }} />
                 <CalmingAura />
                 {/* Clean, dark frosty tint over the aura for depth */}
-                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,20,0.12)' }} />
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,20,0.1)' }} />
                 {/* Inner delicate border */}
-                <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: HERO_RS * 0.46, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)' }} />
+                <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: HERO_RS * 0.46, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }} />
               </View>
             </View>
           </View>
 
-          {/* ── 7-SECOND SIGNATURE HARMONIC RESONANCE SURGE ── */}
-          {/* Layer 1: Core ambient wave bloom */}
+          {/* ── Phase transition ripple overlay ── */}
           <Animated.View pointerEvents="none" style={{
             position: 'absolute',
             width: HERO_RS, height: HERO_RS,
-            opacity: sevenSecWave.interpolate({ inputRange: [0, 0.2, 0.6, 1], outputRange: [0, 0.38, 0.14, 0] }),
-            transform: [{ scale: sevenSecWave.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1.22] }) }],
+            opacity: phaseRipple.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.25, 0] }),
+            transform: [{ scale: phaseRipple.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.3] }) }],
           }}>
-            <Animated.View style={{
-              flex: 1,
-              borderRadius: HERO_RS / 2,
-              backgroundColor: accentHex,
-              opacity: 0.42,
-            }} />
-          </Animated.View>
-
-          {/* Layer 2: Ultra-fine radiant perimeter ring expanding outward */}
-          <Animated.View pointerEvents="none" style={{
-            position: 'absolute',
-            width: HERO_RS, height: HERO_RS,
-            opacity: sevenSecWave.interpolate({ inputRange: [0, 0.25, 0.7, 1], outputRange: [0, 0.65, 0.18, 0] }),
-            transform: [{ scale: sevenSecWave.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.28] }) }],
-          }}>
-            <Animated.View style={{
-              flex: 1,
-              borderRadius: HERO_RS / 2,
-              borderWidth: 1.5,
-              borderColor: accentHex,
-              shadowColor: accentHex,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 8,
-            }} />
-          </Animated.View>
-
-          {/* ── CIRCADIAN PERIOD TRANSITION — CINEMATIC MULTI-TIER RIPPLE ── */}
-          {/* Tier 1: Primary deep energy bloom */}
-          <Animated.View pointerEvents="none" style={{
-            position: 'absolute',
-            width: HERO_RS, height: HERO_RS,
-            opacity: phaseRipple.interpolate({ inputRange: [0, 0.15, 0.5, 1], outputRange: [0, 0.72, 0.25, 0] }),
-            transform: [{ scale: phaseRipple.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.38] }) }],
-          }}>
-            <Animated.View style={{
-              flex: 1,
-              borderRadius: HERO_RS / 2,
-              backgroundColor: accentHex,
-              shadowColor: accentHex,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.9,
-              shadowRadius: 18,
-            }} />
-          </Animated.View>
-
-          {/* Tier 2: Secondary concentric shockwave */}
-          <Animated.View pointerEvents="none" style={{
-            position: 'absolute',
-            width: HERO_RS, height: HERO_RS,
-            opacity: phaseRippleOuter.interpolate({ inputRange: [0, 0.2, 0.6, 1], outputRange: [0, 0.58, 0.18, 0] }),
-            transform: [{ scale: phaseRippleOuter.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1.55] }) }],
-          }}>
-            <Animated.View style={{
-              flex: 1,
-              borderRadius: HERO_RS / 2,
-              borderWidth: 2,
-              borderColor: accentHex,
-              shadowColor: accentHex,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1,
-              shadowRadius: 12,
-            }} />
-          </Animated.View>
-
-          {/* Tier 3: Celestial prismatic perimeter halo */}
-          <Animated.View pointerEvents="none" style={{
-            position: 'absolute',
-            width: HERO_RS, height: HERO_RS,
-            opacity: phaseShockwave.interpolate({ inputRange: [0, 0.25, 0.7, 1], outputRange: [0, 0.85, 0.2, 0] }),
-            transform: [{ scale: phaseShockwave.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.72] }) }],
-          }}>
-            <Animated.View style={{
-              flex: 1,
-              borderRadius: HERO_RS / 2,
-              borderWidth: 1.5,
-              borderColor: '#FFFFFF',
-              shadowColor: '#FFFFFF',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.9,
-              shadowRadius: 10,
-            }} />
+            <Animated.View style={{ flex: 1, borderRadius: HERO_RS / 2, backgroundColor: accentHex }} />
           </Animated.View>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
@@ -6936,19 +6775,24 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
 
         {/* Tithi Section */}
         <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('tithi')} style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2, marginBottom: 6 }}>
-            TODAY'S VEDIC INSIGHT
-          </Text>
-          <Text style={{ fontFamily: 'Georgia', fontSize: 26, color: '#FFF', fontWeight: '400', letterSpacing: 2, marginBottom: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, opacity: 0.6 }}>
+            <View style={{ width: 12, height: 1, backgroundColor: GOLD }} />
+            <Text style={{ fontSize: 9, color: GOLD, fontWeight: '700', letterSpacing: 2, marginHorizontal: 8 }}>
+              TODAY'S VEDIC INSIGHT
+            </Text>
+            <View style={{ width: 12, height: 1, backgroundColor: GOLD }} />
+          </View>
+          
+          <Text style={{ fontFamily: 'Georgia', fontSize: 28, color: '#FFF', fontWeight: '400', letterSpacing: 3, marginBottom: 4 }}>
             TITHI
           </Text>
-          <Text style={{ fontFamily: 'Georgia', fontSize: 20, color: GOLD, fontWeight: '400', letterSpacing: 0.5, marginBottom: 8, textAlign: 'center' }}>
+          <Text style={{ fontFamily: 'Georgia', fontSize: 20, color: GOLD, fontWeight: '500', letterSpacing: 0.5, marginBottom: 10, textAlign: 'center' }}>
             {tithiLabel}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.8 }}>
-            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '500' }}>Ends {tithiEnds}</Text>
-            <View style={{ width: 1, height: 10, backgroundColor: 'rgba(243,229,171,0.3)', marginHorizontal: 8 }} />
-            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '500' }}>{moon.illumination}% Illuminated</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.9 }}>
+            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '600', letterSpacing: 0.5 }}>Ends {tithiEnds}</Text>
+            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(243,229,171,0.5)', marginHorizontal: 10 }} />
+            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '600', letterSpacing: 0.5 }}>{moon.illumination}% Illuminated</Text>
           </View>
           
           {expandedSection === 'tithi' && (
@@ -6962,19 +6806,26 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         {/* 3D Solar System Rings Representation */}
         <View style={{ alignItems: 'center', justifyContent: 'center', height: 180, marginBottom: 20 }}>
           <Svg width={300} height={180} style={{ position: 'absolute' }}>
-            {/* Concentric rings squashed to look 3D. Center is 150, 90 */}
-            <SvgCircle cx="150" cy="90" r="40" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
-            <SvgCircle cx="150" cy="90" r="70" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
-            <SvgCircle cx="150" cy="90" r="100" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.75" scaleY={0.35} transform="translate(0, 58.5)" />
-            <SvgCircle cx="150" cy="90" r="130" fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth="0.5" scaleY={0.35} transform="translate(0, 58.5)" />
+            {/* Star dust */}
+            <SvgCircle cx="120" cy="70" r="0.5" fill="#FFF" opacity={0.4} />
+            <SvgCircle cx="180" cy="110" r="1" fill="#FFF" opacity={0.2} />
+            <SvgCircle cx="90" cy="120" r="0.8" fill="#FFF" opacity={0.5} />
+            <SvgCircle cx="210" cy="60" r="0.5" fill="#FFF" opacity={0.3} />
+            <SvgCircle cx="150" cy="40" r="1.2" fill="#D4AF37" opacity={0.2} />
+
+            {/* Concentric elliptical rings. Center is 150, 90 */}
+            <Ellipse cx="150" cy="90" rx="40" ry="14" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" />
+            <Ellipse cx="150" cy="90" rx="70" ry="24.5" fill="none" stroke="rgba(212,175,55,0.3)" strokeWidth="0.5" />
+            <Ellipse cx="150" cy="90" rx="100" ry="35" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.75" />
+            <Ellipse cx="150" cy="90" rx="130" ry="45.5" fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth="0.5" />
             
-            {/* Exactly positioned planets on the orbits. cy is computed as 90 + r*0.35*sin(theta) */}
-            <SvgCircle cx="150" cy="104" r="3" fill="#D4AF37" />     {/* r=40, angle=90, y=90+14=104 */}
-            <SvgCircle cx="220" cy="90" r="2.5" fill="#B0C4DE" />    {/* r=70, angle=0, x=150+70=220 */}
-            <SvgCircle cx="80" cy="90" r="4" fill="#F59E0B" />       {/* r=70, angle=180, x=150-70=80 */}
-            <SvgCircle cx="220.7" cy="114.7" r="3.5" fill="#EC4899" /> {/* r=100, angle=45, x=220.7, y=90+35*.707=114.7 */}
-            <SvgCircle cx="79.3" cy="65.3" r="2" fill="#FFFFFF" opacity={0.6} /> {/* r=100, angle=225, x=79.3, y=90-24.7=65.3 */}
-            <SvgCircle cx="241.9" cy="57.8" r="3" fill="#AA8C2C" />    {/* r=130, angle=315, x=241.9, y=90-32.2=57.8 */}
+            {/* Exactly positioned planets on the orbits */}
+            <SvgCircle cx="150" cy="104" r="3" fill="#D4AF37" />     
+            <SvgCircle cx="220" cy="90" r="2.5" fill="#B0C4DE" />    
+            <SvgCircle cx="80" cy="90" r="4" fill="#F59E0B" />       
+            <SvgCircle cx="220.7" cy="114.7" r="3.5" fill="#EC4899" /> 
+            <SvgCircle cx="79.3" cy="65.3" r="2" fill="#FFFFFF" opacity={0.6} /> 
+            <SvgCircle cx="241.9" cy="57.8" r="3" fill="#AA8C2C" />    
           </Svg>
           
           {/* Glowing central SUN perfectly centered at 150, 90 */}
@@ -6982,8 +6833,12 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             position: 'absolute', top: 62, left: 122,
             width: 56, height: 56, borderRadius: 28, backgroundColor: '#FDE047', 
             alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#FEF08A', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 20, elevation: 12 
+            shadowColor: '#FEF08A', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 25, elevation: 15 
           }}>
+            {/* Corona */}
+            <View style={{ position: 'absolute', width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(253,224,71,0.15)' }} />
+            <View style={{ position: 'absolute', width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(253,224,71,0.3)' }} />
+            
             <LinearGradient
               colors={['#FEF08A', '#FDE047', '#EAB308']}
               start={{ x: 0.2, y: 0.2 }} end={{ x: 0.8, y: 0.8 }}
@@ -6994,17 +6849,22 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
 
         {/* Planetary Alignments Grid */}
         <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2, textAlign: 'center', marginBottom: 16 }}>
-            PLANETARY ALIGNMENTS
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.15)' }} />
+            <Text style={{ fontSize: 9, color: GOLD, fontWeight: '700', letterSpacing: 2, marginHorizontal: 12 }}>
+              COSMIC ALIGNMENTS
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.15)' }} />
+          </View>
+
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 16 }}>
             <View style={{ gap: 10 }}>
-              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>SUN</Text> in {sunRashi} ☀️</Text>
-              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>MOON</Text> in {nakshatra.name} 🌙</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD, fontWeight: '600' }}>SUN</Text> in {sunRashi} ☀️</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD, fontWeight: '600' }}>MOON</Text> in {nakshatra.name} 🌙</Text>
             </View>
             <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('vaar')} style={{ gap: 10, alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>VAAR</Text> is {vaar.planet} 🪐</Text>
-              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD }}>MAAS</Text> is {vMonth.name} ✨</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD, fontWeight: '600' }}>VAAR</Text> is {vaar.planet} 🪐</Text>
+              <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '400', letterSpacing: 0.5 }}><Text style={{ color: GOLD, fontWeight: '600' }}>MAAS</Text> is {vMonth.name} ✨</Text>
             </TouchableOpacity>
           </View>
 
@@ -7017,12 +6877,12 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10 }}>
             <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('nakshatra')} style={{ flex: 1 }}>
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>NAKSHATRA:</Text>
-              <Text style={{ fontFamily: 'Georgia', fontSize: 14, color: '#FFF' }}>{nakshatra.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.nakshatraEnd)})</Text></Text>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>NAKSHATRA</Text>
+              <Text style={{ fontFamily: 'Georgia', fontSize: 15, color: '#FFF' }}>{nakshatra.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.nakshatraEnd)})</Text></Text>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('yoga')} style={{ flex: 1, alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>YOGA:</Text>
-              <Text style={{ fontFamily: 'Georgia', fontSize: 14, color: '#FFF' }}>{yoga.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.yogaEnd)})</Text></Text>
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: 1.5, marginBottom: 4 }}>YOGA</Text>
+              <Text style={{ fontFamily: 'Georgia', fontSize: 15, color: '#FFF' }}>{yoga.name} <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'System' }}>({timeOnly(timings.yogaEnd)})</Text></Text>
             </TouchableOpacity>
           </View>
 
@@ -7041,7 +6901,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           )}
         </View>
 
-        <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
+        <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 16 }} />
 
         {/* Footer Times */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, marginBottom: 20 }}>
@@ -7741,7 +7601,7 @@ function DailyTab() {
                   brahmaInfo={brahmaInfo}
                   weather={weather}
                   solarTimes={solarTimes}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowStory(true); }}
                 />
 
                 {/* ── SMART CONTEXT PILL — weather ── */}

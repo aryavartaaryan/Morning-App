@@ -4611,10 +4611,9 @@ function SleepTabInner() {
           resizeMode="cover"
           blurRadius={2}
         />
-        {/* Sleek overlay fading to absolute black to seamlessly transition into non-hero zone */}
         <LinearGradient
-          colors={['rgba(3,3,8,0.1)', 'rgba(3,3,8,0.2)', 'rgba(3,3,8,0.7)', '#030308']}
-          locations={[0, 0.4, 0.75, 1]}
+          colors={['transparent', 'rgba(3,3,8,0.3)', 'rgba(3,3,8,0.8)', '#030308']}
+          locations={[0, 0.5, 0.8, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
@@ -4679,8 +4678,8 @@ function SleepTabInner() {
             {/* Bold Left-Aligned Premium Title (Matches Screenshot) */}
             <View style={{ zIndex: 1 }}>
               <Text style={{
-                fontSize: 42, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold',
-                letterSpacing: -1, lineHeight: 46, textAlign: 'left',
+                fontSize: 32, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold',
+                letterSpacing: -0.5, lineHeight: 36, textAlign: 'left',
                 textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8
               }}>
                 Sonic{'\n'}Therapies
