@@ -5886,14 +5886,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
         Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
         
         const isTap = Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10;
-        const touchX = e.nativeEvent.locationX;
-        const touchY = e.nativeEvent.locationY;
-        
-        const heroRs = latestProps.current.compact ? 271 : 343;
-        const radius = heroRs / 2;
-        const distance = Math.sqrt(Math.pow(touchX - radius, 2) + Math.pow(touchY - radius, 2));
-        
-        if (isTap && distance <= radius && latestProps.current.onPress) {
+        if (isTap && latestProps.current.onPress) {
           latestProps.current.onPress();
         }
       },
@@ -7652,7 +7645,7 @@ function DailyTab() {
               </View>
 
               {/* Ring + festival badge — fixed height container so widget expansion below never shifts it */}
-              <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingBottom: 2 }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: -30 }}>
                 {todayFest && (
                   <TouchableOpacity
                     activeOpacity={0.85}
@@ -7688,7 +7681,7 @@ function DailyTab() {
                   <Animated.View 
                     pointerEvents={insightVisible ? 'none' : 'auto'}
                     style={{ 
-                      flexDirection: 'row', alignItems: 'center', marginTop: -16, zIndex: 20,
+                      flexDirection: 'row', alignItems: 'center', marginTop: -40, zIndex: 20,
                       opacity: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0] }),
                       transform: [
                         { scale: insightRevealAnim.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0.9] }) },
@@ -7811,7 +7804,7 @@ function DailyTab() {
               })()}
 
               {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns ── */}
-              <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: 4, marginTop: 6, marginBottom: 8 }}>
+              <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: 4, marginTop: 6, marginBottom: 24 }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,

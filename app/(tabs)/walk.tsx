@@ -549,7 +549,7 @@ export default function HarmonyCompassScreen() {
   return (
     <View style={styles.container}>
       {/* ── Entire Top Zone Calming Animation ── */}
-      <CalmingAura />
+      <CalmingAura variant="yantra" />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 40) }} showsVerticalScrollIndicator={false}>
         {/* Header */}
@@ -558,39 +558,63 @@ export default function HarmonyCompassScreen() {
           <Text style={styles.headerSubtitle}>Sacred Space Intelligence</Text>
         </View>
 
-        {/* Dropdown Menu */}
-        <View style={{ zIndex: 10, marginHorizontal: 32, marginBottom: 20 }}>
+        {/* ── Premium Out of Box Dropdown Menu ── */}
+        <View style={{ zIndex: 10, marginHorizontal: 24, marginBottom: 30 }}>
           <TouchableOpacity 
-            activeOpacity={0.8}
+            activeOpacity={0.9}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setDropdownOpen(!dropdownOpen);
             }}
           >
+            {/* Glowing Border Wrapper */}
             <LinearGradient 
-              colors={['#101018', '#0B0B14']} 
-              style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
+              colors={dropdownOpen ? [COLORS.gold, '#101018', COLORS.saffron] : ['rgba(201,162,75,0.4)', 'rgba(31,31,46,0.6)', 'rgba(201,162,75,0.1)']} 
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={[styles.dropdownButtonWrapper, dropdownOpen && styles.dropdownButtonWrapperActive]}
             >
-              <Text style={styles.dropdownButtonText}>
-                {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT SPATIAL PROTOCOL'}
-              </Text>
-              <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.saffron} />
+              <LinearGradient 
+                colors={['#0D0D16', '#05050A']} 
+                style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {/* Pulsing Dot / Active Indicator */}
+                  <View style={[styles.activeIndicator, activeZoneData && { backgroundColor: COLORS.gold, shadowColor: COLORS.gold, shadowOpacity: 0.8, shadowRadius: 8 }]} />
+                  <Text style={[styles.dropdownButtonText, activeZoneData && { color: COLORS.ivory }]}>
+                    {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT SPATIAL PROTOCOL'}
+                  </Text>
+                </View>
+                <View style={styles.iconContainer}>
+                  <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={14} color={COLORS.gold} />
+                </View>
+              </LinearGradient>
             </LinearGradient>
           </TouchableOpacity>
           
           {dropdownOpen && (
-            <View style={styles.dropdownList}>
-              {Object.values(ZONES).map((z, index) => (
-                <TouchableOpacity
-                  key={z.id}
-                  style={[styles.dropdownItem, index !== Object.values(ZONES).length - 1 && styles.dropdownItemBorder]}
-                  onPress={() => handleZoneSelect(z.id)}
-                >
-                  <Text style={[styles.dropdownItemText, selectedZone === z.id && { color: COLORS.saffron }]} >
-                    {z.title.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.dropdownListWrapper}>
+              <LinearGradient colors={['#0D0D16', '#05050A']} style={styles.dropdownList}>
+                {Object.values(ZONES).map((z, index) => {
+                  const isSelected = selectedZone === z.id;
+                  return (
+                    <TouchableOpacity
+                      key={z.id}
+                      style={[styles.dropdownItem, index !== Object.values(ZONES).length - 1 && styles.dropdownItemBorder]}
+                      onPress={() => handleZoneSelect(z.id)}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={[styles.itemDiamond, isSelected && styles.itemDiamondActive]} />
+                        <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]} >
+                          {z.title.toUpperCase()}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={16} color={COLORS.gold} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </LinearGradient>
             </View>
           )}
         </View>
@@ -696,60 +720,106 @@ const styles = StyleSheet.create({
   },
   
   // Dropdown Styles
+  dropdownButtonWrapper: {
+    padding: 1, // acts as border width
+    borderRadius: 24,
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  dropdownButtonWrapperActive: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    shadowOpacity: 0.3,
+  },
   dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#1F1F2E',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderRadius: 23, // slightly less than wrapper to fit perfectly inside
   },
   dropdownButtonActive: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    borderColor: '#2A2A35',
+  },
+  activeIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(237,230,214,0.2)',
+    marginRight: 12,
   },
   dropdownButtonText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '800',
-    color: 'rgba(237,230,214,0.7)',
-    letterSpacing: 2,
+    color: 'rgba(237,230,214,0.5)',
+    letterSpacing: 2.5,
   },
-  dropdownList: {
+  iconContainer: {
+    backgroundColor: 'rgba(201,162,75,0.1)',
+    width: 28, height: 28,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(201,162,75,0.2)'
+  },
+  dropdownListWrapper: {
     position: 'absolute',
     top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#0B0B14',
-    borderWidth: 1,
-    borderColor: '#1F1F2E',
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    left: 0, right: 0,
+    paddingHorizontal: 1, paddingBottom: 1, // for gradient border effect if needed, or just solid
+    backgroundColor: COLORS.gold, // acting as border
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  dropdownList: {
+    borderBottomLeftRadius: 23,
+    borderBottomRightRadius: 23,
     overflow: 'hidden',
   },
   dropdownItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
   },
   dropdownItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#101018',
+    borderBottomColor: 'rgba(201,162,75,0.1)',
+  },
+  itemDiamond: {
+    width: 4, height: 4,
+    backgroundColor: 'rgba(237,230,214,0.2)',
+    transform: [{ rotate: '45deg' }],
+    marginRight: 12,
+  },
+  itemDiamondActive: {
+    backgroundColor: COLORS.gold,
+    shadowColor: COLORS.gold,
+    shadowOpacity: 1,
+    shadowRadius: 4,
   },
   dropdownItemText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '700',
     color: 'rgba(237,230,214,0.5)',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+  },
+  dropdownItemTextActive: {
+    color: COLORS.ivory,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
 
   yantraContainer: {
