@@ -37,3 +37,21 @@ expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+// Fix: Prevent Gradle from querying JitPack for app.notifee:core.
+// Notifee ships its own AAR in node_modules/@notifee/react-native/android/libs,
+// which is registered as a local maven repo by the notifee build.gradle.
+// Without this, Gradle tries JitPack first and times out.
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+  repositories {
+    google()
+    mavenCentral()
+    maven {
+      url 'https://www.jitpack.io'
+      content {
+        excludeGroup "app.notifee"
+      }
+    }
+  }
+}
