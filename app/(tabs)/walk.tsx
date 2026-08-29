@@ -43,7 +43,7 @@ const ZONES: Record<ZoneId, {
 }> = {
   meditate: {
     id: 'meditate',
-    title: 'Meditation & Mindfulness',
+    title: 'Spiritual Coherence',
     tip: 'Face Northeast or East during meditation for maximum nervous system coherence.',
     why: 'These channels carry the most spiritually potent, clear energy, perfect for inner stillness.',
     zones: [
@@ -65,7 +65,7 @@ const ZONES: Record<ZoneId, {
   },
   wfh: {
     id: 'wfh',
-    title: 'Career & WFH',
+    title: 'Career & Prosperity',
     tip: 'Face North or East while working to align with the direction of growth and wealth.',
     why: 'Direction of wealth and career growth (governed by Kubera).',
     zones: [
@@ -75,7 +75,7 @@ const ZONES: Record<ZoneId, {
   },
   eat: {
     id: 'eat',
-    title: 'Eating & Dining',
+    title: 'Mindful Nourishment',
     tip: 'Dining in the West or East supports stability and physical gains.',
     why: 'Supports gains and stability, perfect for the dining area.',
     zones: [
@@ -86,7 +86,7 @@ const ZONES: Record<ZoneId, {
   },
   sleep: {
     id: 'sleep',
-    title: 'Sleeping & Relaxing',
+    title: 'Deep Rest & Recovery',
     tip: 'Place your bed in the Southwest or South for deep, grounded rest.',
     why: 'Heaviest, most stable direction — ideal for the master bedroom and deep rest.',
     zones: [
@@ -398,7 +398,7 @@ export default function HarmonyCompassScreen() {
   const insets = useSafeAreaInsets();
   const [selectedZone, setSelectedZone] = useState<ZoneId | null>(null);
   const [heading, setHeading] = useState(0); // For live compass
-  const [isCompassActive, setIsCompassActive] = useState(false);
+  const [isCompassActive, setIsCompassActive] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Animations
@@ -408,6 +408,9 @@ export default function HarmonyCompassScreen() {
   const breathingScaleAnim = useRef(new Animated.Value(1)).current;
   const lastHapticZone = useRef(-1);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  // Throttle state updates for heading
+  const lastHeadingUpdate = useRef(0);
 
   // Reset state when screen loses focus
   useFocusEffect(
@@ -420,14 +423,13 @@ export default function HarmonyCompassScreen() {
     }, [])
   );
 
-
   // Stardust Parallax
   const gyroX = useRef(new Animated.Value(0)).current;
   const gyroY = useRef(new Animated.Value(0)).current;
 
-  // Gyroscope Setup
+  // Gyroscope Setup - Increase interval to prevent hanging
   useEffect(() => {
-    Gyroscope.setUpdateInterval(50);
+    Gyroscope.setUpdateInterval(100);
     const subscription = Gyroscope.addListener((data) => {
       Animated.spring(gyroX, { toValue: -data.y * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
       Animated.spring(gyroY, { toValue: -data.x * 15, friction: 7, tension: 40, useNativeDriver: true }).start();
@@ -522,7 +524,12 @@ export default function HarmonyCompassScreen() {
         sub = await Location.watchHeadingAsync((data) => {
           let h = data.trueHeading !== -1 ? data.trueHeading : data.magHeading;
           if (h >= 0) {
-            setHeading(Math.round(h));
+            const now = Date.now();
+            // Throttle updates to prevent UI hanging (only update every 100ms max)
+            if (now - lastHeadingUpdate.current > 100) {
+              setHeading(Math.round(h));
+              lastHeadingUpdate.current = now;
+            }
           }
         });
       })();
@@ -546,10 +553,60 @@ export default function HarmonyCompassScreen() {
 
   const activeZoneData = selectedZone ? ZONES[selectedZone] : null;
 
+const VastuAura = () => {
+  const breathAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1, duration: 12000, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 0, duration: 12000, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  const scale = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
+  const opacity1 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.15, 0.3, 0.15] });
+  const opacity2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0.3] });
+
+  return (
+    <View style={[StyleSheet.absoluteFillObject]} pointerEvents="none">
+      <Animated.View style={{
+        position: 'absolute', top: -100, left: -50,
+        width: 600, height: 600, transform: [{ scale }],
+        alignItems: 'center', justifyContent: 'center'
+      }}>
+        <Animated.View style={{ position: 'absolute', opacity: opacity1 }}>
+          <Svg height="600" width="600">
+            <Defs>
+              <RadialGradient id="vastu1" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={COLORS.gold} stopOpacity="0.15" />
+                <Stop offset="1" stopColor="#0B0B14" stopOpacity="0" />
+              </RadialGradient>
+            </Defs>
+            <Rect x="0" y="0" width="600" height="600" fill="url(#vastu1)" />
+          </Svg>
+        </Animated.View>
+        <Animated.View style={{ position: 'absolute', opacity: opacity2 }}>
+          <Svg height="600" width="600">
+            <Defs>
+              <RadialGradient id="vastu2" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={COLORS.saffron} stopOpacity="0.1" />
+                <Stop offset="1" stopColor="#0B0B14" stopOpacity="0" />
+              </RadialGradient>
+            </Defs>
+            <Rect x="0" y="0" width="600" height="600" fill="url(#vastu2)" />
+          </Svg>
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+};
+
   return (
     <View style={styles.container}>
-      {/* ── Entire Top Zone Calming Animation ── */}
-      <CalmingAura />
+      {/* ── Darker Yantra-matching Background Aura ── */}
+      <VastuAura />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 40) }} showsVerticalScrollIndicator={false}>
         {/* Header */}
@@ -561,32 +618,20 @@ export default function HarmonyCompassScreen() {
         {/* Dropdown Menu */}
         <View style={{ zIndex: 10, marginHorizontal: 32, marginBottom: 20 }}>
           <TouchableOpacity 
-            activeOpacity={0.9}
+            activeOpacity={0.8}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setDropdownOpen(!dropdownOpen);
             }}
           >
-            {/* Premium Metallic Rim */}
             <LinearGradient 
-              colors={['rgba(201,162,75,0.4)', 'rgba(201,162,75,0.05)']} 
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={[{ borderRadius: 18, padding: 1 }, dropdownOpen && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+              colors={['#101018', '#0B0B14']} 
+              style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
             >
-              <LinearGradient 
-                colors={['#161622', '#0A0A10']} 
-                style={[styles.dropdownButton, dropdownOpen && styles.dropdownButtonActive]}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="compass-outline" size={16} color={COLORS.gold} style={{ marginRight: 12 }} />
-                  <Text style={styles.dropdownButtonText}>
-                    {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT SPATIAL PROTOCOL'}
-                  </Text>
-                </View>
-                <View style={{ backgroundColor: 'rgba(201,162,75,0.1)', padding: 6, borderRadius: 12 }}>
-                  <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={14} color={COLORS.gold} />
-                </View>
-              </LinearGradient>
+              <Text style={styles.dropdownButtonText}>
+                {activeZoneData ? activeZoneData.title.toUpperCase() : 'SELECT SPATIAL PROTOCOL'}
+              </Text>
+              <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.saffron} />
             </LinearGradient>
           </TouchableOpacity>
           
@@ -653,22 +698,6 @@ export default function HarmonyCompassScreen() {
 
         {/* Footer Controls */}
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.compassToggle, isCompassActive && styles.compassToggleActive]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              setIsCompassActive(!isCompassActive);
-            }}
-          >
-            <LinearGradient 
-              colors={isCompassActive ? ['#1A150A', '#0B0B14'] : ['#101018', '#0B0B14']} 
-              style={styles.compassToggleInner}
-            >
-              <Text style={[styles.compassToggleText, isCompassActive && { color: COLORS.saffron }]}>
-                {isCompassActive ? 'LIVE ALIGNMENT ON' : 'ENABLE LIVE COMPASS'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
           <Text style={styles.footerNote}>
             Align your physical space with natural energetic currents.
           </Text>
@@ -712,53 +741,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(201,162,75,0.3)',
+    paddingHorizontal: 24,
     paddingVertical: 18,
-    borderRadius: 17,
+    borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.8)',
   },
   dropdownButtonActive: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+    borderColor: COLORS.gold,
+    backgroundColor: 'rgba(20,18,10,0.9)',
   },
   dropdownButtonText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '800',
     color: COLORS.gold,
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
   dropdownList: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#0B0B14',
+    backgroundColor: 'rgba(10,10,15,0.95)',
     borderWidth: 1,
-    borderColor: '#1F1F2E',
+    borderColor: 'rgba(201,162,75,0.3)',
     borderTopWidth: 0,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
   },
   dropdownItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
   },
   dropdownItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#101018',
+    borderBottomColor: 'rgba(201,162,75,0.1)',
   },
   dropdownItemText: {
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(237,230,214,0.5)',
-    letterSpacing: 1,
+    color: 'rgba(237,230,214,0.6)',
+    letterSpacing: 2,
   },
 
   yantraContainer: {
