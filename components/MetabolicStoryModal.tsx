@@ -278,13 +278,11 @@ export default function MetabolicStoryModal({
                 colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)']}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <View>
-                  <Text style={S.cardEyebrow}>
-                    CURRENT {period.dosha.toUpperCase()} PHASE · {period.englishLabel.toUpperCase()}
-                  </Text>
-                  <Text style={S.windowTimePremium}>
-                    {period.startLabel} <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16, fontWeight: '400' }}>to</Text> {period.endLabel}
+                  <Text style={S.cardEyebrow}>TODAY'S DYNAMIC SOLAR WINDOW</Text>
+                  <Text style={[S.windowTimeText, { color: accent }]}>
+                    {period.startLabel} — {period.endLabel}
                   </Text>
                 </View>
                 <View style={[S.activeBadge, { backgroundColor: `${accent}20`, borderColor: `${accent}50` }]}>
@@ -297,9 +295,9 @@ export default function MetabolicStoryModal({
                 <View style={[S.progressBar, { width: `${Math.round(prog * 100)}%`, backgroundColor: accent }]} />
               </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                 <Text style={S.progressSubText}>{remStr}</Text>
-                <Text style={S.progressSubText}>{Math.round(prog * 100)}% completed</Text>
+                <Text style={S.progressSubText}>{Math.round(prog * 100)}% elapsed</Text>
               </View>
             </View>
 
@@ -567,10 +565,10 @@ const S = StyleSheet.create({
     paddingTop: 20,
   },
   heroHeadline: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '400',
     color: '#FFFFFF',
-    lineHeight: 36,
+    lineHeight: 40,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     marginBottom: 8,
   },
@@ -581,11 +579,11 @@ const S = StyleSheet.create({
     lineHeight: 20,
   },
   timeWindowCard: {
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: 20,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
   },
   cardEyebrow: {
@@ -595,11 +593,10 @@ const S = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 4,
   },
-  windowTimePremium: {
-    fontSize: 20,
-    fontWeight: '400',
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
+  windowTimeText: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   activeBadge: {
     paddingHorizontal: 10,
@@ -615,7 +612,7 @@ const S = StyleSheet.create({
   progressTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     marginTop: 14,
     overflow: 'hidden',
   },
@@ -625,46 +622,46 @@ const S = StyleSheet.create({
   },
   progressSubText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.45)',
     fontWeight: '600',
   },
   card: {
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.035)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    padding: 24,
-    marginBottom: 20,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 20,
+    marginBottom: 16,
   },
   cardGlow: {
-    borderColor: 'rgba(56, 189, 248, 0.15)',
-    backgroundColor: 'rgba(56, 189, 248, 0.02)',
+    borderColor: 'rgba(56, 189, 248, 0.2)',
+    backgroundColor: 'rgba(56, 189, 248, 0.03)',
   },
   iconPill: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   cardSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
-    marginTop: 3,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
+    marginTop: 2,
   },
   bodyParagraph: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 24,
-    marginBottom: 16,
+    fontSize: 14.5,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 22,
+    marginBottom: 12,
     fontWeight: '400',
   },
   solarMatrix: {
@@ -744,9 +741,9 @@ const S = StyleSheet.create({
   },
   factCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 18,
-    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
@@ -755,27 +752,27 @@ const S = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   factSub: {
     fontSize: 9.5,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
     textAlign: 'center',
   },
   sanskritCard: {
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sanskritWord: {
     fontSize: 28,
     fontWeight: '900',
     letterSpacing: 0.5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   sanskritMeaning: {
     fontSize: 13,
@@ -784,43 +781,43 @@ const S = StyleSheet.create({
     textAlign: 'center',
   },
   elementsGrid: {
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 14,
   },
   elementPill: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    padding: 14,
-    borderRadius: 18,
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   elementName: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 2,
   },
   elementDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    lineHeight: 18,
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,0.6)',
+    lineHeight: 16,
   },
   analogyBox: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 14,
     borderLeftWidth: 2,
     borderLeftColor: 'rgba(255,255,255,0.3)',
-    marginTop: 8,
+    marginTop: 6,
   },
   analogyQuote: {
-    fontSize: 14,
+    fontSize: 13.5,
     color: 'rgba(255,255,255,0.85)',
     fontStyle: 'italic',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   protocolsGrid: {
     flexDirection: 'row',
@@ -828,11 +825,11 @@ const S = StyleSheet.create({
   },
   protocolCol: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   protocolHeader: {
     fontSize: 10,
@@ -842,13 +839,13 @@ const S = StyleSheet.create({
   protocolItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 8,
   },
   protocolText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 18,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.75)',
+    lineHeight: 15,
     flex: 1,
     fontWeight: '500',
   },

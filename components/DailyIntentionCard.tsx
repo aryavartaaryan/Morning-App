@@ -294,10 +294,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   transparentWhisper: {
-    paddingVertical: 5,
-    paddingHorizontal: 16,
-    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    width: 'auto',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   homeContentCenter: {
     alignItems: 'center',
@@ -306,28 +310,28 @@ const styles = StyleSheet.create({
   },
   homePrefixText: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.6)',
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    
+    
+    
   },
   homePrefixTextLight: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
     fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    
+    
+    
   },
   homePlaceholderText: {
     fontSize: 13,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.95)',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    
+    
+    
   },
   homeIntentionText: {
     fontSize: 14,
@@ -335,9 +339,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    
+    
+    
   },
   
   // MODALS

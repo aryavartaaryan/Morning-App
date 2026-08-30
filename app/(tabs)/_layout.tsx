@@ -1290,11 +1290,11 @@ function CustomTabBar() {
       ]}
     >
       {Platform.OS === 'ios' && !isReelsOpen && (
-        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
       )}
       {!isReelsOpen && (
         <LinearGradient
-          colors={['rgba(10,12,28,0.78)', 'rgba(6,8,20,0.88)', 'rgba(10,12,28,0.72)']}
+          colors={['rgba(10,12,28,0.96)', 'rgba(6,8,20,0.98)', 'rgba(10,12,28,0.96)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
@@ -1446,7 +1446,7 @@ const styles = StyleSheet.create({
     elevation: 100,
     overflow: "hidden",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
+    borderTopColor: "rgba(255,255,255,0.12)",
   },
   wrapperBgImage: {
     opacity: 0.65,

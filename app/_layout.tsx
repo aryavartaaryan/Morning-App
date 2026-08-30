@@ -135,14 +135,14 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
 
       Animated.sequence([
-        Animated.delay(600),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.delay(400),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 600, useNativeDriver: true }),
         Animated.parallel([
-           Animated.timing(mantraOp, { toValue: 1, duration: 1200, useNativeDriver: true }),
-           Animated.timing(mantraTy, { toValue: 0, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-           Animated.timing(mantraSc, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+           Animated.timing(mantraOp, { toValue: 1, duration: 900, useNativeDriver: true }),
+           Animated.timing(mantraTy, { toValue: 0, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+           Animated.timing(mantraSc, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
         ]),
-        Animated.delay(1800), // Hold briefly to let the user feel the calm, then dismiss
+        Animated.delay(600), // Hold briefly to let the user feel the calm, then dismiss
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {

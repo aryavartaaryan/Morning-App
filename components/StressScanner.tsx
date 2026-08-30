@@ -374,7 +374,7 @@ export default function StressScanner({ visible, onClose }: any) {
 
             {/* Layer 1: Live camera feed */}
             {Platform.OS === 'android' && (
-              <View style={{ position: 'absolute', top: 0, left: 0, width: SCAN_W, height: SCAN_H, overflow: 'hidden' }}>
+              <View style={{ position: 'absolute', top: 0, left: 0, width: SCAN_W, height: SCAN_H }}>
                 <PpgCameraPreview style={{ flex: 1, width: '100%', height: '100%' }} />
               </View>
             )}
@@ -388,9 +388,9 @@ export default function StressScanner({ visible, onClose }: any) {
               pointerEvents="none"
             >
               <Path 
-                d={`M-10,-10 L230,-10 L230,225 L-10,225 Z ${HEART}`}
+                d={`M-10,-10 L-10,250 L250,250 L250,-10 Z ${HEART}`}
                 fill="#000000"
-                fillRule="evenodd"
+                fillRule="nonzero"
               />
             </Svg>
 
