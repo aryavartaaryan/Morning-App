@@ -474,11 +474,10 @@ export type SonicCollection = {
 export const SONIC_COLLECTIONS: SonicCollection[] = [
   { id: 'nada_ultra', title: 'NadaUltra · Premium Ragas', subtitle: 'RARE LONG-FORM', description: 'Long-form classical Indian ragas and healing tracks — professionally mastered for deep listening.', imageUri: 'https://images.pexels.com/photos/10996827/pexels-photo-10996827.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['indian_beats', 'naad_tabla_110', 'naad_tabla_flute_i', 'naad_tabla_flute_i_sleep', 'naad_tabla_flute_ii', 'naad_tabla_flute_iii', 'naad_tabla_flute_strings_i', 'naad_tabla_flute_strings_ii', 'naad_calming_tabla_flute', 'naad_sitar_tabla_flute', 'naad_sitar_tabla_flute_sleep', 'naad_indian_flute_tabla_mix', 'naad_festive_dholak_dance', 'naad_tabla_dance', 'naad_old_gold_tabla', 'naad_rhythm_riot', 'cdn_naad_sangam', 'cdn_naad_targan', 'cdn_yaman_mental', 'cdn_bhimpalasi', 'cdn_bhimpalasi_sleep', 'cdn_hansdhwani_432', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_calm_sunrise', 'cdn_jogiya_morning', 'cdn_yaman_jugalbandi', 'cdn_darbari_silence', 'cdn_bageshree_sleep', 'cdn_eternal_union', 'cdn_carnatic_essence', 'cdn_carnatic_flow', 'cdn_what_are_ragas', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_raga_sparkle', 'naad_wind_mountain_raga', 'cdn_ultra_brindavani_celestial', 'cdn_ultra_brindavani_thumri', 'cdn_ultra_darbari_kanaad', 'cdn_ultra_raag_lalit', 'cdn_ultra_raag_marwa', 'cdn_ultra_raag_marwa_sleep', 'cdn_ultra_raag_marwa_meditation', 'cdn_ultra_raag_patdeep', 'cdn_ultra_raag_patdeep_sleep', 'cdn_ultra_raag_puriya', 'cdn_ultra_ahir_bhairav_flute', 'cdn_ultra_ahir_bhairav_flute_sleep', 'cdn_ultra_neelambari', 'cdn_ultra_raag_bahar_528', 'cdn_ultra_raag_bahar_528_sleep', 'cdn_ultra_dopamine_healing', 'cdn_ultra_heavy_rain_night', 'cdn_hansdhwani_432_sleep', 'cdn_bhairav_soul_sleep', 'cdn_new_0', 'cdn_new_1', 'cdn_new_2', 'cdn_new_3', 'cdn_new_4', 'cdn_new_4_sleep', 'cdn_new_4_med', 'cdn_new_5', 'cdn_new_5_med', 'cdn_new_5_sleep', 'cdn_new_6', 'cdn_new_7', 'cdn_new_8', 'cdn_new_9', 'cdn_new_11', 'cdn_new_12', 'cdn_new_12_sleep', 'cdn_new_13', 'cdn_new_14', 'cdn_new_15', 'cdn_new_16', 'cdn_new_16_sleep', 'cdn_new_17', 'cdn_new_21', 'cdn_new_22', 'cdn_new_22_sleep', 'cdn_new_23', 'cdn_new_25', 'cdn_new_26', 'cdn_new_27', 'cdn_new_28', 'cdn_new_29', 'cdn_new_29_sleep', 'cdn_new_30', 'cdn_new_31', 'cdn_new_33', 'cdn_new_34', 'cdn_new_34_sleep', 'cdn_new_35', 'cdn_new_36', 'cdn_new_37', 'cdn_new_38', 'cdn_new_39', 'cdn_new_39_sleep', 'cdn_new_41', 'cdn_new_42', 'cdn_new_43', 'cdn_new_44', 'cdn_new_45', 'cdn_new_46', 'cdn_new_47', 'cdn_new_47_sleep', 'cdn_new_48', 'cdn_new_49', 'cdn_new_51', 'cdn_new_52', 'cdn_new_52_sleep', 'cdn_new_53', 'med_raga_fusions', 'med_raga_fusions_sleep', 'med_ancient_tabla', 'nc_veena_mridangam_morning', 'nc_bansuri_carnatic_fusion', 'nc_carnatic_kacheri_trio', 'nc_carnatic_veena_violin', 'nc_divine_ragas_temple', 'nc_hampi_sitar_bansuri', 'nc_sitar_tabla_relaxation', 'nc_night_raga_folk_fusion', 'nc_nisha_raga_deepam', 'nc_raga_kalyani_carnatic', 'nc_raga_deepam_veena_flute_1', 'nc_raga_deepam_veena_flute_1_sleep', 'nc_raga_deepam_veena_flute_2', 'nc_raga_deepam_veena_flute_2_sleep', 'nc_puriya_dhanashri_sunset', 'nc_raga_wash_worries', 'nc_raga_wash_worries_sleep', 'nc_sitar_raga_ambient_tabla', 'nc_south_classical_carnatic', 'nc_south_jazz_fusion', 'nc_soulful_south_classical', 'nc_soulful_south_classical_sleep', 'nc_timeless_ragas_carnatic', 'nc_temple_strings_sitar', 'nc_temple_rhythms_1hr', 'nc_sacred_temple_rhythms', 'nc_sacred_temple_rhythms_sleep', 'nc_happy_raga_bansuri', 'nc_veena_instrumental', 'nc_soft_santoor_ragas', 'nc_soft_santoor_sleep', 'nc_south_wedding_instrumental', 'nc_healing_music_deep_sleep', 'nc_sitar_overthinking_heal', 'nc_sitar_overthinking_heal_sleep', 'nc_krishna_flute_clarity', 'nc_darbari_kanaad_sitar', 'nc_sitar_432hz_deep_study', 'nc_indian_monsoon_melody', 'nc_indian_monsoon_melody_sleep', 'nc_devi_keerthanam', 'cuckoo_clock', 'cuckoo_soft'] },
   { id: 'vedic_mantras', title: 'Vedic Mantras Library', subtitle: 'ANCIENT WISDOM', description: 'The complete Vedic canon — Suktams, Upanishads, and sacred stotrams for deep spiritual immersion.', imageUri: 'https://images.pexels.com/photos/37142406/pexels-photo-37142406.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#c084fc', soundIds: ['stotra_bhagya', 'cdn_auspicious_mantras', 'cdn_surya_sukta', 'naad_om_namah_shivaya', 'mantra_gayatri', 'med_om_chanting_new', 'med_om_chanting_new_sleep', 'med_tanpura_new', 'med_tanpura_new_sleep', 'med_ayushya_suktam', 'med_bhriguvalli', 'med_bhu_suktam', 'med_brahmananda_valli', 'med_devi_suktam', 'med_durga_suktam_1', 'med_durga_suktam_2', 'med_purusha_suktam', 'med_hiranyagarbha', 'med_ishavasya', 'med_mahanyasa', 'med_mahanyasa_sleep', 'med_mantrapushpam', 'med_medha_suktam', 'med_narayana_suktam', 'med_nasadeeya', 'med_navagraha', 'med_neela_suktam', 'med_samana_suktam', 'med_shanti_path', 'med_shikshavalli', 'med_shree_suktam', 'med_sri_chakra', 'med_sri_rudram_full', 'med_sri_rudram_namakam', 'med_sri_rudram_namo', 'med_sri_suktam', 'med_sudarshana', 'med_sudarshana_sleep', 'med_suryanamaskara', 'med_suryopanishad', 'med_swasti_vachan', 'med_vaidyanatha', 'med_rudri_path', 'med_vel_muruga', 'cdn_ultra_vedic_morning_prayers', 'cdn_ultra_vedic_healing_chant'] },
-  { id: 'divine_bhajans', title: 'Divine Prayer', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras'] },
+  { id: 'divine_bhajans', title: 'Divine Prayer', subtitle: 'DEVOTIONAL HEART', description: 'Sacred devotional chants to every deity — Shiva, Vishnu, Krishna, Ganesha, Devi, Hanuman and more.', imageUri: 'https://images.pexels.com/photos/5709158/pexels-photo-5709158.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#f472b6', soundIds: ['med_achyutam', 'med_ashta_lakshmi', 'med_atma_rama', 'med_bhaja_govindam', 'med_bho_shambo', 'med_chandrachooda', 'med_dakshinamurthy', 'med_ganesha_pancharatnam', 'med_ganesha_sharanam', 'med_garuda_gamana', 'med_govind_bolo', 'med_jatajoot', 'med_kalabhairava', 'med_karpur_gauram', 'med_krishna_ashtakam', 'med_krishna_kamalaksha', 'med_lingashtakam_ashwin', 'med_rudrashtakam_agam', 'med_shiv_panchakshara_agam', 'med_namami_shamishan', 'med_narayana_stotram', 'med_parvati_panchakam', 'med_prem_eshwar', 'med_shiv_dhun', 'med_shiv_stuti_1', 'med_shiv_stuti_2', 'med_shiva_panchakshara', 'med_shivopasana', 'med_shyamale_meenakshi', 'med_ya_devi', 'med_adharam_madhuram', 'med_dwadash_jyotirlinga', 'med_hanuman_chalisa', 'med_saraswati_shloka', 'med_bhriguvalli', 'med_vande_narayanam', 'med_ganapathi_thalam', 'cdn_ultra_rise_krishna', 'cdn_ultra_rise_krishna_sleep', 'cdn_ultra_shiva_resurrection', 'cdn_ultra_shiv_bhajan', 'cdn_ultra_mahamrityunjaya', 'cdn_ultra_mukti_mantra', 'cdn_ultra_ram_bhajan_morning', 'cdn_ultra_vishnu_shloka', 'cdn_ultra_nataraja', 'cdn_ultra_om_namah_shivaya', 'cdn_ultra_shiva_naad', 'cdn_ultra_ram_bhajan_soulful', 'cdn_ultra_shiva_stotras', 'med_shiva_stotras', 'spiritual_journey'] },
 
-  { id: 'sitar_tanpura', title: 'Sitar & Tanpura', subtitle: 'STRING RESONANCE', description: 'Strings tuned to ancient ragas and sustained drone. Dissolve the boundary between music and silence.', imageUri: 'https://images.pexels.com/photos/372281/pexels-photo-372281.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fbbf24', soundIds: ['sitar_radiance', 'sitar_calm', 'sitar_long', 'sitar', 'indian_sitar_raga', 'sitar_summer_raga', 'sitar_radiance_med', 'sitar_radiance_sleep', 'sitar_tanpura_sarangi', 'sitar_tanpura_bgm', 'naad_sitar_moonlight', 'naad_sitar_temple', 'naad_sitar_holistic', 'naad_sitar_holistic_med', 'naad_sitar_holistic_sleep', 'naad_raga_sparkle', 'naad_raga_sparkle_sleep', 'naad_aar_sitar_classical', 'naad_aar_sitar_flute', 'naad_golden_sitar_432', 'naad_sitar_vibes_i', 'naad_sitar_vibes_ii', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_short_classical_sitar', 'naad_indian_sitar_tune', 'naad_sitar_type_beat', 'cdn_sitar_tabla_soul', 'tanpura_sacred_432hz', 'tanpura_breath', 'tanpura_loop', 'raga_tanpura_drone', 'tanpura_mystic', 'tanpura_mystic_sleep', 'tanpura_mystic_meditation', 'tanpura_serene', 'veena_raga', 'veena_classical', 'naad_hang_drum_tabla', 'naad_hang_flute_meditation', 'om_shanti'] },
-  { id: 'bansuri_flutes', title: 'Bansuri & Flutes', subtitle: 'BREATH OF GOD', description: 'The flute speaks what words cannot. Ancient bamboo breath for deep mental stillness.', imageUri: 'https://images.pexels.com/photos/5386063/pexels-photo-5386063.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#34d399', soundIds: ['bansuri_forest', 'bansuri_melody', 'bansuri_melody_sleep', 'bansuri_tarana', 'bansuri_tarana_sleep', 'bamboo_flute', 'andean_flute', 'native_flute', 'native_flute_echo', 'morning_flute', 'naad_zen_bamboo_flow', 'naad_zen_bamboo_flow_sleep', 'naad_ancestors_flute', 'naad_relaxing_flute', 'naad_relaxing_flute_sleep', 'naad_pure_flute_melody', 'naad_emotional_flute', 'naad_wind_mountain_raga', 'naad_summer_flute_tabla', 'naad_flute_tabla_remastered', 'naad_bansuri_tabla_fusion', 'naad_sitar_flute_tabla_soft', 'naad_indian_flute_tabla_mix', 'naad_indian_flute_tabla_mix_sleep', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
-  { id: 'world_strings', title: 'World Strings', subtitle: 'GLOBAL RESONANCE', description: 'String instruments from across the world. Diverse cultures, one universal sound.', imageUri: 'https://images.pexels.com/photos/3775601/pexels-photo-3775601.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#a78bfa', soundIds: ['sargija_eastern', 'naad_traditional_koto', 'naad_indian_fusion', 'world_ambient', 'tagore_festival', 'heaven_tune', 'naad_bhajan_flute_tabla', 'cdn_naad_targan', 'spiritual_journey', 'reincarnation_tones'] },
+  { id: 'sitar_tanpura', title: 'Sitar & Tanpura', subtitle: 'STRING RESONANCE', description: 'Strings tuned to ancient ragas and sustained drone. Dissolve the boundary between music and silence.', imageUri: 'https://images.pexels.com/photos/372281/pexels-photo-372281.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fbbf24', soundIds: ['sitar_radiance', 'sitar_calm', 'sitar_long', 'sitar', 'indian_sitar_raga', 'sitar_summer_raga', 'sitar_radiance_med', 'sitar_radiance_sleep', 'sitar_tanpura_sarangi', 'sitar_tanpura_bgm', 'naad_sitar_moonlight', 'naad_sitar_temple', 'naad_sitar_holistic', 'naad_sitar_holistic_med', 'naad_sitar_holistic_sleep', 'naad_raga_sparkle', 'naad_raga_sparkle_sleep', 'naad_aar_sitar_classical', 'naad_aar_sitar_flute', 'naad_golden_sitar_432', 'naad_sitar_vibes_i', 'naad_sitar_vibes_ii', 'naad_sitar_bhagesri', 'naad_sitar_raga_jog', 'naad_short_classical_sitar', 'naad_indian_sitar_tune', 'naad_sitar_type_beat', 'cdn_sitar_tabla_soul', 'tanpura_sacred_432hz', 'tanpura_breath', 'tanpura_loop', 'raga_tanpura_drone', 'tanpura_mystic', 'tanpura_mystic_sleep', 'tanpura_mystic_meditation', 'tanpura_serene', 'veena_raga', 'veena_classical', 'naad_hang_drum_tabla', 'naad_hang_flute_meditation', 'om_shanti', 'sargija_eastern', 'naad_traditional_koto', 'naad_indian_fusion', 'world_ambient', 'tagore_festival', 'heaven_tune'] },
+  { id: 'bansuri_flutes', title: 'Bansuri & Flutes', subtitle: 'BREATH OF GOD', description: 'The flute speaks what words cannot. Ancient bamboo breath for deep mental stillness.', imageUri: 'https://images.pexels.com/photos/5386063/pexels-photo-5386063.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#34d399', soundIds: ['bansuri_forest', 'bansuri_melody', 'bansuri_melody_sleep', 'bansuri_tarana', 'bansuri_tarana_sleep', 'bamboo_flute', 'andean_flute', 'native_flute', 'native_flute_echo', 'morning_flute', 'naad_zen_bamboo_flow', 'naad_zen_bamboo_flow_sleep', 'naad_ancestors_flute', 'naad_relaxing_flute', 'naad_relaxing_flute_sleep', 'naad_pure_flute_melody', 'naad_emotional_flute', 'naad_wind_mountain_raga', 'naad_summer_flute_tabla', 'naad_flute_tabla_remastered', 'naad_bansuri_tabla_fusion', 'naad_sitar_flute_tabla_soft', 'naad_indian_flute_tabla_mix', 'naad_indian_flute_tabla_mix_sleep', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep', 'naad_bhajan_flute_tabla'] },
   { id: 'healing_frequencies', title: 'Healing Frequencies', subtitle: '432HZ & BEYOND', description: 'Sound as medicine. Ancient singing bowls and frequencies calibrated to restore cellular and spiritual harmony.', imageUri: 'https://images.pexels.com/photos/32180834/pexels-photo-32180834.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#818cf8', soundIds: ['hz_432', 'singing_bowl', 'tibetan_bowl', 'tibetan_dreams', 'reincarnation_tones', 'tanpura_sacred_432hz', 'naad_golden_sitar_432', 'cdn_hansdhwani_432', 'sitar_summer_raga', 'indian_beats', 'om_shanti', 'morning_flute', 'spiritual_journey', 'naad_om_shivaya_meditation', 'naad_hang_drum_tabla', 'naad_himalayan_village_flute', 'naad_himalayan_village_flute_sleep'] },
   { id: 'sleep_sanctuary', title: 'Sleep Sanctuary', subtitle: 'DEEP SLEEP', description: 'The most effective sounds for falling asleep fast and sleeping through the night.', imageUri: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#6366f1', soundIds: ['light_rain', 'harbor_waves', 'night_forest', 'campfire', 'bansuri_melody_sleep', 'tanpura_mystic_sleep', 'naad_shiva_panchakshara_sleep', 'naad_sitar_tabla_flute_sleep', 'naad_zen_bamboo_flow_sleep', 'naad_relaxing_flute_sleep', 'naad_tabla_flute_i_sleep', 'cdn_bageshree_sleep', 'cdn_bhimpalasi_sleep', 'naad_bhajan_flute_tabla', 'sitar_radiance_sleep', 'bansuri_tarana_sleep', 'naad_himalayan_village_flute_sleep', 'naad_sitar_holistic_sleep'] },
   { id: 'morning_awakening', title: 'Morning Awakening', subtitle: 'BRAHMA MUHURTA', description: 'The sacred pre-dawn hours. Gentle sounds to greet consciousness as it rises.', imageUri: 'https://images.pexels.com/photos/9265973/pexels-photo-9265973.jpeg?auto=compress&cs=tinysrgb&w=600', themeColor: '#fcd34d', soundIds: ['morning_birds', 'spring_birds', 'hz_432', 'mantra_gayatri', 'naad_gayatri_mantra_long', 'cdn_bhairav_soul', 'cdn_morning_aura', 'cdn_jogiya_morning', 'cdn_surya_sukta', 'tibetan_bowl', 'tanpura_sacred_432hz', 'bansuri_forest', 'sitar_radiance_med', 'tanpura_mystic_meditation', 'om_shanti'] },
@@ -3670,14 +3669,16 @@ const RECT_CARD_W = Math.floor(W * 0.48);
 const RECT_CARD_H = Math.floor(RECT_CARD_W * 0.88); // Sleeker, landscape aspect ratio
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
-  col, index, onPress
+  col, index, onPress, isPlaying
 }: {
   col: typeof SONIC_COLLECTIONS[number];
   index: number;
   onPress: () => void;
+  isPlaying?: boolean;
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(entryAnim, {
@@ -3688,6 +3689,21 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
     }).start();
   }, []);
 
+  // Pulsing glow when a sound from this collection is playing
+  useEffect(() => {
+    if (isPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(pulseAnim, { toValue: 1,    duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      Animated.spring(pulseAnim, { toValue: 1, useNativeDriver: true, damping: 15, stiffness: 200 }).start();
+    }
+  }, [isPlaying]);
+
   const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.95, useNativeDriver: true, damping: 20, stiffness: 400 }).start();
   const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,    useNativeDriver: true, damping: 18, stiffness: 260 }).start();
 
@@ -3697,7 +3713,7 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
       width: RECT_CARD_W,
       transform: [
         { translateX: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-        { scale: pressAnim },
+        { scale: Animated.multiply(pressAnim, pulseAnim) },
       ],
     }}>
       <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
@@ -3708,13 +3724,13 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
           borderRadius: 24,
           overflow: 'hidden',
           backgroundColor: col.themeColor + '20',
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: 'rgba(255,255,255,0.2)',
-          shadowColor: col.themeColor,
+          borderWidth: isPlaying ? 1.5 : StyleSheet.hairlineWidth,
+          borderColor: isPlaying ? col.themeColor + 'CC' : 'rgba(255,255,255,0.2)',
+          shadowColor: isPlaying ? col.themeColor : col.themeColor,
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.4,
-          shadowRadius: 20,
-          elevation: 8,
+          shadowOpacity: isPlaying ? 0.7 : 0.4,
+          shadowRadius: isPlaying ? 28 : 20,
+          elevation: isPlaying ? 14 : 8,
         }}>
           <Image
             source={{ uri: col.imageUri }}
@@ -3722,8 +3738,23 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
             resizeMode="cover"
           />
           {/* subtle color overlay */}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.1 }]} pointerEvents="none" />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: isPlaying ? 0.18 : 0.1 }]} pointerEvents="none" />
           
+          {/* Premium NOW PLAYING badge in top-right */}
+          {isPlaying && (
+            <View style={{ position: 'absolute', top: 10, right: 10, overflow: 'hidden', borderRadius: 12 }}>
+              <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, gap: 5 }}>
+                {/* Animated sound bars */}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 12 }}>
+                  {[1, 0.6, 0.9, 0.5].map((h, i) => (
+                    <View key={i} style={{ width: 2.5, height: 12 * h, backgroundColor: col.themeColor, borderRadius: 2 }} />
+                  ))}
+                </View>
+                <Text style={{ fontSize: 8, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
+              </BlurView>
+            </View>
+          )}
+
           {/* Glass Text Plate at the bottom */}
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
             <BlurView intensity={35} tint="dark" style={{ padding: 12, paddingTop: 16 }}>
@@ -3744,7 +3775,7 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
                 numberOfLines={1}
                 style={{
                   fontSize: 9,
-                  color: 'rgba(255,255,255,0.7)',
+                  color: isPlaying ? col.themeColor + 'EE' : 'rgba(255,255,255,0.7)',
                   fontFamily: 'Nunito_700Bold',
                   letterSpacing: 1,
                   textTransform: 'uppercase',
@@ -4019,7 +4050,7 @@ const RecentCard = memo(function RecentCard({
 });
 
 // Group the collections into horizontal scroller
-const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
+const SonicCollections = memo(function SonicCollections({ onSelectCollection, playingId }: { onSelectCollection: (id: string) => void; playingId: string | null }) {
   const scrollRef = useRef<ScrollView>(null);
 
   useFocusEffect(
@@ -4033,7 +4064,7 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
   if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 100, paddingBottom: 20 }}>
+    <View style={{ marginTop: 20, paddingBottom: 20 }}>
       {/* Section Label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
         <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
@@ -4049,9 +4080,18 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
         contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
         decelerationRate="normal"
       >
-        {SONIC_COLLECTIONS.map((col, idx) => (
-          <RectangularCollectionCard key={col.id} col={col} index={idx} onPress={() => onSelectCollection(col.id)} />
-        ))}
+        {SONIC_COLLECTIONS.map((col, idx) => {
+          const colIsPlaying = !!playingId && col.soundIds.includes(playingId);
+          return (
+            <RectangularCollectionCard
+              key={col.id}
+              col={col}
+              index={idx}
+              isPlaying={colIsPlaying}
+              onPress={() => onSelectCollection(col.id)}
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -4719,7 +4759,7 @@ function SleepTabInner() {
           {/* Flexible spacing to push collections to the true middle of the screen */}
           <View style={{ flex: 1 }} />
 
-          <SonicCollections onSelectCollection={setActiveCollectionId} />
+          <SonicCollections onSelectCollection={setActiveCollectionId} playingId={playingId} />
 
           {/* Flexible spacing below to balance the centering */}
           <View style={{ flex: 1.5 }} />
