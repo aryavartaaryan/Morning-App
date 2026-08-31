@@ -44,7 +44,7 @@ export const CalmingAura = ({ variant = 'default', fullScreen = false }: Calming
   const bottomOp2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.2, 0.6, 0.2] : [0.2, 0.9, 0.2] });
 
   return (
-    <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: fullScreen ? 0 : undefined, height: fullScreen ? H : 420, overflow: 'hidden', opacity: isYantra ? 1 : 1 }]} pointerEvents="none">
+    <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: fullScreen ? 0 : undefined, height: fullScreen ? H : 420, overflow: 'hidden', opacity: isYantra ? 1 : 0.65 }]} pointerEvents="none">
       
       {/* ── HERO SECTION ANIMATION (TOP - LIGHTER & CYAN/WHITE) ── */}
       <Animated.View style={{

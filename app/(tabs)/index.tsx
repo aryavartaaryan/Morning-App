@@ -946,10 +946,16 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
   const [currentMonthDate, setCurrentMonthDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState(new Date());
-  const [pickerMode, setPickerMode] = React.useState<'month' | 'list'>('month');
+  const [pickerMode, setPickerMode] = React.useState<'month' | 'list' | 'year'>('month');
   const [activeFestDetail, setActiveFestDetail] = React.useState<Festival | null>(null);
 
   const flatListRef = React.useRef<FlatList>(null);
+  const yearFlatListRef = React.useRef<FlatList>(null);
+  const yearsData = React.useMemo(() => {
+    const years = [];
+    for (let y = 1950; y <= 2050; y++) years.push(y);
+    return years;
+  }, []);
   
   const festivals = React.useMemo(() => getYearlyFestivals(currentYear), [currentYear]);
   const monthsData = React.useMemo(() => Array.from({length: 12}, (_, i) => new Date(currentYear, i, 1)), [currentYear]);
@@ -969,7 +975,13 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
         flatListRef.current?.scrollToIndex({ index: currentMonthDate.getMonth(), animated: false });
       }, 50);
     }
-  }, [pickerMode, currentYear]);
+    if (pickerMode === 'year' && yearFlatListRef.current) {
+      const idx = yearsData.indexOf(currentYear);
+      if (idx !== -1) {
+        setTimeout(() => yearFlatListRef.current?.scrollToIndex({ index: idx, animated: false }), 50);
+      }
+    }
+  }, [pickerMode, currentYear, currentMonthDate]);
 
   // ROYAL IVORY THEME COLORS
   const BG_IVORY = '#FAF7F2';
@@ -977,6 +989,63 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   const ACCENT_BURGUNDY = '#6A1E2F';
   const ACCENT_GOLD = '#BFA267';
   const BORDER_COLOR = 'rgba(191,162,103,0.3)';
+
+  const MiniMonthGrid = ({ monthDate, festivalsData }: { monthDate: Date, festivalsData: any[] }) => {
+    const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+    const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
+    const days = Array(firstDayOfWeek).fill(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
+
+    return (
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setCurrentMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+          setPickerMode('month');
+        }}
+        style={{ width: (SCREEN_W - 32 - 32) / 3, marginBottom: 24, alignItems: 'center' }}
+      >
+        <Text style={{ fontFamily: 'Georgia', fontSize: 13, fontWeight: '600', color: ACCENT_BURGUNDY, marginBottom: 8, textAlign: 'center' }}>
+          {monthDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 9 * 7 + 2.5 * 6, columnGap: 2.5, rowGap: 2.5 }}>
+          {days.map((date, i) => {
+            if (!date) return <View key={i} style={{ width: 9, height: 9 }} />;
+            const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
+            const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
+            return (
+              <View key={i} style={{ 
+                width: 9, height: 9, borderRadius: 2,
+                backgroundColor: festMatch ? ACCENT_GOLD : (isToday ? ACCENT_BURGUNDY : 'rgba(44,44,44,0.08)'),
+              }} />
+            );
+          })}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderYearPage = ({ item: yearItem }: { item: number }) => {
+    const mData = Array.from({length: 12}, (_, i) => new Date(yearItem, i, 1));
+    const yFests = getYearlyFestivals(yearItem);
+    return (
+      <View style={{ width: SCREEN_W - 32, alignItems: 'center', paddingTop: 16 }}>
+        <Text style={{ fontFamily: 'Georgia', fontSize: 32, fontWeight: '600', color: TEXT_CHARCOAL, textAlign: 'center', marginBottom: 32, letterSpacing: 4 }}>
+          {yearItem}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 }}>
+          {mData.map((monthDate, idx) => (
+             <MiniMonthGrid 
+               key={idx} 
+               monthDate={monthDate} 
+               festivalsData={yFests} 
+             />
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
@@ -1093,15 +1162,22 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             <View style={{ flexDirection: 'row', backgroundColor: 'rgba(191,162,103,0.1)', borderRadius: 20, padding: 4 }}>
               <TouchableOpacity 
                 activeOpacity={0.8}
+                onPress={() => setPickerMode('year')}
+                style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'year' ? ACCENT_BURGUNDY : 'transparent' }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'year' ? '#FFF' : TEXT_CHARCOAL }}>YEAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                activeOpacity={0.8}
                 onPress={() => setPickerMode('month')}
-                style={{ paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: pickerMode === 'month' ? ACCENT_BURGUNDY : 'transparent' }}
+                style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'month' ? ACCENT_BURGUNDY : 'transparent' }}
               >
                 <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'month' ? '#FFF' : TEXT_CHARCOAL }}>MONTH</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 activeOpacity={0.8}
                 onPress={() => setPickerMode('list')}
-                style={{ paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: pickerMode === 'list' ? ACCENT_BURGUNDY : 'transparent' }}
+                style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'list' ? ACCENT_BURGUNDY : 'transparent' }}
               >
                 <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'list' ? '#FFF' : TEXT_CHARCOAL }}>EVENTS</Text>
               </TouchableOpacity>
@@ -1110,7 +1186,53 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
 
           {/* CONTENT AREA */}
           <View style={{ flex: 1, paddingHorizontal: 16 }}>
-            {pickerMode === 'month' ? (
+            {pickerMode === 'year' ? (
+              <View style={{ flex: 1, paddingBottom: 32 }}>
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <FlatList
+                    ref={yearFlatListRef}
+                    data={yearsData}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.toString()}
+                    renderItem={renderYearPage}
+                    initialScrollIndex={yearsData.indexOf(currentYear) !== -1 ? yearsData.indexOf(currentYear) : 0}
+                    getItemLayout={(data, index) => ({ length: SCREEN_W - 32, offset: (SCREEN_W - 32) * index, index })}
+                    onMomentumScrollEnd={(e) => {
+                       const newIndex = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_W - 32));
+                       if (yearsData[newIndex]) {
+                          setCurrentYear(yearsData[newIndex]);
+                       }
+                    }}
+                  />
+                  <TouchableOpacity 
+                    style={{ position: 'absolute', left: 0, top: '50%', padding: 10, marginTop: -20 }}
+                    onPress={() => {
+                        const idx = yearsData.indexOf(currentYear);
+                        if (idx > 0) {
+                          yearFlatListRef.current?.scrollToIndex({ index: idx - 1, animated: true });
+                          setCurrentYear(yearsData[idx - 1]);
+                        }
+                    }}
+                  >
+                    <Ionicons name="chevron-back" size={24} color={ACCENT_GOLD} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{ position: 'absolute', right: 0, top: '50%', padding: 10, marginTop: -20 }}
+                    onPress={() => {
+                        const idx = yearsData.indexOf(currentYear);
+                        if (idx < yearsData.length - 1) {
+                          yearFlatListRef.current?.scrollToIndex({ index: idx + 1, animated: true });
+                          setCurrentYear(yearsData[idx + 1]);
+                        }
+                    }}
+                  >
+                    <Ionicons name="chevron-forward" size={24} color={ACCENT_GOLD} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : pickerMode === 'month' ? (
               <View style={{ flex: 1 }}>
                 <View style={{ height: 380 }}>
                   <FlatList
@@ -6579,7 +6701,7 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Vedic Almanac Card — BILLION DOLLAR MYSTIC NEBULA REDESIGN
+// Vedic Almanac Card — BILLION DOLLAR MYSTIC NEBULA REDESIGN (FULL PAGE)
 // ══════════════════════════════════════════════════════════════════════════════
 function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes: SolarTimes | null; weather?: WeatherData | null; onCosmicPress: () => void }) {
   const router    = useRouter();
@@ -6605,6 +6727,25 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const GOLD = '#D4AF37';
   const GOLD_LIGHT = '#F3E5AB';
   const BG_COLOR = '#0A0A0A';
+  
+  // Calculate Muhurtas
+  const sr = csr ?? 6;
+  const ss = css ?? 18;
+  const dayLen = ss - sr;
+  const part = dayLen / 8;
+  const rahuMap = [8, 2, 7, 5, 6, 4, 3];
+  const yamaMap = [5, 4, 3, 2, 1, 7, 6];
+  const noon = sr + dayLen / 2;
+  const m = {
+    rahu: `${fmtSolar(sr + (rahuMap[p.vaarIdx]-1)*part)} - ${fmtSolar(sr + rahuMap[p.vaarIdx]*part)}`,
+    yama: `${fmtSolar(sr + (yamaMap[p.vaarIdx]-1)*part)} - ${fmtSolar(sr + yamaMap[p.vaarIdx]*part)}`,
+    abhijit: `${fmtSolar(noon - 0.4)} - ${fmtSolar(noon + 0.4)}`
+  };
+
+  // Karana calculation mock (based on tithi)
+  const KARANAS = ['Bava', 'Balava', 'Kaulava', 'Taitila', 'Gara', 'Vanija', 'Vishti', 'Shakuni', 'Chatushpada', 'Naga', 'Kintughna'];
+  const tithiNum = p.paksha === "Shukla" ? p.tithiInPaksha : p.tithiInPaksha + 15;
+  const karanaName = KARANAS[tithiNum % 11];
 
   const tithiOrdinal = p.tithiInPaksha === 15 
     ? (p.paksha === 'Shukla' ? 'Full Moon' : 'New Moon') 
@@ -6619,14 +6760,23 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   return (
     <>
       <View style={{
-        marginHorizontal: 12, marginTop: 6, marginBottom: 8,
-        borderRadius: 32, overflow: 'hidden', backgroundColor: BG_COLOR,
-        borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)',
+        width: '100%', paddingBottom: 40,
+        backgroundColor: BG_COLOR,
+        borderTopWidth: 1, borderColor: 'rgba(212,175,55,0.15)',
         paddingVertical: 24, paddingHorizontal: 20
       }}>
         {/* Subtle Gold Ambient Background */}
         <View style={{ position: 'absolute', top: -50, left: -50, width: 300, height: 300, borderRadius: 150, backgroundColor: GOLD, opacity: 0.04 }} />
         
+        {/* Gochar / Planetary Transit Banner */}
+        <View style={{ marginBottom: 24, padding: 12, borderRadius: 12, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)', flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, marginRight: 10 }}>✨</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 10, color: GOLD, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Cosmic Event Today</Text>
+            <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '500' }}>Moon transits into Taurus (Emotional Stability)</Text>
+          </View>
+        </View>
+
         {/* Top Header */}
         <View style={{ alignItems: 'center', marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
@@ -6694,15 +6844,15 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             <SvgEllipse cx="150" cy="90" rx="130" ry="45.5" fill="none" stroke="rgba(212,175,55,0.2)" strokeWidth="0.5" />
             
             {/* Exactly positioned planets on the orbits. */}
-            <SvgCircle cx="150" cy="104" r="3" fill="#D4AF37" />     {/* r=40, angle=90, y=90+14=104 */}
-            <SvgCircle cx="220" cy="90" r="2.5" fill="#B0C4DE" />    {/* r=70, angle=0, x=150+70=220 */}
-            <SvgCircle cx="80" cy="90" r="4" fill="#F59E0B" />       {/* r=70, angle=180, x=150-70=80 */}
-            <SvgCircle cx="220.7" cy="114.7" r="3.5" fill="#EC4899" /> {/* r=100, angle=45, x=220.7, y=90+35*.707=114.7 */}
-            <SvgCircle cx="79.3" cy="65.3" r="2" fill="#FFFFFF" opacity={0.6} /> {/* r=100, angle=225, x=79.3, y=90-24.7=65.3 */}
-            <SvgCircle cx="241.9" cy="57.8" r="3" fill="#AA8C2C" />    {/* r=130, angle=315, x=241.9, y=90-32.2=57.8 */}
+            <SvgCircle cx="150" cy="104" r="3" fill="#D4AF37" />
+            <SvgCircle cx="220" cy="90" r="2.5" fill="#B0C4DE" />
+            <SvgCircle cx="80" cy="90" r="4" fill="#F59E0B" />
+            <SvgCircle cx="220.7" cy="114.7" r="3.5" fill="#EC4899" />
+            <SvgCircle cx="79.3" cy="65.3" r="2" fill="#FFFFFF" opacity={0.6} />
+            <SvgCircle cx="241.9" cy="57.8" r="3" fill="#AA8C2C" />
           </Svg>
           
-          {/* Glowing central SUN perfectly centered at 150, 90 */}
+          {/* Glowing central SUN */}
           <View style={{ 
             position: 'absolute', top: 62, left: 122,
             width: 56, height: 56, borderRadius: 28, backgroundColor: '#FDE047', 
@@ -6720,7 +6870,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         {/* Premium Expandable Cosmic Alignments */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 2, textAlign: 'center', marginBottom: 16 }}>
-            TODAY'S ALIGNMENTS
+            TODAY'S ALIGNMENTS (PANCHANG)
           </Text>
 
           <CosmicAccordion 
@@ -6734,7 +6884,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           />
 
           <CosmicAccordion 
-            title="Yoga (Energy)" 
+            title="Yoga (Energy Field)" 
             value={yoga.name} 
             icon="🧘‍♂️" 
             expanded={expandedSection === 'yoga'} 
@@ -6744,7 +6894,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           />
 
           <CosmicAccordion 
-            title={`Vaar (${vaar.planet})`} 
+            title={`Vaar (${vaar.planet} Day)`} 
             value={ENGLISH_DAYS[p.vaarIdx]} 
             icon="🪐" 
             expanded={expandedSection === 'vaar'} 
@@ -6752,57 +6902,99 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             startT={fmtSolar(csr)} 
             endT="Next Sunrise" 
           />
+          
+          {/* Karana & Solar Data Accordion */}
+          <View style={{ marginBottom: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: expandedSection === 'karana' ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('karana')} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>🌅</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>KARANA (HALF-LUNAR DAY)</Text>
+                  <Text style={{ fontFamily: 'Georgia', fontSize: 16, color: '#FFF' }}>{karanaName}</Text>
+                </View>
+              </View>
+              <Ionicons name={expandedSection === 'karana' ? "chevron-up" : "chevron-down"} size={16} color="rgba(212,175,55,0.8)" />
+            </TouchableOpacity>
+            
+            {expandedSection === 'karana' && (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+                <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View>
+                    <Text style={{ fontSize: 9, color: 'rgba(212,175,55,0.7)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>LOCAL SUNRISE</Text>
+                    <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '500' }}>{fmtSolar(csr)}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 9, color: 'rgba(212,175,55,0.7)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>LOCAL SUNSET</Text>
+                    <Text style={{ fontSize: 12, color: '#FFF', fontWeight: '500' }}>{fmtSolar(css)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+          
+          {/* Muhurta Accordion */}
+          <View style={{ marginBottom: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: expandedSection === 'muhurta' ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => toggleSection('muhurta')} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>⏳</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>DAILY MUHURTA (TIMINGS)</Text>
+                  <Text style={{ fontFamily: 'Georgia', fontSize: 16, color: '#FFF' }}>Auspicious & Inauspicious</Text>
+                </View>
+              </View>
+              <Ionicons name={expandedSection === 'muhurta' ? "chevron-up" : "chevron-down"} size={16} color="rgba(212,175,55,0.8)" />
+            </TouchableOpacity>
+            
+            {expandedSection === 'muhurta' && (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+                <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
+                
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 9, color: '#10B981', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>ABHIJIT MUHURTA (MOST AUSPICIOUS)</Text>
+                  <Text style={{ fontSize: 13, color: '#FFF', fontWeight: '500' }}>{m.abhijit}</Text>
+                </View>
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 9, color: '#EF4444', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>RAHU KAAL (AVOID NEW TASKS)</Text>
+                  <Text style={{ fontSize: 13, color: '#FFF', fontWeight: '500' }}>{m.rahu}</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 9, color: '#F59E0B', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>YAMAGANDA (AVOID TRAVEL)</Text>
+                  <Text style={{ fontSize: 13, color: '#FFF', fontWeight: '500' }}>{m.yama}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+
         </View>
 
         <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
 
-        {/* Footer Times */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, marginBottom: 20 }}>
-          <View>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginBottom: 2 }}>Sunrise</Text>
-            <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}>{fmtSolar(csr)}</Text>
-          </View>
-          <View>
-            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginBottom: 2 }}>Sunset</Text>
-            <Text style={{ fontSize: 11, color: '#FFF', fontWeight: '500' }}>{fmtSolar(css)}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: GOLD, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>MOON PHASE</Text>
-            <Text style={{ fontSize: 11, color: GOLD_LIGHT, fontWeight: '600' }}>{p.paksha} Paksha</Text>
-          </View>
-        </View>
-
         {/* ── ACTION BUTTONS ── */}
-        <View style={{ flexDirection: 'row', gap: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(212,175,55,0.15)' }}>
-          {/* VEDIC CALENDAR */}
+        <View style={{ flexDirection: 'row', gap: 12, paddingTop: 16 }}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }}
             style={{ flex: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: GOLD }}
           >
-            <LinearGradient
-              colors={['rgba(212,175,55,0.15)', 'rgba(212,175,55,0.05)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            >
-              <Text style={{ fontSize: 14 }}>🗓</Text>
-              <Text style={{ fontFamily: 'Georgia', fontSize: 11, fontWeight: '600', color: GOLD, letterSpacing: 1.5, textTransform: 'uppercase' }}>CALENDAR</Text>
+            <LinearGradient colors={['rgba(212,175,55,0.2)', 'rgba(212,175,55,0.05)']} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: GOLD, letterSpacing: 1 }}>CALENDAR</Text>
             </LinearGradient>
           </TouchableOpacity>
-
-          {/* SCIENCE */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onCosmicPress(); }}
-            style={{ flex: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(243,229,171,0.2)' }}
+            onPress={onCosmicPress}
+            style={{ flex: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
           >
-            <View style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 14 }}>🔭</Text>
-              <Text style={{ fontFamily: 'Georgia', fontSize: 11, fontWeight: '600', color: 'rgba(243,229,171,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' }}>SCIENCE</Text>
-            </View>
+            <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)']} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFF', letterSpacing: 1 }}>SCIENCE</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-
       </View>
       
       {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} />}
@@ -7563,7 +7755,7 @@ function DailyTab() {
         </ScrollView>
 
         {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns (Fixed at bottom) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 16) + 12, paddingTop: 10, backgroundColor: 'transparent' }}>
+        <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 16) + 80, paddingTop: 10, backgroundColor: 'transparent' }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -8286,11 +8478,11 @@ const AmbientAura = ({ color }: { color: string }) => {
 
   const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-150, 150] });
   const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
-  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] });
+  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.20] });
 
   const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [150, -150] });
   const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.9] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] });
+  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.20] });
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
@@ -8307,7 +8499,7 @@ const AmbientAura = ({ color }: { color: string }) => {
       }} />
       
       {/* Universal Soft Tint */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: color, opacity: 0.1 }]} />
+      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: color, opacity: 0.04 }]} />
     </View>
   );
 };

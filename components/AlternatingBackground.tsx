@@ -59,11 +59,11 @@ export const AlternatingBackground = ({ imageUri }: Props) => {
           // [0.8, 1]     : Transparent (Bottom is lit)
           colors={[
             'transparent', 
-            'rgba(3,3,8,0.5)', 
-            '#030308', 
-            '#030308', 
-            '#030308', 
-            'rgba(3,3,8,0.5)', 
+            'rgba(3,3,8,0.4)', 
+            'rgba(3,3,8,0.75)', 
+            'rgba(3,3,8,0.85)', 
+            'rgba(3,3,8,0.75)', 
+            'rgba(3,3,8,0.4)', 
             'transparent'
           ]}
           locations={[0, 0.25, 0.45, 0.5, 0.55, 0.75, 1]}

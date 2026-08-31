@@ -32,7 +32,7 @@ const FONTS = {
 };
 
 // ── Spatial Zone Data ──
-type ZoneId = 'meditate' | 'deepwork' | 'wfh' | 'eat' | 'sleep';
+type ZoneId = 'meditate' | 'deepwork' | 'wfh' | 'eat' | 'sleep' | 'gym' | 'media' | 'creator' | 'nook' | 'pet' | 'build_kitchen' | 'build_toilet' | 'build_bedroom' | 'build_entrance';
 
 const ZONES: Record<ZoneId, {
   id: ZoneId;
@@ -95,6 +95,97 @@ const ZONES: Record<ZoneId, {
       { direction: 'East', sanskrit: 'Purva', angle: 90 },
     ]
   },
+  gym: {
+    id: 'gym',
+    title: 'Home Gym & Yoga',
+    tip: 'Face East for Yoga; keep heavy equipment in the South or Southwest.',
+    why: 'South and West hold earth and fire energy, ideal for physical strength and endurance.',
+    zones: [
+      { direction: 'South', sanskrit: 'Dakshin', angle: 180 },
+      { direction: 'West', sanskrit: 'Paschim', angle: 270 },
+      { direction: 'Southwest', sanskrit: 'Nairutya', angle: 225 },
+    ]
+  },
+  media: {
+    id: 'media',
+    title: 'Media & Entertainment',
+    tip: 'Set up your entertainment and socializing areas in the Northwest or East.',
+    why: 'Northwest is governed by the wind element, perfect for movement, socializing, and relaxation.',
+    zones: [
+      { direction: 'Northwest', sanskrit: 'Vayavya', angle: 315 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
+  },
+  creator: {
+    id: 'creator',
+    title: 'Content & Podcasting',
+    tip: 'Face North or East while streaming or recording content.',
+    why: 'North is governed by Mercury, the planet of communication, networking, and digital growth.',
+    zones: [
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
+  },
+  nook: {
+    id: 'nook',
+    title: 'Coffee & Journaling Nook',
+    tip: 'Create your morning corner in the East or Northeast.',
+    why: 'Absorbs the morning sun\'s vital prana and sets a tone of mental clarity for the day.',
+    zones: [
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+      { direction: 'Northeast', sanskrit: 'Ishaan', angle: 45 },
+    ]
+  },
+  pet: {
+    id: 'pet',
+    title: 'Pet Space',
+    tip: 'Place dog beds or pet spaces in the Northwest or East.',
+    why: 'These zones carry active, happy energy that keeps pets energetic and joyful.',
+    zones: [
+      { direction: 'Northwest', sanskrit: 'Vayavya', angle: 315 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
+  },
+  build_kitchen: {
+    id: 'build_kitchen',
+    title: 'Build: Kitchen Space',
+    tip: 'Plan your kitchen in the Southeast (Agneya) corner of the house.',
+    why: 'Governed by the fire element (Agni), the Southeast ensures health and proper digestion.',
+    zones: [
+      { direction: 'Southeast', sanskrit: 'Agneya', angle: 135 },
+      { direction: 'Northwest', sanskrit: 'Vayavya', angle: 315 },
+    ]
+  },
+  build_toilet: {
+    id: 'build_toilet',
+    title: 'Build: Toilet Space',
+    tip: 'Position toilets in the West-Northwest or South-Southwest, avoiding corners.',
+    why: 'These zones handle waste effectively without draining the positive energy of the home.',
+    zones: [
+      { direction: 'Northwest', sanskrit: 'Vayavya', angle: 315 },
+      { direction: 'West', sanskrit: 'Paschim', angle: 270 },
+    ]
+  },
+  build_bedroom: {
+    id: 'build_bedroom',
+    title: 'Build: Master Bedroom',
+    tip: 'Plan the master bedroom in the Southwest corner for the head of the family.',
+    why: 'The Southwest is the heaviest, most stable zone, bringing groundedness and authority.',
+    zones: [
+      { direction: 'Southwest', sanskrit: 'Nairutya', angle: 225 },
+    ]
+  },
+  build_entrance: {
+    id: 'build_entrance',
+    title: 'Build: Main Entrance',
+    tip: 'Ensure the main entrance faces North, Northeast, or East.',
+    why: 'These directions welcome positive solar energy, prosperity, and spiritual growth.',
+    zones: [
+      { direction: 'North', sanskrit: 'Uttar', angle: 0 },
+      { direction: 'Northeast', sanskrit: 'Ishaan', angle: 45 },
+      { direction: 'East', sanskrit: 'Purva', angle: 90 },
+    ]
+  }
 };
 
 const SECONDARY_ZONES = [
@@ -368,18 +459,24 @@ const HarmonyCompassSVG = ({ size, activeZoneData, pulseAnim, compassRotAnim, co
                   <Circle cx={center + r * 0.92} cy={center} r={4} fill="#FFF" />
                   <Circle cx={center + r * 0.92} cy={center} r={8} fill="none" stroke={COLORS.saffron} strokeWidth={2} opacity={0.9} />
                   
-                  <SvgText
-                    x={center + r * 0.75}
-                    y={center - 10}
-                    fill="#FFF"
-                    fontSize={11}
-                    fontFamily={FONTS.sans}
-                    fontWeight="800"
-                    textAnchor="middle"
-                    transform={`rotate(${angle > 90 && angle < 270 ? 180 : 0} ${center + r * 0.75} ${center - 10})`}
-                  >
-                    {zone.sanskrit}
-                  </SvgText>
+                  {(() => {
+                    const shouldFlip = angle > 180 && angle < 360;
+                    const textY = shouldFlip ? center + 10 : center - 10;
+                    return (
+                      <SvgText
+                        x={center + r * 0.75}
+                        y={textY}
+                        fill="#FFF"
+                        fontSize={10}
+                        fontFamily={FONTS.sans}
+                        fontWeight="800"
+                        textAnchor="middle"
+                        transform={`rotate(${shouldFlip ? 180 : 0} ${center + r * 0.75} ${textY})`}
+                      >
+                        {`${zone.direction.toUpperCase()} • ${zone.sanskrit}`}
+                      </SvgText>
+                    );
+                  })()}
                 </G>
               );
             })}

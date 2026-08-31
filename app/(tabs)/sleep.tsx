@@ -3667,7 +3667,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 
 // ─── Rectangular Collection Card ─────────────────────────────────────────────
 const RECT_CARD_W = Math.floor(W * 0.48);
-const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.05); // Sleeker, less bulky aspect ratio
+const RECT_CARD_H = Math.floor(RECT_CARD_W * 0.88); // Sleeker, landscape aspect ratio
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
   col, index, onPress
@@ -4020,6 +4020,16 @@ const RecentCard = memo(function RecentCard({
 
 // Group the collections into horizontal scroller
 const SonicCollections = memo(function SonicCollections({ onSelectCollection }: { onSelectCollection: (id: string) => void }) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({ x: 0, animated: false });
+      }
+    }, [])
+  );
+
   if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
@@ -4033,11 +4043,11 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
       </View>
 
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
         decelerationRate="normal"
-        
       >
         {SONIC_COLLECTIONS.map((col, idx) => (
           <RectangularCollectionCard key={col.id} col={col} index={idx} onPress={() => onSelectCollection(col.id)} />
@@ -4639,7 +4649,7 @@ function SleepTabInner() {
   return (
     <View style={[S.screen, { backgroundColor: '#030308' }]}>
       {/* Premium Alternating Background: Top & Bottom Crossfade */}
-      <AlternatingBackground imageUri={cachedHeroBgUri || rawHeroBgUri || bgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg'} />
+      <AlternatingBackground imageUri={bgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg'} />
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
