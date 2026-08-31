@@ -946,20 +946,14 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
   const [currentMonthDate, setCurrentMonthDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState(new Date());
-  const [pickerMode, setPickerMode] = React.useState<'month' | 'year' | 'list'>('month');
+  const [pickerMode, setPickerMode] = React.useState<'month' | 'list'>('month');
   const [activeFestDetail, setActiveFestDetail] = React.useState<Festival | null>(null);
 
   const flatListRef = React.useRef<FlatList>(null);
-  const yearFlatListRef = React.useRef<FlatList>(null);
   
   const festivals = React.useMemo(() => getYearlyFestivals(currentYear), [currentYear]);
   const monthsData = React.useMemo(() => Array.from({length: 12}, (_, i) => new Date(currentYear, i, 1)), [currentYear]);
-  const yearsData = React.useMemo(() => {
-    const years = [];
-    for (let y = 1950; y <= 2050; y++) years.push(y);
-    return years;
-  }, []);
-
+  
   React.useEffect(() => {
     if (currentMonthDate.getFullYear() !== currentYear) {
       setCurrentYear(currentMonthDate.getFullYear());
@@ -967,74 +961,24 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   }, [currentMonthDate]);
 
   const selectedP = getPanchangData(selectedDate);
-  const selN = NAKSHATRAS[selectedP.nakshatraIdx];
-  const selY = YOGAS[selectedP.yogaIdx];
-  const selV = VAARS[selectedP.vaarIdx];
-
-  const selFest = festivals.find(f => 
-    f.date.getDate() === selectedDate.getDate() && 
-    f.date.getMonth() === selectedDate.getMonth()
-  );
-
+  const vMonthSelected = getVedicMonth(selectedDate);
+  
   React.useEffect(() => {
     if (pickerMode === 'month' && flatListRef.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: currentMonthDate.getMonth(), animated: false });
       }, 50);
     }
-    if (pickerMode === 'year' && yearFlatListRef.current) {
-      const idx = yearsData.indexOf(currentYear);
-      if (idx !== -1) {
-        setTimeout(() => yearFlatListRef.current?.scrollToIndex({ index: idx, animated: false }), 50);
-      }
-    }
   }, [pickerMode, currentYear]);
 
-  // NEBULA ACCENT COLORS
-  const NEBULA_PURPLE = '#9B59B6';
-  const NEBULA_VIOLET = '#7C3AED';
-  const NEBULA_CYAN = '#06B6D4';
-  const NEBULA_GOLD = '#F59E0B';
-  const NEBULA_PINK = '#EC4899';
+  // ROYAL IVORY THEME COLORS
+  const BG_IVORY = '#FAF7F2';
+  const TEXT_CHARCOAL = '#2C2C2C';
+  const ACCENT_BURGUNDY = '#6A1E2F';
+  const ACCENT_GOLD = '#BFA267';
+  const BORDER_COLOR = 'rgba(191,162,103,0.3)';
 
-  const MiniMonthGrid = ({ monthDate, festivalsData }: { monthDate: Date, festivalsData: any[] }) => {
-    const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
-    const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
-    const days = Array(firstDayOfWeek).fill(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
-
-    return (
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => {
-          Haptics.selectionAsync();
-          setCurrentMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-          setPickerMode('month');
-        }}
-        style={{ width: (SCREEN_W - 32 - 32) / 3, marginBottom: 20 }}
-      >
-        <Text style={{ fontSize: 12, fontWeight: '800', color: NEBULA_PURPLE, marginBottom: 6, paddingLeft: 2, letterSpacing: 0.8 }}>
-          {monthDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 2.5, rowGap: 2.5 }}>
-          {days.map((date, i) => {
-            if (!date) return <View key={i} style={{ width: 9, height: 9 }} />;
-            const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
-            const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
-            return (
-              <View key={i} style={{ 
-                width: 9, height: 9, borderRadius: 2,
-                backgroundColor: festMatch ? (festMatch.festival.type === 'hindu' ? NEBULA_GOLD : NEBULA_CYAN) : (isToday ? NEBULA_PINK : 'rgba(255,255,255,0.08)'),
-                borderWidth: isToday ? 0.5 : 0, borderColor: 'rgba(236,72,153,0.8)'
-              }} />
-            );
-          })}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect, isYearMode = false }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void, isYearMode?: boolean }) => {
+  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
     
@@ -1042,38 +986,39 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
     for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
 
+    const mName = monthDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+    const vName = getVedicMonth(monthDate).name;
+    const vYear = monthDate.getFullYear() + 57;
+
     return (
-      <View style={{ width: SCREEN_W - 32, marginBottom: isYearMode ? 32 : 0 }}>
-        {isYearMode && (
-           <Text style={{ fontSize: 18, fontWeight: '800', color: NEBULA_PURPLE, marginBottom: 12, marginLeft: 12, letterSpacing: 1 }}>
-             {monthDate.toLocaleString('en-US', { month: 'long' }).toUpperCase()}
-           </Text>
-        )}
-        {!isYearMode && (
-           <Text style={{ fontSize: 26, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginBottom: 24, letterSpacing: -0.5 }}>
-             {monthDate.toLocaleString('en-US', { month: 'long' })}
-             <Text style={{ color: NEBULA_PURPLE, fontWeight: '300' }}> {monthDate.getFullYear()}</Text>
-           </Text>
-        )}
+      <View style={{ width: SCREEN_W - 32 }}>
+        {/* Month Title */}
+        <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '600', color: TEXT_CHARCOAL, textAlign: 'center', marginBottom: 4, letterSpacing: 2 }}>
+          {mName} {monthDate.getFullYear()}
+        </Text>
+        <Text style={{ fontFamily: 'Georgia', fontSize: 14, color: ACCENT_BURGUNDY, textAlign: 'center', marginBottom: 24, fontStyle: 'italic' }}>
+          {vName} {vYear}
+        </Text>
+
         {/* Weekday headers */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
-          {['S','M','T','W','T','F','S'].map((d, i) => (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: BORDER_COLOR, paddingBottom: 8 }}>
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
             <View key={i} style={{ width: `${100/7}%`, alignItems: 'center' }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: i === 0 ? NEBULA_PINK + 'CC' : 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>{d}</Text>
+              <Text style={{ fontFamily: 'Georgia', fontSize: 12, fontWeight: '600', color: i === 0 ? ACCENT_BURGUNDY : TEXT_CHARCOAL }}>{d}</Text>
             </View>
           ))}
         </View>
 
         {/* Day Grid */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 4 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
           {days.map((date, i) => {
-            if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 62 }} />;
+            if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 60 }} />;
             
             const isSelected = date.getDate() === selDate.getDate() && date.getMonth() === selDate.getMonth() && date.getFullYear() === selDate.getFullYear();
             const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
             const isSunday = date.getDay() === 0;
             const dayPanchang = getPanchangData(date);
-            const tithiShort = dayPanchang.tithiName.substring(0, 3).toUpperCase();
+            const tithiShort = dayPanchang.tithiName.substring(0, 4);
             const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
             
             return (
@@ -1081,24 +1026,21 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                 key={i}
                 activeOpacity={0.7}
                 onPress={() => { Haptics.selectionAsync(); onDateSelect(date); }}
-                style={{ width: `${100/7}%`, height: 62, alignItems: 'center', justifyContent: 'center' }}
+                style={{ width: `${100/7}%`, height: 60, alignItems: 'center', justifyContent: 'center' }}
               >
                 {isSelected && (
-                  <LinearGradient
-                    colors={[NEBULA_VIOLET, NEBULA_PURPLE]}
-                    style={{ position: 'absolute', width: 46, height: 54, borderRadius: 23 }}
-                  />
+                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, backgroundColor: ACCENT_BURGUNDY, shadowColor: ACCENT_BURGUNDY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }} />
                 )}
                 {isToday && !isSelected && (
-                  <View style={{ position: 'absolute', width: 46, height: 54, borderRadius: 23, borderWidth: 1.5, borderColor: NEBULA_CYAN + '80' }} />
+                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, borderWidth: 1.5, borderColor: ACCENT_GOLD }} />
                 )}
                 {festMatch && !isSelected && (
-                  <View style={{ position: 'absolute', top: 4, right: '12%', width: 6, height: 6, borderRadius: 3, backgroundColor: festMatch.festival.type === 'hindu' ? NEBULA_GOLD : NEBULA_CYAN }} />
+                  <View style={{ position: 'absolute', top: 4, right: '15%', width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT_GOLD }} />
                 )}
-                <Text style={{ fontSize: 18, fontWeight: isSelected || isToday ? '900' : '500', color: isSelected ? '#FFF' : (isToday ? NEBULA_CYAN : (isSunday ? NEBULA_PINK + 'CC' : 'rgba(255,255,255,0.85)')) }}>
+                <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: isSelected || isToday ? '600' : '400', color: isSelected ? '#FFF' : (isToday ? ACCENT_GOLD : (isSunday ? ACCENT_BURGUNDY : TEXT_CHARCOAL)) }}>
                   {date.getDate()}
                 </Text>
-                <Text style={{ fontSize: 7.5, fontWeight: '700', color: isSelected ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)', marginTop: 2, letterSpacing: 0.3 }}>
+                <Text style={{ fontSize: 8, fontWeight: '500', color: isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(44,44,44,0.5)', marginTop: 2 }}>
                   {tithiShort}
                 </Text>
               </TouchableOpacity>
@@ -1113,191 +1055,64 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     return <MonthGrid monthDate={monthDate} festivalsData={festivals} selDate={selectedDate} onDateSelect={setSelectedDate} />;
   };
 
-  const renderYearPage = ({ item: yearItem }: { item: number }) => {
-    const mData = Array.from({length: 12}, (_, i) => new Date(yearItem, i, 1));
-    const yFests = getYearlyFestivals(yearItem);
-    return (
-      <View style={{ width: SCREEN_W - 32, alignItems: 'center', paddingTop: 16 }}>
-        <Text style={{ fontSize: 36, fontWeight: '900', color: '#FFF', textAlign: 'center', marginBottom: 24, letterSpacing: 6 }}>
-          {yearItem}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 }}>
-          {mData.map((monthDate, idx) => (
-             <MiniMonthGrid 
-               key={idx} 
-               monthDate={monthDate} 
-               festivalsData={yFests} 
-             />
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  const renderYearMode = () => (
-    <View style={{ flex: 1, justifyContent: 'center' }}>
-      <FlatList
-        ref={yearFlatListRef}
-        data={yearsData}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.toString()}
-        renderItem={renderYearPage}
-        initialScrollIndex={yearsData.indexOf(currentYear) !== -1 ? yearsData.indexOf(currentYear) : 0}
-        getItemLayout={(data, index) => ({ length: SCREEN_W - 32, offset: (SCREEN_W - 32) * index, index })}
-        onMomentumScrollEnd={(e) => {
-           const newIndex = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_W - 32));
-           if (yearsData[newIndex]) {
-              setCurrentYear(yearsData[newIndex]);
-           }
-        }}
-      />
-      <TouchableOpacity 
-        style={{ position: 'absolute', left: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.25)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' }}
-        onPress={() => {
-            const idx = yearsData.indexOf(currentYear);
-            if (idx > 0) {
-                yearFlatListRef.current?.scrollToIndex({ index: idx - 1, animated: true });
-                setCurrentYear(yearsData[idx - 1]);
-            }
-        }}
-      >
-        <Ionicons name="chevron-back" size={22} color={NEBULA_PURPLE} style={{ marginLeft: -2 }} />
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={{ position: 'absolute', right: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.25)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' }}
-        onPress={() => {
-            const idx = yearsData.indexOf(currentYear);
-            if (idx < yearsData.length - 1) {
-                yearFlatListRef.current?.scrollToIndex({ index: idx + 1, animated: true });
-                setCurrentYear(yearsData[idx + 1]);
-            }
-        }}
-      >
-        <Ionicons name="chevron-forward" size={22} color={NEBULA_PURPLE} style={{ marginRight: -2 }} />
-      </TouchableOpacity>
-    </View>
-  );
+  const mFests = festivals.filter(f => f.date.getMonth() === currentMonthDate.getMonth());
 
   return (
-    <Modal visible animationType="slide" transparent={false} onRequestClose={onClose}>
-      {/* DEEP NEBULA BACKGROUND */}
-      <View style={{ flex: 1, backgroundColor: '#0A0012' }}>
-        <LinearGradient
-          colors={['#110022', '#0D001A', '#060010', '#0A0018', '#12002A']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        {/* Purple nebula glow top-right */}
-        <View style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, borderRadius: 140, backgroundColor: '#7C3AED', opacity: 0.12 }} />
-        {/* Cyan glow bottom-left */}
-        <View style={{ position: 'absolute', bottom: 80, left: -80, width: 240, height: 240, borderRadius: 120, backgroundColor: '#06B6D4', opacity: 0.07 }} />
-        {/* Faint star dust center */}
-        <View style={{ position: 'absolute', top: '30%', left: '20%', width: 180, height: 180, borderRadius: 90, backgroundColor: '#9B59B6', opacity: 0.06 }} />
+    <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: BG_IVORY }}>
+        {/* Decorative Mandala Background SVG (simplified as gold circles) */}
+        <View style={{ position: 'absolute', top: -50, right: -50, opacity: 0.05 }}>
+          <Svg width={300} height={300}>
+            <SvgCircle cx={150} cy={150} r={100} stroke={ACCENT_GOLD} strokeWidth={2} fill="none" />
+            <SvgCircle cx={150} cy={150} r={130} stroke={ACCENT_GOLD} strokeWidth={1} fill="none" strokeDasharray="5,5" />
+            <SvgCircle cx={150} cy={150} r={140} stroke={ACCENT_GOLD} strokeWidth={0.5} fill="none" />
+          </Svg>
+        </View>
+        <View style={{ position: 'absolute', bottom: 100, left: -100, opacity: 0.03 }}>
+          <Svg width={300} height={300}>
+            <SvgCircle cx={150} cy={150} r={120} stroke={ACCENT_GOLD} strokeWidth={2} fill="none" />
+          </Svg>
+        </View>
 
-        <View style={{ paddingTop: 58, paddingHorizontal: 16, flex: 1 }}>
-          {/* ── HEADER ── */}
-          <View style={{ paddingBottom: 18 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <TouchableOpacity onPress={() => onClose()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)' }}>
-                <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
-              </TouchableOpacity>
-              
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 7.5, fontWeight: '900', color: NEBULA_PURPLE, letterSpacing: 3.5, marginBottom: 5 }}>✦  VEDIC CALENDAR  ✦</Text>
-                {/* Mode Pill Switcher */}
-                <View style={{ flexDirection: 'row', backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(124,58,237,0.28)', overflow: 'hidden', padding: 3 }}>
-                  {(['month', 'year', 'list'] as const).map((mode) => (
-                    <TouchableOpacity 
-                      key={mode}
-                      onPress={() => { Haptics.selectionAsync(); setPickerMode(mode); }}
-                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 22, backgroundColor: pickerMode === mode ? NEBULA_VIOLET : 'transparent', alignItems: 'center' }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: pickerMode === mode ? '#FFF' : 'rgba(255,255,255,0.45)', letterSpacing: 0.8 }}>
-                        {mode === 'list' ? 'FESTIVALS' : mode.toUpperCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={{ width: 44 }} />
+        <SafeAreaView style={{ flex: 1 }}>
+          {/* HEADER */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 }}>
+            <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={24} color={ACCENT_BURGUNDY} />
+            </TouchableOpacity>
+            <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '600', color: ACCENT_BURGUNDY, letterSpacing: 1 }}>
+              Astra
+            </Text>
+            <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="notifications-outline" size={22} color={ACCENT_BURGUNDY} />
             </View>
           </View>
 
-          {/* ── SELECTED DATE PANEL ── */}
-          <View style={{ marginBottom: 16, borderRadius: 22, overflow: 'hidden' }}>
-            <LinearGradient
-              colors={['rgba(124,58,237,0.22)', 'rgba(76,29,149,0.15)', 'rgba(6,182,212,0.08)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ padding: 16, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)' }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <View>
-                  <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginBottom: 3 }}>SELECTED DATE</Text>
-                  <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: -0.3 }}>
-                    {selectedDate.getDate()} {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-                  </Text>
-                </View>
-                {selFest && (
-                   <TouchableOpacity onPress={() => setActiveFestDetail(selFest.festival)} style={{ backgroundColor: selFest.festival.type === 'hindu' ? 'rgba(245,158,11,0.15)' : 'rgba(6,182,212,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: selFest.festival.type === 'hindu' ? 'rgba(245,158,11,0.35)' : 'rgba(6,182,212,0.35)' }}>
-                      <Text style={{ color: selFest.festival.type === 'hindu' ? NEBULA_GOLD : NEBULA_CYAN, fontSize: 10, fontWeight: '800' }}>{selFest.festival.emoji}  {selFest.festival.name.split(' / ')[0]}</Text>
-                   </TouchableOpacity>
-                )}
-              </View>
-              
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                {[
-                  { label: 'TITHI', value: selectedP.tithiName, color: NEBULA_PURPLE },
-                  { label: 'NAKSHATRA', value: selN.name, color: NEBULA_CYAN },
-                  { label: 'YOGA', value: selY.name, color: selY.auspicious ? '#10B981' : '#F87171' },
-                ].map((item, i) => (
-                  <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                    {i > 0 && <View style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />}
-                    <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 0.8, marginBottom: 4 }}>{item.label}</Text>
-                    <Text style={{ fontSize: 12, color: item.color, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>{item.value}</Text>
-                  </View>
-                ))}
-              </View>
-            </LinearGradient>
+          {/* TOGGLE TABS */}
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(191,162,103,0.1)', borderRadius: 20, padding: 4 }}>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setPickerMode('month')}
+                style={{ paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: pickerMode === 'month' ? ACCENT_BURGUNDY : 'transparent' }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'month' ? '#FFF' : TEXT_CHARCOAL }}>MONTH</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setPickerMode('list')}
+                style={{ paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: pickerMode === 'list' ? ACCENT_BURGUNDY : 'transparent' }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'list' ? '#FFF' : TEXT_CHARCOAL }}>EVENTS</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* ── CONTENT AREA ── */}
-          {pickerMode === 'list' ? (
-             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, fontWeight: '900', color: NEBULA_PURPLE, textAlign: 'center', marginBottom: 14, letterSpacing: 2.5 }}>✦  COSMIC FESTIVALS & SACRED DAYS  ✦</Text>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
-                  {festivals.map((fest, idx) => (
-                    <TouchableOpacity 
-                      key={idx} 
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        setSelectedDate(fest.date);
-                        setCurrentMonthDate(new Date(fest.date.getFullYear(), fest.date.getMonth(), 1));
-                        setPickerMode('month');
-                      }}
-                      style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 18, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: fest.festival.type === 'hindu' ? 'rgba(245,158,11,0.2)' : 'rgba(6,182,212,0.2)', backgroundColor: fest.festival.type === 'hindu' ? 'rgba(245,158,11,0.05)' : 'rgba(6,182,212,0.05)' }}>
-                      <View style={{ width: 48, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.08)', marginRight: 14, paddingRight: 14 }}>
-                         <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>{fest.date.getDate()}</Text>
-                         <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                         <Text style={{ color: fest.festival.type === 'hindu' ? NEBULA_GOLD : NEBULA_CYAN, fontSize: 14, fontWeight: '800', marginBottom: 3 }}>{fest.festival.emoji} {fest.festival.name.split(' / ')[0]}</Text>
-                         <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '500' }} numberOfLines={1}>{fest.festival.name}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color="rgba(124,58,237,0.6)" />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-             </View>
-          ) : pickerMode === 'year' ? (
-             <View style={{ flex: 1, paddingBottom: 32 }}>
-                {renderYearMode()}
-             </View>
-          ) : (
-             <View style={{ flex: 1 }}>
-                <View style={{ flex: 1, justifyContent: 'center' }}>
+          {/* CONTENT AREA */}
+          <View style={{ flex: 1, paddingHorizontal: 16 }}>
+            {pickerMode === 'month' ? (
+              <View style={{ flex: 1 }}>
+                <View style={{ height: 380 }}>
                   <FlatList
                     ref={flatListRef}
                     data={monthsData}
@@ -1314,58 +1129,85 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
                           const newMonth = monthsData[newIndex];
                           setCurrentMonthDate(newMonth);
                           const yearFests = getYearlyFestivals(newMonth.getFullYear());
-                          const mFests = yearFests.filter(f => f.date.getMonth() === newMonth.getMonth());
-                          setSelectedDate(mFests.length > 0 ? mFests[0].date : newMonth);
+                          const mvFests = yearFests.filter(f => f.date.getMonth() === newMonth.getMonth());
+                          setSelectedDate(mvFests.length > 0 ? mvFests[0].date : newMonth);
                        }
                     }}
                   />
+                  {/* Month Navigation Arrows */}
                   <TouchableOpacity 
-                    style={{ position: 'absolute', left: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' }}
+                    style={{ position: 'absolute', left: 0, top: 20, padding: 10 }}
                     onPress={() => {
                         const newIdx = Math.max(0, currentMonthDate.getMonth() - 1);
                         flatListRef.current?.scrollToIndex({ index: newIdx, animated: true });
-                        const newMonth = monthsData[newIdx];
-                        setCurrentMonthDate(newMonth);
-                        const yearFests = getYearlyFestivals(newMonth.getFullYear());
-                        const mFests = yearFests.filter(f => f.date.getMonth() === newMonth.getMonth());
-                        setSelectedDate(mFests.length > 0 ? mFests[0].date : newMonth);
+                        setCurrentMonthDate(monthsData[newIdx]);
                     }}
                   >
-                    <Ionicons name="chevron-back" size={22} color={NEBULA_PURPLE} style={{ marginLeft: -2 }} />
+                    <Ionicons name="chevron-back" size={20} color={ACCENT_GOLD} />
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={{ position: 'absolute', right: -10, top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' }}
+                    style={{ position: 'absolute', right: 0, top: 20, padding: 10 }}
                     onPress={() => {
                         const newIdx = Math.min(11, currentMonthDate.getMonth() + 1);
                         flatListRef.current?.scrollToIndex({ index: newIdx, animated: true });
-                        const newMonth = monthsData[newIdx];
-                        setCurrentMonthDate(newMonth);
-                        const yearFests = getYearlyFestivals(newMonth.getFullYear());
-                        const mFests = yearFests.filter(f => f.date.getMonth() === newMonth.getMonth());
-                        setSelectedDate(mFests.length > 0 ? mFests[0].date : newMonth);
+                        setCurrentMonthDate(monthsData[newIdx]);
                     }}
                   >
-                    <Ionicons name="chevron-forward" size={22} color={NEBULA_PURPLE} style={{ marginRight: -2 }} />
+                    <Ionicons name="chevron-forward" size={20} color={ACCENT_GOLD} />
                   </TouchableOpacity>
                 </View>
-                {/* Legend */}
-                <View style={{ flexDirection: 'row', gap: 16, justifyContent: 'center', paddingVertical: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: NEBULA_GOLD }} />
-                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 0.5 }}>HINDU FESTIVAL</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: NEBULA_CYAN }} />
-                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 0.5 }}>LUNAR EVENT</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: NEBULA_PINK, opacity: 0.8 }} />
-                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 0.5 }}>TODAY</Text>
-                  </View>
+
+                {/* Key Events Section below calendar */}
+                <View style={{ flex: 1, paddingTop: 10 }}>
+                  <Text style={{ fontFamily: 'Georgia', fontSize: 18, color: TEXT_CHARCOAL, marginBottom: 12 }}>Key Events</Text>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {mFests.slice(0, 4).map((fest, idx) => (
+                      <TouchableOpacity 
+                        key={idx}
+                        onPress={() => { setActiveFestDetail(fest.festival); }}
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, padding: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: BORDER_COLOR }}
+                      >
+                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT_BURGUNDY, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                          <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
+                          <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>{fest.date.getDate()}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600' }} numberOfLines={1}>{fest.festival.name.split(' / ')[0]}</Text>
+                          <Text style={{ fontSize: 11, color: 'rgba(44,44,44,0.6)', marginTop: 2 }}>{fest.festival.type === 'hindu' ? 'Vedic Festival' : 'Celestial Event'}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    {mFests.length === 0 && (
+                      <Text style={{ color: 'rgba(44,44,44,0.5)', fontStyle: 'italic', padding: 10 }}>No major events this month.</Text>
+                    )}
+                  </ScrollView>
                 </View>
-             </View>
-          )}
-        </View>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+                {festivals.map((fest, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setActiveFestDetail(fest.festival);
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: BORDER_COLOR }}>
+                    <View style={{ width: 50, alignItems: 'center', borderRightWidth: 1, borderRightColor: BORDER_COLOR, marginRight: 16, paddingRight: 16 }}>
+                       <Text style={{ color: TEXT_CHARCOAL, fontSize: 20, fontWeight: '600', fontFamily: 'Georgia' }}>{fest.date.getDate()}</Text>
+                       <Text style={{ color: ACCENT_BURGUNDY, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                       <Text style={{ color: ACCENT_BURGUNDY, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>{fest.festival.name.split(' / ')[0]}</Text>
+                       <Text style={{ color: 'rgba(44,44,44,0.6)', fontSize: 12 }} numberOfLines={1}>{fest.festival.name}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </SafeAreaView>
       </View>
       {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)} />}
     </Modal>
@@ -6764,7 +6606,10 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const GOLD_LIGHT = '#F3E5AB';
   const BG_COLOR = '#0A0A0A';
 
-  const tithiLabel = `${p.tithiName} (${p.paksha === 'Shukla' ? 'Waxing' : 'Waning'})`;
+  const tithiOrdinal = p.tithiInPaksha === 15 
+    ? (p.paksha === 'Shukla' ? 'Full Moon' : 'New Moon') 
+    : `${TITHI_ORDINALS[p.tithiInPaksha]} Lunar Day`;
+  const tithiLabel = `${p.tithiName} (${tithiOrdinal})`;
 
   const toggleSection = (sec: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -7553,13 +7398,11 @@ function DailyTab() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingBottom: insets.bottom + 70 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 12 }} showsVerticalScrollIndicator={false}>
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
-              {/* Spacer for optical centering */}
-              <View style={{ flex: 0.3 }} />
               
-              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 28 }}>
+              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 16 }}>
                 
                 {/* 1. Daily Intention (Floating, transparent, elegant) */}
                 <View style={{ width: '100%', alignItems: 'center' }}>
@@ -7658,31 +7501,26 @@ function DailyTab() {
                     </PremiumBreatheCard>
                   );
                 })()}
-                
-              </View>
 
-              {/* Spacer between center content and bottom controls */}
-              <View style={{ flex: 1 }} />
-
-              {/* 3. Expanded Active Bio-State Panel */}
-              <View style={{ width: '100%', paddingHorizontal: 24, marginBottom: 16 }}>
+                {/* 3. Expanded Active Bio-State Panel (Grouped for equal spacing) */}
+                <View style={{ width: '100%' }}>
                  {currentPeriod && (
                     <BlurView intensity={50} tint="dark" style={{
                       width: '100%',
                       borderRadius: 24,
                       borderWidth: 0.5,
                       borderColor: 'rgba(255,255,255,0.2)',
-                      paddingVertical: 20,
+                      paddingVertical: 14,
                       paddingHorizontal: 20,
                       overflow: 'hidden',
                       backgroundColor: 'rgba(0,0,0,0.3)',
                     }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: currentPeriod.color || '#4ade80' }} />
                         <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>Active Bio-State</Text>
                       </View>
                       
-                      <View style={{ gap: 12 }}>
+                      <View style={{ gap: 8 }}>
                         {currentPeriod.activities.slice(0, 3).map((act, i) => (
                           <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                             <Ionicons name="checkmark-circle" size={16} color={currentPeriod.color || '#4ade80'} />
@@ -7698,10 +7536,13 @@ function DailyTab() {
                       </View>
                     </BlurView>
                  )}
+                </View>
               </View>
 
+              {/* Spacer removed for ScrollView layout */}
+
               {/* 4. Weather Button (Fixed below Bio-State) */}
-              <View style={{ width: '100%', paddingHorizontal: 24, marginBottom: 16, alignItems: 'center' }}>
+              <View style={{ width: '100%', paddingHorizontal: 24, marginBottom: 8, alignItems: 'center' }}>
                  {weather && (
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -7719,8 +7560,10 @@ function DailyTab() {
                  )}
               </View>
 
-              {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns ── */}
-              <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: 4, marginTop: 6 }}>
+        </ScrollView>
+
+        {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns (Fixed at bottom) ── */}
+        <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 16) + 12, paddingTop: 10, backgroundColor: 'transparent' }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -7761,7 +7604,6 @@ function DailyTab() {
 
                 </BlurView>
               </View>
-            </View>
       </SafeAreaView>
 
 

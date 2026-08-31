@@ -1195,13 +1195,7 @@ export default function AlarmsTab() {
   return (
     <View style={[S.screen, { backgroundColor: accentColor }]}>
       <AppBackground />
-      <LinearGradient
-        colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0.00)', 'rgba(0,0,0,0.08)']}
-        locations={[0, 0.28, 1]}
-        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-        pointerEvents="none"
-      />
+
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
       {/* Premium Floating Settings Button */}
       <TouchableOpacity

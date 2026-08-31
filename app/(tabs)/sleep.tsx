@@ -824,7 +824,7 @@ const SoundCard = memo(function SoundCard({
             {/* Name + desc + badge */}
             <View>
               <MarqueeText style={[S.cardName, isPlaying && { color: sound.color }]} active={isPlaying} duration={8000} numberOfLines={2}>{sound.label}</MarqueeText>
-              <Text style={S.cardDesc} >{sound.desc}</Text>
+              <Text style={S.cardDesc} numberOfLines={1}>{sound.desc}</Text>
               {isPlaying ? (
                 <View style={[S.badge, { backgroundColor: sound.color + '22', borderColor: sound.color + '55' }]}>
                   <View style={[S.liveDot, { backgroundColor: isPaused ? '#888' : sound.color }]} />
@@ -1352,7 +1352,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   />
                 )}
                 <Text
-                  
+                  numberOfLines={1}
                   style={{
                     fontSize: 9,
                     fontWeight: isActive ? '800' : '600',
@@ -2702,7 +2702,7 @@ const ReelCard = memo(function ReelCard({
               textShadowRadius: 14,
               marginBottom: 12,
             }}
-            
+            numberOfLines={1}
           >
             {sound.label}
           </Text>
@@ -3602,7 +3602,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
               borderRadius: 8, paddingHorizontal: isHero ? 10 : 6, paddingVertical: isHero ? 4 : 3,
               alignSelf: 'flex-start', maxWidth: isHero ? '80%' : '70%'
             }}>
-              <Text  style={{ fontSize: isHero ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
+              <Text numberOfLines={1} style={{ fontSize: isHero ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
                 {col.subtitle}
               </Text>
             </View>
@@ -3667,7 +3667,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 
 // ─── Rectangular Collection Card ─────────────────────────────────────────────
 const RECT_CARD_W = Math.floor(W * 0.48);
-const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.15);
+const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.05); // Sleeker, less bulky aspect ratio
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
   col, index, onPress
@@ -3702,56 +3702,56 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
     }}>
       <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
         
-        {/* Rectangular Image Container */}
+        {/* Innovative Glass Image Container */}
         <View style={{
           width: RECT_CARD_W, height: RECT_CARD_H,
-          borderRadius: 20,
+          borderRadius: 24,
           overflow: 'hidden',
           backgroundColor: col.themeColor + '20',
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: 'rgba(255,255,255,0.15)',
+          borderColor: 'rgba(255,255,255,0.2)',
           shadowColor: col.themeColor,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.3,
-          shadowRadius: 16,
-          elevation: 5,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.4,
+          shadowRadius: 20,
+          elevation: 8,
         }}>
           <Image
             source={{ uri: col.imageUri }}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
-          {/* Inner Shadow / Gradient for text readability */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)']}
-            locations={[0.4, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.15 }]} pointerEvents="none" />
+          {/* subtle color overlay */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: 0.1 }]} pointerEvents="none" />
           
-          <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-            <Text
-              
-              style={{
-                fontSize: 15,
-                color: '#fff',
-                fontFamily: 'DancingScript_600SemiBold',
-                lineHeight: 18,
-                letterSpacing: 0.5,
-                marginBottom: 4,
-              }}>
-              {col.title}
-            </Text>
-            <Text
-              style={{
-                fontSize: 9,
-                color: 'rgba(255,255,255,0.7)',
-                fontFamily: 'Nunito_700Bold',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-              }}>
-              {col.subtitle || 'Guided'}
-            </Text>
+          {/* Glass Text Plate at the bottom */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
+            <BlurView intensity={35} tint="dark" style={{ padding: 12, paddingTop: 16 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: '#fff',
+                  fontFamily: 'DancingScript_600SemiBold',
+                  lineHeight: 20,
+                  letterSpacing: 0.5,
+                  marginBottom: 4,
+                  textShadowColor: 'rgba(0,0,0,0.5)',
+                  textShadowRadius: 4,
+                }}>
+                {col.title}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 9,
+                  color: 'rgba(255,255,255,0.7)',
+                  fontFamily: 'Nunito_700Bold',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}>
+                {col.subtitle || 'Guided'}
+              </Text>
+            </BlurView>
           </View>
         </View>
 
@@ -3767,14 +3767,14 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard() {
   return (
     <View style={{
       marginHorizontal: 24,
-      marginTop: 12,
-      marginBottom: 12,
+      marginTop: 24,
+      marginBottom: 16,
       backgroundColor: 'rgba(15,15,25,0.45)',
       borderRadius: 24,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: 'rgba(255,255,255,0.15)',
-      paddingTop: 14,
-      paddingBottom: 14,
+      paddingTop: 18,
+      paddingBottom: 18,
       shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.5, shadowRadius: 24,
       overflow: 'hidden'
     }}>
@@ -3786,7 +3786,7 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard() {
           <Text style={{ fontSize: 9, color: '#38BDF8', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>
             Curated For You
           </Text>
-          <Text style={{ fontSize: 24, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+          <Text style={{ fontSize: 32, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
             Sonic Therapies
           </Text>
         </View>
@@ -3817,23 +3817,24 @@ const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
   if (sounds.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 4 }}>
+    <View style={{ marginBottom: 16 }}>
       {/* Sleek Floating Pill */}
-      <View style={{ paddingHorizontal: 24, alignItems: 'flex-start', marginBottom: isExpanded ? 12 : 0 }}>
+      <View style={{ paddingHorizontal: 24, alignItems: 'flex-start', marginBottom: isExpanded ? 16 : 0 }}>
         <TouchableOpacity activeOpacity={0.8} onPress={onToggleExpand}>
           <View style={{ 
             flexDirection: 'row', alignItems: 'center', 
-            backgroundColor: 'rgba(255,255,255,0.06)', 
-            paddingHorizontal: 16, paddingVertical: 8, 
-            borderRadius: 20, 
-            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)',
-            shadowColor: '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 8
+            overflow: 'hidden',
+            paddingHorizontal: 16, paddingVertical: 10, 
+            borderRadius: 24, 
+            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.4)',
+            shadowColor: '#38BDF8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12
           }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#38BDF8', marginRight: 8, shadowColor: '#38BDF8', shadowOpacity: 1, shadowRadius: 4 }} />
-            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase', marginRight: 6 }}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="play-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginRight: 6 }}>
               Jump Back In
             </Text>
-            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.6)" />
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.8)" />
           </View>
         </TouchableOpacity>
       </View>
@@ -3993,6 +3994,7 @@ const RecentCard = memo(function RecentCard({
 
         {/* Label */}
         <Text
+          numberOfLines={1}
           style={{
             fontSize: 11, color: isPlaying ? '#fff' : 'rgba(255,255,255,0.7)',
             fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2,
@@ -4002,6 +4004,7 @@ const RecentCard = memo(function RecentCard({
           {sound.label}
         </Text>
         <Text
+          numberOfLines={1}
           style={{
             fontSize: 9.5, color: isPlaying ? accentColor : 'rgba(255,255,255,0.35)',
             fontFamily: 'Nunito_400Regular', letterSpacing: 0.1,
@@ -4020,7 +4023,7 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
   if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 20, paddingBottom: 60 }}>
+    <View style={{ marginTop: 100, paddingBottom: 20 }}>
       {/* Section Label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
         <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
@@ -4630,13 +4633,13 @@ function SleepTabInner() {
 
   const rawHeroBgUri = (playingId && SOUND_IMAGES[playingId])
     ? SOUND_IMAGES[playingId]
-    : bgUri || '';
+    : (BG_URLS['sleep_hero'] || bgUri || '');
   const cachedHeroBgUri = rawHeroBgUri ? getLocalSoundImageUri(rawHeroBgUri) : '';
 
   return (
     <View style={[S.screen, { backgroundColor: '#030308' }]}>
       {/* Premium Alternating Background: Top & Bottom Crossfade */}
-      <AlternatingBackground imageUri={cachedHeroBgUri || rawHeroBgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg'} />
+      <AlternatingBackground imageUri={cachedHeroBgUri || rawHeroBgUri || bgUri || 'https://images.pexels.com/photos/281260/pexels-photo-281260.jpeg'} />
 
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -4703,9 +4706,13 @@ function SleepTabInner() {
             />
           )}
 
-          {/* Fixed spacing to shift collections nicely above the bottom */}
+          {/* Flexible spacing to push collections to the true middle of the screen */}
+          <View style={{ flex: 1 }} />
 
           <SonicCollections onSelectCollection={setActiveCollectionId} />
+
+          {/* Flexible spacing below to balance the centering */}
+          <View style={{ flex: 1.5 }} />
         </View>
 
       </Animated.ScrollView>
