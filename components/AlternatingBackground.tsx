@@ -42,7 +42,7 @@ export const AlternatingBackground = ({ imageUri }: Props) => {
       {/* 1. Full-screen Image */}
       <Image
         source={{ uri: imageUri }}
-        style={[StyleSheet.absoluteFillObject, { opacity: 0.85 }]}
+        style={[StyleSheet.absoluteFillObject, { opacity: 1.0 }]}
         contentFit="cover"
         blurRadius={3}
       />

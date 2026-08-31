@@ -1,4 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import sys
+
+def main():
+    file_path = 'components/DailyIntentionCard.tsx'
+    
+    new_content = """import React, { useRef, useEffect } from 'react';
 import { View, Text, Animated, StyleSheet, Platform } from 'react-native';
 
 const PREMIUM_INTENTIONS = [
@@ -100,3 +105,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+"""
+
+    with open(file_path, 'w') as f:
+        f.write(new_content)
+        
+    print("Rewrote DailyIntentionCard successfully!")
+
+if __name__ == '__main__':
+    main()

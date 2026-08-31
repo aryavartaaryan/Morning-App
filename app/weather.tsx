@@ -1,42 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, StatusBar, LayoutAnimation, UIManager } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { fetchWeather, type WeatherData } from '@/lib/weather';
+import { fetchWeather, cachedWeather, type WeatherData } from '@/lib/weather';
+import { SafeAreaView } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 // Premium Color Palettes based on time/weather
 const gradients = {
-  day: ['#4facfe', '#00f2fe', '#0062ff'] as const,
-  night: ['#0f2027', '#203a43', '#2c5364'] as const,
-  sunset: ['#ff7e5f', '#feb47b', '#f953c6'] as const,
-  rain: ['#3a7bd5', '#3a6073', '#1e3c72'] as const,
+  day: ['#2A84FF', '#4FACFE', '#00F2FE'] as const,
+  night: ['#0B101E', '#1B2845', '#274060'] as const,
+  sunset: ['#FF512F', '#F09819', '#FF7E5F'] as const,
+  rain: ['#1E3C72', '#2A5298', '#3A7BD5'] as const,
 };
 
 export default function WeatherScreen() {
   const router = useRouter();
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [weather, setWeather] = useState<WeatherData | null>(cachedWeather);
+  const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadWeather();
   }, []);
 
   const loadWeather = async () => {
-    setLoading(true);
     const data = await fetchWeather();
-    setWeather(data);
-    setLoading(false);
+    if (data) {
+      setWeather(data);
+    }
+  };
+
+  const toggleDay = (index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedDayIndex(expandedDayIndex === index ? null : index);
   };
 
   const getTheme = () => {
     if (!weather) return gradients.night;
     const h = new Date().getHours();
     const isNight = h < 6 || h > 18;
-    if (weather.condition.toLowerCase().includes('rain') || weather.condition.toLowerCase().includes('drizzle')) return gradients.rain;
+    const condition = weather.condition.toLowerCase();
+    if (condition.includes('rain') || condition.includes('drizzle') || condition.includes('storm')) return gradients.rain;
     if (h >= 17 && h <= 18) return gradients.sunset;
     return isNight ? gradients.night : gradients.day;
   };
@@ -49,8 +62,8 @@ export default function WeatherScreen() {
       <LinearGradient colors={themeColors} style={StyleSheet.absoluteFillObject} start={{x: 0, y: 0}} end={{x: 1, y: 1}} />
       
       {/* Background Decorative Circles */}
-      <View style={[styles.glowCircle, { top: -height * 0.1, right: -width * 0.2, backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-      <View style={[styles.glowCircle, { bottom: -height * 0.1, left: -width * 0.2, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+      <View style={[styles.glowCircle, { top: -height * 0.05, right: -width * 0.1, backgroundColor: 'rgba(255,255,255,0.08)' }]} />
+      <View style={[styles.glowCircle, { bottom: -height * 0.1, left: -width * 0.15, backgroundColor: 'rgba(255,255,255,0.03)' }]} />
 
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
@@ -62,53 +75,47 @@ export default function WeatherScreen() {
               router.back();
             }}
           >
-            <BlurView intensity={30} tint="light" style={styles.backBtnInner}>
+            <BlurView intensity={20} tint="light" style={styles.backBtnInner}>
               <Text style={styles.backText}>← Back</Text>
             </BlurView>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{weather?.city || 'Weather'}</Text>
-          <View style={{ width: 70 }} />
+          <Text style={styles.headerTitle}>{weather?.city || 'My Location'}</Text>
+          <View style={{ width: 80 }} />
         </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text style={styles.loadingText}>Fetching Atmos...</Text>
-          </View>
-        ) : !weather ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Unable to load weather data.</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={loadWeather}>
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
+        {!weather ? (
+          <View style={styles.skeletonContainer}>
+            <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />
+            <Text style={styles.skeletonText}>Loading Weather...</Text>
           </View>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             
-            {/* 1. Main Current Weather Section */}
+            {/* 1. Main Current Weather Section - Compact & Smart */}
             <View style={styles.mainCurrent}>
-              <Text style={styles.mainEmoji}>{weather.emoji}</Text>
-              <View style={styles.tempRow}>
-                <Text style={styles.mainTemp}>{weather.temp}</Text>
-                <Text style={styles.degSymbol}>°</Text>
+              <View style={styles.mainTopRow}>
+                <Text style={styles.mainEmoji}>{weather.emoji}</Text>
+                <View style={styles.tempGroup}>
+                  <Text style={styles.mainTemp}>{weather.temp}</Text>
+                  <Text style={styles.degSymbol}>°</Text>
+                </View>
               </View>
-              <Text style={styles.conditionText}>{weather.condition}</Text>
-              <Text style={styles.feelsLike}>Feels like {weather.feelsLike}°</Text>
+              <Text style={styles.conditionText}>{weather.condition} • Feels like {weather.feelsLike}°</Text>
             </View>
 
-            {/* 2. Extra Metrics Tiles */}
-            <View style={styles.metricsGrid}>
-              <MetricTile icon="💧" label="Humidity" value={`${weather.humidity}%`} />
-              <MetricTile icon="💨" label="Wind" value={`${weather.windSpeed || 0} km/h`} />
-              <MetricTile icon="☁️" label="Cloud Cover" value={`${weather.cloudCover || 0}%`} />
-              <MetricTile icon="☔" label="Precipitation" value={`${weather.precipitation || 0} mm`} />
+            {/* 2. Extra Metrics Row (4 columns) */}
+            <View style={styles.metricsRow}>
+              <MetricItem icon="💧" label="Humidity" value={`${weather.humidity}%`} />
+              <MetricItem icon="💨" label="Wind" value={`${weather.windSpeed || 0} km/h`} />
+              <MetricItem icon="☁️" label="Clouds" value={`${weather.cloudCover || 0}%`} />
+              <MetricItem icon="☔" label="Rain" value={`${weather.precipitation || 0} mm`} />
             </View>
 
             {/* 3. 24-Hour Forecast */}
             <View style={styles.sectionCard}>
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>24-Hour Forecast</Text>
+                <Text style={styles.sectionTitle}>Hourly Forecast</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
                 {weather.hourly.map((h, i) => (
@@ -116,40 +123,63 @@ export default function WeatherScreen() {
                     <Text style={styles.hourlyTime}>{i === 0 ? 'Now' : `${h.hour}:00`}</Text>
                     <Text style={styles.hourlyEmoji}>{h.emoji}</Text>
                     <Text style={styles.hourlyTemp}>{h.temp}°</Text>
-                    {h.precipProb > 10 && <Text style={styles.hourlyPrecip}>{h.precipProb}%</Text>}
+                    {h.precipProb > 10 ? (
+                      <Text style={styles.hourlyPrecip}>{h.precipProb}%</Text>
+                    ) : (
+                      <View style={{height: 14}} />
+                    )}
                   </View>
                 ))}
               </ScrollView>
             </View>
 
             {/* 4. 14-Day Forecast */}
-            <View style={[styles.sectionCard, { marginBottom: 60 }]}>
-              <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <View style={[styles.sectionCard, { marginBottom: 40 }]}>
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>14-Day Outlook</Text>
               </View>
               <View style={styles.dailyContainer}>
-                {weather.daily.map((d, i) => (
-                  <View key={i} style={styles.dailyRow}>
-                    <Text style={styles.dailyDay}>{d.dayLabel}</Text>
-                    <View style={styles.dailyEmojiContainer}>
-                      <Text style={styles.dailyRowEmoji}>{d.emoji}</Text>
-                      {d.precipitation > 0 && <Text style={styles.dailyRowPrecip}>{d.precipitation}mm</Text>}
-                    </View>
-                    <View style={styles.dailyTemps}>
-                      <Text style={styles.dailyMin}>{d.minTemp}°</Text>
-                      {/* Visual Temp Bar */}
-                      <View style={styles.tempBarContainer}>
-                        <LinearGradient 
-                          colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.8)']} 
-                          start={{x: 0, y: 0}} end={{x: 1, y: 0}}
-                          style={[styles.tempBar, { width: `${Math.min(100, Math.max(20, (d.maxTemp - d.minTemp) * 8))}%` }]} 
-                        />
+                {weather.daily.map((d, i) => {
+                  const isExpanded = expandedDayIndex === i;
+                  return (
+                    <TouchableOpacity 
+                      key={i} 
+                      style={styles.dailyRowWrapper} 
+                      activeOpacity={0.7} 
+                      onPress={() => toggleDay(i)}
+                    >
+                      <View style={styles.dailyRow}>
+                        <Text style={styles.dailyDay}>{d.dayLabel}</Text>
+                        <View style={styles.dailyEmojiContainer}>
+                          <Text style={styles.dailyRowEmoji}>{d.emoji}</Text>
+                        </View>
+                        <View style={styles.dailyTemps}>
+                          <Text style={styles.dailyMin}>{d.minTemp}°</Text>
+                          {/* Visual Temp Bar */}
+                          <View style={styles.tempBarContainer}>
+                            <LinearGradient 
+                              colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.9)']} 
+                              start={{x: 0, y: 0}} end={{x: 1, y: 0}}
+                              style={[styles.tempBar, { width: `${Math.min(100, Math.max(15, (d.maxTemp - d.minTemp) * 8))}%` }]} 
+                            />
+                          </View>
+                          <Text style={styles.dailyMax}>{d.maxTemp}°</Text>
+                        </View>
                       </View>
-                      <Text style={styles.dailyMax}>{d.maxTemp}°</Text>
-                    </View>
-                  </View>
-                ))}
+                      
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <View style={styles.expandedDetails}>
+                          <Text style={styles.expandedText}>Condition: {d.condition}</Text>
+                          <Text style={styles.expandedText}>
+                            Precipitation: {d.precipitation > 0 ? `${d.precipitation} mm` : 'None expected'}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
@@ -160,21 +190,16 @@ export default function WeatherScreen() {
   );
 }
 
-function MetricTile({ icon, label, value }: { icon: string, label: string, value: string }) {
+function MetricItem({ icon, label, value }: { icon: string, label: string, value: string }) {
   return (
-    <View style={styles.metricTile}>
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} start={{x:0, y:0}} end={{x:0, y:1}} />
+    <View style={styles.metricItem}>
+      <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
       <Text style={styles.metricIcon}>{icon}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }
-
-// Ensure SafeAreaView is imported from react-native above
-import { SafeAreaView as RNSafeAreaView } from 'react-native';
-const SafeAreaView = RNSafeAreaView;
 
 const styles = StyleSheet.create({
   container: {
@@ -183,158 +208,136 @@ const styles = StyleSheet.create({
   },
   glowCircle: {
     position: 'absolute',
-    width: width * 1.5,
-    height: width * 1.5,
+    width: width * 1.2,
+    height: width * 1.2,
     borderRadius: width,
-    
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: Platform.OS === 'android' ? 40 : 10,
-    paddingBottom: 10,
+    paddingBottom: 5,
   },
   backBtn: {
     width: 80,
-    height: 40,
-    borderRadius: 20,
+    height: 36,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   backBtnInner: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   backText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  loadingContainer: {
+  skeletonContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    color: '#FFF',
-    marginTop: 16,
-    fontSize: 16,
+  skeletonText: {
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 12,
+    fontSize: 14,
     fontWeight: '500',
-    letterSpacing: 1,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-  },
-  retryText: {
-    color: '#FFF',
-    fontWeight: '600',
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 40,
   },
   mainCurrent: {
     alignItems: 'center',
-    marginTop: 5,
     marginBottom: 20,
   },
-  mainEmoji: {
-    fontSize: 72,
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
+  mainTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tempRow: {
+  mainEmoji: {
+    fontSize: 64,
+    marginRight: 12,
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  tempGroup: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 10,
   },
   mainTemp: {
-    fontSize: 72,
-    fontWeight: '200',
+    fontSize: 64,
+    fontWeight: '300',
     color: '#FFF',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-thin',
-    letterSpacing: -3,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-light',
+    letterSpacing: -2,
   },
   degSymbol: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '300',
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 10,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 6,
   },
   conditionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFF',
-    marginTop: -5,
-    letterSpacing: 0.5,
-  },
-  feelsLike: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 4,
+    fontSize: 15,
     fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
-  metricsGrid: {
+  metricsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 20,
   },
-  metricTile: {
-    width: '48%',
-    borderRadius: 20,
-    padding: 12,
-    marginBottom: 12,
+  metricItem: {
+    width: '23%',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    alignItems: 'center',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   metricIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '600',
+    fontSize: 18,
     marginBottom: 4,
-    textTransform: 'uppercase',
   },
   metricValue: {
-    fontSize: 20,
+    fontSize: 13,
     color: '#FFF',
     fontWeight: '700',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   sectionCard: {
-    borderRadius: 24,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 15,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 16,
   },
   sectionHeader: {
     paddingHorizontal: 16,
@@ -344,101 +347,111 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
   hourlyScroll: {
     padding: 12,
   },
   hourlyItem: {
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 20,
   },
   hourlyTime: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
   },
   hourlyEmoji: {
-    fontSize: 24,
+    fontSize: 22,
     marginBottom: 6,
   },
   hourlyTemp: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   hourlyPrecip: {
-    color: '#60a5fa',
-    fontSize: 12,
+    color: '#60A5FA',
+    fontSize: 10,
     fontWeight: '700',
     marginTop: 4,
   },
   dailyContainer: {
-    padding: 10,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  dailyRowWrapper: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.03)',
   },
   dailyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   dailyDay: {
-    width: 60,
+    width: 50,
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   dailyEmojiContainer: {
-    width: 50,
+    width: 40,
     alignItems: 'center',
   },
   dailyRowEmoji: {
-    fontSize: 24,
-  },
-  dailyRowPrecip: {
-    color: '#60a5fa',
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 20,
   },
   dailyTemps: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 20,
+    paddingLeft: 12,
   },
   dailyMin: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
     fontWeight: '600',
-    width: 30,
+    width: 28,
   },
   tempBarContainer: {
     flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 3,
-    marginHorizontal: 12,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 2,
+    marginHorizontal: 10,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },
   tempBar: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 2,
   },
   dailyMax: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    width: 30,
+    width: 28,
     textAlign: 'right',
   },
+  expandedDetails: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 2,
+    marginLeft: 90,
+  },
+  expandedText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginBottom: 4,
+    fontStyle: 'italic',
+  }
 });

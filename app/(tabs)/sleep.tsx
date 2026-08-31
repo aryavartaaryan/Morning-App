@@ -824,7 +824,7 @@ const SoundCard = memo(function SoundCard({
             {/* Name + desc + badge */}
             <View>
               <MarqueeText style={[S.cardName, isPlaying && { color: sound.color }]} active={isPlaying} duration={8000} numberOfLines={2}>{sound.label}</MarqueeText>
-              <Text style={S.cardDesc} numberOfLines={1}>{sound.desc}</Text>
+              <Text style={S.cardDesc} >{sound.desc}</Text>
               {isPlaying ? (
                 <View style={[S.badge, { backgroundColor: sound.color + '22', borderColor: sound.color + '55' }]}>
                   <View style={[S.liveDot, { backgroundColor: isPaused ? '#888' : sound.color }]} />
@@ -1352,7 +1352,7 @@ const CategoryTabStrip = memo(function CategoryTabStrip({
                   />
                 )}
                 <Text
-                  numberOfLines={1}
+                  
                   style={{
                     fontSize: 9,
                     fontWeight: isActive ? '800' : '600',
@@ -1565,7 +1565,7 @@ function SoundPlayerModal({
   const [wavePath, setWavePath] = useState('');
   
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     const generateWave = () => {
       const W = CIRCLE_SIZE;
       const pts = [];
@@ -2332,6 +2332,39 @@ const ReelCard = memo(function ReelCard({
     return () => { loop?.stop(); kbAnim.stopAnimation(); };
   }, [isActive]);
 
+
+  const [wavePath, setWavePath] = useState('');
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const generateWave = () => {
+      const W = 240;
+      const pts = [];
+      const segments = 120;
+      const time = Date.now() / 150;
+      
+      const liveVol = getMeteringLevel ? getMeteringLevel() : 0.2;
+      const baseAmp = (isPlaying && !isPaused) ? (20 + liveVol * 30) : 1;
+
+      for (let i = 0; i <= segments; i++) {
+        const x = (i / segments) * W;
+        const envelope = Math.sin((i / segments) * Math.PI);
+        const noise = (Math.random() - 0.5) * 0.4;
+        const wave1 = Math.sin(i * 0.4 - time * 2);
+        const wave2 = Math.cos(i * 0.7 + time * 1.5) * 0.5;
+        const yVal = wave1 + wave2 + noise;
+        const y = (W / 2) + yVal * baseAmp * Math.pow(envelope, 1.2);
+        pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
+      }
+      setWavePath(pts.join(' '));
+    };
+    
+    generateWave();
+    if (isPlaying && !isPaused) {
+      interval = setInterval(generateWave, 70);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, isPaused, getMeteringLevel]);
+
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -2583,7 +2616,7 @@ const ReelCard = memo(function ReelCard({
       <Animated.View
         style={[StyleSheet.absoluteFillObject, {
           alignItems: 'center', justifyContent: 'center',
-          zIndex: 7, opacity: controlsAnim,
+          zIndex: 7, opacity: 1, // Changed from controlsAnim to 1 so it stays visible
         }]}
         pointerEvents="box-none"
       >
@@ -2602,25 +2635,23 @@ const ReelCard = memo(function ReelCard({
             }}
           />
           {/* Reactive Waveform */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-            {[
-              0.1, 0.15, 0.25, 0.35, 0.5, 0.7, 0.9, 1.0, 0.85, 0.65, 0.5,
-              0.6, 0.8, 1.0, 0.9, 0.75, 0.55, 0.4, 0.5, 0.7, 0.85,
-              0.7, 0.5, 0.35, 0.25, 0.15, 0.1
-            ].map((mult, i) => (
-              <Animated.View
-                key={i}
-                style={{
-                  width: 1.5,
-                  height: isActive && isPlaying && !isPaused
-                     ? meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 70 * mult] })
-                     : 2,
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 1,
-                  opacity: 0.9,
-                }}
+          <View style={{ width: 240, height: 240, position: 'absolute' }}>
+            <Svg width="100%" height="100%" viewBox="0 0 240 240">
+              <SvgCircle 
+                cx={120} cy={120} r={119} 
+                stroke="rgba(255,255,255,0.85)" strokeWidth={0.8} fill="none" 
               />
-            ))}
+              {wavePath ? (
+                <Path 
+                  d={wavePath} 
+                  stroke="#FFFFFF" 
+                  strokeWidth={1} 
+                  fill="none" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+              ) : null}
+            </Svg>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -2671,7 +2702,7 @@ const ReelCard = memo(function ReelCard({
               textShadowRadius: 14,
               marginBottom: 12,
             }}
-            numberOfLines={1}
+            
           >
             {sound.label}
           </Text>
@@ -2832,6 +2863,7 @@ const ReelCard = memo(function ReelCard({
             </Text>
           </View>
         </Animated.View>
+      </View>
       </View>
 
       {/* ── SPLIT LINE: Liquid Waveform Visualizer sits exactly at the 60% split ── */}
@@ -3054,6 +3086,7 @@ const ClosePrompt = memo(forwardRef<ClosePromptRef, { onStop: () => void; onClos
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 Flow In Background
               </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -3429,6 +3462,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
             overflow: 'hidden'
           }}>
             <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+          </BlurView>
         </TouchableOpacity>
 
         {/* Premium Sound Menu Button */}
@@ -3448,6 +3482,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
               <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, fontFamily: 'Nunito_800ExtraBold' }}>
                 Library
               </Text>
+            </BlurView>
           </TouchableOpacity>
         )}
       </Animated.View>
@@ -3567,7 +3602,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
               borderRadius: 8, paddingHorizontal: isHero ? 10 : 6, paddingVertical: isHero ? 4 : 3,
               alignSelf: 'flex-start', maxWidth: isHero ? '80%' : '70%'
             }}>
-              <Text numberOfLines={1} style={{ fontSize: isHero ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
+              <Text  style={{ fontSize: isHero ? 10 : 8, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>
                 {col.subtitle}
               </Text>
             </View>
@@ -3631,7 +3666,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 });
 
 // ─── Rectangular Collection Card ─────────────────────────────────────────────
-const RECT_CARD_W = Math.floor(W * 0.38);
+const RECT_CARD_W = Math.floor(W * 0.48);
 const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.15);
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
@@ -3708,7 +3743,6 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
               {col.title}
             </Text>
             <Text
-              numberOfLines={1}
               style={{
                 fontSize: 9,
                 color: 'rgba(255,255,255,0.7)',
@@ -3729,7 +3763,39 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
 // ─── Recently Played Strip ────────────────────────────────────────────────────
 const RECENT_CARD_SIZE = Math.round(W * 0.26); // ~26vw — slightly larger for easier sliding
 
-const DashboardHeaderCard = memo(function DashboardHeaderCard({
+const DashboardHeaderCard = memo(function DashboardHeaderCard() {
+  return (
+    <View style={{
+      marginHorizontal: 24,
+      marginTop: 12,
+      marginBottom: 12,
+      backgroundColor: 'rgba(15,15,25,0.45)',
+      borderRadius: 24,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.15)',
+      paddingTop: 14,
+      paddingBottom: 14,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.5, shadowRadius: 24,
+      overflow: 'hidden'
+    }}>
+      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+      
+      {/* Title Row */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 }}>
+        <View>
+          <Text style={{ fontSize: 9, color: '#38BDF8', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>
+            Curated For You
+          </Text>
+          <Text style={{ fontSize: 24, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+            Sonic Therapies
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
   soundIds,
   playingId,
   isPaused,
@@ -3748,49 +3814,35 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard({
     ? (soundIds.map(id => REELS_ALL_SOUNDS.find(s => s.id === id)).filter(Boolean) as PlayableSoundMeta[])
     : [];
 
-  return (
-    <View style={{
-      marginHorizontal: 24,
-      marginTop: 24,
-      marginBottom: 16,
-      backgroundColor: 'rgba(15,15,25,0.45)',
-      borderRadius: 24,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.15)',
-      paddingTop: 18,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.5, shadowRadius: 24,
-      overflow: 'hidden'
-    }}>
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-      
-      {/* Top Row: Title + History Toggle */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: (sounds.length > 0 && isExpanded) ? 16 : 18 }}>
-        <View>
-          <Text style={{ fontSize: 9, color: '#38BDF8', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>
-            Curated For You
-          </Text>
-          <Text style={{ fontSize: 24, color: '#FFFFFF', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
-            Sonic Therapies
-          </Text>
-        </View>
+  if (sounds.length === 0) return null;
 
-        {/* Minimalist Recently Played Toggle */}
-        {sounds.length > 0 && (
-          <TouchableOpacity activeOpacity={0.8} onPress={onToggleExpand}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.2)' }}>
-              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#38BDF8', marginRight: 6, shadowColor: '#38BDF8', shadowOpacity: 1, shadowRadius: 4 }} />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', fontFamily: 'Nunito_700Bold', letterSpacing: 1, textTransform: 'uppercase' }}>History</Text>
-              <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={12} color="rgba(255,255,255,0.6)" style={{ marginLeft: 4 }} />
-            </View>
-          </TouchableOpacity>
-        )}
+  return (
+    <View style={{ marginBottom: 4 }}>
+      {/* Sleek Floating Pill */}
+      <View style={{ paddingHorizontal: 24, alignItems: 'flex-start', marginBottom: isExpanded ? 12 : 0 }}>
+        <TouchableOpacity activeOpacity={0.8} onPress={onToggleExpand}>
+          <View style={{ 
+            flexDirection: 'row', alignItems: 'center', 
+            backgroundColor: 'rgba(255,255,255,0.06)', 
+            paddingHorizontal: 16, paddingVertical: 8, 
+            borderRadius: 20, 
+            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)',
+            shadowColor: '#fff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 8
+          }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#38BDF8', marginRight: 8, shadowColor: '#38BDF8', shadowOpacity: 1, shadowRadius: 4 }} />
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase', marginRight: 6 }}>
+              Jump Back In
+            </Text>
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.6)" />
+          </View>
+        </TouchableOpacity>
       </View>
 
       {isExpanded && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
           decelerationRate="normal"
           nestedScrollEnabled
           alwaysBounceHorizontal
@@ -3941,7 +3993,6 @@ const RecentCard = memo(function RecentCard({
 
         {/* Label */}
         <Text
-          numberOfLines={1}
           style={{
             fontSize: 11, color: isPlaying ? '#fff' : 'rgba(255,255,255,0.7)',
             fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.2,
@@ -3951,7 +4002,6 @@ const RecentCard = memo(function RecentCard({
           {sound.label}
         </Text>
         <Text
-          numberOfLines={1}
           style={{
             fontSize: 9.5, color: isPlaying ? accentColor : 'rgba(255,255,255,0.35)',
             fontFamily: 'Nunito_400Regular', letterSpacing: 0.1,
@@ -3970,7 +4020,7 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection }: 
   if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 100, paddingBottom: 20 }}>
+    <View style={{ marginTop: 20, paddingBottom: 60 }}>
       {/* Section Label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
         <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
@@ -4091,6 +4141,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
               }}>
                 <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
                 <Text style={{ fontSize: 12, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Play</Text>
+              </BlurView>
             </View>
           </View>
         )}
@@ -4186,6 +4237,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
               }}>
                 <Ionicons name="chevron-back" size={15} color="#fff" />
                 <Text style={{ fontSize: 13, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.3 }}>Sonic Therapies</Text>
+              </BlurView>
             </TouchableOpacity>
           </View>
 
@@ -4578,7 +4630,7 @@ function SleepTabInner() {
 
   const rawHeroBgUri = (playingId && SOUND_IMAGES[playingId])
     ? SOUND_IMAGES[playingId]
-    : (BG_URLS['sleep_hero'] || bgUri || '');
+    : bgUri || '';
   const cachedHeroBgUri = rawHeroBgUri ? getLocalSoundImageUri(rawHeroBgUri) : '';
 
   return (
@@ -4638,17 +4690,20 @@ function SleepTabInner() {
         <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: 4 }}>
           
           {/* Ultra-Premium Glassmorphism Dashboard Header Card */}
-          <DashboardHeaderCard
-            soundIds={recentSoundIds}
-            playingId={playingId}
-            isPaused={isPaused}
-            onPress={handleSoundCardTap}
-            isExpanded={isRecentExpanded}
-            onToggleExpand={() => setIsRecentExpanded(!isRecentExpanded)}
-          />
+          <DashboardHeaderCard />
 
-          {/* This pushes the collections elegantly toward the bottom half of the screen */}
-          <View style={{ flex: 1, minHeight: 20 }} />
+          {recentSoundIds.length > 0 && (
+            <RecentlyPlayedPremiumStrip
+              soundIds={recentSoundIds}
+              playingId={playingId}
+              isPaused={isPaused}
+              onPress={handleSoundCardTap}
+              isExpanded={isRecentExpanded}
+              onToggleExpand={() => setIsRecentExpanded(!isRecentExpanded)}
+            />
+          )}
+
+          {/* Fixed spacing to shift collections nicely above the bottom */}
 
           <SonicCollections onSelectCollection={setActiveCollectionId} />
         </View>

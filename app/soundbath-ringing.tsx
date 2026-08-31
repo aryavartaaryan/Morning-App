@@ -27,7 +27,7 @@ const SOUNDBATH_FS_ID = 'soundbath-alarm-service';
 const ACTIVE_SOUNDBATH_NOTIF_KEY = 'onesutra_active_soundbath_notif_v1';
 
 const BARS = 40;
-const WaveformVisualizer = memo(({ meteringAnim }: { meteringAnim: Animated.SharedValue<number> }) => {
+const WaveformVisualizer = memo(({ meteringAnim }: { meteringAnim: any }) => {
   return (
     <View style={styles.waveformContainer} pointerEvents="none">
       {Array.from({ length: BARS }).map((_, i) => {
@@ -171,7 +171,7 @@ export default function SoundBathRingingScreen() {
   };
 
   return (
-    <ImageBackground source={bgImage ? { uri: bgImage } : require('@/assets/images/wallpaper.jpg')} style={styles.screen} resizeMode="cover">
+    <ImageBackground source={bgImage ? { uri: bgImage } : require('@/assets/images/new_bg.jpeg')} style={styles.screen} resizeMode="cover">
       <StatusBar hidden />
       
       {/* Dark Vignette Overlay */}

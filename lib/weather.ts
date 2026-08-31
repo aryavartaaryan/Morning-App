@@ -106,7 +106,7 @@ function realWeatherCode(
   return modelCode;
 }
 
-let cachedWeather: WeatherData | null = null;
+export let cachedWeather: WeatherData | null = null;
 let lastFetchTime = 0;
 
 export async function fetchWeather(force = false): Promise<WeatherData | null> {

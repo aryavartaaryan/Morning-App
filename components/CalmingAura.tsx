@@ -31,19 +31,19 @@ export const CalmingAura = ({ variant = 'default', fullScreen = false }: Calming
     ).start();
   }, []);
 
-  const scale1 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
-  const scale2 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.8] });
+  const scale1 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] });
+  const scale2 = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1.4, 0.9] });
   const isYantra = variant === 'yantra';
 
-  const heroOp1 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.8, 0.4, 0.8] : [0.85, 0.15, 0.85] });
-  const heroOp2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.4, 0.7, 0.4] : [0.15, 0.85, 0.15] });
+  const heroOp1 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.8, 0.4, 0.8] : [0.95, 0.25, 0.95] });
+  const heroOp2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.4, 0.7, 0.4] : [0.25, 0.95, 0.25] });
 
   // If fullScreen, we add a bottom aura as well
-  const bottomOp1 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.6, 0.2, 0.6] : [0.7, 0.1, 0.7] });
-  const bottomOp2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.2, 0.6, 0.2] : [0.1, 0.7, 0.1] });
+  const bottomOp1 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.6, 0.2, 0.6] : [0.9, 0.2, 0.9] });
+  const bottomOp2 = breathAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: isYantra ? [0.2, 0.6, 0.2] : [0.2, 0.9, 0.2] });
 
   return (
-    <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: fullScreen ? 0 : undefined, height: fullScreen ? H : 420, overflow: 'hidden', opacity: isYantra ? 1 : 0.85 }]} pointerEvents="none">
+    <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: fullScreen ? 0 : undefined, height: fullScreen ? H : 420, overflow: 'hidden', opacity: 1 }]} pointerEvents="none">
       
       {/* ── HERO SECTION ANIMATION (TOP - LIGHTER & CYAN/WHITE) ── */}
       <Animated.View style={{

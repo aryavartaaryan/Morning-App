@@ -562,25 +562,25 @@ const S = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 24, paddingBottom: 24,
   },
   heroHeadline: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '400',
     color: '#FFFFFF',
-    lineHeight: 40,
+    lineHeight: 36,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     marginBottom: 8,
   },
   heroTagline: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255,255,255,0.6)',
     fontWeight: '500',
     lineHeight: 20,
   },
   timeWindowCard: {
     borderRadius: 24,
-    padding: 20,
+    padding: 24,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
@@ -594,7 +594,7 @@ const S = StyleSheet.create({
     marginBottom: 4,
   },
   windowTimeText: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
@@ -630,7 +630,7 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.035)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    padding: 20,
+    padding: 24,
     marginBottom: 16,
   },
   cardGlow: {
@@ -646,7 +646,7 @@ const S = StyleSheet.create({
     borderWidth: 1,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.2,
@@ -658,10 +658,10 @@ const S = StyleSheet.create({
     marginTop: 2,
   },
   bodyParagraph: {
-    fontSize: 14.5,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13.5,
+    color: 'rgba(255,255,255,0.7)',
     lineHeight: 22,
-    marginBottom: 12,
+    marginBottom: 16,
     fontWeight: '400',
   },
   solarMatrix: {
@@ -681,7 +681,7 @@ const S = StyleSheet.create({
     alignItems: 'center',
   },
   solarIcon: {
-    fontSize: 16,
+    fontSize: 15,
     marginBottom: 4,
   },
   solarVal: {
