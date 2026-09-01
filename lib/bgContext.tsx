@@ -3,6 +3,9 @@ import { Image } from 'expo-image';
 import { getBgSource, getBgSourceSync, BG_URLS, bgWarmup } from '@/lib/bgImages';
 import { getSolarTimes } from '@/lib/solar';
 import { store, KEYS } from '@/lib/storage';
+import { useSoundPlayer } from '@/lib/soundPlayerContext';
+import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
+import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
 
 // ── Wallpaper Mode storage key ─────────────────────────────────────────────
 const WP_MODE_KEY   = 'morning_wp_mode_v1';    // 'solar' | 'manual'
@@ -525,9 +528,13 @@ export function BgProvider({ children }: { children: ReactNode }) {
     store.set(WP_MANUAL_KEY, key);
   };
 
+  const { playingId } = useSoundPlayer();
+  const playingImage = playingId && SOUND_IMAGES[playingId] ? getLocalSoundImageUri(SOUND_IMAGES[playingId]) : null;
+
   return (
     <BgContext.Provider value={{
-      bgUri, bgKey, accentColor, gradientStart,
+      bgUri: playingImage || bgUri,
+      bgKey, accentColor, gradientStart,
       wallpaperMode, manualBgKey,
       setWallpaperMode, setManualBgKey,
       allBgUris,

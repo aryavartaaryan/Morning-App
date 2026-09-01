@@ -2333,25 +2333,38 @@ const ReelCard = memo(function ReelCard({
 
 
   const [wavePath, setWavePath] = useState('');
+  const wavePhaseRef = useRef(0);
+  
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
     const generateWave = () => {
       const W = 240;
       const pts = [];
       const segments = 120;
-      const time = Date.now() / 150;
       
-      const liveVol = getMeteringLevel ? getMeteringLevel() : 0.2;
-      const baseAmp = (isPlaying && !isPaused) ? (20 + liveVol * 30) : 1;
+      const liveVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
+      
+      // Exponential curve so loud sounds pop, quiet sounds stay flat
+      const smoothedVol = Math.pow(liveVol, 1.4); 
+      // Base amplitude scales purely on live volume
+      const baseAmp = (isPlaying && !isPaused) ? (2 + smoothedVol * 75) : 1;
+      
+      // Phase advances smoothly, speeding up slightly with louder volume for energy
+      wavePhaseRef.current += 0.12 + (smoothedVol * 0.25);
+      const phase = wavePhaseRef.current;
 
       for (let i = 0; i <= segments; i++) {
         const x = (i / segments) * W;
         const envelope = Math.sin((i / segments) * Math.PI);
-        const noise = (Math.random() - 0.5) * 0.4;
-        const wave1 = Math.sin(i * 0.4 - time * 2);
-        const wave2 = Math.cos(i * 0.7 + time * 1.5) * 0.5;
-        const yVal = wave1 + wave2 + noise;
+        
+        // Pure harmonic math, completely removing random noise
+        const wave1 = Math.sin(i * 0.2 - phase);
+        const wave2 = Math.cos(i * 0.45 + phase * 1.2) * 0.4;
+        const wave3 = Math.sin(i * 1.5 - phase * 2) * (0.3 * smoothedVol); // High freq detail only when loud
+        
+        const yVal = wave1 + wave2 + wave3;
         const y = (W / 2) + yVal * baseAmp * Math.pow(envelope, 1.2);
+        
         pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
       }
       setWavePath(pts.join(' '));
@@ -2359,7 +2372,8 @@ const ReelCard = memo(function ReelCard({
     
     generateWave();
     if (isPlaying && !isPaused) {
-      interval = setInterval(generateWave, 70);
+      // 33ms is ~30fps, much smoother than the previous 14fps, removing the jittery feel
+      interval = setInterval(generateWave, 33);
     }
     return () => clearInterval(interval);
   }, [isPlaying, isPaused, getMeteringLevel]);

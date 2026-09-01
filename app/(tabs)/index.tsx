@@ -6766,7 +6766,11 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const router    = useRouter();
   const moon      = React.useMemo(() => getMoonPhase(new Date()), []);
   const p         = React.useMemo(() => getPanchangData(), []);
-  const now       = new Date();
+  const [now, setNow] = useState(new Date());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   
   const [showCalendar, setShowCalendar] = useState(false);
 
@@ -6864,24 +6868,27 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             <View style={{ width: '50%' }}>
               <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>TITHI</Text>
               <Text style={{ fontSize: 15, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{p.tithiName}</Text>
-              <Text style={{ fontSize: 10, color: ACCENT_BURGUNDY, marginTop: 1 }}>Ends {tFmt(timings.tithiEnd)}</Text>
+              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.tithiStart)} → {tFmt(timings.tithiEnd)}</Text>
             </View>
             <View style={{ width: '50%' }}>
               <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>NAKSHATRA</Text>
               <Text style={{ fontSize: 15, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{NAKSHATRAS[p.nakshatraIdx].name}</Text>
-              <Text style={{ fontSize: 10, color: ACCENT_BURGUNDY, marginTop: 1 }}>Ends {tFmt(timings.nakshatraEnd)}</Text>
+              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.nakshatraStart)} → {tFmt(timings.nakshatraEnd)}</Text>
             </View>
             <View style={{ width: '33%' }}>
               <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>YOGA</Text>
               <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{YOGAS[p.yogaIdx].name}</Text>
+              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.yogaStart)} → {tFmt(timings.yogaEnd)}</Text>
             </View>
             <View style={{ width: '33%' }}>
               <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>KARANA</Text>
               <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{karanaName}</Text>
+              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{p.moonAge % (29.53/30) < (29.53/60) ? tFmt(timings.tithiStart) : tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2))} → {p.moonAge % (29.53/30) < (29.53/60) ? tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2)) : tFmt(timings.tithiEnd)}</Text>
             </View>
             <View style={{ width: '34%' }}>
               <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>VAAR</Text>
               <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{VAARS[p.vaarIdx].vedicName}</Text>
+              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{fmtSolar(csr)} → {fmtSolar(csr ? csr + 24 : null)}</Text>
             </View>
           </View>
         </View>
