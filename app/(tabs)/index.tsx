@@ -4,7 +4,7 @@ import {
   getPanchangData, getVedicMonth, getCosmicScore, getExactTimings,
   getUpcomingFestival, getYearlyFestivals, getFestivalForDate, Festival,
   NAKSHATRAS, YOGAS, VAARS, TITHI_NAMES, MOON_RITUALS, VAAR_ACTIONS, SCORE_META,
-  TITHI_ORDINALS, ENGLISH_DAYS, TITHI_ENERGY
+  TITHI_ORDINALS, ENGLISH_DAYS, TITHI_ENERGY, TITHI_DEITY
 } from '@/lib/cosmicData';
 import {
   View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, ScrollView, FlatList,
@@ -458,7 +458,7 @@ function FestivalDetailModal({ festival, onClose }: { festival: Festival; onClos
                 {tab.content ? (
                   <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 26, fontWeight: '400' }}>{tab.content}</Text>
                 ) : (
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', textAlign: 'center', paddingVertical: 24, fontStyle: 'italic' }}>Coming soon...</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', textAlign: 'center', paddingVertical: 18, fontStyle: 'italic' }}>Coming soon...</Text>
                 )}
               </View>
             ))}
@@ -6707,11 +6707,12 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 
 // ── Muhurta Clock Visualizer ──
 const MuhurtaClock = ({ currentHour, times, activePeriod, onSelect }: { currentHour: number, times: any, activePeriod: string, onSelect: (p: string) => void }) => {
-  const size = 160;
+  const size = 280;
   const cx = size / 2;
   const cy = size / 2;
-  const rOut = 50;
-  const rIn = 40;
+  const rPrahar = 115;
+  const rMuhurta = 90;
+  const rSandhya = 65;
 
   const getCoordinatesForHour = (h: number, radius: number) => {
     const angle = (h / 24) * 2 * Math.PI - Math.PI / 2;
@@ -6719,53 +6720,64 @@ const MuhurtaClock = ({ currentHour, times, activePeriod, onSelect }: { currentH
   };
 
   const createArc = (startH: number, endH: number, radius: number) => {
+    let e = endH;
+    if (e < startH) e += 24; // Handle wrap around
     const start = getCoordinatesForHour(startH, radius);
-    const end = getCoordinatesForHour(endH, radius);
-    const largeArcFlag = endH - startH > 12 ? 1 : 0;
+    const end = getCoordinatesForHour(e, radius);
+    const largeArcFlag = e - startH > 12 ? 1 : 0;
     return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
   };
 
   const ticks = Array.from({length: 24}, (_, i) => i);
-  const labels = [0, 4, 8, 12, 16, 20];
-  const handCoord = getCoordinatesForHour(currentHour, rIn - 10);
+  const labels = [0, 6, 12, 18];
+  const handCoord = getCoordinatesForHour(currentHour, rSandhya - 15);
 
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center', marginVertical: 10 }}>
+    <View style={{ alignItems: 'center', justifyContent: 'center', marginVertical: 24 }}>
       <Svg width={size} height={size}>
-        <SvgCircle cx={cx} cy={cy} r={rOut} stroke="rgba(191,162,103,0.15)" strokeWidth={1} fill="#F9F6F0" />
-        <SvgCircle cx={cx} cy={cy} r={rIn} stroke="rgba(191,162,103,0.15)" strokeWidth={1} fill="none" />
+        {/* Base tracks */}
+        <SvgCircle cx={cx} cy={cy} r={rPrahar} stroke="rgba(191,162,103,0.08)" strokeWidth={24} fill="none" />
+        <SvgCircle cx={cx} cy={cy} r={rMuhurta} stroke="rgba(191,162,103,0.08)" strokeWidth={20} fill="none" />
+        <SvgCircle cx={cx} cy={cy} r={rSandhya} stroke="rgba(191,162,103,0.08)" strokeWidth={20} fill="none" />
+        <SvgCircle cx={cx} cy={cy} r={rPrahar} stroke="rgba(191,162,103,0.15)" strokeWidth={1} fill="#F9F6F0" opacity={0.3} />
         
-        {/* Outer Arcs (Muhurtas) */}
-        <SvgPath d={createArc(times.brahma.start, times.brahma.end, rOut)} stroke="#8B5CF6" strokeWidth={activePeriod === 'brahma' ? 10 : 6} fill="none" opacity={0.8} onPress={() => onSelect('brahma')} />
-        <SvgPath d={createArc(times.abhijit.start, times.abhijit.end, rOut)} stroke="#BFA267" strokeWidth={activePeriod === 'abhijit' ? 10 : 6} fill="none" opacity={0.9} onPress={() => onSelect('abhijit')} />
-        <SvgPath d={createArc(times.rahu.start, times.rahu.end, rOut)} stroke="#6A1E2F" strokeWidth={activePeriod === 'rahu' ? 10 : 6} fill="none" opacity={0.8} onPress={() => onSelect('rahu')} />
-        <SvgPath d={createArc(times.yama.start, times.yama.end, rOut)} stroke="#A16207" strokeWidth={activePeriod === 'yama' ? 10 : 6} fill="none" opacity={0.6} onPress={() => onSelect('yama')} />
+        {/* Outer Ring: 8 Prahars (Subtle) */}
+        {times.prahars.map((p: any, i: number) => (
+          <SvgPath key={i} d={createArc(p.start, p.end, rPrahar)} stroke={i < 4 ? "#FDE68A" : "#93C5FD"} strokeWidth={activePeriod === p.id ? 24 : 16} fill="none" opacity={0.6} onPress={() => onSelect(p.id)} />
+        ))}
 
-        {/* Inner Arcs (Sandhyas) */}
-        <SvgPath d={createArc(times.prata.start, times.prata.end, rIn)} stroke="#3B82F6" strokeWidth={activePeriod === 'prata' ? 10 : 6} fill="none" opacity={0.8} onPress={() => onSelect('prata')} />
-        <SvgPath d={createArc(times.madhya.start, times.madhya.end, rIn)} stroke="#EAB308" strokeWidth={activePeriod === 'madhya' ? 10 : 6} fill="none" opacity={0.8} onPress={() => onSelect('madhya')} />
-        <SvgPath d={createArc(times.sayam.start, times.sayam.end, rIn)} stroke="#F97316" strokeWidth={activePeriod === 'sayam' ? 10 : 6} fill="none" opacity={0.8} onPress={() => onSelect('sayam')} />
+        {/* Middle Ring: Muhurtas */}
+        <SvgPath d={createArc(times.brahma.start, times.brahma.end, rMuhurta)} stroke="#8B5CF6" strokeWidth={activePeriod === 'brahma' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('brahma')} />
+        <SvgPath d={createArc(times.abhijit.start, times.abhijit.end, rMuhurta)} stroke="#BFA267" strokeWidth={activePeriod === 'abhijit' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('abhijit')} />
+        <SvgPath d={createArc(times.rahu.start, times.rahu.end, rMuhurta)} stroke="#6A1E2F" strokeWidth={activePeriod === 'rahu' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('rahu')} />
+        <SvgPath d={createArc(times.yama.start, times.yama.end, rMuhurta)} stroke="#A16207" strokeWidth={activePeriod === 'yama' ? 24 : 16} fill="none" opacity={0.8} onPress={() => onSelect('yama')} />
 
-        {/* Ticks */}
+        {/* Inner Ring: Sandhyas */}
+        <SvgPath d={createArc(times.prata.start, times.prata.end, rSandhya)} stroke="#3B82F6" strokeWidth={activePeriod === 'prata' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('prata')} />
+        <SvgPath d={createArc(times.madhya.start, times.madhya.end, rSandhya)} stroke="#EAB308" strokeWidth={activePeriod === 'madhya' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('madhya')} />
+        <SvgPath d={createArc(times.sayam.start, times.sayam.end, rSandhya)} stroke="#F97316" strokeWidth={activePeriod === 'sayam' ? 24 : 16} fill="none" opacity={0.9} onPress={() => onSelect('sayam')} />
+
+        {/* Ticks & Lines */}
         {ticks.map(h => {
-          const inner = getCoordinatesForHour(h, rIn - 5);
-          const outer = getCoordinatesForHour(h, rOut);
-          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="rgba(44,44,44,0.3)" strokeWidth={1} />;
+          const inner = getCoordinatesForHour(h, rSandhya - 8);
+          const outer = getCoordinatesForHour(h, rPrahar + 12);
+          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="rgba(44,44,44,0.15)" strokeWidth={1} />;
         })}
 
         {/* Labels */}
         {labels.map(h => {
-          const pos = getCoordinatesForHour(h, rOut + 14);
+          const pos = getCoordinatesForHour(h, rPrahar + 22);
           return (
-            <SvgText key={h} x={pos.x} y={pos.y + 3} fontSize={10} fill="rgba(44,44,44,0.6)" textAnchor="middle" fontWeight="600">
+            <SvgText key={h} x={pos.x} y={pos.y + 4} fontSize={12} fill="rgba(44,44,44,0.7)" textAnchor="middle" fontWeight="700">
               {h}
             </SvgText>
           );
         })}
 
         {/* Hand */}
-        <SvgLine x1={cx} y1={cy} x2={handCoord.x} y2={handCoord.y} stroke="#6A1E2F" strokeWidth={2} strokeLinecap="round" />
-        <SvgCircle cx={cx} cy={cy} r={3} fill="#BFA267" />
+        <SvgLine x1={cx} y1={cy} x2={handCoord.x} y2={handCoord.y} stroke="#6A1E2F" strokeWidth={3} strokeLinecap="round" />
+        <SvgCircle cx={cx} cy={cy} r={4} fill="#BFA267" />
+        <SvgCircle cx={cx} cy={cy} r={2} fill="#F9F6F0" />
       </Svg>
     </View>
   );
@@ -6818,6 +6830,19 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const rahuMap = [8, 2, 7, 5, 6, 4, 3];
   const yamaMap = [5, 4, 3, 2, 1, 7, 6];
   const noon = sr + dayLen / 2;
+  const dayP = (ss - sr) / 4;
+  const nightP = (24 - ss + sr) / 4;
+  const prahars = [
+    { id: 'p1', title: '1st Prahar (Day)', start: sr, end: sr + dayP, sub: 'Morning awakening, focus and sattvic energy' },
+    { id: 'p2', title: '2nd Prahar (Day)', start: sr + dayP, end: sr + 2 * dayP, sub: 'Midday action, solar peak and rajasic energy' },
+    { id: 'p3', title: '3rd Prahar (Day)', start: sr + 2 * dayP, end: sr + 3 * dayP, sub: 'Afternoon effort, maintaining momentum' },
+    { id: 'p4', title: '4th Prahar (Day)', start: sr + 3 * dayP, end: ss, sub: 'Evening wind down, twilight transition' },
+    { id: 'n1', title: '1st Prahar (Night)', start: ss, end: (ss + nightP) % 24, sub: 'Evening relaxation, tamasic onset' },
+    { id: 'n2', title: '2nd Prahar (Night)', start: (ss + nightP) % 24, end: (ss + 2 * nightP) % 24, sub: 'Midnight stillness, deep rest' },
+    { id: 'n3', title: '3rd Prahar (Night)', start: (ss + 2 * nightP) % 24, end: (ss + 3 * nightP) % 24, sub: 'Deep night, subconscious processing' },
+    { id: 'n4', title: '4th Prahar (Night)', start: (ss + 3 * nightP) % 24, end: sr, sub: 'Pre-dawn awakening, returning to sattva' },
+  ];
+
   const m = {
     rahu: `${fmtSolar(sr + (rahuMap[p.vaarIdx]-1)*part)} - ${fmtSolar(sr + rahuMap[p.vaarIdx]*part)}`,
     yama: `${fmtSolar(sr + (yamaMap[p.vaarIdx]-1)*part)} - ${fmtSolar(sr + yamaMap[p.vaarIdx]*part)}`,
@@ -6836,6 +6861,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     prata: { start: sr - 0.4, end: sr + 0.4 },
     madhya: { start: noon - 0.4, end: noon + 0.4 },
     sayam: { start: ss - 0.4, end: ss + 0.4 },
+    prahars
   };
 
   const KARANAS = ['Bava', 'Balava', 'Kaulava', 'Taitila', 'Gara', 'Vanija', 'Vishti', 'Shakuni', 'Chatushpada', 'Naga', 'Kintughna'];
@@ -6846,21 +6872,22 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const tithiLabel = `${p.tithiName} (${tithiOrdinal})`;
 
   const muhurtaLabels: Record<string, {title: string, time: string, sub: string}> = {
-    abhijit: { title: 'ABHIJIT', time: m.abhijit, sub: 'Best time for new beginnings & important tasks' },
+    abhijit: { title: 'ABHIJIT MUHURTA', time: m.abhijit, sub: 'Best time for new beginnings & important tasks' },
     rahu: { title: 'RAHU KAAL', time: m.rahu, sub: 'Avoid starting anything new or signing contracts' },
     yama: { title: 'YAMAGANDA', time: m.yama, sub: 'Inauspicious time, avoid travel or major purchases' },
     brahma: { title: 'BRAHMA MUHURTA', time: m.brahma, sub: 'Most sacred time for meditation & spiritual practices' },
     prata: { title: 'PRATA SANDHYA', time: m.prata, sub: 'Morning twilight. Ideal for sunrise meditation.' },
     madhya: { title: 'MADHYA SANDHYA', time: m.madhya, sub: 'Noon junction. Powerful solar meditation time.' },
     sayam: { title: 'SAYAM SANDHYA', time: m.sayam, sub: 'Evening twilight. Ideal for winding down & reflection.' },
+    ...Object.fromEntries(prahars.map(pr => [pr.id, { title: pr.title, time: `${fmtSolar(pr.start)} - ${fmtSolar(pr.end)}`, sub: pr.sub }]))
   };
 
   const PANCHANGA_INFO = {
-    TITHI: { desc: "The lunar day, based on the angle between the Sun and the Moon.", effect: "Influences your emotional state and the success of specific activities." },
-    NAKSHATRA: { desc: "The lunar mansion or constellation the Moon is currently transiting.", effect: "Shapes the deep psychological and spiritual energy of the day." },
-    YOGA: { desc: "A combination of the Sun and Moon's longitude.", effect: "Determines the overall luck, harmony, and atmospheric vibe." },
-    KARANA: { desc: "Half of a lunar day (Tithi).", effect: "A subtle influence that fine-tunes your daily actions and timing." },
-    VAAR: { desc: "The day of the week, ruled by a specific planet.", effect: "Sets the practical tone of the day (e.g., action for Mars, wisdom for Jupiter)." },
+    TITHI: { desc: `The ${tithiOrdinal}. ${TITHI_ENERGY[p.tithiName] || 'A significant lunar day.'}`, effect: `Ruling Deity: ${TITHI_DEITY[p.tithiName] || 'Cosmic Forces'}. Influences your emotional state and the success of specific activities.` },
+    NAKSHATRA: { desc: `${NAKSHATRAS[p.nakshatraIdx].name} (${NAKSHATRAS[p.nakshatraIdx].en}). Ruled by ${NAKSHATRAS[p.nakshatraIdx].planet} and ${NAKSHATRAS[p.nakshatraIdx].deity}.`, effect: NAKSHATRAS[p.nakshatraIdx].energy },
+    YOGA: { desc: `${YOGAS[p.yogaIdx].name} (${YOGAS[p.yogaIdx].en}) - ${YOGAS[p.yogaIdx].auspicious ? 'Auspicious' : 'Inauspicious'} combination of Sun and Moon's longitude.`, effect: YOGAS[p.yogaIdx].meaning },
+    KARANA: { desc: `Half of a lunar day. ${karanaName} is active right now.`, effect: "A subtle influence that fine-tunes your daily actions and timing." },
+    VAAR: { desc: `${VAARS[p.vaarIdx].vedicName}. Ruled by the planet ${VAARS[p.vaarIdx].planet}.`, effect: `${VAARS[p.vaarIdx].energy}. ${VAARS[p.vaarIdx].science}` },
   };
 
   return (
@@ -6881,58 +6908,61 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         <View style={{ backgroundColor: CARD_BG, borderRadius: 24, padding: 20, shadowColor: ACCENT_BURGUNDY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4, marginBottom: 16, borderWidth: 1, borderColor: BORDER }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_CHARCOAL, letterSpacing: 1 }}>TODAY'S MUHURTA</Text>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', marginTop: 2 }}>Auspicious Timings</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_CHARCOAL, letterSpacing: 1 }}>VEDIC TIME (KALA)</Text>
+              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', marginTop: 2 }}>Interactive Astrological Dial</Text>
             </View>
             <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT_GOLD }}>{now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</Text>
           </View>
           
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <View style={{ gap: 12, alignItems: 'flex-start' }}>
+          <MuhurtaClock 
+            currentHour={now.getHours() + now.getMinutes() / 60} 
+            times={times}
+            activePeriod={activeMuhurta}
+            onSelect={(m) => { Haptics.selectionAsync(); setActiveMuhurta(m as any); }}
+          />
+
+          <View style={{ backgroundColor: BG_IVORY, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 16, alignItems: 'center' }}>
+             <Text style={{ fontSize: 13, color: ['rahu', 'yama'].includes(activeMuhurta) ? ACCENT_BURGUNDY : ACCENT_GOLD, fontWeight: '700', letterSpacing: 0.5, textAlign: 'center' }}>{muhurtaLabels[activeMuhurta]?.time} | {muhurtaLabels[activeMuhurta]?.title}</Text>
+             <Text style={{ fontSize: 11, color: 'rgba(44,44,44,0.7)', marginTop: 6, fontWeight: '600', textAlign: 'center' }}>{muhurtaLabels[activeMuhurta]?.sub}</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 12 }}>
+            <View style={{ width: '50%', gap: 12 }}>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('brahma'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'brahma' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#8B5CF6', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>Brahma</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#8B5CF6', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>Brahma</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('prata'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'prata' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>M. Sandhya</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#3B82F6', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>M. Sandhya</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('abhijit'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'abhijit' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#BFA267', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>Abhijit</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#BFA267', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>Abhijit</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('madhya'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'madhya' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EAB308', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>N. Sandhya</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#EAB308', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>N. Sandhya</Text>
               </TouchableOpacity>
             </View>
-            
-            <MuhurtaClock 
-              currentHour={now.getHours() + now.getMinutes() / 60} 
-              times={times}
-              activePeriod={activeMuhurta}
-              onSelect={(m) => { Haptics.selectionAsync(); setActiveMuhurta(m as any); }}
-            />
-            
-            <View style={{ gap: 12, alignItems: 'flex-start' }}>
+            <View style={{ width: '50%', gap: 12, paddingLeft: 12 }}>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('sayam'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'sayam' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F97316', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>E. Sandhya</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#F97316', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>E. Sandhya</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('rahu'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'rahu' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#6A1E2F', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>Rahu Kaal</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#6A1E2F', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>Rahu Kaal</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('yama'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta === 'yama' ? 1 : 0.4 }}>
-                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#A16207', marginRight: 6 }} />
-                 <Text style={{ fontSize: 9, color: TEXT_CHARCOAL, fontWeight: '700' }}>Yamaganda</Text>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#A16207', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>Yamaganda</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveMuhurta('p1'); }} style={{ flexDirection: 'row', alignItems: 'center', opacity: activeMuhurta.startsWith('p') || activeMuhurta.startsWith('n') ? 1 : 0.4 }}>
+                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#FDE68A', marginRight: 8 }} />
+                 <Text style={{ fontSize: 10, color: TEXT_CHARCOAL, fontWeight: '700', textTransform: 'uppercase' }}>8 Prahars</Text>
               </TouchableOpacity>
             </View>
-          </View>
-          
-          <View style={{ alignItems: 'center', marginTop: 4, minHeight: 40, justifyContent: 'center' }}>
-             <Text style={{ fontSize: 12, color: ACCENT_BURGUNDY, fontWeight: '700', letterSpacing: 0.5 }}>{muhurtaLabels[activeMuhurta]?.time} | {muhurtaLabels[activeMuhurta]?.title}</Text>
-             <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{muhurtaLabels[activeMuhurta]?.sub}</Text>
           </View>
         </View>
 
@@ -6941,30 +6971,64 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
           <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_CHARCOAL, letterSpacing: 1, marginBottom: 16 }}>DAILY PANCHANGA</Text>
           
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }}>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'TITHI (LUNAR DAY)', value: p.tithiName, ...PANCHANGA_INFO.TITHI }); }} style={{ width: '50%' }}>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>TITHI</Text>
-              <Text style={{ fontSize: 15, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{p.tithiName}</Text>
-              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.tithiStart, now)} → {tFmt(timings.tithiEnd, now)}</Text>
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'TITHI (LUNAR DAY)', value: p.tithiName, ...PANCHANGA_INFO.TITHI }); }} style={{ width: '50%', paddingRight: 8 }}>
+              <View style={{ backgroundColor: BG_IVORY, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: BORDER }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.5)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>TITHI</Text>
+                  <Text style={{ fontSize: 10, color: ACCENT_GOLD }}>›</Text>
+                </View>
+                <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '700', marginTop: 4 }}>{p.tithiName}</Text>
+                <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{tFmt(timings.tithiStart, now)} →</Text>
+                <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 1, fontWeight: '600' }}>{tFmt(timings.tithiEnd, now)}</Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'NAKSHATRA (CONSTELLATION)', value: NAKSHATRAS[p.nakshatraIdx].name, ...PANCHANGA_INFO.NAKSHATRA }); }} style={{ width: '50%' }}>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>NAKSHATRA</Text>
-              <Text style={{ fontSize: 15, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{NAKSHATRAS[p.nakshatraIdx].name}</Text>
-              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.nakshatraStart, now)} → {tFmt(timings.nakshatraEnd, now)}</Text>
+            
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'NAKSHATRA (CONSTELLATION)', value: NAKSHATRAS[p.nakshatraIdx].name, ...PANCHANGA_INFO.NAKSHATRA }); }} style={{ width: '50%', paddingLeft: 8 }}>
+              <View style={{ backgroundColor: BG_IVORY, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: BORDER }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.5)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>NAKSHATRA</Text>
+                  <Text style={{ fontSize: 10, color: ACCENT_GOLD }}>›</Text>
+                </View>
+                <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '700', marginTop: 4 }}>{NAKSHATRAS[p.nakshatraIdx].name}</Text>
+                <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{tFmt(timings.nakshatraStart, now)} →</Text>
+                <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 1, fontWeight: '600' }}>{tFmt(timings.nakshatraEnd, now)}</Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'YOGA (ENERGY FIELD)', value: YOGAS[p.yogaIdx].name, ...PANCHANGA_INFO.YOGA }); }} style={{ width: '33%' }}>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>YOGA</Text>
-              <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{YOGAS[p.yogaIdx].name}</Text>
-              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{tFmt(timings.yogaStart, now)} → {tFmt(timings.yogaEnd, now)}</Text>
+            
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'YOGA (ENERGY FIELD)', value: YOGAS[p.yogaIdx].name, ...PANCHANGA_INFO.YOGA }); }} style={{ width: '33%', paddingRight: 6 }}>
+              <View style={{ backgroundColor: BG_IVORY, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: BORDER, height: '100%' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.5)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>YOGA</Text>
+                  <Text style={{ fontSize: 10, color: ACCENT_GOLD }}>›</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: TEXT_CHARCOAL, fontWeight: '700', marginTop: 4 }}>{YOGAS[p.yogaIdx].name}</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{tFmt(timings.yogaStart, now)} →</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 1, fontWeight: '600' }}>{tFmt(timings.yogaEnd, now)}</Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'KARANA (HALF LUNAR DAY)', value: karanaName, ...PANCHANGA_INFO.KARANA }); }} style={{ width: '33%' }}>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>KARANA</Text>
-              <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{karanaName}</Text>
-              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{p.moonAge % (29.53/30) < (29.53/60) ? tFmt(timings.tithiStart, now) : tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2), now)} → {p.moonAge % (29.53/30) < (29.53/60) ? tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2), now) : tFmt(timings.tithiEnd, now)}</Text>
+            
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'KARANA (HALF LUNAR DAY)', value: karanaName, ...PANCHANGA_INFO.KARANA }); }} style={{ width: '33%', paddingHorizontal: 3 }}>
+              <View style={{ backgroundColor: BG_IVORY, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: BORDER, height: '100%' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.5)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>KARANA</Text>
+                  <Text style={{ fontSize: 10, color: ACCENT_GOLD }}>›</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: TEXT_CHARCOAL, fontWeight: '700', marginTop: 4 }}>{karanaName}</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{p.moonAge % (29.53/30) < (29.53/60) ? tFmt(timings.tithiStart, now) : tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2), now)} →</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 1, fontWeight: '600' }}>{p.moonAge % (29.53/30) < (29.53/60) ? tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2), now) : tFmt(timings.tithiEnd, now)}</Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'VAAR (DAY OF WEEK)', value: VAARS[p.vaarIdx].vedicName, ...PANCHANGA_INFO.VAAR }); }} style={{ width: '34%' }}>
-              <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>VAAR</Text>
-              <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600', marginTop: 2 }}>{VAARS[p.vaarIdx].vedicName}</Text>
-              <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.6)', marginTop: 2, fontWeight: '600' }}>{fmtSolar(csr)} → {fmtSolar(csr ? csr + 24 : null)}</Text>
+            
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'VAAR (DAY OF WEEK)', value: VAARS[p.vaarIdx].vedicName, ...PANCHANGA_INFO.VAAR }); }} style={{ width: '34%', paddingLeft: 6 }}>
+              <View style={{ backgroundColor: BG_IVORY, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: BORDER, height: '100%' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.5)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>VAAR</Text>
+                  <Text style={{ fontSize: 10, color: ACCENT_GOLD }}>›</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: TEXT_CHARCOAL, fontWeight: '700', marginTop: 4 }}>{VAARS[p.vaarIdx].vedicName}</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 4, fontWeight: '600' }}>{fmtSolar(csr)} →</Text>
+                <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.6)', marginTop: 1, fontWeight: '600' }}>{fmtSolar(csr ? csr + 24 : null)}</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -7522,7 +7586,7 @@ function DailyTab() {
               <BlurView intensity={50} tint="light" style={{
                 borderRadius: 24, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.3)',
                 overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12,
-                paddingHorizontal: 22, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.2)'
+                paddingHorizontal: 22, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.2)'
               }}>
                 <MoonSVG tithiNum={hMoon.tithiNum} size={22} />
                 <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
@@ -7550,7 +7614,7 @@ function DailyTab() {
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
               
-              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 12 }}>
+              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 8 }}>
                 
                 {/* 1. Daily Intention (Floating, transparent, elegant) */}
                 <View style={{ width: '100%', alignItems: 'center' }}>
@@ -7630,6 +7694,7 @@ function DailyTab() {
                               {/* The Horizon Line (Next State Preview) */}
                               <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(0,0,0,0.4)', letterSpacing: 0.5, marginTop: 2, marginBottom: 4 }}>
                                 {(() => {
+                                  if (!solarTimes) return '';
                                   const periods = getDoshaPeriods(solarTimes, nowH);
                                   const curIdx = periods.findIndex(p => p.id === currentPeriod.id);
                                   if (curIdx === -1) return '';
@@ -7675,7 +7740,7 @@ function DailyTab() {
                       borderRadius: 24,
                       borderWidth: 0.5,
                       borderColor: 'rgba(255,255,255,0.2)',
-                      paddingVertical: 6,
+                      paddingVertical: 4,
                       paddingHorizontal: 20,
                       overflow: 'hidden',
                       backgroundColor: 'rgba(0,0,0,0.3)',
@@ -7740,7 +7805,7 @@ function DailyTab() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         router.push('/weather');
                       }}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' }}
                     >
                       <Text style={{ fontSize: 14 }}>{weather.emoji}</Text>
                       <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 14, fontWeight: '700', color: '#FFF' }}>{weather.temp}°</Text>
@@ -7766,7 +7831,7 @@ function DailyTab() {
                   <TouchableOpacity
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
                     activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
                   >
                     <Ionicons name="journal-outline" size={20} color="#E2E8F0" />
                     <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.3 }}>Almanac</Text>
@@ -7776,7 +7841,7 @@ function DailyTab() {
                   <TouchableOpacity
                     onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
                     activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
                   >
                     <Ionicons name="pulse-outline" size={20} color="#E2E8F0" />
                     <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.5 }}>Vitality</Text>
@@ -7786,7 +7851,7 @@ function DailyTab() {
                   <TouchableOpacity
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
                     activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}
                   >
                     <Ionicons name="stats-chart-outline" size={20} color="#E2E8F0" />
                     <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.3 }}>Soundscapes</Text>
