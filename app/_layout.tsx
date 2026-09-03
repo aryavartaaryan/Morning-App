@@ -122,11 +122,6 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
   
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
-
-  const mantraOp = useRef(new Animated.Value(0)).current;
-  const mantraTy = useRef(new Animated.Value(20)).current;
-  const mantraSc = useRef(new Animated.Value(0.95)).current;
-
   // Animation sequence starts after component mounts
   useEffect(() => {
     let mounted = true;
@@ -134,15 +129,17 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
     const initialDelay = setTimeout(() => {
       Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
 
+      // Premium subtle haptic right as the logo begins its elegant reveal
+      setTimeout(() => {
+        import('expo-haptics').then(Haptics => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        });
+      }, 400); // Timed perfectly with the shimmer sweep
+
       Animated.sequence([
-        Animated.delay(400),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.parallel([
-           Animated.timing(mantraOp, { toValue: 1, duration: 900, useNativeDriver: true }),
-           Animated.timing(mantraTy, { toValue: 0, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-           Animated.timing(mantraSc, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        ]),
-        Animated.delay(600), // Hold briefly to let the user feel the calm, then dismiss
+        Animated.delay(200),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(1000), // Hold for exactly 2 seconds total (200 + 800 + 1000 = 2000ms) before fading out
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -210,61 +207,32 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           <HeroGeometricAnimation size={SW * 1.0} opacity={0.65} variant="splash" />
         </Animated.View>
 
-        {/* Ultra Premium "NADA" Text */}
+        {/* Ultra Premium Brand Mark */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <Text style={{ 
-            fontSize: 42, 
+          <Animated.Text style={{ 
+            fontSize: 48, 
             fontFamily: 'Nunito_300Light', 
             color: '#ffffff', 
-            letterSpacing: 24, 
+            letterSpacing: 28, 
             opacity: 0.95,
-            paddingLeft: 24 // To balance the high letter spacing
-          }}>Svara</Text>
+            paddingLeft: 28, // Balance the high letter spacing
+            transform: [{
+              scale: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] })
+            }]
+          }}>Svara</Animated.Text>
           
-          <Text style={{ 
-            fontSize: 10, 
+          <Animated.Text style={{ 
+            fontSize: 11, 
             color: '#a1a1aa', 
             fontFamily: 'Nunito_400Regular', 
-            letterSpacing: 14, 
-            marginTop: 14,
-            opacity: 0.80,
-            paddingLeft: 14
-          }}>THE RESONANCE</Text>
-          
-          {/* Subtle Cursive touch */}
-          <View style={{ marginTop: 64, alignItems: 'center', position: 'relative' }}>
-            <Text style={{ 
-              fontSize: 19, 
-              color: 'rgba(255,255,255,0.4)', 
-              fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1.5, 
-              textAlign: 'center', 
-              lineHeight: 30 
-            }}>
-              Resonate & Transform{'\n'}through Svara.
-            </Text>
-            <Animated.Text style={{ 
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              fontSize: 19, 
-              color: '#ffffff', 
-              fontFamily: 'DancingScript_600SemiBold', 
-              letterSpacing: 1.5, 
-              textAlign: 'center', 
-              lineHeight: 30,
-              opacity: shimmerOp 
-            }}>
-              Resonate & Transform{'\n'}through Svara.
-            </Animated.Text>
-          </View>
-
-          {/* Mantra - Ultra Premium Layout (Cleaner, softer, silver) */}
-          <Animated.View style={{ marginTop: 64, opacity: mantraOp, transform: [{ translateY: mantraTy }, { scale: mantraSc }], alignItems: 'center', paddingHorizontal: 30 }}>
-            {/* Translation only, for maximum minimal premium aesthetic */}
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Nunito_300Light', textAlign: 'center', lineHeight: 24, letterSpacing: 3, textTransform: 'uppercase' }}>
-              Lead us from the unreal to the real,{'\n'}from darkness to light,{'\n'}from death to immortality.
-            </Text>
-          </Animated.View>
+            letterSpacing: 18, 
+            marginTop: 18,
+            opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.8] }),
+            paddingLeft: 18,
+            transform: [{
+              translateY: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [10, 0] })
+            }]
+          }}>THE RESONANCE</Animated.Text>
         </Animated.View>
         
       </View>

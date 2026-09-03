@@ -2332,52 +2332,6 @@ const ReelCard = memo(function ReelCard({
   }, [isActive]);
 
 
-  const [wavePath, setWavePath] = useState('');
-  const wavePhaseRef = useRef(0);
-  
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const generateWave = () => {
-      const W = 240;
-      const pts = [];
-      const segments = 120;
-      
-      const liveVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
-      
-      // Exponential curve so loud sounds pop, quiet sounds stay flat
-      const smoothedVol = Math.pow(liveVol, 1.4); 
-      // Base amplitude scales purely on live volume
-      const baseAmp = (isPlaying && !isPaused) ? (2 + smoothedVol * 75) : 1;
-      
-      // Phase advances smoothly, speeding up slightly with louder volume for energy
-      wavePhaseRef.current += 0.12 + (smoothedVol * 0.25);
-      const phase = wavePhaseRef.current;
-
-      for (let i = 0; i <= segments; i++) {
-        const x = (i / segments) * W;
-        const envelope = Math.sin((i / segments) * Math.PI);
-        
-        // Pure harmonic math, completely removing random noise
-        const wave1 = Math.sin(i * 0.2 - phase);
-        const wave2 = Math.cos(i * 0.45 + phase * 1.2) * 0.4;
-        const wave3 = Math.sin(i * 1.5 - phase * 2) * (0.3 * smoothedVol); // High freq detail only when loud
-        
-        const yVal = wave1 + wave2 + wave3;
-        const y = (W / 2) + yVal * baseAmp * Math.pow(envelope, 1.2);
-        
-        pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
-      }
-      setWavePath(pts.join(' '));
-    };
-    
-    generateWave();
-    if (isPlaying && !isPaused) {
-      // 33ms is ~30fps, much smoother than the previous 14fps, removing the jittery feel
-      interval = setInterval(generateWave, 33);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, isPaused, getMeteringLevel]);
-
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -2647,24 +2601,27 @@ const ReelCard = memo(function ReelCard({
               borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.7)',
             }}
           />
-          {/* Reactive Waveform */}
-          <View style={{ width: 240, height: 240, position: 'absolute' }}>
-            <Svg width="100%" height="100%" viewBox="0 0 240 240">
-              <SvgCircle 
-                cx={120} cy={120} r={119} 
-                stroke="rgba(255,255,255,0.85)" strokeWidth={0.8} fill="none" 
-              />
-              {wavePath ? (
-                <Path 
-                  d={wavePath} 
-                  stroke="#FFFFFF" 
-                  strokeWidth={1} 
-                  fill="none" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
+          {/* Reactive Waveform exactly like screenshot */}
+          <View style={{ width: 240, height: 240, position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+              {[
+                0.05, 0.1, 0.15, 0.1, 0.25, 0.2, 0.35, 0.3, 0.5, 0.4, 0.65, 0.5, 0.8, 0.6, 0.9, 0.75, 0.95, 0.8, 0.98, 0.85, 1.0,
+                0.85, 0.98, 0.8, 0.95, 0.75, 0.9, 0.6, 0.8, 0.5, 0.65, 0.4, 0.5, 0.3, 0.35, 0.2, 0.25, 0.1, 0.15, 0.1, 0.05
+              ].map((mult, i) => (
+                <Animated.View
+                  key={i}
+                  style={{
+                    width: 2,
+                    height: isActive && isPlaying && !isPaused
+                      ? meteringAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 200 * mult] })
+                      : 2,
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 1,
+                    opacity: 0.85,
+                  }}
                 />
-              ) : null}
-            </Svg>
+              ))}
+            </View>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -4115,9 +4072,9 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
 
 // ─── Therapy Sound Card (2-column grid card with image) ─────────────────────
 const TherapySoundCard = memo(function TherapySoundCard({
-  sound, isPlaying, isPaused, themeColor, onPress,
+  sound, isPlaying, isPaused, themeColor, onPress, cardWidth
 }: {
-  sound: any; isPlaying: boolean; isPaused: boolean; themeColor: string; onPress: () => void;
+  sound: any; isPlaying: boolean; isPaused: boolean; themeColor: string; onPress: () => void; cardWidth?: number;
 }) {
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const [, forceUpdate] = useState(0);
@@ -4136,7 +4093,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
   const imgSource = imgBundled ?? (imgUri ? { uri: imgUri } : undefined);
   const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
 
-  const cardW = Math.floor((W - 20 * 2 - 12) / 2);
+  const cardW = cardWidth ?? Math.floor((W - 20 * 2 - 12) / 2);
   const cardH = Math.round(cardW * 1.52);
 
   // Waveform bars for playing state
@@ -4258,16 +4215,41 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   const uniqueSoundIds = Array.from(new Set(collection.soundIds));
   const allMappedSounds = uniqueSoundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
   
-  // Remove duplicates that might exist because of _sleep or _med suffix variants having the same source file
   const seenLinks = new Set();
   const sounds = allMappedSounds.filter(s => {
     const linkKey = typeof s.src === 'object' ? s.src?.uri : s.src;
-    if (!linkKey) return true; // If no src for some reason, don't filter it out
+    if (!linkKey) return true; 
     if (seenLinks.has(linkKey)) return false;
     seenLinks.add(linkKey);
     return true;
   });
-  const { height: SCREEN_H } = Dimensions.get('screen');
+
+  const groupedSounds = useMemo(() => {
+    const groups: Record<string, typeof sounds> = {};
+    sounds.forEach((s: any) => {
+      const cat = s.cat || 'Recommended';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(s);
+    });
+    
+    const entries = Object.entries(groups);
+    if (entries.length === 1 && sounds.length > 4) {
+      const numRows = Math.min(4, Math.ceil(sounds.length / 3));
+      const chunks: typeof sounds[] = Array.from({ length: numRows }, () => []);
+      sounds.forEach((s: any, i: number) => {
+        chunks[i % numRows].push(s);
+      });
+      const titles = ["Recommended For You", "Deep Immersion", "Explore More", "Hidden Gems"];
+      return chunks.map((data, index) => ({
+        title: titles[index] || "More Sounds",
+        data
+      }));
+    }
+    
+    return entries.map(([title, data]) => ({ title, data }));
+  }, [sounds]);
+
+  const { height: SCREEN_H, width: W } = Dimensions.get('screen');
   const slideIn = useRef(new Animated.Value(0)).current;
 
   const handleClose = () => {
@@ -4283,6 +4265,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   }, []);
 
   const insets = useSafeAreaInsets();
+  const cardW = Math.floor(W * 0.40); // Horizontal scroll card width
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 9998, elevation: 998, transform: [{ translateY: slideIn }] }]}>
@@ -4290,12 +4273,12 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
         
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 14, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Top Nav (Now inside scroll view) */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          {/* Top Nav */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 20 }}>
             <TouchableOpacity onPress={handleClose} activeOpacity={0.8} style={{ overflow: 'hidden', borderRadius: 99, paddingVertical: 4 }}>
               <BlurView intensity={42} tint="dark" style={{
                 flexDirection: 'row', alignItems: 'center', gap: 7,
@@ -4308,50 +4291,62 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             </TouchableOpacity>
           </View>
 
-          {/* Option 3: Premium CD Album Header (Super Compact OLED) */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, paddingRight: 10 }}>
-            {/* Album Cover */}
+          {/* Premium CD Album Header (Compact OLED) */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, paddingHorizontal: 20 }}>
+            {/* Album Cover - Smaller than before */}
             <Image
               source={{ uri: collection.imageUri }}
-              style={{ width: 84, height: 84, borderRadius: 12, marginRight: 16, backgroundColor: '#1a1a24' }}
+              style={{ width: 64, height: 64, borderRadius: 10, marginRight: 14, backgroundColor: '#1a1a24' }}
             />
             {/* Text Section */}
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: collection.themeColor, shadowColor: collection.themeColor, shadowOpacity: 0.8, shadowRadius: 6 }} />
-                <Text style={{ fontSize: 10, fontWeight: '800', color: collection.themeColor, letterSpacing: 2.5, fontFamily: 'Nunito_700Bold', textTransform: 'uppercase' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: collection.themeColor, shadowColor: collection.themeColor, shadowOpacity: 0.8, shadowRadius: 6 }} />
+                <Text style={{ fontSize: 9, fontWeight: '800', color: collection.themeColor, letterSpacing: 2.5, fontFamily: 'Nunito_700Bold', textTransform: 'uppercase' }}>
                   {collection.subtitle || 'Premium Collection'}
                 </Text>
               </View>
-              <Text style={{ fontSize: 26, color: '#fff', fontFamily: 'DancingScript_600SemiBold', marginBottom: 4, letterSpacing: 0.5, textShadowColor: collection.themeColor + '40', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+              <Text style={{ fontSize: 24, color: '#fff', fontFamily: 'DancingScript_600SemiBold', marginBottom: 2, letterSpacing: 0.5, textShadowColor: collection.themeColor + '40', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
                 {collection.title}
               </Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 16, fontFamily: 'Nunito_400Regular' }} numberOfLines={3}>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 15, fontFamily: 'Nunito_400Regular' }} numberOfLines={2}>
                 {collection.description}
               </Text>
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: collection.themeColor }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 2.2, fontFamily: 'Nunito_700Bold' }}>
-              {sounds.length} SOUNDSCAPES
-            </Text>
-            <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-          </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {sounds.map((sound: any) => (
-              <TherapySoundCard
-                key={sound.id}
-                sound={sound}
-                isPlaying={playingId === sound.id}
-                isPaused={isPaused}
-                themeColor={collection.themeColor}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
-              />
-            ))}
-          </View>
+          {/* Subcollections Horizontal Sliders */}
+          {groupedSounds.map((group, gIdx) => (
+            <View key={group.title} style={{ marginBottom: 32 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, paddingHorizontal: 20 }}>
+                <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: collection.themeColor }} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', letterSpacing: 1.2, fontFamily: 'Nunito_700Bold' }}>
+                  {group.title}
+                </Text>
+                <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+              </View>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+                decelerationRate="fast"
+                snapToInterval={cardW + 12}
+              >
+                {group.data.map((sound: any) => (
+                  <TherapySoundCard
+                    key={sound.id}
+                    sound={sound}
+                    isPlaying={playingId === sound.id}
+                    isPaused={isPaused}
+                    themeColor={collection.themeColor}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
+                    cardWidth={cardW}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ))}
         </ScrollView>
       </View>
     </Animated.View>
