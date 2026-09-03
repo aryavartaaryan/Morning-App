@@ -43,6 +43,7 @@ import { Font } from '@/constants/theme';
 import Svg, { Circle as SvgCircle, Ellipse as SvgEllipse, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop, G as SvgG, Line as SvgLine, Text as SvgText } from 'react-native-svg';
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import MetabolicStoryModal from '@/components/MetabolicStoryModal';
+import { LunarStoryModal } from '@/components/LunarStoryModal';
 import CosmicStoryModal from '@/components/CosmicStoryModal';
 import { HeroGeometricAnimation, SHAPE_MATH } from '@/components/HeroGeometricAnimation';
 import { getTodayWakeLog, getStreak, markCardShown, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
@@ -7232,7 +7233,8 @@ function DailyTab() {
     }, delay);
   }, [insightRevealAnim]);
 
-  const [showStory, setShowStory]           = useState(false);
+  const [showStory, setShowStory] = useState(false);
+  const [showLunarModal, setShowLunarModal] = useState(false);
   const insets                              = useSafeAreaInsets();
   const { playingId: soundPlayingId, playSound }       = useSoundPlayer();
   const weatherLastFetched  = useRef<number>(0);
