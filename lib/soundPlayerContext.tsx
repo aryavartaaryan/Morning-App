@@ -241,7 +241,8 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
           // Do NOT call Animated.timing here — it runs on JS thread and competes
           // with the audio buffer, causing audible stutter.
           if ((status as any).metering != null && !isPausedRef.current) {
-            const raw = Math.max(0, Math.min(1, ((status as any).metering + 55) / 55));
+            // Make it far more sensitive so ambient/quiet sounds still register beautifully
+            const raw = Math.max(0, Math.min(1, ((status as any).metering + 70) / 70));
             const smoothed = meteringRef.current * 0.38 + raw * 0.62;
             meteringRef.current = smoothed;
             // Update the Animated.Value directly (no animation) — zero JS thread cost

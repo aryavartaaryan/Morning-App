@@ -13,6 +13,7 @@ import {
   Image,
   LayoutAnimation,
   DeviceEventEmitter,
+  PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -739,6 +740,8 @@ function GlobalPlayerBar() {
     playingDurationSecs,
     showFullPlayer,
     isReelsOpen,
+    getPositionMs,
+    seekTo,
   } = useSoundPlayer();
   const slideAnim = useRef(new Animated.Value(100)).current;
   // Persist last-known meta so the bar never flickers during sound transitions
@@ -747,7 +750,6 @@ function GlobalPlayerBar() {
   const displayMeta = playingMeta ?? lastMetaRef.current;
   const [rendered, setRendered] = useState(false);
   const [stepActive, setStepActive] = useState(false);
-  // removed showClosePrompt state
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('StepTracker.active', setStepActive);
@@ -770,7 +772,6 @@ function GlobalPlayerBar() {
       }).start();
     } else {
       if (isReelsOpen) {
-        // Instantly hide without animation to avoid overlapping with the Reels modal
         slideAnim.setValue(120);
         setRendered(false);
       } else {
@@ -783,6 +784,60 @@ function GlobalPlayerBar() {
     }
   }, [shouldShow, isReelsOpen]);
 
+  // Interactive Progress State
+  const [progress, setProgress] = useState(0);
+  const isDragging = useRef(false);
+  const trackWRef = useRef(0);
+
+  useEffect(() => {
+    if (!shouldShow || isPaused || !playingDurationSecs) return;
+    const interval = setInterval(() => {
+      if (isDragging.current) return;
+      const pos = getPositionMs();
+      const durMs = playingDurationSecs * 1000;
+      if (durMs > 0) {
+        setProgress(Math.max(0, Math.min(1, pos / durMs)));
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [shouldShow, isPaused, playingDurationSecs, getPositionMs]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5,
+      onPanResponderGrant: (evt) => {
+        isDragging.current = true;
+        if (trackWRef.current > 0 && playingDurationSecs) {
+          const locX = evt.nativeEvent.locationX;
+          const frac = Math.max(0, Math.min(1, locX / trackWRef.current));
+          setProgress(frac);
+        }
+      },
+      onPanResponderMove: (evt) => {
+        if (trackWRef.current > 0 && playingDurationSecs) {
+          const locX = evt.nativeEvent.locationX;
+          const frac = Math.max(0, Math.min(1, locX / trackWRef.current));
+          setProgress(frac);
+        }
+      },
+      onPanResponderRelease: (evt) => {
+        if (trackWRef.current > 0 && playingDurationSecs) {
+          const locX = evt.nativeEvent.locationX;
+          const frac = Math.max(0, Math.min(1, locX / trackWRef.current));
+          setProgress(frac);
+          seekTo(frac * playingDurationSecs * 1000).finally(() => {
+            isDragging.current = false;
+          });
+        } else {
+          isDragging.current = false;
+        }
+      },
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+      }
+    })
+  ).current;
 
   if (!rendered || !displayMeta || stepActive) return null;
 
@@ -808,145 +863,148 @@ function GlobalPlayerBar() {
         GP.wrap,
         { 
           transform: [{ translateY: slideAnim }],
-          borderColor: accentColor,
-          shadowColor: accentColor,
-          shadowOpacity: 0.7,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 0 },
         }
       ]}
     >
-      <LinearGradient
-        colors={[`${accentColor}30`, "rgba(5,7,12,0.85)"]}
-        start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
-        style={GP.grad}
-      >
-        {/* Blur background for true glassmorphism on iOS/new Android */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-        {/* Left — emoji art square */}
-        <TouchableOpacity
-          style={GP.bodyTap}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            openReelsOrPlayer();
-            router.navigate("/(tabs)/sleep");
-          }}
-          activeOpacity={0.8}
-        >
-          <View style={GP.emojiBox}>
-            <Text style={GP.emojiTxt}>{displayMeta.emoji}</Text>
-          </View>
-
-          {/* Info & Waveform */}
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={GP.name} numberOfLines={1}>
-              {label}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <WaveformBars
-                color={accentColor}
-                active={!isPaused && !!playingId}
-              />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                {isPaused ? 'Paused' : 'Playing'}
-              </Text>
+      <View style={{ width: '100%', backgroundColor: '#05070B' }}>
+        
+        <View style={GP.grad}>
+          <TouchableOpacity
+            style={GP.bodyTap}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              openReelsOrPlayer();
+              router.navigate("/(tabs)/sleep");
+            }}
+            activeOpacity={0.8}
+          >
+            {/* Left — emoji art square */}
+            <View style={GP.emojiBox}>
+              <Text style={GP.emojiTxt}>{displayMeta.emoji}</Text>
             </View>
-          </View>
-        </TouchableOpacity>
 
-        {/* Pause / Play */}
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            togglePause();
-          }}
-          style={GP.circleBtn}
-        >
-          <Ionicons
-            name={isPaused ? "play" : "pause"}
-            size={18}
-            color="#FFF"
-            style={{ marginLeft: isPaused ? 2 : 0 }}
-          />
-        </TouchableOpacity>
+            {/* Info & Waveform */}
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <Text style={GP.name} numberOfLines={1}>
+                {label}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <WaveformBars
+                  color={accentColor}
+                  active={!isPaused && !!playingId}
+                />
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_700Bold', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                  {isPaused ? 'Paused' : 'Playing'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
 
-        {/* Stop/Close */}
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            stopSound(true);
-          }}
-          style={GP.stopBtn}
+          {/* Pause / Play */}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              togglePause();
+            }}
+            style={GP.circleBtn}
+          >
+            <Ionicons
+              name={isPaused ? "play" : "pause"}
+              size={18}
+              color="#FFF"
+              style={{ marginLeft: isPaused ? 2 : 0 }}
+            />
+          </TouchableOpacity>
+
+          {/* Stop/Close */}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              stopSound(true);
+            }}
+            style={GP.stopBtn}
+          >
+            <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Progress Bar (Bottom) */}
+        <View 
+          style={{ width: '100%', height: 24, justifyContent: 'center', backgroundColor: 'transparent', paddingBottom: 10 }}
+          {...panResponder.panHandlers}
+          onLayout={(e) => { trackWRef.current = e.nativeEvent.layout.width; }}
         >
-          <Ionicons name="close" size={16} color="rgba(255,255,255,0.6)" />
-        </TouchableOpacity>
-      </LinearGradient>
+          {/* Background track */}
+          <View style={{ position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: 'rgba(255,255,255,0.1)', top: 6 }} />
+          {/* Active track */}
+          <View style={{ position: 'absolute', left: 0, height: 3, backgroundColor: accentColor, width: `${progress * 100}%`, top: 6 }} />
+          {/* Thumb */}
+          {playingDurationSecs ? (
+            <View style={{ position: 'absolute', left: `${progress * 100}%`, marginLeft: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: accentColor, shadowColor: accentColor, shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, top: 1.5 }} />
+          ) : null}
+        </View>
+
+      </View>
     </Animated.View>
   );
 }
 
 const GP = StyleSheet.create({
   wrap: {
-    marginHorizontal: 38, // slimmer width
-    marginBottom: 20, 
-    borderRadius: 99, 
-    overflow: "hidden",
-    borderWidth: 1.5, 
-    backgroundColor: 'rgba(3,5,10,0.92)',
-    elevation: 20,
-  },
-  accentLine: {
-    height: 0,
     width: "100%",
+    overflow: "hidden",
+    borderTopWidth: 1, 
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#05070B',
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
   },
   grad: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5, // much slimmer
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 12,
   },
   bodyTap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   emojiBox: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 8,
   },
-  emojiTxt: { fontSize: 14 },
+  emojiTxt: { fontSize: 16 },
   infoCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "800",
     color: "#fff",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     fontFamily: "Nunito_700Bold",
   },
-  sub: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
-    fontFamily: "Nunito_500Medium",
-    letterSpacing: 0,
-  },
-  waveWrap: { marginRight: 6 },
   circleBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: "center",
     justifyContent: "center",
   },
   stopBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
