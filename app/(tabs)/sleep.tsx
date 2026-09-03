@@ -2335,55 +2335,97 @@ const ReelCard = memo(function ReelCard({
   const [wavePath, setWavePath] = useState('');
   const wavePhaseRef = useRef(0);
   const currentRenderVolRef = useRef(0);
+  // Stable per-sample random seeds so the "character" of the waveform is consistent per sound
+  const seedRef = useRef<number[]>([]);
+  const soundIdRef = useRef<string>('');
+  
+  useEffect(() => {
+    // When sound changes, generate a new unique set of random seeds
+    // so each sound has its own distinct waveform character
+    if (sound.id !== soundIdRef.current) {
+      soundIdRef.current = sound.id;
+      const seeds: number[] = [];
+      // Use sound.id as a deterministic seed by summing char codes
+      let base = sound.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      for (let i = 0; i < 60; i++) {
+        // Seeded pseudo-random using LCG
+        base = (base * 1664525 + 1013904223) & 0xffffffff;
+        seeds.push((base >>> 0) / 0xffffffff);
+      }
+      seedRef.current = seeds;
+    }
+  }, [sound.id]);
   
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
     const generateWave = () => {
       const W = 240;
-      const pts = [];
-      const segments = 120;
+      const CX = 120; // Center X of the circle
+      const CY = 120; // Center Y (horizontal baseline of waveform)
+      const R = 118;  // Circle radius
       
       const targetVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
       
-      // Buttery smooth lerping: gently glide towards the target volume at 30fps
-      // This completely masks the 200ms stutter of the audio engine
-      currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.15;
+      // Smooth lerp towards target — masks 200ms audio engine gaps
+      currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.18;
       const liveVol = currentRenderVolRef.current;
       
-      // Exaggerated exponential curve so even quiet sleep sounds cause beautiful ripples
-      const smoothedVol = Math.pow(liveVol, 1.2); 
-      // Base amplitude scales purely on the lerped live volume. Minimum 3 so it's never completely dead.
-      const baseAmp = (isPlaying && !isPaused) ? (3 + smoothedVol * 100) : 1;
+      // Waveform is completely flat (still line) when paused/stopped
+      if (!isPlaying || isPaused) {
+        setWavePath(`M ${CX - R} ${CY} L ${CX + R} ${CY}`);
+        return;
+      }
       
-      // Phase advances smoothly, speeding up slightly with louder volume for energy
-      wavePhaseRef.current += 0.10 + (smoothedVol * 0.35);
+      // Phase advances with volume — louder = more energetic motion
+      wavePhaseRef.current += 0.08 + (liveVol * 0.4);
       const phase = wavePhaseRef.current;
+      const seeds = seedRef.current;
+      
+      // Max spike amplitude scales with volume — even at low volume there is gentle ripple (min 4px)
+      const maxAmp = 4 + Math.pow(liveVol, 0.8) * 52;
+      
+      // Number of sample points across the circle diameter
+      const SAMPLES = 80;
+      const pts: string[] = [];
 
-      for (let i = 0; i <= segments; i++) {
-        const x = (i / segments) * W;
-        const envelope = Math.sin((i / segments) * Math.PI);
+      for (let i = 0; i <= SAMPLES; i++) {
+        // x ranges from left edge of circle to right edge
+        const x = (CX - R) + (i / SAMPLES) * (R * 2);
         
-        // Pure harmonic math for elegant, premium vibration
-        const wave1 = Math.sin(i * 0.25 - phase);
-        const wave2 = Math.cos(i * 0.60 + phase * 1.3) * 0.45;
-        // Detail waves that emerge dynamically as the sound swells
-        const wave3 = Math.sin(i * 1.8 - phase * 2.2) * (0.35 * smoothedVol);
+        // How far this x is from center (0 = edge, 1 = center)
+        const normX = (x - CX) / R; // -1 to +1
+        // Bell-curve envelope: peaks in the middle, smoothly tapers to zero at the circle edge
+        const envelope = Math.max(0, 1 - normX * normX);
+        const taper = Math.pow(envelope, 0.6); // Slightly less aggressive taper for natural look
         
-        const yVal = wave1 + wave2 + wave3;
-        const y = (W / 2) + yVal * baseAmp * Math.pow(envelope, 1.2);
+        // Seed for this sample position (deterministic per sound)
+        const s0 = seeds[i % seeds.length] ?? 0.5;
+        const s1 = seeds[(i * 3 + 7) % seeds.length] ?? 0.5;
+        const s2 = seeds[(i * 7 + 13) % seeds.length] ?? 0.3;
         
+        // Spiky oscilloscope: layered harmonics with different frequencies
+        // Each sound has a different mix ratio thanks to seeds, making every sound unique
+        const h1 = Math.sin(i * 0.55 + phase * (1.0 + s0 * 0.5));        // Fundamental
+        const h2 = Math.sin(i * 1.30 + phase * (1.8 + s1 * 0.8)) * 0.5;  // 2nd harmonic
+        const h3 = Math.sin(i * 2.60 - phase * (3.2 + s2 * 1.2)) * 0.28; // 4th harmonic — spikiness
+        const h4 = Math.cos(i * 4.80 + phase * 2.1) * (0.15 * liveVol);  // High freq detail at loud
+
+        // Mix harmonics — the seed determines each sound's unique harmonic ratio
+        const mix = h1 * (0.6 + s0 * 0.4) + h2 * (0.5 + s1 * 0.3) + h3 + h4;
+        
+        const y = CY + mix * maxAmp * taper;
         pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
       }
+      
       setWavePath(pts.join(' '));
     };
     
     generateWave();
     if (isPlaying && !isPaused) {
-      // 33ms is ~30fps for premium liquid smoothness
-      interval = setInterval(generateWave, 33);
+      interval = setInterval(generateWave, 33); // 30fps for premium liquid smoothness
     }
     return () => clearInterval(interval);
-  }, [isPlaying, isPaused, getMeteringLevel]);
+  }, [isPlaying, isPaused, getMeteringLevel, sound.id]);
 
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
@@ -2651,26 +2693,44 @@ const ReelCard = memo(function ReelCard({
             pointerEvents="none"
             style={{
               position: 'absolute', width: 240, height: 240, borderRadius: 120,
-              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.7)',
+              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.75)',
             }}
           />
-          {/* Reactive Waveform */}
+          {/* Reactive Waveform — clipped inside the circle */}
           <View style={{ width: 240, height: 240, position: 'absolute' }}>
             <Svg width="100%" height="100%" viewBox="0 0 240 240">
+              <Defs>
+                <SvgClipPath id="circleClip">
+                  <SvgCircle cx={120} cy={120} r={116} />
+                </SvgClipPath>
+              </Defs>
+              {/* The outer thin ring */}
               <SvgCircle 
                 cx={120} cy={120} r={119} 
-                stroke="rgba(255,255,255,0.85)" strokeWidth={0.8} fill="none" 
+                stroke="rgba(255,255,255,0.75)" strokeWidth={0.8} fill="none" 
               />
-              {wavePath ? (
-                <Path 
-                  d={wavePath} 
-                  stroke="#FFFFFF" 
-                  strokeWidth={1} 
-                  fill="none" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                />
-              ) : null}
+              {/* Waveform clipped to circle */}
+              <G clipPath="url(#circleClip)">
+                {wavePath ? (
+                  <Path 
+                    d={wavePath} 
+                    stroke="rgba(255,255,255,0.95)"
+                    strokeWidth={1.5}
+                    fill="none" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                  />
+                ) : (
+                  // Flat baseline when no wave yet
+                  <Path
+                    d="M 2 120 L 238 120"
+                    stroke="rgba(255,255,255,0.4)"
+                    strokeWidth={1}
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                )}
+              </G>
             </Svg>
           </View>
         </TouchableOpacity>
