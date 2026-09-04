@@ -89,6 +89,10 @@ export function DailyIntentionCard() {
             <Text style={styles.homeIntentionText} numberOfLines={2}>
               "{mantra.short}"
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, opacity: 0.8 }}>
+              <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1.2 }}>SEE TODAY'S MANTRA</Text>
+              <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.6)" style={{ marginLeft: 2, marginTop: 1 }} />
+            </View>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -148,7 +152,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   transparentWhisper: {
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 32,
     width: 'auto',
     alignItems: 'center',

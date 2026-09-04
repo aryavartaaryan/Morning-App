@@ -44,6 +44,7 @@ import Svg, { Circle as SvgCircle, Ellipse as SvgEllipse, Path as SvgPath, Rect 
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import MetabolicStoryModal from '@/components/MetabolicStoryModal';
 import { LunarStoryModal } from '@/components/LunarStoryModal';
+
 import CosmicStoryModal from '@/components/CosmicStoryModal';
 import { HeroGeometricAnimation, SHAPE_MATH } from '@/components/HeroGeometricAnimation';
 import { getTodayWakeLog, getStreak, markCardShown, type WakeLogEntry, type SunriseStreak } from '@/lib/sunriseStreak';
@@ -6737,13 +6738,17 @@ const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: numbe
   const handTip = toXY(currentHour, R_HAND);
   const ticks24 = Array.from({ length: 24 }, (_, i) => i);
   const cardinalLabels = [
-    { h: 0, label: '12a' }, { h: 3, label: '3a' }, { h: 6, label: '6a' }, { h: 9, label: '9a' },
-    { h: 12, label: '12p' }, { h: 15, label: '3p' }, { h: 18, label: '6p' }, { h: 21, label: '9p' }
+    { h: 0, label: '12 AM' }, { h: 3, label: '3 AM' }, { h: 6, label: '6 AM' }, { h: 9, label: '9 AM' },
+    { h: 12, label: '12 PM' }, { h: 15, label: '3 PM' }, { h: 18, label: '6 PM' }, { h: 21, label: '9 PM' }
   ];
 
   // Prahar colors: day = amber, night = blue
   const praharColor = (id: string) => id.startsWith('p') ? '#D97706' : '#3B82F6';
 
+  const praharNames: Record<string, string> = {
+    p1: 'Morning', p2: 'Midday', p3: 'Afternoon', p4: 'Evening',
+    n1: 'Dusk', n2: 'Night', n3: 'Late Night', n4: 'Pre-Dawn'
+  };
   return (
     <Svg width={SIZE} height={SIZE}>
       {/* Background circle */}
@@ -6769,8 +6774,8 @@ const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: numbe
               opacity={0.75}
               onPress={() => onSegmentPress(ph.id)}
             />
-            <SvgText x={lblPos.x} y={lblPos.y + 3} fontSize={9} fill="rgba(255,255,255,0.9)" textAnchor="middle" fontWeight="800" onPress={() => onSegmentPress(ph.id)}>
-              {ph.id.toUpperCase()}
+            <SvgText x={lblPos.x} y={lblPos.y + 2.5} fontSize={7} fill="rgba(255,255,255,0.95)" textAnchor="middle" fontWeight="800" onPress={() => onSegmentPress(ph.id)}>
+              {praharNames[ph.id]}
             </SvgText>
           </React.Fragment>
         );
@@ -7010,7 +7015,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'NAKSHATRA — Moon Constellation', value: NAKSHATRAS[p.nakshatraIdx].name, ...PANCHANGA_INFO.NAKSHATRA }); }}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
             <PanchTile
               label="YOGA · Sun-Moon Energy"
               value={YOGAS[p.yogaIdx].name}
@@ -7025,6 +7030,8 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
               color={GOLD}
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'KARANA — Half Lunar Period', value: karanaName, ...PANCHANGA_INFO.KARANA }); }}
             />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
             <PanchTile
               label="VAAR · Planetary Day"
               value={VAARS[p.vaarIdx].vedicName}
@@ -7288,6 +7295,8 @@ function DailyTab() {
 
   const [showStory, setShowStory] = useState(false);
   const [showLunarModal, setShowLunarModal] = useState(false);
+  
+  
   const insets                              = useSafeAreaInsets();
   const { playingId: soundPlayingId, playSound }       = useSoundPlayer();
   const weatherLastFetched  = useRef<number>(0);
@@ -7852,6 +7861,10 @@ function DailyTab() {
 
 
       {/* ── Metabolic Story Modal — opens on Hero Ring tap ── */}
+      {/* {showMantraModal && (
+        <MantraModal visible={showMantraModal} onClose={() => setShowMantraModal(false)} mantra={dailyMantra} />
+      )} */}
+      
       {showLunarModal && (
         <LunarStoryModal visible={showLunarModal} onClose={() => setShowLunarModal(false)} hMoon={getMoonPhase(new Date())} />
       )}
@@ -8521,8 +8534,8 @@ const AmbientAura = ({ color }: { color: string }) => {
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -8542,31 +8555,28 @@ const AmbientAura = ({ color }: { color: string }) => {
 
   const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-100, 100] });
   const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
-  // Calming, extremely subtle opacity
-  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] });
+  // Make aura very light and transparent
+  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
 
   const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
   const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] });
+  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
   
-  // Calming dark blue breathing overlay like sleep page instead of pure black
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] });
+  // Premium deep breathing overlay
+  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {/* Sleep-page style dark calming breathing overlay */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#0f172a', opacity: breatheOpacity }]} />
+      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000', opacity: breatheOpacity }]} />
       
-      {/* Top Left Aura Blob - Using deep calming purple/blue instead of stark daytime color */}
       <Animated.View style={{
         position: 'absolute', top: '10%', left: '-20%', width: 600, height: 600, borderRadius: 300,
-        backgroundColor: '#3b0764', opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
+        backgroundColor: color, opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
       }} />
       
-      {/* Bottom Right Aura Blob */}
       <Animated.View style={{
         position: 'absolute', top: '50%', right: '-20%', width: 700, height: 700, borderRadius: 350,
-        backgroundColor: '#172554', opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
+        backgroundColor: color, opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
       }} />
     </View>
   );

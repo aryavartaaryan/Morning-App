@@ -4329,10 +4329,11 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
 
   const { height: SCREEN_H, width: W } = Dimensions.get('screen');
 
-  // Divide into up to 4 equal horizontal sliders (no titles)
+  // Divide into horizontal sliders with max 3 cards per row
   const horizontalRows = useMemo(() => {
-    const numRows = Math.min(4, sounds.length);
-    if (numRows === 0) return [];
+    if (sounds.length === 0) return [];
+    const MAX_CARDS_PER_ROW = 3;
+    const numRows = Math.ceil(sounds.length / MAX_CARDS_PER_ROW);
     const rows: typeof sounds[] = Array.from({ length: numRows }, () => []);
     sounds.forEach((s: any, i: number) => {
       rows[i % numRows].push(s);
@@ -4429,7 +4430,11 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             <ActivityIndicator color={collection.themeColor} size="large" style={{ marginTop: 40 }} />
           ) : (
             horizontalRows.map((row, rIdx) => {
-              const calmingTitles = ['Ethereal Soundscapes', 'Deep Immersion', 'Sacred Harmonies', 'Restorative Frequencies', 'Inner Stillness'];
+              const calmingTitles = [
+                'Ethereal Soundscapes', 'Deep Immersion', 'Sacred Harmonies', 
+                'Restorative Frequencies', 'Inner Stillness', 'Celestial Echoes',
+                'Timeless Resonance', 'Gentle Awakening', 'Mindful Journeys', 'Infinite Calm'
+              ];
               const volumeTitle = calmingTitles[rIdx] || `Curated Series ${rIdx + 1}`;
               
               return (

@@ -249,8 +249,16 @@ export function getVedicMonth(date: Date = new Date(), lat?: number) {
   const rashiStart = Math.floor(sunAtLastAmavasya / 30) % 12;
 
   const isAdhik = rashiStart === rashiEnd;
-  const baseMonthIdx = isAdhik ? (rashiStart + 1) % 12 : rashiEnd;
-  const baseMonth = RASHI_TO_VEDIC_MONTH[baseMonthIdx]!;
+  const amavasyantMonthIdx = isAdhik ? (rashiStart + 1) % 12 : rashiEnd;
+  
+  // Purnimanta convention: Krishna Paksha belongs to the NEXT month
+  // Most Indian festivals (like Janmashtami, Diwali) use Purnimanta month names for Krishna Paksha.
+  const isKrishna = moonAge > 14.765294; 
+  const purnimantaMonthIdx = isKrishna ? (amavasyantMonthIdx + 1) % 12 : amavasyantMonthIdx;
+  
+  const baseMonth = RASHI_TO_VEDIC_MONTH[purnimantaMonthIdx]!;
+  // Keep original index for season logic so seasons don't drift
+  const baseMonthIdx = amavasyantMonthIdx;
 
   // Shift season by 6 months if in Southern Hemisphere
   const isSouthern = typeof lat === 'number' && lat < 0;

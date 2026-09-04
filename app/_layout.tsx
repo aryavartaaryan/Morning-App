@@ -169,76 +169,82 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       pointerEvents="auto"
       style={[SS.overlay, { opacity: screenOp, transform: [{ scale: screenSc }], backgroundColor: '#020617' }]}
     >
-      {/* Absolute minimal background gradient or solid color. We'll use a very subtle radial darkness. */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#020617' }]} />
-      
-      {/* Background Video (Subtle Texture) */}
-      <Video 
-        source={require('../assets/videos/splash.mp4')}
-        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.15 }}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
-      />
-      
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.75)' }]} />
+      {/* Deep Cosmic Background */}
+      <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.85)' }]} />
 
-      {/* Center Content */}
+      {/* Center Content: The Eclipse */}
       <View style={SS.center}>
         
-        {/* Subtle Cosmic Glow — single pristine white/silver glow */}
         <Animated.View style={{
           position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
+          top: SH * 0.28,
           alignItems: 'center', justifyContent: 'center',
           opacity: titleOp,
+          transform: [{ scale: titleSc }]
         }}>
-          <View style={{
-            width: SW * 1.2, height: SW * 1.2,
-            borderRadius: SW * 0.6,
-            backgroundColor: 'rgba(255,255,255,0.02)',
-            position: 'absolute',
-          }} />
+           {/* Outer soft corona glow */}
+           <Animated.View style={{
+             position: 'absolute',
+             width: 280, height: 280, borderRadius: 140,
+             backgroundColor: 'rgba(255, 255, 255, 0.04)',
+             transform: [{ scale: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.1] }) }]
+           }} />
+           
+           {/* Inner intense corona glow */}
+           <Animated.View style={{
+             position: 'absolute',
+             width: 178, height: 178, borderRadius: 89,
+             backgroundColor: '#ffffff',
+             shadowColor: '#ffffff',
+             shadowOffset: { width: 0, height: 0 },
+             shadowOpacity: 1,
+             shadowRadius: 36,
+             transform: [{ scale: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }]
+           }} />
+
+           {/* The Dark Moon (Eclipse core) */}
+           <View style={{
+             position: 'absolute',
+             width: 174, height: 174, borderRadius: 87,
+             backgroundColor: '#020617'
+           }} />
         </Animated.View>
 
-        {/* Cosmic Geometric Animation — let it breathe cleanly without video behind it */}
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <HeroGeometricAnimation size={SW * 1.0} opacity={0.65} variant="splash" />
-        </Animated.View>
-
-        {/* Ultra Premium Brand Mark */}
-        <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
-          <Animated.Text style={{ 
-            fontSize: 48, 
+        {/* Ultra Premium Brand Mark - Positioned below the eclipse */}
+        <Animated.View style={{ 
+            position: 'absolute', 
+            bottom: SH * 0.22,
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            opacity: shimmerOp,
+            transform: [{
+              translateY: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [15, 0] })
+            }]
+        }}>
+          <Text style={{ 
+            fontSize: 44, 
             fontFamily: 'Nunito_300Light', 
             color: '#ffffff', 
-            letterSpacing: 28, 
+            letterSpacing: 24, 
             opacity: 0.95,
-            paddingLeft: 28, // Balance the high letter spacing
-            transform: [{
-              scale: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] })
-            }]
-          }}>Svara</Animated.Text>
+            paddingLeft: 24, // Balance the high letter spacing
+          }}>Svara</Text>
           
-          <Animated.Text style={{ 
-            fontSize: 11, 
-            color: '#a1a1aa', 
+          <Text style={{ 
+            fontSize: 10, 
+            color: 'rgba(255,255,255,0.4)', 
             fontFamily: 'Nunito_400Regular', 
-            letterSpacing: 18, 
+            letterSpacing: 16, 
             marginTop: 18,
-            opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.8] }),
-            paddingLeft: 18,
-            transform: [{
-              translateY: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [10, 0] })
-            }]
-          }}>THE RESONANCE</Animated.Text>
+            paddingLeft: 16,
+          }}>THE RESONANCE</Text>
         </Animated.View>
         
       </View>
       
       {/* Footer */}
-      <Animated.Text style={[SS.version, { opacity: footerOp, color: 'rgba(255,255,255,0.3)', letterSpacing: 8 }]}>Svara  ·  V 1.0</Animated.Text>
+      <Animated.Text style={[SS.version, { opacity: footerOp, color: 'rgba(255,255,255,0.15)', letterSpacing: 8 }]}>Svara  ·  V 1.0</Animated.Text>
     </Animated.View>
   );
 }
@@ -724,8 +730,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       if (soundRef.current) soundRef.current.unloadAsync();
       if (soundRef2.current) soundRef2.current.unloadAsync();
       Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1.04, duration: 1000, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+        Animated.timing(screenOp, { toValue: 0, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.04, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true })
       ]).start(() => {
         if (onFadeOutComplete) onFadeOutComplete();
       });
@@ -796,10 +802,32 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const softSkyBlue = '#bfdbfe';
   const etherealWhite = 'rgba(255,255,255,0.8)';
 
+  // Morphing Sphere Animations
+  const morphSpinAnim1 = useRef(new Animated.Value(0)).current;
+  const morphSpinAnim2 = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    Animated.loop(Animated.timing(morphSpinAnim1, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
+    Animated.loop(Animated.timing(morphSpinAnim2, { toValue: 1, duration: 18000, easing: Easing.linear, useNativeDriver: true })).start();
+  }, []);
+
+  const morphRot1 = morphSpinAnim1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const morphRot2 = morphSpinAnim2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
+
+  const sphereScale = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1.15]
+  });
+  
+  const sphereOpacity = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 1]
+  });
+
   return (
     <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
       <Image source={require('../assets/images/new-hero-bg.jpeg')} style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH }} resizeMode="cover" />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.68)' }]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.75)' }]} />
 
       {/* ── TOP ROW: Now Playing pill + Mute button ── */}
       <View style={{
@@ -858,7 +886,7 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       {/* Ambient background ethereal glow */}
       <Animated.View style={{
         position: 'absolute', width: 600, height: 600, borderRadius: 300, backgroundColor: skyBlue, top: '15%', 
-        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.08] }), 
+        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.02, 0.06] }), 
         alignSelf: 'center', 
         transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.05] }) }]
       }} />
@@ -869,88 +897,74 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
           <Animated.Text style={[DS.subTagline, { opacity: subtitleOp, marginBottom: 0, color: etherealWhite }]}>{SETUP_SUBTITLES[subtitleIdx]}</Animated.Text>
         </View>
 
-          <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
+        <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
           
           {/* Moonwater outward ripples */}
           {rippleAnims.map((anim, i) => (
             <Animated.View key={`rip-${i}`} style={{
               position: 'absolute', width: SIZE - 20, height: SIZE - 20, borderRadius: (SIZE - 20) / 2,
               borderWidth: 1, borderColor: skyBlue,
-              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.15, 0] }),
-              transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.8] }) }],
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.1, 0] }),
+              transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.6] }) }],
             }} />
           ))}
 
-          {/* === 5-layer pulsing aura (exactly like hero ring) === */}
-          <Animated.View style={{ position: 'absolute', width: SIZE + 72, height: SIZE + 72, borderRadius: (SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 52, height: SIZE + 52, borderRadius: (SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 34, height: SIZE + 34, borderRadius: (SIZE + 34) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulseAnim }], top: -17, left: -17 }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 18, height: SIZE + 18, borderRadius: (SIZE + 18) / 2, backgroundColor: 'rgba(96,165,250,0.15)', transform: [{ scale: pulseAnim }], top: -9, left: -9 }} />
-          <Animated.View style={{ position: 'absolute', width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: 'rgba(96,165,250,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
-
-          {/* === SVG arc — 3-layer glassy blue glow stroke (exactly like hero ring) === */}
-          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
-            {/* Track */}
-            <Circle cx={cx} cy={cx} r={rMain} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={6} />
-            {/* Wide outer glow stroke */}
-            <AnimatedCircle
-              cx={cx} cy={cx} r={rMain}
-              fill="none" stroke="#93c5fd" strokeWidth={6 + 16} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
-              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.14}
-            />
-            {/* Mid glow stroke */}
-            <AnimatedCircle
-              cx={cx} cy={cx} r={rMain}
-              fill="none" stroke="#7dd3fc" strokeWidth={6 + 8} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
-              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.26}
-            />
-            {/* Main crisp stroke */}
-            <AnimatedCircle
-              cx={cx} cy={cx} r={rMain}
-              fill="none" stroke="#60a5fa" strokeWidth={6} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
-              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.96}
-            />
-            {/* Inner highlight sliver */}
-            <AnimatedCircle
-              cx={cx} cy={cx} r={rMain}
-              fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="butt"
-              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
-              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.40}
-            />
-          </Svg>
-
-          {/* === Spinning outer activity arc — rotates continuously to signal active download === */}
+          {/* Morphing Sphere */}
           <Animated.View style={{
-            position: 'absolute',
-            width: SIZE + 28, height: SIZE + 28,
-            top: -14, left: -14,
-            transform: [{ rotate: spinDeg }],
+             width: 200, height: 200,
+             alignItems: 'center', justifyContent: 'center',
+             transform: [{ scale: sphereScale }],
+             opacity: sphereOpacity
           }}>
-            <Svg width={SIZE + 28} height={SIZE + 28} viewBox={`0 0 ${SIZE + 28} ${SIZE + 28}`}>
-              {/* Spinning bright arc — short 40° segment */}
-              <Circle
-                cx={(SIZE + 28) / 2} cy={(SIZE + 28) / 2} r={rMain + 14}
-                fill="none"
-                stroke="#bfdbfe"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeDasharray={`${spinArcLen} ${spinArcOffset}`}
-                strokeDashoffset={0}
-                opacity={0.7}
-              />
-            </Svg>
+            {/* Base soft glow */}
+            <View style={{ position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(96,165,250,0.15)' }} />
+            
+            {/* Fluid layer 1 */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: 180, height: 180,
+              borderRadius: 90,
+              borderTopLeftRadius: 120,
+              borderBottomRightRadius: 110,
+              overflow: 'hidden',
+              transform: [{ rotate: morphRot1 }]
+            }}>
+               <LinearGradient colors={['rgba(96,165,250,0.8)', 'rgba(56,189,248,0.2)']} style={StyleSheet.absoluteFillObject} />
+            </Animated.View>
+
+            {/* Fluid layer 2 */}
+            <Animated.View style={{
+              position: 'absolute',
+              width: 170, height: 170,
+              borderRadius: 85,
+              borderTopRightRadius: 100,
+              borderBottomLeftRadius: 95,
+              overflow: 'hidden',
+              transform: [{ rotate: morphRot2 }]
+            }}>
+               <LinearGradient colors={['rgba(147,197,253,0.9)', 'transparent']} style={StyleSheet.absoluteFillObject} />
+            </Animated.View>
+
+            {/* Glass refraction layer */}
+            <BlurView intensity={20} tint="light" style={{
+              position: 'absolute',
+              width: 160, height: 160,
+              borderRadius: 80,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.3)',
+              overflow: 'hidden'
+            }}>
+               <LinearGradient colors={['rgba(255,255,255,0.4)', 'transparent']} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={StyleSheet.absoluteFillObject} />
+            </BlurView>
           </Animated.View>
 
-          {/* Percentage Text inside the ring */}
+          {/* Percentage Text inside the sphere */}
           <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <Text style={[DS.pctNum, { textShadowColor: 'rgba(96,165,250,0.6)' }]}>{pct}</Text>
-              <Text style={[DS.pctSign, { color: '#93c5fd' }]}>%</Text>
+              <Text style={[DS.pctNum, { fontSize: 48, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }]}>{pct}</Text>
+              <Text style={[DS.pctSign, { color: '#ffffff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 }]}>%</Text>
             </View>
-            <Text style={{ color: '#60a5fa', fontSize: 11, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 5, marginTop: 4, opacity: 0.95 }}>SYNCHRONIZING</Text>
+            <Text style={{ color: '#ffffff', fontSize: 10, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 4, marginTop: 4, opacity: 0.9, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 }}>SYNCING</Text>
           </View>
         </View>
 
@@ -1865,14 +1879,14 @@ export default function RootLayout() {
           if (!cancelled) {
             setDlProgress(1);
             setDlLabel('Finalizing...');
-            // Wait a beat so the progress ring hits 100% visually
-            await new Promise(r => setTimeout(r, 400));
+            // Wait a short beat so the progress hits 100% visually
+            await new Promise(r => setTimeout(r, 100));
           }
 
           if (!cancelled) {
-            setDlLabel('Your transformation journey begins from now... Just listen Nada sounds.......✨');
-            // Pause so ring fills to 100% and user sees completion before app opens.
-            await new Promise(r => setTimeout(r, 1400));
+            setDlLabel('Your transformation journey begins from now... ✨');
+            // Brief pause before fading out to prevent hanging
+            await new Promise(r => setTimeout(r, 200));
           }
 
           // ── Both phases done — mark setup complete and clear in-progress ──
@@ -1990,8 +2004,8 @@ export default function RootLayout() {
               )}
               <BodhiNotificationListener />
 
-              {/* NADA animated splash (normal startup and after downloading) */}
-              {(phase === 'splash' || phase === 'downloading_done') && (
+              {/* NADA animated splash (normal startup only) */}
+              {phase === 'splash' && (
                 <SplashOverlay 
                   key="naad-splash" 
                   onDone={() => {
@@ -2033,7 +2047,7 @@ export default function RootLayout() {
               label={dlLabel}
               isFadingOut={phase === 'downloading_done'}
               onFadeOutComplete={async () => {
-                setPhase('splash');
+                setPhase('done');
               }}
             />
             {/* Touch blocker — prevents taps reaching the home page during setup but sits behind DownloadScreen */}
