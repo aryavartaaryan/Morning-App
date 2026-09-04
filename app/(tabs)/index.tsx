@@ -6707,15 +6707,15 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 
 // ── Premium Vedic Clock ──
 const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: number, times: any, onSegmentPress: (id: string) => void }) => {
-  const SIZE = 240;
+  const SIZE = 290;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
 
   // Three rings: outer = Prahars, middle = Muhurtas, inner = Sandhyas
-  const R_OUTER = 108; const W_OUTER = 18;
-  const R_MID   = 84;  const W_MID   = 16;
-  const R_INNER = 62;  const W_INNER = 14;
-  const R_HAND  = 44;
+  const R_OUTER = 130; const W_OUTER = 20;
+  const R_MID   = 102; const W_MID   = 18;
+  const R_INNER = 76;  const W_INNER = 16;
+  const R_HAND  = 54;
 
   const toXY = (h: number, r: number) => {
     const a = (h / 24) * 2 * Math.PI - Math.PI / 2;
@@ -6737,8 +6737,8 @@ const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: numbe
   const handTip = toXY(currentHour, R_HAND);
   const ticks24 = Array.from({ length: 24 }, (_, i) => i);
   const cardinalLabels = [
-    { h: 0, label: '0' }, { h: 6, label: '6' },
-    { h: 12, label: '12' }, { h: 18, label: '18' },
+    { h: 0, label: '12a' }, { h: 3, label: '3a' }, { h: 6, label: '6a' }, { h: 9, label: '9a' },
+    { h: 12, label: '12p' }, { h: 15, label: '3p' }, { h: 18, label: '6p' }, { h: 21, label: '9p' }
   ];
 
   // Prahar colors: day = amber, night = blue
@@ -6755,17 +6755,26 @@ const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: numbe
       <SvgCircle cx={CX} cy={CY} r={R_INNER} stroke="rgba(191,162,103,0.1)" strokeWidth={W_INNER} fill="none" />
 
       {/* ── OUTER RING: 8 Prahars ── */}
-      {times.prahars.map((ph: any) => (
-        <SvgPath
-          key={ph.id}
-          d={arc(ph.start, ph.end, R_OUTER)}
-          stroke={praharColor(ph.id)}
-          strokeWidth={W_OUTER}
-          fill="none"
-          opacity={0.75}
-          onPress={() => onSegmentPress(ph.id)}
-        />
-      ))}
+      {times.prahars.map((ph: any) => {
+        const span = ph.start > ph.end ? (ph.end + 24 - ph.start) : (ph.end - ph.start);
+        const midH = ph.start + span / 2;
+        const lblPos = toXY(midH, R_OUTER);
+        return (
+          <React.Fragment key={ph.id}>
+            <SvgPath
+              d={arc(ph.start, ph.end, R_OUTER)}
+              stroke={praharColor(ph.id)}
+              strokeWidth={W_OUTER}
+              fill="none"
+              opacity={0.75}
+              onPress={() => onSegmentPress(ph.id)}
+            />
+            <SvgText x={lblPos.x} y={lblPos.y + 3} fontSize={9} fill="rgba(255,255,255,0.9)" textAnchor="middle" fontWeight="800" onPress={() => onSegmentPress(ph.id)}>
+              {ph.id.toUpperCase()}
+            </SvgText>
+          </React.Fragment>
+        );
+      })}
 
       {/* ── MIDDLE RING: Muhurtas ── */}
       <SvgPath d={arc(times.brahma.start, times.brahma.end, R_MID)} stroke="#7C3AED" strokeWidth={W_MID} fill="none" opacity={0.9} onPress={() => onSegmentPress('brahma')} />
@@ -6948,33 +6957,22 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             </View>
           </View>
 
-          {/* Clock + Legend side by side */}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {/* Left Legend */}
-            <View style={{ flex: 1, gap: 4, paddingRight: 6 }}>
-              <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.4)', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>AUSPICIOUS</Text>
-              <LegendRow color="#7C3AED" label="Brahma Muhurta (Pre-Dawn)" active={activeSegment === 'brahma'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} />
-              <LegendRow color="#B8860B" label="Abhijit (Best Hour)" active={activeSegment === 'abhijit'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} />
-              <LegendRow color="#2563EB" label="Morning Twilight" active={activeSegment === 'prata'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('prata'); }} />
-              <LegendRow color="#CA8A04" label="Noon Twilight" active={activeSegment === 'madhya'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('madhya'); }} />
-              <LegendRow color="#EA580C" label="Evening Twilight" active={activeSegment === 'sayam'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('sayam'); }} />
-              <View style={{ height: 1, backgroundColor: BORD, marginVertical: 4 }} />
-              <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.4)', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>PRAHARS</Text>
-              <LegendRow color="#D97706" label="Day Quarters (Prahar)" active={['p1','p2','p3','p4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('p1'); }} />
-              <LegendRow color="#3B82F6" label="Night Quarters (Prahar)" active={['n1','n2','n3','n4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('n1'); }} />
-            </View>
+          {/* ── CLOCK (Centered & Enlarged) ── */}
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 12, marginBottom: 20 }}>
+            <VedicClock currentHour={currentH} times={times} onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
+          </View>
 
-            {/* Clock */}
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <VedicClock currentHour={currentH} times={times} onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
-            </View>
-
-            {/* Right Legend */}
-            <View style={{ flex: 1, gap: 4, paddingLeft: 6 }}>
-              <Text style={{ fontSize: 8, color: 'rgba(44,44,44,0.4)', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>INAUSPICIOUS</Text>
-              <LegendRow color="#9B1C2C" label="Rahu Kaal (Avoid)" active={activeSegment === 'rahu'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} />
-              <LegendRow color="#92400E" label="Yamaganda (Caution)" active={activeSegment === 'yama'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} />
-            </View>
+          {/* ── LEGEND (Wrapping Grid Below Clock) ── */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 12 }}>
+            <LegendRow color="#7C3AED" label="Brahma Muhurta (Pre-Dawn)" active={activeSegment === 'brahma'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} />
+            <LegendRow color="#B8860B" label="Abhijit (Best Hour)" active={activeSegment === 'abhijit'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} />
+            <LegendRow color="#2563EB" label="Morning Twilight" active={activeSegment === 'prata'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('prata'); }} />
+            <LegendRow color="#CA8A04" label="Noon Twilight" active={activeSegment === 'madhya'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('madhya'); }} />
+            <LegendRow color="#EA580C" label="Evening Twilight" active={activeSegment === 'sayam'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('sayam'); }} />
+            <LegendRow color="#9B1C2C" label="Rahu Kaal (Avoid)" active={activeSegment === 'rahu'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} />
+            <LegendRow color="#92400E" label="Yamaganda (Caution)" active={activeSegment === 'yama'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} />
+            <LegendRow color="#D97706" label="Day Quarters (Prahar)" active={['p1','p2','p3','p4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('p1'); }} />
+            <LegendRow color="#3B82F6" label="Night Quarters (Prahar)" active={['n1','n2','n3','n4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('n1'); }} />
           </View>
 
           {/* Active Segment Info */}
@@ -8523,53 +8521,53 @@ const AmbientAura = ({ color }: { color: string }) => {
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
     Animated.loop(
       Animated.parallel([
         Animated.sequence([
-          Animated.timing(anim1, { toValue: 1, duration: 18000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim1, { toValue: 0, duration: 18000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim1, { toValue: 1, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim1, { toValue: 0, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]),
         Animated.sequence([
-          Animated.timing(anim2, { toValue: 1, duration: 22000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0, duration: 22000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim2, { toValue: 1, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim2, { toValue: 0, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ]),
       ])
     ).start();
   }, []);
 
-  const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-150, 150] });
-  const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
-  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.20] });
+  const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-100, 100] });
+  const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
+  // Calming, extremely subtle opacity
+  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] });
 
-  const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [150, -150] });
-  const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.9] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.20] });
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.55] });
+  const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
+  const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
+  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.03, 0.12] });
+  
+  // Calming dark blue breathing overlay like sleep page instead of pure black
+  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] });
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {/* Premium Breathing Dark Overlay */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: breatheOpacity }]} />
+      {/* Sleep-page style dark calming breathing overlay */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#0f172a', opacity: breatheOpacity }]} />
       
-      {/* Top Left Aura Blob */}
+      {/* Top Left Aura Blob - Using deep calming purple/blue instead of stark daytime color */}
       <Animated.View style={{
-        position: 'absolute', top: '10%', left: '-40%', width: 800, height: 800, borderRadius: 400,
-        backgroundColor: color, opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
+        position: 'absolute', top: '10%', left: '-20%', width: 600, height: 600, borderRadius: 300,
+        backgroundColor: '#3b0764', opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
       }} />
       
       {/* Bottom Right Aura Blob */}
       <Animated.View style={{
-        position: 'absolute', top: '45%', right: '-40%', width: 900, height: 900, borderRadius: 450,
-        backgroundColor: color, opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
+        position: 'absolute', top: '50%', right: '-20%', width: 700, height: 700, borderRadius: 350,
+        backgroundColor: '#172554', opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
       }} />
-      
-      {/* Universal Soft Tint */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: color, opacity: 0.04 }]} />
     </View>
   );
 };

@@ -4205,7 +4205,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
   const finalSource = imgLoadFailed ? (rawUri ? { uri: rawUri } : undefined) : imgSource;
 
   const cardW = cardWidth ?? Math.floor(W * 0.48);
-  const cardH = Math.round(cardW * 0.88); // Same aspect ratio as collection cards
+  const cardH = cardW; // Perfectly square as requested
 
   // Waveform bars for playing state
   const wBar1 = useRef(new Animated.Value(3)).current;
@@ -4238,87 +4238,69 @@ const TherapySoundCard = memo(function TherapySoundCard({
   return (
     <Animated.View style={{ width: cardW, transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} activeOpacity={0.9} style={{ flex: 1 }}>
-      <View style={{
-        width: cardW, height: cardH, borderRadius: 24, overflow: 'hidden',
-        borderWidth: isPlaying ? 1.5 : 1,
-        borderColor: isPlaying ? themeColor + 'CC' : 'rgba(255,255,255,0.2)',
-        backgroundColor: themeColor + '20',
-        shadowColor: themeColor,
-        shadowOffset: { width: 0, height: isPlaying ? 8 : 4 },
-        shadowOpacity: isPlaying ? 0.7 : 0.4,
-        shadowRadius: isPlaying ? 28 : 20,
-        elevation: isPlaying ? 14 : 8,
-      }}>
-        {finalSource && (
-          <Image source={finalSource} style={{ width: '100%', height: '100%', position: 'absolute' }}
-            resizeMode="cover" onError={() => setImgLoadFailed(true)} />
-        )}
-        
-        {/* Subtle color overlay */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor, opacity: isPlaying ? 0.18 : 0.1 }]} pointerEvents="none" />
-        
-        {!isPlaying && (
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}>
-            <View style={{ overflow: 'hidden', borderRadius: 30 }}>
-              <BlurView intensity={50} tint="light" style={{
-                flexDirection: 'row', alignItems: 'center', gap: 7,
-                paddingHorizontal: 16, paddingVertical: 10,
-                borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)',
-              }}>
-                <Ionicons name="play" size={13} color="#fff" style={{ marginLeft: 2 }} />
-                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Play</Text>
+        <View style={{
+          width: cardW, height: cardH, borderRadius: 0, overflow: 'hidden',
+          borderWidth: isPlaying ? 1.5 : 1,
+          borderColor: isPlaying ? themeColor + 'CC' : 'rgba(255,255,255,0.2)',
+          backgroundColor: themeColor + '20',
+          shadowColor: themeColor,
+          shadowOffset: { width: 0, height: isPlaying ? 8 : 4 },
+          shadowOpacity: isPlaying ? 0.7 : 0.4,
+          shadowRadius: isPlaying ? 28 : 20,
+          elevation: isPlaying ? 14 : 8,
+        }}>
+          {finalSource && (
+            <Image source={finalSource} style={{ width: '100%', height: '100%', position: 'absolute' }}
+              resizeMode="cover" onError={() => setImgLoadFailed(true)} />
+          )}
+          
+          {/* Subtle color overlay */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor, opacity: isPlaying ? 0.18 : 0.1 }]} pointerEvents="none" />
+          
+          {!isPlaying && (
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}>
+              <View style={{ overflow: 'hidden', borderRadius: 30 }}>
+                <BlurView intensity={50} tint="light" style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 7,
+                  paddingHorizontal: 16, paddingVertical: 10,
+                  borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)',
+                }}>
+                  <Ionicons name="play" size={13} color="#fff" style={{ marginLeft: 2 }} />
+                  <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Play</Text>
+                </BlurView>
+              </View>
+            </View>
+          )}
+
+          {/* Premium NOW PLAYING badge in top-right */}
+          {isPlaying && (
+            <View style={{ position: 'absolute', top: 10, right: 10, overflow: 'hidden', borderRadius: 12 }}>
+              <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, gap: 5 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 12 }}>
+                  {[wBar1, wBar2, wBar3].map((b, i) => (
+                    <Animated.View key={i} style={{ width: 2.5, height: b, borderRadius: 2, backgroundColor: themeColor }} />
+                  ))}
+                </View>
+                <Text style={{ fontSize: 8, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
               </BlurView>
             </View>
-          </View>
-        )}
-
-        {/* Premium NOW PLAYING badge in top-right */}
-        {isPlaying && (
-          <View style={{ position: 'absolute', top: 10, right: 10, overflow: 'hidden', borderRadius: 12 }}>
-            <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, gap: 5 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 12 }}>
-                {[wBar1, wBar2, wBar3].map((b, i) => (
-                  <Animated.View key={i} style={{ width: 2.5, height: b, borderRadius: 2, backgroundColor: themeColor }} />
-                ))}
-              </View>
-              <Text style={{ fontSize: 8, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
-            </BlurView>
-          </View>
-        )}
-
-        {/* Glass Text Plate matching Collection cards */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
-          <BlurView intensity={35} tint="dark" style={{ padding: 12, paddingTop: 16 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                color: '#fff',
-                fontFamily: 'DancingScript_600SemiBold',
-                lineHeight: 20,
-                letterSpacing: 0.5,
-                marginBottom: 4,
-                textShadowColor: 'rgba(0,0,0,0.5)',
-                textShadowRadius: 4,
-              }}>
-              {sound.label}
-            </Text>
-            {sound.desc && (
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 9,
-                  color: isPlaying ? themeColor + 'EE' : 'rgba(255,255,255,0.7)',
-                  fontFamily: 'Nunito_700Bold',
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                }}>
-                {sound.desc}
-              </Text>
-            )}
-          </BlurView>
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
+
+        {/* Text Area Below Image */}
+        <View style={{ marginTop: 12, paddingHorizontal: 2 }}>
+          <Text
+            style={{ fontSize: 13, color: '#ffffff', fontFamily: 'Nunito_700Bold', lineHeight: 18, letterSpacing: 0.3 }}
+            numberOfLines={2}
+          >{sound.label}</Text>
+          {sound.desc && (
+            <Text
+              style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4, letterSpacing: 0.2, fontFamily: 'Nunito_400Regular', lineHeight: 15 }}
+              numberOfLines={2}
+            >{sound.desc}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 });
@@ -4447,8 +4429,8 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             <ActivityIndicator color={collection.themeColor} size="large" style={{ marginTop: 40 }} />
           ) : (
             horizontalRows.map((row, rIdx) => {
-              const romanNums = ['I', 'II', 'III', 'IV', 'V'];
-              const volumeTitle = `Volume ${romanNums[rIdx] || (rIdx + 1)}`;
+              const calmingTitles = ['Ethereal Soundscapes', 'Deep Immersion', 'Sacred Harmonies', 'Restorative Frequencies', 'Inner Stillness'];
+              const volumeTitle = calmingTitles[rIdx] || `Curated Series ${rIdx + 1}`;
               
               return (
                 <View key={rIdx} style={{ marginBottom: 32 }}>
@@ -4466,6 +4448,9 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
                     decelerationRate="normal"
+                    bounces={true}
+                    alwaysBounceHorizontal={true}
+                    nestedScrollEnabled={true}
                   >
                     {row.map((sound: any) => (
                       <TherapySoundCard
