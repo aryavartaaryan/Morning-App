@@ -4329,10 +4329,10 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
 
   const { height: SCREEN_H, width: W } = Dimensions.get('screen');
 
-  // Divide into horizontal sliders with max 3 cards per row
+  // Divide into horizontal sliders with max 5 cards per row
   const horizontalRows = useMemo(() => {
     if (sounds.length === 0) return [];
-    const MAX_CARDS_PER_ROW = 3;
+    const MAX_CARDS_PER_ROW = 5;
     const numRows = Math.ceil(sounds.length / MAX_CARDS_PER_ROW);
     const rows: typeof sounds[] = Array.from({ length: numRows }, () => []);
     sounds.forEach((s: any, i: number) => {
@@ -4452,10 +4452,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     horizontal 
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
-                    decelerationRate="normal"
-                    bounces={true}
-                    alwaysBounceHorizontal={true}
-                    nestedScrollEnabled={true}
                   >
                     {row.map((sound: any) => (
                       <TherapySoundCard

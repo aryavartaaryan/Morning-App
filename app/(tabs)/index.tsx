@@ -480,7 +480,7 @@ function FestivalDetailModal({ festival, onClose }: { festival: Festival; onClos
 }
 
 // ── Panchang Card ─────────────────────────────────────────────────────────
-function PanchangCard({ onExplore, onShowCalendar }: { onExplore: () => void; onShowCalendar?: () => void }) {
+function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () => void; onShowCalendar?: () => void; weather?: any }) {
   const [expanded, setExpanded] = React.useState(false);
   const [showCalendar, setShowCalendar] = React.useState(false);
   const [activeFestDetail, setActiveFestDetail] = React.useState<Festival | null>(null);
@@ -687,7 +687,7 @@ function PanchangCard({ onExplore, onShowCalendar }: { onExplore: () => void; on
         </View>
       </View>
     </TouchableOpacity>
-    {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} />}
+    {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon} />}
     {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)} />}
     </>
   );
@@ -944,7 +944,7 @@ function ExtendedForecastModal({ daily, onClose }: { daily: DailyPoint[]; onClos
 }
 
 // ── Vedic Calendar Modal (Grid) ────────────────────────────────────────────────────
-function VedicCalendarModal({ onClose }: { onClose: () => void }) {
+function VedicCalendarModal({ onClose, userLat, userLon }: { onClose: () => void; userLat?: number; userLon?: number }) {
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
   const [currentMonthDate, setCurrentMonthDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -960,6 +960,21 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   }, []);
   
   const festivals = React.useMemo(() => getYearlyFestivals(currentYear), [currentYear]);
+
+  // ── Udaya Tithi helper ───────────────────────────────────────────────────
+  // Returns a Date object set to the actual astronomical Sunrise of the given
+  // calendar date, using the user's GPS lat/lon. If no location available,
+  // falls back to the solar computation default (12°N 77°E ≈ South India midpoint).
+  const getSunriseDate = React.useCallback((date: Date): Date => {
+    const lat = userLat ?? 20.5937;   // fallback: centre of India
+    const lon = userLon ?? 78.9629;
+    const solar = getSolarTimes(lat, lon, date);
+    // solar.sunrise is a decimal hour in LOCAL time, e.g. 6.25 = 6:15 AM
+    const sunriseH  = Math.floor(solar.sunrise);
+    const sunriseM  = Math.round((solar.sunrise - sunriseH) * 60);
+    const sunriseDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), sunriseH, sunriseM, 0);
+    return sunriseDate;
+  }, [userLat, userLon]);
   const monthsData = React.useMemo(() => Array.from({length: 12}, (_, i) => new Date(currentYear, i, 1)), [currentYear]);
   
   React.useEffect(() => {
@@ -996,7 +1011,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
     const days = Array(firstDayOfWeek).fill(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i, 6)); // Set to 6 AM for accurate Udaya Tithi
 
     return (
       <TouchableOpacity 
@@ -1049,13 +1064,13 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
     );
   };
 
-  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void }) => {
+  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect, getSunriseDate: getSD }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void, getSunriseDate: (d: Date) => Date }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
     
     const days = [];
     for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i));
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i, 6)); // Set to 6 AM for accurate Udaya Tithi
 
     const mName = monthDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
     const vName = getVedicMonth(monthDate).name;
@@ -1088,7 +1103,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
             const isSelected = date.getDate() === selDate.getDate() && date.getMonth() === selDate.getMonth() && date.getFullYear() === selDate.getFullYear();
             const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
             const isSunday = date.getDay() === 0;
-            const dayPanchang = getPanchangData(date);
+            const dayPanchang = getPanchangData(getSD(date)); // ← Udaya Tithi: evaluated at actual sunrise
             const tithiShort = dayPanchang.tithiName.substring(0, 4);
             const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
             
@@ -1123,7 +1138,7 @@ function VedicCalendarModal({ onClose }: { onClose: () => void }) {
   };
 
   const renderMonth = ({ item: monthDate }: { item: Date }) => {
-    return <MonthGrid monthDate={monthDate} festivalsData={festivals} selDate={selectedDate} onDateSelect={setSelectedDate} />;
+    return <MonthGrid monthDate={monthDate} festivalsData={festivals} selDate={selectedDate} onDateSelect={setSelectedDate} getSunriseDate={getSunriseDate} />;
   };
 
   const mFests = festivals.filter(f => f.date.getMonth() === currentMonthDate.getMonth());
@@ -6706,119 +6721,217 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 // Vedic Almanac Dashboard — ETHEREAL LIGHT (OPTION 3)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Premium Vedic Clock ──
-const VedicClock = ({ currentHour, times, onSegmentPress }: { currentHour: number, times: any, onSegmentPress: (id: string) => void }) => {
-  const SIZE = 290;
+// ── Premium Vedic Clock — Masterpiece Redesign ──
+// Outer ring: 24‑hour modern time track with AM/PM labels
+// Second ring: 8 Prahars (Sanskrit names + English)
+// Third ring: Muhurtas & Kaals (auspicious / inauspicious)
+// Inner ring: 3 Sandhyas (meditation junctions)
+// Centre: Analog hand + live digital time
+
+const VedicClock = ({ currentHour, times, activeId, onSegmentPress }: {
+  currentHour: number; times: any; activeId: string; onSegmentPress: (id: string) => void;
+}) => {
+  const SIZE = 300;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
 
-  // Three rings: outer = Prahars, middle = Muhurtas, inner = Sandhyas
-  const R_OUTER = 130; const W_OUTER = 20;
-  const R_MID   = 102; const W_MID   = 18;
-  const R_INNER = 76;  const W_INNER = 16;
-  const R_HAND  = 54;
+  // Ring radii & widths — nicely spaced
+  const R_TIME    = 138; const W_TIME    = 14;  // outermost: 24-h time track
+  const R_PRAHAR  = 118; const W_PRAHAR  = 20;  // 2nd: prahars
+  const R_MUHURT  = 92;  const W_MUHURT  = 18;  // 3rd: muhurtas / kaals
+  const R_SANDHY  = 68;  const W_SANDHY  = 14;  // innermost: sandhyas
+  const R_HAND    = 50;                          // clock hand length
 
   const toXY = (h: number, r: number) => {
     const a = (h / 24) * 2 * Math.PI - Math.PI / 2;
     return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
   };
 
-  const arc = (s: number, e: number, r: number) => {
+  // Arc path helper — with small gap at ends
+  const arc = (s: number, e: number, r: number, gap = 0.12) => {
     let end = e < s ? e + 24 : e;
     const span = end - s;
     if (span <= 0) return '';
-    // Pad slightly inward to leave gap between segments
-    const GAP = 0.15;
-    const p1 = toXY(s + GAP, r);
-    const p2 = toXY(end - GAP, r);
+    const p1 = toXY(s + gap, r);
+    const p2 = toXY(end - gap, r);
     const large = span > 12 ? 1 : 0;
     return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   };
 
-  const handTip = toXY(currentHour, R_HAND);
-  const ticks24 = Array.from({ length: 24 }, (_, i) => i);
-  const cardinalLabels = [
-    { h: 0, label: '12 AM' }, { h: 3, label: '3 AM' }, { h: 6, label: '6 AM' }, { h: 9, label: '9 AM' },
-    { h: 12, label: '12 PM' }, { h: 15, label: '3 PM' }, { h: 18, label: '6 PM' }, { h: 21, label: '9 PM' }
+  const handTip  = toXY(currentHour, R_HAND);
+
+  // 24 tick marks on outer rim
+  const ticks = Array.from({ length: 24 }, (_, i) => i);
+
+  // Time labels every 3 hours (8 labels)
+  const timeLabels = [
+    { h: 0, label: '12AM' }, { h: 3, label: '3AM' },
+    { h: 6, label: '6AM'  }, { h: 9, label: '9AM' },
+    { h: 12, label: '12PM'}, { h: 15, label: '3PM' },
+    { h: 18, label: '6PM' }, { h: 21, label: '9PM' },
   ];
 
-  // Prahar colors: day = amber, night = blue
-  const praharColor = (id: string) => id.startsWith('p') ? '#D97706' : '#3B82F6';
-
-  const praharNames: Record<string, string> = {
-    p1: 'Morning', p2: 'Midday', p3: 'Afternoon', p4: 'Evening',
-    n1: 'Dusk', n2: 'Night', n3: 'Late Night', n4: 'Pre-Dawn'
+  // Prahar Sanskrit names + colors
+  const praharMeta: Record<string, { name: string; en: string; color: string; textColor: string }> = {
+    p1: { name: 'Prātaḥkāla', en: 'Dawn',       color: '#F59E0B', textColor: '#78350F' },
+    p2: { name: 'Saṅgava',    en: 'Forenoon',   color: '#FBBF24', textColor: '#78350F' },
+    p3: { name: 'Madhyāhna',  en: 'Noon',       color: '#D97706', textColor: '#FFFFFF' },
+    p4: { name: 'Aparāhṇa',   en: 'Afternoon',  color: '#EA580C', textColor: '#FFFFFF' },
+    n1: { name: 'Sāyaṃkāla',  en: 'Dusk',       color: '#6366F1', textColor: '#FFFFFF' },
+    n2: { name: 'Pradoṣa',    en: 'Evening',    color: '#4F46E5', textColor: '#FFFFFF' },
+    n3: { name: 'Niśītha',    en: 'Midnight',   color: '#1E3A5F', textColor: '#93C5FD' },
+    n4: { name: 'Uṣākāla',    en: 'Pre-Dawn',   color: '#1D4ED8', textColor: '#BFDBFE' },
   };
+
+  const isActive = (id: string) => activeId === id;
+
   return (
     <Svg width={SIZE} height={SIZE}>
-      {/* Background circle */}
-      <SvgCircle cx={CX} cy={CY} r={R_OUTER + W_OUTER / 2 + 4} fill="#FDFBF7" />
+      {/* ── BACKGROUND DISC ── */}
+      <SvgCircle cx={CX} cy={CY} r={R_TIME + W_TIME / 2 + 6} fill="#FDFAF5" />
+      <SvgCircle cx={CX} cy={CY} r={R_TIME + W_TIME / 2 + 6} fill="none" stroke="rgba(191,162,103,0.15)" strokeWidth={1} />
 
-      {/* Track backgrounds */}
-      <SvgCircle cx={CX} cy={CY} r={R_OUTER} stroke="rgba(191,162,103,0.1)" strokeWidth={W_OUTER} fill="none" />
-      <SvgCircle cx={CX} cy={CY} r={R_MID}   stroke="rgba(191,162,103,0.1)" strokeWidth={W_MID}   fill="none" />
-      <SvgCircle cx={CX} cy={CY} r={R_INNER} stroke="rgba(191,162,103,0.1)" strokeWidth={W_INNER} fill="none" />
+      {/* ── TRACK BACKGROUNDS ── */}
+      <SvgCircle cx={CX} cy={CY} r={R_TIME}   stroke="rgba(191,162,103,0.08)" strokeWidth={W_TIME}   fill="none" />
+      <SvgCircle cx={CX} cy={CY} r={R_PRAHAR} stroke="rgba(191,162,103,0.08)" strokeWidth={W_PRAHAR} fill="none" />
+      <SvgCircle cx={CX} cy={CY} r={R_MUHURT} stroke="rgba(191,162,103,0.08)" strokeWidth={W_MUHURT} fill="none" />
+      <SvgCircle cx={CX} cy={CY} r={R_SANDHY} stroke="rgba(191,162,103,0.08)" strokeWidth={W_SANDHY} fill="none" />
 
-      {/* ── OUTER RING: 8 Prahars ── */}
+      {/* ── OUTER RING: 24-HOUR TIME TRACK (background) ── */}
+      <SvgCircle cx={CX} cy={CY} r={R_TIME} stroke="rgba(44,44,44,0.06)" strokeWidth={W_TIME} fill="none" />
+
+      {/* Day half highlight (6AM–6PM) */}
+      <SvgPath d={arc(6, 18, R_TIME, 0)} stroke="rgba(251,191,36,0.18)" strokeWidth={W_TIME} fill="none" />
+
+      {/* ── RING 2: 8 PRAHARS ── */}
       {times.prahars.map((ph: any) => {
+        const meta = praharMeta[ph.id];
+        if (!meta) return null;
         const span = ph.start > ph.end ? (ph.end + 24 - ph.start) : (ph.end - ph.start);
         const midH = ph.start + span / 2;
-        const lblPos = toXY(midH, R_OUTER);
+        const labelPos = toXY(midH, R_PRAHAR);
+        const isAct = isActive(ph.id);
         return (
           <React.Fragment key={ph.id}>
             <SvgPath
-              d={arc(ph.start, ph.end, R_OUTER)}
-              stroke={praharColor(ph.id)}
-              strokeWidth={W_OUTER}
+              d={arc(ph.start, ph.end, R_PRAHAR)}
+              stroke={meta.color}
+              strokeWidth={W_PRAHAR}
               fill="none"
-              opacity={0.75}
+              opacity={isAct ? 1 : 0.7}
               onPress={() => onSegmentPress(ph.id)}
             />
-            <SvgText x={lblPos.x} y={lblPos.y + 2.5} fontSize={7} fill="rgba(255,255,255,0.95)" textAnchor="middle" fontWeight="800" onPress={() => onSegmentPress(ph.id)}>
-              {praharNames[ph.id]}
-            </SvgText>
+            {/* Sanskrit label — only show if span is wide enough */}
+            {span >= 2.5 && (
+              <SvgText
+                x={labelPos.x} y={labelPos.y - 4}
+                fontSize={6.5} fill={meta.textColor}
+                textAnchor="middle" fontWeight="700"
+                onPress={() => onSegmentPress(ph.id)}
+              >{meta.name}</SvgText>
+            )}
+            {span >= 2.5 && (
+              <SvgText
+                x={labelPos.x} y={labelPos.y + 6}
+                fontSize={5.5} fill={meta.textColor}
+                textAnchor="middle" fontWeight="600"
+                onPress={() => onSegmentPress(ph.id)}
+              >{meta.en}</SvgText>
+            )}
           </React.Fragment>
         );
       })}
 
-      {/* ── MIDDLE RING: Muhurtas ── */}
-      <SvgPath d={arc(times.brahma.start, times.brahma.end, R_MID)} stroke="#7C3AED" strokeWidth={W_MID} fill="none" opacity={0.9} onPress={() => onSegmentPress('brahma')} />
-      <SvgPath d={arc(times.abhijit.start, times.abhijit.end, R_MID)} stroke="#B8860B" strokeWidth={W_MID} fill="none" opacity={0.9} onPress={() => onSegmentPress('abhijit')} />
-      <SvgPath d={arc(times.rahu.start, times.rahu.end, R_MID)} stroke="#9B1C2C" strokeWidth={W_MID} fill="none" opacity={0.9} onPress={() => onSegmentPress('rahu')} />
-      <SvgPath d={arc(times.yama.start, times.yama.end, R_MID)} stroke="#92400E" strokeWidth={W_MID} fill="none" opacity={0.8} onPress={() => onSegmentPress('yama')} />
+      {/* ── RING 3: MUHURTAS & KAALS ── */}
+      {/* Brahma Muhurta — violet */}
+      <SvgPath d={arc(times.brahma.start, times.brahma.end, R_MUHURT)} stroke="#7C3AED"
+        strokeWidth={W_MUHURT} fill="none" opacity={isActive('brahma') ? 1 : 0.85}
+        onPress={() => onSegmentPress('brahma')} />
+      {/* Abhijit — gold */}
+      <SvgPath d={arc(times.abhijit.start, times.abhijit.end, R_MUHURT)} stroke="#B8860B"
+        strokeWidth={W_MUHURT} fill="none" opacity={isActive('abhijit') ? 1 : 0.85}
+        onPress={() => onSegmentPress('abhijit')} />
+      {/* Rahu Kaal — dark red */}
+      <SvgPath d={arc(times.rahu.start, times.rahu.end, R_MUHURT)} stroke="#BE123C"
+        strokeWidth={W_MUHURT} fill="none" opacity={isActive('rahu') ? 1 : 0.85}
+        onPress={() => onSegmentPress('rahu')} />
+      {/* Yamaganda — burnt */}
+      <SvgPath d={arc(times.yama.start, times.yama.end, R_MUHURT)} stroke="#92400E"
+        strokeWidth={W_MUHURT} fill="none" opacity={isActive('yama') ? 1 : 0.8}
+        onPress={() => onSegmentPress('yama')} />
 
-      {/* ── INNER RING: Three Sandhyas ── */}
-      <SvgPath d={arc(times.prata.start, times.prata.end, R_INNER)} stroke="#2563EB" strokeWidth={W_INNER} fill="none" opacity={0.9} onPress={() => onSegmentPress('prata')} />
-      <SvgPath d={arc(times.madhya.start, times.madhya.end, R_INNER)} stroke="#CA8A04" strokeWidth={W_INNER} fill="none" opacity={0.9} onPress={() => onSegmentPress('madhya')} />
-      <SvgPath d={arc(times.sayam.start, times.sayam.end, R_INNER)} stroke="#EA580C" strokeWidth={W_INNER} fill="none" opacity={0.9} onPress={() => onSegmentPress('sayam')} />
+      {/* ── RING 4: SANDHYAS ── */}
+      <SvgPath d={arc(times.prata.start, times.prata.end, R_SANDHY)} stroke="#2563EB"
+        strokeWidth={W_SANDHY} fill="none" opacity={isActive('prata') ? 1 : 0.85}
+        onPress={() => onSegmentPress('prata')} />
+      <SvgPath d={arc(times.madhya.start, times.madhya.end, R_SANDHY)} stroke="#CA8A04"
+        strokeWidth={W_SANDHY} fill="none" opacity={isActive('madhya') ? 1 : 0.85}
+        onPress={() => onSegmentPress('madhya')} />
+      <SvgPath d={arc(times.sayam.start, times.sayam.end, R_SANDHY)} stroke="#EA580C"
+        strokeWidth={W_SANDHY} fill="none" opacity={isActive('sayam') ? 1 : 0.85}
+        onPress={() => onSegmentPress('sayam')} />
 
-      {/* Tick marks */}
-      {ticks24.map(h => {
+      {/* ── TICK MARKS on outer rim ── */}
+      {ticks.map(h => {
         const isMajor = h % 6 === 0;
-        const p1 = toXY(h, R_INNER - W_INNER / 2 - 3);
-        const p2 = toXY(h, R_OUTER + W_OUTER / 2 + (isMajor ? 8 : 4));
-        return <SvgLine key={h} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={isMajor ? 'rgba(44,44,44,0.4)' : 'rgba(44,44,44,0.15)'} strokeWidth={isMajor ? 1.5 : 0.8} />;
+        const isMed   = h % 3 === 0;
+        const len = isMajor ? 10 : isMed ? 6 : 4;
+        const p1 = toXY(h, R_TIME + W_TIME / 2 + 2);
+        const p2 = toXY(h, R_TIME + W_TIME / 2 + 2 + len);
+        return (
+          <SvgLine key={h}
+            x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+            stroke={isMajor ? 'rgba(44,44,44,0.45)' : isMed ? 'rgba(44,44,44,0.25)' : 'rgba(44,44,44,0.12)'}
+            strokeWidth={isMajor ? 1.8 : 0.9}
+          />
+        );
       })}
 
-      {/* Hour labels (0, 6, 12, 18) */}
-      {cardinalLabels.map(({ h, label }) => {
-        const pos = toXY(h, R_OUTER + W_OUTER / 2 + 16);
-        return <SvgText key={h} x={pos.x} y={pos.y + 4} fontSize={11} fill="rgba(44,44,44,0.65)" textAnchor="middle" fontWeight="700">{label}</SvgText>;
+      {/* ── TIME LABELS outside outer rim ── */}
+      {timeLabels.map(({ h, label }) => {
+        const pos = toXY(h, R_TIME + W_TIME / 2 + 20);
+        return (
+          <SvgText key={h} x={pos.x} y={pos.y + 4}
+            fontSize={10} fill="rgba(44,44,44,0.7)"
+            textAnchor="middle" fontWeight="700"
+          >{label}</SvgText>
+        );
       })}
 
+      {/* ── RING LABELS (inside left arc) ── */}
+      {/* These sit on the inner white area */}
+      <SvgText x={CX} y={R_SANDHY - W_SANDHY / 2 - 6} fontSize={7} fill="rgba(44,44,44,0.3)"
+        textAnchor="middle" fontWeight="600">SANDHYA</SvgText>
+      <SvgText x={CX} y={R_MUHURT - W_MUHURT / 2 - 6} fontSize={7} fill="rgba(44,44,44,0.3)"
+        textAnchor="middle" fontWeight="600">MUHURTA</SvgText>
+      <SvgText x={CX} y={R_PRAHAR - W_PRAHAR / 2 - 5} fontSize={7} fill="rgba(44,44,44,0.3)"
+        textAnchor="middle" fontWeight="600">PRAHAR</SvgText>
+
+      {/* ── CLOCK HAND ── */}
+      {/* Shadow */}
+      <SvgLine x1={CX + 1} y1={CY + 1} x2={handTip.x + 1} y2={handTip.y + 1}
+        stroke="rgba(0,0,0,0.1)" strokeWidth={4} strokeLinecap="round" />
       {/* Hand */}
-      <SvgLine x1={CX} y1={CY} x2={handTip.x} y2={handTip.y} stroke="#6A1E2F" strokeWidth={2.5} strokeLinecap="round" />
-      <SvgCircle cx={CX} cy={CY} r={5} fill="#BFA267" />
-      <SvgCircle cx={CX} cy={CY} r={2.5} fill="#FFFFFF" />
+      <SvgLine x1={CX} y1={CY} x2={handTip.x} y2={handTip.y}
+        stroke="#6A1E2F" strokeWidth={2.5} strokeLinecap="round" />
+      {/* Gold centre */}
+      <SvgCircle cx={CX} cy={CY} r={7} fill="#BFA267" />
+      <SvgCircle cx={CX} cy={CY} r={4} fill="#FFFFFF" />
+      <SvgCircle cx={CX} cy={CY} r={1.5} fill="#BFA267" />
     </Svg>
   );
 };
 
-// ── Legend Row ──
+// ── Legend Chip ──
 const LegendRow = ({ color, label, active, onPress }: { color: string, label: string, active: boolean, onPress: () => void }) => (
-  <TouchableOpacity onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 8, borderRadius: 8, backgroundColor: active ? `${color}18` : 'transparent', borderWidth: active ? 1 : 0, borderColor: `${color}40` }}>
-    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color, marginRight: 7 }} />
-    <Text style={{ fontSize: 10, color: active ? color : 'rgba(44,44,44,0.55)', fontWeight: active ? '800' : '600', letterSpacing: 0.4 }}>{label}</Text>
+  <TouchableOpacity onPress={onPress} activeOpacity={0.75}
+    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10,
+      borderRadius: 20, backgroundColor: active ? color : 'rgba(44,44,44,0.05)',
+      borderWidth: 1, borderColor: active ? color : 'rgba(44,44,44,0.1)', flex: 1 }}>
+    <View style={{ width: 8, height: 8, borderRadius: 4,
+      backgroundColor: active ? '#FFFFFF' : color, marginRight: 6 }} />
+    <Text style={{ fontSize: 9.5, color: active ? '#FFFFFF' : 'rgba(44,44,44,0.65)',
+      fontWeight: '700', letterSpacing: 0.3, flexShrink: 1 }}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -6892,14 +7005,14 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const yamaMap = [5, 4, 3, 2, 1, 7, 6];
 
   const prahars = [
-    { id: 'p1', title: '1st Prahar — Morning (Dawn Quarter)', sub: 'Sattvic energy — ideal for prayer, study & fresh starts', start: sr, end: sr + dayP },
-    { id: 'p2', title: '2nd Prahar — Midday (Noon Quarter)',  sub: 'Peak solar power — best for work, action & meetings', start: sr + dayP, end: sr + 2 * dayP },
-    { id: 'p3', title: '3rd Prahar — Afternoon (Descending)',sub: 'Sustained effort — maintain focus and momentum', start: sr + 2 * dayP, end: sr + 3 * dayP },
-    { id: 'p4', title: '4th Prahar — Evening (Dusk Quarter)',  sub: 'Wind-down energy — reflect, connect, and ease off', start: sr + 3 * dayP, end: ss },
-    { id: 'n1', title: '5th Prahar — Dusk (Night Onset)',     sub: 'Tamasic onset — light dinner, rest preparation', start: ss, end: (ss + nightP) % 24 },
-    { id: 'n2', title: '6th Prahar — Night (Midnight Quarter)',     sub: 'Midnight stillness — deep sleep & restoration', start: (ss + nightP) % 24, end: (ss + 2 * nightP) % 24 },
-    { id: 'n3', title: '7th Prahar — Late Night (Deep Rest)',sub: 'Deep subconscious — dreamwork, processing', start: (ss + 2 * nightP) % 24, end: (ss + 3 * nightP) % 24 },
-    { id: 'n4', title: '8th Prahar — Pre-Dawn (Return to Light)', sub: 'Returning sattva — Brahma Muhurta zone, rise soon', start: (ss + 3 * nightP) % 24, end: sr },
+    { id: 'p1', title: 'Purvahna (1st Prahar)', sub: 'Sattvic energy — ideal for prayer, study & fresh starts', start: sr, end: sr + dayP },
+    { id: 'p2', title: 'Madhyahna (2nd Prahar)',  sub: 'Peak solar power — best for work, action & meetings', start: sr + dayP, end: sr + 2 * dayP },
+    { id: 'p3', title: 'Aparahna (3rd Prahar)',sub: 'Sustained effort — maintain focus and momentum', start: sr + 2 * dayP, end: sr + 3 * dayP },
+    { id: 'p4', title: 'Sayahna (4th Prahar)',  sub: 'Wind-down energy — reflect, connect, and ease off', start: sr + 3 * dayP, end: ss },
+    { id: 'n1', title: 'Pradosha (5th Prahar)',     sub: 'Tamasic onset — light dinner, rest preparation', start: ss, end: (ss + nightP) % 24 },
+    { id: 'n2', title: 'Nishitha (6th Prahar)',     sub: 'Midnight stillness — deep sleep & restoration', start: (ss + nightP) % 24, end: (ss + 2 * nightP) % 24 },
+    { id: 'n3', title: 'Triyama (7th Prahar)',sub: 'Deep subconscious — dreamwork, processing', start: (ss + 2 * nightP) % 24, end: (ss + 3 * nightP) % 24 },
+    { id: 'n4', title: 'Usha (8th Prahar)', sub: 'Returning sattva — Brahma Muhurta zone, rise soon', start: (ss + 3 * nightP) % 24, end: sr },
   ];
 
   const times = {
@@ -6962,22 +7075,69 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
             </View>
           </View>
 
-          {/* ── CLOCK (Centered & Enlarged) ── */}
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 12, marginBottom: 20 }}>
-            <VedicClock currentHour={currentH} times={times} onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
+          {/* ── CLOCK ── */}
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 4 }}>
+            <VedicClock currentHour={currentH} times={times} activeId={activeSegment}
+              onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
           </View>
 
-          {/* ── LEGEND (Wrapping Grid Below Clock) ── */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 12 }}>
-            <LegendRow color="#7C3AED" label="Brahma Muhurta (Pre-Dawn)" active={activeSegment === 'brahma'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} />
-            <LegendRow color="#B8860B" label="Abhijit (Best Hour)" active={activeSegment === 'abhijit'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} />
-            <LegendRow color="#2563EB" label="Morning Twilight" active={activeSegment === 'prata'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('prata'); }} />
-            <LegendRow color="#CA8A04" label="Noon Twilight" active={activeSegment === 'madhya'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('madhya'); }} />
-            <LegendRow color="#EA580C" label="Evening Twilight" active={activeSegment === 'sayam'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('sayam'); }} />
-            <LegendRow color="#9B1C2C" label="Rahu Kaal (Avoid)" active={activeSegment === 'rahu'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} />
-            <LegendRow color="#92400E" label="Yamaganda (Caution)" active={activeSegment === 'yama'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} />
-            <LegendRow color="#D97706" label="Day Quarters (Prahar)" active={['p1','p2','p3','p4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('p1'); }} />
-            <LegendRow color="#3B82F6" label="Night Quarters (Prahar)" active={['n1','n2','n3','n4'].includes(activeSegment)} onPress={() => { Haptics.selectionAsync(); setActiveSegment('n1'); }} />
+          {/* ── SMART RING LEGEND: 3 rows of 2 chips ── */}
+          {/* Row label: Sandhya (Meditation Junctions) */}
+          <View style={{ marginBottom: 6, marginTop: 4 }}>
+            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
+              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
+              ✦ Sandhya — Meditation Junctions
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <LegendRow color="#2563EB" label="Prāta · Morning Twilight" active={activeSegment === 'prata'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('prata'); }} />
+              <LegendRow color="#CA8A04" label="Madhyāhna · Solar Noon"  active={activeSegment === 'madhya'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('madhya'); }} />
+              <LegendRow color="#EA580C" label="Sāyam · Dusk"           active={activeSegment === 'sayam'}  onPress={() => { Haptics.selectionAsync(); setActiveSegment('sayam'); }} />
+            </View>
+          </View>
+
+          {/* Row label: Muhurta (Auspicious & Inauspicious) */}
+          <View style={{ marginBottom: 6 }}>
+            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
+              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
+              ✦ Muhurta — Auspicious & Avoid Windows
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <LegendRow color="#7C3AED" label="Brahma · Pre-Dawn" active={activeSegment === 'brahma'}  onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} />
+              <LegendRow color="#B8860B" label="Abhijit · Best Hour" active={activeSegment === 'abhijit'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 5 }}>
+              <LegendRow color="#BE123C" label="Rahu Kaal · Avoid"     active={activeSegment === 'rahu'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} />
+              <LegendRow color="#92400E" label="Yamaganda · Caution"   active={activeSegment === 'yama'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} />
+            </View>
+          </View>
+
+          {/* Row label: Prahar (8 Time Divisions) — collapsible row */}
+          <View style={{ marginBottom: 4 }}>
+            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
+              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
+              ✦ Prahar — 8 Divisions of the Day
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              {times.prahars.map((ph: any) => {
+                const praharChipMeta: Record<string, { name: string; color: string }> = {
+                  p1: { name: 'Prātaḥ · Dawn',       color: '#F59E0B' },
+                  p2: { name: 'Saṅgava · Forenoon',  color: '#FBBF24' },
+                  p3: { name: 'Madhyāhna · Noon',     color: '#D97706' },
+                  p4: { name: 'Aparāhṇa · Afternoon', color: '#EA580C' },
+                  n1: { name: 'Sāyam · Dusk',         color: '#6366F1' },
+                  n2: { name: 'Pradoṣa · Evening',    color: '#4F46E5' },
+                  n3: { name: 'Niśītha · Midnight',   color: '#1E3A5F' },
+                  n4: { name: 'Uṣā · Pre-Dawn',       color: '#1D4ED8' },
+                };
+                const meta = praharChipMeta[ph.id];
+                if (!meta) return null;
+                return (
+                  <LegendRow key={ph.id} color={meta.color} label={meta.name}
+                    active={activeSegment === ph.id}
+                    onPress={() => { Haptics.selectionAsync(); setActiveSegment(ph.id); }} />
+                );
+              })}
+            </View>
           </View>
 
           {/* Active Segment Info */}
@@ -7068,7 +7228,7 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
         </View>
       </View>
 
-      {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} />}
+      {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon} />}
 
       {/* ── Panchanga Detail Modal ── */}
       <Modal visible={!!panchangaDetail} transparent animationType="slide" onRequestClose={() => setPanchangaDetail(null)}>
@@ -7552,7 +7712,7 @@ function DailyTab() {
 
   return (
     <Animated.View style={[D.screen, { backgroundColor: accentColor, opacity: entranceAnim, transform: [{ scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1] }) }] }]}>
-      <AppBackground />
+      
       
       {/* ── Dynamic Ambient Aura (Living UI) ── */}
       <AmbientAura color={currentPeriod?.color || '#00D4B8'} />
@@ -8527,6 +8687,7 @@ const PremiumBreatheCard = ({ children, onPress }: any) => {
 
 
 const AmbientAura = ({ color }: { color: string }) => {
+  const { bgUri } = useBgContext();
   const anim1 = React.useRef(new Animated.Value(0)).current;
   const anim2 = React.useRef(new Animated.Value(0)).current;
   const breatheAnim = React.useRef(new Animated.Value(0)).current;
@@ -8534,8 +8695,8 @@ const AmbientAura = ({ color }: { color: string }) => {
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -8555,27 +8716,36 @@ const AmbientAura = ({ color }: { color: string }) => {
 
   const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-100, 100] });
   const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
-  // Make aura very light and transparent
-  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
+  // Parallax background breathing scale
+  const bgScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] });
+  
+  // Ultra premium transparent aura
+  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.08] });
 
   const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
   const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
+  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.08] });
   
-  // Premium deep breathing overlay
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
+  // Cinematic dark breathing overlay
+  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.4] });
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <Animated.Image 
+        source={bgUri ? { uri: bgUri } : undefined} 
+        style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]} 
+        resizeMode="cover" 
+      />
+      
       <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000', opacity: breatheOpacity }]} />
       
       <Animated.View style={{
-        position: 'absolute', top: '10%', left: '-20%', width: 600, height: 600, borderRadius: 300,
+        position: 'absolute', top: '5%', left: '-25%', width: 650, height: 650, borderRadius: 325,
         backgroundColor: color, opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
       }} />
       
       <Animated.View style={{
-        position: 'absolute', top: '50%', right: '-20%', width: 700, height: 700, borderRadius: 350,
+        position: 'absolute', top: '45%', right: '-25%', width: 750, height: 750, borderRadius: 375,
         backgroundColor: color, opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
       }} />
     </View>
