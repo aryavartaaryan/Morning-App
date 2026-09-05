@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const VEDIC_MANTRAS = [
   {
     sanskrit: "ॐ असतो मा सद्गमय।\nतमसो मा ज्योतिर्गमय।\nमृत्योर्मा अमृतं गमय॥",
-    transliteration: "Om asato ma sadgamaya\ntamaso ma jyotirgamaya\nmrityorma amritam gamaya",
+    transliteration: "Om asato ma sadgamaya\ntamaso ma jyotirgamaya",
     english: "Lead me from the unreal to the real. Lead me from darkness to light.",
     short: "Lead me from darkness to light",
     meaning: "This profound Upanishadic prayer is a shift in consciousness — a plea to awaken from illusion into clarity, truth, and boundless awareness. Neuroscience shows that intention-setting like this activates the prefrontal cortex, enhancing focus and reducing anxiety.",
@@ -30,7 +30,7 @@ const VEDIC_MANTRAS = [
   },
   {
     sanskrit: "ॐ भूर्भुवः स्वः।\nतत्सवितुर्वरेण्यं\nभर्गो देवस्य धीमहि।\nधियो यो नः प्रचोदयात्॥",
-    transliteration: "Om bhur bhuvah svah\ntat savitur varenyam\nbhargo devasya dhimahi",
+    transliteration: "Om bhur bhuvah svah\ntat savitur varenyam",
     english: "May the divine light illuminate our intellect and inspire our actions.",
     short: "May divine light illuminate my intellect",
     meaning: "The Gayatri Mantra invokes the Sun's energy as the source of intellectual and spiritual awakening. Research suggests chanting its specific syllables stimulates the vagus nerve, promoting calm, clarity, and inspired action.",
@@ -55,6 +55,49 @@ interface Props {
   solarTimes?: any;
 }
 
+
+const AnimatedWord = ({ word, index, delayOffset }: { word: string, index: number, delayOffset: number }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 800,
+      delay: delayOffset + (index * 120),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  return (
+    <Animated.Text style={[styles.romanText, { 
+      opacity: anim, 
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }]
+    }]}>
+      {word}{' '}
+    </Animated.Text>
+  );
+};
+
+const AnimatedMeaningWord = ({ word, index, delayOffset }: { word: string, index: number, delayOffset: number }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 800,
+      delay: delayOffset + (index * 80),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  return (
+    <Animated.Text style={[styles.englishText, { 
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }]
+    }]}>
+      {word}{' '}
+    </Animated.Text>
+  );
+};
+
 export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
   const scale = useRef(new Animated.Value(0.96)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -70,29 +113,6 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
   const dayIndex = getDayOfYear(new Date()) % VEDIC_MANTRAS.length;
   const mantra = VEDIC_MANTRAS[dayIndex];
 
-  // Compute next circadian period
-  const getNextPeriod = () => {
-    if (!currentPeriod || !solarTimes) return null;
-    try {
-      const { getDoshaPeriods } = require('@/lib/ayurvedicPeriods');
-      const nowH = new Date().getHours() + new Date().getMinutes() / 60;
-      const periods = getDoshaPeriods(solarTimes, nowH);
-      const curIdx = periods.findIndex((p: any) => p.id === currentPeriod.id);
-      if (curIdx === -1) return null;
-      return periods[(curIdx + 1) % periods.length];
-    } catch { return null; }
-  };
-
-  const nextPeriod = getNextPeriod();
-
-  const formatTime = (decHour: number) => {
-    const h = Math.floor(decHour);
-    const m = Math.round((decHour - h) * 60);
-    const ampm = h < 12 ? 'AM' : 'PM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-  };
-
   return (
     <>
       <Animated.View style={[styles.container, { transform: [{ scale }], opacity }]}>
@@ -105,34 +125,27 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
           style={styles.cardWrapper}
         >
           <BlurView intensity={50} tint="dark" style={styles.cardInner}>
-            {/* ── Circadian Period Header ── */}
-            {currentPeriod && (
-              <View style={styles.circadianRow}>
-                <View style={styles.circadianLeft}>
-                  <View style={[styles.dot, { backgroundColor: currentPeriod.color || '#4ade80' }]} />
-                  <Text style={[styles.periodLabel, { color: currentPeriod.color || '#4ade80' }]}>
-                    {currentPeriod.englishLabel?.toUpperCase()}
-                  </Text>
-                </View>
-                {nextPeriod && (
-                  <Text style={styles.nextLabel}>
-                    Next: {nextPeriod.englishLabel} · {formatTime(nextPeriod.startH)}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            <View style={styles.dividerLine} />
+            {/* ── Mantra Title ── */}
+            <View style={styles.titleRow}>
+               <View style={styles.goldDot} />
+               <Text style={styles.titleText}>TODAY'S MANTRA</Text>
+            </View>
 
             {/* ── Mantra Transliteration ── */}
-            <Text style={styles.romanText} numberOfLines={3}>
-              {mantra.transliteration}
-            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 6, paddingHorizontal: 10 }}>
+              {mantra.transliteration.replace(/\n/g, ' ').split(' ').map((word, i) => (
+                <AnimatedWord key={i} word={word} index={i} delayOffset={300} />
+              ))}
+            </View>
 
             {/* ── English Meaning ── */}
-            <Text style={styles.englishText} numberOfLines={2}>
-              "{mantra.english}"
-            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 10 }}>
+              <Text style={[styles.englishText, { marginRight: -2 }]}>"</Text>
+              {mantra.english.split(' ').map((word, i) => (
+                <AnimatedMeaningWord key={i} word={word} index={i} delayOffset={300 + (mantra.transliteration.split(' ').length * 120)} />
+              ))}
+              <Text style={[styles.englishText, { marginLeft: -4 }]}>"</Text>
+            </View>
 
             <View style={styles.affordanceRow}>
               <Text style={styles.affordanceText}>Tap to explore</Text>
@@ -203,65 +216,55 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     width: '100%',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 12, // Reduced padding (edge-to-edge)
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.18)',
     backgroundColor: 'rgba(0,0,0,0.28)',
+    alignItems: 'center', // Center everything
   },
-  circadianRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  circadianLeft: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 8,
   },
-  dot: {
+  goldDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
+    backgroundColor: '#FCD34D',
   },
-  periodLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-  },
-  nextLabel: {
+  titleText: {
     fontSize: 9,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 0.3,
-  },
-  dividerLine: {
-    height: 0.5,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    marginBottom: 12,
+    fontWeight: '800',
+    color: '#FCD34D',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   romanText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 15,
+    fontSize: 14, // Smaller font to save height
     fontWeight: '600',
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 20,
     fontStyle: 'italic',
-    marginBottom: 8,
+    
   },
   englishText: {
-    fontSize: 12,
+    fontSize: 11, // Smaller English font
     fontWeight: '400',
     color: 'rgba(255,255,255,0.6)',
-    lineHeight: 18,
+    lineHeight: 16,
     fontStyle: 'italic',
+    
   },
   affordanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
-    marginTop: 10,
+    marginTop: 8,
     opacity: 0.7,
   },
   affordanceText: {

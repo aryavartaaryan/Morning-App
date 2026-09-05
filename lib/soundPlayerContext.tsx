@@ -190,23 +190,23 @@ export function SoundPlayerProvider({ children }: { children: ReactNode }) {
             await preBuffered.setStatusAsync({
               isLooping: !noLoopRef.current, shouldPlay: !isPausedRef.current,
               volume: globalVolumeRef.current,
-              // Increase interval to 1000ms — reduces JS thread callback frequency
-              progressUpdateIntervalMillis: 200, isMeteringEnabled: true,
+              // Lightning fast interval (50ms) so the visualizer is perfectly synced with the actual audio
+              progressUpdateIntervalMillis: 50, isMeteringEnabled: true,
               positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0,
             } as any);
             sound = preBuffered;
           } catch {
             try { await preBuffered.unloadAsync(); } catch {}
-            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 200, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
+            const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 50, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
             sound = r.sound;
           }
         } else {
           try { await preBuffered.unloadAsync(); } catch {}
-          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 200, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
+          const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 50, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
           sound = r.sound;
         }
       } else {
-        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 200, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
+        const r = await Audio.Sound.createAsync(resolvedSrc, { isLooping: !noLoopRef.current, volume: globalVolumeRef.current, shouldPlay: !isPausedRef.current, progressUpdateIntervalMillis: 50, isMeteringEnabled: true, positionMillis: meta.id === 'med_vishnu_sahasranamam' ? 5700 : 0 } as any);
         sound = r.sound;
       }
       if (epoch !== undefined && epoch !== playEpochRef.current) {

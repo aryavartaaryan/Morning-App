@@ -2366,8 +2366,14 @@ const ReelCard = memo(function ReelCard({
       
       const targetVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
       
-      // Smooth lerp towards target — masks 200ms audio engine gaps
-      currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.18;
+      // Buttery smooth lerping with Attack/Release envelope for perfect sync
+      // Fast attack makes it instantly responsive to loud sounds, slow release makes it feel natural
+      if (targetVol > currentRenderVolRef.current) {
+        currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.8; // Fast attack (punchy)
+      } else {
+        currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.1; // Slow decay (smooth)
+      }
+      
       const liveVol = currentRenderVolRef.current;
       
       // Waveform is completely flat (still line) when paused/stopped
@@ -2376,13 +2382,15 @@ const ReelCard = memo(function ReelCard({
         return;
       }
       
-      // Phase advances with volume — louder = more energetic motion
-      wavePhaseRef.current += 0.08 + (liveVol * 0.4);
+      // Phase gently drifts to give it life, but DOES NOT rush sideways.
+      // Stationary peaks that only jump vertically look infinitely more synced and realistic.
+      wavePhaseRef.current += 0.015;
       const phase = wavePhaseRef.current;
       const seeds = seedRef.current;
       
-      // Max spike amplitude scales with volume — even at low volume there is gentle ripple (min 4px)
-      const maxAmp = 4 + Math.pow(liveVol, 0.8) * 52;
+      // Max spike amplitude scales with volume — huge multiplier so it fills the circle!
+      // R is 118, so an amplitude of 115 pushes it almost to the absolute edge.
+      const maxAmp = 2 + Math.pow(liveVol, 0.7) * 115;
       
       // Number of sample points across the circle diameter
       const SAMPLES = 80;
