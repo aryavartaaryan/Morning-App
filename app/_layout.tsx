@@ -626,6 +626,10 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const rippleAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   // Continuously spinning arc to show the ring is actively downloading
   const spinAnim = useRef(new Animated.Value(0)).current;
+  const waveAnim1 = useRef(new Animated.Value(4)).current;
+  const waveAnim2 = useRef(new Animated.Value(10)).current;
+  const waveAnim3 = useRef(new Animated.Value(6)).current;
+  const waveAnim4 = useRef(new Animated.Value(12)).current;
 
   useEffect(() => {
     // Pulse core glow (slow, deep breathing)
@@ -652,6 +656,20 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       Animated.timing(spinAnim, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true })
     ).start();
 
+    // Wave animations
+    const animateWave = (anim: Animated.Value, min: number, max: number, delay: number) => {
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(Animated.sequence([
+          Animated.timing(anim, { toValue: max, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(anim, { toValue: min, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: false })
+        ]))
+      ]).start();
+    };
+    animateWave(waveAnim1, 4, 12, 0);
+    animateWave(waveAnim2, 6, 16, 100);
+    animateWave(waveAnim3, 4, 10, 200);
+    animateWave(waveAnim4, 8, 14, 300);
 
     // Subtitle fade-cycle (slower fades)
     const cycleSubtitle = () => {
@@ -724,8 +742,8 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
       if (soundRef.current) soundRef.current.unloadAsync();
       if (soundRef2.current) soundRef2.current.unloadAsync();
       Animated.parallel([
-        Animated.timing(screenOp, { toValue: 0, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1.04, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+        Animated.timing(screenOp, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.04, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true })
       ]).start(() => {
         if (onFadeOutComplete) onFadeOutComplete();
       });
@@ -796,141 +814,116 @@ function DownloadScreen({ progress, label, error, onRetry, isFadingOut, onFadeOu
   const softSkyBlue = '#bfdbfe';
   const etherealWhite = 'rgba(255,255,255,0.8)';
 
-  // Morphing Sphere Animations
-  const morphSpinAnim1 = useRef(new Animated.Value(0)).current;
-  const morphSpinAnim2 = useRef(new Animated.Value(0)).current;
-  
-  useEffect(() => {
-    Animated.loop(Animated.timing(morphSpinAnim1, { toValue: 1, duration: 12000, easing: Easing.linear, useNativeDriver: true })).start();
-    Animated.loop(Animated.timing(morphSpinAnim2, { toValue: 1, duration: 18000, easing: Easing.linear, useNativeDriver: true })).start();
-  }, []);
-
-  const morphRot1 = morphSpinAnim1.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const morphRot2 = morphSpinAnim2.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
-
-  const sphereScale = animatedProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.85, 1.15]
-  });
-  
-  const sphereOpacity = animatedProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.4, 1]
-  });
-
   return (
-    <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[StyleSheet.absoluteFill, { opacity: screenOp, transform: [{ scale: scaleAnim }], backgroundColor: '#000000' }]}>
-      
-      {/* ── TOP ROW: Now Playing pill + Mute button ── */}
+    <Animated.View pointerEvents={isFadingOut ? "none" : "auto"} style={[DS.screen, { opacity: screenOp, transform: [{ scale: scaleAnim }] }]}>
+      {/* Remove heavy background image, use pure black / deep slate gradient */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000' }]} />
+      {/* Subtle radial gradient layer */}
+      <View style={[StyleSheet.absoluteFillObject, { 
+        backgroundColor: 'rgba(30, 41, 59, 0.4)', 
+        opacity: 0.8
+      }]} />
+
+      {/* ── TOP ROW: Minimal Brand & Now Playing ── */}
       <View style={{
         position: 'absolute',
-        top: 56,
-        left: 20,
-        right: 20,
+        top: 64,
+        left: 28,
+        right: 28,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         zIndex: 10,
       }}>
-        {/* Now Playing pill */}
+        <Text style={{ fontFamily: 'Nunito_300Light', fontSize: 24, letterSpacing: 4, color: '#e2e8f0' }}>SVARA</Text>
+        
         <View style={{
-          flex: 1,
           flexDirection: 'row',
-          alignItems: 'flex-start',
-          backgroundColor: 'rgba(255,255,255,0.05)',
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          borderRadius: 20,
+          alignItems: 'center',
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 30,
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.08)',
-          marginRight: 12,
+          borderColor: 'rgba(255,255,255,0.05)',
         }}>
-          <Ionicons name="musical-notes-outline" size={13} color="#93c5fd" style={{ marginRight: 10, opacity: 0.85, marginTop: 1 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Nunito_400Regular', fontSize: 10, letterSpacing: 0.4, marginBottom: 2 }}>
-              Playing <Text style={{ color: 'rgba(255,255,255,0.95)', fontFamily: 'Nunito_700Bold' }}>Nada (Cosmic Sound)</Text>
-            </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_400Regular', fontSize: 9, lineHeight: 13 }}>
-              Nada means "Sound". The universe resonates in two forms: Ahat (struck) and Anahata (unstruck). Heal and harmonize with the cosmic vibration of Nada.
-            </Text>
+          {/* Animated sound wave dots */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', height: 12, marginRight: 12 }}>
+            <Animated.View style={{ width: 2, height: waveAnim1, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 1, marginHorizontal: 1 }} />
+            <Animated.View style={{ width: 2, height: waveAnim2, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 1, marginHorizontal: 1 }} />
+            <Animated.View style={{ width: 2, height: waveAnim3, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 1, marginHorizontal: 1 }} />
+            <Animated.View style={{ width: 2, height: waveAnim4, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 1, marginHorizontal: 1 }} />
+          </View>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'Nunito_300Light', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' }}>
+            Cosmic Resonance
+          </Text>
+        </View>
+      </View>
+
+      <View style={DS.center}>
+          <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: 40, marginTop: 40 }}>
+          
+          {/* Ambient breathe glow */}
+          <Animated.View style={{ 
+            position: 'absolute', 
+            width: SIZE - 20, 
+            height: SIZE - 20, 
+            borderRadius: (SIZE - 20) / 2, 
+            backgroundColor: 'rgba(226, 232, 240, 0.05)', 
+            transform: [{ scale: pulseAnim }], 
+          }} />
+
+          {/* === SVG arc — Ultra-thin premium silver ring === */}
+          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: 'absolute' }}>
+            {/* Thin invisible track */}
+            <Circle cx={cx} cy={cx} r={rMain} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={2} />
+            
+            {/* Elegant silver/metallic stroke */}
+            <AnimatedCircle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#94a3b8" strokeWidth={3} strokeLinecap="round"
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={0.9}
+            />
+            {/* Subtle glow stroke */}
+            <AnimatedCircle
+              cx={cx} cy={cx} r={rMain}
+              fill="none" stroke="#ffffff" strokeWidth={1.5} strokeLinecap="round"
+              strokeDasharray={String(cMain)} strokeDashoffset={offsetMainAnim}
+              transform={`rotate(-90, ${cx}, ${cx})`} opacity={1}
+            />
+          </Svg>
+
+          {/* Percentage Text inside the ring */}
+          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <Text style={DS.pctNum}>{pct}</Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'Nunito_400Regular', letterSpacing: 6, marginTop: 12, textTransform: 'uppercase' }}>CURATING</Text>
           </View>
         </View>
 
-        {/* Mute button */}
-        <TouchableOpacity
-          onPress={toggleMute}
-          activeOpacity={0.7}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: isMuted ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.06)',
-            borderWidth: 1,
-            borderColor: isMuted ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={17} color={isMuted ? "#93c5fd" : "rgba(255,255,255,0.75)"} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
-        {/* Title */}
-        <Text style={{ fontSize: 32, fontFamily: 'Nunito_300Light', color: '#ffffff', letterSpacing: 10, marginBottom: 8 }}>SVARA</Text>
-        <Text style={{ fontSize: 14, fontFamily: 'Nunito_400Regular', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 50 }}>Setup</Text>
-
-        {/* 3D Sphere Asset */}
-        <Animated.Image 
-          source={require('../assets/images/setup_sphere.jpg')} 
-          style={{
-            width: SW * 0.85,
-            height: SW * 0.85,
-            resizeMode: 'contain',
-            transform: [{ scale: sphereScale }],
-            opacity: sphereOpacity
-          }}
-        />
-
-        {/* Status Text */}
-        <View style={{ marginTop: 50, alignItems: 'center', paddingHorizontal: 40 }}>
-          <Text style={{ fontSize: 24, fontFamily: 'Nunito_600SemiBold', color: '#ffffff', textAlign: 'center', marginBottom: 14 }}>
-            Setting Up Your Experience
-          </Text>
-          <Text style={{ fontSize: 14, fontFamily: 'Nunito_400Regular', color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 22 }}>
-            Please wait while we personalize your secure wellness landscape.
-          </Text>
+        {/* Elegant Subtitle Quote */}
+        <View style={{ height: 80, justifyContent: 'center', marginVertical: 30, paddingHorizontal: 40 }}>
+          <Animated.Text style={[DS.subTagline, { opacity: subtitleOp }]}>"{SETUP_SUBTITLES[subtitleIdx]}"</Animated.Text>
         </View>
-      </View>
 
-      {/* Progress Bulb at Bottom */}
-      <View style={{ position: 'absolute', bottom: 60, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 12, fontFamily: 'Nunito_400Regular', color: 'rgba(255,255,255,0.4)', marginRight: 12 }}>
-          {label}
-        </Text>
-        {/* Glowing Bulb */}
-        <Animated.View style={{
-          width: 8, height: 8, borderRadius: 4, backgroundColor: '#93c5fd',
-          shadowColor: '#38bdf8', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10,
-          opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-          transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.5] }) }]
-        }} />
+        {/* Status */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', height: 40 }}>
+          <Animated.View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#e2e8f0', marginRight: 8, opacity: pulseAnim }} />
+          <Text style={DS.statusLabel}>Preparing your journey · {label}</Text>
+        </View>
       </View>
     </Animated.View>
   );
 }
 
 const DS = StyleSheet.create({
-  screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#020617' },
+  screen:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, alignItems: 'center', backgroundColor: '#000000' },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName:     { fontSize: 32, fontFamily: 'Nunito_900Black', color: '#93c5fd', letterSpacing: 12, marginBottom: 12, opacity: 0.9 },
-  subTagline:  { fontSize: 13, color: 'rgba(96,165,250,0.7)', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, marginBottom: 48, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
-  pctNum:      { fontSize: 56, color: '#FFFFFF', fontFamily: 'Nunito_400Regular', letterSpacing: -1, textShadowColor: 'rgba(96,165,250,0.8)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 16 },
-  pctSign:     { fontSize: 18, color: '#93c5fd', fontFamily: 'Nunito_600SemiBold', marginTop: 10, marginLeft: 2 },
-  statusLabel: { fontSize: 11, color: '#60a5fa', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
-  setupHint:   { fontSize: 9, color: 'rgba(96,165,250,0.4)', fontFamily: 'Nunito_600SemiBold', letterSpacing: 1, marginTop: 10, textTransform: 'uppercase' },
-  retryBtn:    { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(96,165,250,0.2)', borderRadius: 4, borderWidth: 1, borderColor: '#60a5fa' },
-  retryTxt:    { color: '#93c5fd', fontFamily: 'Nunito_700Bold', fontSize: 12, letterSpacing: 1 },
+  subTagline:  { fontSize: 20, color: 'rgba(255,255,255,0.9)', fontFamily: 'DancingScript_600SemiBold', textAlign: 'center', lineHeight: 28 },
+  pctNum:      { fontSize: 72, color: '#FFFFFF', fontFamily: 'Nunito_300Light', letterSpacing: -2, includeFontPadding: false },
+  statusLabel: { fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'Nunito_400Regular', textTransform: 'uppercase', letterSpacing: 2 },
 });
 
 function AuthGuard({ onAuthReady }: { onAuthReady: () => void }) {
@@ -1821,14 +1814,8 @@ export default function RootLayout() {
           if (!cancelled) {
             setDlProgress(1);
             setDlLabel('Finalizing...');
-            // Wait a short beat so the progress hits 100% visually
+            // Minimal pause to ensure UI catches up before skipping straight to done
             await new Promise(r => setTimeout(r, 100));
-          }
-
-          if (!cancelled) {
-            setDlLabel('Your transformation journey begins from now... ✨');
-            // Brief pause before fading out to prevent hanging
-            await new Promise(r => setTimeout(r, 200));
           }
 
           // ── Both phases done — mark setup complete and clear in-progress ──
@@ -1841,14 +1828,11 @@ export default function RootLayout() {
           if (cancelled) return;
 
           // Background retry just in case any downloads failed during setup
-          // due to flaky network. This ensures no background image is left out.
           if (!isBgFullyCached()) {
             ensureAllBgsCachedWithProgress(() => {}).catch(() => {});
           }
 
-          // Trigger smooth fade out before revealing the app.
-          // After fade completes, onFadeOutComplete sets phase to 'splash' so
-          // the user gets the premium video splash screen on first launch too.
+          // Trigger instant transition to home page, skipping the extra splash overlay
           setPhase('downloading_done');
           return;
         } else {
@@ -1946,8 +1930,8 @@ export default function RootLayout() {
               )}
               <BodhiNotificationListener />
 
-              {/* NADA animated splash (normal startup only) */}
-              {phase === 'splash' && (
+              {/* NADA animated splash (normal startup and after downloading) */}
+              {(phase === 'splash') && (
                 <SplashOverlay 
                   key="naad-splash" 
                   onDone={() => {
