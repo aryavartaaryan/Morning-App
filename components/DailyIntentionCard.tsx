@@ -10,37 +10,37 @@ const VEDIC_MANTRAS = [
   {
     sanskrit: "ॐ असतो मा सद्गमय।\nतमसो मा ज्योतिर्गमय।\nमृत्योर्मा अमृतं गमय॥",
     transliteration: "Om asato ma sadgamaya\ntamaso ma jyotirgamaya\nmrityorma amritam gamaya",
-    english: "Lead me from the unreal to the real. Lead me from darkness to light. Lead me from death to immortality.",
+    english: "Lead me from the unreal to the real. Lead me from darkness to light.",
     short: "Lead me from darkness to light",
     meaning: "This profound Upanishadic prayer is a shift in consciousness — a plea to awaken from illusion into clarity, truth, and boundless awareness. Neuroscience shows that intention-setting like this activates the prefrontal cortex, enhancing focus and reducing anxiety.",
   },
   {
     sanskrit: "लोकाः समस्ताः सुखिनो भवन्तु॥",
     transliteration: "Lokah Samastah Sukhino Bhavantu",
-    english: "May all beings everywhere be happy and free, and may my own life contribute in some way to that happiness.",
+    english: "May all beings everywhere be happy and free.",
     short: "May all beings be happy and free",
     meaning: "A universal prayer for peace and liberation. It shifts focus from the individual ego to the collective, reminding us that true wellness is deeply interconnected with the well-being of the world. Practicing loving-kindness is clinically proven to reduce cortisol.",
   },
   {
     sanskrit: "ॐ पूर्णमदः पूर्णमिदं पूर्णात्पूर्णमुदच्यते।\nपूर्णस्य पूर्णमादाय पूर्णमेवावशिष्यते॥",
-    transliteration: "Om purnamadah purnamidam\npurnat purnamudachyate\npurnasya purnamadaya\npurnamevavashishyate",
-    english: "That is whole, this is whole. From the whole, the whole becomes manifest. When the whole is taken from the whole, the whole remains.",
+    transliteration: "Om purnamadah purnamidam\npurnat purnamudachyate",
+    english: "That is whole, this is whole. When the whole is taken from the whole, the whole remains.",
     short: "Recognize the boundless wholeness within",
     meaning: "A beautiful mathematical and spiritual truth from the Isha Upanishad. It teaches that the universe is fundamentally abundant and complete. You are already whole — nothing you do or lose can diminish your inherent completeness.",
   },
   {
     sanskrit: "ॐ भूर्भुवः स्वः।\nतत्सवितुर्वरेण्यं\nभर्गो देवस्य धीमहि।\nधियो यो नः प्रचोदयात्॥",
-    transliteration: "Om bhur bhuvah svah\ntat savitur varenyam\nbhargo devasya dhimahi\ndhiyo yo nah prachodayat",
-    english: "We meditate on the spiritual effulgence of that supreme divine reality. May that illuminate our intellect.",
+    transliteration: "Om bhur bhuvah svah\ntat savitur varenyam\nbhargo devasya dhimahi",
+    english: "May the divine light illuminate our intellect and inspire our actions.",
     short: "May divine light illuminate my intellect",
     meaning: "The Gayatri Mantra invokes the Sun's energy as the source of intellectual and spiritual awakening. Research suggests chanting its specific syllables stimulates the vagus nerve, promoting calm, clarity, and inspired action.",
   },
   {
     sanskrit: "ॐ सर्वे भवन्तु सुखिनः\nसर्वे सन्तु निरामयाः।\nसर्वे भद्राणि पश्यन्तु\nमा कश्चिद्दुःखभाग्भवेत्॥",
-    transliteration: "Om sarve bhavantu sukhinah\nsarve santu niramayah\nsarve bhadrani pashyantu\nma kashchid duhkhabhag bhavet",
-    english: "May all be happy, may all be free from illness. May all see what is auspicious, may no one suffer.",
+    transliteration: "Om sarve bhavantu sukhinah\nsarve santu niramayah",
+    english: "May all be happy, may all be free from illness. May no one suffer.",
     short: "May all see what is auspicious",
-    meaning: "A deeply therapeutic mantra for global healing. It acts as a biological antidote to anxiety and scarcity by actively generating feelings of goodwill and deep psychological safety — elevating oxytocin, the bonding hormone.",
+    meaning: "A deeply therapeutic mantra for global healing. It acts as a biological antidote to anxiety and scarcity by actively generating feelings of goodwill and deep psychological safety.",
   }
 ];
 
@@ -50,7 +50,12 @@ function getDayOfYear(date: Date) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export function DailyIntentionCard() {
+interface Props {
+  currentPeriod?: any;
+  solarTimes?: any;
+}
+
+export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
   const scale = useRef(new Animated.Value(0.96)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = useState(false);
@@ -65,43 +70,84 @@ export function DailyIntentionCard() {
   const dayIndex = getDayOfYear(new Date()) % VEDIC_MANTRAS.length;
   const mantra = VEDIC_MANTRAS[dayIndex];
 
+  // Compute next circadian period
+  const getNextPeriod = () => {
+    if (!currentPeriod || !solarTimes) return null;
+    try {
+      const { getDoshaPeriods } = require('@/lib/ayurvedicPeriods');
+      const nowH = new Date().getHours() + new Date().getMinutes() / 60;
+      const periods = getDoshaPeriods(solarTimes, nowH);
+      const curIdx = periods.findIndex((p: any) => p.id === currentPeriod.id);
+      if (curIdx === -1) return null;
+      return periods[(curIdx + 1) % periods.length];
+    } catch { return null; }
+  };
+
+  const nextPeriod = getNextPeriod();
+
+  const formatTime = (decHour: number) => {
+    const h = Math.floor(decHour);
+    const m = Math.round((decHour - h) * 60);
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+  };
+
   return (
     <>
       <Animated.View style={[styles.container, { transform: [{ scale }], opacity }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setModalVisible(true);
           }}
-          style={styles.cardContainer}
+          style={styles.cardWrapper}
         >
-          <BlurView intensity={35} tint="light" style={styles.cardInner}>
-            <Text style={styles.cardEyebrow}>TODAY'S MANTRA</Text>
-            
+          <BlurView intensity={50} tint="dark" style={styles.cardInner}>
+            {/* ── Circadian Period Header ── */}
+            {currentPeriod && (
+              <View style={styles.circadianRow}>
+                <View style={styles.circadianLeft}>
+                  <View style={[styles.dot, { backgroundColor: currentPeriod.color || '#4ade80' }]} />
+                  <Text style={[styles.periodLabel, { color: currentPeriod.color || '#4ade80' }]}>
+                    {currentPeriod.englishLabel?.toUpperCase()}
+                  </Text>
+                </View>
+                {nextPeriod && (
+                  <Text style={styles.nextLabel}>
+                    Next: {nextPeriod.englishLabel} · {formatTime(nextPeriod.startH)}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <View style={styles.dividerLine} />
+
+            {/* ── Mantra Transliteration ── */}
             <Text style={styles.romanText} numberOfLines={3}>
               {mantra.transliteration}
             </Text>
-            
-            <View style={styles.miniDivider} />
-            
+
+            {/* ── English Meaning ── */}
             <Text style={styles.englishText} numberOfLines={2}>
               "{mantra.english}"
             </Text>
-            
+
             <View style={styles.affordanceRow}>
               <Text style={styles.affordanceText}>Tap to explore</Text>
-              <Ionicons name="chevron-forward" size={10} color="#111" />
+              <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.45)" />
             </View>
           </BlurView>
         </TouchableOpacity>
       </Animated.View>
 
+      {/* Full-Screen Mantra Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalBg}>
           <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <LinearGradient colors={['rgba(15,23,42,0.8)', 'rgba(2,6,23,0.95)']} style={StyleSheet.absoluteFillObject} />
-          
+          <LinearGradient colors={['rgba(15,23,42,0.85)', 'rgba(2,6,23,0.97)']} style={StyleSheet.absoluteFillObject} />
+
           <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.topBar}>
               <View style={{ width: 36 }} />
@@ -125,12 +171,12 @@ export function DailyIntentionCard() {
                 <Text style={styles.modalCardEyebrow}>TRANSLATION</Text>
                 <Text style={styles.englishTextModal}>"{mantra.english}"</Text>
               </View>
-              
+
               <View style={styles.meaningCard}>
                 <Text style={styles.modalCardEyebrow}>THE SCIENCE & MEANING</Text>
                 <Text style={styles.meaningTextModal}>{mantra.meaning}</Text>
               </View>
-              
+
               <TouchableOpacity activeOpacity={0.85} onPress={() => setModalVisible(false)} style={styles.doneButton}>
                 <Text style={styles.doneButtonText}>INTERNALIZE & CLOSE</Text>
               </TouchableOpacity>
@@ -148,71 +194,85 @@ const styles = StyleSheet.create({
     width: '100%',
     zIndex: 100,
     elevation: 100,
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 0,
   },
-  cardContainer: {
+  cardWrapper: {
     width: '100%',
     borderRadius: 24,
     overflow: 'hidden',
   },
   cardInner: {
     width: '100%',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(0,0,0,0.28)',
   },
-  cardEyebrow: {
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  circadianRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  circadianLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  periodLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(0,0,0,0.65)',
-    textTransform: 'uppercase',
-    letterSpacing: 2.5,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  nextLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.3,
+  },
+  dividerLine: {
+    height: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginBottom: 12,
   },
   romanText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#111',
-    textAlign: 'center',
-    lineHeight: 26,
+    color: '#FFFFFF',
+    lineHeight: 22,
     fontStyle: 'italic',
-  },
-  miniDivider: {
-    width: 30,
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    marginVertical: 12,
+    marginBottom: 8,
   },
   englishText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(0,0,0,0.75)',
-    textAlign: 'center',
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: 18,
-    paddingHorizontal: 8,
+    fontStyle: 'italic',
   },
   affordanceRow: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 4, 
-    marginTop: 16, 
-    opacity: 0.5 
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 10,
+    opacity: 0.7,
   },
   affordanceText: {
-    fontSize: 9, 
-    fontWeight: '600', 
-    color: '#111', 
-    letterSpacing: 0.5, 
-    textTransform: 'uppercase' 
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  
-  // Modal Styles
+
+  // Modal
   modalBg: { flex: 1, backgroundColor: 'transparent' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   closeCircleBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },

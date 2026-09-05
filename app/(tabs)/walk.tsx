@@ -606,6 +606,7 @@ export default function HarmonyCompassScreen() {
   // Live Compass (Phase 2 feature) - Using OS Sensor Fusion for True Heading
   useEffect(() => {
     let sub: any;
+    let isMounted = true;
     if (isCompassActive) {
       (async () => {
         // Request permissions first
@@ -616,15 +617,22 @@ export default function HarmonyCompassScreen() {
         }
 
         // Use watchHeadingAsync for OS-calibrated sensor fusion (True North)
-        sub = await Location.watchHeadingAsync((data) => {
+        let subscription = await Location.watchHeadingAsync((data) => {
           let h = data.trueHeading !== -1 ? data.trueHeading : data.magHeading;
-          if (h >= 0) {
+          if (h >= 0 && isMounted) {
             setHeading(Math.round(h));
           }
         });
+        
+        if (!isMounted) {
+          if (subscription && subscription.remove) subscription.remove();
+        } else {
+          sub = subscription;
+        }
       })();
     }
     return () => {
+      isMounted = false;
       if (sub && sub.remove) sub.remove();
     };
   }, [isCompassActive]);

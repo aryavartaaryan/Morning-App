@@ -572,11 +572,13 @@ export default function StepSessionScreen() {
 
     // Feature 7: Sensor-based Compass (True Compass Heading)
     let headingSub: any = null;
+    let isMounted = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          headingSub = await Location.watchHeadingAsync((data) => {
+          let subscription = await Location.watchHeadingAsync((data) => {
+            if (!isMounted) return;
             let angle = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
             if (angle < 0) return; // Invalid reading
             
@@ -597,6 +599,12 @@ export default function StepSessionScreen() {
             
             if (!compassActive) setCompassActive(true);
           });
+          
+          if (!isMounted) {
+            if (subscription && subscription.remove) subscription.remove();
+          } else {
+            headingSub = subscription;
+          }
         }
       } catch (e) {
         console.log("Compass error", e);
@@ -658,6 +666,7 @@ export default function StepSessionScreen() {
     })();
 
     return () => {
+      isMounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
       quoteCycle && clearInterval(quoteCycle);
       if (gyroSub) try { gyroSub.remove(); } catch (_) {}

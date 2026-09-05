@@ -6721,127 +6721,131 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 // Vedic Almanac Dashboard — ETHEREAL LIGHT (OPTION 3)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Premium Vedic Clock — Masterpiece Redesign ──
-// Outer ring: 24‑hour modern time track with AM/PM labels
-// Second ring: 8 Prahars (Sanskrit names + English)
-// Third ring: Muhurtas & Kaals (auspicious / inauspicious)
-// Inner ring: 3 Sandhyas (meditation junctions)
-// Centre: Analog hand + live digital time
-
-// ── Premium Vedic Clock — The Minimalist Zenith (Option 1) ──
-// Minimalist UI: A single beautiful outer ring showing 8 Prahars.
-// Center dynamically displays the currently active phase (sel).
-// No cluttered inner rings. Highly breathable.
-
+// ── Premium Vedic Clock — True 24-Hour Dial (Option 2 Ethereal) ──
 const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
   currentHour: number; times: any; activeId: string; onSegmentPress: (id: string) => void;
   sel?: { title: string; sub: string; color: string; time: string };
 }) => {
-  const SIZE = 320;
+  const SIZE = 260;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
+  const R_OUTER = 122;   // sky-blue Prahar ring
+  const R_FACE  = 104;   // white clock face
+  const R_HOUR  = 75;    // 24-hour hand length
+  
+  const now = new Date();
+  // We use the exact decimal hour for smooth 24-hour hand movement
+  const exactHour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-  const R_TIME = 145; // Ticks
-  const R_PRAHAR = 125; const W_PRAHAR = 22; // The single main ring
-
+  // 24-hour angle: 0h = top, 6h = right, 12h = bottom, 18h = left
   const toXY = (h: number, r: number) => {
     const a = (h / 24) * 2 * Math.PI - Math.PI / 2;
     return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
   };
 
-  const arc = (s: number, e: number, r: number, gap = 0.12) => {
-    let end = e < s ? e + 24 : e;
-    const span = end - s;
+  const PRAHAR_COLORS: Record<string, string> = {
+    p1: '#7DD3FC', p2: '#38BDF8', p3: '#0EA5E9', p4: '#0284C7',
+    n1: '#1D4ED8', n2: '#3B82F6', n3: '#60A5FA', n4: '#93C5FD',
+  };
+
+  const praharArc = (startH: number, endH: number, r: number, w: number, gap = 0.08) => {
+    let e = endH < startH ? endH + 24 : endH;
+    const span = e - startH;
     if (span <= 0) return '';
-    const p1 = toXY(s + gap, r);
-    const p2 = toXY(end - gap, r);
+    const p1 = toXY(startH + gap, r);
+    const p2 = toXY(e - gap, r);
     const large = span > 12 ? 1 : 0;
     return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   };
 
-  const ticks = Array.from({ length: 24 }, (_, i) => i);
-  const timeLabels = [
-    { h: 0, label: '12AM' }, { h: 3, label: '3AM' },
-    { h: 6, label: '6AM'  }, { h: 9, label: '9AM' },
-    { h: 12, label: '12PM'}, { h: 15, label: '3PM' },
-    { h: 18, label: '6PM' }, { h: 21, label: '9PM' },
+  // 24-hour hand tip
+  const hourTip = toXY(exactHour, R_HOUR);
+
+  // 24-hour labels (0, 3, 6, 9, 12, 15, 18, 21)
+  const HOURS_24 = [
+    { h: 0, l: '24' }, { h: 3, l: '3' }, { h: 6, l: '6' }, { h: 9, l: '9' },
+    { h: 12, l: '12' }, { h: 15, l: '15' }, { h: 18, l: '18' }, { h: 21, l: '21' }
   ];
 
-  // Prahar color mapping based on Sanskrit names for a premium aesthetic
-  const PRAHAR_COLORS: Record<string, string> = {
-    p1: '#FBBF24', // Prata (Morning) - Bright Gold
-    p2: '#F59E0B', // Sangava (Forenoon) - Amber
-    p3: '#D97706', // Madhyahna (Noon) - Deep Amber
-    p4: '#EA580C', // Aparahna (Afternoon) - Orange
-    n1: '#0F766E', // Sayam (Dusk) - Teal
-    n2: '#0369A1', // Pradosha (Evening) - Ocean Blue
-    n3: '#1D4ED8', // Nishita (Midnight) - Deep Blue
-    n4: '#60A5FA', // Usha (Pre-Dawn) - Light Blue
-  };
-
-  // 12-hour formatter for the clock center
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const curPrahar = times.prahars.find((ph: any) => {
+    let e = ph.end < ph.start ? ph.end + 24 : ph.end;
+    return currentHour >= ph.start && currentHour < e;
+  });
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', width: SIZE, height: SIZE }}>
       <Svg width={SIZE} height={SIZE}>
-        {/* Outer 24h dial ticks */}
-        {ticks.map(h => {
+
+        {/* ── Outer sky-blue Prahar ring ── */}
+        {times.prahars.map((ph: any) => (
+          <SvgPath key={ph.id}
+            d={praharArc(ph.start, ph.end, R_OUTER, 14)}
+            stroke={PRAHAR_COLORS[ph.id] || '#7DD3FC'}
+            strokeWidth={14} strokeLinecap="butt"
+            fill="none"
+            opacity={activeId === ph.id ? 1 : 0.55}
+            onPress={() => onSegmentPress(ph.id)}
+          />
+        ))}
+
+        {/* Current-time dot on outer ring */}
+        <SvgCircle cx={toXY(exactHour, R_OUTER).x} cy={toXY(exactHour, R_OUTER).y} r={6} fill="#FFFFFF" stroke="#0EA5E9" strokeWidth={2} />
+
+        {/* ── Clock face background ── */}
+        <SvgCircle cx={CX} cy={CY} r={R_FACE} fill="#FAFCFF" stroke="#BFDBFE" strokeWidth={1.5} />
+
+        {/* ── 24-Hour tick marks & Numbers ── */}
+        {Array.from({ length: 24 }, (_, h) => {
           const isMajor = h % 3 === 0;
-          const p1 = toXY(h, R_TIME - (isMajor ? 4 : 2));
-          const p2 = toXY(h, R_TIME + 2);
-          return <SvgLine key={h} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(44,44,44,0.15)" strokeWidth={isMajor ? 1.5 : 1} />;
-        })}
-        {/* Time labels */}
-        {timeLabels.map(t => {
-          const p = toXY(t.h, R_TIME + 12);
+          const inner = toXY(h, R_FACE - (isMajor ? 12 : 6));
+          const outer = toXY(h, R_FACE - 2);
           return (
-            <SvgText key={t.h} x={p.x} y={p.y} fill="rgba(44,44,44,0.4)" fontSize={9} fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
-              {t.label}
+            <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y}
+              stroke="#BFDBFE" strokeWidth={isMajor ? 2 : 1} />
+          );
+        })}
+        
+        {HOURS_24.map((t, i) => {
+          const pt = toXY(t.h, R_FACE - 20);
+          return (
+            <SvgText key={i} x={pt.x} y={pt.y} fill="#64B5F6" fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">
+              {t.l}
             </SvgText>
           );
         })}
 
-        {/* The single elegant Prahar Ring */}
-        {times.prahars.map((ph: any) => {
-          const isActive = activeId === ph.id;
-          const color = PRAHAR_COLORS[ph.id] || '#BFA267';
-          return (
-            <SvgPath key={ph.id} d={arc(ph.start, ph.end, R_PRAHAR)}
-              stroke={color} strokeWidth={W_PRAHAR} strokeLinecap="butt"
-              opacity={isActive ? 1 : 0.65}
-              onPress={() => onSegmentPress(ph.id)}
-            />
-          );
-        })}
+        {/* ── Accurate Scientific Vedic Quadrant Labels ── */}
+        {/* Midnight (0h / Top) */}
+        <SvgText x={CX} y={CY - 58} fill="#818CF8" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Niśītha</SvgText>
+        {/* Dawn (6h / Right) */}
+        <SvgText x={CX + 56} y={CY} fill="#FCD34D" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Uṣas</SvgText>
+        {/* Noon (12h / Bottom) */}
+        <SvgText x={CX} y={CY + 58} fill="#FB923C" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Madhyāhna</SvgText>
+        {/* Dusk (18h / Left) */}
+        <SvgText x={CX - 56} y={CY} fill="#93C5FD" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Sāyam</SvgText>
 
-        {/* Current Time Indicator on the ring */}
-        <SvgCircle cx={toXY(currentHour, R_PRAHAR).x} cy={toXY(currentHour, R_PRAHAR).y} r={W_PRAHAR / 2 + 2} fill="#FFF" stroke="#2C2C2C" strokeWidth={2} />
+        {/* ── 24-Hour Hand (Sun Pointer) ── */}
+        <SvgLine x1={CX} y1={CY} x2={hourTip.x} y2={hourTip.y} stroke="#0369A1" strokeWidth={3} strokeLinecap="round" />
+        <SvgCircle cx={hourTip.x} cy={hourTip.y} r={4} fill="#FCD34D" stroke="#0369A1" strokeWidth={1} /> {/* Sun icon at tip */}
+
+        {/* ── Centre dot ── */}
+        <SvgCircle cx={CX} cy={CY} r={6} fill="#0EA5E9" />
+        <SvgCircle cx={CX} cy={CY} r={2} fill="#FFFFFF" />
+
+        {/* ── Digital time overlay below hands ── */}
+        <SvgText x={CX} y={CY + 26} fill="#1E3A5F" fontSize={13} fontWeight="800" textAnchor="middle" alignmentBaseline="middle">
+          {timeStr}
+        </SvgText>
+
+        <SvgText x={CX} y={CY + 40} fill="#64B5F6" fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">
+          {curPrahar ? curPrahar.title.split('(')[0].trim().toUpperCase() : ''}
+        </SvgText>
       </Svg>
-
-      {/* Dynamic Center Typography */}
-      <View style={{ position: 'absolute', width: R_PRAHAR * 2 - W_PRAHAR * 2 - 20, height: R_PRAHAR * 2 - W_PRAHAR * 2 - 20, borderRadius: 200, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10 }}>
-        {sel ? (
-          <>
-            <Text style={{ fontFamily: 'Georgia', fontSize: 13, fontWeight: '700', color: sel.color, textAlign: 'center', marginBottom: 2, letterSpacing: 0.5 }}>
-              {sel.title.split('(')[0].trim().toUpperCase()}
-            </Text>
-            <Text style={{ fontSize: 10, color: '#2C2C2C90', fontWeight: '600', marginBottom: 6 }}>{sel.time}</Text>
-            
-            <Text style={{ fontSize: 11, color: '#2C2C2C', textAlign: 'center', fontStyle: 'italic', fontWeight: '500', marginBottom: 12 }} numberOfLines={1}>
-              {sel.title.includes('(') ? sel.title.split('(')[1].replace(')', '') : 'Phase'}
-            </Text>
-
-            <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '700', color: '#BFA267', letterSpacing: 1 }}>{timeStr}</Text>
-          </>
-        ) : (
-          <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '700', color: '#BFA267', letterSpacing: 1 }}>{timeStr}</Text>
-        )}
-      </View>
     </View>
   );
 };
+
 
 const LegendRow = ({ color, label, active, onPress }: { color: string, label: string, active: boolean, onPress: () => void }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.75}
@@ -7747,6 +7751,11 @@ function DailyTab() {
                               ))}
                             </View>
                           </View>
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 14, opacity: 0.7 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.8, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
+                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.45)" />
                         </View>
                       </BlurView>
                     </TouchableOpacity>
