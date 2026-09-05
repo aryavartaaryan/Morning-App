@@ -6728,26 +6728,27 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
 // Inner ring: 3 Sandhyas (meditation junctions)
 // Centre: Analog hand + live digital time
 
-const VedicClock = ({ currentHour, times, activeId, onSegmentPress }: {
+// ── Premium Vedic Clock — The Minimalist Zenith (Option 1) ──
+// Minimalist UI: A single beautiful outer ring showing 8 Prahars.
+// Center dynamically displays the currently active phase (sel).
+// No cluttered inner rings. Highly breathable.
+
+const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
   currentHour: number; times: any; activeId: string; onSegmentPress: (id: string) => void;
+  sel?: { title: string; sub: string; color: string; time: string };
 }) => {
-  const SIZE = 300;
+  const SIZE = 320;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
 
-  // Ring radii & widths — nicely spaced
-  const R_TIME    = 138; const W_TIME    = 14;  // outermost: 24-h time track
-  const R_PRAHAR  = 118; const W_PRAHAR  = 20;  // 2nd: prahars
-  const R_MUHURT  = 92;  const W_MUHURT  = 18;  // 3rd: muhurtas / kaals
-  const R_SANDHY  = 68;  const W_SANDHY  = 14;  // innermost: sandhyas
-  const R_HAND    = 50;                          // clock hand length
+  const R_TIME = 145; // Ticks
+  const R_PRAHAR = 125; const W_PRAHAR = 22; // The single main ring
 
   const toXY = (h: number, r: number) => {
     const a = (h / 24) * 2 * Math.PI - Math.PI / 2;
     return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
   };
 
-  // Arc path helper — with small gap at ends
   const arc = (s: number, e: number, r: number, gap = 0.12) => {
     let end = e < s ? e + 24 : e;
     const span = end - s;
@@ -6758,12 +6759,7 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress }: {
     return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   };
 
-  const handTip  = toXY(currentHour, R_HAND);
-
-  // 24 tick marks on outer rim
   const ticks = Array.from({ length: 24 }, (_, i) => i);
-
-  // Time labels every 3 hours (8 labels)
   const timeLabels = [
     { h: 0, label: '12AM' }, { h: 3, label: '3AM' },
     { h: 6, label: '6AM'  }, { h: 9, label: '9AM' },
@@ -6771,158 +6767,82 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress }: {
     { h: 18, label: '6PM' }, { h: 21, label: '9PM' },
   ];
 
-  // Prahar Sanskrit names + colors
-  const praharMeta: Record<string, { name: string; en: string; color: string; textColor: string }> = {
-    p1: { name: 'Prātaḥkāla', en: 'Dawn',       color: '#F59E0B', textColor: '#78350F' },
-    p2: { name: 'Saṅgava',    en: 'Forenoon',   color: '#FBBF24', textColor: '#78350F' },
-    p3: { name: 'Madhyāhna',  en: 'Noon',       color: '#D97706', textColor: '#FFFFFF' },
-    p4: { name: 'Aparāhṇa',   en: 'Afternoon',  color: '#EA580C', textColor: '#FFFFFF' },
-    n1: { name: 'Sāyaṃkāla',  en: 'Dusk',       color: '#6366F1', textColor: '#FFFFFF' },
-    n2: { name: 'Pradoṣa',    en: 'Evening',    color: '#4F46E5', textColor: '#FFFFFF' },
-    n3: { name: 'Niśītha',    en: 'Midnight',   color: '#1E3A5F', textColor: '#93C5FD' },
-    n4: { name: 'Uṣākāla',    en: 'Pre-Dawn',   color: '#1D4ED8', textColor: '#BFDBFE' },
+  // Prahar color mapping based on Sanskrit names for a premium aesthetic
+  const PRAHAR_COLORS: Record<string, string> = {
+    p1: '#FBBF24', // Prata (Morning) - Bright Gold
+    p2: '#F59E0B', // Sangava (Forenoon) - Amber
+    p3: '#D97706', // Madhyahna (Noon) - Deep Amber
+    p4: '#EA580C', // Aparahna (Afternoon) - Orange
+    n1: '#0F766E', // Sayam (Dusk) - Teal
+    n2: '#0369A1', // Pradosha (Evening) - Ocean Blue
+    n3: '#1D4ED8', // Nishita (Midnight) - Deep Blue
+    n4: '#60A5FA', // Usha (Pre-Dawn) - Light Blue
   };
 
-  const isActive = (id: string) => activeId === id;
+  // 12-hour formatter for the clock center
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
-    <Svg width={SIZE} height={SIZE}>
-      {/* ── BACKGROUND DISC ── */}
-      <SvgCircle cx={CX} cy={CY} r={R_TIME + W_TIME / 2 + 6} fill="#FDFAF5" />
-      <SvgCircle cx={CX} cy={CY} r={R_TIME + W_TIME / 2 + 6} fill="none" stroke="rgba(191,162,103,0.15)" strokeWidth={1} />
+    <View style={{ alignItems: 'center', justifyContent: 'center', width: SIZE, height: SIZE }}>
+      <Svg width={SIZE} height={SIZE}>
+        {/* Outer 24h dial ticks */}
+        {ticks.map(h => {
+          const isMajor = h % 3 === 0;
+          const p1 = toXY(h, R_TIME - (isMajor ? 4 : 2));
+          const p2 = toXY(h, R_TIME + 2);
+          return <SvgLine key={h} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(44,44,44,0.15)" strokeWidth={isMajor ? 1.5 : 1} />;
+        })}
+        {/* Time labels */}
+        {timeLabels.map(t => {
+          const p = toXY(t.h, R_TIME + 12);
+          return (
+            <SvgText key={t.h} x={p.x} y={p.y} fill="rgba(44,44,44,0.4)" fontSize={9} fontWeight="600" textAnchor="middle" alignmentBaseline="middle">
+              {t.label}
+            </SvgText>
+          );
+        })}
 
-      {/* ── TRACK BACKGROUNDS ── */}
-      <SvgCircle cx={CX} cy={CY} r={R_TIME}   stroke="rgba(191,162,103,0.08)" strokeWidth={W_TIME}   fill="none" />
-      <SvgCircle cx={CX} cy={CY} r={R_PRAHAR} stroke="rgba(191,162,103,0.08)" strokeWidth={W_PRAHAR} fill="none" />
-      <SvgCircle cx={CX} cy={CY} r={R_MUHURT} stroke="rgba(191,162,103,0.08)" strokeWidth={W_MUHURT} fill="none" />
-      <SvgCircle cx={CX} cy={CY} r={R_SANDHY} stroke="rgba(191,162,103,0.08)" strokeWidth={W_SANDHY} fill="none" />
-
-      {/* ── OUTER RING: 24-HOUR TIME TRACK (background) ── */}
-      <SvgCircle cx={CX} cy={CY} r={R_TIME} stroke="rgba(44,44,44,0.06)" strokeWidth={W_TIME} fill="none" />
-
-      {/* Day half highlight (6AM–6PM) */}
-      <SvgPath d={arc(6, 18, R_TIME, 0)} stroke="rgba(251,191,36,0.18)" strokeWidth={W_TIME} fill="none" />
-
-      {/* ── RING 2: 8 PRAHARS ── */}
-      {times.prahars.map((ph: any) => {
-        const meta = praharMeta[ph.id];
-        if (!meta) return null;
-        const span = ph.start > ph.end ? (ph.end + 24 - ph.start) : (ph.end - ph.start);
-        const midH = ph.start + span / 2;
-        const labelPos = toXY(midH, R_PRAHAR);
-        const isAct = isActive(ph.id);
-        return (
-          <React.Fragment key={ph.id}>
-            <SvgPath
-              d={arc(ph.start, ph.end, R_PRAHAR)}
-              stroke={meta.color}
-              strokeWidth={W_PRAHAR}
-              fill="none"
-              opacity={isAct ? 1 : 0.7}
+        {/* The single elegant Prahar Ring */}
+        {times.prahars.map((ph: any) => {
+          const isActive = activeId === ph.id;
+          const color = PRAHAR_COLORS[ph.id] || '#BFA267';
+          return (
+            <SvgPath key={ph.id} d={arc(ph.start, ph.end, R_PRAHAR)}
+              stroke={color} strokeWidth={W_PRAHAR} strokeLinecap="butt"
+              opacity={isActive ? 1 : 0.65}
               onPress={() => onSegmentPress(ph.id)}
             />
-            {/* Sanskrit label — only show if span is wide enough */}
-            {span >= 2.5 && (
-              <SvgText
-                x={labelPos.x} y={labelPos.y - 4}
-                fontSize={6.5} fill={meta.textColor}
-                textAnchor="middle" fontWeight="700"
-                onPress={() => onSegmentPress(ph.id)}
-              >{meta.name}</SvgText>
-            )}
-            {span >= 2.5 && (
-              <SvgText
-                x={labelPos.x} y={labelPos.y + 6}
-                fontSize={5.5} fill={meta.textColor}
-                textAnchor="middle" fontWeight="600"
-                onPress={() => onSegmentPress(ph.id)}
-              >{meta.en}</SvgText>
-            )}
-          </React.Fragment>
-        );
-      })}
+          );
+        })}
 
-      {/* ── RING 3: MUHURTAS & KAALS ── */}
-      {/* Brahma Muhurta — violet */}
-      <SvgPath d={arc(times.brahma.start, times.brahma.end, R_MUHURT)} stroke="#7C3AED"
-        strokeWidth={W_MUHURT} fill="none" opacity={isActive('brahma') ? 1 : 0.85}
-        onPress={() => onSegmentPress('brahma')} />
-      {/* Abhijit — gold */}
-      <SvgPath d={arc(times.abhijit.start, times.abhijit.end, R_MUHURT)} stroke="#B8860B"
-        strokeWidth={W_MUHURT} fill="none" opacity={isActive('abhijit') ? 1 : 0.85}
-        onPress={() => onSegmentPress('abhijit')} />
-      {/* Rahu Kaal — dark red */}
-      <SvgPath d={arc(times.rahu.start, times.rahu.end, R_MUHURT)} stroke="#BE123C"
-        strokeWidth={W_MUHURT} fill="none" opacity={isActive('rahu') ? 1 : 0.85}
-        onPress={() => onSegmentPress('rahu')} />
-      {/* Yamaganda — burnt */}
-      <SvgPath d={arc(times.yama.start, times.yama.end, R_MUHURT)} stroke="#92400E"
-        strokeWidth={W_MUHURT} fill="none" opacity={isActive('yama') ? 1 : 0.8}
-        onPress={() => onSegmentPress('yama')} />
+        {/* Current Time Indicator on the ring */}
+        <SvgCircle cx={toXY(currentHour, R_PRAHAR).x} cy={toXY(currentHour, R_PRAHAR).y} r={W_PRAHAR / 2 + 2} fill="#FFF" stroke="#2C2C2C" strokeWidth={2} />
+      </Svg>
 
-      {/* ── RING 4: SANDHYAS ── */}
-      <SvgPath d={arc(times.prata.start, times.prata.end, R_SANDHY)} stroke="#2563EB"
-        strokeWidth={W_SANDHY} fill="none" opacity={isActive('prata') ? 1 : 0.85}
-        onPress={() => onSegmentPress('prata')} />
-      <SvgPath d={arc(times.madhya.start, times.madhya.end, R_SANDHY)} stroke="#CA8A04"
-        strokeWidth={W_SANDHY} fill="none" opacity={isActive('madhya') ? 1 : 0.85}
-        onPress={() => onSegmentPress('madhya')} />
-      <SvgPath d={arc(times.sayam.start, times.sayam.end, R_SANDHY)} stroke="#EA580C"
-        strokeWidth={W_SANDHY} fill="none" opacity={isActive('sayam') ? 1 : 0.85}
-        onPress={() => onSegmentPress('sayam')} />
+      {/* Dynamic Center Typography */}
+      <View style={{ position: 'absolute', width: R_PRAHAR * 2 - W_PRAHAR * 2 - 20, height: R_PRAHAR * 2 - W_PRAHAR * 2 - 20, borderRadius: 200, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10 }}>
+        {sel ? (
+          <>
+            <Text style={{ fontFamily: 'Georgia', fontSize: 13, fontWeight: '700', color: sel.color, textAlign: 'center', marginBottom: 2, letterSpacing: 0.5 }}>
+              {sel.title.split('(')[0].trim().toUpperCase()}
+            </Text>
+            <Text style={{ fontSize: 10, color: '#2C2C2C90', fontWeight: '600', marginBottom: 6 }}>{sel.time}</Text>
+            
+            <Text style={{ fontSize: 11, color: '#2C2C2C', textAlign: 'center', fontStyle: 'italic', fontWeight: '500', marginBottom: 12 }} numberOfLines={1}>
+              {sel.title.includes('(') ? sel.title.split('(')[1].replace(')', '') : 'Phase'}
+            </Text>
 
-      {/* ── TICK MARKS on outer rim ── */}
-      {ticks.map(h => {
-        const isMajor = h % 6 === 0;
-        const isMed   = h % 3 === 0;
-        const len = isMajor ? 10 : isMed ? 6 : 4;
-        const p1 = toXY(h, R_TIME + W_TIME / 2 + 2);
-        const p2 = toXY(h, R_TIME + W_TIME / 2 + 2 + len);
-        return (
-          <SvgLine key={h}
-            x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-            stroke={isMajor ? 'rgba(44,44,44,0.45)' : isMed ? 'rgba(44,44,44,0.25)' : 'rgba(44,44,44,0.12)'}
-            strokeWidth={isMajor ? 1.8 : 0.9}
-          />
-        );
-      })}
-
-      {/* ── TIME LABELS outside outer rim ── */}
-      {timeLabels.map(({ h, label }) => {
-        const pos = toXY(h, R_TIME + W_TIME / 2 + 20);
-        return (
-          <SvgText key={h} x={pos.x} y={pos.y + 4}
-            fontSize={10} fill="rgba(44,44,44,0.7)"
-            textAnchor="middle" fontWeight="700"
-          >{label}</SvgText>
-        );
-      })}
-
-      {/* ── RING LABELS (inside left arc) ── */}
-      {/* These sit on the inner white area */}
-      <SvgText x={CX} y={R_SANDHY - W_SANDHY / 2 - 6} fontSize={7} fill="rgba(44,44,44,0.3)"
-        textAnchor="middle" fontWeight="600">SANDHYA</SvgText>
-      <SvgText x={CX} y={R_MUHURT - W_MUHURT / 2 - 6} fontSize={7} fill="rgba(44,44,44,0.3)"
-        textAnchor="middle" fontWeight="600">MUHURTA</SvgText>
-      <SvgText x={CX} y={R_PRAHAR - W_PRAHAR / 2 - 5} fontSize={7} fill="rgba(44,44,44,0.3)"
-        textAnchor="middle" fontWeight="600">PRAHAR</SvgText>
-
-      {/* ── CLOCK HAND ── */}
-      {/* Shadow */}
-      <SvgLine x1={CX + 1} y1={CY + 1} x2={handTip.x + 1} y2={handTip.y + 1}
-        stroke="rgba(0,0,0,0.1)" strokeWidth={4} strokeLinecap="round" />
-      {/* Hand */}
-      <SvgLine x1={CX} y1={CY} x2={handTip.x} y2={handTip.y}
-        stroke="#6A1E2F" strokeWidth={2.5} strokeLinecap="round" />
-      {/* Gold centre */}
-      <SvgCircle cx={CX} cy={CY} r={7} fill="#BFA267" />
-      <SvgCircle cx={CX} cy={CY} r={4} fill="#FFFFFF" />
-      <SvgCircle cx={CX} cy={CY} r={1.5} fill="#BFA267" />
-    </Svg>
+            <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '700', color: '#BFA267', letterSpacing: 1 }}>{timeStr}</Text>
+          </>
+        ) : (
+          <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '700', color: '#BFA267', letterSpacing: 1 }}>{timeStr}</Text>
+        )}
+      </View>
+    </View>
   );
 };
 
-// ── Legend Chip ──
 const LegendRow = ({ color, label, active, onPress }: { color: string, label: string, active: boolean, onPress: () => void }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.75}
     style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10,
@@ -7077,80 +6997,48 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
 
           {/* ── CLOCK ── */}
           <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 4 }}>
-            <VedicClock currentHour={currentH} times={times} activeId={activeSegment}
+            <VedicClock currentHour={currentH} times={times} activeId={activeSegment} sel={sel}
               onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
           </View>
 
-          {/* ── SMART RING LEGEND: 3 rows of 2 chips ── */}
-          {/* Row label: Sandhya (Meditation Junctions) */}
-          <View style={{ marginBottom: 6, marginTop: 4 }}>
-            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
-              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
-              ✦ Sandhya — Meditation Junctions
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <LegendRow color="#2563EB" label="Prāta · Morning Twilight" active={activeSegment === 'prata'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('prata'); }} />
-              <LegendRow color="#CA8A04" label="Madhyāhna · Solar Noon"  active={activeSegment === 'madhya'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('madhya'); }} />
-              <LegendRow color="#EA580C" label="Sāyam · Dusk"           active={activeSegment === 'sayam'}  onPress={() => { Haptics.selectionAsync(); setActiveSegment('sayam'); }} />
-            </View>
-          </View>
-
-          {/* Row label: Muhurta (Auspicious & Inauspicious) */}
-          <View style={{ marginBottom: 6 }}>
-            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
-              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
-              ✦ Muhurta — Auspicious & Avoid Windows
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <LegendRow color="#7C3AED" label="Brahma · Pre-Dawn" active={activeSegment === 'brahma'}  onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} />
-              <LegendRow color="#B8860B" label="Abhijit · Best Hour" active={activeSegment === 'abhijit'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 5 }}>
-              <LegendRow color="#BE123C" label="Rahu Kaal · Avoid"     active={activeSegment === 'rahu'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} />
-              <LegendRow color="#92400E" label="Yamaganda · Caution"   active={activeSegment === 'yama'} onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} />
-            </View>
-          </View>
-
-          {/* Row label: Prahar (8 Time Divisions) — collapsible row */}
-          <View style={{ marginBottom: 4 }}>
-            <Text style={{ fontSize: 8.5, color: 'rgba(44,44,44,0.38)', fontWeight: '700',
-              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5, marginLeft: 2 }}>
-              ✦ Prahar — 8 Divisions of the Day
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-              {times.prahars.map((ph: any) => {
-                const praharChipMeta: Record<string, { name: string; color: string }> = {
-                  p1: { name: 'Prātaḥ · Dawn',       color: '#F59E0B' },
-                  p2: { name: 'Saṅgava · Forenoon',  color: '#FBBF24' },
-                  p3: { name: 'Madhyāhna · Noon',     color: '#D97706' },
-                  p4: { name: 'Aparāhṇa · Afternoon', color: '#EA580C' },
-                  n1: { name: 'Sāyam · Dusk',         color: '#6366F1' },
-                  n2: { name: 'Pradoṣa · Evening',    color: '#4F46E5' },
-                  n3: { name: 'Niśītha · Midnight',   color: '#1E3A5F' },
-                  n4: { name: 'Uṣā · Pre-Dawn',       color: '#1D4ED8' },
-                };
-                const meta = praharChipMeta[ph.id];
-                if (!meta) return null;
-                return (
-                  <LegendRow key={ph.id} color={meta.color} label={meta.name}
-                    active={activeSegment === ph.id}
-                    onPress={() => { Haptics.selectionAsync(); setActiveSegment(ph.id); }} />
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Active Segment Info */}
-          {sel && (
-            <View style={{ backgroundColor: BG, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: `${sel.color}30`, marginTop: 8, borderLeftWidth: 3, borderLeftColor: sel.color }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: sel.color, letterSpacing: 0.5 }}>{sel.title.toUpperCase()}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: TXT }}>{sel.time}</Text>
+          {/* ── MINIMALIST HORIZONTAL LEGEND (Option 1) ── */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 10, gap: 10 }} style={{ marginTop: 6, marginBottom: 8 }}>
+            
+            {/* Muhurtas & Sandhyas organized into clean premium cards */}
+            
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveSegment('brahma'); }} style={{ width: 140, backgroundColor: '#FAF7F2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: activeSegment === 'brahma' ? '#7C3AED' : '#E5E5E5' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#7C3AED' }} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#2C2C2C' }}>Brahma Muhurta</Text>
               </View>
-              <Text style={{ fontSize: 12, color: 'rgba(44,44,44,0.75)', lineHeight: 17, fontWeight: '500' }}>{sel.sub}</Text>
-            </View>
-          )}
-        </View>
+              <Text style={{ fontSize: 9, color: '#2C2C2C90', fontWeight: '500' }}>Pre-Dawn · Sacred</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveSegment('abhijit'); }} style={{ width: 140, backgroundColor: '#FAF7F2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: activeSegment === 'abhijit' ? '#B8860B' : '#E5E5E5' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#B8860B' }} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#2C2C2C' }}>Abhijit Muhurta</Text>
+              </View>
+              <Text style={{ fontSize: 9, color: '#2C2C2C90', fontWeight: '500' }}>Solar Noon · Best Hour</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveSegment('rahu'); }} style={{ width: 140, backgroundColor: '#FAF7F2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: activeSegment === 'rahu' ? '#9B1C2C' : '#E5E5E5' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#9B1C2C' }} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#2C2C2C' }}>Rahu Kaal</Text>
+              </View>
+              <Text style={{ fontSize: 9, color: '#2C2C2C90', fontWeight: '500' }}>Inauspicious · Avoid</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setActiveSegment('yama'); }} style={{ width: 140, backgroundColor: '#FAF7F2', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: activeSegment === 'yama' ? '#92400E' : '#E5E5E5' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#92400E' }} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#2C2C2C' }}>Yamaganda</Text>
+              </View>
+              <Text style={{ fontSize: 9, color: '#2C2C2C90', fontWeight: '500' }}>Caution Window</Text>
+            </TouchableOpacity>
+
+          </ScrollView></View>
 
         {/* ── DAILY PANCHANGA ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 24, padding: 18, shadowColor: BURG, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4, marginBottom: 14, borderWidth: 1, borderColor: BORD }}>
@@ -7779,180 +7667,94 @@ function DailyTab() {
                   <DailyIntentionCard />
                 </View>
 
-                {/* 2. Biorhythm Card (Slim Editorial Frosted Glass) */}
-                {currentPeriod && (() => {
+                {/* 2. Zen Monolith Active Bio-State Panel */}
+                <View style={{ width: '100%' }}>
+                 {currentPeriod && (() => {
                   const nowH = new Date().getHours() + new Date().getMinutes() / 60;
-                  const sacredHour = getSacredHourInfo(nowH, solarTimes);
-                  const isSacred = sacredHour.type !== null;
-
+                  const leftH = currentPeriod.endH - nowH;
+                  const minsLeft = leftH > 0 ? Math.floor(leftH * 60) : 0;
+                  const hrsLeft = Math.floor(minsLeft / 60);
+                  const minsLeftRem = minsLeft % 60;
+                  const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
+                  
                   return (
-                    <PremiumBreatheCard
+                    <TouchableOpacity 
+                      activeOpacity={0.85} 
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setShowStory(true);
                       }}
                     >
-                      <BlurView intensity={35} tint="light" style={{
+                      <BlurView intensity={50} tint="dark" style={{
+                        width: '100%',
                         borderRadius: 24,
                         borderWidth: 0.5,
-                        borderColor: isSacred ? 'rgba(212,175,55,0.6)' : 'rgba(255,255,255,0.6)',
-                        paddingVertical: 24,
-                        paddingHorizontal: 16,
-                        alignItems: 'center',
-                        backgroundColor: isSacred ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.15)',
-                        overflow: 'hidden'
+                        borderColor: 'rgba(255,255,255,0.2)',
+                        paddingVertical: 14,
+                        paddingHorizontal: 20,
+                        overflow: 'hidden',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
                       }}>
-                        {isSacred ? (
-                          <>
-                            <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 10, fontWeight: '700', color: 'rgba(180,140,40,1)', textTransform: 'uppercase', letterSpacing: 2.5, marginBottom: 8 }}>
-                              {sacredHour.type === 'sunrise' ? 'First Light' : sacredHour.type === 'sunset' ? 'Dusk Transition' : 'Solar Zenith'}
-                            </Text>
-                            <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 28, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 12, lineHeight: 32 }} adjustsFontSizeToFit numberOfLines={1}>
-                              {sacredHour.type === 'sunrise' ? 'Awaken' : sacredHour.type === 'sunset' ? 'Release' : 'Align'}
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(212,175,55,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 0.5, borderColor: 'rgba(212,175,55,0.4)' }}>
-                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#B48C28' }} />
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#000', letterSpacing: 1.5 }}>MEDITATE</Text>
-                            </View>
-                            
-                            {/* Affordance */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16, opacity: 0.6 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#997B22', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to explore</Text>
-                              <Ionicons name="chevron-forward" size={10} color="#997B22" />
-                            </View>
-                          </>
-                        ) : (
-                          <>
-                            <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 10, fontWeight: '700', color: 'rgba(0,0,0,0.65)', textTransform: 'uppercase', letterSpacing: 2.5, marginBottom: 8 }}>
-                              Body Rhythm
-                            </Text>
-                            
-                            <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 28, fontWeight: '700', color: '#111111', textAlign: 'center', marginBottom: 12, lineHeight: 32 }} adjustsFontSizeToFit numberOfLines={1}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: currentPeriod.color || '#4ade80' }} />
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                               {currentPeriod.englishLabel}
                             </Text>
-                            
-                            <View style={{ flexDirection: 'column', alignItems: 'center', gap: 8, paddingHorizontal: 4 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
-                                <Ionicons name="hourglass-outline" size={13} color="rgba(0,0,0,0.7)" />
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(0,0,0,0.8)', letterSpacing: 0.3 }}>
-                                  {(() => {
-                                    const leftH = currentPeriod.endH - nowH;
-                                    if (leftH <= 0) return 'Ending soon';
-                                    const totalMins = Math.floor(leftH * 60);
-                                    if (totalMins >= 60) {
-                                      const hrs = Math.floor(totalMins / 60);
-                                      const mins = totalMins % 60;
-                                      return `Ends in ${hrs}h ${mins}m`;
-                                    }
-                                    return `Ends in ${totalMins} mins`;
-                                  })()}
-                                </Text>
-                              </View>
-                              
-                              {/* The Horizon Line (Next State Preview) */}
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(0,0,0,0.4)', letterSpacing: 0.5, marginTop: 2, marginBottom: 4 }}>
-                                {(() => {
-                                  if (!solarTimes) return '';
-                                  const periods = getDoshaPeriods(solarTimes, nowH);
-                                  const curIdx = periods.findIndex(p => p.id === currentPeriod.id);
-                                  if (curIdx === -1) return '';
-                                  const nextPeriod = periods[(curIdx + 1) % periods.length];
-                                  const startDec = nextPeriod.startH;
-                                  const h = Math.floor(startDec);
-                                  const m = Math.round((startDec - h) * 60);
-                                  const ampm = h < 12 ? 'AM' : 'PM';
-                                  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-                                  const timeStr = `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-                                  return `Next: ${nextPeriod.englishLabel} • ${timeStr}`;
-                                })()}
-                              </Text>
-                              
-                              {/* Solar Info Pill */}
-                              {solarContext && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
-                                  <Ionicons name="sunny-outline" size={13} color="rgba(0,0,0,0.7)" />
-                                  <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(0,0,0,0.8)', letterSpacing: 0.3 }}>
-                                    {solarContext.label1.replace("Today's ", "").replace("Tomorrow's ", "Tmrw ")} {solarContext.mainText}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                            
-                            {/* Affordance to show it's tappable */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16, opacity: 0.5 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '600', color: '#111', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to explore</Text>
-                              <Ionicons name="chevron-forward" size={10} color="#111" />
-                            </View>
-                          </>
-                        )}
-                      </BlurView>
-                    </PremiumBreatheCard>
-                  );
-                })()}
-
-                {/* 3. Expanded Active Bio-State Panel (Grouped for equal spacing) */}
-                <View style={{ width: '100%' }}>
-                 {currentPeriod && (
-                    <BlurView intensity={50} tint="dark" style={{
-                      width: '100%',
-                      borderRadius: 24,
-                      borderWidth: 0.5,
-                      borderColor: 'rgba(255,255,255,0.2)',
-                      paddingVertical: 4,
-                      paddingHorizontal: 20,
-                      overflow: 'hidden',
-                      backgroundColor: 'rgba(0,0,0,0.3)',
-                    }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: currentPeriod.color || '#4ade80' }} />
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase' }}>Active Bio-State</Text>
-                      </View>
-                      
-                      <View style={{ gap: 12 }}>
-                        {/* Live Progress Bar */}
-                        <View style={{ width: '100%', height: 2, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
-                          {(() => {
-                            const now = new Date().getHours() + new Date().getMinutes() / 60;
-                            const start = currentPeriod.startH;
-                            const end = currentPeriod.endH;
-                            const total = end > start ? end - start : (24 - start) + end;
-                            const elapsed = now > start ? now - start : (24 - start) + now;
-                            const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-                            return <View style={{ width: `${pct}%`, height: '100%', backgroundColor: currentPeriod.color || '#4ade80', borderRadius: 1 }} />;
-                          })()}
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="hourglass-outline" size={10} color="rgba(255,255,255,0.5)" />
+                            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                              Ends in {timeStr}
+                            </Text>
+                          </View>
                         </View>
                         
-                        {/* Protocol Columns */}
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                          <View style={{ flex: 1, gap: 8 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '800', color: currentPeriod.color || '#4ade80', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
-                            {currentPeriod.activities.slice(0, 2).map((act, i) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: currentPeriod.color || '#4ade80', marginTop: 6 }} />
-                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
-                              </View>
-                            ))}
+                        <View style={{ gap: 12 }}>
+                          {/* Live Progress Bar */}
+                          <View style={{ width: '100%', height: 2, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
+                            {(() => {
+                              const start = currentPeriod.startH;
+                              const end = currentPeriod.endH;
+                              const total = end > start ? end - start : (24 - start) + end;
+                              const elapsed = nowH > start ? nowH - start : (24 - start) + nowH;
+                              const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+                              return <View style={{ width: `${pct}%`, height: '100%', backgroundColor: currentPeriod.color || '#4ade80', borderRadius: 1 }} />;
+                            })()}
                           </View>
                           
-                          <View style={{ width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                          
-                          <View style={{ flex: 1, gap: 8 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '800', color: '#f87171', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
-                            {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 2).map((act, i) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171', marginTop: 6 }} />
-                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
-                              </View>
-                            ))}
+                          {/* Protocol Columns */}
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                            <View style={{ flex: 1, gap: 8 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: currentPeriod.color || '#4ade80', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
+                              {currentPeriod.activities.slice(0, 2).map((act, i) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: currentPeriod.color || '#4ade80', marginTop: 6 }} />
+                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
+                                </View>
+                              ))}
+                            </View>
+                            
+                            <View style={{ width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                            
+                            <View style={{ flex: 1, gap: 8 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: '#f87171', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
+                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 2).map((act, i) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171', marginTop: 6 }} />
+                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
+                                </View>
+                              ))}
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    </BlurView>
-                 )}
+                      </BlurView>
+                    </TouchableOpacity>
+                  );
+                 })()}
                 </View>
               </View>
 
-              {/* Spacer removed for ScrollView layout */}
 
               {/* 4. Weather Button (Fixed below Bio-State) */}
               <View style={{ width: '100%', paddingHorizontal: 24, marginBottom: 8, alignItems: 'center' }}>

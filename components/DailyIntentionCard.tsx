@@ -1,12 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, Animated, StyleSheet, Platform, TouchableOpacity, LayoutAnimation, UIManager } from 'react-native';
+import { View, Text, Animated, StyleSheet, Platform, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const VEDIC_MANTRAS = [
   {
@@ -55,8 +53,7 @@ function getDayOfYear(date: Date) {
 export function DailyIntentionCard() {
   const scale = useRef(new Animated.Value(0.96)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const chevronRotate = useRef(new Animated.Value(0)).current;
-  const [expanded, setExpanded] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -68,61 +65,81 @@ export function DailyIntentionCard() {
   const dayIndex = getDayOfYear(new Date()) % VEDIC_MANTRAS.length;
   const mantra = VEDIC_MANTRAS[dayIndex];
 
-  const toggle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    LayoutAnimation.configureNext({
-      duration: 320,
-      create: { type: 'easeInEaseOut', property: 'opacity' },
-      update: { type: 'spring', springDamping: 0.75 },
-    });
-    Animated.timing(chevronRotate, {
-      toValue: expanded ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-    setExpanded(prev => !prev);
-  };
-
-  const chevronDeg = chevronRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] });
-
   return (
-    <Animated.View style={[styles.container, { transform: [{ scale }], opacity }]}>
-      <BlurView intensity={40} tint="dark" style={styles.card}>
-        {/* Collapsed Row */}
-        <TouchableOpacity onPress={toggle} activeOpacity={0.85} style={styles.header}>
-          <Text style={styles.shortText} numberOfLines={expanded ? undefined : 2}>
-            "{mantra.short}"
-          </Text>
-          <Animated.View style={{ transform: [{ rotate: chevronDeg }], marginLeft: 10 }}>
-            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.4)" />
-          </Animated.View>
+    <>
+      <Animated.View style={[styles.container, { transform: [{ scale }], opacity }]}>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setModalVisible(true);
+          }}
+          style={styles.cardContainer}
+        >
+          <BlurView intensity={35} tint="light" style={styles.cardInner}>
+            <Text style={styles.cardEyebrow}>TODAY'S MANTRA</Text>
+            
+            <Text style={styles.romanText} numberOfLines={3}>
+              {mantra.transliteration}
+            </Text>
+            
+            <View style={styles.miniDivider} />
+            
+            <Text style={styles.englishText} numberOfLines={2}>
+              "{mantra.english}"
+            </Text>
+            
+            <View style={styles.affordanceRow}>
+              <Text style={styles.affordanceText}>Tap to explore</Text>
+              <Ionicons name="chevron-forward" size={10} color="#111" />
+            </View>
+          </BlurView>
         </TouchableOpacity>
+      </Animated.View>
 
-        {/* Expanded Content */}
-        {expanded && (
-          <View style={styles.expandedContent}>
-            <View style={styles.separator} />
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalBg}>
+          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <LinearGradient colors={['rgba(15,23,42,0.8)', 'rgba(2,6,23,0.95)']} style={StyleSheet.absoluteFillObject} />
+          
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.topBar}>
+              <View style={{ width: 36 }} />
+              <View style={styles.centerPill}>
+                <Ionicons name="sparkles" size={12} color="#FFF" />
+                <Text style={styles.pillText}>VEDIC MANTRA</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeCircleBtn}>
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
 
-            <Text style={styles.sanskritText}>{mantra.sanskrit}</Text>
-            <Text style={styles.transText}>{mantra.transliteration}</Text>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.modalCard}>
+                <Text style={styles.sanskritTextModal}>{mantra.sanskrit}</Text>
+                <View style={styles.divider} />
+                <Text style={styles.transTextModal}>{mantra.transliteration}</Text>
+              </View>
 
-            <View style={styles.microDivider} />
-
-            <Text style={styles.eyebrow}>TRANSLATION</Text>
-            <Text style={styles.englishText}>"{mantra.english}"</Text>
-
-            <View style={styles.microDivider} />
-
-            <Text style={styles.eyebrow}>THE SCIENCE & MEANING</Text>
-            <Text style={styles.meaningText}>{mantra.meaning}</Text>
-
-            <TouchableOpacity onPress={toggle} style={styles.closeRow} activeOpacity={0.7}>
-              <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.35)" />
-            </TouchableOpacity>
-          </View>
-        )}
-      </BlurView>
-    </Animated.View>
+              <View style={styles.englishCard}>
+                <Text style={styles.modalCardEyebrow}>TRANSLATION</Text>
+                <Text style={styles.englishTextModal}>"{mantra.english}"</Text>
+              </View>
+              
+              <View style={styles.meaningCard}>
+                <Text style={styles.modalCardEyebrow}>THE SCIENCE & MEANING</Text>
+                <Text style={styles.meaningTextModal}>{mantra.meaning}</Text>
+              </View>
+              
+              <TouchableOpacity activeOpacity={0.85} onPress={() => setModalVisible(false)} style={styles.doneButton}>
+                <Text style={styles.doneButtonText}>INTERNALIZE & CLOSE</Text>
+              </TouchableOpacity>
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -132,86 +149,85 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 100,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  card: {
+  cardContainer: {
     width: '100%',
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
   },
-  header: {
-    flexDirection: 'row',
+  cardInner: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  shortText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
+  cardEyebrow: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    letterSpacing: 0.3,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  expandedContent: {
-    marginTop: 4,
-  },
-  separator: {
-    height: 0.5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginVertical: 12,
-  },
-  sanskritText: {
-    fontSize: 17,
-    color: '#FCD34D',
-    textAlign: 'center',
-    lineHeight: 28,
-    fontWeight: '500',
-    marginBottom: 10,
-  },
-  transText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    textAlign: 'center',
-    lineHeight: 18,
-    letterSpacing: 0.5,
-    fontStyle: 'italic',
-  },
-  microDivider: {
-    height: 0.5,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginVertical: 12,
-  },
-  eyebrow: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 1.5,
-    marginBottom: 8,
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(0,0,0,0.65)',
     textTransform: 'uppercase',
+    letterSpacing: 2.5,
+    marginBottom: 12,
+  },
+  romanText: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111',
+    textAlign: 'center',
+    lineHeight: 26,
+    fontStyle: 'italic',
+  },
+  miniDivider: {
+    width: 30,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    marginVertical: 12,
   },
   englishText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    lineHeight: 22,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontStyle: 'italic',
-    marginBottom: 4,
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(0,0,0,0.75)',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
-  meaningText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 20,
+  affordanceRow: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4, 
+    marginTop: 16, 
+    opacity: 0.5 
   },
-  closeRow: {
-    alignItems: 'center',
-    paddingTop: 14,
-    paddingBottom: 2,
+  affordanceText: {
+    fontSize: 9, 
+    fontWeight: '600', 
+    color: '#111', 
+    letterSpacing: 0.5, 
+    textTransform: 'uppercase' 
   },
+  
+  // Modal Styles
+  modalBg: { flex: 1, backgroundColor: 'transparent' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+  closeCircleBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  centerPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  pillText: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5, color: '#FFF' },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 30, paddingBottom: 40 },
+  modalCard: { alignItems: 'center', marginBottom: 24, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  sanskritTextModal: { fontSize: 24, color: '#FCD34D', textAlign: 'center', lineHeight: 36, fontWeight: '600' },
+  divider: { width: 40, height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 20 },
+  transTextModal: { fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 22, letterSpacing: 0.5, fontStyle: 'italic' },
+  englishCard: { marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  modalCardEyebrow: { fontSize: 9, fontWeight: '900', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase' },
+  englishTextModal: { fontSize: 17, color: '#FFF', lineHeight: 26, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontStyle: 'italic' },
+  meaningCard: { marginBottom: 32, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  meaningTextModal: { fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 22 },
+  doneButton: { width: '100%', paddingVertical: 16, borderRadius: 100, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  doneButtonText: { color: '#000', fontSize: 12, fontWeight: '900', letterSpacing: 1.2 },
 });
