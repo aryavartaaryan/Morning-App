@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import type { DoshaPeriod } from '@/lib/ayurvedicPeriods';
 import type { SolarTimes } from '@/lib/solar';
 import { WELLNESS, PERIOD_SANSKRIT, PERIOD_EXTENDED } from '@/lib/wellnessData';
+import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -273,33 +274,86 @@ export default function MetabolicStoryModal({
             </View>
 
             {/* Dynamic Real-Time Window Card */}
-            <View style={S.timeWindowCard}>
+            <View style={[S.timeWindowCard, { padding: 16 }]}>
               <LinearGradient
                 colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)']}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <View>
-                  <Text style={S.cardEyebrow}>TODAY'S DYNAMIC SOLAR WINDOW</Text>
-                  <Text style={[S.windowTimeText, { color: accent }]}>
-                    {period.startLabel} — {period.endLabel}
-                  </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  {/* Circular Progress Ring */}
+                  <View style={{ position: 'relative', width: 68, height: 68, alignItems: 'center', justifyContent: 'center' }}>
+                    <Svg width={68} height={68} viewBox="0 0 68 68" style={{ transform: [{ rotate: '-90deg' }] }}>
+                      <SvgCircle cx={34} cy={34} r={30} stroke="rgba(255,255,255,0.06)" strokeWidth={5} fill="none" />
+                      <SvgCircle 
+                        cx={34} cy={34} r={30} 
+                        stroke={accent} 
+                        strokeWidth={5} fill="none" 
+                        strokeDasharray={`${30 * 2 * Math.PI}`} 
+                        strokeDashoffset={`${30 * 2 * Math.PI * (1 - prog)}`} 
+                        strokeLinecap="round" 
+                      />
+                    </Svg>
+                    <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{Math.round(prog * 100)}%</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Details */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={S.cardEyebrow}>DYNAMIC SOLAR WINDOW</Text>
+                    <Text style={[S.windowTimeText, { color: accent, fontSize: 17, marginTop: 2 }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {period.startLabel} — {period.endLabel}
+                    </Text>
+                    <Text style={[S.progressSubText, { marginTop: 4 }]}>{remStr}</Text>
+                  </View>
                 </View>
-                <View style={[S.activeBadge, { backgroundColor: `${accent}20`, borderColor: `${accent}50` }]}>
+                
+                <View style={[S.activeBadge, { backgroundColor: `${accent}20`, borderColor: `${accent}50`, alignSelf: 'flex-start', marginLeft: 10 }]}>
                   <Text style={[S.activeBadgeText, { color: accent }]}>LIVE</Text>
                 </View>
               </View>
-
-              {/* Progress Line */}
-              <View style={S.progressTrack}>
-                <View style={[S.progressBar, { width: `${Math.round(prog * 100)}%`, backgroundColor: accent }]} />
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={S.progressSubText}>{remStr}</Text>
-                <Text style={S.progressSubText}>{Math.round(prog * 100)}% elapsed</Text>
-              </View>
             </View>
+
+            {/* ════ SECTION: DO & AVOID PROTOCOLS ════ */}
+            {w && (
+              <View style={S.card}>
+                <Text style={S.cardTitle}>Biological Protocols for this Window</Text>
+                <Text style={[S.cardSubtitle, { marginBottom: 16 }]}>Aligned with active metabolic enzymes & neuro-hormones</Text>
+
+                <View style={S.protocolsGrid}>
+                  {/* Cultivate */}
+                  <View style={S.protocolCol}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#34d399' }} />
+                      <Text style={[S.protocolHeader, { color: '#34d399' }]}>CULTIVATE</Text>
+                    </View>
+                    {w.doItems.map((item, idx) => (
+                      <View key={idx} style={S.protocolItem}>
+                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                        <Text style={S.protocolText}>{item.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Avoid */}
+                  <View style={S.protocolCol}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' }} />
+                      <Text style={[S.protocolHeader, { color: '#f87171' }]}>PAUSE</Text>
+                    </View>
+                    {w.avoidItems.map((item, idx) => (
+                      <View key={idx} style={S.protocolItem}>
+                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                        <Text style={S.protocolText}>{item.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Bottom Done Button */}
 
             {/* ════ SECTION: THE REAL SCIENCE OF EARTH'S TILT ════ */}
             <View style={[S.card, S.cardGlow]}>
@@ -434,45 +488,6 @@ export default function MetabolicStoryModal({
               </View>
             </View>
 
-            {/* ════ SECTION: DO & AVOID PROTOCOLS ════ */}
-            {w && (
-              <View style={S.card}>
-                <Text style={S.cardTitle}>Biological Protocols for this Window</Text>
-                <Text style={[S.cardSubtitle, { marginBottom: 16 }]}>Aligned with active metabolic enzymes & neuro-hormones</Text>
-
-                <View style={S.protocolsGrid}>
-                  {/* Cultivate */}
-                  <View style={S.protocolCol}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#34d399' }} />
-                      <Text style={[S.protocolHeader, { color: '#34d399' }]}>CULTIVATE</Text>
-                    </View>
-                    {w.doItems.map((item, idx) => (
-                      <View key={idx} style={S.protocolItem}>
-                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                        <Text style={S.protocolText}>{item.text}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Avoid */}
-                  <View style={S.protocolCol}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' }} />
-                      <Text style={[S.protocolHeader, { color: '#f87171' }]}>PAUSE</Text>
-                    </View>
-                    {w.avoidItems.map((item, idx) => (
-                      <View key={idx} style={S.protocolItem}>
-                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                        <Text style={S.protocolText}>{item.text}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Bottom Done Button */}
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleClose}
@@ -510,7 +525,7 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.08)',
@@ -561,11 +576,11 @@ const S = StyleSheet.create({
     letterSpacing: 0.8,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 24, paddingBottom: 24,
   },
   heroHeadline: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '400',
     color: '#FFFFFF',
     lineHeight: 36,
@@ -580,8 +595,8 @@ const S = StyleSheet.create({
   },
   timeWindowCard: {
     borderRadius: 24,
-    padding: 24,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
@@ -630,8 +645,8 @@ const S = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.035)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    padding: 24,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 12,
   },
   cardGlow: {
     borderColor: 'rgba(56, 189, 248, 0.2)',
@@ -661,7 +676,7 @@ const S = StyleSheet.create({
     fontSize: 13.5,
     color: 'rgba(255,255,255,0.7)',
     lineHeight: 22,
-    marginBottom: 16,
+    marginBottom: 12,
     fontWeight: '400',
   },
   solarMatrix: {
@@ -769,7 +784,7 @@ const S = StyleSheet.create({
     marginBottom: 14,
   },
   sanskritWord: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     letterSpacing: 0.5,
     marginBottom: 4,

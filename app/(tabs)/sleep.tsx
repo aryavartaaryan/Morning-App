@@ -4004,9 +4004,7 @@ const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-          decelerationRate="fast"
-          snapToInterval={RECENT_CARD_SIZE + 12}
-          snapToAlignment="start"
+          decelerationRate="normal"
           nestedScrollEnabled
           alwaysBounceHorizontal
           bounces
@@ -4209,9 +4207,7 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
-        decelerationRate="fast"
-        snapToInterval={Math.floor(W * 0.48) + 16}
-        snapToAlignment="start"
+        decelerationRate="normal"
       >
         {SONIC_COLLECTIONS.map((col, idx) => {
           const colIsPlaying = !!playingId && col.soundIds.includes(playingId);
@@ -4358,7 +4354,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
 });
 
 const SonicCollectionDetail = memo(function SonicCollectionDetail({
-  collection, onClose, playingId, isPaused, sessionSecs, onPressSound, recentSoundIds = []
+  collection, onClose, playingId, isPaused, sessionSecs, onPressSound
 }: {
   collection: SonicCollection;
   onClose: () => void;
@@ -4366,7 +4362,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   isPaused: boolean;
   sessionSecs: number;
   onPressSound: (id: string) => void;
-  recentSoundIds?: string[];
 }) {
   const uniqueSoundIds = Array.from(new Set(collection.soundIds));
   const allMappedSounds = uniqueSoundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
@@ -4385,30 +4380,10 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   // Divide into horizontal sliders with max 5 cards per row
   const horizontalRows = useMemo(() => {
     if (sounds.length === 0) return [];
-    
-    // We capture the recent sounds only once when the sheet opens,
-    // so the grid doesn't chaotically re-shuffle if they tap a sound while browsing.
-    const initialRecentIds = useRef(recentSoundIds).current;
-
-    // Premium Discovery: Efraimidis and Spirakis Weighted Shuffle
-    // Sounds the user hasn't played recently get a heavy weight (1.0),
-    // pushing them to the front for discovery. Recently played sounds
-    // get a light weight (0.1), organically pushing them to the back rows.
-    const shuffledSounds = [...sounds].map(s => {
-      const isRecent = initialRecentIds.includes((s as any).id);
-      const weight = isRecent ? 0.1 : 1.0;
-      const score = Math.pow(Math.random(), 1 / weight);
-      return { sound: s, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map(item => item.sound);
-
     const MAX_CARDS_PER_ROW = 5;
-    const numRows = Math.ceil(shuffledSounds.length / MAX_CARDS_PER_ROW);
+    const numRows = Math.ceil(sounds.length / MAX_CARDS_PER_ROW);
     const rows: typeof sounds[] = Array.from({ length: numRows }, () => []);
-    
-    // Distribute shuffled sounds evenly across rows
-    shuffledSounds.forEach((s: any, i: number) => {
+    sounds.forEach((s: any, i: number) => {
       rows[i % numRows].push(s);
     });
     return rows;
@@ -4525,9 +4500,6 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     horizontal 
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
-                    decelerationRate="fast"
-                    snapToInterval={cardW + 16}
-                    snapToAlignment="start"
                   >
                     {row.map((sound: any) => (
                       <TherapySoundCard
@@ -5016,7 +4988,6 @@ function SleepTabInner() {
           isPaused={isPaused}
           sessionSecs={sessionSecs}
           onPressSound={handleSoundCardTap}
-          recentSoundIds={recentSoundIds}
         />
       )}
 

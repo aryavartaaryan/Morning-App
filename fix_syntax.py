@@ -5,30 +5,23 @@ def main():
     with open(file_path, 'r') as f:
         content = f.read()
 
-    # The corrupted block looks like this:
-    old_corrupted = """                        paddingVertical: 20,
-                        paddingHorizontal: 20,
-                                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>"""
+    bad_block = """                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
+                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
+                        </BlurView>
+                      </View>"""
+                      
+    good_block = """                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
+                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
+                        </View>
+                      </BlurView>"""
 
-    fixed = """                        paddingVertical: 20,
-                        paddingHorizontal: 20,
-                        overflow: 'hidden',
-                        backgroundColor: 'rgba(10,10,10,0.4)',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 24 },
-                        shadowOpacity: 0.6,
-                        shadowRadius: 32,
-                        elevation: 20,
-                      }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>"""
+    content = content.replace(bad_block, good_block)
 
-    if old_corrupted in content:
-        content = content.replace(old_corrupted, fixed)
-        with open(file_path, 'w') as f:
-            f.write(content)
-        print("Fixed corrupted BlurView block.")
-    else:
-        print("Could not find the corrupted block to fix.")
+    with open(file_path, 'w') as f:
+        f.write(content)
+    print("Fixed syntax error.")
 
 if __name__ == "__main__":
     main()

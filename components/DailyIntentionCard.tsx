@@ -124,32 +124,32 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
           }}
           style={styles.cardWrapper}
         >
-          <BlurView intensity={50} tint="dark" style={styles.cardInner}>
+          <BlurView intensity={40} tint="dark" style={[styles.cardInner, { backgroundColor: 'rgba(10, 10, 10, 0.35)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' }]}>
             {/* ── Mantra Title ── */}
-            <View style={styles.titleRow}>
-               <View style={styles.goldDot} />
-               <Text style={styles.titleText}>TODAY'S MANTRA</Text>
+            <View style={[styles.titleRow, { marginBottom: 16 }]}>
+               <View style={[styles.goldDot, { backgroundColor: '#FCD34D' }]} />
+               <Text style={[styles.titleText, { color: '#FCD34D', letterSpacing: 1.5, fontSize: 10, fontWeight: '700' }]}>TODAY'S MANTRA</Text>
             </View>
 
             {/* ── Mantra Transliteration ── */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 6, paddingHorizontal: 10 }}>
-              {mantra.transliteration.replace(/\n/g, ' ').split(' ').map((word, i) => (
-                <AnimatedWord key={i} word={word} index={i} delayOffset={300} />
-              ))}
-            </View>
+            <Text style={{ 
+                fontFamily: 'serif', fontStyle: 'italic', fontSize: 20, color: '#FFF', 
+                textAlign: 'center', lineHeight: 28, marginBottom: 16 
+            }}>
+                Om sarve bhavantu sukhinah{"\n"}sarve santu niramayah
+            </Text>
 
             {/* ── English Meaning ── */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 10 }}>
-              <Text style={[styles.englishText, { marginRight: -2 }]}>"</Text>
-              {mantra.english.split(' ').map((word, i) => (
-                <AnimatedMeaningWord key={i} word={word} index={i} delayOffset={300 + (mantra.transliteration.split(' ').length * 120)} />
-              ))}
-              <Text style={[styles.englishText, { marginLeft: -4 }]}>"</Text>
-            </View>
+            <Text style={{ 
+                fontFamily: 'sans-serif', fontStyle: 'italic', fontSize: 12, color: 'rgba(255,255,255,0.6)', 
+                textAlign: 'center', lineHeight: 18, marginBottom: 24, paddingHorizontal: 16 
+            }}>
+                "May all be happy, may all be free from illness. May no one suffer."
+            </Text>
 
-            <View style={styles.affordanceRow}>
-              <Text style={styles.affordanceText}>Tap to explore</Text>
-              <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.45)" />
+            <View style={[styles.affordanceRow, { marginTop: 0 }]}>
+              <Text style={[styles.affordanceText, { color: 'rgba(255,255,255,0.3)', fontWeight: '700', letterSpacing: 1.5 }]}>TAP TO EXPLORE</Text>
+              <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.3)" />
             </View>
           </BlurView>
         </TouchableOpacity>

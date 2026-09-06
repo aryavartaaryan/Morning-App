@@ -7289,7 +7289,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
           {/* Floating close button */}
           <TouchableOpacity
             onPress={close}
-            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 0.5, borderColor: 'rgba(106,30,47,0.3)', backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, overflow: 'hidden' }}>
+            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 0, borderColor: 'rgba(106,30,47,0.3)', backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, overflow: 'hidden' }}>
             <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
             <Text style={{ color: '#6A1E2F', fontSize: 14, fontWeight: '400', opacity: 0.8 }}>✕</Text>
           </TouchableOpacity>
@@ -7738,7 +7738,7 @@ function DailyTab() {
             return (
               <TouchableOpacity activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowLunarModal(true); }}>
               <BlurView intensity={50} tint="light" style={{
-                borderRadius: 24, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.3)',
+                borderRadius: 24, borderWidth: 0, borderColor: 'rgba(255,255,255,0.3)',
                 overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12,
                 paddingHorizontal: 22, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.2)'
               }}>
@@ -7798,72 +7798,56 @@ function DailyTab() {
                         setShowStory(true);
                       }}
                     >
-                      <BlurView intensity={50} tint="dark" style={{
+                      <BlurView intensity={40} tint="dark" style={{
                         width: '100%',
                         borderRadius: 24,
                         borderWidth: 0.5,
-                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderColor: 'rgba(255,255,255,0.15)',
                         paddingVertical: 20,
                         paddingHorizontal: 20,
                         overflow: 'hidden',
-                        backgroundColor: 'rgba(15,15,15,0.55)',
+                        backgroundColor: 'rgba(10, 10, 10, 0.35)',
                       }}>
-                        {/* Top Section: Ring & Title */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
                           {/* Progress Ring */}
-                          <View style={{ position: 'relative', width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}>
-                            <Svg width={64} height={64} viewBox="0 0 64 64" style={{ transform: [{ rotate: '-90deg' }] }}>
-                              <SvgCircle cx={32} cy={32} r={28} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
+                          <View style={{ position: 'relative', width: 68, height: 68, alignItems: 'center', justifyContent: 'center' }}>
+                            <Svg width={68} height={68} viewBox="0 0 68 68" style={{ transform: [{ rotate: '-90deg' }] }}>
+                              <SvgCircle cx={34} cy={34} r={30} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
                               <SvgCircle 
-                                cx={32} cy={32} r={28} 
-                                stroke={currentPeriod.color || '#8B5CF6'} 
+                                cx={34} cy={34} r={30} 
+                                stroke="#A78BFA" 
                                 strokeWidth={4} fill="none" 
-                                strokeDasharray={`${28 * 2 * Math.PI}`} 
-                                strokeDashoffset={`${28 * 2 * Math.PI * (1 - (pct / 100))}`} 
+                                strokeDasharray={`${30 * 2 * Math.PI}`} 
+                                strokeDashoffset={`${30 * 2 * Math.PI * (1 - (pct / 100))}`} 
                                 strokeLinecap="round" 
                               />
                             </Svg>
                             <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
+                              <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
                             </View>
                           </View>
                           
-                          {/* Title */}
+                          {/* Details */}
                           <View style={{ flex: 1, gap: 4 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.5 }}>ACTIVE BIO-STATE</Text>
-                            <Text style={{ fontSize: 15, fontWeight: '800', color: currentPeriod.color || '#8B5CF6', letterSpacing: 0.5 }}>{currentPeriod.englishLabel}</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>ACTIVE BIO-STATE</Text>
+                            <Text style={{ fontSize: 17, fontWeight: '800', color: '#A78BFA', letterSpacing: 0 }}>Creative Peak Hours</Text>
+                            
+                            {/* Icons Row */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                              <Ionicons name="moon-outline" size={16} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="water-outline" size={16} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="leaf-outline" size={16} color="rgba(255,255,255,0.7)" />
+                              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>|</Text>
+                              <Ionicons name="desktop-outline" size={16} color="rgba(255,255,255,0.2)" />
+                              <Ionicons name="phone-portrait-outline" size={16} color="rgba(255,255,255,0.2)" />
+                            </View>
                           </View>
+                          
+                          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
                         </View>
-                        
-                        <View style={{ width: '100%', height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 16 }} />
 
-                        {/* Bottom Section: Columns */}
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                          {/* Cultivate Column */}
-                          <View style={{ flex: 1, gap: 10 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: currentPeriod.color || '#8B5CF6', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
-                            {currentPeriod.activities.slice(0, 3).map((act: string, i: number) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.7)', marginTop: 6 }} />
-                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '400', lineHeight: 16, flex: 1 }}>{act}</Text>
-                              </View>
-                            ))}
-                          </View>
-                          
-                          <View style={{ width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                          
-                          {/* Pause Column */}
-                          <View style={{ flex: 1, gap: 10 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#F43F5E', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
-                            {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 3).map((act: string, i: number) => (
-                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(244, 63, 94, 0.7)', marginTop: 6 }} />
-                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '400', lineHeight: 16, flex: 1 }}>{act}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
+                        <View style={{ width: '100%', height: 1 }} />
                         
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
                           <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
@@ -7886,7 +7870,7 @@ function DailyTab() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         router.push('/weather');
                       }}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 0, borderColor: 'rgba(255,255,255,0.1)' }}
                     >
                       <Text style={{ fontSize: 14 }}>{weather.emoji}</Text>
                       <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 14, fontWeight: '700', color: '#FFF' }}>{weather.temp}°</Text>
@@ -7903,7 +7887,7 @@ function DailyTab() {
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
-                  borderWidth: 0.5,
+                  borderWidth: 0,
                   borderColor: 'rgba(255,255,255,0.16)',
                   overflow: 'hidden',
                 }}>
@@ -8612,63 +8596,69 @@ const PremiumBreatheCard = ({ children, onPress }: any) => {
 const AmbientAura = ({ color }: { color: string }) => {
   const { bgUri } = useBgContext();
   const breatheAnim = React.useRef(new Animated.Value(0)).current;
+  const rotateAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
+    // Breathing cycle for opacity and scale
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
+    ).start();
+
+    // Endless slow rotation for the Siri-style cloud
+    Animated.loop(
+      Animated.timing(rotateAnim, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, []);
 
-  // Background image fades in and out clearly
-  const imageOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1.0] });
+  // Background dims slightly to let the aura shine
+  const bgOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.4] });
   
-  // Localized aura opacity changes, but size remains constant
-  const auraOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.4] });
-  const auraGlowOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
+  // The energy cloud blooms (scales up and fades in)
+  const cloudOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.65] });
+  const cloudScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.3] });
+  
+  const rotation = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const revRotation = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
 
   return (
     <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} pointerEvents="none">
-      {bgUri ? (
-        <Animated.Image 
-          source={{ uri: bgUri }} 
-          style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]} 
-          resizeMode="cover"
-        />
-      ) : null}
+      <Animated.Image 
+        source={{ uri: bgUri }} 
+        style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]} 
+        resizeMode="cover"
+      />
       
-      {/* ── Localized Golden Aura (Strictly behind Mantra Card) ── */}
-      <Animated.View style={{
-        position: 'absolute',
-        top: '6%',
-        left: '10%',
-        right: '10%',
-        height: '28%',
-        backgroundColor: '#FCD34D',
-        borderRadius: 150,
-        opacity: auraOpacity,
-        shadowColor: '#FBBF24',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 100,
-        elevation: 20,
-      }} />
-      <Animated.View style={{
-        position: 'absolute',
-        top: '6%',
-        left: '10%',
-        right: '10%',
-        height: '28%',
-        backgroundColor: '#F59E0B',
-        borderRadius: 150,
-        opacity: auraGlowOpacity,
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 60,
-      }} />
+      {/* ── The Siri-Style Amorphous Energy Cloud ── */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { 
+        alignItems: 'center', justifyContent: 'center',
+        opacity: cloudOpacity,
+        transform: [{ scale: cloudScale }, { rotate: rotation }]
+      }]}>
+        {/* Deep Violet Core */}
+        <View style={{
+          position: 'absolute', width: 280, height: 400, borderRadius: 200,
+          backgroundColor: '#8B5CF6', opacity: 0.6,
+          transform: [{ translateX: -40 }, { translateY: -50 }],
+          shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
+        }} />
+        {/* Soft Gold / Amber Edge */}
+        <View style={{
+          position: 'absolute', width: 300, height: 300, borderRadius: 150,
+          backgroundColor: '#F59E0B', opacity: 0.4,
+          transform: [{ translateX: 60 }, { translateY: 40 }],
+          shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
+        }} />
+        {/* Cosmic Blue Swirl */}
+        <Animated.View style={{
+          position: 'absolute', width: 250, height: 350, borderRadius: 175,
+          backgroundColor: '#3B82F6', opacity: 0.5,
+          transform: [{ translateX: 10 }, { translateY: 60 }, { rotate: revRotation }],
+          shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
+        }} />
+      </Animated.View>
     </View>
   );
 };

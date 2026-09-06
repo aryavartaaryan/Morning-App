@@ -19,7 +19,7 @@ import { store, KEYS } from '@/lib/storage';
 
 import { ensureAllBgsCachedWithProgress, getBgSourceSync, ensureBgKey, isBgFullyCached, isSplashCached, bgWarmup, BG_URLS } from '@/lib/bgImages';
 import { prefetchAllSoundImagesWithProgress, warmSoundImageMap, prefetchCriticalAlarmImages } from '@/lib/soundImagePreload';
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Path, Line } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -178,66 +178,52 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
       {/* Absolute minimal background gradient or solid color. We'll use a very subtle radial darkness. */}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#020617' }]} />
       
-      {/* Background Video (Subtle Texture) */}
-      <Video 
-        source={require('../assets/videos/splash.mp4')}
-        style={{ position: 'absolute', top: 0, left: 0, width: SW, height: SH, opacity: 0.15 }}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
-      />
-      
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.75)' }]} />
+      {/* Golden Dawn Breathe Background — uses the premium sunset image */}
+      <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: breatheAnim }] }}>
+        <Image 
+          source={require('../assets/images/sunset_splash_bg.jpg')}
+          style={{ position: 'absolute', width: SW, height: SH, resizeMode: 'cover' }} 
+        />
+        {/* Subtle mist overlay to blend it perfectly */}
+        <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFillObject} />
+      </Animated.View>
 
       {/* Center Content */}
       <View style={SS.center}>
         
-        {/* Subtle Cosmic Glow — single pristine white/silver glow */}
-        <Animated.View style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          alignItems: 'center', justifyContent: 'center',
-          opacity: titleOp,
-        }}>
-          <View style={{
-            width: SW * 1.2, height: SW * 1.2,
-            borderRadius: SW * 0.6,
-            backgroundColor: 'rgba(255,255,255,0.02)',
-            position: 'absolute',
-          }} />
-        </Animated.View>
-
-        {/* Ethereal Breathe Background — uses the exact premium image for Option 2 */}
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: breatheAnim }] }}>
-          <Image 
-            source={require('../assets/images/premium_splash_bg.jpg')}
-            style={{ position: 'absolute', width: SW, height: SH, resizeMode: 'cover' }} 
-          />
-          {/* Subtle mist overlay to blend it perfectly */}
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
-        </Animated.View>
-
-        {/* Ultra Premium Still Text */}
+        {/* Ultra Premium Still Text & Icon */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp }}>
+          
+          <Animated.View style={{ opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.95] }), marginBottom: 24 }}>
+            <Svg width="54" height="54" viewBox="0 0 100 100" fill="none">
+              {/* Sun rays */}
+              <Path d="M50 15 L50 25 M28 22 L33 30 M72 22 L67 30 M15 40 L23 45 M85 40 L77 45" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Sun body */}
+              <Circle cx="50" cy="55" r="18" fill="none" stroke="#ffffff" strokeWidth="2.5" />
+              {/* Mountains */}
+              <Path d="M15 75 L42 48 L60 65 L70 55 L85 75 Z" fill="#ffffff" />
+              {/* Base line */}
+              <Line x1="10" y1="75" x2="90" y2="75" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+            </Svg>
+          </Animated.View>
+
           <Animated.Text style={{ 
             fontSize: 42, 
             fontFamily: 'Nunito_300Light', 
             color: '#ffffff', 
             letterSpacing: 18, 
-            opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.95] }),
+            opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
             paddingLeft: 18, // Balance the high letter spacing
           }}>SVARA</Animated.Text>
           
           <Animated.Text style={{ 
             fontSize: 10, 
-            color: '#a1a1aa', 
+            color: '#ffffff', 
             fontFamily: 'Nunito_400Regular', 
-            letterSpacing: 10, 
-            marginTop: 16,
+            letterSpacing: 3, 
+            marginTop: 12,
             opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.8] }),
-            paddingLeft: 10,
-          }}>THE RESONANCE</Animated.Text>
+          }}>Morning Meditation • Breathwork • Wellness</Animated.Text>
         </Animated.View>
         
       </View>
