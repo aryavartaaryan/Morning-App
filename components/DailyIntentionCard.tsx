@@ -37,7 +37,7 @@ const VEDIC_MANTRAS = [
   },
   {
     sanskrit: "ॐ सर्वे भवन्तु सुखिनः\nसर्वे सन्तु निरामयाः।\nसर्वे भद्राणि पश्यन्तु\nमा कश्चिद्दुःखभाग्भवेत्॥",
-    transliteration: "Om sarve bhavantu sukhinah\nsarve santu niramayah",
+    transliteration: "Om sarve bhavantu sukhinah\nsarve santu niramayah\nsarve bhadrani pashyantu\nma kashchid duhkha bhagbhavet",
     english: "May all be happy, may all be free from illness. May no one suffer.",
     short: "May all see what is auspicious",
     meaning: "A deeply therapeutic mantra for global healing. It acts as a biological antidote to anxiety and scarcity by actively generating feelings of goodwill and deep psychological safety.",
@@ -218,16 +218,10 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 24,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(10,10,10,0.4)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(15,15,15,0.55)',
     alignItems: 'center', // Center everything
-    // Heavy floating shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.6,
-    shadowRadius: 32,
-    elevation: 20,
   },
   titleRow: {
     flexDirection: 'row',

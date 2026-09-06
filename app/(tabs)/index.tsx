@@ -7039,9 +7039,9 @@ React.useEffect(() => {
             <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }} />
           </View>
 
-          <View style={{ height: 350, position: 'relative' }}>
-            {/* Scrollable Timeline */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20, position: 'relative' }}>
+          <View style={{ position: 'relative' }}>
+            {/* Full Timeline */}
+            <View style={{ paddingBottom: 20, position: 'relative' }}>
               
               {/* Vertical line drawn dynamically based on items */}
               <View style={{ position: 'absolute', left: 19, top: 10, bottom: 20, width: 2, backgroundColor: '#BAE6FD', borderRadius: 1 }} />
@@ -7051,6 +7051,17 @@ React.useEffect(() => {
                   const durMin = (startH: number, endH: number) => {
                     let e = endH < startH ? endH + 24 : endH;
                     return Math.round((e - startH) * 60);
+                  };
+
+                  
+                  const getPrahar = (startH: number) => {
+                    const ph = times.prahars.find((p: any) => {
+                      let e = p.end < p.start ? p.end + 24 : p.end;
+                      let s = p.start;
+                      let c = startH < s ? startH + 24 : startH;
+                      return c >= s && c < e;
+                    });
+                    return ph ? ph.title.split('(')[0].trim() : '';
                   };
 
                   const allItems = [
@@ -7089,6 +7100,13 @@ React.useEffect(() => {
                   return dayItems.map((item, idx) => {
                     const isSelected = activeSegment === item.id;
                     
+                    
+                    let dispLabel = item.label.toUpperCase();
+                    if (!item.id.startsWith('p') && !item.id.startsWith('n')) {
+                      const pName = getPrahar(item.start);
+                      if (pName) dispLabel += ` (${pName.toUpperCase()})`;
+                    }
+
                     let isLive = false;
                     if ((item as any).end) {
                        let itm = item as any;
@@ -7108,7 +7126,7 @@ React.useEffect(() => {
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#0369A1' : item.color, letterSpacing: 0.4 }}>{item.label.toUpperCase()}</Text>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#0369A1' : item.color, letterSpacing: 0.4 }}>{dispLabel}</Text>
                                 {isLive && <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 8, color: '#FFF', fontWeight: '800' }}>LIVE NOW</Text></View>}
                               </View>
                               <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E3A5F', marginTop: 3 }}>{item.time}</Text>
@@ -7126,7 +7144,7 @@ React.useEffect(() => {
                   });
                 })()}
               </View>
-            </ScrollView>
+            </View>
           </View>
         </View>
 
@@ -7746,11 +7764,11 @@ function DailyTab() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 6 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
               
-              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 8 }}>
+              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 16 }}>
                 
                 {/* 1. Daily Intention (Floating, transparent, elegant) */}
                 <View style={{ width: '100%', alignItems: 'center' }}>
@@ -7766,6 +7784,11 @@ function DailyTab() {
                   const hrsLeft = Math.floor(minsLeft / 60);
                   const minsLeftRem = minsLeft % 60;
                   const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
+                  const start = currentPeriod.startH;
+                  const end = currentPeriod.endH;
+                  const total = end > start ? end - start : (24 - start) + end;
+                  const elapsed = nowH > start ? nowH - start : (24 - start) + nowH;
+                  const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
                   
                   return (
                     <TouchableOpacity 
@@ -7778,98 +7801,73 @@ function DailyTab() {
                       <BlurView intensity={50} tint="dark" style={{
                         width: '100%',
                         borderRadius: 24,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.15)',
+                        borderWidth: 0.5,
+                        borderColor: 'rgba(255,255,255,0.1)',
                         paddingVertical: 20,
                         paddingHorizontal: 20,
                         overflow: 'hidden',
-                        backgroundColor: 'rgba(10,10,10,0.4)',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 24 },
-                        shadowOpacity: 0.6,
-                        shadowRadius: 32,
-                        elevation: 20,
+                        backgroundColor: 'rgba(15,15,15,0.55)',
                       }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                          <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: currentPeriod.color || '#4ade80' }} />
-                              <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF', letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.8 }}>
-                                Active Bio-State
-                              </Text>
+                        {/* Top Section: Ring & Title */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 }}>
+                          {/* Progress Ring */}
+                          <View style={{ position: 'relative', width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}>
+                            <Svg width={64} height={64} viewBox="0 0 64 64" style={{ transform: [{ rotate: '-90deg' }] }}>
+                              <SvgCircle cx={32} cy={32} r={28} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
+                              <SvgCircle 
+                                cx={32} cy={32} r={28} 
+                                stroke={currentPeriod.color || '#8B5CF6'} 
+                                strokeWidth={4} fill="none" 
+                                strokeDasharray={`${28 * 2 * Math.PI}`} 
+                                strokeDashoffset={`${28 * 2 * Math.PI * (1 - (pct / 100))}`} 
+                                strokeLinecap="round" 
+                              />
+                            </Svg>
+                            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
                             </View>
-                            <Text style={{ fontSize: 16, fontWeight: '800', color: currentPeriod.color || '#4ade80', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: 12 }}>
-                              {currentPeriod.englishLabel}
-                            </Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            <Ionicons name="hourglass-outline" size={10} color="rgba(255,255,255,0.5)" />
-                            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                              Ends in {timeStr}
-                            </Text>
-                          </View>
-                        </View>
-                        
-                        <View style={{ gap: 12 }}>
-                          {/* Live Progress Bar */}
-                          <View style={{ width: '100%', height: 2, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
-                            {(() => {
-                              const start = currentPeriod.startH;
-                              const end = currentPeriod.endH;
-                              const total = end > start ? end - start : (24 - start) + end;
-                              const elapsed = nowH > start ? nowH - start : (24 - start) + nowH;
-                              const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-                              return <View style={{ width: `${pct}%`, height: '100%', backgroundColor: currentPeriod.color || '#4ade80', borderRadius: 1 }} />;
-                            })()}
                           </View>
                           
-                          {/* Protocol Columns */}
-                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                            <View style={{ flex: 1, gap: 8 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '800', color: currentPeriod.color || '#4ade80', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
-                              {currentPeriod.activities.slice(0, 3).map((act: string, i: number) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <Ionicons name="leaf-outline" size={12} color={currentPeriod.color || '#4ade80'} />
-                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
-                                  </View>
-                                  <Switch 
-                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(252, 211, 77, 0.5)' }}
-                                    thumbColor={'#fff'}
-                                    ios_backgroundColor="rgba(255,255,255,0.1)"
-                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
-                                    value={false}
-                                  />
-                                </View>
-                              ))}
-                            </View>
-                            
-                            <View style={{ width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                            
-                            <View style={{ flex: 1, gap: 8 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '800', color: '#f87171', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
-                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 3).map((act: string, i: number) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <Ionicons name="close-circle-outline" size={12} color="#f87171" />
-                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
-                                  </View>
-                                  <Switch 
-                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(248, 113, 113, 0.5)' }}
-                                    thumbColor={'#fff'}
-                                    ios_backgroundColor="rgba(255,255,255,0.1)"
-                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
-                                    value={false}
-                                  />
-                                </View>
-                              ))}
-                            </View>
+                          {/* Title */}
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.5 }}>ACTIVE BIO-STATE</Text>
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: currentPeriod.color || '#8B5CF6', letterSpacing: 0.5 }}>{currentPeriod.englishLabel}</Text>
                           </View>
                         </View>
                         
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 14, opacity: 0.7 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.8, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
-                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.45)" />
+                        <View style={{ width: '100%', height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 16 }} />
+
+                        {/* Bottom Section: Columns */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                          {/* Cultivate Column */}
+                          <View style={{ flex: 1, gap: 10 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: currentPeriod.color || '#8B5CF6', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
+                            {currentPeriod.activities.slice(0, 3).map((act: string, i: number) => (
+                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.7)', marginTop: 6 }} />
+                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '400', lineHeight: 16, flex: 1 }}>{act}</Text>
+                              </View>
+                            ))}
+                          </View>
+                          
+                          <View style={{ width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                          
+                          {/* Pause Column */}
+                          <View style={{ flex: 1, gap: 10 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#F43F5E', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
+                            {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 3).map((act: string, i: number) => (
+                              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(244, 63, 94, 0.7)', marginTop: 6 }} />
+                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '400', lineHeight: 16, flex: 1 }}>{act}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
+                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
                         </View>
                       </BlurView>
                     </TouchableOpacity>
@@ -7901,7 +7899,7 @@ function DailyTab() {
         </ScrollView>
 
         {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns (Fixed at bottom) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 16) + 55, paddingTop: 10, backgroundColor: 'transparent' }}>
+        <View style={{ position: 'absolute', bottom: 10, width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 10), paddingTop: 10, backgroundColor: 'transparent' }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -8613,8 +8611,6 @@ const PremiumBreatheCard = ({ children, onPress }: any) => {
 
 const AmbientAura = ({ color }: { color: string }) => {
   const { bgUri } = useBgContext();
-  const anim1 = React.useRef(new Animated.Value(0)).current;
-  const anim2 = React.useRef(new Animated.Value(0)).current;
   const breatheAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -8624,54 +8620,54 @@ const AmbientAura = ({ color }: { color: string }) => {
         Animated.timing(breatheAnim, { toValue: 0, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
-
-    Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(anim1, { toValue: 1, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim1, { toValue: 0, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(anim2, { toValue: 1, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-      ])
-    ).start();
   }, []);
 
-  const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-100, 100] });
-  const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
-  // Background parallax zoom: 1.0 → 1.05
-  const bgScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+  // Background image fades in and out clearly
+  const imageOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1.0] });
   
-  // Ultra premium transparent aura (25% max opacity)
-  const opacity1 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] });
-
-  const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
-  const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
-  const opacity2 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.25] });
-  
-  // Cinematic dark breathing overlay (0% to 55%)
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.75] });
+  // Localized aura opacity changes, but size remains constant
+  const auraOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.4] });
+  const auraGlowOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Animated.Image 
-        source={bgUri ? { uri: bgUri } : undefined} 
-        style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]} 
-        resizeMode="cover" 
-      />
+    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} pointerEvents="none">
+      {bgUri ? (
+        <Animated.Image 
+          source={{ uri: bgUri }} 
+          style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]} 
+          resizeMode="cover"
+        />
+      ) : null}
       
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000', opacity: breatheOpacity }]} />
-      
+      {/* ── Localized Golden Aura (Strictly behind Mantra Card) ── */}
       <Animated.View style={{
-        position: 'absolute', top: '5%', left: '-25%', width: 650, height: 650, borderRadius: 325,
-        backgroundColor: color, opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
+        position: 'absolute',
+        top: '6%',
+        left: '10%',
+        right: '10%',
+        height: '28%',
+        backgroundColor: '#FCD34D',
+        borderRadius: 150,
+        opacity: auraOpacity,
+        shadowColor: '#FBBF24',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 100,
+        elevation: 20,
       }} />
-      
       <Animated.View style={{
-        position: 'absolute', top: '45%', right: '-25%', width: 750, height: 750, borderRadius: 375,
-        backgroundColor: color, opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
+        position: 'absolute',
+        top: '6%',
+        left: '10%',
+        right: '10%',
+        height: '28%',
+        backgroundColor: '#F59E0B',
+        borderRadius: 150,
+        opacity: auraGlowOpacity,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 60,
       }} />
     </View>
   );

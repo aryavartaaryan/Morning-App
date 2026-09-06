@@ -208,31 +208,35 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           }} />
         </Animated.View>
 
-        {/* Ethereal Breathe Background — softly pulsing and heavily blurred */}
+        {/* Ethereal Breathe Background — uses the exact premium image for Option 2 */}
         <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: breatheAnim }] }}>
-          <HeroGeometricAnimation size={SW * 1.0} opacity={0.65} variant="splash" />
-          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <Image 
+            source={require('../assets/images/premium_splash_bg.jpg')}
+            style={{ position: 'absolute', width: SW, height: SH, resizeMode: 'cover' }} 
+          />
+          {/* Subtle mist overlay to blend it perfectly */}
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
         </Animated.View>
 
         {/* Ultra Premium Still Text */}
         <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp }}>
           <Animated.Text style={{ 
-            fontSize: 48, 
+            fontSize: 42, 
             fontFamily: 'Nunito_300Light', 
             color: '#ffffff', 
-            letterSpacing: 28, 
+            letterSpacing: 18, 
             opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.95] }),
-            paddingLeft: 28, // Balance the high letter spacing
-          }}>Svara</Animated.Text>
+            paddingLeft: 18, // Balance the high letter spacing
+          }}>SVARA</Animated.Text>
           
           <Animated.Text style={{ 
-            fontSize: 11, 
+            fontSize: 10, 
             color: '#a1a1aa', 
             fontFamily: 'Nunito_400Regular', 
-            letterSpacing: 18, 
-            marginTop: 18,
+            letterSpacing: 10, 
+            marginTop: 16,
             opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.8] }),
-            paddingLeft: 18,
+            paddingLeft: 10,
           }}>THE RESONANCE</Animated.Text>
         </Animated.View>
         

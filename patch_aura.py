@@ -5,76 +5,76 @@ def main():
     with open(file_path, 'r') as f:
         content = f.read()
 
-    # Find AmbientAura component
-    start_str = "const AmbientAura = ({ color }: { color: string }) => {"
-    end_str = "};\n"
+    aura_start = "const AmbientAura = ({ color }: { color: string }) => {"
+    aura_end = "    </View>\n  );\n};"
     
-    start_idx = content.find(start_str)
-    if start_idx == -1:
-        print("AmbientAura not found")
-        sys.exit(1)
-        
-    end_idx = content.find(end_str, start_idx)
+    a_start_idx = content.find(aura_start)
+    a_end_idx = content.find(aura_end, a_start_idx)
     
-    new_aura = """const AmbientAura = ({ color }: { color: string }) => {
-  const anim1 = React.useRef(new Animated.Value(0)).current;
-  const anim2 = React.useRef(new Animated.Value(0)).current;
+    if a_start_idx != -1 and a_end_idx != -1:
+        new_aura = """const AmbientAura = ({ color }: { color: string }) => {
+  const { bgUri } = useBgContext();
   const breatheAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(anim1, { toValue: 1, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim1, { toValue: 0, duration: 25000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(anim2, { toValue: 1, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0, duration: 30000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
+        Animated.timing(breatheAnim, { toValue: 1, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  const translateY1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [-100, 100] });
-  const scale1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
-  // Make aura very light and transparent
-  const opacity1 = anim1.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
-
-  const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
-  const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.07] });
+  // Background image fades in and out clearly
+  const imageOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1.0] });
   
-  // Premium deep breathing overlay
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
+  // Localized aura opacity changes, but size remains constant
+  const auraOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.4] });
+  const auraGlowOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.25] });
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000', opacity: breatheOpacity }]} />
+    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} pointerEvents="none">
+      <Animated.Image 
+        source={{ uri: bgUri }} 
+        style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]} 
+        resizeMode="cover"
+      />
       
+      {/* ── Localized Golden Aura (Strictly behind Mantra Card) ── */}
       <Animated.View style={{
-        position: 'absolute', top: '10%', left: '-20%', width: 600, height: 600, borderRadius: 300,
-        backgroundColor: color, opacity: opacity1, transform: [{ translateY: translateY1 }, { scale: scale1 }],
+        position: 'absolute',
+        top: '10%',
+        left: '10%',
+        right: '10%',
+        height: '28%',
+        backgroundColor: '#FCD34D',
+        borderRadius: 150,
+        opacity: auraOpacity,
+        shadowColor: '#FBBF24',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 100,
+        elevation: 20,
       }} />
-      
       <Animated.View style={{
-        position: 'absolute', top: '50%', right: '-20%', width: 700, height: 700, borderRadius: 350,
-        backgroundColor: color, opacity: opacity2, transform: [{ translateY: translateY2 }, { scale: scale2 }],
+        position: 'absolute',
+        top: '10%',
+        left: '10%',
+        right: '10%',
+        height: '28%',
+        backgroundColor: '#F59E0B',
+        borderRadius: 150,
+        opacity: auraGlowOpacity,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 60,
       }} />
-    </View>
-  );
 """
-    
-    content = content[:start_idx] + new_aura + content[end_idx:]
-    with open(file_path, 'w') as f:
-        f.write(content)
+        content = content[:a_start_idx] + new_aura + content[a_end_idx:]
+        with open(file_path, 'w') as f:
+            f.write(content)
+        print("Patched AmbientAura successfully.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

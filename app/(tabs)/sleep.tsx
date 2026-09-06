@@ -2337,7 +2337,9 @@ const ReelCard = memo(function ReelCard({
   }, [isActive]);
 
 
-  const [wavePath, setWavePath] = useState('');
+  const path1Ref = useRef<any>(null);
+  const path2Ref = useRef<any>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const wavePhaseRef = useRef(0);
   const currentRenderVolRef = useRef(0);
   // Stable per-sample random seeds so the "character" of the waveform is consistent per sound
@@ -2434,16 +2436,31 @@ const ReelCard = memo(function ReelCard({
       }
       // Close the path perfectly
       pts.push('Z');
+      const newPath = pts.join(' ');
       
-      setWavePath(pts.join(' '));
+      // Update the SVG paths directly via native props to bypass React state entirely.
+      // This guarantees locked 60fps performance with ZERO stuttering or breaks.
+      path1Ref.current?.setNativeProps({ d: newPath });
+      path2Ref.current?.setNativeProps({ d: newPath });
+      
+      if (isPlaying && !isPaused) {
+        animationFrameRef.current = requestAnimationFrame(generateWave);
+      }
     };
     
-    generateWave();
+    // Start the buttery smooth 60fps loop
     if (isPlaying && !isPaused) {
-      interval = setInterval(generateWave, 33); // 30fps for premium liquid smoothness
+      animationFrameRef.current = requestAnimationFrame(generateWave);
+    } else {
+      // Draw a perfect base circle when paused/stopped
+      path1Ref.current?.setNativeProps({ d: "M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z" });
+      path2Ref.current?.setNativeProps({ d: "M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z" });
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, isPaused, getMeteringLevel, sound.id]);
+    
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, [isPlaying, isPaused, getMeteringLevel]);
 
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
@@ -2719,27 +2736,23 @@ const ReelCard = memo(function ReelCard({
                   <Stop offset="1" stopColor={sound.bot || '#00f2fe'} stopOpacity="0.1" />
                 </SvgLinearGradient>
               </Defs>
-              
-              {wavePath ? (
-                <G>
-                  {/* Secondary offset liquid layer to create 3D volumetric organic depth */}
-                  <Path 
-                    d={wavePath} 
-                    fill="url(#blobGrad2)"
-                    transform="rotate(60 120 120) scale(1.08) translate(-10 -10)"
-                  />
-                  {/* Primary liquid orb - semi-transparent so background is visible */}
-                  <Path 
-                    d={wavePath} 
-                    fill="url(#blobGrad)"
-                    stroke="rgba(255,255,255,0.4)"
-                    strokeWidth={1}
-                  />
-                </G>
-              ) : (
-                // Flat baseline circle when no wave yet
-                <SvgCircle cx={120} cy={120} r={60} fill="url(#blobGrad)" />
-              )}
+              <G>
+                {/* Secondary offset liquid layer to create 3D volumetric organic depth */}
+                <Path 
+                  ref={path2Ref}
+                  d="M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z"
+                  fill="url(#blobGrad2)"
+                  transform="rotate(60 120 120) scale(1.08) translate(-10 -10)"
+                />
+                {/* Primary liquid orb - semi-transparent so background is visible */}
+                <Path 
+                  ref={path1Ref}
+                  d="M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z"
+                  fill="url(#blobGrad)"
+                  stroke="rgba(255,255,255,0.4)"
+                  strokeWidth={1}
+                />
+              </G>
             </Svg>
           </View>
         </TouchableOpacity>
@@ -3991,7 +4004,9 @@ const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-          decelerationRate="normal"
+          decelerationRate="fast"
+          snapToInterval={RECENT_CARD_SIZE + 12}
+          snapToAlignment="start"
           nestedScrollEnabled
           alwaysBounceHorizontal
           bounces
@@ -4194,7 +4209,9 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
-        decelerationRate="normal"
+        decelerationRate="fast"
+        snapToInterval={Math.floor(W * 0.48) + 16}
+        snapToAlignment="start"
       >
         {SONIC_COLLECTIONS.map((col, idx) => {
           const colIsPlaying = !!playingId && col.soundIds.includes(playingId);
@@ -4341,7 +4358,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
 });
 
 const SonicCollectionDetail = memo(function SonicCollectionDetail({
-  collection, onClose, playingId, isPaused, sessionSecs, onPressSound
+  collection, onClose, playingId, isPaused, sessionSecs, onPressSound, recentSoundIds = []
 }: {
   collection: SonicCollection;
   onClose: () => void;
@@ -4349,6 +4366,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   isPaused: boolean;
   sessionSecs: number;
   onPressSound: (id: string) => void;
+  recentSoundIds?: string[];
 }) {
   const uniqueSoundIds = Array.from(new Set(collection.soundIds));
   const allMappedSounds = uniqueSoundIds.map(id => ALL_SOUNDS_LIST.find(s => s.id === id)).filter(Boolean);
@@ -4367,10 +4385,30 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
   // Divide into horizontal sliders with max 5 cards per row
   const horizontalRows = useMemo(() => {
     if (sounds.length === 0) return [];
+    
+    // We capture the recent sounds only once when the sheet opens,
+    // so the grid doesn't chaotically re-shuffle if they tap a sound while browsing.
+    const initialRecentIds = useRef(recentSoundIds).current;
+
+    // Premium Discovery: Efraimidis and Spirakis Weighted Shuffle
+    // Sounds the user hasn't played recently get a heavy weight (1.0),
+    // pushing them to the front for discovery. Recently played sounds
+    // get a light weight (0.1), organically pushing them to the back rows.
+    const shuffledSounds = [...sounds].map(s => {
+      const isRecent = initialRecentIds.includes((s as any).id);
+      const weight = isRecent ? 0.1 : 1.0;
+      const score = Math.pow(Math.random(), 1 / weight);
+      return { sound: s, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.sound);
+
     const MAX_CARDS_PER_ROW = 5;
-    const numRows = Math.ceil(sounds.length / MAX_CARDS_PER_ROW);
+    const numRows = Math.ceil(shuffledSounds.length / MAX_CARDS_PER_ROW);
     const rows: typeof sounds[] = Array.from({ length: numRows }, () => []);
-    sounds.forEach((s: any, i: number) => {
+    
+    // Distribute shuffled sounds evenly across rows
+    shuffledSounds.forEach((s: any, i: number) => {
       rows[i % numRows].push(s);
     });
     return rows;
@@ -4487,6 +4525,9 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     horizontal 
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+                    decelerationRate="fast"
+                    snapToInterval={cardW + 16}
+                    snapToAlignment="start"
                   >
                     {row.map((sound: any) => (
                       <TherapySoundCard
@@ -4975,6 +5016,7 @@ function SleepTabInner() {
           isPaused={isPaused}
           sessionSecs={sessionSecs}
           onPressSound={handleSoundCardTap}
+          recentSoundIds={recentSoundIds}
         />
       )}
 

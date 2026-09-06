@@ -6,192 +6,149 @@ def main():
     with open(file_path, 'r') as f:
         content = f.read()
 
-    # 1. Add Switch import if missing
-    if "Switch" not in content[:1000]:
-        content = content.replace("from 'react-native';", ", Switch } from 'react-native';")
-
-    # 2. Update Bio-State Card Shadow
-    old_card_style = """                      <BlurView intensity={50} tint="dark" style={{
-                        width: '100%',
-                        borderRadius: 24,
-                        borderWidth: 0.5,
-                        borderColor: 'rgba(255,255,255,0.2)',
-                        paddingVertical: 14,
-                        paddingHorizontal: 20,
-                        overflow: 'hidden',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                      }}>"""
-                      
-    new_card_style = """                      <BlurView intensity={50} tint="dark" style={{
-                        width: '100%',
-                        borderRadius: 24,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.15)',
-                        paddingVertical: 20,
-                        paddingHorizontal: 20,
-                        overflow: 'hidden',
-                        backgroundColor: 'rgba(10,10,10,0.4)',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 24 },
-                        shadowOpacity: 0.6,
-                        shadowRadius: 32,
-                        elevation: 20,
-                      }}>"""
+    # Find the block we want to replace
+    start_marker = "                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>"
+    end_marker = "                        </View>\n                      </BlurView>"
     
-    if old_card_style in content:
-        content = content.replace(old_card_style, new_card_style)
-    else:
-        # regex replace
-        content = re.sub(
-            r"<BlurView intensity=\{50\} tint=\"dark\" style=\{\{[^}]*backgroundColor: 'rgba\(0,0,0,0\.3\)',\s*\}\}>",
-            new_card_style,
-            content,
-            flags=re.MULTILINE
-        )
+    start_idx = content.find(start_marker)
+    if start_idx == -1:
+        print("Could not find start marker")
+        return
+        
+    end_idx = content.find(end_marker, start_idx)
+    if end_idx == -1:
+        print("Could not find end marker")
+        return
 
-    # 3. Update Cultivate / Pause lists with Toggles
-    # Look for the map function inside the columns
-    old_cultivate = """                              {currentPeriod.activities.slice(0, 2).map((act, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: currentPeriod.color || '#4ade80', marginTop: 6 }} />
-                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
-                                </View>
-                              ))}"""
-                              
-    new_cultivate = """                              {currentPeriod.activities.slice(0, 3).map((act: string, i: number) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <Ionicons name="leaf-outline" size={12} color={currentPeriod.color || '#4ade80'} />
-                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
-                                  </View>
-                                  <Switch 
-                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(252, 211, 77, 0.5)' }}
-                                    thumbColor={'#fff'}
-                                    ios_backgroundColor="rgba(255,255,255,0.1)"
-                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
-                                    value={false}
-                                  />
-                                </View>
-                              ))}"""
-                              
-    old_pause = """                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 2).map((act, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171', marginTop: 6 }} />
-                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
-                                </View>
-                              ))}"""
-                              
-    new_pause = """                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 3).map((act: string, i: number) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <Ionicons name="close-circle-outline" size={12} color="#f87171" />
-                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
-                                  </View>
-                                  <Switch 
-                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(248, 113, 113, 0.5)' }}
-                                    thumbColor={'#fff'}
-                                    ios_backgroundColor="rgba(255,255,255,0.1)"
-                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
-                                    value={false}
-                                  />
-                                </View>
-                              ))}"""
-                              
-    content = content.replace(old_cultivate, new_cultivate)
-    content = content.replace(old_pause, new_pause)
+    # Let's also patch the pct calculation into the top of the function
+    calc_start = "                  const minsLeftRem = minsLeft % 60;\n                  const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;"
+    calc_replacement = """                  const minsLeftRem = minsLeft % 60;
+                  const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
+                  const start = currentPeriod.startH;
+                  const end = currentPeriod.endH;
+                  const total = end > start ? end - start : (24 - start) + end;
+                  const elapsed = nowH > start ? nowH - start : (24 - start) + nowH;
+                  const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));"""
+                  
+    content = content.replace(calc_start, calc_replacement)
+
+    new_card_ui = """                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                          {/* Left: Progress Ring */}
+                          <View style={{ position: 'relative', width: 68, height: 68, alignItems: 'center', justifyContent: 'center' }}>
+                            <Svg width={68} height={68} viewBox="0 0 68 68" style={{ transform: [{ rotate: '-90deg' }] }}>
+                              <SvgCircle cx={34} cy={34} r={30} stroke="rgba(255,255,255,0.06)" strokeWidth={5} fill="none" />
+                              <SvgCircle 
+                                cx={34} 
+                                cy={34} 
+                                r={30} 
+                                stroke={currentPeriod.color || '#FCD34D'} 
+                                strokeWidth={5} 
+                                fill="none" 
+                                strokeDasharray={`${30 * 2 * Math.PI}`} 
+                                strokeDashoffset={`${30 * 2 * Math.PI * (1 - (pct / 100))}`} 
+                                strokeLinecap="round" 
+                              />
+                            </Svg>
+                            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
+                            </View>
+                          </View>
+                          
+                          {/* Right: Text & Minimalist Icons */}
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF', letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.5 }}>ACTIVE BIO-STATE</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: currentPeriod.color || '#FCD34D', letterSpacing: 0.5, lineHeight: 18 }}>{currentPeriod.englishLabel}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                              <Ionicons name="moon-outline" size={14} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="water-outline" size={14} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="leaf-outline" size={14} color="rgba(255,255,255,0.7)" />
+                              <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 4 }} />
+                              <Ionicons name="cafe-outline" size={14} color="rgba(255,255,255,0.2)" />
+                              <Ionicons name="phone-portrait-outline" size={14} color="rgba(255,255,255,0.2)" />
+                            </View>
+                          </View>
+                          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
+"""
+
+    content = content[:start_idx] + new_card_ui + content[end_idx:]
+
+    # Now let's patch the AmbientAura to make the aura golden and strictly behind the Mantra card.
+    # We will search for AmbientAura component.
+    aura_start = "const AmbientAura = ({ color }: { color: string }) => {"
+    aura_end = "    </View>\n  );\n};"
     
-    # 4. Localized Auras for Option A
-    # Find AmbientAura return statement
-    old_aura = """  return (
+    a_start_idx = content.find(aura_start)
+    a_end_idx = content.find(aura_end, a_start_idx)
+    
+    if a_start_idx != -1 and a_end_idx != -1:
+        new_aura = """const AmbientAura = ({ color }: { color: string }) => {
+  const { bgUri } = useBgContext();
+  const breatheAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, { toValue: 1, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 7500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const bgScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.45] });
+  
+  // The Localized Golden Aura (Behind Mantra Card)
+  const auraScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.4] });
+  const auraOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] });
+
+  return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
       <Animated.Image 
         source={{ uri: bgUri }} 
         style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]} 
-        resizeMode="cover" 
+        resizeMode="cover"
+        blurRadius={6}
       />
-      <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: breatheOpacity }]} />
       
-      {/* Thermo-responsive Auras */}
+      {/* ── Localized Golden Aura (Top Half Only) ── */}
       <Animated.View style={{
         position: 'absolute',
-        top: -100, left: -100,
-        width: 400, height: 400,
+        top: '15%',
+        left: '10%',
+        right: '10%',
+        height: '40%',
+        backgroundColor: '#FCD34D',
         borderRadius: 200,
-        backgroundColor: color,
-        opacity: opacity1,
-        transform: [{ translateY: translateY1 }, { scale: scale1 }],
-        filter: [{ blur: 60 }]
+        opacity: auraOpacity,
+        transform: [{ scale: auraScale }],
+        shadowColor: '#FBBF24',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 100,
+        elevation: 20,
       }} />
-      
       <Animated.View style={{
         position: 'absolute',
-        bottom: -100, right: -100,
-        width: 350, height: 350,
-        borderRadius: 175,
-        backgroundColor: secondaryColor,
-        opacity: opacity2,
-        transform: [{ translateY: translateY2 }, { scale: scale2 }],
-        filter: [{ blur: 50 }]
+        top: '15%',
+        left: '10%',
+        right: '10%',
+        height: '40%',
+        backgroundColor: '#F59E0B',
+        borderRadius: 200,
+        opacity: breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.3] }),
+        transform: [{ scale: auraScale }],
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 60,
       }} />
-    </View>
-  );"""
-  
-    new_aura = """  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Animated.Image 
-        source={{ uri: bgUri }} 
-        style={[StyleSheet.absoluteFillObject, { transform: [{ scale: bgScale }] }]} 
-        resizeMode="cover" 
-      />
-      {/* Constant 60% overlay, pulsing up to 80% on exhale */}
+
       <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: breatheOpacity }]} />
-      
-      {/* 
-        OPTION A Auras: 
-        Aura 1 (Golden) positioned precisely behind the top Mantra card.
-        Aura 2 (Orange) positioned behind the Bio-State card.
-      */}
-      <Animated.View style={{
-        position: 'absolute',
-        top: '15%', left: '10%', right: '10%',
-        height: 250,
-        borderRadius: 150,
-        backgroundColor: '#FCD34D', // Deep glowing Gold
-        opacity: opacity1,
-        transform: [{ scale: scale1 }],
-      }} />
-      
-      <Animated.View style={{
-        position: 'absolute',
-        top: '45%', left: '5%', right: '5%',
-        height: 250,
-        borderRadius: 150,
-        backgroundColor: '#EA580C', // Deep Orange
-        opacity: opacity2,
-        transform: [{ scale: scale2 }],
-      }} />
-    </View>
-  );"""
-  
-    # Adjust breatheOpacity to match 60% base overlay mentioned in prompt
-    old_breatheOpacity = "const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.55] });"
-    new_breatheOpacity = "const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.75] });"
-    content = content.replace(old_breatheOpacity, new_breatheOpacity)
-    
-    # Adjust aura opacities to pulse significantly behind the cards
-    old_op1 = "const opacity1 = anim1.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.0, 0.25, 0.05] });"
-    new_op1 = "const opacity1 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] });"
-    content = content.replace(old_op1, new_op1)
-    
-    old_op2 = "const opacity2 = anim2.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.0, 0.22, 0.04] });"
-    new_op2 = "const opacity2 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.25] });"
-    content = content.replace(old_op2, new_op2)
-
-    # Note: I replaced the interpolation logic for opacity1 and opacity2 to use `breatheAnim` instead of `anim1/anim2` 
-    # so they pulse in perfect harmony with the background breath, creating that "Aura Ebb & Flow" exactly as requested.
-
-    if old_aura in content:
-        content = content.replace(old_aura, new_aura)
+      {/* Base heavy overlay to make everything pop */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
+"""
+        content = content[:a_start_idx] + new_aura + content[a_end_idx:]
 
     with open(file_path, 'w') as f:
         f.write(content)
