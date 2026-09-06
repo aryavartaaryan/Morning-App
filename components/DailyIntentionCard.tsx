@@ -214,14 +214,20 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
   },
-  cardInner: {
+    cardInner: {
     width: '100%',
-    paddingVertical: 14,
-    paddingHorizontal: 12, // Reduced padding (edge-to-edge)
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(10,10,10,0.4)',
     alignItems: 'center', // Center everything
+    // Heavy floating shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 24 },
+    shadowOpacity: 0.6,
+    shadowRadius: 32,
+    elevation: 20,
   },
   titleRow: {
     flexDirection: 'row',
@@ -244,12 +250,10 @@ const styles = StyleSheet.create({
   },
   romanText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 14, // Smaller font to save height
+    fontSize: 15, lineHeight: 22,
     fontWeight: '600',
     color: '#FFFFFF',
-    lineHeight: 20,
     fontStyle: 'italic',
-    
   },
   englishText: {
     fontSize: 11, // Smaller English font

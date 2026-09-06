@@ -122,9 +122,15 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
   
   const screenOp = useRef(new Animated.Value(1)).current;
   const screenSc = useRef(new Animated.Value(1.0)).current;
+  const breatheAnim = useRef(new Animated.Value(1.0)).current;
+
   // Animation sequence starts after component mounts
   useEffect(() => {
     let mounted = true;
+    
+    // Start the slow ethereal breathe in the background
+    Animated.timing(breatheAnim, { toValue: 1.05, duration: 4000, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    
     // Initial delay to let the app settle
     const initialDelay = setTimeout(() => {
       Animated.timing(footerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
@@ -138,8 +144,8 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
 
       Animated.sequence([
         Animated.delay(200),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.delay(1000), // Hold for exactly 2 seconds total (200 + 800 + 1000 = 2000ms) before fading out
+        Animated.timing(shimmerOp, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(800), // Hold for exactly 1.7 seconds total (200 + 700 + 800 = 1700ms) before fading out
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {
@@ -202,23 +208,21 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
           }} />
         </Animated.View>
 
-        {/* Cosmic Geometric Animation — let it breathe cleanly without video behind it */}
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+        {/* Ethereal Breathe Background — softly pulsing and heavily blurred */}
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: breatheAnim }] }}>
           <HeroGeometricAnimation size={SW * 1.0} opacity={0.65} variant="splash" />
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject} />
         </Animated.View>
 
-        {/* Ultra Premium Brand Mark */}
-        <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp, transform: [{ scale: titleSc }] }}>
+        {/* Ultra Premium Still Text */}
+        <Animated.View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: titleOp }}>
           <Animated.Text style={{ 
             fontSize: 48, 
             fontFamily: 'Nunito_300Light', 
             color: '#ffffff', 
             letterSpacing: 28, 
-            opacity: 0.95,
+            opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.95] }),
             paddingLeft: 28, // Balance the high letter spacing
-            transform: [{
-              scale: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] })
-            }]
           }}>Svara</Animated.Text>
           
           <Animated.Text style={{ 
@@ -229,9 +233,6 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
             marginTop: 18,
             opacity: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.8] }),
             paddingLeft: 18,
-            transform: [{
-              translateY: shimmerOp.interpolate({ inputRange: [0, 1], outputRange: [10, 0] })
-            }]
           }}>THE RESONANCE</Animated.Text>
         </Animated.View>
         

@@ -13,7 +13,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { HeroGeometricAnimation } from '@/components/HeroGeometricAnimation';
 import { CalmingAura } from "@/components/CalmingAura";
 import { AlternatingBackground } from "@/components/AlternatingBackground";
-import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G, RadialGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Path, Defs, ClipPath as SvgClipPath, Circle as SvgCircle, G, RadialGradient, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import notifee, { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType, RepeatFrequency, AlarmType } from '@notifee/react-native';
@@ -2218,7 +2218,7 @@ const ReelCard = memo(function ReelCard({
   sound, isActive, isPlaying, isPaused, stopIdx, isFirst, isLast,
   onPlay, onToggle, onStopSilent, onSelectSound,
   onNext, onPrev, onQueue, hasNext, hasPrev,
-  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, trackDurMs
+  isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, getMeteringLevel, trackDurMs
 }: {
   sound: PlayableSoundMeta;
   isActive: boolean;
@@ -2237,6 +2237,7 @@ const ReelCard = memo(function ReelCard({
   hasNext?: boolean;
   hasPrev?: boolean;
   isAudioLoading: boolean;
+  audioNetworkError?: boolean;
   getPositionMs: () => number;
   seekTo: (ms: number) => Promise<void>;
   meteringAnim: Animated.Value;
@@ -2259,16 +2260,20 @@ const ReelCard = memo(function ReelCard({
   const spinAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!isActive) return;
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.timing(spinAnim, { toValue: 1, duration: 12000, useNativeDriver: true, easing: Easing.linear })
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [isActive, spinAnim]);
   useEffect(() => {
     if (!isActive) return;
-    Animated.loop(Animated.sequence([
+    const loop = Animated.loop(Animated.sequence([
       Animated.timing(externalBreath, { toValue: 1, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       Animated.timing(externalBreath, { toValue: 0, duration: 5500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-    ])).start();
+    ]));
+    loop.start();
+    return () => loop.stop();
   }, [isActive, externalBreath]);
   const initialPos = (isActive && !isPaused) ? getPositionMs() : 0;
   const [positionMs, setPositionMs] = useState(initialPos);
@@ -2366,64 +2371,69 @@ const ReelCard = memo(function ReelCard({
       
       const targetVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
       
+      // Smart Fallback Audio Simulator
+      // If metering fails on this Android device (returns exactly 0 constantly while playing)
+      // we generate a beautiful organic simulated volume so it never stays flat.
+      let simulatedVol = 0;
+      if (targetVol === 0 && isPlaying && !isPaused) {
+         // Simulate slow, breathing ambient pulses based on time
+         const t = Date.now() / 2000;
+         simulatedVol = 0.3 + Math.sin(t) * 0.15 + Math.sin(t * 2.3) * 0.1;
+      }
+      
+      const activeVol = targetVol > 0 ? targetVol : simulatedVol;
+      
       // Buttery smooth lerping with Attack/Release envelope for perfect sync
-      // Fast attack makes it instantly responsive to loud sounds, slow release makes it feel natural
-      if (targetVol > currentRenderVolRef.current) {
-        currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.8; // Fast attack (punchy)
+      if (activeVol > currentRenderVolRef.current) {
+        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.8; // Fast attack
       } else {
-        currentRenderVolRef.current += (targetVol - currentRenderVolRef.current) * 0.1; // Slow decay (smooth)
+        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.1; // Slow decay
       }
       
       const liveVol = currentRenderVolRef.current;
       
-      // Waveform is completely flat (still line) when paused/stopped
-      if (!isPlaying || isPaused) {
-        setWavePath(`M ${CX - R} ${CY} L ${CX + R} ${CY}`);
-        return;
-      }
-      
-      // Phase gently drifts to give it life, but DOES NOT rush sideways.
-      // Stationary peaks that only jump vertically look infinitely more synced and realistic.
-      wavePhaseRef.current += 0.015;
+      // Liquid sphere phase advances
+      // When loud, the liquid boils faster
+      wavePhaseRef.current += 0.02 + (liveVol * 0.08);
       const phase = wavePhaseRef.current;
       const seeds = seedRef.current;
       
-      // Max spike amplitude scales with volume — huge multiplier so it fills the circle!
-      // R is 118, so an amplitude of 115 pushes it almost to the absolute edge.
-      const maxAmp = 2 + Math.pow(liveVol, 0.7) * 115;
-      
-      // Number of sample points across the circle diameter
-      const SAMPLES = 80;
+      // Liquid Orb Mathematics
+      const SAMPLES = 120; // High resolution for smooth liquid edges
       const pts: string[] = [];
-
+      
+      // Base radius of the liquid sphere. It breathes outward as it gets louder.
+      const baseRadius = 60 + (liveVol * 25);
+      // How aggressively the blob distorts from a perfect circle
+      const distortionAmp = 10 + Math.pow(liveVol, 0.8) * 35;
+      
       for (let i = 0; i <= SAMPLES; i++) {
-        // x ranges from left edge of circle to right edge
-        const x = (CX - R) + (i / SAMPLES) * (R * 2);
+        // Theta from 0 to 2PI. We loop back to 0 perfectly at the end.
+        const theta = (i / SAMPLES) * Math.PI * 2;
         
-        // How far this x is from center (0 = edge, 1 = center)
-        const normX = (x - CX) / R; // -1 to +1
-        // Bell-curve envelope: peaks in the middle, smoothly tapers to zero at the circle edge
-        const envelope = Math.max(0, 1 - normX * normX);
-        const taper = Math.pow(envelope, 0.6); // Slightly less aggressive taper for natural look
-        
-        // Seed for this sample position (deterministic per sound)
+        // Deterministic seeds for unique sound signature
         const s0 = seeds[i % seeds.length] ?? 0.5;
-        const s1 = seeds[(i * 3 + 7) % seeds.length] ?? 0.5;
-        const s2 = seeds[(i * 7 + 13) % seeds.length] ?? 0.3;
         
-        // Spiky oscilloscope: layered harmonics with different frequencies
-        // Each sound has a different mix ratio thanks to seeds, making every sound unique
-        const h1 = Math.sin(i * 0.55 + phase * (1.0 + s0 * 0.5));        // Fundamental
-        const h2 = Math.sin(i * 1.30 + phase * (1.8 + s1 * 0.8)) * 0.5;  // 2nd harmonic
-        const h3 = Math.sin(i * 2.60 - phase * (3.2 + s2 * 1.2)) * 0.28; // 4th harmonic — spikiness
-        const h4 = Math.cos(i * 4.80 + phase * 2.1) * (0.15 * liveVol);  // High freq detail at loud
-
-        // Mix harmonics — the seed determines each sound's unique harmonic ratio
-        const mix = h1 * (0.6 + s0 * 0.4) + h2 * (0.5 + s1 * 0.3) + h3 + h4;
+        // Seamless looping harmonics (frequencies must be exact integers: 3, 4, 5, 7)
+        // This ensures the blob connects perfectly at the seam
+        const h1 = Math.sin(theta * 3 + phase * 1.2);
+        const h2 = Math.cos(theta * 5 - phase * 0.8) * 0.6;
+        const h3 = Math.sin(theta * 7 + phase * 2.0) * 0.4;
         
-        const y = CY + mix * maxAmp * taper;
+        // Mix harmonics based on sound's unique seed
+        const mix = (h1 + h2 + h3) * (0.8 + s0 * 0.4);
+        
+        // Calculate the distorted radius at this angle
+        const r = baseRadius + (mix * distortionAmp);
+        
+        // Convert polar to cartesian coordinates
+        const x = CX + r * Math.cos(theta);
+        const y = CY + r * Math.sin(theta);
+        
         pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
       }
+      // Close the path perfectly
+      pts.push('Z');
       
       setWavePath(pts.join(' '));
     };
@@ -2696,49 +2706,40 @@ const ReelCard = memo(function ReelCard({
           activeOpacity={1.0}
           style={{ width: 240, height: 240, alignItems: 'center', justifyContent: 'center' }}
         >
-          {/* Micro-thin circular progress ring placeholder */}
-          <Animated.View
-            pointerEvents="none"
-            style={{
-              position: 'absolute', width: 240, height: 240, borderRadius: 120,
-              borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.75)',
-            }}
-          />
-          {/* Reactive Waveform — clipped inside the circle */}
+          {/* Reactive Liquid Orb */}
           <View style={{ width: 240, height: 240, position: 'absolute' }}>
             <Svg width="100%" height="100%" viewBox="0 0 240 240">
               <Defs>
-                <SvgClipPath id="circleClip">
-                  <SvgCircle cx={120} cy={120} r={116} />
-                </SvgClipPath>
+                <SvgLinearGradient id="blobGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={sound.top || '#4facfe'} stopOpacity="0.8" />
+                  <Stop offset="1" stopColor={sound.color || '#00f2fe'} stopOpacity="0.3" />
+                </SvgLinearGradient>
+                <SvgLinearGradient id="blobGrad2" x1="1" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor={sound.color || '#4facfe'} stopOpacity="0.5" />
+                  <Stop offset="1" stopColor={sound.bot || '#00f2fe'} stopOpacity="0.1" />
+                </SvgLinearGradient>
               </Defs>
-              {/* The outer thin ring */}
-              <SvgCircle 
-                cx={120} cy={120} r={119} 
-                stroke="rgba(255,255,255,0.75)" strokeWidth={0.8} fill="none" 
-              />
-              {/* Waveform clipped to circle */}
-              <G clipPath="url(#circleClip)">
-                {wavePath ? (
+              
+              {wavePath ? (
+                <G>
+                  {/* Secondary offset liquid layer to create 3D volumetric organic depth */}
                   <Path 
                     d={wavePath} 
-                    stroke="rgba(255,255,255,0.95)"
-                    strokeWidth={1.5}
-                    fill="none" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
+                    fill="url(#blobGrad2)"
+                    transform="rotate(60 120 120) scale(1.08) translate(-10 -10)"
                   />
-                ) : (
-                  // Flat baseline when no wave yet
-                  <Path
-                    d="M 2 120 L 238 120"
+                  {/* Primary liquid orb - semi-transparent so background is visible */}
+                  <Path 
+                    d={wavePath} 
+                    fill="url(#blobGrad)"
                     stroke="rgba(255,255,255,0.4)"
                     strokeWidth={1}
-                    fill="none"
-                    strokeLinecap="round"
                   />
-                )}
-              </G>
+                </G>
+              ) : (
+                // Flat baseline circle when no wave yet
+                <SvgCircle cx={120} cy={120} r={60} fill="url(#blobGrad)" />
+              )}
             </Svg>
           </View>
         </TouchableOpacity>
@@ -2963,7 +2964,27 @@ const ReelCard = memo(function ReelCard({
 
 
 
-      {isActive && showLoadingOverlay && (
+      {isActive && audioNetworkError && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center', zIndex: 18,
+        }} pointerEvents="none">
+          <View style={{
+            width: 80, height: 80, borderRadius: 40,
+            backgroundColor: 'rgba(0,0,0,0.62)',
+            borderWidth: 1.5, borderColor: '#ef444455',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Ionicons name="cloud-offline" size={32} color="#ef4444" />
+          </View>
+          <Text style={{
+            marginTop: 12, fontSize: 10, color: '#ef4444',
+            fontWeight: '600', letterSpacing: 1.5,
+          }}>NO INTERNET</Text>
+        </View>
+      )}
+
+      {isActive && showLoadingOverlay && !audioNetworkError && (
         <View style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
           alignItems: 'center', justifyContent: 'center', zIndex: 18,
@@ -3015,7 +3036,8 @@ const ReelCard = memo(function ReelCard({
          prev.stopIdx === next.stopIdx &&
          prev.isFirst === next.isFirst &&
          prev.isLast === next.isLast &&
-         prev.isAudioLoading === next.isAudioLoading;
+         prev.isAudioLoading === next.isAudioLoading &&
+         prev.audioNetworkError === next.audioNetworkError;
 });
 
 const REEL_CAT_META: Record<string, { emoji: string; color: string }> = {
@@ -3304,7 +3326,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
   visible, startIndex, playingId, isPaused, stopIdx,
   onPlaySound, onToggle, onStopSilent, onClose, onChangeTimer,
   onOpenLibrary, preBufferSound, cleanPreBuffer,
-  isAudioLoading, getPositionMs, seekTo, meteringAnim, getMeteringLevel, playingDurationSecs, isLibraryOpen
+  isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, getMeteringLevel, playingDurationSecs, isLibraryOpen
 }: {
   visible: boolean; startIndex: number;
   playingId: string | null; isPaused: boolean; stopIdx: number;
@@ -3315,6 +3337,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
   preBufferSound: (s: PlayableSoundMeta) => Promise<void>;
   cleanPreBuffer: () => Promise<void>;
   isAudioLoading: boolean;
+  audioNetworkError: boolean;
   getPositionMs: () => number;
   seekTo: (ms: number) => Promise<void>;
   meteringAnim: Animated.Value;
@@ -3511,6 +3534,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
             isFirst={index === 0}
             isLast={index === reelData.length - 1}
             isAudioLoading={isAudioLoading}
+            audioNetworkError={audioNetworkError}
             getPositionMs={getPositionMs}
             seekTo={seekTo}
             meteringAnim={meteringAnim}
@@ -3780,17 +3804,20 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
 
   // Pulsing glow when a sound from this collection is playing
   useEffect(() => {
+    let loop: Animated.CompositeAnimation | null = null;
     if (isPlaying) {
-      Animated.loop(
+      loop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
           Animated.timing(pulseAnim, { toValue: 1,    duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
         ])
-      ).start();
+      );
+      loop.start();
     } else {
       pulseAnim.stopAnimation();
       Animated.spring(pulseAnim, { toValue: 1, useNativeDriver: true, damping: 15, stiffness: 200 }).start();
     }
+    return () => loop?.stop();
   }, [isPlaying]);
 
   const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.95, useNativeDriver: true, damping: 20, stiffness: 400 }).start();
@@ -4588,7 +4615,7 @@ function SleepTabInner() {
     return unique.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [searchQuery, activeCollectionId]);
 
-  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer, isAudioLoading, getPositionMs, seekTo, meteringAnim, setIsReelsOpen } = useSoundPlayer();
+  const { playingId, isPaused, sessionSecs, playingDurationSecs: sleepTabDurationSecs, togglePause, stopSound, changeTimer, playSound, pendingOpenReels, clearPendingOpenReels, getMeteringLevel, preBufferSound, cleanPreBuffer, isAudioLoading, audioNetworkError, getPositionMs, seekTo, meteringAnim, setIsReelsOpen } = useSoundPlayer();
 
   const [sleepQueue, setSleepQueue] = useState<PlayableSoundMeta[]>([]);
   const [stopIdx,      setStopIdx]      = useState(0);
@@ -5032,6 +5059,7 @@ function SleepTabInner() {
         preBufferSound={preBufferSound}
         cleanPreBuffer={cleanPreBuffer}
         isAudioLoading={isAudioLoading}
+        audioNetworkError={audioNetworkError}
         getPositionMs={getPositionMs}
         seekTo={seekTo}
         meteringAnim={meteringAnim}

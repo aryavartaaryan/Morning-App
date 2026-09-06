@@ -7778,12 +7778,17 @@ function DailyTab() {
                       <BlurView intensity={50} tint="dark" style={{
                         width: '100%',
                         borderRadius: 24,
-                        borderWidth: 0.5,
-                        borderColor: 'rgba(255,255,255,0.2)',
-                        paddingVertical: 14,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.15)',
+                        paddingVertical: 20,
                         paddingHorizontal: 20,
                         overflow: 'hidden',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        backgroundColor: 'rgba(10,10,10,0.4)',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 24 },
+                        shadowOpacity: 0.6,
+                        shadowRadius: 32,
+                        elevation: 20,
                       }}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                           <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
@@ -7822,10 +7827,19 @@ function DailyTab() {
                           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
                             <View style={{ flex: 1, gap: 8 }}>
                               <Text style={{ fontSize: 9, fontWeight: '800', color: currentPeriod.color || '#4ade80', letterSpacing: 1.2, textTransform: 'uppercase' }}>Cultivate</Text>
-                              {currentPeriod.activities.slice(0, 2).map((act, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: currentPeriod.color || '#4ade80', marginTop: 6 }} />
-                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
+                              {currentPeriod.activities.slice(0, 3).map((act: string, i: number) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <Ionicons name="leaf-outline" size={12} color={currentPeriod.color || '#4ade80'} />
+                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
+                                  </View>
+                                  <Switch 
+                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(252, 211, 77, 0.5)' }}
+                                    thumbColor={'#fff'}
+                                    ios_backgroundColor="rgba(255,255,255,0.1)"
+                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
+                                    value={false}
+                                  />
                                 </View>
                               ))}
                             </View>
@@ -7834,10 +7848,19 @@ function DailyTab() {
                             
                             <View style={{ flex: 1, gap: 8 }}>
                               <Text style={{ fontSize: 9, fontWeight: '800', color: '#f87171', letterSpacing: 1.2, textTransform: 'uppercase' }}>Pause</Text>
-                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 2).map((act, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#f87171', marginTop: 6 }} />
-                                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', lineHeight: 16, flex: 1 }}>{act}</Text>
+                              {currentPeriod.avoidances && currentPeriod.avoidances.slice(0, 3).map((act: string, i: number) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <Ionicons name="close-circle-outline" size={12} color="#f87171" />
+                                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500', flex: 1 }} numberOfLines={1}>{act}</Text>
+                                  </View>
+                                  <Switch 
+                                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(248, 113, 113, 0.5)' }}
+                                    thumbColor={'#fff'}
+                                    ios_backgroundColor="rgba(255,255,255,0.1)"
+                                    style={{ transform: [{ scaleX: 0.6 }, { scaleY: 0.6 }] }}
+                                    value={false}
+                                  />
                                 </View>
                               ))}
                             </View>
@@ -8622,14 +8645,14 @@ const AmbientAura = ({ color }: { color: string }) => {
   const bgScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
   
   // Ultra premium transparent aura (25% max opacity)
-  const opacity1 = anim1.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.0, 0.25, 0.05] });
+  const opacity1 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] });
 
   const translateY2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [100, -100] });
   const scale2 = anim2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 0.95] });
-  const opacity2 = anim2.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.0, 0.22, 0.04] });
+  const opacity2 = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.25] });
   
   // Cinematic dark breathing overlay (0% to 55%)
-  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.55] });
+  const breatheOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.75] });
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
