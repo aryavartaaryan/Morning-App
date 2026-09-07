@@ -126,7 +126,7 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
         >
           <BlurView intensity={40} tint="dark" style={[styles.cardInner, { backgroundColor: 'rgba(10, 10, 10, 0.35)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' }]}>
             {/* ── Mantra Title ── */}
-            <View style={[styles.titleRow, { marginBottom: 10 }]}>
+            <View style={[styles.titleRow, { marginBottom: 8 }]}>
                <View style={[styles.goldDot, { backgroundColor: '#FCD34D' }]} />
                <Text style={[styles.titleText, { color: '#FCD34D', letterSpacing: 1.5, fontSize: 10, fontWeight: '700' }]}>TODAY'S MANTRA</Text>
             </View>
@@ -134,7 +134,7 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
             {/* ── Mantra Transliteration ── */}
             <Text style={{ 
                 fontFamily: 'serif', fontStyle: 'italic', fontSize: 16, color: '#FFF', 
-                textAlign: 'center', lineHeight: 22, marginBottom: 8 
+                textAlign: 'center', lineHeight: 20, marginBottom: 6 
             }}>
                 {mantra.transliteration}
             </Text>
@@ -142,7 +142,7 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
             {/* ── English Meaning ── */}
             <Text style={{ 
                 fontFamily: 'sans-serif', fontStyle: 'italic', fontSize: 11, color: 'rgba(255,255,255,0.6)', 
-                textAlign: 'center', lineHeight: 16, marginBottom: 14, paddingHorizontal: 16 
+                textAlign: 'center', lineHeight: 14, marginBottom: 10, paddingHorizontal: 10 
             }}>
                 "{mantra.meaning}"
             </Text>
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
     cardInner: {
     width: '100%',
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.1)',

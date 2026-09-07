@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State } from 'react-native-gesture-handler';
+import { ScrollView as GHScrollView, FlingGestureHandler, Directions, State, FlatList as GHFlatList, TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
@@ -2338,14 +2338,20 @@ const ReelCard = memo(function ReelCard({
 
 
   // ── PLASMA CORE REFS (all updates go via setNativeProps → zero React re-renders) ──
-  const plasmaPath1Ref  = useRef<any>(null); // Outer plasma blob 1
-  const plasmaPath2Ref  = useRef<any>(null); // Outer plasma blob 2  
-  const plasmaPath3Ref  = useRef<any>(null); // Inner core glow
-  const plasmaRingRef   = useRef<any>(null); // Outer crisp ring — stroke-dashoffset pulse
-  const plasmaFlash1Ref = useRef<any>(null); // Radial spike burst 1
-  const plasmaFlash2Ref = useRef<any>(null); // Radial spike burst 2
+  const plasmaPath1Ref  = useRef<any>(null); // Layer 1: Deep gas background
+  const plasmaPath2Ref  = useRef<any>(null); // Layer 2: Main cyan/teal structure
+  const plasmaPath3Ref  = useRef<any>(null); // Layer 3: Magenta/purple folds
+  const plasmaPath4Ref  = useRef<any>(null); // Layer 4: Inner highlights
+  const plasmaRingRef   = useRef<any>(null); // Inner bright ring
+  const plasmaRing2Ref  = useRef<any>(null); // Middle dashed ring
   const animationFrameRef = useRef<number | null>(null);
   const wavePhaseRef = useRef(0);
+  // Live refs so the RAF loop always reads the CURRENT play/pause state
+  // without needing the useEffect to restart (which was causing the crash)
+  const isPlayingRef = useRef(isPlaying);
+  const isPausedRef  = useRef(isPaused);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { isPausedRef.current  = isPaused;  }, [isPaused]);
   const currentRenderVolRef = useRef(0);
   // Stable per-sample random seeds so the "character" of the waveform is consistent per sound
   const seedRef = useRef<number[]>([]);
@@ -2369,170 +2375,213 @@ const ReelCard = memo(function ReelCard({
   }, [sound.id]);
   
   useEffect(() => {
-    // Cancel any prior animation frame before starting a new loop
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    // Always cancel any prior frame first — prevents double-loop on re-mount
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    let cancelled = false; // safety flag so cleanup works even if RAF fires late
 
     const CX = 120;
     const CY = 120;
-    const RING_R = 108;
-    const RING_CIRCUMFERENCE = 2 * Math.PI * RING_R;
     const seeds = seedRef.current;
 
-    // ── Helper: build a seamlessly-looping distorted polar path ──────────────
-    // petals: integer harmonic count (ensures seamless close)
-    // baseR:  mean radius
-    // amp:    distortion amplitude (volume-driven)
-    // phase:  rotation offset (time-driven)
-    const buildPolarPath = (petals: number, baseR: number, amp: number, phase: number, samples: number = 160) => {
+    // ── Ultra-Complex Volumetric Nebula Math ─────────────────────────────────
+    // To match the screenshot, we use higher frequencies and power functions
+    // to create sharp "ridges" and deep "valleys", simulating 3D fluid folds.
+    const buildNebula = (
+      baseR: number,   // mean radius
+      amp: number,     // distortion strength (driven by live volume)
+      phase: number,   // rotation over time
+      freq: number,    // base harmonic
+      complexity: number, // adds higher-order harmonics for sharp folds
+      samples = 240
+    ): string => {
       const pts: string[] = [];
       for (let i = 0; i <= samples; i++) {
-        const theta = (i / samples) * Math.PI * 2;
-        // Layered harmonics — all integer multiples so path closes perfectly
+        const th = (i / samples) * Math.PI * 2;
+        // Complex stacked harmonics to create a highly structured, chaotic yet closing shape
+        const wave1 = Math.sin(freq * th + phase);
+        const wave2 = Math.cos((freq + 1) * th - phase * 1.3);
+        const wave3 = Math.sin((freq * 2) * th + phase * 0.8);
+        const wave4 = Math.cos((freq * complexity) * th - phase * 1.7);
+        
+        // Math.pow gives sharp peaks instead of smooth blobs
+        const sharpFolds = Math.pow(Math.abs(wave1), 1.5) * Math.sign(wave1);
+        
         const r = baseR
-          + amp * Math.sin(petals * theta + phase)
-          + (amp * 0.45) * Math.sin((petals * 2) * theta - phase * 1.6)
-          + (amp * 0.25) * Math.cos((petals * 3) * theta + phase * 0.9);
-        const x = CX + r * Math.cos(theta);
-        const y = CY + r * Math.sin(theta);
-        pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`);
+          + amp * 0.7 * sharpFolds
+          + amp * 0.4 * wave2
+          + amp * 0.2 * wave3
+          + amp * 0.1 * wave4;
+          
+        // Clamp to prevent inversion
+        const rClamped = Math.max(2, r);
+        pts.push(`${i === 0 ? 'M' : 'L'}${(CX + rClamped * Math.cos(th)).toFixed(2)} ${(CY + rClamped * Math.sin(th)).toFixed(2)}`);
       }
       pts.push('Z');
       return pts.join(' ');
     };
 
-    // ── Helper: radial spike burst ────────────────────────────────────────────
-    // Creates N sharp triangular spikes pointing outward from centre
-    const buildSpikePath = (nSpikes: number, innerR: number, outerR: number, phase: number) => {
-      const pts: string[] = [];
-      for (let i = 0; i < nSpikes; i++) {
-        const thetaCenter = (i / nSpikes) * Math.PI * 2 + phase;
-        const halfGap     = (Math.PI / nSpikes) * 0.18; // thin spike
-        // base left
-        const lx = CX + innerR * Math.cos(thetaCenter - halfGap);
-        const ly = CY + innerR * Math.sin(thetaCenter - halfGap);
-        // tip
-        const tx = CX + outerR * Math.cos(thetaCenter);
-        const ty = CY + outerR * Math.sin(thetaCenter);
-        // base right
-        const rx = CX + innerR * Math.cos(thetaCenter + halfGap);
-        const ry = CY + innerR * Math.sin(thetaCenter + halfGap);
-        pts.push(`M${lx.toFixed(2)} ${ly.toFixed(2)} L${tx.toFixed(2)} ${ty.toFixed(2)} L${rx.toFixed(2)} ${ry.toFixed(2)} Z`);
-      }
-      return pts.join(' ');
-    };
-
-    const RESTING_CIRCLE = `M ${CX + 55} ${CY} A 55 55 0 1 0 ${CX - 55} ${CY} A 55 55 0 1 0 ${CX + 55} ${CY} Z`;
-    const RESTING_SPIKE  = '';
+    // Valid zero-state path to prevent react-native-svg crash on Android
+    const HIDDEN_PATH = 'M 120 120 Z';
+    // Resting state: a smooth, completely symmetrical circle
+    const RESTING = buildNebula(52, 1, 0, 3, 1, 100);
 
     const plasmaLoop = () => {
-      // ── 1. READ LIVE AUDIO VOLUME ───────────────────────────────────────────
-      const rawVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
+      if (cancelled) return; 
 
-      // ── 2. SMART FALLBACK: if the Android audio driver reports 0 while playing ──
-      // We simulate a realistic organic breathing pattern so the plasma is NEVER dead.
-      let activeVol = rawVol;
-      if (rawVol < 0.01 && isPlaying && !isPaused) {
-        const t = Date.now() / 1200;
-        // Multi-frequency organic breathing — feels like real ambient audio
-        activeVol = 0.28
-          + Math.abs(Math.sin(t * 0.7))  * 0.22   // slow main breath
-          + Math.abs(Math.sin(t * 1.9))  * 0.12   // mid harmonic
-          + Math.abs(Math.sin(t * 4.1))  * 0.06;  // fast detail flutter
+      try {
+        const rawVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
+        let activeVol = rawVol;
+        const playing = isPlayingRef.current && !isPausedRef.current;
+
+        // SMART FALLBACK
+        if (rawVol < 0.01 && playing) {
+          const t = Date.now() / 1000;
+          activeVol = 0.3
+            + Math.abs(Math.sin(t * 0.7)) * 0.25
+            + Math.abs(Math.sin(t * 1.8)) * 0.15
+            + Math.abs(Math.sin(t * 4.2)) * 0.08;
+        }
+
+        // PROFESSIONAL ENVELOPE (Heavy attack, organic decay for real visual punch)
+        if (activeVol > currentRenderVolRef.current) {
+          currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.88;
+        } else {
+          currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.08;
+        }
+        const v = currentRenderVolRef.current; 
+
+        // PHASE ADVANCE (spins faster when loud)
+        wavePhaseRef.current += 0.015 + v * 0.08;
+        const ph = wavePhaseRef.current;
+
+        const s0 = seeds[0] ?? 0.5, s1 = seeds[1] ?? 0.5, s2 = seeds[2] ?? 0.5;
+
+        if (playing) {
+          // ── Layer 1: Deep gas background (smooth, large)
+          plasmaPath1Ref.current?.setNativeProps({
+            d: buildNebula(62 + v * 28, 12 + v * 30, ph * 0.5 + s0 * 10, 2, 2),
+          });
+          
+          // ── Layer 2: Main Cyan/Teal Structure (highly structured, sharp ridges)
+          plasmaPath2Ref.current?.setNativeProps({
+            d: buildNebula(54 + v * 24, 16 + v * 40, -ph * 0.7 + s1 * 10, 3, 4),
+          });
+          
+          // ── Layer 3: Magenta/Purple Folds (offset phase, complex)
+          plasmaPath3Ref.current?.setNativeProps({
+            d: buildNebula(46 + v * 18, 14 + v * 35, ph * 0.9 + s2 * 10, 4, 3),
+          });
+
+          // ── Layer 4: Inner core highlights (very bright, tightly wound)
+          plasmaPath4Ref.current?.setNativeProps({
+            d: buildNebula(28 + v * 12, 8 + v * 20, -ph * 1.3, 5, 2),
+          });
+
+          // ── Multi-Ring Animation
+          plasmaRingRef.current?.setNativeProps({
+            strokeWidth: 1.5 + v * 2,
+            strokeOpacity: 0.7 + v * 0.3,
+            r: 104 + v * 4 // inner ring expands slightly
+          });
+          plasmaRing2Ref.current?.setNativeProps({
+            strokeWidth: 0.8 + v * 1.5,
+            strokeOpacity: 0.4 + v * 0.4,
+            r: 112 + v * 6 // middle dashed ring expands more
+          });
+
+        } else {
+          // ── PAUSED: freeze to resting blob — completely crash-proof
+          plasmaPath1Ref.current?.setNativeProps({ d: RESTING });
+          plasmaPath2Ref.current?.setNativeProps({ d: HIDDEN_PATH });
+          plasmaPath3Ref.current?.setNativeProps({ d: HIDDEN_PATH });
+          plasmaPath4Ref.current?.setNativeProps({ d: HIDDEN_PATH });
+          plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5, strokeOpacity: 0.7, r: 104 });
+          plasmaRing2Ref.current?.setNativeProps({ strokeWidth: 0.8, strokeOpacity: 0.4, r: 112 });
+        }
+      } catch (_e) {
+        // Silent catch ensures app never crashes on animation frame
       }
 
-      // ── 3. PROFESSIONAL AUDIO ENVELOPE (fast attack, slow organic decay) ────
-      // This is the same math used in professional studio visualizers.
-      if (activeVol > currentRenderVolRef.current) {
-        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.88; // instant punch-in
-      } else {
-        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.07; // graceful tail-off
+      // ── 6. SCHEDULE NEXT FRAME ────────────────────────────────────────────
+      // When playing: run at 60fps continuously
+      // When paused:  draw once then stop — plasma is completely still (user request)
+      if (!cancelled) {
+        if (isPlayingRef.current && !isPausedRef.current) {
+          animationFrameRef.current = requestAnimationFrame(plasmaLoop);
+        } else {
+          // Stopped — loop is idle. It will restart when isPlaying changes (below useEffect)
+          animationFrameRef.current = null;
+        }
       }
-      const v = currentRenderVolRef.current; // 0..1, volume-envelope value
-
-      // ── 4. ADVANCE PHASE (faster when louder = plasma "boils" with energy) ──
-      wavePhaseRef.current += 0.022 + v * 0.12;
-      const phase = wavePhaseRef.current;
-
-      // Sound-unique harmonic character from seeded random
-      const s0 = seeds[0] ?? 0.5;
-      const s1 = seeds[1] ?? 0.5;
-      const s2 = seeds[2] ?? 0.5;
-
-      if (isPlaying && !isPaused) {
-        // ── 5a. OUTER PLASMA BLOB 1 ────────────────────────────────────────
-        // Slow-rotating, large organic blob — the main plasma body
-        const blob1 = buildPolarPath(
-          4,                              // 4-petal base shape
-          48 + v * 32,                    // breathes from r=48 to r=80
-          6  + v * 28,                    // amplitude explodes with volume
-          phase * 0.9 + s0 * Math.PI * 2 // unique rotation per sound
-        );
-        plasmaPath1Ref.current?.setNativeProps({ d: blob1 });
-
-        // ── 5b. OUTER PLASMA BLOB 2 (counter-rotating for depth) ──────────
-        const blob2 = buildPolarPath(
-          5,                              // 5-petal — slightly asymmetric
-          36 + v * 24,
-          5  + v * 22,
-          -phase * 1.2 + s1 * Math.PI * 2 // spins opposite direction
-        );
-        plasmaPath2Ref.current?.setNativeProps({ d: blob2 });
-
-        // ── 5c. INNER CORE GLOW ────────────────────────────────────────────
-        // Small fast-rotating core — the "hot centre" of the plasma
-        const core = buildPolarPath(
-          6,                              // 6-petal (lotus-like inner core)
-          12 + v * 18,
-          3  + v * 14,
-          phase * 2.4 + s2 * Math.PI * 2  // spins fastest
-        );
-        plasmaPath3Ref.current?.setNativeProps({ d: core });
-
-        // ── 5d. RADIAL SPIKE BURST 1 (flash effect) ───────────────────────
-        // Outer spikes that shoot out from the ring — intensify with volume
-        const spikeOuter = v > 0.15 ? buildSpikePath(
-          12,                             // 12 spikes evenly distributed
-          RING_R - 2,                     // inner base just inside ring
-          RING_R + 2 + v * 18,            // tip shoots outside ring proportional to vol
-          phase * 0.4
-        ) : '';
-        plasmaFlash1Ref.current?.setNativeProps({ d: spikeOuter });
-
-        // ── 5e. RADIAL SPIKE BURST 2 (inner spikes — always visible) ─────
-        const spikeInner = buildSpikePath(
-          8,
-          22 + v * 8,
-          42 + v * 30,
-          -phase * 0.6 + Math.PI / 8     // offset angle from outer spikes
-        );
-        plasmaFlash2Ref.current?.setNativeProps({ d: spikeInner });
-
-        // ── 5f. RING GLOW PULSE ────────────────────────────────────────────
-        // The outer ring's stroke-width pulses with volume to create a "halo" effect
-        const ringGlowWidth = 1.5 + v * 8;
-        plasmaRingRef.current?.setNativeProps({ strokeWidth: ringGlowWidth });
-
-      } else {
-        // Paused / stopped — everything shrinks to a small perfect resting circle
-        plasmaPath1Ref.current?.setNativeProps({ d: RESTING_CIRCLE });
-        plasmaPath2Ref.current?.setNativeProps({ d: RESTING_CIRCLE });
-        plasmaPath3Ref.current?.setNativeProps({ d: '' });
-        plasmaFlash1Ref.current?.setNativeProps({ d: RESTING_SPIKE });
-        plasmaFlash2Ref.current?.setNativeProps({ d: RESTING_SPIKE });
-        plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5 });
-      }
-
-      // ── 6. SCHEDULE NEXT FRAME ─────────────────────────────────────────────
-      animationFrameRef.current = requestAnimationFrame(plasmaLoop);
     };
 
-    // Kick off the loop unconditionally — it handles pause state internally
+    // Start immediately
     animationFrameRef.current = requestAnimationFrame(plasmaLoop);
 
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      cancelled = true;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
     };
-  }, [isPlaying, isPaused, getMeteringLevel]);
+  // Run once on mount; isPlaying/isPaused are read inside via closure refs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getMeteringLevel]);
+
+  // ── Restart the plasma RAF loop when playback resumes after pause ─────────
+  // The main loop parks itself when paused. This effect wakes it back up.
+  useEffect(() => {
+    if (isPlaying && !isPaused && !animationFrameRef.current) {
+      // Loop is parked — re-trigger the main effect by incrementing a counter
+      // (cleanest pattern: just fire a single rAF that re-builds and chains)
+      const wakeUp = () => {
+        if (!isPlayingRef.current || isPausedRef.current) return;
+        // Delegate back to the main closure-captured plasmaLoop via a new RAF chain
+        // by just marking a new frame — the buildNebula math is re-inlined here
+        // to avoid referencing the now-stale closure from mount.
+        try {
+          const CX2 = 120, CY2 = 120;
+          const seeds2 = seedRef.current;
+          const bn = (bR: number, a: number, ph: number, fr: number, comp: number) => {
+            const ps: string[] = [];
+            for (let i = 0; i <= 240; i++) {
+              const t2 = (i / 240) * Math.PI * 2;
+              const w1 = Math.sin(fr * t2 + ph);
+              const w2 = Math.cos((fr + 1) * t2 - ph * 1.3);
+              const w3 = Math.sin((fr * 2) * t2 + ph * 0.8);
+              const w4 = Math.cos((fr * comp) * t2 - ph * 1.7);
+              const sharp = Math.pow(Math.abs(w1), 1.5) * Math.sign(w1);
+              const r = Math.max(2, bR + a * 0.7 * sharp + a * 0.4 * w2 + a * 0.2 * w3 + a * 0.1 * w4);
+              ps.push(`${i === 0 ? 'M' : 'L'}${(CX2 + r * Math.cos(t2)).toFixed(2)} ${(CY2 + r * Math.sin(t2)).toFixed(2)}`);
+            }
+            ps.push('Z');
+            return ps.join(' ');
+          };
+          const ph3 = wavePhaseRef.current;
+          const v3 = currentRenderVolRef.current;
+          const s0 = seeds2[0] ?? 0.5, s1 = seeds2[1] ?? 0.5, s2 = seeds2[2] ?? 0.5;
+          plasmaPath1Ref.current?.setNativeProps({ d: bn(62 + v3 * 28, 12 + v3 * 30, ph3 * 0.5 + s0 * 10, 2, 2) });
+          plasmaPath2Ref.current?.setNativeProps({ d: bn(54 + v3 * 24, 16 + v3 * 40, -ph3 * 0.7 + s1 * 10, 3, 4) });
+          plasmaPath3Ref.current?.setNativeProps({ d: bn(46 + v3 * 18, 14 + v3 * 35, ph3 * 0.9 + s2 * 10, 4, 3) });
+          plasmaPath4Ref.current?.setNativeProps({ d: bn(28 + v3 * 12, 8 + v3 * 20, -ph3 * 1.3, 5, 2) });
+          plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5 + v3 * 2, strokeOpacity: 0.7 + v3 * 0.3, r: 104 + v3 * 4 });
+          plasmaRing2Ref.current?.setNativeProps({ strokeWidth: 0.8 + v3 * 1.5, strokeOpacity: 0.4 + v3 * 0.4, r: 112 + v3 * 6 });
+          wavePhaseRef.current += 0.018;
+        } catch (_) {}
+        if (isPlayingRef.current && !isPausedRef.current) {
+          animationFrameRef.current = requestAnimationFrame(wakeUp);
+        } else {
+          animationFrameRef.current = null;
+        }
+      };
+      animationFrameRef.current = requestAnimationFrame(wakeUp);
+    }
+  }, [isPlaying, isPaused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
@@ -2797,110 +2846,69 @@ const ReelCard = memo(function ReelCard({
           <View style={{ width: 240, height: 240, position: 'absolute' }}>
             <Svg width="100%" height="100%" viewBox="0 0 240 240">
               <Defs>
-                {/* Clip everything inside the boundary ring */}
                 <SvgClipPath id="plasmaClip">
-                  <SvgCircle cx={120} cy={120} r={107} />
+                  <SvgCircle cx={120} cy={120} r={118} />
                 </SvgClipPath>
 
-                {/* Outer plasma blob gradient — bold, translucent */}
-                <RadialGradient id="pg1" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0%"   stopColor={sound.top   || '#c084fc'} stopOpacity="0.95" />
-                  <Stop offset="60%"  stopColor={sound.color || '#818cf8'} stopOpacity="0.55" />
-                  <Stop offset="100%" stopColor={sound.bot   || '#4facfe'} stopOpacity="0.05" />
-                </RadialGradient>
-
-                {/* Counter-rotating plasma blob — complementary color */}
-                <RadialGradient id="pg2" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0%"   stopColor={sound.color || '#818cf8'} stopOpacity="0.85" />
-                  <Stop offset="55%"  stopColor={sound.bot   || '#38bdf8'} stopOpacity="0.4"  />
-                  <Stop offset="100%" stopColor={sound.top   || '#c084fc'} stopOpacity="0.02" />
-                </RadialGradient>
-
-                {/* Inner core — hottest, brightest, smallest */}
-                <RadialGradient id="pg3" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0%"   stopColor="#ffffff"                   stopOpacity="0.95" />
-                  <Stop offset="40%"  stopColor={sound.top   || '#e0e7ff'} stopOpacity="0.7"  />
-                  <Stop offset="100%" stopColor={sound.color || '#818cf8'} stopOpacity="0.0"  />
-                </RadialGradient>
-
-                {/* Spike flash gradient — sharp, energetic */}
-                <SvgLinearGradient id="spk1" x1="0.5" y1="0" x2="0.5" y2="1">
-                  <Stop offset="0%"   stopColor={sound.top   || '#e0e7ff'} stopOpacity="0.9" />
-                  <Stop offset="100%" stopColor={sound.color || '#818cf8'} stopOpacity="0.1" />
+                {/* Layer 1: Deep Nebula Background */}
+                <SvgLinearGradient id="neb1" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.9" />
+                  <Stop offset="100%" stopColor="#4c1d95" stopOpacity="0.6" />
                 </SvgLinearGradient>
 
-                {/* Inner spike gradient — softer */}
-                <SvgLinearGradient id="spk2" x1="0.5" y1="0" x2="0.5" y2="1">
-                  <Stop offset="0%"   stopColor={sound.color || '#818cf8'} stopOpacity="0.7" />
-                  <Stop offset="100%" stopColor={sound.bot   || '#4facfe'} stopOpacity="0.05" />
+                {/* Layer 2: Vivid Cyan / Teal */}
+                <SvgLinearGradient id="neb2" x1="1" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.85" />
+                  <Stop offset="100%" stopColor="#0284c7" stopOpacity="0.4" />
+                </SvgLinearGradient>
+
+                {/* Layer 3: Intense Magenta / Purple */}
+                <SvgLinearGradient id="neb3" x1="0" y1="1" x2="1" y2="0">
+                  <Stop offset="0%" stopColor="#c026d3" stopOpacity="0.75" />
+                  <Stop offset="100%" stopColor="#7e22ce" stopOpacity="0.2" />
+                </SvgLinearGradient>
+
+                {/* Layer 4: Electric Gold / Highlight */}
+                <SvgLinearGradient id="neb4" x1="0.5" y1="0" x2="0.5" y2="1">
+                  <Stop offset="0%" stopColor="#fcd34d" stopOpacity="0.85" />
+                  <Stop offset="100%" stopColor="#f59e0b" stopOpacity="0.1" />
                 </SvgLinearGradient>
               </Defs>
 
-              {/* ── Halo glow behind ring ── */}
-              <SvgCircle cx={120} cy={120} r={112}
-                stroke={sound.color || '#818cf8'}
-                strokeWidth={14}
+              {/* ── Outer Static Ring ── */}
+              <SvgCircle cx={120} cy={120} r={116} stroke="#818cf8" strokeWidth={0.5} fill="none" opacity={0.3} />
+
+              {/* ── Middle Dashed Ring (Animated) ── */}
+              <SvgCircle
+                ref={plasmaRing2Ref}
+                cx={120} cy={120} r={110}
+                stroke="#38bdf8"
+                strokeWidth={1}
+                strokeDasharray="2, 6"
                 fill="none"
-                strokeOpacity={0.08}
+                opacity={0.6}
+              />
+
+              {/* ── Inner Solid Ring (Animated) ── */}
+              <SvgCircle
+                ref={plasmaRingRef}
+                cx={120} cy={120} r={102}
+                stroke="#7dd3fc"
+                strokeWidth={1.5}
+                fill="none"
+                opacity={0.8}
               />
 
               {/* ── All plasma layers clipped inside the boundary ── */}
               <G clipPath="url(#plasmaClip)">
-
-                {/* Layer 1: Outer plasma blob — largest, most transparent */}
-                <Path
-                  ref={plasmaPath1Ref}
-                  d={`M ${120 + 55} 120 A 55 55 0 1 0 ${120 - 55} 120 A 55 55 0 1 0 ${120 + 55} 120 Z`}
-                  fill="url(#pg1)"
-                />
-
-                {/* Layer 2: Counter-rotating plasma blob — depth layer */}
-                <Path
-                  ref={plasmaPath2Ref}
-                  d={`M ${120 + 42} 120 A 42 42 0 1 0 ${120 - 42} 120 A 42 42 0 1 0 ${120 + 42} 120 Z`}
-                  fill="url(#pg2)"
-                />
-
-                {/* Layer 3: Inner spikes — always visible filaments */}
-                <Path
-                  ref={plasmaFlash2Ref}
-                  d=""
-                  fill="url(#spk2)"
-                  fillOpacity={0.6}
-                />
-
-                {/* Layer 4: Bright inner core */}
-                <Path
-                  ref={plasmaPath3Ref}
-                  d={`M ${120 + 12} 120 A 12 12 0 1 0 ${120 - 12} 120 A 12 12 0 1 0 ${120 + 12} 120 Z`}
-                  fill="url(#pg3)"
-                />
-
+                <Path ref={plasmaPath1Ref} d="M 120 120 Z" fill="url(#neb1)" />
+                <Path ref={plasmaPath2Ref} d="M 120 120 Z" fill="url(#neb2)" />
+                <Path ref={plasmaPath3Ref} d="M 120 120 Z" fill="url(#neb3)" />
+                <Path ref={plasmaPath4Ref} d="M 120 120 Z" fill="url(#neb4)" />
               </G>
 
-              {/* ── Outer spike bursts (OUTSIDE clip, so they pierce the ring boundary) ── */}
-              <Path
-                ref={plasmaFlash1Ref}
-                d=""
-                fill="url(#spk1)"
-                fillOpacity={0.75}
-              />
-
-              {/* ── Crisp boundary ring — glows with volume ── */}
-              <SvgCircle
-                ref={plasmaRingRef}
-                cx={120} cy={120} r={108}
-                stroke={sound.top || '#c7d2fe'}
-                strokeWidth={1.5}
-                fill="none"
-                strokeOpacity={0.9}
-              />
-
-              {/* ── Tiny centre dot ── */}
-              <SvgCircle cx={120} cy={120} r={2.5}
-                fill={sound.top || '#fff'}
-                fillOpacity={0.9}
-              />
+              {/* ── Tiny centre dot for focal point ── */}
+              <SvgCircle cx={120} cy={120} r={2} fill="#fff" opacity={0.9} />
             </Svg>
           </View>
         </TouchableOpacity>
@@ -3993,7 +4001,13 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
         { scale: Animated.multiply(pressAnim, pulseAnim) },
       ],
     }}>
-      <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <TouchableOpacity 
+        activeOpacity={1} 
+        onPress={onPress} 
+        onPressIn={handlePressIn} 
+        onPressOut={handlePressOut}
+        delayPressIn={50}
+      >
         
         {/* Innovative Glass Image Container */}
         <View style={{
@@ -4452,7 +4466,14 @@ const TherapySoundCard = memo(function TherapySoundCard({
 
   return (
     <Animated.View style={{ width: cardW, transform: [{ scale: scaleAnim }] }}>
-      <TouchableOpacity onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} activeOpacity={0.9} style={{ flex: 1 }}>
+      <GHTouchableOpacity 
+        onPress={onPress} 
+        onPressIn={handlePressIn} 
+        onPressOut={handlePressOut} 
+        activeOpacity={0.9} 
+        delayPressIn={50}
+        style={{ flex: 1 }}
+      >
         <View style={{
           width: cardW, height: cardH, borderRadius: 0, overflow: 'hidden',
           borderWidth: isPlaying ? 1.5 : 1,
@@ -4515,7 +4536,7 @@ const TherapySoundCard = memo(function TherapySoundCard({
             >{sound.desc}</Text>
           )}
         </View>
-      </TouchableOpacity>
+      </GHTouchableOpacity>
     </Animated.View>
   );
 });
@@ -4572,33 +4593,31 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
     Animated.spring(slideIn, {
       toValue: 0,
       useNativeDriver: true,
-      damping: 25,
-      stiffness: 250,
+      damping: 32,    // Higher damping = snappier, less bounce
+      stiffness: 420, // Higher stiffness = faster arrival
+      mass: 0.7,      // Lower mass = lighter feel
     }).start();
 
-    // Defer rendering the heavy horizontal rows so the slide animation is instantly smooth
-    const timer = setTimeout(() => {
-      setShouldRenderHeavy(true);
-    }, 150);
+    // Render all content immediately — no delay so it feels instant
+    setShouldRenderHeavy(true);
     
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       handleClose();
       return true;
     });
     return () => {
-      clearTimeout(timer);
       sub.remove();
     };
   }, []);
 
   const insets = useSafeAreaInsets();
-  const cardW = Math.floor(W * 0.48); // Match exactly with collection cards
+  const cardW = Math.floor(W * 0.48 * 0.85); // 15% reduction for premium feel
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, { zIndex: 9998, elevation: 998, transform: [{ translateY: slideIn }] }]}>
       <View style={{ flex: 1, backgroundColor: 'rgba(3, 3, 13, 0.3)' }}>
         
-        <ScrollView
+        <GHScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
@@ -4666,7 +4685,9 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
                   </View>
 
-                  <ScrollView 
+                  <GHFlatList
+                    data={row}
+                    keyExtractor={(item) => item.id}
                     horizontal 
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
@@ -4675,10 +4696,10 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     directionalLockEnabled={true}
                     alwaysBounceHorizontal={true}
                     bounces={true}
-                  >
-                    {row.map((sound: any) => (
+                    initialNumToRender={4}
+                    windowSize={3}
+                    renderItem={({ item: sound }) => (
                       <TherapySoundCard
-                        key={sound.id}
                         sound={sound}
                         isPlaying={playingId === sound.id}
                         isPaused={isPaused}
@@ -4686,13 +4707,13 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
                         cardWidth={cardW}
                       />
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               );
             })
           )}
-        </ScrollView>
+        </GHScrollView>
       </View>
     </Animated.View>
   );

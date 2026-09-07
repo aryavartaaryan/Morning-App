@@ -944,7 +944,8 @@ function ExtendedForecastModal({ daily, onClose }: { daily: DailyPoint[]; onClos
 }
 
 // ── Vedic Calendar Modal (Grid) ────────────────────────────────────────────────────
-function VedicCalendarModal({ onClose, userLat, userLon }: { onClose: () => void; userLat?: number; userLon?: number }) {
+function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}, setShowStressScanner = () => {} }: { onClose: () => void; userLat?: number; userLon?: number; setSheetOpen?: (v: boolean) => void; setShowStressScanner?: (v: boolean) => void }) {
+  const router = require('expo-router').useRouter();
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
   const [currentMonthDate, setCurrentMonthDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -1346,7 +1347,50 @@ function VedicCalendarModal({ onClose, userLat, userLon }: { onClose: () => void
               </ScrollView>
             )}
           </View>
-        </SafeAreaView>
+  
+        {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
+        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
+          <BlurView intensity={80} tint="dark" style={{
+            flexDirection: 'row',
+            borderRadius: 28,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255,255,255,0.12)',
+            backgroundColor: 'rgba(10,10,10,0.3)',
+            overflow: 'hidden',
+          }}>
+            {/* Almanac */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
+            </TouchableOpacity>
+
+            {/* Vitality */}
+            <TouchableOpacity
+              onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
+            </TouchableOpacity>
+
+            {/* Soundscapes */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
+            >
+              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </View>
+
+      </SafeAreaView>
       </View>
       {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)} />}
     </Modal>
@@ -7249,7 +7293,7 @@ React.useEffect(() => {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLog, sunStreak, onMore, onClose, onShowShareCard }: {
+function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLog, sunStreak, onMore, onClose, onShowShareCard, setSheetOpen = () => {}, setShowStressScanner = () => {} }: {
   weather: WeatherData | null;
   solarTimes: SolarTimes | null;
   currentPeriod: DoshaPeriod | null;
@@ -7259,6 +7303,8 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
   onMore: () => void;
   onClose: () => void;
   onShowShareCard: () => void;
+  setSheetOpen?: (v: boolean) => void;
+  setShowStressScanner?: (v: boolean) => void;
 }) {
   const router = useRouter();
   const { bgUri, bgKey } = useBgContext();
@@ -7325,7 +7371,50 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 
 
           </ScrollView>
-        </SafeAreaView>
+  
+        {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
+        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
+          <BlurView intensity={80} tint="dark" style={{
+            flexDirection: 'row',
+            borderRadius: 28,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255,255,255,0.12)',
+            backgroundColor: 'rgba(10,10,10,0.3)',
+            overflow: 'hidden',
+          }}>
+            {/* Almanac */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
+            </TouchableOpacity>
+
+            {/* Vitality */}
+            <TouchableOpacity
+              onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
+            </TouchableOpacity>
+
+            {/* Soundscapes */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
+            >
+              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </View>
+
+      </SafeAreaView>
       </Animated.View>
     </Modal>
     </>
@@ -7716,7 +7805,7 @@ function DailyTab() {
       {/* Background filters removed per user request to show raw background image */}
       <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, paddingBottom: 80 }} edges={['top']}>
 
         {/* ══ PREMIUM FLOATING HEADER PILL ══ */}
         <View style={{ paddingTop: 10, paddingBottom: 8, zIndex: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
@@ -7764,7 +7853,7 @@ function DailyTab() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 16, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 4, paddingBottom: 10 }} showsVerticalScrollIndicator={false}>
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
               
@@ -7860,7 +7949,7 @@ function DailyTab() {
 
 
               {/* 4. Weather Button (Fixed below Bio-State) */}
-              <View style={{ width: '100%', paddingHorizontal: 24, marginBottom: 8, alignItems: 'center' }}>
+              <View style={{ width: '100%', paddingHorizontal: 20, marginBottom: 8, alignItems: 'center' }}>
                  {weather && (
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -7880,48 +7969,50 @@ function DailyTab() {
 
         </ScrollView>
 
-        {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns (Fixed at bottom) ── */}
-        <View style={{ width: '100%', paddingHorizontal: 24, paddingBottom: 16, paddingTop: 12, backgroundColor: 'transparent' }}>
-                <BlurView intensity={80} tint="dark" style={{
-                  flexDirection: 'row',
-                  borderRadius: 28,
-                  borderWidth: 0,
-                  borderColor: 'rgba(255,255,255,0.16)',
-                  overflow: 'hidden',
-                }}>
+        
 
-                  {/* Almanac */}
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-                    activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
-                  >
-                    <Ionicons name="journal-outline" size={20} color="#E2E8F0" />
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.3 }}>Almanac</Text>
-                  </TouchableOpacity>
+        {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
+        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
+          <BlurView intensity={80} tint="dark" style={{
+            flexDirection: 'row',
+            borderRadius: 28,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255,255,255,0.12)',
+            backgroundColor: 'rgba(10,10,10,0.3)',
+            overflow: 'hidden',
+          }}>
+            {/* Almanac */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
+            </TouchableOpacity>
 
-                  {/* Vitality */}
-                  <TouchableOpacity
-                    onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-                    activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.10)' }}
-                  >
-                    <Ionicons name="pulse-outline" size={20} color="#E2E8F0" />
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.5 }}>Vitality</Text>
-                  </TouchableOpacity>
+            {/* Vitality */}
+            <TouchableOpacity
+              onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
+            </TouchableOpacity>
 
-                  {/* Soundscapes */}
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-                    activeOpacity={0.65}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}
-                  >
-                    <Ionicons name="stats-chart-outline" size={20} color="#E2E8F0" />
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 6, letterSpacing: 0.3 }}>Soundscapes</Text>
-                  </TouchableOpacity>
+            {/* Soundscapes */}
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
+              activeOpacity={0.65}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
+            >
+              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </View>
 
-                </BlurView>
-              </View>
       </SafeAreaView>
 
 
