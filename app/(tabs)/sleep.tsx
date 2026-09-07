@@ -2337,8 +2337,13 @@ const ReelCard = memo(function ReelCard({
   }, [isActive]);
 
 
-  const path1Ref = useRef<any>(null);
-  const path2Ref = useRef<any>(null);
+  // ── PLASMA CORE REFS (all updates go via setNativeProps → zero React re-renders) ──
+  const plasmaPath1Ref  = useRef<any>(null); // Outer plasma blob 1
+  const plasmaPath2Ref  = useRef<any>(null); // Outer plasma blob 2  
+  const plasmaPath3Ref  = useRef<any>(null); // Inner core glow
+  const plasmaRingRef   = useRef<any>(null); // Outer crisp ring — stroke-dashoffset pulse
+  const plasmaFlash1Ref = useRef<any>(null); // Radial spike burst 1
+  const plasmaFlash2Ref = useRef<any>(null); // Radial spike burst 2
   const animationFrameRef = useRef<number | null>(null);
   const wavePhaseRef = useRef(0);
   const currentRenderVolRef = useRef(0);
@@ -2364,99 +2369,166 @@ const ReelCard = memo(function ReelCard({
   }, [sound.id]);
   
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const generateWave = () => {
-      const W = 240;
-      const CX = 120; // Center X of the circle
-      const CY = 120; // Center Y (horizontal baseline of waveform)
-      const R = 118;  // Circle radius
-      
-      const targetVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
-      
-      // Smart Fallback Audio Simulator
-      // If metering fails on this Android device (returns exactly 0 constantly while playing)
-      // we generate a beautiful organic simulated volume so it never stays flat.
-      let simulatedVol = 0;
-      if (targetVol === 0 && isPlaying && !isPaused) {
-         // Simulate slow, breathing ambient pulses based on time
-         const t = Date.now() / 2000;
-         simulatedVol = 0.3 + Math.sin(t) * 0.15 + Math.sin(t * 2.3) * 0.1;
-      }
-      
-      const activeVol = targetVol > 0 ? targetVol : simulatedVol;
-      
-      // Buttery smooth lerping with Attack/Release envelope for perfect sync
-      if (activeVol > currentRenderVolRef.current) {
-        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.8; // Fast attack
-      } else {
-        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.1; // Slow decay
-      }
-      
-      const liveVol = currentRenderVolRef.current;
-      
-      // Liquid sphere phase advances
-      // When loud, the liquid boils faster
-      wavePhaseRef.current += 0.02 + (liveVol * 0.08);
-      const phase = wavePhaseRef.current;
-      const seeds = seedRef.current;
-      
-      // Liquid Orb Mathematics
-      const SAMPLES = 120; // High resolution for smooth liquid edges
+    // Cancel any prior animation frame before starting a new loop
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+    const CX = 120;
+    const CY = 120;
+    const RING_R = 108;
+    const RING_CIRCUMFERENCE = 2 * Math.PI * RING_R;
+    const seeds = seedRef.current;
+
+    // ── Helper: build a seamlessly-looping distorted polar path ──────────────
+    // petals: integer harmonic count (ensures seamless close)
+    // baseR:  mean radius
+    // amp:    distortion amplitude (volume-driven)
+    // phase:  rotation offset (time-driven)
+    const buildPolarPath = (petals: number, baseR: number, amp: number, phase: number, samples: number = 160) => {
       const pts: string[] = [];
-      
-      // Base radius of the liquid sphere. It breathes outward as it gets louder.
-      const baseRadius = 60 + (liveVol * 25);
-      // How aggressively the blob distorts from a perfect circle
-      const distortionAmp = 10 + Math.pow(liveVol, 0.8) * 35;
-      
-      for (let i = 0; i <= SAMPLES; i++) {
-        // Theta from 0 to 2PI. We loop back to 0 perfectly at the end.
-        const theta = (i / SAMPLES) * Math.PI * 2;
-        
-        // Deterministic seeds for unique sound signature
-        const s0 = seeds[i % seeds.length] ?? 0.5;
-        
-        // Seamless looping harmonics (frequencies must be exact integers: 3, 4, 5, 7)
-        // This ensures the blob connects perfectly at the seam
-        const h1 = Math.sin(theta * 3 + phase * 1.2);
-        const h2 = Math.cos(theta * 5 - phase * 0.8) * 0.6;
-        const h3 = Math.sin(theta * 7 + phase * 2.0) * 0.4;
-        
-        // Mix harmonics based on sound's unique seed
-        const mix = (h1 + h2 + h3) * (0.8 + s0 * 0.4);
-        
-        // Calculate the distorted radius at this angle
-        const r = baseRadius + (mix * distortionAmp);
-        
-        // Convert polar to cartesian coordinates
+      for (let i = 0; i <= samples; i++) {
+        const theta = (i / samples) * Math.PI * 2;
+        // Layered harmonics — all integer multiples so path closes perfectly
+        const r = baseR
+          + amp * Math.sin(petals * theta + phase)
+          + (amp * 0.45) * Math.sin((petals * 2) * theta - phase * 1.6)
+          + (amp * 0.25) * Math.cos((petals * 3) * theta + phase * 0.9);
         const x = CX + r * Math.cos(theta);
         const y = CY + r * Math.sin(theta);
-        
-        pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
+        pts.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`);
       }
-      // Close the path perfectly
       pts.push('Z');
-      const newPath = pts.join(' ');
-      
-      // Update the SVG paths directly via native props to bypass React state entirely.
-      // This guarantees locked 60fps performance with ZERO stuttering or breaks.
-      path1Ref.current?.setNativeProps({ d: newPath });
-      path2Ref.current?.setNativeProps({ d: newPath });
-      
-      if (isPlaying && !isPaused) {
-        animationFrameRef.current = requestAnimationFrame(generateWave);
-      }
+      return pts.join(' ');
     };
-    
-    // Start the buttery smooth 60fps loop
-    if (isPlaying && !isPaused) {
-      animationFrameRef.current = requestAnimationFrame(generateWave);
-    } else {
-      // Draw a perfect base circle when paused/stopped
-      path1Ref.current?.setNativeProps({ d: "M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z" });
-      path2Ref.current?.setNativeProps({ d: "M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z" });
-    }
-    
+
+    // ── Helper: radial spike burst ────────────────────────────────────────────
+    // Creates N sharp triangular spikes pointing outward from centre
+    const buildSpikePath = (nSpikes: number, innerR: number, outerR: number, phase: number) => {
+      const pts: string[] = [];
+      for (let i = 0; i < nSpikes; i++) {
+        const thetaCenter = (i / nSpikes) * Math.PI * 2 + phase;
+        const halfGap     = (Math.PI / nSpikes) * 0.18; // thin spike
+        // base left
+        const lx = CX + innerR * Math.cos(thetaCenter - halfGap);
+        const ly = CY + innerR * Math.sin(thetaCenter - halfGap);
+        // tip
+        const tx = CX + outerR * Math.cos(thetaCenter);
+        const ty = CY + outerR * Math.sin(thetaCenter);
+        // base right
+        const rx = CX + innerR * Math.cos(thetaCenter + halfGap);
+        const ry = CY + innerR * Math.sin(thetaCenter + halfGap);
+        pts.push(`M${lx.toFixed(2)} ${ly.toFixed(2)} L${tx.toFixed(2)} ${ty.toFixed(2)} L${rx.toFixed(2)} ${ry.toFixed(2)} Z`);
+      }
+      return pts.join(' ');
+    };
+
+    const RESTING_CIRCLE = `M ${CX + 55} ${CY} A 55 55 0 1 0 ${CX - 55} ${CY} A 55 55 0 1 0 ${CX + 55} ${CY} Z`;
+    const RESTING_SPIKE  = '';
+
+    const plasmaLoop = () => {
+      // ── 1. READ LIVE AUDIO VOLUME ───────────────────────────────────────────
+      const rawVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
+
+      // ── 2. SMART FALLBACK: if the Android audio driver reports 0 while playing ──
+      // We simulate a realistic organic breathing pattern so the plasma is NEVER dead.
+      let activeVol = rawVol;
+      if (rawVol < 0.01 && isPlaying && !isPaused) {
+        const t = Date.now() / 1200;
+        // Multi-frequency organic breathing — feels like real ambient audio
+        activeVol = 0.28
+          + Math.abs(Math.sin(t * 0.7))  * 0.22   // slow main breath
+          + Math.abs(Math.sin(t * 1.9))  * 0.12   // mid harmonic
+          + Math.abs(Math.sin(t * 4.1))  * 0.06;  // fast detail flutter
+      }
+
+      // ── 3. PROFESSIONAL AUDIO ENVELOPE (fast attack, slow organic decay) ────
+      // This is the same math used in professional studio visualizers.
+      if (activeVol > currentRenderVolRef.current) {
+        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.88; // instant punch-in
+      } else {
+        currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.07; // graceful tail-off
+      }
+      const v = currentRenderVolRef.current; // 0..1, volume-envelope value
+
+      // ── 4. ADVANCE PHASE (faster when louder = plasma "boils" with energy) ──
+      wavePhaseRef.current += 0.022 + v * 0.12;
+      const phase = wavePhaseRef.current;
+
+      // Sound-unique harmonic character from seeded random
+      const s0 = seeds[0] ?? 0.5;
+      const s1 = seeds[1] ?? 0.5;
+      const s2 = seeds[2] ?? 0.5;
+
+      if (isPlaying && !isPaused) {
+        // ── 5a. OUTER PLASMA BLOB 1 ────────────────────────────────────────
+        // Slow-rotating, large organic blob — the main plasma body
+        const blob1 = buildPolarPath(
+          4,                              // 4-petal base shape
+          48 + v * 32,                    // breathes from r=48 to r=80
+          6  + v * 28,                    // amplitude explodes with volume
+          phase * 0.9 + s0 * Math.PI * 2 // unique rotation per sound
+        );
+        plasmaPath1Ref.current?.setNativeProps({ d: blob1 });
+
+        // ── 5b. OUTER PLASMA BLOB 2 (counter-rotating for depth) ──────────
+        const blob2 = buildPolarPath(
+          5,                              // 5-petal — slightly asymmetric
+          36 + v * 24,
+          5  + v * 22,
+          -phase * 1.2 + s1 * Math.PI * 2 // spins opposite direction
+        );
+        plasmaPath2Ref.current?.setNativeProps({ d: blob2 });
+
+        // ── 5c. INNER CORE GLOW ────────────────────────────────────────────
+        // Small fast-rotating core — the "hot centre" of the plasma
+        const core = buildPolarPath(
+          6,                              // 6-petal (lotus-like inner core)
+          12 + v * 18,
+          3  + v * 14,
+          phase * 2.4 + s2 * Math.PI * 2  // spins fastest
+        );
+        plasmaPath3Ref.current?.setNativeProps({ d: core });
+
+        // ── 5d. RADIAL SPIKE BURST 1 (flash effect) ───────────────────────
+        // Outer spikes that shoot out from the ring — intensify with volume
+        const spikeOuter = v > 0.15 ? buildSpikePath(
+          12,                             // 12 spikes evenly distributed
+          RING_R - 2,                     // inner base just inside ring
+          RING_R + 2 + v * 18,            // tip shoots outside ring proportional to vol
+          phase * 0.4
+        ) : '';
+        plasmaFlash1Ref.current?.setNativeProps({ d: spikeOuter });
+
+        // ── 5e. RADIAL SPIKE BURST 2 (inner spikes — always visible) ─────
+        const spikeInner = buildSpikePath(
+          8,
+          22 + v * 8,
+          42 + v * 30,
+          -phase * 0.6 + Math.PI / 8     // offset angle from outer spikes
+        );
+        plasmaFlash2Ref.current?.setNativeProps({ d: spikeInner });
+
+        // ── 5f. RING GLOW PULSE ────────────────────────────────────────────
+        // The outer ring's stroke-width pulses with volume to create a "halo" effect
+        const ringGlowWidth = 1.5 + v * 8;
+        plasmaRingRef.current?.setNativeProps({ strokeWidth: ringGlowWidth });
+
+      } else {
+        // Paused / stopped — everything shrinks to a small perfect resting circle
+        plasmaPath1Ref.current?.setNativeProps({ d: RESTING_CIRCLE });
+        plasmaPath2Ref.current?.setNativeProps({ d: RESTING_CIRCLE });
+        plasmaPath3Ref.current?.setNativeProps({ d: '' });
+        plasmaFlash1Ref.current?.setNativeProps({ d: RESTING_SPIKE });
+        plasmaFlash2Ref.current?.setNativeProps({ d: RESTING_SPIKE });
+        plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5 });
+      }
+
+      // ── 6. SCHEDULE NEXT FRAME ─────────────────────────────────────────────
+      animationFrameRef.current = requestAnimationFrame(plasmaLoop);
+    };
+
+    // Kick off the loop unconditionally — it handles pause state internally
+    animationFrameRef.current = requestAnimationFrame(plasmaLoop);
+
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
@@ -2709,50 +2781,126 @@ const ReelCard = memo(function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── CENTRAL MICRO-THIN RING & WAVEFORM (Option 2) ── */}
+      {/* ── PLASMA CORE VISUALIZER ── */}
       <Animated.View
         style={[StyleSheet.absoluteFillObject, {
           alignItems: 'center', justifyContent: 'center',
-          zIndex: 7, opacity: 1, // Changed from controlsAnim to 1 so it stays visible
+          zIndex: 7, opacity: 1,
         }]}
         pointerEvents="box-none"
       >
-        {/* We keep this view for tapping to toggle, replacing the old orb */}
         <TouchableOpacity
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
           activeOpacity={1.0}
           style={{ width: 240, height: 240, alignItems: 'center', justifyContent: 'center' }}
         >
-          {/* Reactive Liquid Orb */}
           <View style={{ width: 240, height: 240, position: 'absolute' }}>
             <Svg width="100%" height="100%" viewBox="0 0 240 240">
               <Defs>
-                <SvgLinearGradient id="blobGrad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor={sound.top || '#4facfe'} stopOpacity="0.8" />
-                  <Stop offset="1" stopColor={sound.color || '#00f2fe'} stopOpacity="0.3" />
+                {/* Clip everything inside the boundary ring */}
+                <SvgClipPath id="plasmaClip">
+                  <SvgCircle cx={120} cy={120} r={107} />
+                </SvgClipPath>
+
+                {/* Outer plasma blob gradient — bold, translucent */}
+                <RadialGradient id="pg1" cx="50%" cy="50%" r="50%">
+                  <Stop offset="0%"   stopColor={sound.top   || '#c084fc'} stopOpacity="0.95" />
+                  <Stop offset="60%"  stopColor={sound.color || '#818cf8'} stopOpacity="0.55" />
+                  <Stop offset="100%" stopColor={sound.bot   || '#4facfe'} stopOpacity="0.05" />
+                </RadialGradient>
+
+                {/* Counter-rotating plasma blob — complementary color */}
+                <RadialGradient id="pg2" cx="50%" cy="50%" r="50%">
+                  <Stop offset="0%"   stopColor={sound.color || '#818cf8'} stopOpacity="0.85" />
+                  <Stop offset="55%"  stopColor={sound.bot   || '#38bdf8'} stopOpacity="0.4"  />
+                  <Stop offset="100%" stopColor={sound.top   || '#c084fc'} stopOpacity="0.02" />
+                </RadialGradient>
+
+                {/* Inner core — hottest, brightest, smallest */}
+                <RadialGradient id="pg3" cx="50%" cy="50%" r="50%">
+                  <Stop offset="0%"   stopColor="#ffffff"                   stopOpacity="0.95" />
+                  <Stop offset="40%"  stopColor={sound.top   || '#e0e7ff'} stopOpacity="0.7"  />
+                  <Stop offset="100%" stopColor={sound.color || '#818cf8'} stopOpacity="0.0"  />
+                </RadialGradient>
+
+                {/* Spike flash gradient — sharp, energetic */}
+                <SvgLinearGradient id="spk1" x1="0.5" y1="0" x2="0.5" y2="1">
+                  <Stop offset="0%"   stopColor={sound.top   || '#e0e7ff'} stopOpacity="0.9" />
+                  <Stop offset="100%" stopColor={sound.color || '#818cf8'} stopOpacity="0.1" />
                 </SvgLinearGradient>
-                <SvgLinearGradient id="blobGrad2" x1="1" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={sound.color || '#4facfe'} stopOpacity="0.5" />
-                  <Stop offset="1" stopColor={sound.bot || '#00f2fe'} stopOpacity="0.1" />
+
+                {/* Inner spike gradient — softer */}
+                <SvgLinearGradient id="spk2" x1="0.5" y1="0" x2="0.5" y2="1">
+                  <Stop offset="0%"   stopColor={sound.color || '#818cf8'} stopOpacity="0.7" />
+                  <Stop offset="100%" stopColor={sound.bot   || '#4facfe'} stopOpacity="0.05" />
                 </SvgLinearGradient>
               </Defs>
-              <G>
-                {/* Secondary offset liquid layer to create 3D volumetric organic depth */}
-                <Path 
-                  ref={path2Ref}
-                  d="M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z"
-                  fill="url(#blobGrad2)"
-                  transform="rotate(60 120 120) scale(1.08) translate(-10 -10)"
+
+              {/* ── Halo glow behind ring ── */}
+              <SvgCircle cx={120} cy={120} r={112}
+                stroke={sound.color || '#818cf8'}
+                strokeWidth={14}
+                fill="none"
+                strokeOpacity={0.08}
+              />
+
+              {/* ── All plasma layers clipped inside the boundary ── */}
+              <G clipPath="url(#plasmaClip)">
+
+                {/* Layer 1: Outer plasma blob — largest, most transparent */}
+                <Path
+                  ref={plasmaPath1Ref}
+                  d={`M ${120 + 55} 120 A 55 55 0 1 0 ${120 - 55} 120 A 55 55 0 1 0 ${120 + 55} 120 Z`}
+                  fill="url(#pg1)"
                 />
-                {/* Primary liquid orb - semi-transparent so background is visible */}
-                <Path 
-                  ref={path1Ref}
-                  d="M 180 120 A 60 60 0 1 0 60 120 A 60 60 0 1 0 180 120 Z"
-                  fill="url(#blobGrad)"
-                  stroke="rgba(255,255,255,0.4)"
-                  strokeWidth={1}
+
+                {/* Layer 2: Counter-rotating plasma blob — depth layer */}
+                <Path
+                  ref={plasmaPath2Ref}
+                  d={`M ${120 + 42} 120 A 42 42 0 1 0 ${120 - 42} 120 A 42 42 0 1 0 ${120 + 42} 120 Z`}
+                  fill="url(#pg2)"
                 />
+
+                {/* Layer 3: Inner spikes — always visible filaments */}
+                <Path
+                  ref={plasmaFlash2Ref}
+                  d=""
+                  fill="url(#spk2)"
+                  fillOpacity={0.6}
+                />
+
+                {/* Layer 4: Bright inner core */}
+                <Path
+                  ref={plasmaPath3Ref}
+                  d={`M ${120 + 12} 120 A 12 12 0 1 0 ${120 - 12} 120 A 12 12 0 1 0 ${120 + 12} 120 Z`}
+                  fill="url(#pg3)"
+                />
+
               </G>
+
+              {/* ── Outer spike bursts (OUTSIDE clip, so they pierce the ring boundary) ── */}
+              <Path
+                ref={plasmaFlash1Ref}
+                d=""
+                fill="url(#spk1)"
+                fillOpacity={0.75}
+              />
+
+              {/* ── Crisp boundary ring — glows with volume ── */}
+              <SvgCircle
+                ref={plasmaRingRef}
+                cx={120} cy={120} r={108}
+                stroke={sound.top || '#c7d2fe'}
+                strokeWidth={1.5}
+                fill="none"
+                strokeOpacity={0.9}
+              />
+
+              {/* ── Tiny centre dot ── */}
+              <SvgCircle cx={120} cy={120} r={2.5}
+                fill={sound.top || '#fff'}
+                fillOpacity={0.9}
+              />
             </Svg>
           </View>
         </TouchableOpacity>
@@ -3791,7 +3939,7 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 });
 
 // ─── Rectangular Collection Card ─────────────────────────────────────────────
-const RECT_CARD_W = Math.floor(W * 0.48);
+const RECT_CARD_W = Math.floor(W * 0.48 * 0.85); // Decreased by 15% for premium look
 const RECT_CARD_H = Math.floor(RECT_CARD_W * 0.88); // Sleeker, landscape aspect ratio
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
@@ -3883,36 +4031,32 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
               </BlurView>
             </View>
           )}
+        </View>
 
-          {/* Glass Text Plate at the bottom */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
-            <BlurView intensity={35} tint="dark" style={{ padding: 12, paddingTop: 16 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: '#fff',
-                  fontFamily: 'DancingScript_600SemiBold',
-                  lineHeight: 20,
-                  letterSpacing: 0.5,
-                  marginBottom: 4,
-                  textShadowColor: 'rgba(0,0,0,0.5)',
-                  textShadowRadius: 4,
-                }}>
-                {col.title}
-              </Text>
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 9,
-                  color: isPlaying ? col.themeColor + 'EE' : 'rgba(255,255,255,0.7)',
-                  fontFamily: 'Nunito_700Bold',
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                }}>
-                {col.subtitle || 'Guided'}
-              </Text>
-            </BlurView>
-          </View>
+        {/* Cinematic Minimal Text Below Card */}
+        <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
+          <Text
+            numberOfLines={2}
+            style={{
+              fontSize: 13,
+              color: '#FFFFFF',
+              fontFamily: 'Nunito_700Bold',
+              lineHeight: 18,
+              letterSpacing: 0.3,
+            }}>
+            {col.title}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 11,
+              color: 'rgba(255,255,255,0.5)',
+              fontFamily: 'Nunito_400Regular',
+              letterSpacing: 0.2,
+              marginTop: 4,
+            }}>
+            {col.subtitle || 'Guided'}
+          </Text>
         </View>
 
       </TouchableOpacity>
@@ -3924,31 +4068,54 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
 const RECENT_CARD_SIZE = Math.round(W * 0.26); // ~26vw — slightly larger for easier sliding
 
 const DashboardHeaderCard = memo(function DashboardHeaderCard() {
+  const { solarTimes, accentColor } = useBgContext();
+  const [greeting, setGreeting] = useState('Good Morning');
+
+  useEffect(() => {
+    const d = new Date();
+    const h = d.getHours() + d.getMinutes() / 60;
+    if (solarTimes) {
+      const { sunrise, sunset, solarNoon } = solarTimes;
+      if (h < sunrise - 1.5 || h >= sunset + 2) setGreeting('Good Night');
+      else if (h < sunrise + 2) setGreeting('Good Morning');
+      else if (h < solarNoon + 1) setGreeting('Good Morning');
+      else if (h < sunset - 1.5) setGreeting('Good Afternoon');
+      else setGreeting('Good Evening');
+    } else {
+      const hr = d.getHours();
+      if (hr < 4 || hr >= 21) setGreeting('Good Night');
+      else if (hr < 12) setGreeting('Good Morning');
+      else if (hr < 17) setGreeting('Good Afternoon');
+      else setGreeting('Good Evening');
+    }
+  }, [solarTimes]);
+
+  const acc = accentColor || '#A78BFA';
+  const iconName = greeting === 'Good Night' ? 'moon' : (greeting === 'Good Evening' ? 'partly-sunny' : 'sunny');
+
   return (
     <View style={{
       marginHorizontal: 24,
-      marginTop: 24,
-      marginBottom: 16,
-      backgroundColor: 'rgba(15,15,25,0.45)',
-      borderRadius: 24,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.15)',
-      paddingTop: 18,
-      paddingBottom: 18,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.5, shadowRadius: 24,
-      overflow: 'hidden'
+      marginTop: 20,
+      marginBottom: 20,
     }}>
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
-      
-      {/* Title Row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 }}>
-        <View>
-          <Text style={{ fontSize: 9, color: '#38BDF8', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>
-            Curated For You
-          </Text>
-          <Text style={{ fontSize: 32, color: '#FFFFFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Ionicons name={iconName} size={14} color={acc} />
+            <Text style={{ fontSize: 11, color: acc, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              {greeting}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 24, color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: -0.5 }}>
             Sonic Therapies
           </Text>
+        </View>
+        <View style={{
+          width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)',
+          alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
+        }}>
+          <Ionicons name="sparkles" size={16} color={acc} />
         </View>
       </View>
     </View>
@@ -3977,7 +4144,7 @@ const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
   if (sounds.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 4 }}>
       {/* Sleek Floating Pill */}
       <View style={{ paddingHorizontal: 24, alignItems: 'flex-start', marginBottom: isExpanded ? 16 : 0 }}>
         <TouchableOpacity activeOpacity={0.8} onPress={onToggleExpand}>
@@ -4193,7 +4360,7 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
   if (SONIC_COLLECTIONS.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 20, paddingBottom: 20 }}>
+    <View style={{ marginTop: 8, paddingBottom: 20 }}>
       {/* Section Label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
         <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
@@ -4436,6 +4603,9 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
           contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          decelerationRate="normal"
+          directionalLockEnabled={true}
+          nestedScrollEnabled={true}
         >
           {/* Top Nav */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 20 }}>
@@ -4500,6 +4670,11 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                     horizontal 
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+                    decelerationRate="normal"
+                    nestedScrollEnabled={true}
+                    directionalLockEnabled={true}
+                    alwaysBounceHorizontal={true}
+                    bounces={true}
                   >
                     {row.map((sound: any) => (
                       <TherapySoundCard

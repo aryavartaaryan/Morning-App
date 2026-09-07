@@ -7764,7 +7764,7 @@ function DailyTab() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 16, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
               
@@ -7803,55 +7803,53 @@ function DailyTab() {
                         borderRadius: 24,
                         borderWidth: 0.5,
                         borderColor: 'rgba(255,255,255,0.15)',
-                        paddingVertical: 20,
-                        paddingHorizontal: 20,
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
                         overflow: 'hidden',
                         backgroundColor: 'rgba(10, 10, 10, 0.35)',
                       }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                           {/* Progress Ring */}
-                          <View style={{ position: 'relative', width: 68, height: 68, alignItems: 'center', justifyContent: 'center' }}>
-                            <Svg width={68} height={68} viewBox="0 0 68 68" style={{ transform: [{ rotate: '-90deg' }] }}>
-                              <SvgCircle cx={34} cy={34} r={30} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
+                          <View style={{ position: 'relative', width: 56, height: 56, alignItems: 'center', justifyContent: 'center' }}>
+                            <Svg width={56} height={56} viewBox="0 0 56 56" style={{ transform: [{ rotate: '-90deg' }] }}>
+                              <SvgCircle cx={28} cy={28} r={24} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
                               <SvgCircle 
-                                cx={34} cy={34} r={30} 
-                                stroke="#A78BFA" 
+                                cx={28} cy={28} r={24} 
+                                stroke={currentPeriod.color || '#A78BFA'} 
                                 strokeWidth={4} fill="none" 
-                                strokeDasharray={`${30 * 2 * Math.PI}`} 
-                                strokeDashoffset={`${30 * 2 * Math.PI * (1 - (pct / 100))}`} 
+                                strokeDasharray={`${24 * 2 * Math.PI}`} 
+                                strokeDashoffset={`${24 * 2 * Math.PI * (1 - (pct / 100))}`} 
                                 strokeLinecap="round" 
                               />
                             </Svg>
                             <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-                              <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
                             </View>
                           </View>
                           
                           {/* Details */}
-                          <View style={{ flex: 1, gap: 4 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, textTransform: 'uppercase' }}>ACTIVE BIO-STATE</Text>
-                            <Text style={{ fontSize: 17, fontWeight: '800', color: '#A78BFA', letterSpacing: 0 }}>Creative Peak Hours</Text>
+                          <View style={{ flex: 1, gap: 2 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.2, textTransform: 'uppercase' }}>ACTIVE BIO-STATE</Text>
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: currentPeriod.color || '#A78BFA', letterSpacing: 0 }}>{currentPeriod.englishLabel}</Text>
                             
                             {/* Icons Row */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                              <Ionicons name="moon-outline" size={16} color="rgba(255,255,255,0.7)" />
-                              <Ionicons name="water-outline" size={16} color="rgba(255,255,255,0.7)" />
-                              <Ionicons name="leaf-outline" size={16} color="rgba(255,255,255,0.7)" />
-                              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>|</Text>
-                              <Ionicons name="desktop-outline" size={16} color="rgba(255,255,255,0.2)" />
-                              <Ionicons name="phone-portrait-outline" size={16} color="rgba(255,255,255,0.2)" />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                              <Ionicons name="moon-outline" size={13} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="water-outline" size={13} color="rgba(255,255,255,0.7)" />
+                              <Ionicons name="leaf-outline" size={13} color="rgba(255,255,255,0.7)" />
+                              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>|</Text>
+                              <Ionicons name="desktop-outline" size={13} color="rgba(255,255,255,0.2)" />
+                              <Ionicons name="phone-portrait-outline" size={13} color="rgba(255,255,255,0.2)" />
                             </View>
                           </View>
                           
-                          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
+                          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
                         </View>
-
-                        <View style={{ width: '100%', height: 1 }} />
                         
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
-                          <Ionicons name="chevron-forward" size={10} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
+                          <Ionicons name="chevron-forward" size={9} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
                         </View>
                       </BlurView>
                     </TouchableOpacity>
@@ -7883,7 +7881,7 @@ function DailyTab() {
         </ScrollView>
 
         {/* ── VISIONOS FLOATING GLASS DOCK — 3 columns (Fixed at bottom) ── */}
-        <View style={{ position: 'absolute', bottom: 10, width: '100%', paddingHorizontal: 28, paddingBottom: Math.max(insets.bottom, 10), paddingTop: 10, backgroundColor: 'transparent' }}>
+        <View style={{ width: '100%', paddingHorizontal: 24, paddingBottom: 16, paddingTop: 12, backgroundColor: 'transparent' }}>
                 <BlurView intensity={80} tint="dark" style={{
                   flexDirection: 'row',
                   borderRadius: 28,
@@ -8596,10 +8594,9 @@ const PremiumBreatheCard = ({ children, onPress }: any) => {
 const AmbientAura = ({ color }: { color: string }) => {
   const { bgUri } = useBgContext();
   const breatheAnim = React.useRef(new Animated.Value(0)).current;
-  const rotateAnim = React.useRef(new Animated.Value(0)).current;
+  const driftAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    // Breathing cycle for opacity and scale
     Animated.loop(
       Animated.sequence([
         Animated.timing(breatheAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -8607,58 +8604,58 @@ const AmbientAura = ({ color }: { color: string }) => {
       ])
     ).start();
 
-    // Endless slow rotation for the Siri-style cloud
     Animated.loop(
-      Animated.timing(rotateAnim, { toValue: 1, duration: 25000, easing: Easing.linear, useNativeDriver: true })
+      Animated.timing(driftAnim, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, []);
 
-  // Background dims slightly to let the aura shine
   const bgOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.4] });
   
-  // The energy cloud blooms (scales up and fades in)
-  const cloudOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0, 0.65] });
-  const cloudScale = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.3] });
-  
-  const rotation = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const revRotation = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
+  // Create 15 particles
+  const particles = Array.from({ length: 15 }).map((_, i) => {
+    const startY = 800 + (i * 50);
+    const endY = -200;
+    const xOffset = Math.sin(i) * 150;
+    const size = 10 + (i % 3) * 10;
+    const delay = (i * 1000) % 15000;
+    
+    const translateY = driftAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [startY, endY]
+    });
+    
+    return (
+      <Animated.View
+        key={i}
+        style={{
+          position: 'absolute',
+          width: size, height: size, borderRadius: size / 2,
+          backgroundColor: i % 2 === 0 ? '#FCD34D' : '#38BDF8',
+          opacity: 0.3,
+          left: '50%',
+          marginLeft: xOffset,
+          transform: [{ translateY }],
+          shadowColor: i % 2 === 0 ? '#FCD34D' : '#38BDF8',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 1,
+          shadowRadius: 20,
+        }}
+      />
+    );
+  });
 
   return (
     <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} pointerEvents="none">
       <Animated.Image 
-        source={{ uri: bgUri }} 
+        source={bgUri ? { uri: bgUri } : undefined} 
         style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]} 
         resizeMode="cover"
       />
       
-      {/* ── The Siri-Style Amorphous Energy Cloud ── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { 
-        alignItems: 'center', justifyContent: 'center',
-        opacity: cloudOpacity,
-        transform: [{ scale: cloudScale }, { rotate: rotation }]
-      }]}>
-        {/* Deep Violet Core */}
-        <View style={{
-          position: 'absolute', width: 280, height: 400, borderRadius: 200,
-          backgroundColor: '#8B5CF6', opacity: 0.6,
-          transform: [{ translateX: -40 }, { translateY: -50 }],
-          shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
-        }} />
-        {/* Soft Gold / Amber Edge */}
-        <View style={{
-          position: 'absolute', width: 300, height: 300, borderRadius: 150,
-          backgroundColor: '#F59E0B', opacity: 0.4,
-          transform: [{ translateX: 60 }, { translateY: 40 }],
-          shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
-        }} />
-        {/* Cosmic Blue Swirl */}
-        <Animated.View style={{
-          position: 'absolute', width: 250, height: 350, borderRadius: 175,
-          backgroundColor: '#3B82F6', opacity: 0.5,
-          transform: [{ translateX: 10 }, { translateY: 60 }, { rotate: revRotation }],
-          shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 100, elevation: 20
-        }} />
-      </Animated.View>
+      {/* ── Bioluminescent Swarm (Option 3 Demo) ── */}
+      <View style={StyleSheet.absoluteFillObject}>
+        {particles}
+      </View>
     </View>
   );
 };

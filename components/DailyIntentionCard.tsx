@@ -126,25 +126,25 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
         >
           <BlurView intensity={40} tint="dark" style={[styles.cardInner, { backgroundColor: 'rgba(10, 10, 10, 0.35)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' }]}>
             {/* ── Mantra Title ── */}
-            <View style={[styles.titleRow, { marginBottom: 16 }]}>
+            <View style={[styles.titleRow, { marginBottom: 10 }]}>
                <View style={[styles.goldDot, { backgroundColor: '#FCD34D' }]} />
                <Text style={[styles.titleText, { color: '#FCD34D', letterSpacing: 1.5, fontSize: 10, fontWeight: '700' }]}>TODAY'S MANTRA</Text>
             </View>
 
             {/* ── Mantra Transliteration ── */}
             <Text style={{ 
-                fontFamily: 'serif', fontStyle: 'italic', fontSize: 20, color: '#FFF', 
-                textAlign: 'center', lineHeight: 28, marginBottom: 16 
+                fontFamily: 'serif', fontStyle: 'italic', fontSize: 16, color: '#FFF', 
+                textAlign: 'center', lineHeight: 22, marginBottom: 8 
             }}>
-                Om sarve bhavantu sukhinah{"\n"}sarve santu niramayah
+                {mantra.transliteration}
             </Text>
 
             {/* ── English Meaning ── */}
             <Text style={{ 
-                fontFamily: 'sans-serif', fontStyle: 'italic', fontSize: 12, color: 'rgba(255,255,255,0.6)', 
-                textAlign: 'center', lineHeight: 18, marginBottom: 24, paddingHorizontal: 16 
+                fontFamily: 'sans-serif', fontStyle: 'italic', fontSize: 11, color: 'rgba(255,255,255,0.6)', 
+                textAlign: 'center', lineHeight: 16, marginBottom: 14, paddingHorizontal: 16 
             }}>
-                "May all be happy, may all be free from illness. May no one suffer."
+                "{mantra.meaning}"
             </Text>
 
             <View style={[styles.affordanceRow, { marginTop: 0 }]}>
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
   },
     cardInner: {
     width: '100%',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.1)',
     backgroundColor: 'rgba(15,15,15,0.55)',
