@@ -1348,47 +1348,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
             )}
           </View>
   
-        {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
-        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
-          <BlurView intensity={80} tint="dark" style={{
-            flexDirection: 'row',
-            borderRadius: 28,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255,255,255,0.12)',
-            backgroundColor: 'rgba(10,10,10,0.3)',
-            overflow: 'hidden',
-          }}>
-            {/* Almanac */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
-            </TouchableOpacity>
-
-            {/* Vitality */}
-            <TouchableOpacity
-              onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
-            </TouchableOpacity>
-
-            {/* Soundscapes */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
-            >
-              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
-            </TouchableOpacity>
-          </BlurView>
-        </View>
+        
 
       </SafeAreaView>
       </View>
@@ -7372,47 +7332,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 
           </ScrollView>
   
-        {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
-        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
-          <BlurView intensity={80} tint="dark" style={{
-            flexDirection: 'row',
-            borderRadius: 28,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255,255,255,0.12)',
-            backgroundColor: 'rgba(10,10,10,0.3)',
-            overflow: 'hidden',
-          }}>
-            {/* Almanac */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
-            </TouchableOpacity>
-
-            {/* Vitality */}
-            <TouchableOpacity
-              onPress={() => { setShowStressScanner(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
-            </TouchableOpacity>
-
-            {/* Soundscapes */}
-            <TouchableOpacity
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate('/(tabs)/sleep' as never); }}
-              activeOpacity={0.65}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
-            >
-              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
-            </TouchableOpacity>
-          </BlurView>
-        </View>
+        
 
       </SafeAreaView>
       </Animated.View>
@@ -7865,7 +7785,7 @@ function DailyTab() {
                 </View>
 
                 {/* 2. Zen Monolith Active Bio-State Panel */}
-                <View style={{ width: '100%' }}>
+                <View style={{ width: '100%', marginTop: 8 }}>
                  {currentPeriod && (() => {
                   const nowH = new Date().getHours() + new Date().getMinutes() / 60;
                   const leftH = currentPeriod.endH - nowH;
@@ -7912,8 +7832,17 @@ function DailyTab() {
                               />
                             </Svg>
                             <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-                              <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
-                              <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
+                              {hrsLeft > 0 ? (
+                                <>
+                                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
+                                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
+                                </>
+                              ) : (
+                                <>
+                                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFF' }}>{minsLeftRem}</Text>
+                                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>mins</Text>
+                                </>
+                              )}
                             </View>
                           </View>
                           
@@ -7949,7 +7878,7 @@ function DailyTab() {
 
 
               {/* 4. Weather Button (Fixed below Bio-State) */}
-              <View style={{ width: '100%', paddingHorizontal: 20, marginBottom: 8, alignItems: 'center' }}>
+              <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 16, marginBottom: 8, alignItems: 'center' }}>
                  {weather && (
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -7972,7 +7901,7 @@ function DailyTab() {
         
 
         {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
-        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 6 }}>
+        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 6 }}>
           <BlurView intensity={80} tint="dark" style={{
             flexDirection: 'row',
             borderRadius: 28,

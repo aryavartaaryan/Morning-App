@@ -2461,46 +2461,19 @@ const ReelCard = memo(function ReelCard({
         const s0 = seeds[0] ?? 0.5, s1 = seeds[1] ?? 0.5, s2 = seeds[2] ?? 0.5;
 
         if (playing) {
-          // ── Layer 1: Deep gas background (smooth, large)
-          plasmaPath1Ref.current?.setNativeProps({
-            d: buildNebula(62 + v * 28, 12 + v * 30, ph * 0.5 + s0 * 10, 2, 2),
-          });
-          
-          // ── Layer 2: Main Cyan/Teal Structure (highly structured, sharp ridges)
-          plasmaPath2Ref.current?.setNativeProps({
-            d: buildNebula(54 + v * 24, 16 + v * 40, -ph * 0.7 + s1 * 10, 3, 4),
-          });
-          
-          // ── Layer 3: Magenta/Purple Folds (offset phase, complex)
-          plasmaPath3Ref.current?.setNativeProps({
-            d: buildNebula(46 + v * 18, 14 + v * 35, ph * 0.9 + s2 * 10, 4, 3),
-          });
-
-          // ── Layer 4: Inner core highlights (very bright, tightly wound)
-          plasmaPath4Ref.current?.setNativeProps({
-            d: buildNebula(28 + v * 12, 8 + v * 20, -ph * 1.3, 5, 2),
-          });
-
-          // ── Multi-Ring Animation
-          plasmaRingRef.current?.setNativeProps({
-            strokeWidth: 1.5 + v * 2,
-            strokeOpacity: 0.7 + v * 0.3,
-            r: 104 + v * 4 // inner ring expands slightly
-          });
-          plasmaRing2Ref.current?.setNativeProps({
-            strokeWidth: 0.8 + v * 1.5,
-            strokeOpacity: 0.4 + v * 0.4,
-            r: 112 + v * 6 // middle dashed ring expands more
-          });
+          // ── Neon Oscilloscope Waveform (audio-reactive)
+          const activePath = buildWaveform(v, ph);
+          plasmaPath1Ref.current?.setNativeProps({ d: activePath });
+          plasmaPath2Ref.current?.setNativeProps({ d: activePath });
+          plasmaPath3Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
+          plasmaPath4Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
 
         } else {
-          // ── PAUSED: freeze to resting blob — completely crash-proof
-          plasmaPath1Ref.current?.setNativeProps({ d: RESTING });
-          plasmaPath2Ref.current?.setNativeProps({ d: HIDDEN_PATH });
-          plasmaPath3Ref.current?.setNativeProps({ d: HIDDEN_PATH });
-          plasmaPath4Ref.current?.setNativeProps({ d: HIDDEN_PATH });
-          plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5, strokeOpacity: 0.7, r: 104 });
-          plasmaRing2Ref.current?.setNativeProps({ strokeWidth: 0.8, strokeOpacity: 0.4, r: 112 });
+          // ── PAUSED: resting gentle waveform — crash-proof
+          plasmaPath1Ref.current?.setNativeProps({ d: WAVE_RESTING });
+          plasmaPath2Ref.current?.setNativeProps({ d: WAVE_RESTING });
+          plasmaPath3Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
+          plasmaPath4Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
         }
       } catch (_e) {
         // Silent catch ensures app never crashes on animation frame
@@ -3554,14 +3527,42 @@ const SoundReelsModal = memo(function SoundReelsModal({
 
   useEffect(() => {
     if (visible) {
-      // Snap to fully visible in one frame — no animation delay at all
-      entryAnim.setValue(1);
-      libBtnAnim.setValue(1);
+      // Pre-scroll to the correct index immediately before animating in
+      if (flatRef.current && startIndex >= 0) {
+        flatRef.current.scrollToIndex({ index: startIndex, animated: false });
+        setActiveIndex(startIndex);
+        activeIndexRef.current = startIndex;
+      }
+      
+      Animated.parallel([
+        Animated.spring(entryAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 24,
+          stiffness: 300,
+          mass: 0.8
+        }),
+        Animated.spring(libBtnAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 250
+        })
+      ]).start();
     } else {
-      libBtnAnim.setValue(0);
-      entryAnim.setValue(0);
+      Animated.timing(entryAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease)
+      }).start();
+      Animated.timing(libBtnAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true
+      }).start();
     }
-  }, [visible]);
+  }, [visible, startIndex]);
 
   const [gridOpen, setGridOpen] = useState(false);
   const catStartIndices = useMemo(() => {
@@ -3628,20 +3629,24 @@ const SoundReelsModal = memo(function SoundReelsModal({
   }, [visible]);
 
 
-  if (!visible) {
-    return null;
-  }
-
-  // Pure absolute view that mounts instantly. 
-  // By mounting/unmounting instead of persisting, initialScrollIndex applies synchronously on frame 1.
+  // Always mounted for instant zero-lag response.
+  // Instead of unmounting, we just hide it and disable pointer events.
   return (
-    <View
+    <Animated.View
+      pointerEvents={visible ? 'auto' : 'none'}
       style={[
         StyleSheet.absoluteFillObject,
         {
           backgroundColor: '#000',
           zIndex: 9999,
           elevation: 999,
+          opacity: entryAnim,
+          transform: [{
+            translateY: entryAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [100, 0] // subtle slide up
+            })
+          }]
         }
       ]}
     >
@@ -3783,7 +3788,7 @@ const SoundReelsModal = memo(function SoundReelsModal({
         onStop={onStopSilent}
         onClose={() => onClose(activeIndex === reelData.length - 1)}
       />
-    </View>
+    </Animated.View>
   );
 }, (prev, next) => {
   return (
@@ -3947,8 +3952,8 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
 });
 
 // ─── Rectangular Collection Card ─────────────────────────────────────────────
-const RECT_CARD_W = Math.floor(W * 0.48 * 0.85); // Decreased by 15% for premium look
-const RECT_CARD_H = Math.floor(RECT_CARD_W * 0.88); // Sleeker, landscape aspect ratio
+const RECT_CARD_W = Math.floor(W * 0.44);
+const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.55); // Tall portrait aspect ratio
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
   col, index, onPress, isPlaying
@@ -3977,7 +3982,7 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
     if (isPlaying) {
       loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(pulseAnim, { toValue: 1.04, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
           Animated.timing(pulseAnim, { toValue: 1,    duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
         ])
       );
@@ -4009,68 +4014,80 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
         delayPressIn={50}
       >
         
-        {/* Innovative Glass Image Container */}
+        {/* Minimalist Luxury Card */}
         <View style={{
           width: RECT_CARD_W, height: RECT_CARD_H,
-          borderRadius: 24,
+          borderRadius: 20,
           overflow: 'hidden',
-          backgroundColor: col.themeColor + '20',
-          borderWidth: isPlaying ? 1.5 : StyleSheet.hairlineWidth,
-          borderColor: isPlaying ? col.themeColor + 'CC' : 'rgba(255,255,255,0.2)',
-          shadowColor: isPlaying ? col.themeColor : col.themeColor,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: isPlaying ? 0.7 : 0.4,
-          shadowRadius: isPlaying ? 28 : 20,
-          elevation: isPlaying ? 14 : 8,
+          backgroundColor: '#121212',
+          borderWidth: 1,
+          borderColor: isPlaying ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.1)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.6,
+          shadowRadius: 20,
+          elevation: 10,
         }}>
           <Image
             source={{ uri: col.imageUri }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%', position: 'absolute' }}
             resizeMode="cover"
           />
-          {/* subtle color overlay */}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: isPlaying ? 0.18 : 0.1 }]} pointerEvents="none" />
+          {/* Dark Charcoal Gradient Overlay for text readability */}
+          <LinearGradient
+            colors={['transparent', 'rgba(18, 18, 18, 0.5)', 'rgba(18, 18, 18, 0.95)', '#121212']}
+            locations={[0, 0.45, 0.75, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
           
-          {/* Premium NOW PLAYING badge in top-right */}
+          {/* Premium NOW PLAYING badge */}
           {isPlaying && (
-            <View style={{ position: 'absolute', top: 10, right: 10, overflow: 'hidden', borderRadius: 12 }}>
-              <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, gap: 5 }}>
+            <View style={{ position: 'absolute', top: 12, right: 12, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' }}>
+              <BlurView intensity={40} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, gap: 4 }}>
                 {/* Animated sound bars */}
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 10 }}>
                   {[1, 0.6, 0.9, 0.5].map((h, i) => (
-                    <View key={i} style={{ width: 2.5, height: 12 * h, backgroundColor: col.themeColor, borderRadius: 2 }} />
+                    <View key={i} style={{ width: 2, height: 10 * h, backgroundColor: '#D4AF37', borderRadius: 1 }} />
                   ))}
                 </View>
-                <Text style={{ fontSize: 8, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
+                <Text style={{ fontSize: 7, color: '#D4AF37', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
               </BlurView>
             </View>
           )}
-        </View>
 
-        {/* Cinematic Minimal Text Below Card */}
-        <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
-          <Text
-            numberOfLines={2}
-            style={{
-              fontSize: 13,
-              color: '#FFFFFF',
-              fontFamily: 'Nunito_700Bold',
-              lineHeight: 18,
-              letterSpacing: 0.3,
-            }}>
-            {col.title}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: 11,
-              color: 'rgba(255,255,255,0.5)',
-              fontFamily: 'Nunito_400Regular',
-              letterSpacing: 0.2,
-              marginTop: 4,
-            }}>
-            {col.subtitle || 'Guided'}
-          </Text>
+          {/* Text inside the card at the bottom */}
+          <View style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+            <Text
+              numberOfLines={2}
+              style={{
+                fontSize: 14,
+                color: '#F9F6EE',
+                fontFamily: 'Nunito_700Bold',
+                lineHeight: 18,
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+                marginBottom: 6,
+              }}>
+              {col.title}
+            </Text>
+            <Text
+              numberOfLines={2}
+              style={{
+                fontSize: 11,
+                color: 'rgba(212, 175, 55, 0.8)',
+                fontFamily: 'Nunito_400Regular',
+                lineHeight: 16,
+                letterSpacing: 0.5,
+              }}>
+              {col.subtitle || 'Guided Journey'}
+            </Text>
+            
+            <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(212, 175, 55, 0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' }}>
+                 <Ionicons name="play" size={12} color="#D4AF37" style={{ marginLeft: 2 }} />
+               </View>
+            </View>
+          </View>
         </View>
 
       </TouchableOpacity>
@@ -4104,7 +4121,7 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard() {
     }
   }, [solarTimes]);
 
-  const acc = accentColor || '#A78BFA';
+  const acc = '#D4AF37'; // Minimalist Luxury gold accent
   const iconName = greeting === 'Good Night' ? 'moon' : (greeting === 'Good Evening' ? 'partly-sunny' : 'sunny');
 
   return (
@@ -4121,13 +4138,13 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard() {
               {greeting}
             </Text>
           </View>
-          <Text style={{ fontSize: 24, color: '#FFFFFF', fontFamily: 'Nunito_700Bold', letterSpacing: -0.5 }}>
+          <Text style={{ fontSize: 24, color: '#F9F6EE', fontFamily: 'Nunito_700Bold', letterSpacing: -0.5 }}>
             Sonic Therapies
           </Text>
         </View>
         <View style={{
-          width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)',
-          alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
+          width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(212, 175, 55, 0.08)',
+          alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)'
         }}>
           <Ionicons name="sparkles" size={16} color={acc} />
         </View>
@@ -4167,15 +4184,16 @@ const RecentlyPlayedPremiumStrip = memo(function RecentlyPlayedPremiumStrip({
             overflow: 'hidden',
             paddingHorizontal: 16, paddingVertical: 10, 
             borderRadius: 24, 
-            borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.4)',
-            shadowColor: '#38BDF8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12
+            backgroundColor: 'rgba(18, 18, 18, 0.6)',
+            borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)',
+            shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12
           }}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
-            <Ionicons name="play-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginRight: 6 }}>
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="play-circle" size={16} color="#D4AF37" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, color: '#D4AF37', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase', marginRight: 6 }}>
               Jump Back In
             </Text>
-            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.8)" />
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(212, 175, 55, 0.8)" />
           </View>
         </TouchableOpacity>
       </View>
@@ -4375,12 +4393,12 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
 
   return (
     <View style={{ marginTop: 8, paddingBottom: 20 }}>
-      {/* Section Label */}
+      {/* Section Label (Minimalist Luxury) */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
-        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2.5, textTransform: 'uppercase' }}>
-          Choose Your Journey
+        <Text style={{ fontSize: 12, color: '#D4AF37', fontFamily: 'Nunito_600SemiBold', letterSpacing: 3, textTransform: 'uppercase' }}>
+          CURATED SOUNDSCAPES
         </Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 1 }} />
+        <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212, 175, 55, 0.2)', borderRadius: 1 }} />
       </View>
 
       <ScrollView
