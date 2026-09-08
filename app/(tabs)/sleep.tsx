@@ -2157,6 +2157,37 @@ const REEL_DURATION_OPTIONS = [
 ] as const;
 type DurationId = typeof REEL_DURATION_OPTIONS[number]['id'];
 
+// ── Neon Oscilloscope Waveform ────────────────────────────────────────────
+// Generates an audio-reactive horizontal waveform path inside a 240×240 circle.
+// vol  [0..1] drives spike amplitude; phase scrolls the waveform forward each frame.
+const buildWaveform = (vol: number, phase: number, numPoints = 120): string => {
+  const CX = 120, CY = 120, RADIUS = 110;
+  const startX = CX - RADIUS;
+  const step = (RADIUS * 2) / numPoints;
+  let path = '';
+  for (let i = 0; i <= numPoints; i++) {
+    const x = startX + i * step;
+    const nx = (x - CX) / RADIUS;            // -1 … +1
+    // Taper: amplitude → 0 at the two edge points so the path stays inside the ring
+    const taper = Math.pow(Math.cos(nx * Math.PI / 2), 1.5);
+    // Three offset sine/cosine harmonics create a rich, chaotic-looking waveform
+    const w1 = Math.sin(nx * 30 + phase * 2.5);
+    const w2 = Math.cos(nx * 45 - phase * 1.8);
+    const w3 = Math.sin(nx * 85 + phase * 3.2);
+    const noise = (w1 + w2 + w3) / 3;
+    // Alternate sign per-sample produces the rapid zigzag oscilloscope look
+    const sign = i % 2 === 0 ? 1 : -1;
+    const spike = Math.pow(Math.abs(noise), 1.2) * sign;
+    const yOffset = spike * (8 + 90 * vol) * taper;
+    const y = CY + yOffset;
+    path += (i === 0 ? 'M ' : 'L ') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+  }
+  return path;
+};
+// Pre-built constants used by the RAF loop
+const WAVE_RESTING = buildWaveform(0.02, 0); // Gentle idle state
+const WAVE_HIDDEN  = 'M 120 120 Z';          // Invisible safe fallback
+
 function checkIsNightTime(solarTimes: { sunrise: number; solarNoon: number; sunset: number } | null): boolean {
   const h = new Date().getHours() + new Date().getMinutes() / 60;
   if (solarTimes) {
@@ -3951,9 +3982,9 @@ const CinematicCollectionCard = memo(function CinematicCollectionCard({
   );
 });
 
-// ─── Rectangular Collection Card ─────────────────────────────────────────────
+// ─── Rectangular Collection Card (Premium Deep-Space Glassmorphism) ──────────
 const RECT_CARD_W = Math.floor(W * 0.44);
-const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.55); // Tall portrait aspect ratio
+const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.58);
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
   col, index, onPress, isPlaying
@@ -4014,78 +4045,100 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
         delayPressIn={50}
       >
         
-        {/* Minimalist Luxury Card */}
+        {/* ── Premium Deep-Space Glassmorphism Card ── */}
         <View style={{
           width: RECT_CARD_W, height: RECT_CARD_H,
-          borderRadius: 20,
+          borderRadius: 22,
           overflow: 'hidden',
-          backgroundColor: '#121212',
-          borderWidth: 1,
-          borderColor: isPlaying ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.1)',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.6,
-          shadowRadius: 20,
-          elevation: 10,
+          backgroundColor: '#05050F',
+          borderWidth: isPlaying ? 1.5 : 1,
+          borderColor: isPlaying ? col.themeColor + 'CC' : col.themeColor + '35',
+          shadowColor: isPlaying ? col.themeColor : '#000',
+          shadowOffset: { width: 0, height: isPlaying ? 16 : 10 },
+          shadowOpacity: isPlaying ? 0.55 : 0.45,
+          shadowRadius: isPlaying ? 28 : 20,
+          elevation: isPlaying ? 16 : 10,
         }}>
+          {/* Full-bleed cinematic image */}
           <Image
             source={{ uri: col.imageUri }}
             style={{ width: '100%', height: '100%', position: 'absolute' }}
             resizeMode="cover"
           />
-          {/* Dark Charcoal Gradient Overlay for text readability */}
+          {/* Top dark veil for chip readability */}
           <LinearGradient
-            colors={['transparent', 'rgba(18, 18, 18, 0.5)', 'rgba(18, 18, 18, 0.95)', '#121212']}
-            locations={[0, 0.45, 0.75, 1]}
+            colors={['rgba(5,5,18,0.60)', 'transparent']}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 70 }}
+          />
+          {/* Deep cinematic bottom scrim */}
+          <LinearGradient
+            colors={['transparent', 'rgba(5,5,18,0.55)', 'rgba(5,5,18,0.94)', '#05050F']}
+            locations={[0, 0.40, 0.72, 1]}
             style={StyleSheet.absoluteFillObject}
           />
-          
-          {/* Premium NOW PLAYING badge */}
+          {/* Subtle color tint */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: col.themeColor, opacity: isPlaying ? 0.10 : 0.05 }]} />
+
+          {/* TOP: subtitle chip */}
+          <View style={{
+            position: 'absolute', top: 11, left: 11,
+            backgroundColor: col.themeColor + '22',
+            borderWidth: 1, borderColor: col.themeColor + '50',
+            borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3,
+          }}>
+            <Text numberOfLines={1} style={{ fontSize: 7, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.1, textTransform: 'uppercase' }}>
+              {col.subtitle}
+            </Text>
+          </View>
+
+          {/* TOP-RIGHT: NOW PLAYING badge */}
           {isPlaying && (
-            <View style={{ position: 'absolute', top: 12, right: 12, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' }}>
-              <BlurView intensity={40} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, gap: 4 }}>
-                {/* Animated sound bars */}
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 10 }}>
+            <View style={{ position: 'absolute', top: 11, right: 11, overflow: 'hidden', borderRadius: 9, borderWidth: 1, borderColor: col.themeColor + '55' }}>
+              <BlurView intensity={50} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 3, gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 9 }}>
                   {[1, 0.6, 0.9, 0.5].map((h, i) => (
-                    <View key={i} style={{ width: 2, height: 10 * h, backgroundColor: '#D4AF37', borderRadius: 1 }} />
+                    <View key={i} style={{ width: 2, height: 9 * h, backgroundColor: col.themeColor, borderRadius: 1 }} />
                   ))}
                 </View>
-                <Text style={{ fontSize: 7, color: '#D4AF37', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
+                <Text style={{ fontSize: 7, color: col.themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.9 }}>♪</Text>
               </BlurView>
             </View>
           )}
 
-          {/* Text inside the card at the bottom */}
-          <View style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
-            <Text
-              numberOfLines={2}
-              style={{
-                fontSize: 14,
-                color: '#F9F6EE',
-                fontFamily: 'Nunito_700Bold',
-                lineHeight: 18,
-                letterSpacing: 1.5,
-                textTransform: 'uppercase',
-                marginBottom: 6,
-              }}>
+          {/* BOTTOM: Text + action */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 13, paddingBottom: 15 }}>
+            {/* Glowing accent line */}
+            <View style={{ width: 24, height: 2, borderRadius: 1, backgroundColor: col.themeColor, marginBottom: 7, opacity: 0.9 }} />
+            {/* Collection title — DancingScript for elegance */}
+            <Text style={{
+              fontSize: 15,
+              color: '#F5F0E8',
+              fontFamily: 'DancingScript_600SemiBold',
+              lineHeight: 20,
+              letterSpacing: 0.3,
+              marginBottom: 4,
+              textShadowColor: col.themeColor + '55',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 8,
+            }}>
               {col.title}
             </Text>
-            <Text
-              numberOfLines={2}
-              style={{
-                fontSize: 11,
-                color: 'rgba(212, 175, 55, 0.8)',
-                fontFamily: 'Nunito_400Regular',
-                lineHeight: 16,
-                letterSpacing: 0.5,
+            {/* Track count + play button row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="musical-notes" size={9} color={col.themeColor + 'BB'} />
+                <Text style={{ fontSize: 9, color: col.themeColor + 'BB', fontFamily: 'Nunito_700Bold', letterSpacing: 0.4 }}>
+                  {col.soundIds.length} tracks
+                </Text>
+              </View>
+              <View style={{
+                width: 27, height: 27, borderRadius: 14,
+                backgroundColor: col.themeColor + '22',
+                borderWidth: 1, borderColor: col.themeColor + '60',
+                alignItems: 'center', justifyContent: 'center',
               }}>
-              {col.subtitle || 'Guided Journey'}
-            </Text>
-            
-            <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
-               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(212, 175, 55, 0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' }}>
-                 <Ionicons name="play" size={12} color="#D4AF37" style={{ marginLeft: 2 }} />
-               </View>
+                <Ionicons name="play" size={10} color={col.themeColor} style={{ marginLeft: 1 }} />
+              </View>
             </View>
           </View>
         </View>
@@ -4121,32 +4174,44 @@ const DashboardHeaderCard = memo(function DashboardHeaderCard() {
     }
   }, [solarTimes]);
 
-  const acc = '#D4AF37'; // Minimalist Luxury gold accent
+  const acc = '#818cf8'; // Premium deep-space indigo accent
   const iconName = greeting === 'Good Night' ? 'moon' : (greeting === 'Good Evening' ? 'partly-sunny' : 'sunny');
 
   return (
     <View style={{
       marginHorizontal: 24,
       marginTop: 20,
-      marginBottom: 20,
+      marginBottom: 22,
     }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <Ionicons name={iconName} size={14} color={acc} />
-            <Text style={{ fontSize: 11, color: acc, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          {/* Greeting row with glowing icon */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+            <View style={{
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: acc + '18', alignItems: 'center', justifyContent: 'center',
+              borderWidth: 1, borderColor: acc + '35',
+            }}>
+              <Ionicons name={iconName as any} size={10} color={acc} />
+            </View>
+            <Text style={{ fontSize: 10, color: acc, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 2, textTransform: 'uppercase' }}>
               {greeting}
             </Text>
           </View>
-          <Text style={{ fontSize: 24, color: '#F9F6EE', fontFamily: 'Nunito_700Bold', letterSpacing: -0.5 }}>
+          {/* Main title */}
+          <Text style={{ fontSize: 26, color: '#F0ECFF', fontFamily: 'DancingScript_600SemiBold', letterSpacing: 0.5, textShadowColor: '#818cf880', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 12 }}>
             Sonic Therapies
           </Text>
         </View>
+        {/* Premium sparkle orb */}
         <View style={{
-          width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(212, 175, 55, 0.08)',
-          alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)'
+          width: 38, height: 38, borderRadius: 19,
+          backgroundColor: 'rgba(129,140,248,0.10)',
+          alignItems: 'center', justifyContent: 'center',
+          borderWidth: 1, borderColor: 'rgba(129,140,248,0.28)',
+          shadowColor: '#818cf8', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
         }}>
-          <Ionicons name="sparkles" size={16} color={acc} />
+          <Ionicons name="sparkles" size={16} color="#818cf8" />
         </View>
       </View>
     </View>
@@ -4393,12 +4458,14 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
 
   return (
     <View style={{ marginTop: 8, paddingBottom: 20 }}>
-      {/* Section Label (Minimalist Luxury) */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginBottom: 16 }}>
-        <Text style={{ fontSize: 12, color: '#D4AF37', fontFamily: 'Nunito_600SemiBold', letterSpacing: 3, textTransform: 'uppercase' }}>
+      {/* Premium Deep-Space Section Label */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginBottom: 18 }}>
+        {/* Glowing diamond accent */}
+        <View style={{ width: 6, height: 6, borderRadius: 1.5, backgroundColor: '#818cf8', transform: [{ rotate: '45deg' }], shadowColor: '#818cf8', shadowOpacity: 0.9, shadowRadius: 6 }} />
+        <Text style={{ fontSize: 11, color: '#818cf8', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 3, textTransform: 'uppercase' }}>
           CURATED SOUNDSCAPES
         </Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212, 175, 55, 0.2)', borderRadius: 1 }} />
+        <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(129,140,248,0.25)', borderRadius: 1 }} />
       </View>
 
       <ScrollView
@@ -4493,14 +4560,14 @@ const TherapySoundCard = memo(function TherapySoundCard({
         style={{ flex: 1 }}
       >
         <View style={{
-          width: cardW, height: cardH, borderRadius: 0, overflow: 'hidden',
+          width: cardW, height: cardH, borderRadius: 16, overflow: 'hidden',
           borderWidth: isPlaying ? 1.5 : 1,
-          borderColor: isPlaying ? themeColor + 'CC' : 'rgba(255,255,255,0.2)',
-          backgroundColor: themeColor + '20',
+          borderColor: isPlaying ? themeColor + 'CC' : themeColor + '30',
+          backgroundColor: '#05050F',
           shadowColor: themeColor,
-          shadowOffset: { width: 0, height: isPlaying ? 8 : 4 },
-          shadowOpacity: isPlaying ? 0.7 : 0.4,
-          shadowRadius: isPlaying ? 28 : 20,
+          shadowOffset: { width: 0, height: isPlaying ? 10 : 5 },
+          shadowOpacity: isPlaying ? 0.65 : 0.30,
+          shadowRadius: isPlaying ? 24 : 14,
           elevation: isPlaying ? 14 : 8,
         }}>
           {finalSource && (
@@ -4508,48 +4575,54 @@ const TherapySoundCard = memo(function TherapySoundCard({
               resizeMode="cover" onError={() => setImgLoadFailed(true)} />
           )}
           
-          {/* Subtle color overlay */}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor, opacity: isPlaying ? 0.18 : 0.1 }]} pointerEvents="none" />
+          {/* Deep-space cinematic gradient overlay */}
+          <LinearGradient
+            colors={['transparent', 'rgba(5,5,18,0.35)', 'rgba(5,5,18,0.80)']}
+            locations={[0, 0.55, 1]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          {/* Subtle color tint */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColor, opacity: isPlaying ? 0.12 : 0.06 }]} pointerEvents="none" />
           
+          {/* Centered play button when not playing */}
           {!isPlaying && (
-            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', opacity: 0.85 }}>
-              <View style={{ overflow: 'hidden', borderRadius: 30 }}>
-                <BlurView intensity={50} tint="light" style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 7,
-                  paddingHorizontal: 16, paddingVertical: 10,
-                  borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)',
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ overflow: 'hidden', borderRadius: 28 }}>
+                <BlurView intensity={45} tint="dark" style={{
+                  width: 42, height: 42, borderRadius: 21,
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: themeColor + '60',
                 }}>
-                  <Ionicons name="play" size={13} color="#fff" style={{ marginLeft: 2 }} />
-                  <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Nunito_600SemiBold', letterSpacing: 0.5 }}>Play</Text>
+                  <Ionicons name="play" size={14} color={themeColor} style={{ marginLeft: 2 }} />
                 </BlurView>
               </View>
             </View>
           )}
 
-          {/* Premium NOW PLAYING badge in top-right */}
+          {/* NOW PLAYING badge */}
           {isPlaying && (
-            <View style={{ position: 'absolute', top: 10, right: 10, overflow: 'hidden', borderRadius: 12 }}>
-              <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, gap: 5 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 12 }}>
+            <View style={{ position: 'absolute', top: 9, right: 9, overflow: 'hidden', borderRadius: 10, borderWidth: 1, borderColor: themeColor + '50' }}>
+              <BlurView intensity={60} tint="dark" style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 10 }}>
                   {[wBar1, wBar2, wBar3].map((b, i) => (
                     <Animated.View key={i} style={{ width: 2.5, height: b, borderRadius: 2, backgroundColor: themeColor }} />
                   ))}
                 </View>
-                <Text style={{ fontSize: 8, color: '#fff', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase' }}>Now Playing</Text>
+                <Text style={{ fontSize: 7, color: themeColor, fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.8 }}>♪</Text>
               </BlurView>
             </View>
           )}
         </View>
 
-        {/* Text Area Below Image */}
-        <View style={{ marginTop: 12, paddingHorizontal: 2 }}>
+        {/* Text Area Below Image — full name always visible */}
+        <View style={{ marginTop: 10, paddingHorizontal: 2 }}>
           <Text
-            style={{ fontSize: 13, color: '#ffffff', fontFamily: 'Nunito_700Bold', lineHeight: 18, letterSpacing: 0.3 }}
-            numberOfLines={2}
+            style={{ fontSize: 12.5, color: '#F0ECFF', fontFamily: 'Nunito_700Bold', lineHeight: 17, letterSpacing: 0.25 }}
           >{sound.label}</Text>
           {sound.desc && (
             <Text
-              style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4, letterSpacing: 0.2, fontFamily: 'Nunito_400Regular', lineHeight: 15 }}
+              style={{ fontSize: 10.5, color: 'rgba(200,200,255,0.50)', marginTop: 3, letterSpacing: 0.2, fontFamily: 'Nunito_400Regular', lineHeight: 14 }}
               numberOfLines={2}
             >{sound.desc}</Text>
           )}
@@ -4685,28 +4758,66 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
             <ActivityIndicator color={collection.themeColor} size="large" style={{ marginTop: 40 }} />
           ) : (
             horizontalRows.map((row, rIdx) => {
-              const calmingTitles = [
-                'Ethereal Soundscapes', 'Deep Immersion', 'Sacred Harmonies', 
-                'Restorative Frequencies', 'Inner Stillness', 'Celestial Echoes',
-                'Timeless Resonance', 'Gentle Awakening', 'Mindful Journeys', 'Infinite Calm'
+              // Each row gets a UNIQUE visual identity — title, accent color, shape, icon
+              const ROW_STYLES = [
+                { title: 'Ethereal Soundscapes',      color: '#818cf8', icon: 'sparkles',       shape: 'diamond' },
+                { title: 'Deep Immersion',             color: '#34d399', icon: 'water',          shape: 'pill'    },
+                { title: 'Sacred Harmonies',           color: '#f472b6', icon: 'musical-notes',  shape: 'diamond' },
+                { title: 'Restorative Frequencies',   color: '#fbbf24', icon: 'radio',           shape: 'pill'    },
+                { title: 'Inner Stillness',            color: '#60a5fa', icon: 'moon',            shape: 'diamond' },
+                { title: 'Celestial Echoes',           color: '#c084fc', icon: 'planet',          shape: 'pill'    },
+                { title: 'Timeless Resonance',         color: '#f87171', icon: 'infinite',        shape: 'diamond' },
+                { title: 'Gentle Awakening',           color: '#4ade80', icon: 'sunny',           shape: 'pill'    },
+                { title: 'Mindful Journeys',           color: '#a78bfa', icon: 'compass',         shape: 'diamond' },
+                { title: 'Infinite Calm',              color: '#38bdf8', icon: 'leaf',            shape: 'pill'    },
               ];
-              const volumeTitle = calmingTitles[rIdx] || `Curated Series ${rIdx + 1}`;
-              
+              const rs = ROW_STYLES[rIdx % ROW_STYLES.length];
+              const volumeTitle = rs.title;
+              const rowColor = rs.color;
+              const rowIcon = rs.icon;
+              const isShape = rs.shape === 'diamond';
+
               return (
                 <View key={rIdx} style={{ marginBottom: 32 }}>
-                  {/* Ultra-Premium Volume Header */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16, paddingHorizontal: 20 }}>
-                    <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: collection.themeColor }} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 3, fontFamily: 'Nunito_700Bold', textTransform: 'uppercase' }}>
+                  {/* ── Premium Visually-Distinct Row Header ── */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingHorizontal: 20 }}>
+                    {/* Accent shape — alternates between diamond and pill */}
+                    {isShape ? (
+                      <View style={{
+                        width: 8, height: 8, borderRadius: 2,
+                        backgroundColor: rowColor,
+                        transform: [{ rotate: '45deg' }],
+                        shadowColor: rowColor, shadowOpacity: 0.8, shadowRadius: 6,
+                      }} />
+                    ) : (
+                      <View style={{
+                        paddingHorizontal: 7, paddingVertical: 2,
+                        backgroundColor: rowColor + '25',
+                        borderRadius: 20, borderWidth: 1, borderColor: rowColor + '55',
+                        flexDirection: 'row', alignItems: 'center', gap: 4,
+                      }}>
+                        <Ionicons name={rowIcon as any} size={8} color={rowColor} />
+                      </View>
+                    )}
+                    <Text style={{
+                      fontSize: isShape ? 11 : 10,
+                      color: rowColor,
+                      letterSpacing: isShape ? 3 : 2.5,
+                      fontFamily: isShape ? 'Nunito_800ExtraBold' : 'Nunito_700Bold',
+                      textTransform: 'uppercase',
+                    }}>
                       {volumeTitle}
                     </Text>
-                    <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                    {/* Trailing line that fades into the theme color */}
+                    <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: rowColor + '30', borderRadius: 1 }} />
+                    {/* Small icon on the right end */}
+                    <Ionicons name={rowIcon as any} size={11} color={rowColor + '70'} />
                   </View>
 
                   <GHFlatList
                     data={row}
                     keyExtractor={(item) => item.id}
-                    horizontal 
+                    horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
                     decelerationRate="normal"
@@ -4721,7 +4832,7 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
                         sound={sound}
                         isPlaying={playingId === sound.id}
                         isPaused={isPaused}
-                        themeColor={collection.themeColor}
+                        themeColor={rowColor}
                         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
                         cardWidth={cardW}
                       />
