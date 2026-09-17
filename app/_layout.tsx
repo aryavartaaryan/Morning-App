@@ -140,12 +140,12 @@ function SplashOverlay({ onDone, bgUri }: { onDone: () => void; bgUri?: string }
         import('expo-haptics').then(Haptics => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         });
-      }, 400); // Timed perfectly with the shimmer sweep
+      }, 250); // Timed perfectly with the shimmer sweep
 
       Animated.sequence([
-        Animated.delay(200),
-        Animated.timing(shimmerOp, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.delay(800), // Hold for exactly 1.7 seconds total (200 + 700 + 800 = 1700ms) before fading out
+        Animated.delay(100),
+        Animated.timing(shimmerOp, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(200), // Hold for exactly 0.7 seconds total (100 + 400 + 200 = 700ms) before fading out (reduced by 1s)
       ]).start(() => {
         if (!mounted) return;
         import('react-native').then(({ DeviceEventEmitter }) => {

@@ -66,7 +66,7 @@ function GlassPulseOverlay() {
         colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.03)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }}
         style={StyleSheet.absoluteFillObject}
-      />
+       />
     </View>
   );
 }
@@ -274,14 +274,14 @@ function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
   if (rawIllum < 0.02) {
     return (
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill} stroke="#2d2d4e" strokeWidth={0.8} />
+        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill} stroke="#2d2d4e" strokeWidth={0.8}  />
       </Svg>
     );
   }
   if (rawIllum > 0.98) {
     return (
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={moonFill} />
+        <SvgCircle cx={r} cy={r} r={r - 0.5} fill={moonFill}  />
       </Svg>
     );
   }
@@ -295,8 +295,8 @@ function MoonSVG({ tithiNum, size = 40 }: { tithiNum: number; size?: number }) {
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill} />
-      <SvgPath d={pathD} fill={moonFill} />
+      <SvgCircle cx={r} cy={r} r={r - 0.5} fill={darkFill}  />
+      <SvgPath d={pathD} fill={moonFill}  />
     </Svg>
   );
 }
@@ -311,17 +311,17 @@ function RisingSunSVG({ size = 26 }: { size?: number }) {
   const rays = [-90, -55, -125, -28, -152];
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <SvgCircle cx={cx} cy={hy} r={r * 1.65} fill="#f9780408" />
+      <SvgCircle cx={cx} cy={hy} r={r * 1.65} fill="#f9780408"  />
       {rays.map((deg, i) => {
         const rad = deg * Math.PI / 180;
         const x1 = cx + rs * Math.cos(rad); const y1 = hy + rs * Math.sin(rad);
         const x2 = cx + re * Math.cos(rad); const y2 = hy + re * Math.sin(rad);
         if (y1 > hy + 0.5 || y2 > hy + 0.5) return null;
-        return <SvgPath key={i} d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#fbbf24" strokeWidth={1.5} strokeLinecap="round" opacity={0.85} />;
+        return <SvgPath key={i} d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#fbbf24" strokeWidth={1.5} strokeLinecap="round" opacity={0.85}  />;
       })}
-      <SvgPath d={`M 0 ${hy} L ${size} ${hy}`} stroke="#f9780432" strokeWidth={0.7} />
-      <SvgPath d={`M ${cx - r} ${hy} A ${r} ${r} 0 0 1 ${cx + r} ${hy} Z`} fill="#f97316" />
-      <SvgCircle cx={cx - r * 0.22} cy={hy - r * 0.48} r={r * 0.17} fill="#fde68a" opacity={0.7} />
+      <SvgPath d={`M 0 ${hy} L ${size} ${hy}`} stroke="#f9780432" strokeWidth={0.7}  />
+      <SvgPath d={`M ${cx - r} ${hy} A ${r} ${r} 0 0 1 ${cx + r} ${hy} Z`} fill="#f97316"  />
+      <SvgCircle cx={cx - r * 0.22} cy={hy - r * 0.48} r={r * 0.17} fill="#fde68a" opacity={0.7}  />
     </Svg>
   );
 }
@@ -334,13 +334,13 @@ function NoonSunSVG({ size = 26 }: { size?: number }) {
   const rays = [0, 45, 90, 135, 180, 225, 270, 315];
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <SvgCircle cx={cx} cy={cy} r={r * 1.72} fill="#fbbf2410" />
+      <SvgCircle cx={cx} cy={cy} r={r * 1.72} fill="#fbbf2410"  />
       {rays.map((deg, i) => {
         const rad = deg * Math.PI / 180;
-        return <SvgPath key={i} d={`M ${cx + rs * Math.cos(rad)} ${cy + rs * Math.sin(rad)} L ${cx + re * Math.cos(rad)} ${cy + re * Math.sin(rad)}`} stroke="#fbbf24" strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />;
+        return <SvgPath key={i} d={`M ${cx + rs * Math.cos(rad)} ${cy + rs * Math.sin(rad)} L ${cx + re * Math.cos(rad)} ${cy + re * Math.sin(rad)}`} stroke="#fbbf24" strokeWidth={1.4} strokeLinecap="round" opacity={0.9}  />;
       })}
-      <SvgCircle cx={cx} cy={cy} r={r} fill="#fde68a" />
-      <SvgCircle cx={cx - r * 0.27} cy={cy - r * 0.35} r={r * 0.2} fill="#fff" opacity={0.55} />
+      <SvgCircle cx={cx} cy={cy} r={r} fill="#fde68a"  />
+      <SvgCircle cx={cx - r * 0.27} cy={cy - r * 0.35} r={r * 0.2} fill="#fff" opacity={0.55}  />
     </Svg>
   );
 }
@@ -354,17 +354,17 @@ function SettingSunSVG({ size = 26 }: { size?: number }) {
   const rays = [-90, -45, -135, -20, -160];
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <SvgCircle cx={cx} cy={hy} r={r * 1.65} fill="#ef444408" />
+      <SvgCircle cx={cx} cy={hy} r={r * 1.65} fill="#ef444408"  />
       {rays.map((deg, i) => {
         const rad = deg * Math.PI / 180;
         const x1 = cx + rs * Math.cos(rad); const y1 = hy + rs * Math.sin(rad);
         const x2 = cx + re * Math.cos(rad); const y2 = hy + re * Math.sin(rad);
         if (y1 > hy + 0.5 || y2 > hy + 0.5) return null;
-        return <SvgPath key={i} d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#f97316" strokeWidth={1.5} strokeLinecap="round" opacity={0.8} />;
+        return <SvgPath key={i} d={`M ${x1} ${y1} L ${x2} ${y2}`} stroke="#f97316" strokeWidth={1.5} strokeLinecap="round" opacity={0.8}  />;
       })}
-      <SvgPath d={`M 0 ${hy} L ${size} ${hy}`} stroke="#ef444432" strokeWidth={0.7} />
-      <SvgPath d={`M ${cx - r} ${hy} A ${r} ${r} 0 0 1 ${cx + r} ${hy} Z`} fill="#ef4444" />
-      <SvgCircle cx={cx - r * 0.22} cy={hy - r * 0.48} r={r * 0.17} fill="#fbbf24" opacity={0.5} />
+      <SvgPath d={`M 0 ${hy} L ${size} ${hy}`} stroke="#ef444432" strokeWidth={0.7}  />
+      <SvgPath d={`M ${cx - r} ${hy} A ${r} ${r} 0 0 1 ${cx + r} ${hy} Z`} fill="#ef4444"  />
+      <SvgCircle cx={cx - r * 0.22} cy={hy - r * 0.48} r={r * 0.17} fill="#fbbf24" opacity={0.5}  />
     </Svg>
   );
 }
@@ -400,20 +400,20 @@ function FestivalDetailModal({ festival, onClose }: { festival: Festival; onClos
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1}  />
         <View style={{ backgroundColor: '#0A0C1C', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '88%', overflow: 'hidden', borderWidth: 1, borderBottomWidth: 0, borderColor: glowColor + '30' }}>
-          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject}  />
           
           {/* Glow header gradient */}
           <LinearGradient
             colors={[glowColor + '22', glowColor + '08', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 180 }}
-          />
+           />
 
           {/* Drag handle */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 99 }} />
+            <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 99 }}  />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
@@ -507,11 +507,11 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setExpanded(e => !e); }}
       activeOpacity={0.9}
       style={[PC.card, { borderColor: vaar.color + '45' }]}>
-      <LinearGradient colors={['rgba(0,212,184,0.14)','rgba(124,58,237,0.08)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(0,212,184,0.55)' }} />
+      <LinearGradient colors={['rgba(0,212,184,0.14)','rgba(124,58,237,0.08)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(0,212,184,0.55)' }}  />
 
       {/* Planet-colored left bar */}
-      <View style={[PC.sideBar, { backgroundColor: vaar.color }]} />
+      <View style={[PC.sideBar, { backgroundColor: vaar.color }]}  />
 
       <View style={{ flex: 1, paddingLeft: 14 }}>
 
@@ -539,7 +539,7 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
               colors={['transparent', 'rgba(251,191,36,0.1)', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
-            />
+             />
             <Text style={{ fontSize: 20 }}>{todayFest.emoji}</Text>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
@@ -593,14 +593,14 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
 
         {/* ── Cosmic Alignment & Maas ── */}
         <View style={PC.alignRow}>
-          <View style={[PC.alignDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]} />
+          <View style={[PC.alignDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]}  />
           <Text style={PC.alignText}>
             <Text style={{ color: yoga.auspicious ? '#10b981' : '#f87171', fontWeight: '800', fontSize: 12.5 }}>{yoga.en} </Text>
             <Text style={{ color: '#FFFFFF50', fontStyle: 'italic', fontSize: 11 }}>({yoga.name} Yoga)</Text>
           </Text>
         </View>
         <View style={[PC.alignRow, { marginTop: -4 }]}>
-          <View style={[PC.alignDot, { backgroundColor: '#a78bfa' }]} />
+          <View style={[PC.alignDot, { backgroundColor: '#a78bfa' }]}  />
           <Text style={PC.alignText}>
             <Text style={{ color: '#a78bfa', fontWeight: '800', fontSize: 12.5 }}>{vMonth.en} </Text>
             <Text style={{ color: '#FFFFFF50', fontStyle: 'italic', fontSize: 11 }}>({vMonth.name} Maas)</Text>
@@ -623,7 +623,7 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
 
         {/* ── Moon Ritual ── */}
         <View style={PC.ritualRow}>
-          <MoonSVG tithiNum={moon.tithiNum} size={28} />
+          <MoonSVG tithiNum={moon.tithiNum} size={28}  />
           <View style={{ flex: 1 }}>
             <Text style={PC.ritualPrompt}>{moonRitual.prompt}  ·  {moon.illumination}% lit</Text>
             <Text style={PC.ritualText}>{moonRitual.action}</Text>
@@ -687,9 +687,9 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
         </View>
       </View>
     </TouchableOpacity>
-    {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon} />}
-    {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)} />}
-    </>
+    {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon}  />}
+    {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)}  />}
+    < />
   );
 }
 
@@ -806,9 +806,9 @@ function SmartWeatherCard({
     const s = getWeatherSuggestion(code, temp, humidity);
     return (
       <View style={[WS.card, { borderColor: 'rgba(255,255,255,0.28)' }]}>
-        <LinearGradient colors={['rgba(255,255,255,0.20)','rgba(255,255,255,0.07)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }} />
-        <View style={[WS.colorBar, { backgroundColor: s.color }]} />
+        <LinearGradient colors={['rgba(255,255,255,0.20)','rgba(255,255,255,0.07)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject}  />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }}  />
+        <View style={[WS.colorBar, { backgroundColor: s.color }]}  />
         <View style={{ flex: 1, paddingLeft: 14 }}>
           <Text style={WS.timeLabel}>TODAY  ·  DAY PLAN</Text>
           <View style={WS.titleRow}>
@@ -818,7 +818,7 @@ function SmartWeatherCard({
           <View style={{ gap: 6, marginTop: 8 }}>
             {s.tips.map((tip, i) => (
               <View key={i} style={WS.tipRow}>
-                <View style={[WS.tipDot, { backgroundColor: s.color }]} />
+                <View style={[WS.tipDot, { backgroundColor: s.color }]}  />
                 <Text style={WS.tipText}>{tip}</Text>
               </View>
             ))}
@@ -833,9 +833,9 @@ function SmartWeatherCard({
 
   return (
     <View style={[WS.card, { borderColor: 'rgba(255,255,255,0.28)' }]}>
-      <LinearGradient colors={['rgba(255,255,255,0.20)','rgba(255,255,255,0.07)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }} />
-      <View style={[WS.colorBar, { backgroundColor: adv.color }]} />
+      <LinearGradient colors={['rgba(255,255,255,0.20)','rgba(255,255,255,0.07)','transparent']} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.60)' }}  />
+      <View style={[WS.colorBar, { backgroundColor: adv.color }]}  />
       <View style={{ flex: 1, paddingLeft: 14 }}>
         <Text style={WS.timeLabel}>RIGHT NOW  ·  {hrLabel(new Date().getHours())}</Text>
         <View style={WS.titleRow}>
@@ -845,7 +845,7 @@ function SmartWeatherCard({
         <View style={{ gap: 6, marginTop: 8 }}>
           {adv.tips.map((tip, i) => (
             <View key={i} style={WS.tipRow}>
-              <View style={[WS.tipDot, { backgroundColor: adv.color }]} />
+              <View style={[WS.tipDot, { backgroundColor: adv.color }]}  />
               <Text style={WS.tipText}>{tip}</Text>
             </View>
           ))}
@@ -864,15 +864,15 @@ function ExtendedForecastModal({ daily, onClose }: { daily: DailyPoint[]; onClos
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={SD.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1}  />
         <View style={[SD.sheet, { backgroundColor: 'rgba(6, 12, 28, 0.85)' }]}>
-          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject}  />
           <LinearGradient
             colors={['rgba(255,255,255,0.05)', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
             style={StyleSheet.absoluteFillObject}
-          />
-          <View style={SD.handle} />
+           />
+          <View style={SD.handle}  />
           <View style={SD.sheetHeader}>
             <Text style={SD.sheetTitle}>14-Day Forecast</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -925,7 +925,7 @@ function ExtendedForecastModal({ daily, onClose }: { daily: DailyPoint[]; onClos
                            colors={['#818cf8', '#fbbf24']}
                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                            style={StyleSheet.absoluteFillObject}
-                        />
+                         />
                       </View>
                     </View>
 
@@ -1029,14 +1029,14 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 9 * 7 + 2.5 * 6, columnGap: 2.5, rowGap: 2.5 }}>
           {days.map((date, i) => {
-            if (!date) return <View key={i} style={{ width: 9, height: 9 }} />;
+            if (!date) return <View key={i} style={{ width: 9, height: 9 }}  />;
             const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
             const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
             return (
               <View key={i} style={{ 
                 width: 9, height: 9, borderRadius: 2,
                 backgroundColor: festMatch ? ACCENT_GOLD : (isToday ? ACCENT_BURGUNDY : 'rgba(44,44,44,0.08)'),
-              }} />
+              }}  />
             );
           })}
         </View>
@@ -1058,20 +1058,21 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                key={idx} 
                monthDate={monthDate} 
                festivalsData={yFests} 
-             />
+              />
           ))}
         </View>
       </View>
     );
   };
 
-  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect, getSunriseDate: getSD }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void, getSunriseDate: (d: Date) => Date }) => {
+  const MonthGrid = ({ monthDate, festivalsData, selDate, onDateSelect }: { monthDate: Date, festivalsData: any[], selDate: Date, onDateSelect: (d: Date) => void }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDayOfWeek = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
     
+    const now = new Date();
     const days = [];
     for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i, 6)); // Set to 6 AM for accurate Udaya Tithi
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), i, now.getHours(), now.getMinutes(), now.getSeconds()));
 
     const mName = monthDate.toLocaleString('en-US', { month: 'long' }).toUpperCase();
     const vName = getVedicMonth(monthDate).name;
@@ -1099,12 +1100,12 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
         {/* Day Grid */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
           {days.map((date, i) => {
-            if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 60 }} />;
+            if (!date) return <View key={i} style={{ width: `${100/7}%`, height: 60 }}  />;
             
             const isSelected = date.getDate() === selDate.getDate() && date.getMonth() === selDate.getMonth() && date.getFullYear() === selDate.getFullYear();
             const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
             const isSunday = date.getDay() === 0;
-            const dayPanchang = getPanchangData(getSD(date)); // ← Udaya Tithi: evaluated at actual sunrise
+            const dayPanchang = getPanchangData(date);
             const tithiShort = dayPanchang.tithiName.substring(0, 4);
             const festMatch = festivalsData.find(f => f.date.getDate() === date.getDate() && f.date.getMonth() === date.getMonth());
             
@@ -1116,13 +1117,13 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                 style={{ width: `${100/7}%`, height: 60, alignItems: 'center', justifyContent: 'center' }}
               >
                 {isSelected && (
-                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, backgroundColor: ACCENT_BURGUNDY, shadowColor: ACCENT_BURGUNDY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }} />
+                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, backgroundColor: ACCENT_BURGUNDY, shadowColor: ACCENT_BURGUNDY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }}  />
                 )}
                 {isToday && !isSelected && (
-                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, borderWidth: 1.5, borderColor: ACCENT_GOLD }} />
+                  <View style={{ position: 'absolute', width: 44, height: 54, borderRadius: 22, borderWidth: 1.5, borderColor: ACCENT_GOLD }}  />
                 )}
                 {festMatch && !isSelected && (
-                  <View style={{ position: 'absolute', top: 4, right: '15%', width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT_GOLD }} />
+                  <View style={{ position: 'absolute', top: 4, right: '15%', width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT_GOLD }}  />
                 )}
                 <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: isSelected || isToday ? '600' : '400', color: isSelected ? '#FFF' : (isToday ? ACCENT_GOLD : (isSunday ? ACCENT_BURGUNDY : TEXT_CHARCOAL)) }}>
                   {date.getDate()}
@@ -1139,7 +1140,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
   };
 
   const renderMonth = ({ item: monthDate }: { item: Date }) => {
-    return <MonthGrid monthDate={monthDate} festivalsData={festivals} selDate={selectedDate} onDateSelect={setSelectedDate} getSunriseDate={getSunriseDate} />;
+    return <MonthGrid monthDate={monthDate} festivalsData={festivals} selDate={selectedDate} onDateSelect={setSelectedDate}  />;
   };
 
   const mFests = festivals.filter(f => f.date.getMonth() === currentMonthDate.getMonth());
@@ -1150,14 +1151,14 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
         {/* Decorative Mandala Background SVG (simplified as gold circles) */}
         <View style={{ position: 'absolute', top: -50, right: -50, opacity: 0.05 }}>
           <Svg width={300} height={300}>
-            <SvgCircle cx={150} cy={150} r={100} stroke={ACCENT_GOLD} strokeWidth={2} fill="none" />
-            <SvgCircle cx={150} cy={150} r={130} stroke={ACCENT_GOLD} strokeWidth={1} fill="none" strokeDasharray="5,5" />
-            <SvgCircle cx={150} cy={150} r={140} stroke={ACCENT_GOLD} strokeWidth={0.5} fill="none" />
+            <SvgCircle cx={150} cy={150} r={100} stroke={ACCENT_GOLD} strokeWidth={2} fill="none"  />
+            <SvgCircle cx={150} cy={150} r={130} stroke={ACCENT_GOLD} strokeWidth={1} fill="none" strokeDasharray="5,5"  />
+            <SvgCircle cx={150} cy={150} r={140} stroke={ACCENT_GOLD} strokeWidth={0.5} fill="none"  />
           </Svg>
         </View>
         <View style={{ position: 'absolute', bottom: 100, left: -100, opacity: 0.03 }}>
           <Svg width={300} height={300}>
-            <SvgCircle cx={150} cy={150} r={120} stroke={ACCENT_GOLD} strokeWidth={2} fill="none" />
+            <SvgCircle cx={150} cy={150} r={120} stroke={ACCENT_GOLD} strokeWidth={2} fill="none"  />
           </Svg>
         </View>
 
@@ -1165,13 +1166,13 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
           {/* HEADER */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 }}>
             <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="chevron-back" size={24} color={ACCENT_BURGUNDY} />
+              <Ionicons name="chevron-back" size={24} color={ACCENT_BURGUNDY}  />
             </TouchableOpacity>
             <Text style={{ fontFamily: 'Georgia', fontSize: 24, fontWeight: '600', color: ACCENT_BURGUNDY, letterSpacing: 1 }}>
               Astra
             </Text>
             <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="notifications-outline" size={22} color={ACCENT_BURGUNDY} />
+              <Ionicons name="notifications-outline" size={22} color={ACCENT_BURGUNDY}  />
             </View>
           </View>
 
@@ -1223,7 +1224,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                           setCurrentYear(yearsData[newIndex]);
                        }
                     }}
-                  />
+                   />
                   <TouchableOpacity 
                     style={{ position: 'absolute', left: 0, top: '50%', padding: 10, marginTop: -20 }}
                     onPress={() => {
@@ -1234,7 +1235,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                         }
                     }}
                   >
-                    <Ionicons name="chevron-back" size={24} color={ACCENT_GOLD} />
+                    <Ionicons name="chevron-back" size={24} color={ACCENT_GOLD}  />
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={{ position: 'absolute', right: 0, top: '50%', padding: 10, marginTop: -20 }}
@@ -1246,7 +1247,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                         }
                     }}
                   >
-                    <Ionicons name="chevron-forward" size={24} color={ACCENT_GOLD} />
+                    <Ionicons name="chevron-forward" size={24} color={ACCENT_GOLD}  />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1273,7 +1274,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                           setSelectedDate(mvFests.length > 0 ? mvFests[0].date : newMonth);
                        }
                     }}
-                  />
+                   />
                   {/* Month Navigation Arrows */}
                   <TouchableOpacity 
                     style={{ position: 'absolute', left: 0, top: 20, padding: 10 }}
@@ -1283,7 +1284,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                         setCurrentMonthDate(monthsData[newIdx]);
                     }}
                   >
-                    <Ionicons name="chevron-back" size={20} color={ACCENT_GOLD} />
+                    <Ionicons name="chevron-back" size={20} color={ACCENT_GOLD}  />
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={{ position: 'absolute', right: 0, top: 20, padding: 10 }}
@@ -1293,7 +1294,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                         setCurrentMonthDate(monthsData[newIdx]);
                     }}
                   >
-                    <Ionicons name="chevron-forward" size={20} color={ACCENT_GOLD} />
+                    <Ionicons name="chevron-forward" size={20} color={ACCENT_GOLD}  />
                   </TouchableOpacity>
                 </View>
 
@@ -1352,7 +1353,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
 
       </SafeAreaView>
       </View>
-      {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)} />}
+      {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)}  />}
     </Modal>
   );
 }
@@ -1367,21 +1368,21 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={EX.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1}  />
         <View style={EX.sheet}>
           <LinearGradient
             colors={['#60a5fa1E', 'transparent']}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
             pointerEvents="none"
-          />
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#60a5fa70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
-          <View style={EX.handle} />
+           />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: '#60a5fa70', borderTopLeftRadius: 28, borderTopRightRadius: 28 }}  />
+          <View style={EX.handle}  />
           {/* Header */}
           <View style={EX.sheetHeader}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#60a5fa' }} />
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#60a5fa' }}  />
                 <Text style={EX.sheetCap}>ASTRAL SCIENCE</Text>
               </View>
               <Text style={EX.sheetTitle}>Today's Cosmic Blueprint</Text>
@@ -1396,7 +1397,7 @@ function PanchangExploreModal({ onClose }: { onClose: () => void }) {
 
             {/* Today summary */}
             <View style={EX.cosmoHero}>
-              <MoonSVG tithiNum={moon.tithiNum} size={52} />
+              <MoonSVG tithiNum={moon.tithiNum} size={52}  />
               <View style={{ flex: 1 }}>
                 <Text style={EX.cosmoTitle}>{moon.name}  ·  {moon.illumination}% lit</Text>
                 <Text style={EX.cosmoSub}>{p.tithiName}  ·  {p.paksha === 'Shukla' ? 'Waxing' : 'Waning'} Moon  ·  Day {p.tithiInPaksha}</Text>
@@ -1534,10 +1535,10 @@ function CurrentPeriodCard({
       <LinearGradient
         colors={[period.color + '25', 'rgba(255,255,255,0.08)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={['rgba(255,255,255,0.18)','rgba(255,255,255,0.05)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-      <GlassPulseOverlay />
+        style={StyleSheet.absoluteFillObject}  />
+      <LinearGradient colors={['rgba(255,255,255,0.18)','rgba(255,255,255,0.05)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }}  />
+      <GlassPulseOverlay  />
 
       {/* Top row: badges + live clock */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -1546,7 +1547,7 @@ function CurrentPeriodCard({
             <Text style={[CP.doshaTxt, { color: period.color }]}>{period.dosha.toUpperCase()}</Text>
           </View>
           <View style={[CP.activeBadge, { backgroundColor: period.color + '15', borderColor: period.color + '40' }]}>
-            <View style={[CP.activeDotB, { backgroundColor: period.color }]} />
+            <View style={[CP.activeDotB, { backgroundColor: period.color }]}  />
             <Text style={[CP.activeTxtB, { color: period.color }]}>ACTIVE NOW</Text>
           </View>
         </View>
@@ -1579,19 +1580,19 @@ function CurrentPeriodCard({
 
       {/* Progress bar */}
       <View style={CP.progressTrack}>
-        <View style={[CP.progressFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: period.color }]} />
+        <View style={[CP.progressFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: period.color }]}  />
       </View>
 
       {/* Science description */}
       <Text style={CP.sciDesc}>{period.sciDesc}</Text>
 
       {/* DO's Section */}
-      <View style={CP.divider} />
+      <View style={CP.divider}  />
       <View style={CP.sectionHeaderRow}>
         <View style={[CP.sectionBadge, { backgroundColor: period.color + '22', borderColor: period.color + '55' }]}>
           <Text style={[CP.sectionBadgeTxt, { color: period.color }]}>✓  DO'S</Text>
         </View>
-        <View style={[CP.sectionLine, { backgroundColor: period.color + '20' }]} />
+        <View style={[CP.sectionLine, { backgroundColor: period.color + '20' }]}  />
       </View>
       <View style={[CP.listGrid, { marginBottom: 14 }]}>
         {period.activities.map((a, i) => (
@@ -1607,7 +1608,7 @@ function CurrentPeriodCard({
         <View style={[CP.sectionBadge, { backgroundColor: '#f43f5e18', borderColor: '#f43f5e45' }]}>
           <Text style={[CP.sectionBadgeTxt, { color: '#f43f5e' }]}>✕  DON'TS</Text>
         </View>
-        <View style={[CP.sectionLine, { backgroundColor: '#f43f5e18' }]} />
+        <View style={[CP.sectionLine, { backgroundColor: '#f43f5e18' }]}  />
       </View>
       <View style={CP.listGrid}>
         {period.avoidances.map((a, i) => (
@@ -1619,7 +1620,7 @@ function CurrentPeriodCard({
       </View>
 
       {/* Explore More CTA */}
-      <View style={[CP.divider, { marginTop: 12 }]} />
+      <View style={[CP.divider, { marginTop: 12 }]}  />
       <TouchableOpacity
         onPress={() => onExplore ? onExplore(period.dosha, period.label, period.startLabel, period.endLabel) : router.push({ pathname: '/dosha-explore' as never, params: { activeDosha: period.dosha, periodLabel: period.label, periodStart: period.startLabel, periodEnd: period.endLabel } } as never)}
         activeOpacity={0.8}>
@@ -1637,7 +1638,7 @@ function CurrentPeriodCard({
         </LinearGradient>
       </TouchableOpacity>
     </View>
-    </>
+    < />
   );
 }
 
@@ -1651,12 +1652,12 @@ function NextPeriodCard({ period }: { period: DoshaPeriod }) {
       <LinearGradient
         colors={[period.color + '22', 'rgba(255,255,255,0.08)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={['rgba(255,255,255,0.16)','rgba(255,255,255,0.04)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
+        style={StyleSheet.absoluteFillObject}  />
+      <LinearGradient colors={['rgba(255,255,255,0.16)','rgba(255,255,255,0.04)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }}  />
 
       {/* Left accent bar */}
-      <View style={[NP.sideBar, { backgroundColor: period.color }]} />
+      <View style={[NP.sideBar, { backgroundColor: period.color }]}  />
 
       <View style={{ flex: 1, paddingLeft: 14 }}>
 
@@ -1695,7 +1696,7 @@ function NextPeriodCard({ period }: { period: DoshaPeriod }) {
           <Text style={NP.prepLabel}>✓  PREPARE NOW</Text>
           {period.activities.slice(0, 2).map((a, i) => (
             <View key={i} style={NP.prepRow}>
-              <View style={[NP.prepDot, { backgroundColor: period.color + '90' }]} />
+              <View style={[NP.prepDot, { backgroundColor: period.color + '90' }]}  />
               <Text style={NP.prepText}>{a}</Text>
             </View>
           ))}
@@ -1717,8 +1718,8 @@ function BrahmaMuhurtaExtrasCard({
   const [showSci, setShowSci] = useState(false);
   return (
     <View style={BMX.card}>
-      <LinearGradient colors={['rgba(96,165,250,0.22)','rgba(96,165,250,0.08)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }} />
+      <LinearGradient colors={['rgba(96,165,250,0.22)','rgba(96,165,250,0.08)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.32)' }}  />
       <View style={BMX.headerRow}>
         <View>
           <Text style={BMX.sacredLabel}>SACRED WINDOW</Text>
@@ -1726,7 +1727,7 @@ function BrahmaMuhurtaExtrasCard({
           <Text style={BMX.sacredSub}>96–48 min before sunrise</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(96,165,250,0.20)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.50)', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }} />
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }}  />
           <Text style={{ fontSize: 9, fontWeight: '900', color: '#60a5fa', letterSpacing: 1.5 }}>LIVE</Text>
         </View>
       </View>
@@ -2000,9 +2001,9 @@ function TodayHeroCard({
       <LinearGradient
         colors={[(per?.color ?? vaar.color) + '28', vaar.color + '14', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={['rgba(255,255,255,0.18)','rgba(255,255,255,0.06)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject} />
-      <View style={TH.topHighlight} />
+        style={StyleSheet.absoluteFillObject}  />
+      <LinearGradient colors={['rgba(255,255,255,0.18)','rgba(255,255,255,0.06)','transparent']} start={{x:0,y:0}} end={{x:0,y:0.45}} style={StyleSheet.absoluteFillObject}  />
+      <View style={TH.topHighlight}  />
 
       {/* ═══════════════════════════════════════
           SECTION 1 — COSMIC CALENDAR (tappable → cosmic-explore)
@@ -2010,7 +2011,7 @@ function TodayHeroCard({
       <TouchableOpacity onPress={onExplore} activeOpacity={0.88} style={{ padding: 16, paddingTop: 12 }}>
         {/* Decorative star dots — cosmic atmosphere */}
         {STARS.map((s, i) => (
-          <View key={i} style={[TH.starDot, { top: s.top, right: s.right, width: s.size, height: s.size, opacity: s.opacity }]} />
+          <View key={i} style={[TH.starDot, { top: s.top, right: s.right, width: s.size, height: s.size, opacity: s.opacity }]}  />
         ))}
         {/* Header */}
         <View style={TH.headerRow}>
@@ -2023,7 +2024,7 @@ function TodayHeroCard({
           </View>
         </View>
 
-        <View style={TH.divider} />
+        <View style={TH.divider}  />
 
         {/* Special moon banner */}
         {isSpecialMoon && (
@@ -2045,7 +2046,7 @@ function TodayHeroCard({
 
         {/* ── Big headline: Moon + Vaar energy ── */}
         <View style={TH.cosmicRow}>
-          <MoonSVG tithiNum={moon.tithiNum} size={38} />
+          <MoonSVG tithiNum={moon.tithiNum} size={38}  />
           <View style={{ flex: 1 }}>
             <Text style={[TH.vaarEnergyTitle, { color: vaar.color, fontSize: 16 }]}>{vaar.energy}</Text>
             <Text style={TH.cosmicLine2} numberOfLines={1}>
@@ -2076,7 +2077,7 @@ function TodayHeroCard({
           </View>
           {/* Yoga */}
           <View style={[TH.cosmicPill, { borderColor: yoga.auspicious ? '#10b98155' : '#f8717155', backgroundColor: yoga.auspicious ? '#10b98118' : '#f8717118' }]}>
-            <View style={[TH.yogaDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]} />
+            <View style={[TH.yogaDot, { backgroundColor: yoga.auspicious ? '#10b981' : '#f87171' }]}  />
             <Text style={[TH.cosmicPillTxt, { color: yoga.auspicious ? '#10b981CC' : '#f87171CC' }]}>{yoga.en}</Text>
           </View>
         </View>
@@ -2101,7 +2102,7 @@ function TodayHeroCard({
             {per && insight && <>
             {/* ── Impact one-liner ── */}
             <View style={[TH.impactRow, { marginBottom: 12 }]}>
-              <View style={[TH.impactDot, { backgroundColor: per.color }]} />
+              <View style={[TH.impactDot, { backgroundColor: per.color }]}  />
               <Text style={[TH.impactTxt, { color: per.color + 'CC' }]} numberOfLines={2}>{insight.impact}</Text>
             </View>
 
@@ -2111,10 +2112,10 @@ function TodayHeroCard({
                 <Text style={[TH.badgeTxt, { color: per.color }]}>{per.dosha.toUpperCase()}</Text>
               </View>
               <View style={[TH.activePill, { backgroundColor: per.color + '15', borderColor: per.color + '35' }]}>
-                <View style={[TH.activeDot, { backgroundColor: per.color }]} />
+                <View style={[TH.activeDot, { backgroundColor: per.color }]}  />
                 <Text style={[TH.activeTxt, { color: per.color }]}>ACTIVE NOW</Text>
               </View>
-              <View style={{ flex: 1 }} />
+              <View style={{ flex: 1 }}  />
               <Text style={[TH.countdown, { color: per.color, minWidth: 120 }]} numberOfLines={1} adjustsFontSizeToFit>{remStr}</Text>
             </View>
 
@@ -2126,7 +2127,7 @@ function TodayHeroCard({
 
             {/* ── Progress bar with times ── */}
             <View style={TH.progressTrack}>
-              <View style={[TH.progressFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: per.color }]} />
+              <View style={[TH.progressFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: per.color }]}  />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5, marginBottom: 14 }}>
               <Text style={TH.timeRange}>{per.startLabel}</Text>
@@ -2138,7 +2139,7 @@ function TodayHeroCard({
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {topActs.map((a, i) => (
                 <View key={i} style={[TH.chip, { borderColor: per.color + '40', backgroundColor: per.color + '12' }]}>
-                  <View style={[TH.chipDot, { backgroundColor: per.color + 'CC' }]} />
+                  <View style={[TH.chipDot, { backgroundColor: per.color + 'CC' }]}  />
                   <Text style={[TH.chipTxt, { color: '#FFFFFFAA' }]}>{a}</Text>
                 </View>
               ))}
@@ -2151,7 +2152,7 @@ function TodayHeroCard({
               </Text>
               <Text style={[TH.exploreArrow, { color: per.color }]}>→</Text>
             </View>
-            </>}
+            < />}
           </TouchableOpacity>
     </View>
   );
@@ -2216,18 +2217,18 @@ function CosmicPill({ onPress }: { onPress: () => void }) {
         colors={[vaar.color + '28', '#60a5fa18', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFillObject}
-      />
-      <LinearGradient colors={['rgba(255,255,255,0.14)','rgba(255,255,255,0.03)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.38)' }} />
-      <GlassPulseOverlay />
+       />
+      <LinearGradient colors={['rgba(255,255,255,0.14)','rgba(255,255,255,0.03)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.38)' }}  />
+      <GlassPulseOverlay  />
       {/* Starfield accents */}
-      <View style={[CPL.star, { top: 6,  right: 52,  width: 1.5, height: 1.5, opacity: 0.45 }]} />
-      <View style={[CPL.star, { top: 14, right: 88,  width: 1,   height: 1,   opacity: 0.28 }]} />
-      <View style={[CPL.star, { top: 8,  right: 122, width: 2,   height: 2,   opacity: 0.18 }]} />
+      <View style={[CPL.star, { top: 6,  right: 52,  width: 1.5, height: 1.5, opacity: 0.45 }]}  />
+      <View style={[CPL.star, { top: 14, right: 88,  width: 1,   height: 1,   opacity: 0.28 }]}  />
+      <View style={[CPL.star, { top: 8,  right: 122, width: 2,   height: 2,   opacity: 0.18 }]}  />
 
       {/* Phase-accurate moon icon */}
       <View style={{ alignSelf: 'flex-start', marginTop: 6 }}>
-        <MoonSVG tithiNum={moon.tithiNum} size={34} />
+        <MoonSVG tithiNum={moon.tithiNum} size={34}  />
       </View>
 
       {/* Labels */}
@@ -2303,9 +2304,9 @@ function PeriodCarousel({
             <Text style={D.sectionTitle}>NOW  ·  ENERGY PERIOD</Text>
             <Text style={[D.sectionSub, { color: currentPeriod.color + 'BB' }]}>{currentPeriod.label}  ·  Solar time</Text>
           </View>
-          <CurrentPeriodCard period={currentPeriod} liveClock={liveClock} />
+          <CurrentPeriodCard period={currentPeriod} liveClock={liveClock}  />
           {brahmaInfo?.status === 'active' && (
-            <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
+            <BrahmaMuhurtaExtrasCard info={brahmaInfo}  />
           )}
         </View>
       </View>
@@ -2320,9 +2321,9 @@ function PeriodCarousel({
             <Text style={D.sectionTitle}>NEXT SOLAR WINDOW</Text>
             <Text style={[D.sectionSub, { color: nextPeriod.color + 'BB' }]}>{nextPeriod.englishLabel}</Text>
           </View>
-          <NextPeriodCard period={nextPeriod} />
+          <NextPeriodCard period={nextPeriod}  />
           {brahmaInfo?.status === 'active' && (
-            <BrahmaMuhurtaExtrasCard info={brahmaInfo} />
+            <BrahmaMuhurtaExtrasCard info={brahmaInfo}  />
           )}
         </View>
       </View>
@@ -2359,7 +2360,7 @@ function PeriodCarousel({
                 backgroundColor: i === page
                   ? (i === 0 ? (currentPeriod?.color ?? ACCENT) : (nextPeriod?.color ?? ACCENT))
                   : '#FFFFFF20',
-              }} />
+              }}  />
             </TouchableOpacity>
           ))}
         </View>
@@ -2384,10 +2385,10 @@ function InlineWeatherAction({
   const adv = isNight ? getHourlyAdvice(code, temp) : getWeatherSuggestion(code, temp, humidity);
   return (
     <View style={[IW.card, { borderColor: adv.color + '45' }]}>
-      <LinearGradient colors={['rgba(255,255,255,0.12)','rgba(255,255,255,0.03)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject} />
-      <LinearGradient colors={[adv.color+'14','transparent']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
-      <View style={[IW.leftBar, { backgroundColor: adv.color }]} />
+      <LinearGradient colors={['rgba(255,255,255,0.12)','rgba(255,255,255,0.03)','transparent']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFillObject}  />
+      <LinearGradient colors={[adv.color+'14','transparent']} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }}  />
+      <View style={[IW.leftBar, { backgroundColor: adv.color }]}  />
       <View style={{ flex: 1, paddingLeft: 12 }}>
 
         {/* Header row: label + live metrics */}
@@ -2651,8 +2652,8 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.52 }}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
-        />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: card.color + '90' }} />
+         />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: card.color + '90' }}  />
 
         {/* Segmented progress bar */}
         <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 56, gap: 3 }}>
@@ -2660,7 +2661,7 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
             <View key={i} style={{
               flex: 1, height: 3, borderRadius: 2,
               backgroundColor: i < idx ? card.color + 'CC' : i === idx ? '#FFFFFFCC' : '#FFFFFF20',
-            }} />
+            }}  />
           ))}
         </View>
 
@@ -2682,10 +2683,10 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
           indicatorStyle="white">
           <Text style={{ fontSize: 72, marginBottom: 20, textAlign: 'center' }}>{card.emoji}</Text>
           <Text style={{ fontSize: 27, fontWeight: '900', color: '#FFFFFF', lineHeight: 35, marginBottom: 18, textAlign: 'center' }}>{card.title}</Text>
-          <View style={{ height: 1.5, backgroundColor: card.color + '65', marginBottom: 22, marginHorizontal: 8 }} />
+          <View style={{ height: 1.5, backgroundColor: card.color + '65', marginBottom: 22, marginHorizontal: 8 }}  />
           {card.tips.map((tip, j) => (
             <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16, paddingHorizontal: 4 }}>
-              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: card.color, marginTop: 7, flexShrink: 0 }} />
+              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: card.color, marginTop: 7, flexShrink: 0 }}  />
               <Text style={{ fontSize: 16, color: '#FFFFFFD8', lineHeight: 25, flex: 1, fontWeight: '500' }}>{tip}</Text>
             </View>
           ))}
@@ -2695,8 +2696,8 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
 
         {/* Invisible left/right tap zones */}
         <View pointerEvents="box-none" style={{ position: 'absolute', top: 100, bottom: 90, left: 0, right: 0, flexDirection: 'row' }}>
-          <TouchableOpacity style={{ flex: 2 }} activeOpacity={0.01} onPress={goPrev} />
-          <TouchableOpacity style={{ flex: 3 }} activeOpacity={0.01} onPress={goNext} />
+          <TouchableOpacity style={{ flex: 2 }} activeOpacity={0.01} onPress={goPrev}  />
+          <TouchableOpacity style={{ flex: 3 }} activeOpacity={0.01} onPress={goNext}  />
         </View>
 
         {/* Bottom nav bar */}
@@ -2711,7 +2712,7 @@ function HESStoryModal({ cards, initialIndex, onClose }: {
           {/* Dot indicators */}
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
             {cards.map((_, i) => (
-              <View key={i} style={{ width: i === idx ? 18 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx ? card.color : '#FFFFFF25' }} />
+              <View key={i} style={{ width: i === idx ? 18 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx ? card.color : '#FFFFFF25' }}  />
             ))}
           </View>
           <TouchableOpacity
@@ -2858,9 +2859,9 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
               colors={[card.color + '28', 'rgba(4,4,18,0.48)', 'rgba(2,2,14,0.70)']}
               start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
               style={StyleSheet.absoluteFillObject}
-            />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-            <GlassPulseOverlay />
+             />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }}  />
+            <GlassPulseOverlay  />
             {/* Label pill badge */}
             <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: card.color + '55', backgroundColor: card.color + '20', marginBottom: 7 }}>
               <Text style={{ fontSize: 7, fontWeight: '900', color: card.color, letterSpacing: 1.0 }}>{card.label}</Text>
@@ -2868,10 +2869,10 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
             {/* Emoji icon */}
             <Text style={{ fontSize: 20, marginBottom: 5 }}>{card.emoji}</Text>
             <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF', lineHeight: 14, marginBottom: 5 }}>{card.title}</Text>
-            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 5 }} />
+            <View style={{ height: 1, backgroundColor: card.color + '50', marginBottom: 5 }}  />
             {card.tips.map((tip, j) => (
               <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginBottom: 3 }}>
-                <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: card.color + 'DD', marginTop: 4, flexShrink: 0 }} />
+                <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: card.color + 'DD', marginTop: 4, flexShrink: 0 }}  />
                 <Text style={{ fontSize: 8, color: '#FFFFFFDC', lineHeight: 12, flex: 1 }}>{tip}</Text>
               </View>
             ))}
@@ -2882,9 +2883,9 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         ))}
       </ScrollView>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 9, paddingBottom: 2, gap: 8 }}>
-        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginLeft: 16 }} />
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginLeft: 16 }}  />
         <Text style={{ fontSize: 8, color: '#FFFFFF28', fontWeight: '700', letterSpacing: 1.4 }}>←  SWIPE TO EXPLORE  →</Text>
-        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }} />
+        <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF0A', marginRight: 16 }}  />
       </View>
       </View>
     </View>
@@ -2894,9 +2895,9 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         cards={allCards}
         initialIndex={storyIdx}
         onClose={() => { setStoryIdx(null); scheduleResume(); }}
-      />
+       />
     )}
-    </>
+    < />
   );
 }
 
@@ -2947,9 +2948,9 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
           colors={[card.color + '2E', 'rgba(4,4,18,0.55)', 'rgba(2,2,14,0.82)']}
           start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFillObject}
-        />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }} />
-        <GlassPulseOverlay />
+         />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.72)' }}  />
+        <GlassPulseOverlay  />
 
         <View style={{ padding: 18 }}>
           {/* Header row */}
@@ -2968,12 +2969,12 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
           <Text style={{ fontSize: 20, fontWeight: '900', color: '#FFFFFF', lineHeight: 27, marginBottom: 12 }}>{card.title}</Text>
 
           {/* Divider */}
-          <View style={{ height: 1.5, backgroundColor: card.color + '60', marginBottom: 14 }} />
+          <View style={{ height: 1.5, backgroundColor: card.color + '60', marginBottom: 14 }}  />
 
           {/* Full tips */}
           {card.tips.map((tip, j) => (
             <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: card.color, marginTop: 6, flexShrink: 0 }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: card.color, marginTop: 6, flexShrink: 0 }}  />
               <Text style={{ fontSize: 13, color: '#FFFFFFD0', lineHeight: 20, flex: 1, fontWeight: '500' }}>{tip}</Text>
             </View>
           ))}
@@ -2982,7 +2983,7 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: card.color + '20' }}>
             <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', flex: 1 }}>
               {allCards.slice(0, Math.min(allCards.length, 9)).map((_, i) => (
-                <View key={i} style={{ width: i === 0 ? 18 : 5, height: 5, borderRadius: 3, backgroundColor: i === 0 ? card.color : '#FFFFFF22' }} />
+                <View key={i} style={{ width: i === 0 ? 18 : 5, height: 5, borderRadius: 3, backgroundColor: i === 0 ? card.color : '#FFFFFF22' }}  />
               ))}
               {allCards.length > 9 && <Text style={{ fontSize: 8, color: '#FFFFFF35', fontWeight: '800', marginLeft: 2 }}>+{allCards.length - 9}</Text>}
             </View>
@@ -2996,9 +2997,9 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
           cards={allCards}
           initialIndex={storyIdx}
           onClose={() => setStoryIdx(null)}
-        />
+         />
       )}
-    </>
+    < />
   );
 }
 
@@ -3015,7 +3016,7 @@ function WeatherSummaryBar({ weather }: { weather: WeatherData }) {
       <Text style={WSB.cond}>{weather.condition}</Text>
       {weather.city ? <Text style={WSB.sep}>·</Text> : null}
       {weather.city ? <Text style={WSB.city}>{weather.city}</Text> : null}
-      <View style={WSB.spacer} />
+      <View style={WSB.spacer}  />
       <Text style={WSB.hum}>💧 {weather.humidity}%</Text>
       {maxT !== null && <Text style={WSB.hi}>↑{maxT}°</Text>}
       {minT !== null && <Text style={WSB.lo}>↓{minT}°</Text>}
@@ -3067,15 +3068,15 @@ function WeatherSection({
 
   return (
     <View style={[WSEC.container, { shadowColor: accentColor }]}>
-      <BlurView intensity={85} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={85} tint="dark" style={StyleSheet.absoluteFillObject}  />
       <LinearGradient
         colors={bgColors}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
-      />
+       />
       {/* Premium top glass reflection */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' }}  />
+      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.1)' }}  />
 
       {/* ── PREMIUM HEADER GRID ── */}
       <View style={{ padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3104,7 +3105,7 @@ function WeatherSection({
           {maxT !== null && (
             <View style={WSEC.metricPill}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>H: <Text style={{ color: '#f87171' }}>{maxT}°</Text></Text>
-              <View style={{ width: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 6 }} />
+              <View style={{ width: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 6 }}  />
               <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>L: <Text style={{ color: '#93c5fd' }}>{minT}°</Text></Text>
             </View>
           )}
@@ -3136,7 +3137,7 @@ function WeatherSection({
                    <LinearGradient
                      colors={[`${accentColor}40`, 'transparent']}
                      style={StyleSheet.absoluteFillObject}
-                   />
+                    />
                 )}
                 <Text style={[WSEC.hourTime, isNow && { color: '#FFF' }]}>{isNow ? 'NOW' : hrLabel(pt.hour)}</Text>
                 <Text style={WSEC.hourEmoji}>{nightAwareEmoji(pt.emoji, pt.hour, solarTimes)}</Text>
@@ -3155,7 +3156,7 @@ function WeatherSection({
             <LinearGradient
               colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.02)']}
               style={StyleSheet.absoluteFillObject}
-            />
+             />
             <Text style={{ fontSize: 20 }}>📅</Text>
             <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.9)', marginTop: 8, letterSpacing: 0.5 }}>14 DAYS</Text>
           </TouchableOpacity>
@@ -3258,7 +3259,7 @@ function FourteenDayWeatherModal({ weather, onClose }: { weather: WeatherData, o
   return (
     <Modal visible transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', opacity: fadeAnim }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleClose} activeOpacity={1}  />
       </Animated.View>
 
       <Animated.View style={{
@@ -3266,12 +3267,12 @@ function FourteenDayWeatherModal({ weather, onClose }: { weather: WeatherData, o
         borderTopLeftRadius: 36, borderTopRightRadius: 36, overflow: 'hidden',
         transform: [{ translateY: slideAnim }]
       }}>
-        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject} />
-        <LinearGradient colors={['rgba(20,40,90,0.65)', 'rgba(5,15,35,0.95)', '#050a1a']} start={{x:0, y:0}} end={{x:0, y:1}} style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFillObject}  />
+        <LinearGradient colors={['rgba(20,40,90,0.65)', 'rgba(5,15,35,0.95)', '#050a1a']} start={{x:0, y:0}} end={{x:0, y:1}} style={StyleSheet.absoluteFillObject}  />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255,255,255,0.2)' }}  />
 
         <View style={{ alignItems: 'center', paddingTop: 14, paddingBottom: 6 }}>
-          <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: 'rgba(106,30,47,0.2)' }} />
+          <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: 'rgba(106,30,47,0.2)' }}  />
         </View>
 
         <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -3312,7 +3313,7 @@ function FourteenDayWeatherModal({ weather, onClose }: { weather: WeatherData, o
                         colors={['#60a5fa', '#fbbf24']} 
                         start={{x:0, y:0}} end={{x:1, y:0}}
                         style={{ position: 'absolute', top: 0, bottom: 0, left: `${leftPct}%`, width: `${Math.max(8, widthPct)}%`, borderRadius: 3 }} 
-                      />
+                       />
                     </View>
 
                     <Text style={{ width: 28, fontSize: 15, fontWeight: '700', color: '#FFF', textAlign: 'left', marginLeft: 8 }}>{day.maxTemp}°</Text>
@@ -3338,8 +3339,8 @@ function WeatherMiniCard({ weather, currentPeriod }: { weather: WeatherData; cur
   const minT = weather.daily?.[0]?.minTemp ?? null;
   return (
     <View style={{ flex: 1, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.35)', backgroundColor: 'rgba(6,15,40,0.42)', overflow: 'hidden', padding: 12 }}>
-      <LinearGradient colors={['rgba(96,165,250,0.16)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+      <LinearGradient colors={['rgba(96,165,250,0.16)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject}  />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }}  />
       <Text style={{ fontSize: 6.5, fontWeight: '900', color: '#60a5faAA', letterSpacing: 1.6, marginBottom: 7 }}>🌤  WEATHER</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 }}>
         <Text style={{ fontSize: 24 }}>{weather.emoji}</Text>
@@ -3353,7 +3354,7 @@ function WeatherMiniCard({ weather, currentPeriod }: { weather: WeatherData; cur
         {maxT !== null && <Text style={{ fontSize: 9.5, color: '#f87171CC', fontWeight: '700' }}>↑{maxT}°</Text>}
         {minT !== null && <Text style={{ fontSize: 9.5, color: '#60a5faCC', fontWeight: '700' }}>↓{minT}°</Text>}
       </View>
-      <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 7 }} />
+      <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.10)', marginBottom: 7 }}  />
       <Text style={{ fontSize: 6, fontWeight: '900', color: '#f59e0bBB', letterSpacing: 1.4, marginBottom: 3 }}>⚡  NOTE</Text>
       {blurb ? (
         <Text style={{ fontSize: 9.5, color: '#FFFFFFCC', fontWeight: '700', lineHeight: 13.5 }} numberOfLines={2}>{blurb.tip}</Text>
@@ -3438,7 +3439,7 @@ function CosmicDetailSheet({
   return (
     <Modal visible animationType="none" transparent statusBarTranslucent onRequestClose={close}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,8,0.78)' }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1}  />
 
         <Animated.View style={{
           transform: [{ translateY }],
@@ -3453,10 +3454,10 @@ function CosmicDetailSheet({
             colors={[vaar.color + 'EE', '#60a5fa80', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ height: 2 }}
-          />
+           />
           {/* Handle bar */}
           <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
-            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
+            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }}  />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 52 }}>
@@ -3471,7 +3472,7 @@ function CosmicDetailSheet({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                   <Text style={{ fontSize: 14 }}>{vaar.emoji}</Text>
                   <Text style={{ fontSize: 11, color: vaar.color, fontWeight: '800' }}>{vaar.vedicName}  ·  {vaar.planet} Day</Text>
-                  {vm ? <><View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF30' }} /><Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600' }}>{vm.name}</Text></> : null}
+                  {vm ? <><View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF30' }}  /><Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600' }}>{vm.name}</Text>< /> : null}
                 </View>
               </View>
               <TouchableOpacity onPress={close} style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center', marginLeft: 12 }}>
@@ -3483,7 +3484,7 @@ function CosmicDetailSheet({
             <View style={{ backgroundColor: 'rgba(96,165,250,0.07)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(96,165,250,0.24)', padding: 14, marginBottom: 12 }}>
               <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#60a5fa', letterSpacing: 2, marginBottom: 12 }}>🌙  LUNAR PHASE  ·  TITHI</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-                <MoonSVG tithiNum={moon.tithiNum} size={52} />
+                <MoonSVG tithiNum={moon.tithiNum} size={52}  />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 }}>{moon.name}  ·  {moon.illumination}% lit</Text>
                   <Text style={{ fontSize: 12, fontWeight: '800', color: '#60a5faCC', marginBottom: 5 }}>{p.tithiName}  ·  {p.paksha} Paksha</Text>
@@ -3492,7 +3493,7 @@ function CosmicDetailSheet({
               </View>
               {/* Illumination progress bar */}
               <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
-                <View style={{ width: `${moon.illumination}%` as any, height: 3, backgroundColor: '#fbbf24', borderRadius: 2 }} />
+                <View style={{ width: `${moon.illumination}%` as any, height: 3, backgroundColor: '#fbbf24', borderRadius: 2 }}  />
               </View>
               {/* Next lunar event */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }}>
@@ -3523,7 +3524,7 @@ function CosmicDetailSheet({
                     {isDaytime && (
                       <View style={{ position: 'absolute', left: labelX - 14, alignItems: 'center', width: 28 }}>
                         <Text style={{ fontSize: 8, color: '#fde68a', fontWeight: '900' }}>Now</Text>
-                        <View style={{ width: 1.5, height: 6, backgroundColor: '#fde68a', opacity: 0.85, marginTop: 2 }} />
+                        <View style={{ width: 1.5, height: 6, backgroundColor: '#fde68a', opacity: 0.85, marginTop: 2 }}  />
                       </View>
                     )}
                   </View>
@@ -3532,47 +3533,47 @@ function CosmicDetailSheet({
                   <Svg width={arcW} height={arcH + 12}>
                     <Defs>
                       <SvgLinearGradient id="litArcGrad" x1="0" y1="0" x2="1" y2="0">
-                        <Stop offset="0" stopColor="#f97316" stopOpacity={0.9} />
-                        <Stop offset="0.5" stopColor="#fde68a" stopOpacity={1} />
-                        <Stop offset="1" stopColor="#f97316" stopOpacity={0.9} />
+                        <Stop offset="0" stopColor="#f97316" stopOpacity={0.9}  />
+                        <Stop offset="0.5" stopColor="#fde68a" stopOpacity={1}  />
+                        <Stop offset="1" stopColor="#f97316" stopOpacity={0.9}  />
                       </SvgLinearGradient>
                     </Defs>
 
                     {/* Horizon glow */}
-                    <SvgPath d={`M 0 ${cy} L ${arcW} ${cy}`} stroke="rgba(251,191,36,0.13)" strokeWidth={1.5} />
+                    <SvgPath d={`M 0 ${cy} L ${arcW} ${cy}`} stroke="rgba(251,191,36,0.13)" strokeWidth={1.5}  />
 
                     {/* Full unlit arc trail */}
                     <SvgPath
                       d={`M 6 ${cy} A ${rx} ${ry} 0 0 1 ${arcW - 6} ${cy}`}
                       stroke="rgba(255,255,255,0.08)" strokeWidth={2} fill="none"
-                    />
+                     />
 
                     {/* Lit arc: sunrise → current sun position */}
                     {isDaytime && t > 0.01 && (
                       <SvgPath
                         d={`M 6 ${cy} A ${rx} ${ry} 0 ${t > 0.5 ? 1 : 0} 1 ${sunX} ${sunY}`}
                         stroke="url(#litArcGrad)" strokeWidth={2.5} fill="none" strokeLinecap="round"
-                      />
+                       />
                     )}
 
                     {/* Sunrise anchor dot */}
-                    <SvgCircle cx={6} cy={cy} r={4} fill="#f97316" opacity={0.75} />
+                    <SvgCircle cx={6} cy={cy} r={4} fill="#f97316" opacity={0.75}  />
 
                     {/* Sunset anchor dot */}
-                    <SvgCircle cx={arcW - 6} cy={cy} r={4} fill="#fb923c" opacity={0.6} />
+                    <SvgCircle cx={arcW - 6} cy={cy} r={4} fill="#fb923c" opacity={0.6}  />
 
                     {/* Solar noon tick */}
-                    <SvgPath d={`M ${cx} ${cy - 10} L ${cx} ${cy}`} stroke="rgba(253,230,138,0.22)" strokeWidth={1.5} />
+                    <SvgPath d={`M ${cx} ${cy - 10} L ${cx} ${cy}`} stroke="rgba(253,230,138,0.22)" strokeWidth={1.5}  />
 
                     {/* Sun glow aura — outer */}
-                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={24} fill="#fbbf24" opacity={0.07} />}
+                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={24} fill="#fbbf24" opacity={0.07}  />}
                     {/* Sun glow aura — inner */}
-                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={17} fill="#fde68a" opacity={0.15} />}
+                    {isDaytime && <SvgCircle cx={sunX} cy={sunY} r={17} fill="#fde68a" opacity={0.15}  />}
 
                     {/* Sun core (daytime) OR faint moon hint (night) */}
                     {isDaytime
-                      ? <SvgCircle cx={sunX} cy={sunY} r={10} fill="#fde68a" opacity={0.97} />
-                      : <SvgCircle cx={cx} cy={cy + 8} r={7} fill="#94a3b8" opacity={0.28} />
+                      ? <SvgCircle cx={sunX} cy={sunY} r={10} fill="#fde68a" opacity={0.97}  />
+                      : <SvgCircle cx={cx} cy={cy + 8} r={7} fill="#94a3b8" opacity={0.28}  />
                     }
                   </Svg>
 
@@ -3594,31 +3595,31 @@ function CosmicDetailSheet({
                         colors={['#f97316', '#fde68a', '#f97316']}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                         style={{ width: `${Math.min(100, Math.round(t * 100))}%` as any, height: 4, borderRadius: 2 }}
-                      />
+                       />
                     </View>
                   </View>
 
                   {/* Sunrise / Zenith / Sunset row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }}>
                     <View style={{ alignItems: 'center', gap: 4 }}>
-                      <RisingSunSVG size={26} />
+                      <RisingSunSVG size={26}  />
                       <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunrise)}</Text>
                       <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>SUNRISE</Text>
                     </View>
-                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }} />
+                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }}  />
                     <View style={{ alignItems: 'center', gap: 4 }}>
-                      <NoonSunSVG size={26} />
+                      <NoonSunSVG size={26}  />
                       <Text style={{ fontSize: 13, fontWeight: '900', color: '#fbbf24CC' }}>{fmtSolar(solarTimes.solarNoon)}</Text>
                       <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>ZENITH</Text>
                     </View>
-                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }} />
+                    <View style={{ flex: 1, height: 1, backgroundColor: '#fbbf2420', marginHorizontal: 8 }}  />
                     <View style={{ alignItems: 'center', gap: 4 }}>
-                      <SettingSunSVG size={26} />
+                      <SettingSunSVG size={26}  />
                       <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunset)}</Text>
                       <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>SUNSET</Text>
                     </View>
                   </View>
-                </>
+                < />
               ) : (
                 <Text style={{ fontSize: 11, color: '#FFFFFF30', fontWeight: '600', textAlign: 'center', paddingVertical: 10 }}>🛰  Enable GPS for solar ephemeris</Text>
               )}
@@ -3702,12 +3703,12 @@ function CosmicOrbitStrip({
         style={COS.strip}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSheetOpen(true); }}
         activeOpacity={0.80}>
-        <LinearGradient colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject} />
-        <LinearGradient colors={[vaar.color + '18', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+        <LinearGradient colors={['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.04)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFillObject}  />
+        <LinearGradient colors={[vaar.color + '18', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject}  />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }}  />
 
         {/* Moon */}
-        <MoonSVG tithiNum={moon.tithiNum} size={18} />
+        <MoonSVG tithiNum={moon.tithiNum} size={18}  />
 
         {/* Tithi */}
         <Text style={COS.stripTithi} numberOfLines={1}>
@@ -3716,14 +3717,14 @@ function CosmicOrbitStrip({
         </Text>
 
         {/* Separator */}
-        <View style={COS.stripSep} />
+        <View style={COS.stripSep}  />
 
         {/* Next event */}
         <Text style={{ fontSize: 10 }}>{nextEvent.icon}</Text>
         <Text style={[COS.stripEvent, { color: nextEvent.color }]}>{nextEvent.label}</Text>
 
         {/* Separator */}
-        <View style={COS.stripSep} />
+        <View style={COS.stripSep}  />
 
         {/* Vaar */}
         <Text style={{ fontSize: 12 }}>{vaar.emoji}</Text>
@@ -3738,9 +3739,9 @@ function CosmicOrbitStrip({
           solarTimes={solarTimes}
           onCosmicPress={onCosmicPress}
           onClose={() => setSheetOpen(false)}
-        />
+         />
       )}
-    </>
+    < />
   );
 }
 
@@ -3813,14 +3814,14 @@ function PhaseDetailSheet({
   return (
     <Modal visible animationType="none" transparent statusBarTranslucent onRequestClose={close}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' }}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1} />
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={close} activeOpacity={1}  />
 
         <Animated.View style={{ transform: [{ translateY }], backgroundColor: '#06060F', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '91%', overflow: 'hidden' }}>
           {/* Colored top accent line */}
-          <View style={{ height: 2.5, backgroundColor: period.color + '90' }} />
+          <View style={{ height: 2.5, backgroundColor: period.color + '90' }}  />
           {/* Handle */}
           <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 2 }}>
-            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }} />
+            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18' }}  />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 52 }}>
@@ -3845,15 +3846,15 @@ function PhaseDetailSheet({
             {/* ── Mini ring + progress ── */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: period.color + '28', padding: 16, marginBottom: 22 }}>
               <Svg width={52} height={52} viewBox="0 0 52 52">
-                <SvgCircle cx={26} cy={26} r={MINI_R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5} />
+                <SvgCircle cx={26} cy={26} r={MINI_R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5}  />
                 <SvgCircle cx={26} cy={26} r={MINI_R} fill="none" stroke={period.color} strokeWidth={5} strokeLinecap="round"
                   strokeDasharray={String(MINI_C)} strokeDashoffset={String(MINI_C * (1 - prog))}
-                  transform="rotate(-90, 26, 26)" />
+                  transform="rotate(-90, 26, 26)"  />
               </Svg>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFCC' }}>{Math.round(prog * 100)}% through this phase</Text>
                 <View style={{ height: 5, backgroundColor: '#FFFFFF0C', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
-                  <View style={{ height: 5, width: `${Math.round(prog * 100)}%` as any, backgroundColor: period.color, borderRadius: 3 }} />
+                  <View style={{ height: 5, width: `${Math.round(prog * 100)}%` as any, backgroundColor: period.color, borderRadius: 3 }}  />
                 </View>
                 <Text style={{ fontSize: 9, color: '#FFFFFF35', marginTop: 5, fontWeight: '600' }}>{period.startLabel}  →  {period.endLabel}</Text>
               </View>
@@ -4117,7 +4118,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
               borderRadius: CIRCLE_R * 0.81,
               backgroundColor: cc + '27',
               transform: [{ scale: breathScale }],
-            }} />
+            }}  />
             {/* Outer glow fill */}
             <Animated.View style={{
               position: 'absolute',
@@ -4125,7 +4126,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
               borderRadius: CIRCLE_R * 0.66,
               backgroundColor: cc + '32',
               transform: [{ scale: breathScale }],
-            }} />
+            }}  />
             {/* Mid border ring */}
             <Animated.View style={{
               position: 'absolute',
@@ -4133,7 +4134,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
               borderRadius: CIRCLE_R * 0.55,
               borderWidth: 1, borderColor: cc + '50',
               transform: [{ scale: breathScale }],
-            }} />
+            }}  />
             {/* Core glowing circle */}
             <Animated.View style={{
               width: CIRCLE_R, height: CIRCLE_R,
@@ -4232,7 +4233,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
                   backgroundColor: playingZen.color + '22',
                   borderWidth: 1, borderColor: playingZen.color + '50',
                 }}>
-                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isPaused ? 'rgba(255,255,255,0.35)' : playingZen.color }} />
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isPaused ? 'rgba(255,255,255,0.35)' : playingZen.color }}  />
                 <Text style={{ fontSize: 8, color: playingZen.color, fontWeight: '800' }} numberOfLines={1}>
                   {isPaused ? 'Paused' : playingZen.label}
                 </Text>
@@ -4263,7 +4264,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
                   <View style={{
                     width: 7, height: 7, borderRadius: 4,
                     backgroundColor: active ? sound.color : 'rgba(255,255,255,0.18)',
-                  }} />
+                  }}  />
                   <Text style={{
                     fontSize: 11,
                     color: active ? sound.color : 'rgba(255,255,255,0.52)',
@@ -4275,7 +4276,7 @@ function ZenModeOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
                     <View style={{
                       width: 4, height: 4, borderRadius: 2,
                       backgroundColor: sound.color, opacity: isPaused ? 0.3 : 0.9,
-                    }} />
+                    }}  />
                   )}
                 </TouchableOpacity>
               );
@@ -4383,7 +4384,7 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
       {/* Section label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: NC }} />
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: NC }}  />
           <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFFBB', letterSpacing: 1.8, textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>
             {sectionLabel}
           </Text>
@@ -4399,7 +4400,7 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
           style={{ padding: 22 }}>
 
           {/* Glass shimmer */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '55' }} />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '55' }}  />
 
           {/* Period identity row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
@@ -4439,14 +4440,14 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
           </TouchableOpacity>
 
           {/* Bottom shimmer */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '30' }} />
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: NC + '30' }}  />
         </LinearGradient>
       </View>
     </View>
 
     {/* Full-screen calm overlay */}
-    <ZenModeOverlay visible={zenActive} onClose={() => setZenActive(false)} />
-    </>
+    <ZenModeOverlay visible={zenActive} onClose={() => setZenActive(false)}  />
+    < />
   );
 }
 
@@ -4752,7 +4753,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
         {/* ── Section label — Body Rhythm · Phase Name ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }} />
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' }}  />
             <View>
               <Text style={{ fontSize: 7.5, fontWeight: '900', color: '#FFFFFF50', letterSpacing: 1.6, fontFamily: 'Nunito_900Black' }}>BODY RHYTHM  ·  ACTIVE NOW</Text>
               <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFFEE', letterSpacing: 0.2, lineHeight: 18, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{period.englishLabel}</Text>
@@ -4777,44 +4778,44 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
             <View style={{ width: RING_SIZE, height: RING_SIZE }}>
 
               {/* === 5-layer pulsing aura (centered via symmetric negative top/left) === */}
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 72, height: RING_SIZE + 72, borderRadius: (RING_SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 52, height: RING_SIZE + 52, borderRadius: (RING_SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 34, height: RING_SIZE + 34, borderRadius: (RING_SIZE + 34) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulseAnim }], top: -17, left: -17 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 18, height: RING_SIZE + 18, borderRadius: (RING_SIZE + 18) / 2, backgroundColor: 'rgba(96,165,250,0.15)', transform: [{ scale: pulseAnim }], top: -9, left: -9 }} />
-              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 6, height: RING_SIZE + 6, borderRadius: (RING_SIZE + 6) / 2, backgroundColor: 'rgba(96,165,250,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }} />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 72, height: RING_SIZE + 72, borderRadius: (RING_SIZE + 72) / 2, backgroundColor: 'rgba(96,165,250,0.025)', transform: [{ scale: pulseAnim }], top: -36, left: -36 }}  />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 52, height: RING_SIZE + 52, borderRadius: (RING_SIZE + 52) / 2, backgroundColor: 'rgba(96,165,250,0.05)', transform: [{ scale: pulseAnim }], top: -26, left: -26 }}  />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 34, height: RING_SIZE + 34, borderRadius: (RING_SIZE + 34) / 2, backgroundColor: 'rgba(96,165,250,0.09)', transform: [{ scale: pulseAnim }], top: -17, left: -17 }}  />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 18, height: RING_SIZE + 18, borderRadius: (RING_SIZE + 18) / 2, backgroundColor: 'rgba(96,165,250,0.15)', transform: [{ scale: pulseAnim }], top: -9, left: -9 }}  />
+              <Animated.View style={{ position: 'absolute', width: RING_SIZE + 6, height: RING_SIZE + 6, borderRadius: (RING_SIZE + 6) / 2, backgroundColor: 'rgba(96,165,250,0.24)', transform: [{ scale: pulseAnim }], top: -3, left: -3 }}  />
 
               {/* === SVG arc — 3-layer glassy blue glow stroke === */}
               <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                 {/* Track */}
-                <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={RING_STROKE} />
+                <SvgCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} fill="none" stroke="rgba(96,165,250,0.13)" strokeWidth={RING_STROKE}  />
                 {/* Wide outer glow stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
                   fill="none" stroke="#93c5fd" strokeWidth={RING_STROKE + 16} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.14}
-                />
+                 />
                 {/* Mid glow stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
                   fill="none" stroke="#7dd3fc" strokeWidth={RING_STROKE + 8} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.26}
-                />
+                 />
                 {/* Main crisp stroke */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
                   fill="none" stroke="#60a5fa" strokeWidth={RING_STROKE} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.96}
-                />
+                 />
                 {/* Inner highlight sliver */}
                 <SvgCircle
                   cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R}
                   fill="none" stroke="#bfdbfe" strokeWidth={3} strokeLinecap="butt"
                   strokeDasharray={String(C)} strokeDashoffset={String(C * (1 - prog))}
                   transform={`rotate(-90, ${RING_SIZE / 2}, ${RING_SIZE / 2})`} opacity={0.40}
-                />
+                 />
               </Svg>
 
               {/* === Center content — two-line safe, clearly legible === */}
@@ -4823,7 +4824,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                 <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFF0', textAlign: 'center', lineHeight: 13.5, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.95)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }} numberOfLines={2}>{period.englishLabel}</Text>
                 <Text style={{ fontSize: 28, fontWeight: '900', color: '#60a5fa', letterSpacing: -0.5, marginTop: 3, fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 }}>{remStr}</Text>
                 <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF65', letterSpacing: 0.8 }}>remaining</Text>
-                <View style={{ height: 1, width: 54, backgroundColor: 'rgba(96,165,250,0.40)', marginVertical: 3 }} />
+                <View style={{ height: 1, width: 54, backgroundColor: 'rgba(96,165,250,0.40)', marginVertical: 3 }}  />
                 <Text style={{ fontSize: 7.5, fontWeight: '800', color: '#93c5fdEE', textAlign: 'center', lineHeight: 11.5 }} numberOfLines={2}>{period.sciEmoji}  {period.sciTitle}</Text>
               </View>
             </View>
@@ -4847,14 +4848,14 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 18, zIndex: 2 }}
               pointerEvents="none"
-            />
+             />
             {/* Right edge fade */}
             <LinearGradient
               colors={['transparent', 'rgba(6,6,16,0.55)']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 18, zIndex: 2 }}
               pointerEvents="none"
-            />
+             />
             <ScrollView
               ref={reelScrollRef}
               horizontal
@@ -4883,8 +4884,8 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                     colors={[item.color + '34', item.color + '12', 'rgba(3,3,14,0.82)']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFillObject}
-                  />
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+                   />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.30)' }}  />
                   <View style={{ flex: 1, paddingHorizontal: 10, paddingVertical: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, borderWidth: 1, borderColor: item.color + '65', backgroundColor: item.color + '2A', flexShrink: 1, marginRight: 4 }}>
@@ -4896,7 +4897,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                       <Text style={{ fontSize: 22, lineHeight: 26 }}>{item.emoji}</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#FFFFFFEE', lineHeight: 13 }} numberOfLines={1}>{item.title}</Text>
-                        <View style={{ height: 1.5, width: 26, backgroundColor: item.color + '60', marginVertical: 4 }} />
+                        <View style={{ height: 1.5, width: 26, backgroundColor: item.color + '60', marginVertical: 4 }}  />
                         <Text style={{ fontSize: 7, color: '#FFFFFFCC', lineHeight: 10.5 }} numberOfLines={2}>{item.tip}</Text>
                       </View>
                     </View>
@@ -4913,12 +4914,12 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
           activeOpacity={0.88}
           style={{ borderRadius: 18, borderWidth: 1, borderColor: '#60a5fa50', marginTop: 14, marginBottom: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.04)' }}>
           <LinearGradient colors={['#60a5fa26', '#60a5fa0A', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ padding: 14 }}>
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.28)' }}  />
 
             {/* ── Header: label + toggle ── */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#60a5fa' }} />
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#60a5fa' }}  />
                 <Text style={{ fontSize: 7, fontWeight: '900', color: '#60a5faBB', letterSpacing: 1.5 }}>BODY SCIENCE  ·  RIGHT NOW</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -4993,11 +4994,11 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                 })()}
                 <Text style={{ fontSize: 11, color: '#FFFFFF80', lineHeight: 17, marginBottom: 10 }} numberOfLines={4}>{period.sciDesc}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }} />
+                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }}  />
                   <Text style={{ fontSize: 7, color: '#60a5fa90', fontWeight: '800', letterSpacing: 1 }}>TAP TO COLLAPSE  ↑</Text>
-                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }} />
+                  <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }}  />
                 </View>
-              </>
+              < />
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -5005,9 +5006,9 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
 
         {/* ── Reel hint ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 2, gap: 8 }}>
-          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }} />
+          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }}  />
           <Text style={{ fontSize: 7.5, color: '#FFFFFF22', fontWeight: '700', letterSpacing: 1.2 }}>←  AUTO-SCROLLING  ·  SWIPE TO EXPLORE  ·  TAP TO OPEN</Text>
-          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }} />
+          <View style={{ height: 1, flex: 1, backgroundColor: '#FFFFFF08' }}  />
         </View>
       </View>
 
@@ -5017,10 +5018,10 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
           cards={allStoryCards}
           initialIndex={storyIdx}
           onClose={() => { setStoryIdx(null); }}
-        />
+         />
       )}
 
-    </>
+    < />
   );
 }
 
@@ -5194,9 +5195,9 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
         <LinearGradient
           colors={card.isDoCard || card.isDontCard || card.isBodyRhythm ? [`${period.color}14`, 'transparent'] : ['rgba(255,255,255,0.06)', 'transparent']}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.6 }}
-          style={StyleSheet.absoluteFillObject} />
+          style={StyleSheet.absoluteFillObject}  />
         {/* Top accent line — period color for both DO and DON'T */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: card.isDoCard || card.isDontCard || card.isBodyRhythm ? `${period.color}80` : 'rgba(255,255,255,0.18)', borderTopLeftRadius: 22, borderTopRightRadius: 22 }} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: card.isDoCard || card.isDontCard || card.isBodyRhythm ? `${period.color}80` : 'rgba(255,255,255,0.18)', borderTopLeftRadius: 22, borderTopRightRadius: 22 }}  />
         <View style={{ paddingHorizontal: 16, paddingTop: 13, paddingBottom: 14, gap: 0 }}>
 
           {/* ── Weather snapshot card — same fixed layout as standard cards ── */}
@@ -5213,21 +5214,21 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                 {cards.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: 4, paddingTop: 3 }}>
                     {cards.map((_, i) => (
-                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? '#00D4B8CC' : 'rgba(255,255,255,0.18)' }} />
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? '#00D4B8CC' : 'rgba(255,255,255,0.18)' }}  />
                     ))}
                   </View>
                 )}
               </View>
-              <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }} />
+              <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }}  />
               <View style={{ gap: 5, marginTop: 6 }}>
                 {card.tips.map((tip, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}>
-                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#00D4B8AA', marginTop: 4.5 }} />
+                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#00D4B8AA', marginTop: 4.5 }}  />
                     <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.88)', lineHeight: 16 }}>{tip}</Text>
                   </View>
                 ))}
               </View>
-            </>
+            < />
           )}
 
           {/* ── Single-item DO card — full-width, iOS clean ── */}
@@ -5236,13 +5237,13 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 1: Period label + dots */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }} />
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }}  />
                   <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}CC`, letterSpacing: 1.5 }}>{periodLabel}</Text>
                 </View>
                 {cards.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     {cards.map((_, i) => (
-                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }} />
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }}  />
                     ))}
                   </View>
                 )}
@@ -5250,7 +5251,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 2: Period title */}
               <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', marginBottom: 10, letterSpacing: -0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{periodTitle}</Text>
               {/* Divider */}
-              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }} />
+              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }}  />
               {/* Row 3: Section label */}
               <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}AA`, letterSpacing: 1.6, marginBottom: 8 }}>✓ IDEAL FOR THIS PHASE</Text>
               {/* Row 4: Activity item */}
@@ -5258,7 +5259,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                 <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
               </View>
-            </>
+            < />
           )}
 
           {/* ── Single-item DON'T card — same layout as DO card, period colour ── */}
@@ -5267,13 +5268,13 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 1: Period label + dots */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }} />
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }}  />
                   <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}CC`, letterSpacing: 1.5 }}>{periodLabel}</Text>
                 </View>
                 {cards.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     {cards.map((_, i) => (
-                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }} />
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }}  />
                     ))}
                   </View>
                 )}
@@ -5281,7 +5282,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 2: Period title */}
               <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', marginBottom: 10, letterSpacing: -0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{periodTitle}</Text>
               {/* Divider */}
-              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }} />
+              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 10 }}  />
               {/* Row 3: Section label — only difference from DO card */}
               <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}AA`, letterSpacing: 1.6, marginBottom: 8 }}>⛔ DO NOT DO</Text>
               {/* Row 4: Avoidance item */}
@@ -5289,7 +5290,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                 <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
               </View>
-            </>
+            < />
           )}
 
           {/* ── Body Rhythm Signal card — period-labeled, balanced layout ── */}
@@ -5298,13 +5299,13 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 1: Period label + dots */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }} />
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: period.color }}  />
                   <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}CC`, letterSpacing: 1.5 }}>{periodLabel}</Text>
                 </View>
                 {cards.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     {cards.map((_, i) => (
-                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }} />
+                      <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: i === idx % cards.length ? `${period.color}CC` : 'rgba(255,255,255,0.18)' }}  />
                     ))}
                   </View>
                 )}
@@ -5312,7 +5313,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               {/* Row 2: Period title */}
               <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFFFFFEE', marginBottom: 8, letterSpacing: -0.2, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{periodTitle}</Text>
               {/* Divider */}
-              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 8 }} />
+              <View style={{ height: 0.6, backgroundColor: `${period.color}30`, marginBottom: 8 }}  />
               {/* Row 3: Signal section label */}
               <Text style={{ fontSize: 7.5, fontWeight: '900', color: `${period.color}AA`, letterSpacing: 1.6, marginBottom: 6 }}>⏱  BODY RHYTHM SIGNAL</Text>
               {/* Row 4: Emoji + signal title + optional tip */}
@@ -5325,7 +5326,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                   )}
                 </View>
               </View>
-            </>
+            < />
           )}
 
           {/* ── Standard card (weather / brahma / body rhythm signal) ── */}
@@ -5337,11 +5338,11 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 3, gap: 10 }}>
                     {card.label ? (
                       <Text style={{ flex: 1, fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.48)', letterSpacing: 1.4, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{card.label}</Text>
-                    ) : <View style={{ flex: 1 }} />}
+                    ) : <View style={{ flex: 1 }}  />}
                     {cards.length > 1 && (
                       <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '50%' }}>
                         {cards.map((_, i) => (
-                          <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.20)' }} />
+                          <View key={i} style={{ width: i === idx % cards.length ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === idx % cards.length ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.20)' }}  />
                         ))}
                       </View>
                     )}
@@ -5351,18 +5352,18 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
               </View>
               {card.tips && card.tips.length > 0 && (
                 <>
-                  <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }} />
+                  <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.13)', marginTop: 6 }}  />
                   <View style={{ gap: 5, marginTop: 6 }}>
                     {card.tips.map((tip, i) => (
                       <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}>
-                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.38)', marginTop: 4.5 }} />
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.38)', marginTop: 4.5 }}  />
                         <Text style={{ flex: 1, fontSize: 11.5, color: 'rgba(255,255,255,0.88)', lineHeight: 16, textShadowColor: 'rgba(0,0,0,0.90)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 }}>{tip}</Text>
                       </View>
                     ))}
                   </View>
-                </>
+                < />
               )}
-            </>
+            < />
           )}
 
         </View>
@@ -5478,8 +5479,8 @@ function SleepSoundsButton({
       <Animated.View style={{ transform: [{ scale: calmPulse }, { scale: btnScale }], justifyContent: 'center', alignItems: 'center' }}>
         
         {/* Radiating Sound Waves */}
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }} />
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }} />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave1Opac, transform: [{ scaleX: wave1Scale }, { scaleY: wave1Scale }] }}  />
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 99, borderWidth: 1.5, borderColor: '#80FFFF', opacity: wave2Opac, transform: [{ scaleX: wave2Scale }, { scaleY: wave2Scale }] }}  />
 
         <View style={{
           borderRadius: 99, overflow: 'hidden',
@@ -5487,29 +5488,29 @@ function SleepSoundsButton({
           shadowColor: '#80FFFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12,
           elevation: 8,
         }}>
-          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject}  />
           
           <LinearGradient
             colors={['rgba(128,255,255,0.25)', 'rgba(0,212,184,0.05)', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
-          />
+           />
           {/* Soft breathing glow layer */}
           <Animated.View pointerEvents="none" style={{
             ...StyleSheet.absoluteFillObject,
             backgroundColor: 'rgba(128,255,255,0.2)',
             opacity: glowOpacity,
-          }} />
+          }}  />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 10 }}>
             {/* Soundwave icon */}
             <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8, zIndex: 1 }}>
-              <SvgPath d="M4 12v0.01" stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
-              <SvgPath d="M7 10v4"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
-              <SvgPath d="M10 7v10"  stroke="#80FFFF" strokeWidth="2.2" strokeLinecap="round" />
-              <SvgPath d="M13 9v6"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
-              <SvgPath d="M16 11v2"  stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
-              <SvgPath d="M19 12v0.01" stroke="#80FFFF" strokeOpacity="0.6" strokeWidth="2" strokeLinecap="round" />
+              <SvgPath d="M4 12v0.01" stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round"  />
+              <SvgPath d="M7 10v4"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round"  />
+              <SvgPath d="M10 7v10"  stroke="#80FFFF" strokeWidth="2.2" strokeLinecap="round"  />
+              <SvgPath d="M13 9v6"   stroke="#80FFFF" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round"  />
+              <SvgPath d="M16 11v2"  stroke="#80FFFF" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round"  />
+              <SvgPath d="M19 12v0.01" stroke="#80FFFF" strokeOpacity="0.6" strokeWidth="2" strokeLinecap="round"  />
             </Svg>
 
             <Text style={{ fontSize: 11, fontWeight: '800', color: '#80FFFF', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', textShadowColor: '#80FFFF', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4 }}>
@@ -5528,21 +5529,21 @@ function SleepSoundsButton({
 function SunriseSunsetStrip({ solarTimes }: { solarTimes: SolarTimes }) {
   return (
     <View style={{ marginHorizontal: 24, marginTop: 6, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(251,146,60,0.30)', backgroundColor: 'rgba(6,15,40,0.40)', overflow: 'hidden' }}>
-      <LinearGradient colors={['rgba(251,146,60,0.12)', 'rgba(96,165,250,0.07)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(251,146,60,0.50)' }} />
+      <LinearGradient colors={['rgba(251,146,60,0.12)', 'rgba(96,165,250,0.07)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject}  />
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(251,146,60,0.50)' }}  />
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 14 }}>
         <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
           <Text style={{ fontSize: 15 }}>🌅</Text>
           <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunrise)}</Text>
           <Text style={{ fontSize: 6.5, fontWeight: '700', color: 'rgba(251,146,60,0.85)', letterSpacing: 1 }}>SUNRISE</Text>
         </View>
-        <View style={{ width: 0.5, height: 36, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+        <View style={{ width: 0.5, height: 36, backgroundColor: 'rgba(255,255,255,0.12)' }}  />
         <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
           <Text style={{ fontSize: 15 }}>☀️</Text>
           <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#fbbf24CC' }}>{fmtSolar(solarTimes.solarNoon)}</Text>
           <Text style={{ fontSize: 6.5, fontWeight: '700', color: 'rgba(251,191,36,0.75)', letterSpacing: 1 }}>SOLAR NOON</Text>
         </View>
-        <View style={{ width: 0.5, height: 36, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+        <View style={{ width: 0.5, height: 36, backgroundColor: 'rgba(255,255,255,0.12)' }}  />
         <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
           <Text style={{ fontSize: 15 }}>🌇</Text>
           <Text style={{ fontSize: 12.5, fontWeight: '900', color: '#FFFFFFEE' }}>{fmtSolar(solarTimes.sunset)}</Text>
@@ -6247,11 +6248,11 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               width: HERO_RS * 0.92, height: HERO_RS * 0.92,
             }}>
               <View style={{ flex: 1, borderRadius: HERO_RS * 0.46, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-                <CalmingAura />
+                <CalmingAura  />
                 {/* Clean, dark frosty tint over the aura for depth */}
-                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,20,0.1)' }} />
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,20,0.1)' }}  />
                 {/* Inner delicate border */}
-                <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: HERO_RS * 0.46, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }} />
+                <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: HERO_RS * 0.46, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' }}  />
               </View>
             </View>
           </View>
@@ -6263,7 +6264,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             opacity: phaseRipple.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.25, 0] }),
             transform: [{ scale: phaseRipple.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.3] }) }],
           }}>
-            <Animated.View style={{ flex: 1, borderRadius: HERO_RS / 2, backgroundColor: accentHex }} />
+            <Animated.View style={{ flex: 1, borderRadius: HERO_RS / 2, backgroundColor: accentHex }}  />
           </Animated.View>
 
           {/* ── Sacred Geometric Yantra Animation moved to background watermark ── */}
@@ -6280,7 +6281,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
             <>
               {/* Premium Glow Behind Text */}
               <Animated.View style={{ position: 'absolute', width: HERO_RS * 0.6, height: HERO_RS * 0.6, opacity: coolingGlow }}>
-                <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.3, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                <Animated.View style={{ flex: 1, borderRadius: HERO_RS * 0.3, backgroundColor: 'rgba(255,255,255,0.1)' }}  />
               </Animated.View>
               
               <Text style={{ fontSize: compact ? 7 : 8, fontWeight: '800', color: '#FFFFFFEE', letterSpacing: 3, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' }}>
@@ -6319,17 +6320,17 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 alignItems: 'center',
                 gap: 8
               }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF', shadowColor: '#6A1E2F', shadowOpacity: 1, shadowRadius: 4 }} />
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF', shadowColor: '#6A1E2F', shadowOpacity: 1, shadowRadius: 4 }}  />
                 <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF', letterSpacing: 2 }}>MEDITATE</Text>
               </Animated.View>
-            </>
+            < />
           ) : period === null || !heroContent ? (
             // Calibrating
             <>
               <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.50)', letterSpacing: 1.8, textAlign: 'center', marginBottom: 6 }}>BODY RHYTHM</Text>
               <Text style={{ fontSize: compact ? 16 : 20, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>Calibrating</Text>
               <Text style={{ fontSize: compact ? 9 : 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.65)', textAlign: 'center', marginTop: 8, lineHeight: 15 }}>Computing your circadian phase…</Text>
-            </>
+            < />
           ) : (
             <>
               {/* ── Phase name — clean, large, meditative ── */}
@@ -6355,7 +6356,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                     width: 5, height: 5,
                     opacity: pulse.interpolate({ inputRange: [1, 1.06], outputRange: [0.6, 1] }),
                   }}>
-                    <Animated.View style={{ flex: 1, borderRadius: 2.5, backgroundColor: '#FFFFFF' }} />
+                    <Animated.View style={{ flex: 1, borderRadius: 2.5, backgroundColor: '#FFFFFF' }}  />
                   </Animated.View>
                   <Animated.Text style={{
                     fontSize: compact ? 9 : 11,
@@ -6399,7 +6400,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                   backgroundColor: 'rgba(255,255,255,0.4)',
                   opacity: 0.55,
                   marginBottom: compact ? 10 : 14,
-                }} />
+                }}  />
 
                 {/* Time remaining */}
                 <Text style={{
@@ -6415,7 +6416,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
 
 
               </Animated.View>
-            </>
+            < />
           )}
           </Animated.View>
 
@@ -6434,7 +6435,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
               onPress={onPress}
               activeOpacity={0.8}
               style={{ flex: 1 }}
-            />
+             />
           </View>
 
           </Animated.View>
@@ -6508,8 +6509,8 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
         <LinearGradient
           colors={[accentColor + '20', accentColor + '08', 'rgba(8,8,16,0.95)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1.2 }}
-          style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: accentColor + '70' }} />
+          style={StyleSheet.absoluteFillObject}  />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: accentColor + '70' }}  />
         <View style={{ padding: 14 }}>
 
           {/* Badge row */}
@@ -6528,7 +6529,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                   {isBrahma ? 'Sacred Pre-Dawn\nWindow' : period.englishLabel}
                 </Text>
               </View>
-              <View style={{ height: 0.5, backgroundColor: accentColor + '40', marginBottom: 8 }} />
+              <View style={{ height: 0.5, backgroundColor: accentColor + '40', marginBottom: 8 }}  />
               <Text style={{ fontSize: 6.5, fontWeight: '900', color: accentColor + 'AA', letterSpacing: 1.6, marginBottom: 3 }}>◉  PHASE SCIENCE</Text>
               <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFFDD', lineHeight: 15, marginBottom: 3 }}>{period.sciEmoji}  {period.sciTitle}</Text>
               <Text style={{ fontSize: 9.5, color: '#FFFFFFBB', lineHeight: 13.5 }} numberOfLines={3}>{period.sciDesc}</Text>
@@ -6540,16 +6541,16 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
             {/* Right: Circular SVG Ring */}
             <View style={{ width: RING_S, height: RING_S }}>
               <Svg width={RING_S} height={RING_S} viewBox={`0 0 ${RING_S} ${RING_S}`}>
-                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor + '18'} strokeWidth={RING_STR} />
+                <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor + '18'} strokeWidth={RING_STR}  />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR + 5}
                   strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
-                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.18} />
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.18}  />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke={accentColor} strokeWidth={RING_STR}
                   strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
-                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.95} />
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.95}  />
                 <SvgCircle cx={RING_S/2} cy={RING_S/2} r={R_} fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth={1}
                   strokeLinecap="butt" strokeDasharray={String(C_)} strokeDashoffset={String(C_ * (1 - prog))}
-                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.35} />
+                  transform={`rotate(-90, ${RING_S/2}, ${RING_S/2})`} opacity={0.35}  />
               </Svg>
               <View style={{ position: 'absolute', top: 0, left: 0, width: RING_S, height: RING_S, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 15.5, fontWeight: '900', color: accentColor, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,14,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>{remStr}</Text>
@@ -6573,16 +6574,16 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
       {/* ── DO NOW: aligned activities ── */}
       <View style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: accentColor }} />
+          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: accentColor }}  />
           <Text style={{ fontSize: 6.5, fontWeight: '900', color: accentColor + 'CC', letterSpacing: 1.8 }}>✓  ALIGNED WITH YOUR BODY RHYTHM</Text>
-          <View style={{ flex: 1, height: 0.5, backgroundColor: accentColor + '35', marginLeft: 2 }} />
+          <View style={{ flex: 1, height: 0.5, backgroundColor: accentColor + '35', marginLeft: 2 }}  />
         </View>
         <View style={{ gap: 6 }}>
           {activities.slice(0, 4).map((a, i) => (
             <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: accentColor + '28', backgroundColor: accentColor + '0D' }}>
               <Text style={{ fontSize: 14 }}>{getActivityEmoji(a)}</Text>
               <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.88)', fontWeight: '600', flex: 1, lineHeight: 15 }}>{a}</Text>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor + '55' }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor + '55' }}  />
             </View>
           ))}
         </View>
@@ -6593,8 +6594,8 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
         <LinearGradient
           colors={signalIdx === 0 ? [accentColor + '18', 'transparent'] : ['rgba(103,232,249,0.12)', 'transparent']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject} />
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.20)' }} />
+          style={StyleSheet.absoluteFillObject}  />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.20)' }}  />
         <View style={{ padding: 13 }}>
           {signalIdx === 0 ? (
             <>
@@ -6608,7 +6609,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                   <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }} numberOfLines={2}>{envSugg.desc}</Text>
                 </View>
               </View>
-            </>
+            < />
           ) : (
             <>
               <Text style={{ fontSize: 6, fontWeight: '900', color: 'rgba(103,232,249,0.8)', letterSpacing: 1.6, marginBottom: 6 }}>🌤  WEATHER SIGNAL</Text>
@@ -6622,20 +6623,20 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                     <>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 14, marginTop: 3, fontWeight: '600' }} numberOfLines={2}>{weatherBlurb.title}</Text>
                       <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 1 }} numberOfLines={2}>{weatherBlurb.tip}</Text>
-                    </>
+                    < />
                   ) : (
                     <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }}>Weather signal unavailable</Text>
                   )}
                 </View>
               </View>
-            </>
+            < />
           )}
         </View>
         {/* Dot indicators */}
         {signalCount > 1 && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, paddingBottom: 9 }}>
             {[0, 1].map(i => (
-              <View key={i} style={{ width: signalIdx === i ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: signalIdx === i ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.22)' }} />
+              <View key={i} style={{ width: signalIdx === i ? 14 : 5, height: 4, borderRadius: 2, backgroundColor: signalIdx === i ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.22)' }}  />
             ))}
           </View>
         )}
@@ -6663,7 +6664,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
             <LinearGradient
               colors={[naadColor + '20', naadColor + '06', 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject} />
+              style={StyleSheet.absoluteFillObject}  />
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 13, gap: 12 }}>
               <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: naadColor + '22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Text style={{ fontSize: 22 }}>〰️</Text>
@@ -6699,12 +6700,12 @@ const CosmicAccordion = ({ title, value, icon, expanded, onPress, startT, endT }
             <Text style={{ fontFamily: 'Georgia', fontSize: 16, color: '#FFF' }}>{value}</Text>
           </View>
         </View>
-        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color="rgba(212,175,55,0.8)" />
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color="rgba(212,175,55,0.8)"  />
       </TouchableOpacity>
       
       {expanded && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }} />
+          <View style={{ height: 1, backgroundColor: 'rgba(212,175,55,0.15)', marginBottom: 12 }}  />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View>
               <Text style={{ fontSize: 9, color: 'rgba(212,175,55,0.7)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>START TIME</Text>
@@ -6792,7 +6793,7 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
             fill="none"
             opacity={activeId === ph.id || !highlightArc ? 1 : 0.25}
             onPress={() => onSegmentPress(ph.id)}
-          />
+           />
         ))}
 
         {/* ── Dynamic Highlight Arc (for Muhurtas/Kaals) ── */}
@@ -6801,21 +6802,21 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
             d={praharArc(highlightArc.start, highlightArc.end, R_OUTER, 20, 0)}
             stroke={sel?.color || '#0369A1'}
             strokeWidth={18} strokeLinecap="round" fill="none"
-          />
+           />
         )}
 
         {/* Current-time dot on outer ring */}
-        <SvgCircle cx={toXY(exactHour, R_OUTER).x} cy={toXY(exactHour, R_OUTER).y} r={6} fill="#FFFFFF" stroke={highlightArc ? sel?.color || '#0EA5E9' : '#0EA5E9'} strokeWidth={2} />
+        <SvgCircle cx={toXY(exactHour, R_OUTER).x} cy={toXY(exactHour, R_OUTER).y} r={6} fill="#FFFFFF" stroke={highlightArc ? sel?.color || '#0EA5E9' : '#0EA5E9'} strokeWidth={2}  />
 
         {/* ── Clock face background ── */}
-        <SvgCircle cx={CX} cy={CY} r={R_FACE} fill="#FAFCFF" stroke="#BFDBFE" strokeWidth={1.5} />
+        <SvgCircle cx={CX} cy={CY} r={R_FACE} fill="#FAFCFF" stroke="#BFDBFE" strokeWidth={1.5}  />
 
         {/* ── 24-Hour tick marks & Numbers ── */}
         {Array.from({ length: 24 }, (_, h) => {
           const isMajor = h % 3 === 0;
           const inner = toXY(h, R_FACE - (isMajor ? 12 : 6));
           const outer = toXY(h, R_FACE - 2);
-          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#BFDBFE" strokeWidth={isMajor ? 2 : 1} />;
+          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#BFDBFE" strokeWidth={isMajor ? 2 : 1}  />;
         })}
         
         {HOURS_24.map((t, i) => {
@@ -6830,12 +6831,12 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
         <SvgText x={CX - 56} y={CY} fill="#93C5FD" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Sāyam</SvgText>
 
         {/* ── 24-Hour Hand (Sun Pointer) ── */}
-        <SvgLine x1={CX} y1={CY} x2={hourTip.x} y2={hourTip.y} stroke="#0369A1" strokeWidth={3} strokeLinecap="round" />
-        <SvgCircle cx={hourTip.x} cy={hourTip.y} r={4} fill="#FCD34D" stroke="#0369A1" strokeWidth={1} />
+        <SvgLine x1={CX} y1={CY} x2={hourTip.x} y2={hourTip.y} stroke="#0369A1" strokeWidth={3} strokeLinecap="round"  />
+        <SvgCircle cx={hourTip.x} cy={hourTip.y} r={4} fill="#FCD34D" stroke="#0369A1" strokeWidth={1}  />
 
         {/* ── Centre dot ── */}
-        <SvgCircle cx={CX} cy={CY} r={6} fill="#0EA5E9" />
-        <SvgCircle cx={CX} cy={CY} r={2} fill="#FFFFFF" />
+        <SvgCircle cx={CX} cy={CY} r={6} fill="#0EA5E9"  />
+        <SvgCircle cx={CX} cy={CY} r={2} fill="#FFFFFF"  />
 
         {/* ── Digital time overlay below hands ── */}
         <SvgText x={CX} y={CY + 26} fill="#1E3A5F" fontSize={13} fontWeight="800" textAnchor="middle" alignmentBaseline="middle">{timeStr}</SvgText>
@@ -6854,7 +6855,7 @@ const LegendRow = ({ color, label, active, onPress }: { color: string, label: st
       borderRadius: 20, backgroundColor: active ? color : 'rgba(44,44,44,0.05)',
       borderWidth: 1, borderColor: active ? color : 'rgba(44,44,44,0.1)', flex: 1 }}>
     <View style={{ width: 8, height: 8, borderRadius: 4,
-      backgroundColor: active ? '#FFFFFF' : color, marginRight: 6 }} />
+      backgroundColor: active ? '#FFFFFF' : color, marginRight: 6 }}  />
     <Text style={{ fontSize: 9.5, color: active ? '#FFFFFF' : 'rgba(44,44,44,0.65)',
       fontWeight: '700', letterSpacing: 0.3, flexShrink: 1 }}>{label}</Text>
   </TouchableOpacity>
@@ -6876,23 +6877,22 @@ const PanchTile = ({ label, value, sub, color, onPress }: { label: string, value
   </TouchableOpacity>
 );
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Vedic Almanac Dashboard — ETHEREAL LIGHT
-// ══════════════════════════════════════════════════════════════════════════════
 function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes: SolarTimes | null; weather?: WeatherData | null; onCosmicPress: () => void }) {
-  const moon = React.useMemo(() => getMoonPhase(new Date()), []);
-  const p    = React.useMemo(() => getPanchangData(), []);
-
   const [now, setNow] = useState(new Date());
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
 
+  const moon = React.useMemo(() => getMoonPhase(now), [now]);
+  const p    = React.useMemo(() => getPanchangData(now), [now]);
+  const timings = React.useMemo(() => getExactTimings(now), [now]);
+
   
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [activeSegment, setActiveSegment] = useState<string>('abhijit');
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const [panchangaDetail, setPanchangaDetail] = useState<{ type: string; value: string; desc: string; effect: string } | null>(null);
 
   const BG    = '#F9F6F0';
@@ -6915,8 +6915,6 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
     const ts = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     return d.getDate() !== now.getDate() ? `${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })}, ${ts}` : ts;
   };
-
-  const timings = React.useMemo(() => getExactTimings(now), [now]);
   const tithiNum = p.paksha === 'Shukla' ? p.tithiInPaksha : p.tithiInPaksha + 15;
   const KARANAS = ['Bava','Balava','Kaulava','Taitila','Gara','Vanija','Vishti','Shakuni','Chatushpada','Naga','Kintughna'];
   const karanaName = KARANAS[tithiNum % 11];
@@ -7033,14 +7031,14 @@ React.useEffect(() => {
 
           <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8, overflow: 'hidden' }}>
             <VedicClock currentHour={currentH} times={times} activeId={activeSegment} sel={sel}
-              onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }} />
+              onSegmentPress={(id) => { Haptics.selectionAsync(); setActiveSegment(id); }}  />
           </View>
 
           {/* ── YOUR DAY'S FLOW — Premium Scrolling Timeline ── */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, marginTop: 10 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }}  />
             <Text style={{ fontSize: 10, fontWeight: '800', color: '#0369A1', letterSpacing: 2, marginHorizontal: 10 }}>YOUR DAY'S FULL SCHEDULE</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }}  />
           </View>
 
           <View style={{ position: 'relative' }}>
@@ -7048,7 +7046,7 @@ React.useEffect(() => {
             <View style={{ paddingBottom: 20, position: 'relative' }}>
               
               {/* Vertical line drawn dynamically based on items */}
-              <View style={{ position: 'absolute', left: 19, top: 10, bottom: 20, width: 2, backgroundColor: '#BAE6FD', borderRadius: 1 }} />
+              <View style={{ position: 'absolute', left: 19, top: 10, bottom: 20, width: 2, backgroundColor: '#BAE6FD', borderRadius: 1 }}  />
 
               <View style={{ gap: 12 }}>
                 {(() => {
@@ -7101,51 +7099,83 @@ React.useEffect(() => {
                     return aS - bS;
                   });
 
-                  return dayItems.map((item, idx) => {
-                    const isSelected = activeSegment === item.id;
-                    
-                    
-                    let dispLabel = item.label.toUpperCase();
-                    if (!item.id.startsWith('p') && !item.id.startsWith('n')) {
-                      const pName = getPrahar(item.start);
-                      if (pName) dispLabel += ` (${pName.toUpperCase()})`;
-                    }
-
+                  let liveIndex = -1;
+                  const itemsWithLive = dayItems.map((item, idx) => {
                     let isLive = false;
-                    if ((item as any).end) {
-                       let itm = item as any;
-                       let e = itm.end < item.start ? itm.end + 24 : itm.end;
+                    if (item.end) {
+                       let e = item.end < item.start ? item.end + 24 : item.end;
                        let cur = currentH < times.brahma.start ? currentH + 24 : currentH;
                        let s = item.start < times.brahma.start ? item.start + 24 : item.start;
-                       if (cur >= s && cur < e) isLive = true;
+                       if (cur >= s && cur < e) {
+                           isLive = true;
+                           liveIndex = idx;
+                       }
                     }
-
-                    return (
-                      <TouchableOpacity key={idx} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setActiveSegment(item.id); }} style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
-                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: isLive ? '#38BDF8' : item.bg, borderWidth: 2, borderColor: isLive ? '#0284C7' : item.border, alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                          <Text style={{ fontSize: 10 }}>{item.icon}</Text>
-                        </View>
-
-                        <View style={{ flex: 1, marginLeft: 10, backgroundColor: isSelected ? '#FFFFFF' : item.bg, padding: 12, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? '#0284C7' : item.border, shadowColor: item.color, shadowOffset: { width: 0, height: isSelected ? 4 : 2 }, shadowOpacity: isSelected ? 0.15 : 0.06, shadowRadius: isSelected ? 8 : 6, elevation: isSelected ? 4 : 1 }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <View style={{ flex: 1, marginRight: 8 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#0369A1' : item.color, letterSpacing: 0.4 }}>{dispLabel}</Text>
-                                {isLive && <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 8, color: '#FFF', fontWeight: '800' }}>LIVE NOW</Text></View>}
-                              </View>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E3A5F', marginTop: 3 }}>{item.time}</Text>
-                              <Text style={{ fontSize: 9.5, color: '#64748B', fontWeight: '500', marginTop: 3, fontStyle: 'italic' }}>{item.sub}</Text>
-                            </View>
-                            {item.dur !== null && (
-                              <View style={{ backgroundColor: isSelected ? '#E0F2FE' : item.border, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? '#0369A1' : item.color }}>{item.dur}m</Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
+                    return { ...item, isLive, originalIdx: idx };
                   });
+
+                  if (liveIndex === -1) {
+                      liveIndex = itemsWithLive.findIndex(item => item.id === activeSegment);
+                      if (liveIndex === -1) liveIndex = Math.max(0, itemsWithLive.length - 1);
+                  }
+
+                  let visibleItems = itemsWithLive;
+                  if (!isTimelineExpanded) {
+                      visibleItems = itemsWithLive.slice(Math.max(0, liveIndex - 1), Math.min(itemsWithLive.length, liveIndex + 2));
+                  }
+
+                  return (
+                    <>
+                      {visibleItems.map((item) => {
+                        const idx = item.originalIdx;
+                        const isSelected = activeSegment === item.id;
+                        
+                        let dispLabel = item.label.toUpperCase();
+                        if (!item.id.startsWith('p') && !item.id.startsWith('n')) {
+                          const pName = getPrahar(item.start);
+                          if (pName) dispLabel += ` (${pName.toUpperCase()})`;
+                        }
+
+                        const isLive = item.isLive;
+
+                        return (
+                          <TouchableOpacity key={idx} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setActiveSegment(item.id); }} style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
+                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: isLive ? '#38BDF8' : item.bg, borderWidth: 2, borderColor: isLive ? '#0284C7' : item.border, alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                              <Text style={{ fontSize: 10 }}>{item.icon}</Text>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 10, backgroundColor: isSelected ? '#FFFFFF' : item.bg, padding: 12, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? '#0284C7' : item.border, shadowColor: item.color, shadowOffset: { width: 0, height: isSelected ? 4 : 2 }, shadowOpacity: isSelected ? 0.15 : 0.06, shadowRadius: isSelected ? 8 : 6, elevation: isSelected ? 4 : 1 }}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#0369A1' : item.color, letterSpacing: 0.4 }}>{dispLabel}</Text>
+                                    {isLive && <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 8, color: '#FFF', fontWeight: '800' }}>LIVE NOW</Text></View>}
+                                  </View>
+                                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E3A5F', marginTop: 3 }}>{item.time}</Text>
+                                  <Text style={{ fontSize: 9.5, color: '#64748B', fontWeight: '500', marginTop: 3, fontStyle: 'italic' }}>{item.sub}</Text>
+                                </View>
+                                {item.dur !== null && (
+                                  <View style={{ backgroundColor: isSelected ? '#E0F2FE' : item.border, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? '#0369A1' : item.color }}>{item.dur}m</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      
+                      <TouchableOpacity 
+                        activeOpacity={0.8} 
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsTimelineExpanded(!isTimelineExpanded); }}
+                        style={{ marginTop: 12, paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)', alignItems: 'center' }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369A1', letterSpacing: 1.5 }}>
+                          {isTimelineExpanded ? 'COLLAPSE SCHEDULE ▴' : 'VIEW FULL DAY SCHEDULE ▾'}
+                        </Text>
+                      </TouchableOpacity>
+                    < />
+                  );
                 })()}
               </View>
             </View>
@@ -7166,14 +7196,14 @@ React.useEffect(() => {
               sub={`${tFmt(timings.tithiStart)} → ${tFmt(timings.tithiEnd)}`}
               color={BURG}
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'TITHI — Lunar Day', value: p.tithiName, ...PANCHANGA_INFO.TITHI }); }}
-            />
+             />
             <PanchTile
               label="NAKSHATRA · Moon Star"
               value={NAKSHATRAS[p.nakshatraIdx].name}
               sub={`${tFmt(timings.nakshatraStart)} → ${tFmt(timings.nakshatraEnd)}`}
               color="#2563EB"
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'NAKSHATRA — Moon Constellation', value: NAKSHATRAS[p.nakshatraIdx].name, ...PANCHANGA_INFO.NAKSHATRA }); }}
-            />
+             />
           </View>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
             <PanchTile
@@ -7182,14 +7212,14 @@ React.useEffect(() => {
               sub={`${tFmt(timings.yogaStart)} → ${tFmt(timings.yogaEnd)}`}
               color="#7C3AED"
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'YOGA — Sun-Moon Harmony', value: YOGAS[p.yogaIdx].name, ...PANCHANGA_INFO.YOGA }); }}
-            />
+             />
             <PanchTile
               label="KARANA · Half Period"
               value={karanaName}
               sub={p.moonAge % (29.53/30) < (29.53/60) ? `${tFmt(timings.tithiStart)} → ${tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2))}` : `${tFmt(new Date(timings.tithiStart!.getTime() + (timings.tithiEnd!.getTime() - timings.tithiStart!.getTime())/2))} → ${tFmt(timings.tithiEnd)}`}
               color={GOLD}
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'KARANA — Half Lunar Period', value: karanaName, ...PANCHANGA_INFO.KARANA }); }}
-            />
+             />
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <PanchTile
@@ -7198,7 +7228,7 @@ React.useEffect(() => {
               sub={`${fmtH(csr)} → ${fmtH(csr ? csr + 24 : null)}`}
               color="#EA580C"
               onPress={() => { Haptics.selectionAsync(); setPanchangaDetail({ type: 'VAAR — Planetary Day', value: VAARS[p.vaarIdx].vedicName, ...PANCHANGA_INFO.VAAR }); }}
-            />
+             />
           </View>
         </View>
 
@@ -7206,7 +7236,7 @@ React.useEffect(() => {
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 14 }}>
           <View style={{ flex: 1, backgroundColor: CARD, borderRadius: 20, padding: 16, alignItems: 'center', shadowColor: BURG, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: BORD }}>
             <Text style={{ fontSize: 10, fontWeight: '800', color: TXT, letterSpacing: 0.5, marginBottom: 8 }}>LUNAR PHASE</Text>
-            <MoonSVG tithiNum={moon.tithiNum} size={38} />
+            <MoonSVG tithiNum={moon.tithiNum} size={38}  />
             <Text style={{ fontSize: 12, color: TXT, fontWeight: '700', marginTop: 8 }}>{moon.name}</Text>
             <Text style={{ fontSize: 10, color: GOLD, fontWeight: '700', marginTop: 2 }}>{moon.illumination}% Illum.</Text>
           </View>
@@ -7227,14 +7257,14 @@ React.useEffect(() => {
           </TouchableOpacity>
         </View>
 
-        {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon} />}
+        {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon}  />}
       </View>
 
       {/* ── Panchanga Detail Modal ── */}
       <Modal visible={!!panchangaDetail} transparent animationType="slide" onRequestClose={() => setPanchangaDetail(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 44, shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 20, borderTopWidth: 1, borderColor: BORD }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(44,44,44,0.15)', alignSelf: 'center', marginBottom: 22 }} />
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(44,44,44,0.15)', alignSelf: 'center', marginBottom: 22 }}  />
             <Text style={{ fontSize: 10, color: BURG, fontWeight: '800', letterSpacing: 2, marginBottom: 6 }}>{panchangaDetail?.type}</Text>
             <Text style={{ fontFamily: 'Georgia', fontSize: 26, color: TXT, fontWeight: '600', marginBottom: 20 }}>{panchangaDetail?.value}</Text>
             <Text style={{ fontSize: 11, color: TXT, fontWeight: '800', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.5 }}>What it is</Text>
@@ -7247,7 +7277,7 @@ React.useEffect(() => {
           </View>
         </View>
       </Modal>
-    </>
+    < />
   );
 }
 
@@ -7289,14 +7319,14 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
 
           {/* Drag handle */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>
-            <View style={{ width: 36, height: 3, borderRadius: 2, backgroundColor: 'rgba(106,30,47,0.2)', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }} />
+            <View style={{ width: 36, height: 3, borderRadius: 2, backgroundColor: 'rgba(106,30,47,0.2)', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }}  />
           </View>
 
           {/* Floating close button */}
           <TouchableOpacity
             onPress={close}
             style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 0, borderColor: 'rgba(106,30,47,0.3)', backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, overflow: 'hidden' }}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject}  />
             <Text style={{ color: '#6A1E2F', fontSize: 14, fontWeight: '400', opacity: 0.8 }}>✕</Text>
           </TouchableOpacity>
 
@@ -7305,7 +7335,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
             {/* Morning share banner */}
             {wakeLog?.wasBeforeSunrise && (
               <TouchableOpacity onPress={onShowShareCard} activeOpacity={0.85} style={MSB.bar}>
-                <LinearGradient colors={['#F5820A22', '#60a5fa14', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={['#F5820A22', '#60a5fa14', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject}  />
                 <Text style={{ fontSize: 22 }}>🌅</Text>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={MSB.title}>You woke at <Text style={{ color: ACCENT }}>{wakeLog.wakeTimeStr}</Text>
@@ -7327,7 +7357,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push({ pathname: '/cosmic-explore', params: { lat: weather?.lat } } as any);
               }}
-            />
+             />
 
 
           </ScrollView>
@@ -7337,7 +7367,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
       </SafeAreaView>
       </Animated.View>
     </Modal>
-    </>
+    < />
   );
 }
 
@@ -7369,7 +7399,7 @@ const AnimatedAlmanacButton = ({ onPress }: { onPress: () => void }) => {
           backgroundColor: 'rgba(96, 165, 250, 0.4)', 
           transform: [{ scale: 1.05 }], 
           opacity: pulseAnim.interpolate({ inputRange: [1, 1.05], outputRange: [0, 0.6] }) 
-        }} />
+        }}  />
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
@@ -7381,12 +7411,12 @@ const AnimatedAlmanacButton = ({ onPress }: { onPress: () => void }) => {
             shadowColor: '#60a5fa', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 8
           }}
         >
-          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject}  />
           <LinearGradient
             colors={['rgba(96, 165, 250, 0.25)', 'rgba(96, 165, 250, 0.05)', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
-          />
+           />
           <View style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             paddingHorizontal: 24, paddingVertical: 10
@@ -7720,10 +7750,10 @@ function DailyTab() {
       
       
       {/* ── Dynamic Ambient Aura (Living UI) ── */}
-      <AmbientAura color={currentPeriod?.color || '#00D4B8'} />
+      <AmbientAura color={currentPeriod?.color || '#00D4B8'}  />
       
       {/* Background filters removed per user request to show raw background image */}
-      <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar hidden={false} barStyle="light-content" translucent backgroundColor="transparent"  />
 
       <SafeAreaView style={{ flex: 1, paddingBottom: 80 }} edges={['top']}>
 
@@ -7751,7 +7781,7 @@ function DailyTab() {
                 overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12,
                 paddingHorizontal: 22, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.2)'
               }}>
-                <MoonSVG tithiNum={hMoon.tithiNum} size={22} />
+                <MoonSVG tithiNum={hMoon.tithiNum} size={22}  />
                 <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 13, fontWeight: '800', color: '#111', letterSpacing: 0.3 }}>{phaseText}</Text>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(0,0,0,0.55)', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 1 }}>
@@ -7769,7 +7799,7 @@ function DailyTab() {
             style={{ position: 'absolute', right: 24, top: 20 }}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           >
-            <Ionicons name="settings-outline" size={24} color="rgba(255,255,255,0.8)" />
+            <Ionicons name="settings-outline" size={24} color="rgba(255,255,255,0.8)"  />
           </TouchableOpacity>
         </View>
 
@@ -7781,104 +7811,11 @@ function DailyTab() {
                 
                 {/* 1. Daily Intention (Floating, transparent, elegant) */}
                 <View style={{ width: '100%', alignItems: 'center' }}>
-                  <DailyIntentionCard />
+                  <DailyIntentionCard  />
                 </View>
 
-                {/* 2. Zen Monolith Active Bio-State Panel */}
-                <View style={{ width: '100%', marginTop: 8 }}>
-                 {currentPeriod && (() => {
-                  const nowH = new Date().getHours() + new Date().getMinutes() / 60;
-                  const leftH = currentPeriod.endH - nowH;
-                  const minsLeft = leftH > 0 ? Math.floor(leftH * 60) : 0;
-                  const hrsLeft = Math.floor(minsLeft / 60);
-                  const minsLeftRem = minsLeft % 60;
-                  const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
-                  const start = currentPeriod.startH;
-                  const end = currentPeriod.endH;
-                  const total = end > start ? end - start : (24 - start) + end;
-                  const elapsed = nowH > start ? nowH - start : (24 - start) + nowH;
-                  const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-                  
-                  return (
-                    <TouchableOpacity 
-                      activeOpacity={0.85} 
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setShowStory(true);
-                      }}
-                    >
-                      <BlurView intensity={40} tint="dark" style={{
-                        width: '100%',
-                        borderRadius: 24,
-                        borderWidth: 0.5,
-                        borderColor: 'rgba(255,255,255,0.15)',
-                        paddingVertical: 14,
-                        paddingHorizontal: 16,
-                        overflow: 'hidden',
-                        backgroundColor: 'rgba(10, 10, 10, 0.35)',
-                      }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                          {/* Progress Ring */}
-                          <View style={{ position: 'relative', width: 56, height: 56, alignItems: 'center', justifyContent: 'center' }}>
-                            <Svg width={56} height={56} viewBox="0 0 56 56" style={{ transform: [{ rotate: '-90deg' }] }}>
-                              <SvgCircle cx={28} cy={28} r={24} stroke="rgba(255,255,255,0.06)" strokeWidth={4} fill="none" />
-                              <SvgCircle 
-                                cx={28} cy={28} r={24} 
-                                stroke={currentPeriod.color || '#A78BFA'} 
-                                strokeWidth={4} fill="none" 
-                                strokeDasharray={`${24 * 2 * Math.PI}`} 
-                                strokeDashoffset={`${24 * 2 * Math.PI * (1 - (pct / 100))}`} 
-                                strokeLinecap="round" 
-                              />
-                            </Svg>
-                            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-                              {hrsLeft > 0 ? (
-                                <>
-                                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{hrsLeft}h</Text>
-                                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{minsLeftRem}m</Text>
-                                </>
-                              ) : (
-                                <>
-                                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFF' }}>{minsLeftRem}</Text>
-                                  <Text style={{ fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>mins</Text>
-                                </>
-                              )}
-                            </View>
-                          </View>
-                          
-                          {/* Details */}
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.2, textTransform: 'uppercase' }}>ACTIVE BIO-STATE</Text>
-                            <Text style={{ fontSize: 15, fontWeight: '800', color: currentPeriod.color || '#A78BFA', letterSpacing: 0 }}>{currentPeriod.englishLabel}</Text>
-                            
-                            {/* Icons Row */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                              <Ionicons name="moon-outline" size={13} color="rgba(255,255,255,0.7)" />
-                              <Ionicons name="water-outline" size={13} color="rgba(255,255,255,0.7)" />
-                              <Ionicons name="leaf-outline" size={13} color="rgba(255,255,255,0.7)" />
-                              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>|</Text>
-                              <Ionicons name="desktop-outline" size={13} color="rgba(255,255,255,0.2)" />
-                              <Ionicons name="phone-portrait-outline" size={13} color="rgba(255,255,255,0.2)" />
-                            </View>
-                          </View>
-                          
-                          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
-                        </View>
-                        
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Tap to view metabolic state</Text>
-                          <Ionicons name="chevron-forward" size={9} color="rgba(255,255,255,0.3)" style={{ marginLeft: 4 }} />
-                        </View>
-                      </BlurView>
-                    </TouchableOpacity>
-                  );
-                 })()}
-                </View>
-              </View>
-
-
-              {/* 4. Weather Button (Fixed below Bio-State) */}
-              <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 16, marginBottom: 8, alignItems: 'center' }}>
+                {/* 2. Weather Button (Moved below Mantra) */}
+                <View style={{ width: '100%', alignItems: 'center', marginTop: -4 }}>
                  {weather && (
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -7890,18 +7827,127 @@ function DailyTab() {
                     >
                       <Text style={{ fontSize: 14 }}>{weather.emoji}</Text>
                       <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 14, fontWeight: '700', color: '#FFF' }}>{weather.temp}°</Text>
-                      <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                      <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' }}  />
                       <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>{weather.condition}</Text>
                     </TouchableOpacity>
                  )}
+                </View>
+
+                                {/* 3. The Unified Ayurvedic Bio-State Clock (Premium Centerpiece) */}
+                <View style={{ width: '100%', marginTop: 12 }}>
+                 {currentPeriod && (() => {
+                  const now = new Date();
+                  const nowH = now.getHours() + now.getMinutes() / 60;
+                  const leftH = currentPeriod.endH - nowH;
+                  const minsLeft = leftH > 0 ? Math.floor(leftH * 60) : 0;
+                  const hrsLeft = Math.floor(minsLeft / 60);
+                  const minsLeftRem = minsLeft % 60;
+                  const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
+                  
+                  // Rotate so midnight is top (0 deg)
+                  const timeRotation = (nowH * 15) - 90;
+                  
+                  const isVata = currentPeriod.dosha === 'vata';
+                  const isPitta = currentPeriod.dosha === 'pitta';
+                  const isKapha = currentPeriod.dosha === 'kapha';
+                  
+                  const pittaColor = isPitta ? '#D4AF37' : 'rgba(212, 175, 55, 0.15)';
+                  const vataColor = isVata ? '#60A5FA' : 'rgba(96, 165, 250, 0.15)';
+                  const kaphaColor = isKapha ? '#4ADE80' : 'rgba(74, 222, 128, 0.15)';
+                  
+                  const activeColor = isPitta ? '#D4AF37' : isVata ? '#60A5FA' : '#4ADE80';
+
+                  return (
+                    <TouchableOpacity 
+                      activeOpacity={0.85} 
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowStory(true);
+                      }}
+                    >
+                      <BlurView intensity={60} tint="dark" style={{
+                        width: '100%',
+                        borderRadius: 32,
+                        borderWidth: 1,
+                        borderColor: 'rgba(212, 175, 55, 0.15)',
+                        paddingVertical: 32,
+                        paddingHorizontal: 16,
+                        overflow: 'hidden',
+                        backgroundColor: 'rgba(15, 12, 10, 0.45)',
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{ fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '600', color: 'rgba(212, 175, 55, 0.8)', letterSpacing: 2, marginBottom: 28, textTransform: 'uppercase' }}>Ayurvedic Bio-State</Text>
+                        
+                        <View style={{ position: 'relative', width: 260, height: 260, alignItems: 'center', justifyContent: 'center' }}>
+                          {/* Text Labels positioned around the dial */}
+                          <Text style={{ position: 'absolute', top: 10, right: 30, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '30deg'}] }}>VATA</Text>
+                          <Text style={{ position: 'absolute', bottom: 40, right: 10, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '-45deg'}] }}>PITTA</Text>
+                          <Text style={{ position: 'absolute', bottom: 10, left: 40, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '30deg'}] }}>KAPHA</Text>
+                          <Text style={{ position: 'absolute', top: 40, left: 10, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '-45deg'}] }}>KAPHA</Text>
+                          <Text style={{ position: 'absolute', top: -5, left: 110, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)' }}>PITTA</Text>
+                          <Text style={{ position: 'absolute', bottom: -5, left: 110, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)' }}>VATA</Text>
+
+                          <Svg width={220} height={220} viewBox="0 0 220 220">
+                            {/* Inner ambient ring */}
+                            <SvgCircle cx={110} cy={110} r={95} stroke="rgba(255,255,255,0.03)" strokeWidth={30} fill="none"  />
+                            <SvgCircle cx={110} cy={110} r={80} stroke="rgba(212, 175, 55, 0.1)" strokeWidth={1} fill="none"  />
+                            <SvgCircle cx={110} cy={110} r={110} stroke="rgba(212, 175, 55, 0.2)" strokeWidth={1} fill="none"  />
+                            
+                            <G transform="rotate(-90 110 110)">
+                              {/* Pitta (10am-2pm, 10pm-2am) */}
+                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-261.8"  />
+                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="52.35 575.9" strokeDashoffset="0"  />
+                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="52.35 575.9" strokeDashoffset="-575.9"  />
+
+                              {/* Vata (2pm-6pm, 2am-6am) */}
+                              <SvgCircle cx={110} cy={110} r={95} stroke={vataColor} strokeWidth={isVata ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-52.35"  />
+                              <SvgCircle cx={110} cy={110} r={95} stroke={vataColor} strokeWidth={isVata ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-366.5"  />
+
+                              {/* Kapha (6am-10am, 6pm-10pm) */}
+                              <SvgCircle cx={110} cy={110} r={95} stroke={kaphaColor} strokeWidth={isKapha ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-157.0"  />
+                              <SvgCircle cx={110} cy={110} r={95} stroke={kaphaColor} strokeWidth={isKapha ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-471.2"  />
+                              
+                              {/* Time Pointer */}
+                              <G rotation={timeRotation + 90} origin="110,110">
+                                {/* Thin elegant line from center to edge */}
+                                <SvgLine x1={110} y1={110} x2={110} y2={15} stroke={activeColor} strokeWidth={2} strokeOpacity={0.8}  />
+                                <SvgCircle cx={110} cy={15} r={4} fill={activeColor}  />
+                                <SvgCircle cx={110} cy={15} r={10} stroke={activeColor} strokeWidth={1} fill="none" strokeOpacity={0.5}  />
+                              </G>
+                            </G>
+                          </Svg>
+                          
+                          {/* Inner Data Centerpiece */}
+                          <View style={{ position: 'absolute', width: 150, height: 150, borderRadius: 75, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10, 8, 5, 0.7)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.1)' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: activeColor, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+                              {currentPeriod.dosha} PHASE
+                            </Text>
+                            <Text style={{ fontSize: 18, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '700', color: '#FFF', textAlign: 'center', paddingHorizontal: 12, lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4 }}>
+                              {currentPeriod.englishLabel}
+                            </Text>
+                            
+                            <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 175, 55, 0.3)', marginVertical: 10 }}  />
+                            
+                            <Text style={{ fontSize: 16, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '600', color: '#FFF' }}>{timeStr}</Text>
+                            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginTop: 2, textTransform: 'uppercase' }}>Remaining</Text>
+                          </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 24 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Tap to explore cycle</Text>
+                          <Ionicons name="chevron-forward" size={9} color="rgba(255,255,255,0.4)" style={{ marginLeft: 4 }}  />
+                        </View>
+                      </BlurView>
+                    </TouchableOpacity>
+                  );
+                 })()}
+                </View>
               </View>
 
         </ScrollView>
 
-        
-
         {/* ── PREMIUM VISIONOS GLASS DOCK ── */}
-        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 6 }}>
+        <View style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 6, marginTop: 'auto' }}>
           <BlurView intensity={80} tint="dark" style={{
             flexDirection: 'row',
             borderRadius: 28,
@@ -7916,7 +7962,7 @@ function DailyTab() {
               activeOpacity={0.65}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
             >
-              <Ionicons name="journal-outline" size={18} color="#E2E8F0" />
+              <Ionicons name="journal-outline" size={18} color="#E2E8F0"  />
               <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Almanac</Text>
             </TouchableOpacity>
 
@@ -7926,7 +7972,7 @@ function DailyTab() {
               activeOpacity={0.65}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.08)' }}
             >
-              <Ionicons name="pulse-outline" size={18} color="#E2E8F0" />
+              <Ionicons name="pulse-outline" size={18} color="#E2E8F0"  />
               <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.5 }}>Vitality</Text>
             </TouchableOpacity>
 
@@ -7936,7 +7982,7 @@ function DailyTab() {
               activeOpacity={0.65}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
             >
-              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0" />
+              <Ionicons name="stats-chart-outline" size={18} color="#E2E8F0"  />
               <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 4, letterSpacing: 0.3 }}>Soundscapes</Text>
             </TouchableOpacity>
           </BlurView>
@@ -7947,11 +7993,11 @@ function DailyTab() {
 
       {/* ── Metabolic Story Modal — opens on Hero Ring tap ── */}
       {/* {showMantraModal && (
-        <MantraModal visible={showMantraModal} onClose={() => setShowMantraModal(false)} mantra={dailyMantra} />
+        <MantraModal visible={showMantraModal} onClose={() => setShowMantraModal(false)} mantra={dailyMantra}  />
       )} */}
       
       {showLunarModal && (
-        <LunarStoryModal visible={showLunarModal} onClose={() => setShowLunarModal(false)} hMoon={getMoonPhase(new Date())} />
+        <LunarStoryModal visible={showLunarModal} onClose={() => setShowLunarModal(false)} hMoon={getMoonPhase(new Date())}  />
       )}
 
       {showStory && currentPeriod && (
@@ -7959,7 +8005,7 @@ function DailyTab() {
           period={currentPeriod}
           solarTimes={solarTimes}
           onClose={() => setShowStory(false)}
-        />
+         />
       )}
 
       {/* ── Festival Detail Modal ── */}
@@ -7967,7 +8013,7 @@ function DailyTab() {
         <FestivalDetailModal 
           festival={activeFestDetail} 
           onClose={() => setActiveFestDetail(null)} 
-        />
+         />
       )}
 
 
@@ -7983,12 +8029,12 @@ function DailyTab() {
           onMore={() => setShow7Day(true)}
           onClose={() => setSheetOpen(false)}
           onShowShareCard={() => setShowShareCard(true)}
-        />
+         />
       )}
 
       {/* 14-Day forecast modal */}
       {show7Day && weather?.daily && weather.daily.length > 0 && (
-        <ExtendedForecastModal daily={weather.daily} onClose={() => setShow7Day(false)} />
+        <ExtendedForecastModal daily={weather.daily} onClose={() => setShow7Day(false)}  />
       )}
 
       {/* WAKE-UP SHARE CARD MODAL */}
@@ -7997,12 +8043,12 @@ function DailyTab() {
           wakeLog={wakeLog}
           streak={sunStreak}
           onClose={() => setShowShareCard(false)}
-        />
+         />
       )}
       <ZenModeOverlay
         visible={zenActive}
         onClose={() => { setZenActive(false); setMode('normal'); }}
-      />
+       />
 
       {/* ── Bio-Stress Scanner Modal ── */}
       <StressScanner
@@ -8010,7 +8056,7 @@ function DailyTab() {
         onClose={() => setShowStressScanner(false)}
         onPlaySound={handleStressSoundPlay}
         accentColor={currentPeriod?.color ?? '#34d399'}
-      />
+       />
     </Animated.View>
   );
 }
@@ -8660,7 +8706,7 @@ const AmbientAura = ({ color }: { color: string }) => {
           shadowOpacity: 1,
           shadowRadius: 20,
         }}
-      />
+       />
     );
   });
 
@@ -8670,7 +8716,7 @@ const AmbientAura = ({ color }: { color: string }) => {
         source={bgUri ? { uri: bgUri } : undefined} 
         style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]} 
         resizeMode="cover"
-      />
+       />
       
       {/* ── Bioluminescent Swarm (Option 3 Demo) ── */}
       <View style={StyleSheet.absoluteFillObject}>
