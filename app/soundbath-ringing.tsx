@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef, memo } from 'react';
+import React, { useEffect, useState, useRef, memo, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, BackHandler,
-  StatusBar, AppState, Platform, NativeModules, ImageBackground, Dimensions
+  StatusBar, AppState, Platform, NativeModules, ImageBackground, Dimensions,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing, cancelAnimation, interpolate, Extrapolation,
+  useSharedValue, useAnimatedStyle, withTiming, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,29 +20,34 @@ import { WAKE_SOUNDS } from '@/lib/missionAlarm';
 import { stopAlarmVibration, startNativeLockTask, stopNativeLockTask } from '@/lib/nativeAlarm';
 import { SOUND_IMAGES } from '@/lib/sleepSoundsData';
 import { getLocalSoundImageUri } from '@/lib/soundImagePreload';
+import { CymaticsView } from '@/components/visualizer/CymaticsView';
+import {
+  USE_CYMATICS_VISUALIZER,
+  VISUALIZER_MODE_STORAGE_KEY,
+  DEFAULT_SCRIM_OPACITY,
+} from '@/constants/visualizerSettings';
 
 const { width } = Dimensions.get('window');
 
 const SOUNDBATH_FS_ID = 'soundbath-alarm-service';
 const ACTIVE_SOUNDBATH_NOTIF_KEY = 'onesutra_active_soundbath_notif_v1';
 
+// ── Dish size: fills the circleOuter slot exactly ─────────────────────────────
+// circleOuter was width * 0.7; we match that so the cymatics fills it perfectly.
+const DISH_SIZE = width * 0.7;
+
+// ── Legacy waveform (kept behind feature flag for rollback) ───────────────────
 const BARS = 40;
 const WaveformVisualizer = memo(({ meteringAnim }: { meteringAnim: any }) => {
   return (
     <View style={styles.waveformContainer} pointerEvents="none">
       {Array.from({ length: BARS }).map((_, i) => {
-        // Distance from center (0 to 1)
         const centerDist = Math.abs(i - BARS / 2) / (BARS / 2);
-        // Envelope: taller in the middle, tapers off at edges.
         const envelope = Math.max(0.1, 1 - Math.pow(centerDist, 2));
-        
-        // Use a static random seed for variation
         const randomFactor = 0.5 + Math.sin(i * 123.456) * 0.5;
 
         const animatedStyle = useAnimatedStyle(() => {
-          // meteringAnim goes 0 to 1
           const meter = meteringAnim.value;
-          // Calculate height
           const minHeight = 4 * envelope;
           const maxHeight = 80 * envelope * randomFactor;
           const dynamicHeight = minHeight + (maxHeight - minHeight) * meter;
@@ -77,9 +82,27 @@ export default function SoundBathRingingScreen() {
   const watchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { stopSound: stopAmbientSound } = useSoundPlayer();
 
+  // ── Visualizer mode persisted preference ──────────────────────────────────
+  // 'cymatics' | 'reduced' | 'off'
+  type VisualizerMode = 'cymatics' | 'reduced' | 'off';
+  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>('cymatics');
+
+  useEffect(() => {
+    AsyncStorage.getItem(VISUALIZER_MODE_STORAGE_KEY)
+      .then(v => {
+        if (v === 'cymatics' || v === 'reduced' || v === 'off') {
+          setVisualizerMode(v);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── Shared metering value (0..1 RMS) ─────────────────────────────────────
+  // This is the ONLY audio data the visualizer uses from this screen.
+  // It's updated by expo-av's playback status callback below.
   const meteringAnim = useSharedValue(0);
 
-  // ── Setup Keep Awake and Lock Task ───────────────────────────────────────
+  // ── Setup Keep Awake and Lock Task ────────────────────────────────────────
   useEffect(() => {
     startNativeLockTask().catch(() => {});
     activateKeepAwakeAsync('soundbath');
@@ -100,32 +123,35 @@ export default function SoundBathRingingScreen() {
     };
   }, []);
 
-  // ── Setup Audio ────────────────────────────────────────────────────────
+  // ── Setup Audio ───────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         await stopAmbientSound();
         if (cancelled) return;
-        
+
         await playAlarmAudio(soundRef, soundId);
-        
+
         if (soundRef.current) {
-          // Enable metering for our waveform
-          await soundRef.current.setStatusAsync({ isMeteringEnabled: true, progressUpdateIntervalMillis: 100 } as any);
-          
+          // Enable metering — the cymatics visualizer reads meteringAnim
+          await soundRef.current.setStatusAsync({
+            isMeteringEnabled: true,
+            progressUpdateIntervalMillis: 50, // faster updates for better visual sync
+          } as any);
+
           soundRef.current.setOnPlaybackStatusUpdate((status: any) => {
             if (cancelled || !isMountedRef.current) return;
             if (status.isLoaded) {
               if (status.isPlaying !== isPlaying) {
                 setIsPlaying(status.isPlaying);
               }
-              // Sync waveform with live sound
+              // Map expo-av metering (-160..0 dBFS) to 0..1
+              // The cymatics visualizer consumes this value
               if (status.metering !== undefined && status.isPlaying) {
-                // expo-av metering goes from -160 (silence) to 0 (max)
-                // Normalize it safely
-                const raw = Math.max(0, Math.min(1, (status.metering + 55) / 55));
-                meteringAnim.value = withTiming(raw, { duration: 100 });
+                // More sensitive range: -70..0 dBFS
+                const raw = Math.max(0, Math.min(1, (status.metering + 70) / 70));
+                meteringAnim.value = withTiming(raw, { duration: 80 });
               } else {
                 meteringAnim.value = withTiming(0, { duration: 200 });
               }
@@ -134,10 +160,10 @@ export default function SoundBathRingingScreen() {
         }
       } catch (e) { console.warn('[SoundBath] audio:', e); }
     })();
-    
-    return () => { 
-      cancelled = true; 
-      stopAlarmAudio(soundRef); 
+
+    return () => {
+      cancelled = true;
+      stopAlarmAudio(soundRef);
     };
   }, [soundId]);
 
@@ -152,7 +178,7 @@ export default function SoundBathRingingScreen() {
     stopNativeLockTask().catch(() => {});
     router.replace('/(tabs)');
   };
-  
+
   const togglePlayPause = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (soundRef.current) {
@@ -170,11 +196,27 @@ export default function SoundBathRingingScreen() {
     }
   };
 
+  // ── Dev-only: long-press title to open Visualizer Lab ────────────────────
+  const handleTitleLongPress = useCallback(() => {
+    if (!__DEV__) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/visualizer-lab' as any);
+  }, [router]);
+
+  // ── Determine which visualizer to render ─────────────────────────────────
+  const showCymatics = USE_CYMATICS_VISUALIZER && visualizerMode === 'cymatics';
+  const showWaveform = !showCymatics && visualizerMode === 'reduced';
+  // 'off' → neither renders inside the ring
+
   return (
-    <ImageBackground source={bgImage ? { uri: bgImage } : require('@/assets/images/new_bg.jpeg')} style={styles.screen} resizeMode="cover">
+    <ImageBackground
+      source={bgImage ? { uri: bgImage } : require('@/assets/images/new_bg.jpeg')}
+      style={styles.screen}
+      resizeMode="cover"
+    >
       <StatusBar hidden />
-      
-      {/* Dark Vignette Overlay */}
+
+      {/* Dark Vignette Overlay — unchanged */}
       <View style={styles.vignetteOverlay}>
         <LinearGradient
           colors={['rgba(0,0,0,0.8)', 'transparent', 'rgba(0,0,0,0.8)']}
@@ -183,7 +225,7 @@ export default function SoundBathRingingScreen() {
         <View style={styles.centerDarkener} />
       </View>
 
-      {/* Top Bar */}
+      {/* Top Bar — unchanged */}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={handleDismiss}>
           <Ionicons name="chevron-down" size={28} color="#FFF" />
@@ -194,24 +236,48 @@ export default function SoundBathRingingScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Center Circle & Waveform */}
+      {/* Center Circle — cymatics visualizer replaces waveform bars */}
       <View style={styles.centerWrap}>
         <View style={styles.circleOuter}>
-          <View style={styles.circleInner} />
-          <WaveformVisualizer meteringAnim={meteringAnim} />
+          {/* ── circleInner removed when cymatics is active (its own scrim handles darkening) */}
+          {!showCymatics && <View style={styles.circleInner} />}
+
+          {/* ── Cymatics visualizer (transparent, fills the dish) */}
+          {showCymatics && (
+            <CymaticsView
+              size={DISH_SIZE}
+              isPlaying={isPlaying}
+              meteringAnim={meteringAnim}
+              quality="auto"
+              scrimOpacity={DEFAULT_SCRIM_OPACITY}
+              blendMode="srcOver"
+            />
+          )}
+
+          {/* ── Fallback: legacy waveform bars */}
+          {showWaveform && (
+            <WaveformVisualizer meteringAnim={meteringAnim} />
+          )}
+          {/* 'off' mode: nothing renders here — background image shows through the ring */}
         </View>
-        
-        {/* Title */}
-        <Text style={styles.titleText}>{label}</Text>
-        
-        {/* Loop pill */}
+
+        {/* Title — long-press opens Visualizer Lab in __DEV__ */}
+        <TouchableOpacity
+          onLongPress={handleTitleLongPress}
+          activeOpacity={1}
+          delayLongPress={800}
+        >
+          <Text style={styles.titleText}>{label}</Text>
+        </TouchableOpacity>
+
+        {/* Loop pill — unchanged */}
         <View style={styles.loopPill}>
           <Ionicons name="repeat" size={14} color="#FFF" />
           <Text style={styles.loopText}>1 hour</Text>
         </View>
       </View>
 
-      {/* Bottom Controls */}
+      {/* Bottom Controls — unchanged */}
       <View style={styles.bottomArea}>
         <View style={styles.playbackRow}>
           <TouchableOpacity style={styles.playbackBtn} onPress={() => Haptics.selectionAsync()}>
@@ -224,8 +290,8 @@ export default function SoundBathRingingScreen() {
             <Ionicons name="play-skip-forward" size={28} color="#FFF" />
           </TouchableOpacity>
         </View>
-        
-        {/* Progress Bar (Static visual for cinematic effect) */}
+
+        {/* Progress Bar — unchanged */}
         <View style={styles.progressRow}>
           <Text style={styles.progressTime}>0:00</Text>
           <View style={styles.progressBarBg}>
@@ -249,7 +315,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  
+
   // Top
   topBar: {
     flexDirection: 'row',
@@ -273,7 +339,7 @@ const styles = StyleSheet.create({
   libraryText: {
     color: '#FFF', fontSize: 14, fontFamily: 'Nunito_600SemiBold',
   },
-  
+
   // Center
   centerWrap: {
     flex: 1,
@@ -286,10 +352,14 @@ const styles = StyleSheet.create({
     height: width * 0.7,
     borderRadius: width * 0.35,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.8)',
+    // Slightly more lavender-tinted border when cymatics is active
+    borderColor: USE_CYMATICS_VISUALIZER
+      ? 'rgba(202,192,243,0.35)'
+      : 'rgba(255,255,255,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 40,
+    overflow: 'hidden', // clip cymatics to circle bounds
   },
   circleInner: {
     position: 'absolute',
@@ -297,6 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: width * 0.35,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
+  // Legacy waveform styles (kept for rollback)
   waveformContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,7 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 1,
   },
-  
+
   titleText: {
     color: '#FFF',
     fontSize: 22,
@@ -328,7 +399,7 @@ const styles = StyleSheet.create({
   loopText: {
     color: '#FFF', fontSize: 12, fontFamily: 'Nunito_600SemiBold',
   },
-  
+
   // Bottom
   bottomArea: {
     paddingBottom: 50,
@@ -352,7 +423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  
+
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -382,5 +453,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#FFF',
     marginLeft: -5,
-  }
+  },
 });

@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, Animated, StyleSheet, Platform, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, Animated, StyleSheet, Platform, TouchableOpacity, Modal, ScrollView, Image } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useBgContext } from '@/lib/bgContext';
 
 const VEDIC_MANTRAS = [
   {
@@ -99,15 +100,33 @@ const AnimatedMeaningWord = ({ word, index, delayOffset }: { word: string, index
 };
 
 export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
-  const scale = useRef(new Animated.Value(0.96)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeTextAnim = useRef(new Animated.Value(1)).current;
+  const [step, setStep] = useState(0); // 0 = Transliteration, 1 = English
   const [modalVisible, setModalVisible] = useState(false);
+  const { bgUri } = useBgContext();
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(scale, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 1200, useNativeDriver: true }),
-    ]).start();
+    // Entrance fade
+    Animated.timing(fadeAnim, { toValue: 1, duration: 2000, useNativeDriver: true }).start();
+
+    // Crossfade appearance / disappearance cycler
+    const interval = setInterval(() => {
+      Animated.timing(fadeTextAnim, {
+        toValue: 0,
+        duration: 1500,
+        useNativeDriver: true
+      }).start(() => {
+        setStep(prev => (prev === 0 ? 1 : 0));
+        Animated.timing(fadeTextAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true
+        }).start();
+      });
+    }, 7000); // 7 seconds per cycle
+
+    return () => clearInterval(interval);
   }, []);
 
   const dayIndex = getDayOfYear(new Date()) % VEDIC_MANTRAS.length;
@@ -115,86 +134,139 @@ export function DailyIntentionCard({ currentPeriod, solarTimes }: Props) {
 
   return (
     <>
-      <Animated.View style={[styles.container, { transform: [{ scale }], opacity }]}>
+      <Animated.View style={[styles.container, { opacity: fadeAnim, marginBottom: -10 }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setModalVisible(true);
           }}
-          style={styles.cardWrapper}
+          style={{ width: '100%', paddingVertical: 10, paddingHorizontal: 28, position: 'relative', overflow: 'visible' }}
         >
-          <BlurView intensity={40} tint="dark" style={[styles.cardInner, { backgroundColor: 'rgba(10, 10, 10, 0.35)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' }]}>
+            {/* The giant faint quotation mark in background */}
+            <Text style={{ 
+                position: 'absolute', 
+                top: -15, left: 24, 
+                fontSize: 120, 
+                fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
+                color: 'rgba(255,255,255,0.06)',
+                zIndex: -1 
+            }}>
+                "
+            </Text>
+
             {/* ── Mantra Title ── */}
-            <View style={[styles.titleRow, { marginBottom: 8 }]}>
-               <View style={[styles.goldDot, { backgroundColor: '#FCD34D' }]} />
-               <Text style={[styles.titleText, { color: '#FCD34D', letterSpacing: 1.5, fontSize: 10, fontWeight: '700' }]}>TODAY'S MANTRA</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+               <Text style={{ color: 'rgba(255,255,255,0.5)', letterSpacing: 2, fontSize: 9, fontWeight: '700', textTransform: 'uppercase' }}>TODAY'S MANTRA</Text>
             </View>
 
-            {/* ── Mantra Transliteration ── */}
-            <Text style={{ 
-                fontFamily: 'serif', fontStyle: 'italic', fontSize: 16, color: '#FFF', 
-                textAlign: 'center', lineHeight: 20, marginBottom: 6 
-            }}>
-                {mantra.transliteration}
-            </Text>
+            {/* ── Dynamic Fading Text ── */}
+            <Animated.View style={{ height: 84, justifyContent: 'center', opacity: fadeTextAnim, marginBottom: 4 }}>
+                <Text style={{ 
+                    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
+                    fontStyle: 'italic', 
+                    fontSize: step === 0 ? 19 : 18, // Reduced Sanskrit mantra font size, kept english meaning the same
+                    color: step === 0 ? '#FFF' : 'rgba(255,255,255,0.9)', 
+                    textAlign: 'left', lineHeight: 28,
+                    textShadowColor: 'rgba(0,0,0,0.5)',
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 8
+                }}>
+                    {step === 0 ? mantra.transliteration : `"${mantra.english}"`}
+                </Text>
+            </Animated.View>
 
-            {/* ── English Meaning ── */}
-            <Text style={{ 
-                fontFamily: 'sans-serif', fontStyle: 'italic', fontSize: 11, color: 'rgba(255,255,255,0.6)', 
-                textAlign: 'center', lineHeight: 14, marginBottom: 10, paddingHorizontal: 10 
-            }}>
-                "{mantra.meaning}"
-            </Text>
-
-            <View style={[styles.affordanceRow, { marginTop: 0 }]}>
-              <Text style={[styles.affordanceText, { color: 'rgba(255,255,255,0.3)', fontWeight: '700', letterSpacing: 1.5 }]}>TAP TO EXPLORE</Text>
-              <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.3)" />
+            {/* ── CTA ── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="arrow-forward-outline" size={14} color="rgba(255,255,255,0.6)" />
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600', letterSpacing: 1, fontSize: 10, textTransform: 'uppercase' }}>TAP TO EXPLORE</Text>
             </View>
-          </BlurView>
         </TouchableOpacity>
       </Animated.View>
 
       {/* Full-Screen Mantra Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalBg}>
-          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <LinearGradient colors={['rgba(15,23,42,0.85)', 'rgba(2,6,23,0.97)']} style={StyleSheet.absoluteFillObject} />
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          
+          {/* Cinematic Background */}
+          <Image 
+            source={bgUri ? { uri: bgUri } : undefined} 
+            style={StyleSheet.absoluteFillObject} 
+            resizeMode="cover" 
+          />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <LinearGradient 
+            colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.95)', '#000000']} 
+            locations={[0, 0.4, 0.75, 1]} 
+            style={StyleSheet.absoluteFillObject} 
+          />
 
           <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.topBar}>
-              <View style={{ width: 36 }} />
-              <View style={styles.centerPill}>
-                <Ionicons name="sparkles" size={12} color="#FFF" />
-                <Text style={styles.pillText}>VEDIC MANTRA</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 16 }}>
+              <View style={{ width: 40 }} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 9, fontWeight: '900', color: '#FCD34D', letterSpacing: 2.5, marginBottom: 2 }}>DAILY INTENTION</Text>
+                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>VEDIC MANTRA</Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeCircleBtn}>
-                <Ionicons name="close" size={20} color="#FFFFFF" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ width: 40, height: 40, alignItems: 'flex-end', justifyContent: 'center' }}>
+                <Ionicons name="close" size={28} color="rgba(255,255,255,0.5)" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.modalCard}>
-                <Text style={styles.sanskritTextModal}>{mantra.sanskrit}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.transTextModal}>{mantra.transliteration}</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+              
+              <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                <Ionicons name="rose-outline" size={32} color="rgba(252,211,77,0.3)" />
               </View>
 
-              <View style={styles.englishCard}>
-                <Text style={styles.modalCardEyebrow}>TRANSLATION</Text>
-                <Text style={styles.englishTextModal}>"{mantra.english}"</Text>
+              <Text style={{ fontSize: 28, fontWeight: '400', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textAlign: 'center', lineHeight: 44, letterSpacing: 0.5 }}>
+                {mantra.sanskrit}
+              </Text>
+              
+              <View style={{ height: 1, width: 40, backgroundColor: 'rgba(252,211,77,0.5)', marginVertical: 24 }} />
+              
+              <Text style={{ fontSize: 18, color: '#FCD34D', fontStyle: 'italic', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textAlign: 'center', lineHeight: 28, marginBottom: 32, letterSpacing: 0.5 }}>
+                {mantra.transliteration}
+              </Text>
+
+              <BlurView intensity={45} tint="dark" style={{ paddingHorizontal: 24, paddingVertical: 18, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.03)', width: '100%' }}>
+                <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 24, fontWeight: '500' }}>
+                  "{mantra.english}"
+                </Text>
+              </BlurView>
+            </View>
+
+            <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+              
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 20, marginBottom: 36, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Ionicons name="leaf-outline" size={16} color="rgba(255,255,255,0.5)" />
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 2, textTransform: 'uppercase' }}>THE SCIENCE & MEANING</Text>
+                </View>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 24 }}>
+                  {mantra.meaning}
+                </Text>
               </View>
 
-              <View style={styles.meaningCard}>
-                <Text style={styles.modalCardEyebrow}>THE SCIENCE & MEANING</Text>
-                <Text style={styles.meaningTextModal}>{mantra.meaning}</Text>
-              </View>
-
-              <TouchableOpacity activeOpacity={0.85} onPress={() => setModalVisible(false)} style={styles.doneButton}>
-                <Text style={styles.doneButtonText}>INTERNALIZE & CLOSE</Text>
+              <TouchableOpacity 
+                activeOpacity={0.8} 
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setModalVisible(false);
+                }} 
+                style={{
+                  width: '100%', height: 50, borderRadius: 25,
+                  backgroundColor: 'rgba(252,211,77,0.15)',
+                  borderWidth: 1, borderColor: 'rgba(252,211,77,0.3)',
+                  flexDirection: 'row', gap: 10,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="checkmark" size={18} color="#FCD34D" />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FCD34D', letterSpacing: 2 }}>INTERNALIZE & CLOSE</Text>
               </TouchableOpacity>
-              <View style={{ height: 40 }} />
-            </ScrollView>
+            </View>
           </SafeAreaView>
         </View>
       </Modal>

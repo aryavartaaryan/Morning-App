@@ -91,7 +91,7 @@ export const SOUND_IMAGES: Record<string, string> = {
   tanpura_serene:       'https://images.pexels.com/photos/3225517/pexels-photo-3225517.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   // ── Mantra ────────────────────────────────────────────────────────────────
   mantra_gayatri:       'https://images.pexels.com/photos/19899428/pexels-photo-19899428.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
-  mantra_lalitha:       'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
+  mantra_lalitha:       'https://images.pexels.com/photos/35004458/pexels-photo-35004458.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   mantra_shivtandav:    'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   stotra_bhagya:        'https://images.pexels.com/photos/14754641/pexels-photo-14754641.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   stotra_shiv_sankalpa: 'https://images.pexels.com/photos/10232750/pexels-photo-10232750.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
@@ -177,7 +177,7 @@ export const SOUND_IMAGES: Record<string, string> = {
   healing_bells_432:    'https://images.pexels.com/photos/355296/pexels-photo-355296.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   sitar_morning:        'https://images.pexels.com/photos/1624438/pexels-photo-1624438.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   gayatri:              'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
-  lalitha:              'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
+  lalitha:              'https://images.pexels.com/photos/35004458/pexels-photo-35004458.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   shivtandav:           'https://images.pexels.com/photos/26856873/pexels-photo-26856873.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   bhagya_suktam:        'https://images.pexels.com/photos/14754641/pexels-photo-14754641.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',
   shiv_sankalpa_suktam: 'https://images.pexels.com/photos/10232750/pexels-photo-10232750.jpeg?auto=compress&cs=tinysrgb&w=800&q=90',

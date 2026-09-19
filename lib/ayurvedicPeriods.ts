@@ -286,7 +286,7 @@ export function getHeroRingContent(periodId: string, brahmaActive: boolean): {
     case 'morning_kapha_early':
       return {
         subPill: 'MORNING KAPHA PERIOD',
-        header: 'Yoga & Meditation Hour',
+        header: 'Morning Grounding Yoga & Meditation Hour Vitality',
         sentence: 'Ground your nervous system. Perfect time for mindfulness and gentle stretching.',
         sciLabel: 'Cortisol Awakening & Mindfulness Window',
         actionText: 'Listen & stretch',
@@ -345,7 +345,7 @@ const CIRCADIAN_NOTIF_CONTENT: Record<string, { title: string; body: string; sub
     color:  '#c7d2e0',
   },
   morning_kapha_early: {
-    title:  '🧘 Yoga & Meditation Hour',
+    title:  '🧘 Morning Grounding Yoga & Meditation Hour Vitality',
     body:   'Cortisol is beginning its ascent. This is the optimal window to ground your nervous system before the active day begins. Focus on gentle movement and mindfulness.',
     sub:    'Circadian Cycle · Early Morning Kapha',
     color:  '#FFD700',

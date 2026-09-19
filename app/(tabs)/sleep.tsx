@@ -35,6 +35,9 @@ import SoundLibraryModal, { SoundRow } from '@/components/SoundLibraryModal';
 import SleepQueueSheet from '@/components/SleepQueueSheet';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { MarqueeText } from '@/components/MarqueeText';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
+import { CymaticsView } from '@/components/visualizer/CymaticsView';
+import { USE_CYMATICS_VISUALIZER, DEFAULT_SCRIM_OPACITY } from '@/constants/visualizerSettings';
 
 const { width: W, height: H } = Dimensions.get('screen');
 let _pageScrollRef: any = null;
@@ -173,7 +176,7 @@ function shuffleSoundsForDay<T>(arr: T[], cat: string): T[] {
   return a;
 }
 
-const LALITHA_IMG  = { uri: 'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=400' };
+const LALITHA_IMG  = { uri: 'https://images.pexels.com/photos/35004458/pexels-photo-35004458.jpeg?auto=compress&cs=tinysrgb&w=800&q=90' };
 const HANUMAN_IMG  = require('../../assets/images/hanumanji.png');
 
 const SOUND_BUNDLED_IMAGES: Record<string, any> = {
@@ -2368,224 +2371,21 @@ const ReelCard = memo(function ReelCard({
   }, [isActive]);
 
 
-  // ── PLASMA CORE REFS (all updates go via setNativeProps → zero React re-renders) ──
-  const plasmaPath1Ref  = useRef<any>(null); // Layer 1: Deep gas background
-  const plasmaPath2Ref  = useRef<any>(null); // Layer 2: Main cyan/teal structure
-  const plasmaPath3Ref  = useRef<any>(null); // Layer 3: Magenta/purple folds
-  const plasmaPath4Ref  = useRef<any>(null); // Layer 4: Inner highlights
-  const plasmaRingRef   = useRef<any>(null); // Inner bright ring
-  const plasmaRing2Ref  = useRef<any>(null); // Middle dashed ring
-  const animationFrameRef = useRef<number | null>(null);
-  const wavePhaseRef = useRef(0);
-  // Live refs so the RAF loop always reads the CURRENT play/pause state
-  // without needing the useEffect to restart (which was causing the crash)
-  const isPlayingRef = useRef(isPlaying);
-  const isPausedRef  = useRef(isPaused);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { isPausedRef.current  = isPaused;  }, [isPaused]);
-  const currentRenderVolRef = useRef(0);
-  // Stable per-sample random seeds so the "character" of the waveform is consistent per sound
-  const seedRef = useRef<number[]>([]);
-  const soundIdRef = useRef<string>('');
-  
+  // ── Cymatics metering bridge ──────────────────────────────────────────────
+  // The context provides meteringAnim as an old-style Animated.Value (for
+  // legacy waveform components). CymaticsView needs a Reanimated SharedValue.
+  // We bridge via an Animated.Value listener on the JS thread and use
+  // withTiming(60ms) to smoothly interpolate between 50ms metering ticks,
+  // so the cymatics pattern moves continuously rather than in discrete steps.
+  const cymaticsMeteringAnim = useSharedValue(0);
   useEffect(() => {
-    // When sound changes, generate a new unique set of random seeds
-    // so each sound has its own distinct waveform character
-    if (sound.id !== soundIdRef.current) {
-      soundIdRef.current = sound.id;
-      const seeds: number[] = [];
-      // Use sound.id as a deterministic seed by summing char codes
-      let base = sound.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      for (let i = 0; i < 60; i++) {
-        // Seeded pseudo-random using LCG
-        base = (base * 1664525 + 1013904223) & 0xffffffff;
-        seeds.push((base >>> 0) / 0xffffffff);
-      }
-      seedRef.current = seeds;
-    }
-  }, [sound.id]);
-  
-  useEffect(() => {
-    // Always cancel any prior frame first — prevents double-loop on re-mount
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    let cancelled = false; // safety flag so cleanup works even if RAF fires late
-
-    const CX = 120;
-    const CY = 120;
-    const seeds = seedRef.current;
-
-    // ── Ultra-Complex Volumetric Nebula Math ─────────────────────────────────
-    // To match the screenshot, we use higher frequencies and power functions
-    // to create sharp "ridges" and deep "valleys", simulating 3D fluid folds.
-    const buildNebula = (
-      baseR: number,   // mean radius
-      amp: number,     // distortion strength (driven by live volume)
-      phase: number,   // rotation over time
-      freq: number,    // base harmonic
-      complexity: number, // adds higher-order harmonics for sharp folds
-      samples = 240
-    ): string => {
-      const pts: string[] = [];
-      for (let i = 0; i <= samples; i++) {
-        const th = (i / samples) * Math.PI * 2;
-        // Complex stacked harmonics to create a highly structured, chaotic yet closing shape
-        const wave1 = Math.sin(freq * th + phase);
-        const wave2 = Math.cos((freq + 1) * th - phase * 1.3);
-        const wave3 = Math.sin((freq * 2) * th + phase * 0.8);
-        const wave4 = Math.cos((freq * complexity) * th - phase * 1.7);
-        
-        // Math.pow gives sharp peaks instead of smooth blobs
-        const sharpFolds = Math.pow(Math.abs(wave1), 1.5) * Math.sign(wave1);
-        
-        const r = baseR
-          + amp * 0.7 * sharpFolds
-          + amp * 0.4 * wave2
-          + amp * 0.2 * wave3
-          + amp * 0.1 * wave4;
-          
-        // Clamp to prevent inversion
-        const rClamped = Math.max(2, r);
-        pts.push(`${i === 0 ? 'M' : 'L'}${(CX + rClamped * Math.cos(th)).toFixed(2)} ${(CY + rClamped * Math.sin(th)).toFixed(2)}`);
-      }
-      pts.push('Z');
-      return pts.join(' ');
-    };
-
-    // Valid zero-state path to prevent react-native-svg crash on Android
-    const HIDDEN_PATH = 'M 120 120 Z';
-    // Resting state: a smooth, completely symmetrical circle
-    const RESTING = buildNebula(52, 1, 0, 3, 1, 100);
-
-    const plasmaLoop = () => {
-      if (cancelled) return; 
-
-      try {
-        const rawVol = getMeteringLevel ? Math.max(0, Math.min(1, getMeteringLevel())) : 0;
-        let activeVol = rawVol;
-        const playing = isPlayingRef.current && !isPausedRef.current;
-
-        // SMART FALLBACK
-        if (rawVol < 0.01 && playing) {
-          const t = Date.now() / 1000;
-          activeVol = 0.3
-            + Math.abs(Math.sin(t * 0.7)) * 0.25
-            + Math.abs(Math.sin(t * 1.8)) * 0.15
-            + Math.abs(Math.sin(t * 4.2)) * 0.08;
-        }
-
-        // PROFESSIONAL ENVELOPE (Heavy attack, organic decay for real visual punch)
-        if (activeVol > currentRenderVolRef.current) {
-          currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.88;
-        } else {
-          currentRenderVolRef.current += (activeVol - currentRenderVolRef.current) * 0.08;
-        }
-        const v = currentRenderVolRef.current; 
-
-        // PHASE ADVANCE (spins faster when loud)
-        wavePhaseRef.current += 0.015 + v * 0.08;
-        const ph = wavePhaseRef.current;
-
-        const s0 = seeds[0] ?? 0.5, s1 = seeds[1] ?? 0.5, s2 = seeds[2] ?? 0.5;
-
-        if (playing) {
-          // ── Neon Oscilloscope Waveform (audio-reactive)
-          const activePath = buildWaveform(v, ph);
-          plasmaPath1Ref.current?.setNativeProps({ d: activePath });
-          plasmaPath2Ref.current?.setNativeProps({ d: activePath });
-          plasmaPath3Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
-          plasmaPath4Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
-
-        } else {
-          // ── PAUSED: resting gentle waveform — crash-proof
-          plasmaPath1Ref.current?.setNativeProps({ d: WAVE_RESTING });
-          plasmaPath2Ref.current?.setNativeProps({ d: WAVE_RESTING });
-          plasmaPath3Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
-          plasmaPath4Ref.current?.setNativeProps({ d: WAVE_HIDDEN });
-        }
-      } catch (_e) {
-        // Silent catch ensures app never crashes on animation frame
-      }
-
-      // ── 6. SCHEDULE NEXT FRAME ────────────────────────────────────────────
-      // When playing: run at 60fps continuously
-      // When paused:  draw once then stop — plasma is completely still (user request)
-      if (!cancelled) {
-        if (isPlayingRef.current && !isPausedRef.current) {
-          animationFrameRef.current = requestAnimationFrame(plasmaLoop);
-        } else {
-          // Stopped — loop is idle. It will restart when isPlaying changes (below useEffect)
-          animationFrameRef.current = null;
-        }
-      }
-    };
-
-    // Start immediately
-    animationFrameRef.current = requestAnimationFrame(plasmaLoop);
-
-    return () => {
-      cancelled = true;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  // Run once on mount; isPlaying/isPaused are read inside via closure refs
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getMeteringLevel]);
-
-  // ── Restart the plasma RAF loop when playback resumes after pause ─────────
-  // The main loop parks itself when paused. This effect wakes it back up.
-  useEffect(() => {
-    if (isPlaying && !isPaused && !animationFrameRef.current) {
-      // Loop is parked — re-trigger the main effect by incrementing a counter
-      // (cleanest pattern: just fire a single rAF that re-builds and chains)
-      const wakeUp = () => {
-        if (!isPlayingRef.current || isPausedRef.current) return;
-        // Delegate back to the main closure-captured plasmaLoop via a new RAF chain
-        // by just marking a new frame — the buildNebula math is re-inlined here
-        // to avoid referencing the now-stale closure from mount.
-        try {
-          const CX2 = 120, CY2 = 120;
-          const seeds2 = seedRef.current;
-          const bn = (bR: number, a: number, ph: number, fr: number, comp: number) => {
-            const ps: string[] = [];
-            for (let i = 0; i <= 240; i++) {
-              const t2 = (i / 240) * Math.PI * 2;
-              const w1 = Math.sin(fr * t2 + ph);
-              const w2 = Math.cos((fr + 1) * t2 - ph * 1.3);
-              const w3 = Math.sin((fr * 2) * t2 + ph * 0.8);
-              const w4 = Math.cos((fr * comp) * t2 - ph * 1.7);
-              const sharp = Math.pow(Math.abs(w1), 1.5) * Math.sign(w1);
-              const r = Math.max(2, bR + a * 0.7 * sharp + a * 0.4 * w2 + a * 0.2 * w3 + a * 0.1 * w4);
-              ps.push(`${i === 0 ? 'M' : 'L'}${(CX2 + r * Math.cos(t2)).toFixed(2)} ${(CY2 + r * Math.sin(t2)).toFixed(2)}`);
-            }
-            ps.push('Z');
-            return ps.join(' ');
-          };
-          const ph3 = wavePhaseRef.current;
-          const v3 = currentRenderVolRef.current;
-          const s0 = seeds2[0] ?? 0.5, s1 = seeds2[1] ?? 0.5, s2 = seeds2[2] ?? 0.5;
-          plasmaPath1Ref.current?.setNativeProps({ d: bn(62 + v3 * 28, 12 + v3 * 30, ph3 * 0.5 + s0 * 10, 2, 2) });
-          plasmaPath2Ref.current?.setNativeProps({ d: bn(54 + v3 * 24, 16 + v3 * 40, -ph3 * 0.7 + s1 * 10, 3, 4) });
-          plasmaPath3Ref.current?.setNativeProps({ d: bn(46 + v3 * 18, 14 + v3 * 35, ph3 * 0.9 + s2 * 10, 4, 3) });
-          plasmaPath4Ref.current?.setNativeProps({ d: bn(28 + v3 * 12, 8 + v3 * 20, -ph3 * 1.3, 5, 2) });
-          plasmaRingRef.current?.setNativeProps({ strokeWidth: 1.5 + v3 * 2, strokeOpacity: 0.7 + v3 * 0.3, r: 104 + v3 * 4 });
-          plasmaRing2Ref.current?.setNativeProps({ strokeWidth: 0.8 + v3 * 1.5, strokeOpacity: 0.4 + v3 * 0.4, r: 112 + v3 * 6 });
-          wavePhaseRef.current += 0.018;
-        } catch (_) {}
-        if (isPlayingRef.current && !isPausedRef.current) {
-          animationFrameRef.current = requestAnimationFrame(wakeUp);
-        } else {
-          animationFrameRef.current = null;
-        }
-      };
-      animationFrameRef.current = requestAnimationFrame(wakeUp);
-    }
-  }, [isPlaying, isPaused]); // eslint-disable-line react-hooks/exhaustive-deps
+    const id = meteringAnim.addListener(({ value }) => {
+      // Interpolate toward each new metering value over 60 ms.
+      // This fills the gap between 50ms expo-av ticks → perfectly smooth motion.
+      cymaticsMeteringAnim.value = withTiming(value, { duration: 60 });
+    });
+    return () => meteringAnim.removeListener(id);
+  }, [meteringAnim]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDragging = useRef(false);
   const dragFraction = useRef(new Animated.Value(0)).current;
@@ -2834,11 +2634,11 @@ const ReelCard = memo(function ReelCard({
         pointerEvents="none"
       />
 
-      {/* ── PLASMA CORE VISUALIZER ── */}
-      <Animated.View
+      {/* ── CYMATICS / PLASMA CORE VISUALIZER ── */}
+      <View
         style={[StyleSheet.absoluteFillObject, {
           alignItems: 'center', justifyContent: 'center',
-          zIndex: 7, opacity: 1,
+          zIndex: 7,
         }]}
         pointerEvents="box-none"
       >
@@ -2847,76 +2647,17 @@ const ReelCard = memo(function ReelCard({
           activeOpacity={1.0}
           style={{ width: 240, height: 240, alignItems: 'center', justifyContent: 'center' }}
         >
-          <View style={{ width: 240, height: 240, position: 'absolute' }}>
-            <Svg width="100%" height="100%" viewBox="0 0 240 240">
-              <Defs>
-                <SvgClipPath id="plasmaClip">
-                  <SvgCircle cx={120} cy={120} r={118} />
-                </SvgClipPath>
-
-                {/* Layer 1: Deep Nebula Background */}
-                <SvgLinearGradient id="neb1" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.9" />
-                  <Stop offset="100%" stopColor="#4c1d95" stopOpacity="0.6" />
-                </SvgLinearGradient>
-
-                {/* Layer 2: Vivid Cyan / Teal */}
-                <SvgLinearGradient id="neb2" x1="1" y1="0" x2="0" y2="1">
-                  <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.85" />
-                  <Stop offset="100%" stopColor="#0284c7" stopOpacity="0.4" />
-                </SvgLinearGradient>
-
-                {/* Layer 3: Intense Magenta / Purple */}
-                <SvgLinearGradient id="neb3" x1="0" y1="1" x2="1" y2="0">
-                  <Stop offset="0%" stopColor="#c026d3" stopOpacity="0.75" />
-                  <Stop offset="100%" stopColor="#7e22ce" stopOpacity="0.2" />
-                </SvgLinearGradient>
-
-                {/* Layer 4: Electric Gold / Highlight */}
-                <SvgLinearGradient id="neb4" x1="0.5" y1="0" x2="0.5" y2="1">
-                  <Stop offset="0%" stopColor="#fcd34d" stopOpacity="0.85" />
-                  <Stop offset="100%" stopColor="#f59e0b" stopOpacity="0.1" />
-                </SvgLinearGradient>
-              </Defs>
-
-              {/* ── Outer Static Ring ── */}
-              <SvgCircle cx={120} cy={120} r={116} stroke="#818cf8" strokeWidth={0.5} fill="none" opacity={0.3} />
-
-              {/* ── Middle Dashed Ring (Animated) ── */}
-              <SvgCircle
-                ref={plasmaRing2Ref}
-                cx={120} cy={120} r={110}
-                stroke="#38bdf8"
-                strokeWidth={1}
-                strokeDasharray="2, 6"
-                fill="none"
-                opacity={0.6}
-              />
-
-              {/* ── Inner Solid Ring (Animated) ── */}
-              <SvgCircle
-                ref={plasmaRingRef}
-                cx={120} cy={120} r={102}
-                stroke="#7dd3fc"
-                strokeWidth={1.5}
-                fill="none"
-                opacity={0.8}
-              />
-
-              {/* ── All plasma layers clipped inside the boundary ── */}
-              <G clipPath="url(#plasmaClip)">
-                <Path ref={plasmaPath1Ref} d="M 120 120 Z" fill="url(#neb1)" />
-                <Path ref={plasmaPath2Ref} d="M 120 120 Z" fill="url(#neb2)" />
-                <Path ref={plasmaPath3Ref} d="M 120 120 Z" fill="url(#neb3)" />
-                <Path ref={plasmaPath4Ref} d="M 120 120 Z" fill="url(#neb4)" />
-              </G>
-
-              {/* ── Tiny centre dot for focal point ── */}
-              <SvgCircle cx={120} cy={120} r={2} fill="#fff" opacity={0.9} />
-            </Svg>
-          </View>
+          {/* Cymatics visualizer — transparent, fills the 240×240 tap area */}
+          <CymaticsView
+            size={240}
+            isPlaying={isPlaying && !isPaused}
+            meteringAnim={cymaticsMeteringAnim}
+            quality="auto"
+            scrimOpacity={DEFAULT_SCRIM_OPACITY * 0.6}
+            blendMode="srcOver"
+          />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
 
       {/* ── CENTRAL PLAY/PAUSE BIG ANIMATION ── */}
       <Animated.View
@@ -3987,12 +3728,14 @@ const RECT_CARD_W = Math.floor(W * 0.44);
 const RECT_CARD_H = Math.floor(RECT_CARD_W * 1.58);
 
 const RectangularCollectionCard = memo(function RectangularCollectionCard({
-  col, index, onPress, isPlaying
+  col, index, onPress, isPlaying, scrollX, style
 }: {
   col: typeof SONIC_COLLECTIONS[number];
   index: number;
   onPress: () => void;
   isPlaying?: boolean;
+  scrollX?: Animated.Value;
+  style?: any;
 }) {
   const entryAnim = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
@@ -4028,15 +3771,58 @@ const RectangularCollectionCard = memo(function RectangularCollectionCard({
   const handlePressIn  = () => Animated.spring(pressAnim, { toValue: 0.95, useNativeDriver: true, damping: 20, stiffness: 400 }).start();
   const handlePressOut = () => Animated.spring(pressAnim, { toValue: 1,    useNativeDriver: true, damping: 18, stiffness: 260 }).start();
 
+  const ITEM_SIZE = RECT_CARD_W + 16;
+  const inputRange = [
+    (index - 2) * ITEM_SIZE,
+    (index - 1) * ITEM_SIZE,
+    index * ITEM_SIZE,
+    (index + 1) * ITEM_SIZE,
+    (index + 2) * ITEM_SIZE,
+  ];
+  
+  const scale = scrollX ? scrollX.interpolate({
+    inputRange,
+    outputRange: [0.75, 0.85, 1, 0.85, 0.75],
+    extrapolate: 'clamp',
+  }) : 1;
+  
+  const opacity = scrollX ? scrollX.interpolate({
+    inputRange,
+    outputRange: [0.2, 0.6, 1, 0.6, 0.2],
+    extrapolate: 'clamp',
+  }) : entryAnim;
+  
+  const rotateY = scrollX ? scrollX.interpolate({
+    inputRange,
+    outputRange: ['60deg', '50deg', '0deg', '-50deg', '-60deg'],
+    extrapolate: 'clamp',
+  }) : '0deg';
+
+  const translateX = scrollX ? scrollX.interpolate({
+    inputRange,
+    outputRange: [-RECT_CARD_W * 0.45, -RECT_CARD_W * 0.35, 0, RECT_CARD_W * 0.35, RECT_CARD_W * 0.45],
+    extrapolate: 'clamp',
+  }) : 0;
+
+  const zIndex = scrollX ? scrollX.interpolate({
+    inputRange,
+    outputRange: [1, 5, 10, 5, 1],
+    extrapolate: 'clamp',
+  }) : 1;
+
   return (
-    <Animated.View style={{
-      opacity: entryAnim,
+    <Animated.View style={[{
+      opacity,
       width: RECT_CARD_W,
+      zIndex,
+      elevation: zIndex as any,
       transform: [
-        { translateX: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-        { scale: Animated.multiply(pressAnim, pulseAnim) },
+        { translateX },
+        { scale: Animated.multiply(Animated.multiply(pressAnim, pulseAnim), scale) },
+        { perspective: 1000 },
+        { rotateY }
       ],
-    }}>
+    }, style]}>
       <TouchableOpacity 
         activeOpacity={1} 
         onPress={onPress} 
@@ -4453,16 +4239,25 @@ const RecentCard = memo(function RecentCard({
 // Group the collections into horizontal scroller
 const SonicCollections = memo(function SonicCollections({ onSelectCollection, playingId }: { onSelectCollection: (id: string) => void; playingId: string | null }) {
   const scrollRef = useRef<ScrollView>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
     useCallback(() => {
       if (scrollRef.current) {
+        // Reset to first item instantly
         scrollRef.current.scrollTo({ x: 0, animated: false });
+        // Auto-swipe to the second item after a brief delay for a premium entrance effect
+        const timer = setTimeout(() => {
+          scrollRef.current?.scrollTo({ x: RECT_CARD_W + 16, animated: true });
+        }, 500);
+        return () => clearTimeout(timer);
       }
     }, [])
   );
 
   if (SONIC_COLLECTIONS.length === 0) return null;
+
+  const CENTER_PAD = (W - RECT_CARD_W) / 2;
 
   return (
     <View style={{ marginTop: 8, paddingBottom: 20 }}>
@@ -4476,26 +4271,34 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
         <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(129,140,248,0.25)', borderRadius: 1 }} />
       </View>
 
-      <ScrollView
-        ref={scrollRef}
+      <Animated.ScrollView
+        ref={scrollRef as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
-        decelerationRate="normal"
+        contentContainerStyle={{ paddingLeft: CENTER_PAD, paddingRight: CENTER_PAD, paddingVertical: 10 }}
+        snapToInterval={RECT_CARD_W + 16}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
       >
         {SONIC_COLLECTIONS.map((col, idx) => {
           const colIsPlaying = !!playingId && col.soundIds.includes(playingId);
           return (
             <RectangularCollectionCard
               key={col.id}
+              style={{ marginRight: idx === SONIC_COLLECTIONS.length - 1 ? 0 : 16 }}
               col={col}
               index={idx}
               isPlaying={colIsPlaying}
               onPress={() => onSelectCollection(col.id)}
+              scrollX={scrollX}
             />
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 });
@@ -4505,9 +4308,9 @@ const SonicCollections = memo(function SonicCollections({ onSelectCollection, pl
 // ─── Therapy Sound Card (2-column grid card with image) ─────────────────────
 // ─── Therapy Sound Card (Horizontal Slider Item) ─────────────────────────
 const TherapySoundCard = memo(function TherapySoundCard({
-  sound, isPlaying, isPaused, themeColor, onPress, cardWidth
+  sound, isPlaying, isPaused, themeColor, onPress, cardWidth, index, scrollX, style
 }: {
-  sound: any; isPlaying: boolean; isPaused: boolean; themeColor: string; onPress: () => void; cardWidth?: number;
+  sound: any; isPlaying: boolean; isPaused: boolean; themeColor: string; onPress: () => void; cardWidth?: number; index?: number; scrollX?: Animated.Value; style?: any;
 }) {
   const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const [, forceUpdate] = useState(0);
@@ -4528,6 +4331,45 @@ const TherapySoundCard = memo(function TherapySoundCard({
 
   const cardW = cardWidth ?? Math.floor(W * 0.38);
   const cardH = Math.floor(cardW * 1.55); // Portrait orientation (Option 2)
+  const ITEM_SIZE = cardW + 16;
+  
+  const inputRange = index !== undefined ? [
+    (index - 2) * ITEM_SIZE,
+    (index - 1) * ITEM_SIZE,
+    index * ITEM_SIZE,
+    (index + 1) * ITEM_SIZE,
+    (index + 2) * ITEM_SIZE,
+  ] : [0, 1, 2, 3, 4];
+  
+  const scale = scrollX && index !== undefined ? scrollX.interpolate({
+    inputRange,
+    outputRange: [0.75, 0.85, 1, 0.85, 0.75],
+    extrapolate: 'clamp',
+  }) : 1;
+  
+  const opacity = scrollX && index !== undefined ? scrollX.interpolate({
+    inputRange,
+    outputRange: [0.2, 0.6, 1, 0.6, 0.2],
+    extrapolate: 'clamp',
+  }) : 1;
+  
+  const rotateY = scrollX && index !== undefined ? scrollX.interpolate({
+    inputRange,
+    outputRange: ['60deg', '50deg', '0deg', '-50deg', '-60deg'],
+    extrapolate: 'clamp',
+  }) : '0deg';
+
+  const translateX = scrollX && index !== undefined ? scrollX.interpolate({
+    inputRange,
+    outputRange: [-cardW * 0.45, -cardW * 0.35, 0, cardW * 0.35, cardW * 0.45],
+    extrapolate: 'clamp',
+  }) : 0;
+
+  const zIndex = scrollX && index !== undefined ? scrollX.interpolate({
+    inputRange,
+    outputRange: [1, 5, 10, 5, 1],
+    extrapolate: 'clamp',
+  }) : 1;
 
   // Waveform bars for playing state
   const wBar1 = useRef(new Animated.Value(3)).current;
@@ -4558,7 +4400,18 @@ const TherapySoundCard = memo(function TherapySoundCard({
   }, [isPlaying, isPaused]);
 
   return (
-    <Animated.View style={{ width: cardW, transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={[{ 
+      width: cardW, 
+      opacity,
+      zIndex,
+      elevation: zIndex as any,
+      transform: [
+        { translateX },
+        { scale: Animated.multiply(scaleAnim, scale) },
+        { perspective: 1000 },
+        { rotateY }
+      ] 
+    }, style]}>
       <GHTouchableOpacity 
         onPress={onPress} 
         onPressIn={handlePressIn} 
@@ -4634,6 +4487,82 @@ const TherapySoundCard = memo(function TherapySoundCard({
         </View>
       </GHTouchableOpacity>
     </Animated.View>
+  );
+});
+
+const SoundTherapyCoverflowRow = memo(function SoundTherapyCoverflowRow({ row, rowTitle, subtitle, rowColor, rIdx, playingId, isPaused, onPressSound, cardW }: any) {
+  const scrollRef = useRef<any>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const ITEM_SIZE = cardW + 16;
+  const CENTER_PAD = (W - cardW) / 2;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ x: 0, animated: false });
+      const timer = setTimeout(() => {
+        scrollRef.current?.scrollTo({ x: ITEM_SIZE, animated: true });
+      }, 600 + (rIdx * 100)); 
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  return (
+    <View style={{ marginBottom: 36 }}>
+      {/* ── Zen Minimalist Row Header ── */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 20 }}>
+        <View>
+          <Text style={{
+            fontSize: 18,
+            color: '#F7F5F0',
+            fontFamily: 'DancingScript_600SemiBold',
+            letterSpacing: 0.5,
+            marginBottom: 2
+          }}>
+            {rowTitle}
+          </Text>
+          <Text style={{
+            fontSize: 10,
+            color: rowColor,
+            fontFamily: 'Nunito_600SemiBold',
+            letterSpacing: 2,
+            textTransform: 'uppercase'
+          }}>
+            {subtitle}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="rgba(247,245,240,0.3)" />
+      </View>
+
+      <Animated.ScrollView
+        ref={scrollRef as any}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingLeft: CENTER_PAD, paddingRight: CENTER_PAD, paddingVertical: 10 }}
+        snapToInterval={ITEM_SIZE}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        nestedScrollEnabled={true}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
+      >
+        {row.map((sound: any, idx: number) => (
+          <TherapySoundCard
+            key={sound.id}
+            style={{ marginRight: idx === row.length - 1 ? 0 : 16 }}
+            sound={sound}
+            index={idx}
+            scrollX={scrollX}
+            isPlaying={playingId === sound.id}
+            isPaused={isPaused}
+            themeColor={rowColor}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
+            cardWidth={cardW}
+          />
+        ))}
+      </Animated.ScrollView>
+    </View>
   );
 });
 
@@ -4793,57 +4722,18 @@ const SonicCollectionDetail = memo(function SonicCollectionDetail({
               const rowColor = rs.color;
 
               return (
-                <View key={rIdx} style={{ marginBottom: 36 }}>
-                  {/* ── Zen Minimalist Row Header ── */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 20 }}>
-                    <View>
-                      <Text style={{
-                        fontSize: 18,
-                        color: '#F7F5F0',
-                        fontFamily: 'DancingScript_600SemiBold',
-                        letterSpacing: 0.5,
-                        marginBottom: 2
-                      }}>
-                        {volumeTitle}
-                      </Text>
-                      <Text style={{
-                        fontSize: 10,
-                        color: rowColor,
-                        fontFamily: 'Nunito_600SemiBold',
-                        letterSpacing: 2,
-                        textTransform: 'uppercase'
-                      }}>
-                        {rs.subtitle}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color="rgba(247,245,240,0.3)" />
-                  </View>
-
-                  <GHFlatList
-                    data={row}
-                    keyExtractor={(item) => item.id}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
-                    decelerationRate="normal"
-                    nestedScrollEnabled={true}
-                    directionalLockEnabled={true}
-                    alwaysBounceHorizontal={true}
-                    bounces={true}
-                    initialNumToRender={4}
-                    windowSize={3}
-                    renderItem={({ item: sound }) => (
-                      <TherapySoundCard
-                        sound={sound}
-                        isPlaying={playingId === sound.id}
-                        isPaused={isPaused}
-                        themeColor={rowColor}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPressSound(sound.id); }}
-                        cardWidth={cardW}
-                      />
-                    )}
-                  />
-                </View>
+                <SoundTherapyCoverflowRow 
+                   key={rIdx}
+                   row={row}
+                   rowTitle={volumeTitle}
+                   subtitle={rs.subtitle}
+                   rowColor={rowColor}
+                   rIdx={rIdx}
+                   playingId={playingId}
+                   isPaused={isPaused}
+                   onPressSound={onPressSound}
+                   cardW={cardW}
+                />
               );
             })
           )}

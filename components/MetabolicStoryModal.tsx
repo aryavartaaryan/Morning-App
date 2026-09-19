@@ -1,26 +1,19 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, Modal, TouchableOpacity,
-  StyleSheet, Dimensions, Animated, ScrollView,
-  StatusBar, Platform,
+  StyleSheet, Dimensions, Platform, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { DoshaPeriod } from '@/lib/ayurvedicPeriods';
 import type { SolarTimes } from '@/lib/solar';
 import { WELLNESS, PERIOD_SANSKRIT, PERIOD_EXTENDED } from '@/lib/wellnessData';
-import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useBgContext } from '@/lib/bgContext';
 
-const { width: W, height: H } = Dimensions.get('window');
-
-const DOSHA_COLOR: Record<string, string> = {
-  kapha: '#F59E0B',
-  pitta: '#EF4444',
-  vata:  '#8B5CF6',
-};
+const { width: W } = Dimensions.get('window');
 
 const DOSHA_NAMES: Record<string, string> = {
   kapha: 'Kapha · Stability & Structure',
@@ -28,117 +21,101 @@ const DOSHA_NAMES: Record<string, string> = {
   vata:  'Vāta · Kinetic Velocity & Mind',
 };
 
-function fmtH(decH: number): string {
-  const totalMin = Math.round(decH * 60) % (24 * 60);
-  const hh = Math.floor(totalMin / 60) % 24;
-  const mm = totalMin % 60;
-  const ampm = hh < 12 ? 'AM' : 'PM';
-  const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
-  return `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${ampm}`;
-}
-
-const WESTERN_EXPLAINER: Record<string, {
-  headline: string;
-  tagline: string;
-  what: string;
-  whyMatters: string;
-  analogy: string;
-  topFact: { icon: string; label: string; value: string }[];
-}> = {
+const WESTERN_EXPLAINER: Record<string, any> = {
   morning_kapha_early: {
     headline: 'Your Body is Grounding & Waking',
-    tagline: 'Dawn Awakening · Cortisol Rising · Mindful Calibration',
-    what: 'Right now, as dawn light stimulates the suprachiasmatic nucleus (SCN), your neurobiology transitions smoothly from sleep to wakefulness. Cortisol initiates its morning rise. Ayurveda designates this the early Kapha window — the grounded, peaceful calm before the day speeds up.',
+    tagline: 'Dawn Awakening · Cortisol Rising',
+    what: 'Right now, as dawn light stimulates the SCN, your neurobiology transitions smoothly from sleep to wakefulness. Cortisol initiates its morning rise. Ayurveda designates this the early Kapha window.',
     whyMatters: 'Gentle movement and breathwork during this window regulate your autonomic nervous system, locking in your baseline vagal tone for the entire day.',
-    analogy: 'The engine is gently warming up after a cool night. Do not redline it with stressful notifications. Let it idle smoothly with conscious breath.',
+    analogy: 'The engine is gently warming up. Let it idle smoothly with conscious breath.',
     topFact: [
       { icon: '🧘', label: 'Vagal Tone', value: 'Highly receptive' },
-      { icon: '📈', label: 'Cortisol Arc', value: 'Natural morning rise' },
-      { icon: '🌱', label: 'Neuroplasticity', value: 'Open for intention' },
+      { icon: '📈', label: 'Cortisol', value: 'Morning rise' },
+      { icon: '🌱', label: 'Plasticity', value: 'Open for intention' },
     ],
   },
   morning_kapha: {
-    headline: 'Your Body is in Prime Anabolic Build Mode',
-    tagline: 'Peak Anabolic Window · Joint Lubrication · Physical Strength',
-    what: 'During the ascending solar arc, testosterone, growth hormone, and core cellular building signals peak. Synovial fluid actively lubricates joints, and the musculoskeletal matrix is primed for structural adaptation.',
-    whyMatters: 'Strength training in this solar window stimulates up to 23% greater muscle protein synthesis than evening sessions. Your hormonal environment will not be more anabolic at any other point today.',
-    analogy: 'Your biological factory is fully staffed and supplied. The morning light signals maximum cellular construction. Build now.',
+    headline: 'Prime Anabolic Build Mode',
+    tagline: 'Peak Anabolic Window · Physical Strength',
+    what: 'During the ascending solar arc, testosterone, growth hormone, and core cellular building signals peak. Synovial fluid actively lubricates joints, and the musculoskeletal matrix is primed.',
+    whyMatters: 'Strength training in this solar window stimulates significantly greater muscle protein synthesis than evening sessions. Your hormonal environment is highly anabolic.',
+    analogy: 'Your biological factory is fully staffed. Build now.',
     topFact: [
-      { icon: '💪', label: 'Anabolic Surge', value: '+25% vs evening' },
+      { icon: '💪', label: 'Anabolism', value: '+25% vs evening' },
       { icon: '🦴', label: 'Joint Fluid', value: 'Optimal viscosity' },
-      { icon: '🛡️', label: 'Immune Guard', value: 'High white blood cells' },
+      { icon: '🛡️', label: 'Immunity', value: 'High WBC count' },
     ],
   },
   midday_pitta: {
-    headline: 'Your Metabolic Fire (Agni) Peaks with the Sun',
-    tagline: 'Solar Zenith Alignment · Max Digestive Capacity · Cognitive Acuity',
-    what: 'As the sun approaches celestial zenith, gastric hydrochloric acid reaches its lowest pH and highest potency. Liver detox pathways and digestive enzymes operate at maximum enzymatic efficiency. Ayurveda terms this Pitta — transformation, digestion, and sharp intellectual focus.',
-    whyMatters: 'Eating your primary, most substantial meal during this peak solar window yields up to 30% higher nutrient assimilation and prevents the metabolic stagnation (Ama) caused by late-night dining.',
-    analogy: 'Your stomach is a roaring blast furnace fueled by the sun above. Feed it when the fire burns brightest.',
+    headline: 'Metabolic Fire Peaks with the Sun',
+    tagline: 'Solar Zenith · Cognitive Acuity',
+    what: 'As the sun approaches celestial zenith, gastric hydrochloric acid reaches its lowest pH. Liver detox pathways and digestive enzymes operate at maximum enzymatic efficiency.',
+    whyMatters: 'Eating your primary meal during this peak solar window yields higher nutrient assimilation and prevents metabolic stagnation caused by late-night dining.',
+    analogy: 'Your stomach is a roaring blast furnace. Feed it when the fire burns brightest.',
     topFact: [
       { icon: '🔥', label: 'Gastric Acid', value: 'Peak enzymatic pH' },
-      { icon: '⚡', label: 'Insulin Sensitivity', value: '+30% vs evening' },
-      { icon: '🧠', label: 'Prefrontal Focus', value: 'High clarity & decisions' },
+      { icon: '⚡', label: 'Insulin Sens.', value: '+30% vs evening' },
+      { icon: '🧠', label: 'Cognition', value: 'High clarity' },
     ],
   },
   midday_pitta_late: {
-    headline: 'Your Body Enters Internal Digest Mode',
-    tagline: 'Post-Zenith Realignment · Splanchnic Blood Flow · Rest & Digest',
-    what: 'Following peak solar noon, systemic blood flow is channeled toward the splanchnic vascular bed to digest and assimilate nutrients. Core temperature undergoes a brief physiological dip, creating a natural circadian alertness trough.',
+    headline: 'Internal Digest Mode',
+    tagline: 'Post-Zenith Realignment · Rest & Digest',
+    what: 'Following peak solar noon, systemic blood flow is channeled toward the splanchnic vascular bed to digest nutrients. Core temperature undergoes a brief physiological dip.',
     whyMatters: 'Demanding intense cognitive or physical output now creates unnecessary autonomic friction. Honoring this natural biological lull allows cellular digestion to complete cleanly.',
-    analogy: 'The battery is re-routing power to the digestive furnace. Let the internal engine process without redlining the accelerator.',
+    analogy: 'The battery is re-routing power to the digestive furnace.',
     topFact: [
-      { icon: '🩸', label: 'Splanchnic Flow', value: 'Reallocated to gut' },
-      { icon: '📉', label: 'Cortisol Curve', value: 'Natural midday dip' },
-      { icon: '🧘', label: 'Autonomic Mode', value: 'Rest & assimilation' },
+      { icon: '🩸', label: 'Splanchnic', value: 'Reallocated to gut' },
+      { icon: '📉', label: 'Cortisol', value: 'Natural midday dip' },
+      { icon: '🧘', label: 'Autonomic', value: 'Rest & assimilation' },
     ],
   },
   afternoon_vata: {
-    headline: 'Your Nervous System & Athletic Velocity Peak',
-    tagline: 'Neuromuscular Precision · Peak Aerobic Capacity · Creative Surge',
-    what: 'As the sun descends toward the western horizon, sympathetic nervous system tone rises smoothly. Motor coordination, reaction time, and lung vital capacity reach their diurnal zenith. Ayurveda terms this Vata — the kinetic principle of air, movement, and velocity.',
-    whyMatters: 'Athletic performance, fine motor coordination, and world records peak predominantly between late afternoon and dusk. This is your biological peak for movement, strategic brainstorming, and expressive communication.',
-    analogy: 'Your nervous system is a taut sail filled with brisk afternoon wind. Move, articulate, create, and flow.',
+    headline: 'Nervous System Velocity Peaks',
+    tagline: 'Neuromuscular Precision · Creative Surge',
+    what: 'As the sun descends, sympathetic nervous system tone rises smoothly. Motor coordination, reaction time, and lung vital capacity reach their diurnal zenith.',
+    whyMatters: 'Athletic performance and fine motor coordination peak predominantly between late afternoon and dusk. This is your biological peak for movement and strategic brainstorming.',
+    analogy: 'Your nervous system is a taut sail filled with brisk afternoon wind.',
     topFact: [
-      { icon: '🎨', label: 'Cognitive Flow', value: 'Lateral creative peak' },
-      { icon: '🏃', label: 'Athletic Peak', value: 'Highest VO2 & reflex' },
-      { icon: '🫁', label: 'Vital Capacity', value: 'Maximum lung volume' },
+      { icon: '🎨', label: 'Flow', value: 'Creative peak' },
+      { icon: '🏃', label: 'Athletic', value: 'Highest VO2' },
+      { icon: '🫁', label: 'Lungs', value: 'Maximum volume' },
     ],
   },
   evening_kapha: {
-    headline: 'Dusk Transition: Your Body Winds Down',
-    tagline: 'Melatonin Synthesis · Core Temperature Drop · Parasympathetic Shift',
-    what: 'Following sunset, the absence of short-wavelength blue light triggers the pineal gland to synthesize melatonin. Core body temperature begins its nightly 0.5–1°C drop. Cortisol reaches its 24-hour nadir as the parasympathetic nervous system takes command.',
-    whyMatters: 'Artificial blue screen light exposure during this twilight window suppresses melatonin synthesis by over 50%, throwing off circadian phase alignment by up to 3 hours.',
-    analogy: 'The city of your cells is dimming its streetlights. The daytime factories are closing. Welcome the peaceful silence.',
+    headline: 'Dusk Transition: Winding Down',
+    tagline: 'Melatonin Synthesis · Parasympathetic Shift',
+    what: 'Following sunset, the absence of short-wavelength blue light triggers the pineal gland to synthesize melatonin. Core body temperature begins its nightly drop.',
+    whyMatters: 'Artificial blue screen light exposure during this twilight window suppresses melatonin synthesis by over 50%, throwing off circadian phase alignment.',
+    analogy: 'The city of your cells is dimming its streetlights.',
     topFact: [
-      { icon: '🌙', label: 'Melatonin Rise', value: 'Synthesis initiates' },
+      { icon: '🌙', label: 'Melatonin', value: 'Synthesis initiates' },
       { icon: '🌡️', label: 'Core Temp', value: 'Dropping for sleep' },
-      { icon: '📵', label: 'Blue Light Impact', value: 'Maximum vulnerability' },
+      { icon: '📵', label: 'Blue Light', value: 'Max vulnerability' },
     ],
   },
   night_pitta: {
-    headline: 'The Nocturnal Cellular Maintenance Shift',
-    tagline: 'Growth Hormone Surge · Cellular Autophagy · Glymphatic Brain Flush',
-    what: 'While conscious awareness sleeps, the body activates its most aggressive repair programs. Pulsatile Growth Hormone surges during slow-wave sleep. The glymphatic system clears metabolic waste and beta-amyloid plaques from brain tissue. Liver Phase I/II detoxification reaches its nocturnal peak.',
-    whyMatters: 'Every hour of deep sleep before the pre-dawn hours is irreplaceable biological medicine for DNA repair, mitochondrial restoration, and memory consolidation.',
-    analogy: 'The manufacturing line is paused so the deep cleaning and structural maintenance crew can rebuild the machinery.',
+    headline: 'Nocturnal Cellular Maintenance',
+    tagline: 'Growth Hormone Surge · Glymphatic Flush',
+    what: 'While conscious awareness sleeps, the body activates its most aggressive repair programs. The glymphatic system clears metabolic waste from brain tissue.',
+    whyMatters: 'Every hour of deep sleep before the pre-dawn hours is irreplaceable biological medicine for DNA repair and memory consolidation.',
+    analogy: 'The manufacturing line is paused for deep cleaning.',
     topFact: [
-      { icon: '🧬', label: 'Cellular Autophagy', value: 'Self-cleaning maximum' },
-      { icon: '🏋️', label: 'Growth Hormone', value: 'Slow-wave sleep surge' },
-      { icon: '🧹', label: 'Glymphatic Flush', value: 'Brain waste clearance' },
+      { icon: '🧬', label: 'Autophagy', value: 'Self-cleaning max' },
+      { icon: '🏋️', label: 'HGH', value: 'Slow-wave surge' },
+      { icon: '🧹', label: 'Glymphatic', value: 'Brain clearance' },
     ],
   },
   night_vata: {
-    headline: 'The Sacred Pre-Dawn Window (Brahma Muhurta)',
-    tagline: 'Subconscious Clarity · Alpha-Theta Brainwaves · Spiritual Alignment',
-    what: 'In the 96 minutes before solar dawn, the atmosphere is charged with nascent ozone, pure stillness, and absence of electromagnetic chatter. EEG studies confirm spontaneous alpha and theta brainwave dominance — the neurological signature of deep meditation.',
-    whyMatters: 'Intentions, meditation, and mantras set during this window penetrate deep into the subconscious mind with up to 10× the efficacy of midday practice.',
-    analogy: 'Your mind is a pristine mountain lake before sunrise. Any pebble dropped into the water creates ripples that reach the deepest depths.',
+    headline: 'Sacred Pre-Dawn Window',
+    tagline: 'Subconscious Clarity · Alpha-Theta Waves',
+    what: 'In the 96 minutes before solar dawn, the atmosphere is charged with stillness. EEG studies confirm spontaneous alpha and theta brainwave dominance.',
+    whyMatters: 'Intentions and meditation set during this window penetrate deep into the subconscious mind with incredible efficacy.',
+    analogy: 'Your mind is a pristine mountain lake before sunrise.',
     topFact: [
-      { icon: '🧘', label: 'EEG Brainwaves', value: 'Alpha-theta baseline' },
-      { icon: '🌱', label: 'BDNF Factor', value: 'Elevated synaptic growth' },
-      { icon: '✨', label: 'Brahma Muhurta', value: '96 min prior to sunrise' },
+      { icon: '🧘', label: 'Brainwaves', value: 'Alpha-theta baseline' },
+      { icon: '🌱', label: 'BDNF', value: 'Elevated plasticity' },
+      { icon: '✨', label: 'Timing', value: '96 min prior dawn' },
     ],
   },
 };
@@ -152,734 +129,256 @@ export default function MetabolicStoryModal({
   solarTimes: SolarTimes | null;
   onClose: () => void;
 }) {
-  const accent = period.color || DOSHA_COLOR[period.dosha] || '#00D4B8';
-  const ex = WESTERN_EXPLAINER[period.id] || WESTERN_EXPLAINER['afternoon_vata'];
-  const w = WELLNESS[period.id];
-  const s = PERIOD_SANSKRIT[period.id];
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const totalSlides = 8;
+  const { bgUri } = useBgContext();
+  const insets = useSafeAreaInsets();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
-  const pulseDot = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 450, useNativeDriver: true }),
-    ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseDot, { toValue: 1.4, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseDot, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 240, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 30, duration: 240, useNativeDriver: true }),
-    ]).start(onClose);
+  const handlePress = (evt: any) => {
+    const { locationX } = evt.nativeEvent;
+    if (locationX < W * 0.3) {
+      if (currentSlide > 0) {
+        setCurrentSlide(prev => prev - 1);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } else {
+      if (currentSlide < totalSlides - 1) {
+        setCurrentSlide(prev => prev + 1);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onClose();
+      }
+    }
   };
 
-  // Solar calculations
-  const srStr = solarTimes ? fmtH(solarTimes.sunrise) : '05:58 AM';
-  const snStr = solarTimes ? fmtH(solarTimes.solarNoon) : '12:14 PM';
-  const ssStr = solarTimes ? fmtH(solarTimes.sunset) : '06:30 PM';
-  const dayLengthHrs = solarTimes ? (solarTimes.sunset - solarTimes.sunrise).toFixed(1) : '12.5';
+  const baseColor = period.dosha === 'pitta' ? '#FBBF24' : period.dosha === 'vata' ? '#60A5FA' : '#4ADE80';
+  const sanskrit = PERIOD_SANSKRIT[period.id];
+  const explain = WESTERN_EXPLAINER[period.id] || WESTERN_EXPLAINER['morning_kapha'];
+  const wellness = WELLNESS[period.id];
+  const extended = PERIOD_EXTENDED[period.id] || PERIOD_EXTENDED['morning_kapha'];
 
-  const remM = period.minutesRemaining ?? 0;
-  const remStr = remM >= 60 ? `${Math.floor(remM / 60)}h ${remM % 60}m remaining` : `${remM}m remaining`;
-  const durH = (period.endH - period.startH + 24) % 24 || 3;
-  const durM = Math.round(durH * 60);
-  const prog = Math.max(0, Math.min(1, 1 - (remM / durM)));
+  const renderSlideContent = () => {
+    switch(currentSlide) {
+      case 0: // The Vibe (Hero)
+        return (
+          <View>
+            <Text style={{ fontSize: 52, fontWeight: '900', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', letterSpacing: -1, marginBottom: 4 }}>
+              {DOSHA_NAMES[period.dosha].split('·')[0].toUpperCase().trim()}
+            </Text>
+            {extended?.phonetic && (
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 2, marginBottom: 4 }}>
+                {extended.phonetic.toUpperCase()}
+              </Text>
+            )}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: baseColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 32 }}>
+              {sanskrit?.meaning || 'Ayurvedic Phase'}
+            </Text>
+            
+            <Text style={{ fontSize: 36, fontWeight: '400', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', lineHeight: 48, marginBottom: 12 }}>
+              {explain.headline}
+            </Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>
+              {explain.tagline}
+            </Text>
+          </View>
+        );
+
+      case 1: // The Biology (What)
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 24 }}>THE BIOLOGY</Text>
+             <Text style={{ fontSize: 24, color: 'rgba(255,255,255,0.95)', lineHeight: 36, fontWeight: '400', marginBottom: 32 }}>{explain.what}</Text>
+             <View style={{ borderLeftWidth: 2, borderLeftColor: baseColor, paddingLeft: 16 }}>
+               <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.9)', fontStyle: 'italic', lineHeight: 28 }}>"{explain.analogy}"</Text>
+             </View>
+          </View>
+        );
+
+      case 2: // Why it matters
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 24 }}>WHY IT MATTERS</Text>
+             <Text style={{ fontSize: 24, color: 'rgba(255,255,255,0.95)', lineHeight: 36, fontWeight: '400' }}>{explain.whyMatters}</Text>
+          </View>
+        );
+
+      case 3: // Vedic Roots (Elements & Etymology)
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 24 }}>THE VEDIC ROOTS</Text>
+             
+             {extended?.elementCombined && (
+               <Text style={{ fontSize: 22, color: '#FFF', lineHeight: 34, fontWeight: '400', marginBottom: 36 }}>
+                 {extended.elementCombined}
+               </Text>
+             )}
+             
+             <View style={{ gap: 20 }}>
+               {extended?.etymParts?.map((part: any, idx: number) => (
+                  <View key={idx} style={{ flexDirection: 'row', gap: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: baseColor, width: 85 }}>{part.term}</Text>
+                    <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.9)', flex: 1, lineHeight: 26 }}>{part.breakdown}</Text>
+                  </View>
+               ))}
+             </View>
+          </View>
+        );
+
+      case 4: // Classical Reference
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 32 }}>CLASSICAL WISDOM</Text>
+             {extended?.classicalRef && (
+               <View>
+                 <Text style={{ fontSize: 32, color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontStyle: 'italic', marginBottom: 24, lineHeight: 44 }}>"{extended.classicalRef.text}"</Text>
+                 <Text style={{ fontSize: 12, color: baseColor, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' }}>— {extended.classicalRef.source}</Text>
+               </View>
+             )}
+          </View>
+        );
+
+      case 5: // Biological Markers & Sun
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 24 }}>BIOLOGICAL MARKERS</Text>
+             
+             {extended?.systemTags && (
+               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
+                 {extended.systemTags.map((tag: string, idx: number) => (
+                   <View key={idx} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 24, borderWidth: 1, borderColor: `${baseColor}40`, backgroundColor: `${baseColor}15` }}>
+                     <Text style={{ fontSize: 11, fontWeight: '800', color: baseColor, letterSpacing: 1.5, textTransform: 'uppercase' }}>{tag}</Text>
+                   </View>
+                 ))}
+               </View>
+             )}
+
+             <View style={{ gap: 28, marginBottom: 40 }}>
+               {explain.topFact.map((fact: any, idx: number) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    <Text style={{ fontSize: 40 }}>{fact.icon}</Text>
+                    <View>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', marginBottom: 4, letterSpacing: 0.5 }}>{fact.label}</Text>
+                      <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{fact.value}</Text>
+                    </View>
+                  </View>
+               ))}
+             </View>
+             
+             {extended?.sunPosition && (
+               <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                 <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.95)', lineHeight: 26, fontStyle: 'italic' }}>{extended.sunPosition}</Text>
+               </View>
+             )}
+          </View>
+        );
+
+      case 6: // Systemic Impact
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 32 }}>PHYSIOLOGICAL STATE</Text>
+             
+             <View style={{ gap: 24 }}>
+               {wellness?.bodyBullets?.map((item: any, idx: number) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.dot, marginTop: 8, shadowColor: item.dot, shadowOpacity: 0.8, shadowRadius: 6, shadowOffset: { width:0, height:0 } }} />
+                    <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.95)', lineHeight: 28, flex: 1 }}>{item.text}</Text>
+                  </View>
+               ))}
+             </View>
+          </View>
+        );
+
+      case 7: // Optimal Protocols
+        return (
+          <View>
+             <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 24 }}>OPTIMAL PROTOCOLS</Text>
+             
+             <View style={{ gap: 24, marginBottom: 32 }}>
+               {wellness?.doItems?.map((item: any, idx: number) => (
+                  <View key={`do-${idx}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <Text style={{ fontSize: 20, marginTop: 2 }}>{item.emoji}</Text>
+                    <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.95)', lineHeight: 28, flex: 1 }}>{item.text}</Text>
+                  </View>
+               ))}
+             </View>
+
+             <View style={{ gap: 24, marginBottom: 32 }}>
+               {wellness?.avoidItems?.map((item: any, idx: number) => (
+                  <View key={`avoid-${idx}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <Text style={{ fontSize: 20, marginTop: 2 }}>{item.emoji}</Text>
+                    <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.95)', lineHeight: 28, flex: 1 }}>{item.text}</Text>
+                  </View>
+               ))}
+             </View>
+             
+             {wellness?.naadSounds && (
+               <>
+                 <Text style={{ fontSize: 10, fontWeight: '900', color: baseColor, letterSpacing: 3, marginBottom: 16, marginTop: 8 }}>RESONANCE</Text>
+                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                   {wellness.naadSounds.map((sound: string, idx: number) => (
+                     <View key={idx} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                       <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.9)' }}>{sound.replace(/_/g, ' ').toUpperCase()}</Text>
+                     </View>
+                   ))}
+                 </View>
+               </>
+             )}
+          </View>
+        );
+
+      default: return null;
+    }
+  };
 
   return (
-    <Modal
-      transparent={false}
-      visible
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={handleClose}
-    >
-      <View style={S.container}>
-        <StatusBar barStyle="light-content" />
-
-        {/* Ambient Cosmic Background Lighting */}
-        <LinearGradient
-          colors={[`${accent}28`, `${accent}0A`, '#060712']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.6 }}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
+    <Modal visible={true} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        {/* 1. Cinematic Full-Bleed Image with Heavy Darkening Overlay */}
+        <Image 
+          source={bgUri ? { uri: bgUri } : undefined} 
+          style={StyleSheet.absoluteFillObject} 
+          resizeMode="cover" 
+        />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.65)' }]} />
+        
+        {/* 2. Deep Editorial Dark Filter & Gradient (Ultra Premium) */}
+        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <LinearGradient 
+          colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.95)', '#000000']} 
+          locations={[0, 0.4, 0.75, 1]} 
+          style={StyleSheet.absoluteFillObject} 
         />
 
-        {/* Subtle Radial Glow */}
-        <View
-          style={[
-            S.glowOrb,
-            {
-              backgroundColor: accent,
-              shadowColor: accent,
-            },
-          ]}
-          pointerEvents="none"
-        />
-
-        <SafeAreaView style={{ flex: 1 }}>
-          {/* ── Fixed Luxury Top Navigation Bar ── */}
-          <View style={S.topBar}>
-            <TouchableOpacity
-              onPress={handleClose}
-              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-              style={S.closeCircleBtn}
-            >
-              <Ionicons name="close" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <View style={S.centerPill}>
-              <Animated.View
-                style={[
-                  S.liveDot,
-                  { backgroundColor: accent, transform: [{ scale: pulseDot }] },
-                ]}
+        {/* 3. Story Navigation Progress Bar */}
+        <SafeAreaView style={StyleSheet.absoluteFillObject} edges={['top']}>
+          <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingTop: 12 }}>
+            {[...Array(totalSlides)].map((_, i) => (
+              <View 
+                key={i} 
+                style={{ 
+                  flex: 1, 
+                  height: 2, 
+                  backgroundColor: i <= currentSlide ? '#FFF' : 'rgba(255,255,255,0.2)', 
+                  borderRadius: 1 
+                }} 
               />
-              <Text style={[S.livePillText, { color: accent }]}>
-                {period.label ? period.label.toUpperCase() : 'ACTIVE DOSHA'}
-              </Text>
-            </View>
-
-            <View style={S.tiltBadge}>
-              <Text style={S.tiltBadgeText}>🌍 23.44° TILT</Text>
-            </View>
+            ))}
           </View>
+        </SafeAreaView>
 
-          {/* ── Immersive Full-Screen Scroll Content ── */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={S.scrollContent}
-            bounces={true}
-          >
-            {/* Header / Hero Title */}
-            <View style={{ marginBottom: 20 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: accent, letterSpacing: 2, textTransform: 'uppercase' }}>
-                  {DOSHA_NAMES[period.dosha] || period.dosha.toUpperCase()}
-                </Text>
-              </View>
+        {/* 4. Touch Overlay (captures taps to advance stories) */}
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={handlePress} 
+          style={StyleSheet.absoluteFillObject} 
+        />
 
-              <Text style={S.heroHeadline}>{ex.headline}</Text>
-              <Text style={S.heroTagline}>{ex.tagline}</Text>
-            </View>
-
-            {/* Dynamic Real-Time Window Card */}
-            <View style={[S.timeWindowCard, { padding: 16 }]}>
-              <LinearGradient
-                colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)']}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                  {/* Circular Progress Ring */}
-                  <View style={{ position: 'relative', width: 68, height: 68, alignItems: 'center', justifyContent: 'center' }}>
-                    <Svg width={68} height={68} viewBox="0 0 68 68" style={{ transform: [{ rotate: '-90deg' }] }}>
-                      <SvgCircle cx={34} cy={34} r={30} stroke="rgba(255,255,255,0.06)" strokeWidth={5} fill="none" />
-                      <SvgCircle 
-                        cx={34} cy={34} r={30} 
-                        stroke={accent} 
-                        strokeWidth={5} fill="none" 
-                        strokeDasharray={`${30 * 2 * Math.PI}`} 
-                        strokeDashoffset={`${30 * 2 * Math.PI * (1 - prog)}`} 
-                        strokeLinecap="round" 
-                      />
-                    </Svg>
-                    <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{Math.round(prog * 100)}%</Text>
-                    </View>
-                  </View>
-                  
-                  {/* Details */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={S.cardEyebrow}>DYNAMIC SOLAR WINDOW</Text>
-                    <Text style={[S.windowTimeText, { color: accent, fontSize: 17, marginTop: 2 }]} numberOfLines={1} adjustsFontSizeToFit>
-                      {period.startLabel} — {period.endLabel}
-                    </Text>
-                    <Text style={[S.progressSubText, { marginTop: 4 }]}>{remStr}</Text>
-                  </View>
-                </View>
-                
-                <View style={[S.activeBadge, { backgroundColor: `${accent}20`, borderColor: `${accent}50`, alignSelf: 'flex-start', marginLeft: 10 }]}>
-                  <Text style={[S.activeBadgeText, { color: accent }]}>LIVE</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* ════ SECTION: DO & AVOID PROTOCOLS ════ */}
-            {w && (
-              <View style={S.card}>
-                <Text style={S.cardTitle}>Biological Protocols for this Window</Text>
-                <Text style={[S.cardSubtitle, { marginBottom: 16 }]}>Aligned with active metabolic enzymes & neuro-hormones</Text>
-
-                <View style={S.protocolsGrid}>
-                  {/* Cultivate */}
-                  <View style={S.protocolCol}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#34d399' }} />
-                      <Text style={[S.protocolHeader, { color: '#34d399' }]}>CULTIVATE</Text>
-                    </View>
-                    {w.doItems.map((item, idx) => (
-                      <View key={idx} style={S.protocolItem}>
-                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                        <Text style={S.protocolText}>{item.text}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Avoid */}
-                  <View style={S.protocolCol}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' }} />
-                      <Text style={[S.protocolHeader, { color: '#f87171' }]}>PAUSE</Text>
-                    </View>
-                    {w.avoidItems.map((item, idx) => (
-                      <View key={idx} style={S.protocolItem}>
-                        <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
-                        <Text style={S.protocolText}>{item.text}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Bottom Done Button */}
-
-            {/* ════ SECTION: THE REAL SCIENCE OF EARTH'S TILT ════ */}
-            <View style={[S.card, S.cardGlow]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <View style={[S.iconPill, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.3)' }]}>
-                  <Ionicons name="planet-outline" size={18} color="#38bdf8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={S.cardTitle}>Why This Time Changes Every Day</Text>
-                  <Text style={S.cardSubtitle}>Earth's 23.44° Axial Tilt & Planetary Solar Geometry</Text>
-                </View>
-              </View>
-
-              <Text style={S.bodyParagraph}>
-                Human biology does not operate on arbitrary mechanical wall clocks. Generic apps falsely claim Vata, Pitta, and Kapha fall at rigid clock numbers like "2 to 4" or "10 to 2".
-              </Text>
-              <Text style={S.bodyParagraph}>
-                In reality, your cells synchronize to <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>true celestial solar angles</Text>. Because the Earth tilts on its axis at 23.44° while orbiting the Sun, daylight duration and solar noon shift every single day at your exact latitude.
-              </Text>
-
-              {/* Solar Coordinates Matrix */}
-              <View style={S.solarMatrix}>
-                <View style={S.solarCol}>
-                  <Text style={S.solarIcon}>🌅</Text>
-                  <Text style={S.solarVal}>{srStr}</Text>
-                  <Text style={S.solarLbl}>SUNRISE</Text>
-                </View>
-                <View style={S.matrixDivider} />
-                <View style={S.solarCol}>
-                  <Text style={S.solarIcon}>☀️</Text>
-                  <Text style={S.solarVal}>{snStr}</Text>
-                  <Text style={S.solarLbl}>SOLAR ZENITH</Text>
-                </View>
-                <View style={S.matrixDivider} />
-                <View style={S.solarCol}>
-                  <Text style={S.solarIcon}>🌇</Text>
-                  <Text style={S.solarVal}>{ssStr}</Text>
-                  <Text style={S.solarLbl}>SUNSET</Text>
-                </View>
-                <View style={S.matrixDivider} />
-                <View style={S.solarCol}>
-                  <Text style={S.solarIcon}>⏳</Text>
-                  <Text style={S.solarVal}>{dayLengthHrs}h</Text>
-                  <Text style={S.solarLbl}>DAY ARC</Text>
-                </View>
-              </View>
-
-              <View style={S.astronomyNote}>
-                <Ionicons name="information-circle-outline" size={15} color="rgba(255,255,255,0.6)" />
-                <Text style={S.astronomyNoteText}>
-                  Your {period.englishLabel || period.label} phase today ({period.startLabel} – {period.endLabel}) is mathematically derived in real-time from today's solar coordinates.
-                </Text>
-              </View>
-            </View>
-
-            {/* ════ SECTION: MODERN CHRONOBIOLOGY ════ */}
-            <View style={S.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <View style={[S.iconPill, { backgroundColor: 'rgba(52, 211, 153, 0.15)', borderColor: 'rgba(52, 211, 153, 0.3)' }]}>
-                  <Ionicons name="git-network-outline" size={18} color="#34d399" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={S.cardTitle}>Modern Chronobiology & Cellular Genetics</Text>
-                  <Text style={S.cardSubtitle}>2017 Nobel Prize Discovery (Hall, Rosbash, Young)</Text>
-                </View>
-              </View>
-
-              <Text style={S.bodyParagraph}>{ex.what}</Text>
-
-              <View style={[S.whyMattersBox, { borderLeftColor: accent }]}>
-                <Text style={[S.boxEyebrow, { color: accent }]}>PHYSIOLOGICAL IMPACT</Text>
-                <Text style={S.whyMattersText}>{ex.whyMatters}</Text>
-              </View>
-
-              {/* 3 Scientific Biometric Chips */}
-              <View style={S.factsRow}>
-                {ex.topFact.map((fact, idx) => (
-                  <View key={idx} style={S.factCard}>
-                    <Text style={{ fontSize: 24, marginBottom: 6 }}>{fact.icon}</Text>
-                    <Text style={[S.factValue, { color: accent }]}>{fact.label}</Text>
-                    <Text style={S.factSub}>{fact.value}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* ════ SECTION: 5,000-YEAR AYURVEDIC SCIENCE ════ */}
-            <View style={S.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <View style={[S.iconPill, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
-                  <Ionicons name="sparkles-outline" size={18} color="#F59E0B" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={S.cardTitle}>5,000-Year Classical Ayurvedic Science</Text>
-                  <Text style={S.cardSubtitle}>Charaka Samhita · Dinacharya Solar Division</Text>
-                </View>
-              </View>
-
-              {/* Sanskrit Callout */}
-              {s && (
-                <View style={[S.sanskritCard, { borderColor: `${accent}40` }]}>
-                  <Text style={[S.sanskritWord, { color: accent }]}>{s.sanskrit}</Text>
-                  <Text style={S.sanskritMeaning}>"{s.meaning}"</Text>
-                </View>
-              )}
-
-              {w && (
-                <>
-                  <Text style={S.bodyParagraph}>{w.ayurvedaBrief}</Text>
-
-                  {/* Elements */}
-                  <Text style={[S.boxEyebrow, { color: 'rgba(255,255,255,0.4)', marginTop: 14, marginBottom: 10 }]}>
-                    DOMINANT PANCHA MAHABHUTAS (ELEMENTAL QUALITIES)
-                  </Text>
-                  <View style={S.elementsGrid}>
-                    {w.elements.map((el, idx) => (
-                      <View key={idx} style={S.elementPill}>
-                        <Text style={{ fontSize: 20 }}>{el.emoji}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={S.elementName}>{el.name}</Text>
-                          <Text style={S.elementDesc}>{el.desc} {el.italic ? <Text style={{ fontStyle: 'italic' }}>{el.italic}</Text> : null}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              {/* Analogy Box */}
-              <View style={S.analogyBox}>
-                <Text style={S.analogyQuote}>"{ex.analogy}"</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleClose}
-              style={[S.doneButton, { backgroundColor: accent }]}
-            >
-              <Text style={S.doneButtonText}>SYNCHRONIZE & CLOSE</Text>
-            </TouchableOpacity>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
+        {/* 5. Typography Layer */}
+        <SafeAreaView style={[StyleSheet.absoluteFillObject, { justifyContent: 'flex-end', paddingBottom: 60, paddingHorizontal: 32 }]} pointerEvents="none">
+           {renderSlideContent()}
         </SafeAreaView>
       </View>
     </Modal>
   );
 }
-
-const S = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#070814',
-  },
-  glowOrb: {
-    position: 'absolute',
-    top: -120,
-    alignSelf: 'center',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    opacity: 0.12,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 100,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-  },
-  closeCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  centerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  livePillText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  tiltBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-  tiltBadgeText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#38bdf8',
-    letterSpacing: 0.8,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 24, paddingBottom: 24,
-  },
-  heroHeadline: {
-    fontSize: 24,
-    fontWeight: '400',
-    color: '#FFFFFF',
-    lineHeight: 36,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    marginBottom: 8,
-  },
-  heroTagline: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  timeWindowCard: {
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    overflow: 'hidden',
-  },
-  cardEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  windowTimeText: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  activeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  activeBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginTop: 14,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressSubText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '600',
-  },
-  card: {
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 18,
-    marginBottom: 12,
-  },
-  cardGlow: {
-    borderColor: 'rgba(56, 189, 248, 0.2)',
-    backgroundColor: 'rgba(56, 189, 248, 0.03)',
-  },
-  iconPill: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  bodyParagraph: {
-    fontSize: 13.5,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 22,
-    marginBottom: 12,
-    fontWeight: '400',
-  },
-  solarMatrix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    marginVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  solarCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  solarIcon: {
-    fontSize: 15,
-    marginBottom: 4,
-  },
-  solarVal: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  solarLbl: {
-    fontSize: 8.5,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 0.8,
-    marginTop: 2,
-  },
-  matrixDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  astronomyNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    padding: 10,
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  astronomyNoteText: {
-    fontSize: 11.5,
-    color: 'rgba(255,255,255,0.65)',
-    lineHeight: 16,
-    flex: 1,
-    fontWeight: '500',
-  },
-  whyMattersBox: {
-    borderLeftWidth: 3,
-    paddingLeft: 14,
-    marginVertical: 10,
-  },
-  boxEyebrow: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  whyMattersText: {
-    fontSize: 13.5,
-    color: 'rgba(255,255,255,0.9)',
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  factsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-  },
-  factCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-  },
-  factValue: {
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  factSub: {
-    fontSize: 9.5,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  sanskritCard: {
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sanskritWord: {
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  sanskritMeaning: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  elementsGrid: {
-    gap: 8,
-    marginBottom: 14,
-  },
-  elementPill: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  elementName: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  elementDesc: {
-    fontSize: 11.5,
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 16,
-  },
-  analogyBox: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 14,
-    borderLeftWidth: 2,
-    borderLeftColor: 'rgba(255,255,255,0.3)',
-    marginTop: 6,
-  },
-  analogyQuote: {
-    fontSize: 13.5,
-    color: 'rgba(255,255,255,0.85)',
-    fontStyle: 'italic',
-    lineHeight: 20,
-  },
-  protocolsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  protocolCol: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.025)',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  protocolHeader: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  protocolItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginBottom: 8,
-  },
-  protocolText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 15,
-    flex: 1,
-    fontWeight: '500',
-  },
-  doneButton: {
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  doneButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 1.8,
-  },
-});

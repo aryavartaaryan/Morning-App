@@ -40,7 +40,27 @@ import { getCardBg, getCardBgLight } from '@/lib/cardTheme';
 import { getBgSource, getBgSourceSync } from '@/lib/bgImages';
 import AppBackground from '@/components/AppBackground';
 import { Font } from '@/constants/theme';
-import Svg, { Circle as SvgCircle, Ellipse as SvgEllipse, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop, G as SvgG, Line as SvgLine, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Ellipse as SvgEllipse, Path as SvgPath, Rect as SvgRect, Defs, LinearGradient as SvgLinearGradient, Stop, G as SvgG, Line as SvgLine, Text as SvgText, TextPath as SvgTextPath, Polygon as SvgPolygon } from 'react-native-svg';
+
+const getArcPath = (cx: number, cy: number, r: number, startH: number, endH: number) => {
+  let startDeg = startH * 15;
+  let endDeg = endH * 15;
+  if (endDeg < startDeg) endDeg += 360;
+  const midDeg = (startDeg + endDeg) / 2;
+  const isBottom = midDeg > 90 && midDeg < 270;
+  const dStart = isBottom ? endDeg : startDeg;
+  const dEnd = isBottom ? startDeg : endDeg;
+  const startRad = (dStart - 90) * Math.PI / 180;
+  const endRad = (dEnd - 90) * Math.PI / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const sweep = isBottom ? 0 : 1;
+  const largeArc = Math.abs(dEnd - dStart) > 180 ? 1 : 0;
+  return `M ${x1},${y1} A ${r},${r} 0 ${largeArc},${sweep} ${x2},${y2}`;
+};
+const AnimatedG = Animated.createAnimatedComponent(SvgG);
 import WakeUpShareCard from '@/components/WakeUpShareCard';
 import MetabolicStoryModal from '@/components/MetabolicStoryModal';
 import { LunarStoryModal } from '@/components/LunarStoryModal';
@@ -689,7 +709,7 @@ function PanchangCard({ onExplore, onShowCalendar, weather }: { onExplore: () =>
     </TouchableOpacity>
     {showCalendar && <VedicCalendarModal onClose={() => setShowCalendar(false)} userLat={weather?.lat} userLon={weather?.lon}  />}
     {activeFestDetail && <FestivalDetailModal festival={activeFestDetail} onClose={() => setActiveFestDetail(null)}  />}
-    < />
+    </>
   );
 }
 
@@ -1001,12 +1021,12 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
     }
   }, [pickerMode, currentYear, currentMonthDate]);
 
-  // ROYAL IVORY THEME COLORS
-  const BG_IVORY = '#FAF7F2';
-  const TEXT_CHARCOAL = '#2C2C2C';
-  const ACCENT_BURGUNDY = '#6A1E2F';
-  const ACCENT_GOLD = '#BFA267';
-  const BORDER_COLOR = 'rgba(191,162,103,0.3)';
+  // OBSIDIAN GOLD THEME COLORS
+  const BG_IVORY = '#050505';
+  const TEXT_CHARCOAL = '#F4F4F5';
+  const ACCENT_BURGUNDY = '#D4AF37';
+  const ACCENT_GOLD = '#FCD34D';
+  const BORDER_COLOR = 'rgba(255,255,255,0.08)';
 
   const MiniMonthGrid = ({ monthDate, festivalsData }: { monthDate: Date, festivalsData: any[] }) => {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
@@ -1035,7 +1055,7 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
             return (
               <View key={i} style={{ 
                 width: 9, height: 9, borderRadius: 2,
-                backgroundColor: festMatch ? ACCENT_GOLD : (isToday ? ACCENT_BURGUNDY : 'rgba(44,44,44,0.08)'),
+                backgroundColor: festMatch ? ACCENT_GOLD : (isToday ? ACCENT_BURGUNDY : 'rgba(255,255,255,0.08)'),
               }}  />
             );
           })}
@@ -1125,10 +1145,10 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                 {festMatch && !isSelected && (
                   <View style={{ position: 'absolute', top: 4, right: '15%', width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT_GOLD }}  />
                 )}
-                <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: isSelected || isToday ? '600' : '400', color: isSelected ? '#FFF' : (isToday ? ACCENT_GOLD : (isSunday ? ACCENT_BURGUNDY : TEXT_CHARCOAL)) }}>
+                <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: isSelected || isToday ? '600' : '400', color: isSelected ? '#141414' : (isToday ? ACCENT_GOLD : (isSunday ? ACCENT_BURGUNDY : TEXT_CHARCOAL)) }}>
                   {date.getDate()}
                 </Text>
-                <Text style={{ fontSize: 8, fontWeight: '500', color: isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(44,44,44,0.5)', marginTop: 2 }}>
+                <Text style={{ fontSize: 8, fontWeight: '500', color: isSelected ? 'rgba(20,20,20,0.8)' : 'rgba(255,255,255,0.5)', marginTop: 2 }}>
                   {tithiShort}
                 </Text>
               </TouchableOpacity>
@@ -1149,14 +1169,14 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: BG_IVORY }}>
         {/* Decorative Mandala Background SVG (simplified as gold circles) */}
-        <View style={{ position: 'absolute', top: -50, right: -50, opacity: 0.05 }}>
+        <View style={{ position: 'absolute', top: -50, right: -50, opacity: 0.15 }}>
           <Svg width={300} height={300}>
             <SvgCircle cx={150} cy={150} r={100} stroke={ACCENT_GOLD} strokeWidth={2} fill="none"  />
             <SvgCircle cx={150} cy={150} r={130} stroke={ACCENT_GOLD} strokeWidth={1} fill="none" strokeDasharray="5,5"  />
             <SvgCircle cx={150} cy={150} r={140} stroke={ACCENT_GOLD} strokeWidth={0.5} fill="none"  />
           </Svg>
         </View>
-        <View style={{ position: 'absolute', bottom: 100, left: -100, opacity: 0.03 }}>
+        <View style={{ position: 'absolute', bottom: 100, left: -100, opacity: 0.10 }}>
           <Svg width={300} height={300}>
             <SvgCircle cx={150} cy={150} r={120} stroke={ACCENT_GOLD} strokeWidth={2} fill="none"  />
           </Svg>
@@ -1184,21 +1204,21 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                 onPress={() => setPickerMode('year')}
                 style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'year' ? ACCENT_BURGUNDY : 'transparent' }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'year' ? '#FFF' : TEXT_CHARCOAL }}>YEAR</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'year' ? '#141414' : TEXT_CHARCOAL }}>YEAR</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 activeOpacity={0.8}
                 onPress={() => setPickerMode('month')}
                 style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'month' ? ACCENT_BURGUNDY : 'transparent' }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'month' ? '#FFF' : TEXT_CHARCOAL }}>MONTH</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'month' ? '#141414' : TEXT_CHARCOAL }}>MONTH</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 activeOpacity={0.8}
                 onPress={() => setPickerMode('list')}
                 style={{ paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, backgroundColor: pickerMode === 'list' ? ACCENT_BURGUNDY : 'transparent' }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'list' ? '#FFF' : TEXT_CHARCOAL }}>EVENTS</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1, color: pickerMode === 'list' ? '#141414' : TEXT_CHARCOAL }}>EVENTS</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1306,20 +1326,20 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                       <TouchableOpacity 
                         key={idx}
                         onPress={() => { setActiveFestDetail(fest.festival); }}
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, padding: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: BORDER_COLOR }}
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 12, padding: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 4, borderWidth: 1, borderColor: BORDER_COLOR }}
                       >
                         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT_BURGUNDY, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                          <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
-                          <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>{fest.date.getDate()}</Text>
+                          <Text style={{ color: '#141414', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
+                          <Text style={{ color: '#141414', fontSize: 16, fontWeight: '600' }}>{fest.date.getDate()}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 14, color: TEXT_CHARCOAL, fontWeight: '600' }} numberOfLines={1}>{fest.festival.name.split(' / ')[0]}</Text>
-                          <Text style={{ fontSize: 11, color: 'rgba(44,44,44,0.6)', marginTop: 2 }}>{fest.festival.type === 'hindu' ? 'Vedic Festival' : 'Celestial Event'}</Text>
+                          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>{fest.festival.type === 'hindu' ? 'Vedic Festival' : 'Celestial Event'}</Text>
                         </View>
                       </TouchableOpacity>
                     ))}
                     {mFests.length === 0 && (
-                      <Text style={{ color: 'rgba(44,44,44,0.5)', fontStyle: 'italic', padding: 10 }}>No major events this month.</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', padding: 10 }}>No major events this month.</Text>
                     )}
                   </ScrollView>
                 </View>
@@ -1334,14 +1354,14 @@ function VedicCalendarModal({ onClose, userLat, userLon, setSheetOpen = () => {}
                       Haptics.selectionAsync();
                       setActiveFestDetail(fest.festival);
                     }}
-                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: BORDER_COLOR }}>
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 4, borderWidth: 1, borderColor: BORDER_COLOR }}>
                     <View style={{ width: 50, alignItems: 'center', borderRightWidth: 1, borderRightColor: BORDER_COLOR, marginRight: 16, paddingRight: 16 }}>
                        <Text style={{ color: TEXT_CHARCOAL, fontSize: 20, fontWeight: '600', fontFamily: 'Georgia' }}>{fest.date.getDate()}</Text>
                        <Text style={{ color: ACCENT_BURGUNDY, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{fest.date.toLocaleString('en-US', { month: 'short' })}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                        <Text style={{ color: ACCENT_BURGUNDY, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>{fest.festival.name.split(' / ')[0]}</Text>
-                       <Text style={{ color: 'rgba(44,44,44,0.6)', fontSize: 12 }} numberOfLines={1}>{fest.festival.name}</Text>
+                       <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }} numberOfLines={1}>{fest.festival.name}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -1638,7 +1658,7 @@ function CurrentPeriodCard({
         </LinearGradient>
       </TouchableOpacity>
     </View>
-    < />
+    </>
   );
 }
 
@@ -2152,7 +2172,7 @@ function TodayHeroCard({
               </Text>
               <Text style={[TH.exploreArrow, { color: per.color }]}>→</Text>
             </View>
-            < />}
+            </>}
           </TouchableOpacity>
     </View>
   );
@@ -2897,7 +2917,7 @@ function HourlyEnvSuggestion({ period, weather }: { period: DoshaPeriod; weather
         onClose={() => { setStoryIdx(null); scheduleResume(); }}
        />
     )}
-    < />
+    </>
   );
 }
 
@@ -2999,7 +3019,7 @@ function PeriodExpandedCard({ period, weather }: { period: DoshaPeriod; weather:
           onClose={() => setStoryIdx(null)}
          />
       )}
-    < />
+    </>
   );
 }
 
@@ -3472,7 +3492,7 @@ function CosmicDetailSheet({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                   <Text style={{ fontSize: 14 }}>{vaar.emoji}</Text>
                   <Text style={{ fontSize: 11, color: vaar.color, fontWeight: '800' }}>{vaar.vedicName}  ·  {vaar.planet} Day</Text>
-                  {vm ? <><View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF30' }}  /><Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600' }}>{vm.name}</Text>< /> : null}
+                  {vm ? <><View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF30' }}  /><Text style={{ fontSize: 11, color: '#FFFFFF50', fontWeight: '600' }}>{vm.name}</Text></> : null}
                 </View>
               </View>
               <TouchableOpacity onPress={close} style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#FFFFFF18', backgroundColor: '#FFFFFF08', alignItems: 'center', justifyContent: 'center', marginLeft: 12 }}>
@@ -3619,7 +3639,7 @@ function CosmicDetailSheet({
                       <Text style={{ fontSize: 7, fontWeight: '700', color: '#FFFFFF45', letterSpacing: 0.8 }}>SUNSET</Text>
                     </View>
                   </View>
-                < />
+                </>
               ) : (
                 <Text style={{ fontSize: 11, color: '#FFFFFF30', fontWeight: '600', textAlign: 'center', paddingVertical: 10 }}>🛰  Enable GPS for solar ephemeris</Text>
               )}
@@ -3741,7 +3761,7 @@ function CosmicOrbitStrip({
           onClose={() => setSheetOpen(false)}
          />
       )}
-    < />
+    </>
   );
 }
 
@@ -4447,7 +4467,7 @@ function NightSleepMode({ period, autoZen = true, mode, onModeChange }: {
 
     {/* Full-screen calm overlay */}
     <ZenModeOverlay visible={zenActive} onClose={() => setZenActive(false)}  />
-    < />
+    </>
   );
 }
 
@@ -4998,7 +5018,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
                   <Text style={{ fontSize: 7, color: '#60a5fa90', fontWeight: '800', letterSpacing: 1 }}>TAP TO COLLAPSE  ↑</Text>
                   <View style={{ height: 1, flex: 1, backgroundColor: '#60a5fa28' }}  />
                 </View>
-              < />
+              </>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -5021,7 +5041,7 @@ function PhaseRingHero({ period, weather }: { period: DoshaPeriod; weather: Weat
          />
       )}
 
-    < />
+    </>
   );
 }
 
@@ -5228,7 +5248,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                   </View>
                 ))}
               </View>
-            < />
+            </>
           )}
 
           {/* ── Single-item DO card — full-width, iOS clean ── */}
@@ -5259,7 +5279,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                 <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
               </View>
-            < />
+            </>
           )}
 
           {/* ── Single-item DON'T card — same layout as DO card, period colour ── */}
@@ -5290,7 +5310,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                 <Text style={{ fontSize: 26, lineHeight: 32 }}>{card.emoji}</Text>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 20, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>{card.title}</Text>
               </View>
-            < />
+            </>
           )}
 
           {/* ── Body Rhythm Signal card — period-labeled, balanced layout ── */}
@@ -5326,7 +5346,7 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                   )}
                 </View>
               </View>
-            < />
+            </>
           )}
 
           {/* ── Standard card (weather / brahma / body rhythm signal) ── */}
@@ -5361,9 +5381,9 @@ function HomeSignalCycler({ period, weather, brahmaInfo, onPress }: { period: Do
                       </View>
                     ))}
                   </View>
-                < />
+                </>
               )}
-            < />
+            </>
           )}
 
         </View>
@@ -6323,14 +6343,14 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF', shadowColor: '#6A1E2F', shadowOpacity: 1, shadowRadius: 4 }}  />
                 <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF', letterSpacing: 2 }}>MEDITATE</Text>
               </Animated.View>
-            < />
+            </>
           ) : period === null || !heroContent ? (
             // Calibrating
             <>
               <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.50)', letterSpacing: 1.8, textAlign: 'center', marginBottom: 6 }}>BODY RHYTHM</Text>
               <Text style={{ fontSize: compact ? 16 : 20, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', fontFamily: 'Nunito_900Black', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 }}>Calibrating</Text>
               <Text style={{ fontSize: compact ? 9 : 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.65)', textAlign: 'center', marginTop: 8, lineHeight: 15 }}>Computing your circadian phase…</Text>
-            < />
+            </>
           ) : (
             <>
               {/* ── Phase name — clean, large, meditative ── */}
@@ -6416,7 +6436,7 @@ function HeroRingDisplay({ period, brahmaInfo, weather, onPress, compact, solarT
 
 
               </Animated.View>
-            < />
+            </>
           )}
           </Animated.View>
 
@@ -6609,7 +6629,7 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                   <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }} numberOfLines={2}>{envSugg.desc}</Text>
                 </View>
               </View>
-            < />
+            </>
           ) : (
             <>
               <Text style={{ fontSize: 6, fontWeight: '900', color: 'rgba(103,232,249,0.8)', letterSpacing: 1.6, marginBottom: 6 }}>🌤  WEATHER SIGNAL</Text>
@@ -6623,13 +6643,13 @@ function PhaseBodySection({ period, weather, brahmaInfo }: { period: DoshaPeriod
                     <>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 14, marginTop: 3, fontWeight: '600' }} numberOfLines={2}>{weatherBlurb.title}</Text>
                       <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 1 }} numberOfLines={2}>{weatherBlurb.tip}</Text>
-                    < />
+                    </>
                   ) : (
                     <Text style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', lineHeight: 13.5, marginTop: 3 }}>Weather signal unavailable</Text>
                   )}
                 </View>
               </View>
-            < />
+            </>
           )}
         </View>
         {/* Dot indicators */}
@@ -6748,8 +6768,8 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
   };
 
   const PRAHAR_COLORS: Record<string, string> = {
-    p1: '#7DD3FC', p2: '#38BDF8', p3: '#0EA5E9', p4: '#0284C7',
-    n1: '#1D4ED8', n2: '#3B82F6', n3: '#60A5FA', n4: '#93C5FD',
+    p1: '#FDE68A', p2: '#FCD34D', p3: '#F59E0B', p4: '#D97706',
+    n1: '#4F46E5', n2: '#4338CA', n3: '#3730A3', n4: '#312E81',
   };
 
   const praharArc = (startH: number, endH: number, r: number, w: number, gap = 0.08) => {
@@ -6787,9 +6807,9 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
         {/* ── Outer sky-blue Prahar ring ── */}
         {times.prahars.map((ph: any) => (
           <SvgPath key={ph.id}
-            d={praharArc(ph.start, ph.end, R_OUTER, 14)}
+            d={praharArc(ph.start, ph.end, R_OUTER, 4)}
             stroke={PRAHAR_COLORS[ph.id] || '#7DD3FC'}
-            strokeWidth={14} strokeLinecap="butt"
+            strokeWidth={4} strokeLinecap="round"
             fill="none"
             opacity={activeId === ph.id || !highlightArc ? 1 : 0.25}
             onPress={() => onSegmentPress(ph.id)}
@@ -6799,29 +6819,29 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
         {/* ── Dynamic Highlight Arc (for Muhurtas/Kaals) ── */}
         {highlightArc && (
           <SvgPath 
-            d={praharArc(highlightArc.start, highlightArc.end, R_OUTER, 20, 0)}
+            d={praharArc(highlightArc.start, highlightArc.end, R_OUTER, 6, 0)}
             stroke={sel?.color || '#0369A1'}
-            strokeWidth={18} strokeLinecap="round" fill="none"
+            strokeWidth={6} strokeLinecap="round" fill="none"
            />
         )}
 
         {/* Current-time dot on outer ring */}
-        <SvgCircle cx={toXY(exactHour, R_OUTER).x} cy={toXY(exactHour, R_OUTER).y} r={6} fill="#FFFFFF" stroke={highlightArc ? sel?.color || '#0EA5E9' : '#0EA5E9'} strokeWidth={2}  />
+        <SvgCircle cx={toXY(exactHour, R_OUTER).x} cy={toXY(exactHour, R_OUTER).y} r={6} fill="#FFFFFF" stroke={highlightArc ? sel?.color || '#D4AF37' : '#D4AF37'} strokeWidth={2}  />
 
         {/* ── Clock face background ── */}
-        <SvgCircle cx={CX} cy={CY} r={R_FACE} fill="#FAFCFF" stroke="#BFDBFE" strokeWidth={1.5}  />
+        <SvgCircle cx={CX} cy={CY} r={R_FACE} fill="#0B0F19" stroke="#1E293B" strokeWidth={1.5}  />
 
         {/* ── 24-Hour tick marks & Numbers ── */}
         {Array.from({ length: 24 }, (_, h) => {
           const isMajor = h % 3 === 0;
           const inner = toXY(h, R_FACE - (isMajor ? 12 : 6));
           const outer = toXY(h, R_FACE - 2);
-          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#BFDBFE" strokeWidth={isMajor ? 2 : 1}  />;
+          return <SvgLine key={h} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#334155" strokeWidth={isMajor ? 2 : 1}  />;
         })}
         
         {HOURS_24.map((t, i) => {
           const pt = toXY(t.h, R_FACE - 20);
-          return <SvgText key={i} x={pt.x} y={pt.y} fill="#64B5F6" fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">{t.l}</SvgText>;
+          return <SvgText key={i} x={pt.x} y={pt.y} fill="#94A3B8" fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">{t.l}</SvgText>;
         })}
 
         {/* ── Accurate Scientific Vedic Quadrant Labels ── */}
@@ -6831,16 +6851,16 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
         <SvgText x={CX - 56} y={CY} fill="#93C5FD" fontSize={9} fontWeight="800" textAnchor="middle" alignmentBaseline="middle" letterSpacing={0.5}>Sāyam</SvgText>
 
         {/* ── 24-Hour Hand (Sun Pointer) ── */}
-        <SvgLine x1={CX} y1={CY} x2={hourTip.x} y2={hourTip.y} stroke="#0369A1" strokeWidth={3} strokeLinecap="round"  />
-        <SvgCircle cx={hourTip.x} cy={hourTip.y} r={4} fill="#FCD34D" stroke="#0369A1" strokeWidth={1}  />
+        <SvgLine x1={CX} y1={CY} x2={hourTip.x} y2={hourTip.y} stroke="#D4AF37" strokeWidth={3} strokeLinecap="round"  />
+        <SvgCircle cx={hourTip.x} cy={hourTip.y} r={4} fill="#FCD34D" stroke="#D4AF37" strokeWidth={1}  />
 
         {/* ── Centre dot ── */}
-        <SvgCircle cx={CX} cy={CY} r={6} fill="#0EA5E9"  />
-        <SvgCircle cx={CX} cy={CY} r={2} fill="#FFFFFF"  />
+        <SvgCircle cx={CX} cy={CY} r={6} fill="#D4AF37"  />
+        <SvgCircle cx={CX} cy={CY} r={2} fill="#1E293B"  />
 
         {/* ── Digital time overlay below hands ── */}
-        <SvgText x={CX} y={CY + 26} fill="#1E3A5F" fontSize={13} fontWeight="800" textAnchor="middle" alignmentBaseline="middle">{timeStr}</SvgText>
-        <SvgText x={CX} y={CY + 40} fill={highlightArc ? sel?.color || '#64B5F6' : '#64B5F6'} fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">
+        <SvgText x={CX} y={CY + 26} fill="#E2E8F0" fontSize={13} fontWeight="800" textAnchor="middle" alignmentBaseline="middle">{timeStr}</SvgText>
+        <SvgText x={CX} y={CY + 40} fill={highlightArc ? sel?.color || '#94A3B8' : '#94A3B8'} fontSize={8} fontWeight="700" textAnchor="middle" alignmentBaseline="middle">
           {highlightArc ? sel?.title.split('(')[0].trim().toUpperCase() : (curPrahar ? curPrahar.title.split('(')[0].trim().toUpperCase() : '')}
         </SvgText>
       </Svg>
@@ -6852,11 +6872,11 @@ const VedicClock = ({ currentHour, times, activeId, onSegmentPress, sel }: {
 const LegendRow = ({ color, label, active, onPress }: { color: string, label: string, active: boolean, onPress: () => void }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.75}
     style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10,
-      borderRadius: 20, backgroundColor: active ? color : 'rgba(44,44,44,0.05)',
-      borderWidth: 1, borderColor: active ? color : 'rgba(44,44,44,0.1)', flex: 1 }}>
+      borderRadius: 20, backgroundColor: active ? color : 'rgba(255,255,255,0.03)',
+      borderWidth: 1, borderColor: active ? color : 'rgba(255,255,255,0.08)', flex: 1 }}>
     <View style={{ width: 8, height: 8, borderRadius: 4,
       backgroundColor: active ? '#FFFFFF' : color, marginRight: 6 }}  />
-    <Text style={{ fontSize: 9.5, color: active ? '#FFFFFF' : 'rgba(44,44,44,0.65)',
+    <Text style={{ fontSize: 9.5, color: active ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
       fontWeight: '700', letterSpacing: 0.3, flexShrink: 1 }}>{label}</Text>
   </TouchableOpacity>
 );
@@ -6864,15 +6884,15 @@ const LegendRow = ({ color, label, active, onPress }: { color: string, label: st
 // ── Panchanga Tile ──
 const PanchTile = ({ label, value, sub, color, onPress }: { label: string, value: string, sub: string, color: string, onPress: () => void }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={{ flex: 1 }}>
-    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: 'rgba(191,162,103,0.2)', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+    <View style={{ backgroundColor: '#141414', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.45)', fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', flex: 1 }}>{label}</Text>
-        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: `${color}18`, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', flex: 1 }}>{label}</Text>
+        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: `${color}33`, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontSize: 11, color: color, fontWeight: '800' }}>›</Text>
         </View>
       </View>
-      <Text style={{ fontSize: 15, color: '#2C2C2C', fontWeight: '700', marginTop: 6, letterSpacing: 0.2 }}>{value}</Text>
-      <Text style={{ fontSize: 9, color: `${color}CC`, marginTop: 5, fontWeight: '600', lineHeight: 13 }}>{sub}</Text>
+      <Text style={{ fontSize: 15, color: '#F4F4F5', fontWeight: '700', marginTop: 6, letterSpacing: 0.2 }}>{value}</Text>
+      <Text style={{ fontSize: 9, color: `${color}EE`, marginTop: 5, fontWeight: '600', lineHeight: 13 }}>{sub}</Text>
     </View>
   </TouchableOpacity>
 );
@@ -6895,12 +6915,12 @@ function CosmicCompactCard({ solarTimes, weather, onCosmicPress }: { solarTimes:
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const [panchangaDetail, setPanchangaDetail] = useState<{ type: string; value: string; desc: string; effect: string } | null>(null);
 
-  const BG    = '#F9F6F0';
-  const CARD  = '#FFFFFF';
-  const TXT   = '#2C2C2C';
-  const BURG  = '#6A1E2F';
-  const GOLD  = '#BFA267';
-  const BORD  = 'rgba(191,162,103,0.2)';
+  const BG    = '#050505';
+  const CARD  = '#141414';
+  const TXT   = '#F4F4F5';
+  const BURG  = '#D4AF37'; // Switched to gold for a premium look
+  const GOLD  = '#FCD34D';
+  const BORD  = 'rgba(255,255,255,0.08)';
 
   const csr = solarTimes?.sunrise ?? null;
   const css = solarTimes?.sunset  ?? null;
@@ -7019,12 +7039,12 @@ React.useEffect(() => {
         
 
         
-        {/* ── VEDIC CLOCK CARD — ETHEREAL TIMELINE (Option 2) ── */}
-        <View style={{ backgroundColor: '#EFF6FF', borderRadius: 28, paddingTop: 20, paddingBottom: 20, paddingHorizontal: 16, shadowColor: '#0369A1', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 6, marginBottom: 14, borderWidth: 1, borderColor: '#BFDBFE' }}>
+        {/* ── VEDIC CLOCK CARD — OBSIDIAN GOLD TIMELINE (Option 3) ── */}
+        <View style={{ backgroundColor: '#111216', borderRadius: 28, paddingTop: 20, paddingBottom: 20, paddingHorizontal: 16, shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 6, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(212,175,55,0.12)' }}>
           
           <View style={{ alignItems: 'center', marginBottom: 14 }}>
-            <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: '700', color: '#0369A1', letterSpacing: 2 }}>VEDIC CLOCK</Text>
-            <Text style={{ fontSize: 10, color: '#64B5F6', fontWeight: '700', marginTop: 3, letterSpacing: 1.5 }}>
+            <Text style={{ fontFamily: 'Georgia', fontSize: 18, fontWeight: '700', color: '#D4AF37', letterSpacing: 2 }}>VEDIC CLOCK</Text>
+            <Text style={{ fontSize: 10, color: '#A1A1AA', fontWeight: '700', marginTop: 3, letterSpacing: 1.5 }}>
               {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()}
             </Text>
           </View>
@@ -7035,10 +7055,10 @@ React.useEffect(() => {
           </View>
 
           {/* ── YOUR DAY'S FLOW — Premium Scrolling Timeline ── */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, marginTop: 10 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }}  />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#0369A1', letterSpacing: 2, marginHorizontal: 10 }}>YOUR DAY'S FULL SCHEDULE</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#BFDBFE' }}  />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 12 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.2)' }}  />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#D4AF37', letterSpacing: 2, marginHorizontal: 10 }}>YOUR DAY'S FULL SCHEDULE</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(212,175,55,0.2)' }}  />
           </View>
 
           <View style={{ position: 'relative' }}>
@@ -7046,7 +7066,7 @@ React.useEffect(() => {
             <View style={{ paddingBottom: 20, position: 'relative' }}>
               
               {/* Vertical line drawn dynamically based on items */}
-              <View style={{ position: 'absolute', left: 19, top: 10, bottom: 20, width: 2, backgroundColor: '#BAE6FD', borderRadius: 1 }}  />
+              <View style={{ position: 'absolute', left: 19, top: 10, bottom: 20, width: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 1 }}  />
 
               <View style={{ gap: 12 }}>
                 {(() => {
@@ -7068,14 +7088,14 @@ React.useEffect(() => {
 
                   const allItems = [
                     // Solar
-                    { id: 'sr', label: 'Sunrise', time: fmtH(sr), icon: '🌅', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', start: sr, end: null, sub: 'Start of the Vedic day', dur: null },
-                    { id: 'ss', label: 'Sunset', time: fmtH(ss), icon: '🌇', color: '#C2410C', bg: '#FFF7ED', border: '#FDBA74', start: ss, end: null, sub: 'End of solar influence', dur: null },
+                    { id: 'sr', label: 'Sunrise', time: fmtH(sr), icon: '🌅', color: '#FCD34D', bg: 'rgba(252,211,77,0.06)', border: 'rgba(252,211,77,0.15)', start: sr, end: null, sub: 'Start of the Vedic day', dur: null },
+                    { id: 'ss', label: 'Sunset', time: fmtH(ss), icon: '🌇', color: '#FDBA74', bg: 'rgba(253,186,116,0.06)', border: 'rgba(253,186,116,0.15)', start: ss, end: null, sub: 'End of solar influence', dur: null },
                     
                     // Muhurtas / Kaals
-                    { id: 'brahma', label: 'Brahma Muhurta', time: `${fmtH(times.brahma.start)} – ${fmtH(times.brahma.end)}`, icon: '🌙', color: '#0284C7', bg: '#EFF6FF', border: '#BFDBFE', start: times.brahma.start, end: times.brahma.end, sub: 'Pre-dawn · Best for meditation', dur: durMin(times.brahma.start, times.brahma.end) },
-                    { id: 'abhijit', label: 'Abhijit Muhurta', time: `${fmtH(times.abhijit.start)} – ${fmtH(times.abhijit.end)}`, icon: '✨', color: '#0369A1', bg: '#EFF6FF', border: '#BAE6FD', start: times.abhijit.start, end: times.abhijit.end, sub: 'Peak Success Window', dur: durMin(times.abhijit.start, times.abhijit.end) },
-                    { id: 'rahu', label: 'Rahu Kaal', time: `${fmtH(times.rahu.start)} – ${fmtH(times.rahu.end)}`, icon: '⚠️', color: '#9B1C2C', bg: '#FFF1F2', border: '#FECDD3', start: times.rahu.start, end: times.rahu.end, sub: 'Inauspicious · Avoid major tasks', dur: durMin(times.rahu.start, times.rahu.end) },
-                    { id: 'yama', label: 'Yamaganda Kaal', time: `${fmtH(times.yama.start)} – ${fmtH(times.yama.end)}`, icon: '🚫', color: '#92400E', bg: '#FFF7ED', border: '#FED7AA', start: times.yama.start, end: times.yama.end, sub: 'Caution · Inauspicious', dur: durMin(times.yama.start, times.yama.end) },
+                    { id: 'brahma', label: 'Brahma Muhurta', time: `${fmtH(times.brahma.start)} – ${fmtH(times.brahma.end)}`, icon: '🌙', color: '#38BDF8', bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.15)', start: times.brahma.start, end: times.brahma.end, sub: 'Pre-dawn · Best for meditation', dur: durMin(times.brahma.start, times.brahma.end) },
+                    { id: 'abhijit', label: 'Abhijit Muhurta', time: `${fmtH(times.abhijit.start)} – ${fmtH(times.abhijit.end)}`, icon: '✨', color: '#7DD3FC', bg: 'rgba(125,211,252,0.06)', border: 'rgba(125,211,252,0.15)', start: times.abhijit.start, end: times.abhijit.end, sub: 'Peak Success Window', dur: durMin(times.abhijit.start, times.abhijit.end) },
+                    { id: 'rahu', label: 'Rahu Kaal', time: `${fmtH(times.rahu.start)} – ${fmtH(times.rahu.end)}`, icon: '⚠️', color: '#FDA4AF', bg: 'rgba(253,164,175,0.06)', border: 'rgba(253,164,175,0.15)', start: times.rahu.start, end: times.rahu.end, sub: 'Inauspicious · Avoid major tasks', dur: durMin(times.rahu.start, times.rahu.end) },
+                    { id: 'yama', label: 'Yamaganda Kaal', time: `${fmtH(times.yama.start)} – ${fmtH(times.yama.end)}`, icon: '🚫', color: '#FDBA74', bg: 'rgba(253,186,116,0.06)', border: 'rgba(253,186,116,0.15)', start: times.yama.start, end: times.yama.end, sub: 'Caution · Inauspicious', dur: durMin(times.yama.start, times.yama.end) },
                     
                     // Prahars (All 8)
                     ...times.prahars.map((ph: any) => ({
@@ -7083,9 +7103,9 @@ React.useEffect(() => {
                       label: ph.title.split('(')[0].trim(),
                       time: `${fmtH(ph.start)} – ${fmtH(ph.end)}`,
                       icon: ph.id.startsWith('n') ? '🌌' : '☀️',
-                      color: ph.id.startsWith('n') ? '#1E3A8A' : '#B45309',
-                      bg: ph.id.startsWith('n') ? '#F1F5F9' : '#FEF3C7',
-                      border: ph.id.startsWith('n') ? '#CBD5E1' : '#FDE68A',
+                      color: ph.id.startsWith('n') ? '#60A5FA' : '#FCD34D',
+                      bg: ph.id.startsWith('n') ? 'rgba(96,165,250,0.06)' : 'rgba(252,211,77,0.06)',
+                      border: ph.id.startsWith('n') ? 'rgba(96,165,250,0.15)' : 'rgba(252,211,77,0.15)',
                       start: ph.start,
                       end: ph.end,
                       sub: ph.sub,
@@ -7137,26 +7157,39 @@ React.useEffect(() => {
                         }
 
                         const isLive = item.isLive;
+                        
+                        // Helper to convert hex to RGB
+                        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(item.color);
+                        const rgb = result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
+
+                        const inactiveBg = `rgba(${rgb}, 0.03)`;
+                        const inactiveBorder = `rgba(${rgb}, 0.10)`;
+                        const activeBg = `rgba(${rgb}, 0.06)`;
+                        const activeBorder = `rgba(${rgb}, 0.40)`;
+                        
+                        const iconBgInactive = `rgba(${rgb}, 0.10)`;
+                        const iconBorderInactive = `rgba(${rgb}, 0.20)`;
+                        const iconBgActive = `rgba(${rgb}, 0.20)`;
 
                         return (
                           <TouchableOpacity key={idx} activeOpacity={0.8} onPress={() => { Haptics.selectionAsync(); setActiveSegment(item.id); }} style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
-                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: isLive ? '#38BDF8' : item.bg, borderWidth: 2, borderColor: isLive ? '#0284C7' : item.border, alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: isLive ? iconBgActive : iconBgInactive, borderWidth: 1, borderColor: isLive ? item.color : iconBorderInactive, alignItems: 'center', justifyContent: 'center', zIndex: 1, shadowColor: item.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: isLive ? 0.6 : 0, shadowRadius: 8 }}>
                               <Text style={{ fontSize: 10 }}>{item.icon}</Text>
                             </View>
 
-                            <View style={{ flex: 1, marginLeft: 10, backgroundColor: isSelected ? '#FFFFFF' : item.bg, padding: 12, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? '#0284C7' : item.border, shadowColor: item.color, shadowOffset: { width: 0, height: isSelected ? 4 : 2 }, shadowOpacity: isSelected ? 0.15 : 0.06, shadowRadius: isSelected ? 8 : 6, elevation: isSelected ? 4 : 1 }}>
+                            <View style={{ flex: 1, marginLeft: 10, backgroundColor: isSelected ? activeBg : inactiveBg, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? activeBorder : inactiveBorder, shadowColor: item.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: isSelected ? 0.4 : 0.0, shadowRadius: 20, elevation: isSelected ? 4 : 1 }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#0369A1' : item.color, letterSpacing: 0.4 }}>{dispLabel}</Text>
-                                    {isLive && <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 8, color: '#FFF', fontWeight: '800' }}>LIVE NOW</Text></View>}
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: item.color, letterSpacing: 0.4 }}>{dispLabel}</Text>
+                                    {isLive && <View style={{ backgroundColor: item.color, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 8, color: '#000', fontWeight: '900' }}>LIVE</Text></View>}
                                   </View>
-                                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#1E3A5F', marginTop: 3 }}>{item.time}</Text>
-                                  <Text style={{ fontSize: 9.5, color: '#64748B', fontWeight: '500', marginTop: 3, fontStyle: 'italic' }}>{item.sub}</Text>
+                                  <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? `rgba(${rgb}, 0.9)` : '#F4F4F5', marginTop: 3 }}>{item.time}</Text>
+                                  <Text style={{ fontSize: 9.5, color: `rgba(${rgb}, 0.7)`, fontWeight: '500', marginTop: 3, fontStyle: 'italic' }}>{item.sub}</Text>
                                 </View>
                                 {item.dur !== null && (
-                                  <View style={{ backgroundColor: isSelected ? '#E0F2FE' : item.border, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? '#0369A1' : item.color }}>{item.dur}m</Text>
+                                  <View style={{ backgroundColor: isSelected ? `rgba(${rgb}, 0.15)` : `rgba(${rgb}, 0.05)`, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: item.color }}>{item.dur}m</Text>
                                   </View>
                                 )}
                               </View>
@@ -7168,13 +7201,13 @@ React.useEffect(() => {
                       <TouchableOpacity 
                         activeOpacity={0.8} 
                         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsTimelineExpanded(!isTimelineExpanded); }}
-                        style={{ marginTop: 12, paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)', alignItems: 'center' }}
+                        style={{ marginTop: 12, paddingVertical: 12, borderRadius: 14, backgroundColor: 'rgba(212, 175, 55, 0.08)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)', alignItems: 'center' }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369A1', letterSpacing: 1.5 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#D4AF37', letterSpacing: 1.5 }}>
                           {isTimelineExpanded ? 'COLLAPSE SCHEDULE ▴' : 'VIEW FULL DAY SCHEDULE ▾'}
                         </Text>
                       </TouchableOpacity>
-                    < />
+                    </>
                   );
                 })()}
               </View>
@@ -7183,10 +7216,10 @@ React.useEffect(() => {
         </View>
 
         {/* ── DAILY PANCHANGA ── */}
-        <View style={{ backgroundColor: CARD, borderRadius: 24, padding: 18, shadowColor: BURG, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4, marginBottom: 14, borderWidth: 1, borderColor: BORD }}>
+        <View style={{ backgroundColor: CARD, borderRadius: 24, padding: 18, shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 6, marginBottom: 14, borderWidth: 1, borderColor: BORD }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ fontSize: 12, fontWeight: '800', color: TXT, letterSpacing: 1 }}>DAILY PANCHANGA</Text>
-            <Text style={{ fontSize: 9, color: 'rgba(44,44,44,0.4)', fontWeight: '600' }}>TAP ANY TILE TO LEARN MORE</Text>
+            <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>TAP ANY TILE TO LEARN MORE</Text>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
@@ -7234,23 +7267,23 @@ React.useEffect(() => {
 
         {/* ── BOTTOM WIDGETS ── */}
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 14 }}>
-          <View style={{ flex: 1, backgroundColor: CARD, borderRadius: 20, padding: 16, alignItems: 'center', shadowColor: BURG, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: BORD }}>
+          <View style={{ flex: 1, backgroundColor: CARD, borderRadius: 20, padding: 16, alignItems: 'center', shadowColor: '#000000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4, borderWidth: 1, borderColor: 'rgba(212,175,55,0.12)' }}>
             <Text style={{ fontSize: 10, fontWeight: '800', color: TXT, letterSpacing: 0.5, marginBottom: 8 }}>LUNAR PHASE</Text>
             <MoonSVG tithiNum={moon.tithiNum} size={38}  />
             <Text style={{ fontSize: 12, color: TXT, fontWeight: '700', marginTop: 8 }}>{moon.name}</Text>
             <Text style={{ fontSize: 10, color: GOLD, fontWeight: '700', marginTop: 2 }}>{moon.illumination}% Illum.</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: CARD, borderRadius: 20, padding: 16, justifyContent: 'center', shadowColor: BURG, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: BORD }}>
+          <View style={{ flex: 1, backgroundColor: CARD, borderRadius: 20, padding: 16, justifyContent: 'center', shadowColor: '#000000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4, borderWidth: 1, borderColor: 'rgba(212,175,55,0.12)' }}>
             <Text style={{ fontSize: 10, fontWeight: '800', color: BURG, letterSpacing: 0.5, marginBottom: 8 }}>TRANSIT WATCH</Text>
             <Text style={{ fontSize: 13, color: TXT, fontWeight: '600', lineHeight: 18 }}>☽ Moon in Taurus</Text>
-            <Text style={{ fontSize: 10, color: 'rgba(44,44,44,0.5)', marginTop: 4, fontWeight: '500' }}>Emotional Stability</Text>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 4, fontWeight: '500' }}>Emotional Stability</Text>
           </View>
         </View>
 
         {/* ── ACTIONS ── */}
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-          <TouchableOpacity activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }} style={{ flex: 1, borderRadius: 12, backgroundColor: BURG, paddingVertical: 14, alignItems: 'center', shadowColor: BURG, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4 }}>
-            <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFF', letterSpacing: 1.5 }}>CALENDAR</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowCalendar(true); }} style={{ flex: 1, borderRadius: 12, backgroundColor: BURG, paddingVertical: 14, alignItems: 'center', shadowColor: '#000000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: '#141414', letterSpacing: 1.5 }}>CALENDAR</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.8} onPress={onCosmicPress} style={{ flex: 1, borderRadius: 12, backgroundColor: CARD, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: BORD }}>
             <Text style={{ fontSize: 12, fontWeight: '800', color: BURG, letterSpacing: 1.5 }}>SCIENCE</Text>
@@ -7262,22 +7295,22 @@ React.useEffect(() => {
 
       {/* ── Panchanga Detail Modal ── */}
       <Modal visible={!!panchangaDetail} transparent animationType="slide" onRequestClose={() => setPanchangaDetail(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 44, shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 20, borderTopWidth: 1, borderColor: BORD }}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(44,44,44,0.15)', alignSelf: 'center', marginBottom: 22 }}  />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 44, shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 20, borderTopWidth: 1, borderColor: BORD }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 22 }}  />
             <Text style={{ fontSize: 10, color: BURG, fontWeight: '800', letterSpacing: 2, marginBottom: 6 }}>{panchangaDetail?.type}</Text>
             <Text style={{ fontFamily: 'Georgia', fontSize: 26, color: TXT, fontWeight: '600', marginBottom: 20 }}>{panchangaDetail?.value}</Text>
             <Text style={{ fontSize: 11, color: TXT, fontWeight: '800', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.5 }}>What it is</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(44,44,44,0.8)', lineHeight: 22, marginBottom: 20 }}>{panchangaDetail?.desc}</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', lineHeight: 22, marginBottom: 20 }}>{panchangaDetail?.desc}</Text>
             <Text style={{ fontSize: 11, color: TXT, fontWeight: '800', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.5 }}>How it affects you</Text>
-            <Text style={{ fontSize: 15, color: 'rgba(44,44,44,0.8)', lineHeight: 22, marginBottom: 28 }}>{panchangaDetail?.effect}</Text>
-            <TouchableOpacity onPress={() => setPanchangaDetail(null)} style={{ backgroundColor: BURG, borderRadius: 14, paddingVertical: 16, alignItems: 'center', shadowColor: BURG, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }}>
-              <Text style={{ fontSize: 13, color: '#FFF', fontWeight: '800', letterSpacing: 1.5 }}>GOT IT</Text>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', lineHeight: 22, marginBottom: 28 }}>{panchangaDetail?.effect}</Text>
+            <TouchableOpacity onPress={() => setPanchangaDetail(null)} style={{ backgroundColor: BURG, borderRadius: 14, paddingVertical: 16, alignItems: 'center', shadowColor: '#000000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 4 }}>
+              <Text style={{ fontSize: 13, color: '#141414', fontWeight: '800', letterSpacing: 1.5 }}>GOT IT</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    < />
+    </>
   );
 }
 
@@ -7313,21 +7346,21 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
   return (
     <>
     <Modal visible animationType="none" transparent={true} statusBarTranslucent onRequestClose={close}>
-      <Animated.View style={{ flex: 1, backgroundColor: '#F9F6F0', transform: [{ translateY }] }}>
+      <Animated.View style={{ flex: 1, backgroundColor: '#050505', transform: [{ translateY }] }}>
 
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
           {/* Drag handle */}
           <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>
-            <View style={{ width: 36, height: 3, borderRadius: 2, backgroundColor: 'rgba(106,30,47,0.2)', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }}  />
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }}  />
           </View>
 
           {/* Floating close button */}
           <TouchableOpacity
             onPress={close}
-            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 0, borderColor: 'rgba(106,30,47,0.3)', backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', shadowColor: '#6A1E2F', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 8, overflow: 'hidden' }}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject}  />
-            <Text style={{ color: '#6A1E2F', fontSize: 14, fontWeight: '400', opacity: 0.8 }}>✕</Text>
+            style={{ position: 'absolute', top: 14, right: 18, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFillObject}  />
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '400', opacity: 0.8 }}>✕</Text>
           </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, paddingTop: 0 }}>
@@ -7367,7 +7400,7 @@ function DayDetailSheet({ weather, solarTimes, currentPeriod, brahmaInfo, wakeLo
       </SafeAreaView>
       </Animated.View>
     </Modal>
-    < />
+    </>
   );
 }
 
@@ -7456,6 +7489,17 @@ function DailyTab() {
   const [mode, setMode]                     = useState<'normal' | 'relax'>('normal');
   const [zenActive, setZenActive]           = useState(false);
   const [sheetOpen, setSheetOpen]           = useState(false);
+  const doshaPulseAnim                      = useRef(new Animated.Value(0.3)).current;
+  
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(doshaPulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(doshaPulseAnim, { toValue: 0.3, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [doshaPulseAnim]);
+
   const insightRevealAnim                    = useRef(new Animated.Value(0)).current;
   const [insightVisible, setInsightVisible]   = useState(false);
   const insightTimeoutRef                    = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -7758,7 +7802,7 @@ function DailyTab() {
       <SafeAreaView style={{ flex: 1, paddingBottom: 80 }} edges={['top']}>
 
         {/* ══ PREMIUM FLOATING HEADER PILL ══ */}
-        <View style={{ paddingTop: 10, paddingBottom: 8, zIndex: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+        <View style={{ paddingTop: 10, paddingBottom: 4, zIndex: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
           {(() => {
             const hMoon = getMoonPhase(new Date());
             const hP    = getPanchangData();
@@ -7807,14 +7851,9 @@ function DailyTab() {
               
               {/* === REFINED EDITORIAL CURATOR LAYOUT (MULTI-BILLION DOLLAR APP STYLE) === */}
               
-              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 16 }}>
+              <View style={{ width: '100%', paddingHorizontal: 24, alignItems: 'center', gap: 24 }}>
                 
-                {/* 1. Daily Intention (Floating, transparent, elegant) */}
-                <View style={{ width: '100%', alignItems: 'center' }}>
-                  <DailyIntentionCard  />
-                </View>
-
-                {/* 2. Weather Button (Moved below Mantra) */}
+{/* 2. Weather Button (Moved below Mantra) */}
                 <View style={{ width: '100%', alignItems: 'center', marginTop: -4 }}>
                  {weather && (
                     <TouchableOpacity
@@ -7833,29 +7872,34 @@ function DailyTab() {
                  )}
                 </View>
 
-                                {/* 3. The Unified Ayurvedic Bio-State Clock (Premium Centerpiece) */}
-                <View style={{ width: '100%', marginTop: 12 }}>
-                 {currentPeriod && (() => {
-                  const now = new Date();
+                {/* 3. The Unified Ayurvedic Bio-State Clock (Perfect 24H Side-by-Side) */}
+                <View style={{ width: '100%', marginTop: 0 }}>
+                 {currentPeriod && periods.length > 0 && (() => {
+                  const now = liveClock; // Use synchronized app clock
                   const nowH = now.getHours() + now.getMinutes() / 60;
                   const leftH = currentPeriod.endH - nowH;
-                  const minsLeft = leftH > 0 ? Math.floor(leftH * 60) : 0;
+                  const durToEnds = leftH < 0 ? leftH + 24 : leftH;
+                  const minsLeft = Math.floor(durToEnds * 60);
                   const hrsLeft = Math.floor(minsLeft / 60);
                   const minsLeftRem = minsLeft % 60;
                   const timeStr = hrsLeft > 0 ? `${hrsLeft}h ${minsLeftRem}m` : `${minsLeftRem}m`;
                   
-                  // Rotate so midnight is top (0 deg)
-                  const timeRotation = (nowH * 15) - 90;
+                  // 12 AM is 0h -> 0 deg (Top). 6 AM is 6h -> 90 deg (Right).
+                  const pointerRotation = (nowH * 15);
+
+                  const pColor = '#FBBF24'; // Warm Gold
+                  const vColor = '#60A5FA'; // Calm Blue
+                  const kColor = '#4ADE80'; // Earthy Green
                   
-                  const isVata = currentPeriod.dosha === 'vata';
-                  const isPitta = currentPeriod.dosha === 'pitta';
-                  const isKapha = currentPeriod.dosha === 'kapha';
+                  const activeColor = currentPeriod.dosha === 'pitta' ? pColor : currentPeriod.dosha === 'vata' ? vColor : kColor;
                   
-                  const pittaColor = isPitta ? '#D4AF37' : 'rgba(212, 175, 55, 0.15)';
-                  const vataColor = isVata ? '#60A5FA' : 'rgba(96, 165, 250, 0.15)';
-                  const kaphaColor = isKapha ? '#4ADE80' : 'rgba(74, 222, 128, 0.15)';
-                  
-                  const activeColor = isPitta ? '#D4AF37' : isVata ? '#60A5FA' : '#4ADE80';
+                  // Layout Dimensions
+                  const SZ = 230; // Expanded to fit 7% larger clock
+                  const CX = SZ / 2;
+                  const CY = SZ / 2;
+                  const R = 77; // Increased by 7% (from 72)
+                  const C = 2 * Math.PI * R;
+                  const gap = 2; 
 
                   return (
                     <TouchableOpacity 
@@ -7865,83 +7909,160 @@ function DailyTab() {
                         setShowStory(true);
                       }}
                     >
-                      <BlurView intensity={60} tint="dark" style={{
+                      <BlurView intensity={55} tint="dark" style={{
                         width: '100%',
-                        borderRadius: 32,
-                        borderWidth: 1,
-                        borderColor: 'rgba(212, 175, 55, 0.15)',
-                        paddingVertical: 32,
+                        borderRadius: 24,
+                        borderWidth: 0.5,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        paddingTop: 6,
+                        paddingBottom: 4,
                         paddingHorizontal: 16,
                         overflow: 'hidden',
-                        backgroundColor: 'rgba(15, 12, 10, 0.45)',
+                        backgroundColor: 'rgba(10, 10, 10, 0.4)',
+                        flexDirection: 'column',
                         alignItems: 'center',
                       }}>
-                        <Text style={{ fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '600', color: 'rgba(212, 175, 55, 0.8)', letterSpacing: 2, marginBottom: 28, textTransform: 'uppercase' }}>Ayurvedic Bio-State</Text>
                         
-                        <View style={{ position: 'relative', width: 260, height: 260, alignItems: 'center', justifyContent: 'center' }}>
-                          {/* Text Labels positioned around the dial */}
-                          <Text style={{ position: 'absolute', top: 10, right: 30, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '30deg'}] }}>VATA</Text>
-                          <Text style={{ position: 'absolute', bottom: 40, right: 10, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '-45deg'}] }}>PITTA</Text>
-                          <Text style={{ position: 'absolute', bottom: 10, left: 40, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '30deg'}] }}>KAPHA</Text>
-                          <Text style={{ position: 'absolute', top: 40, left: 10, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)', transform: [{rotate: '-45deg'}] }}>KAPHA</Text>
-                          <Text style={{ position: 'absolute', top: -5, left: 110, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)' }}>PITTA</Text>
-                          <Text style={{ position: 'absolute', bottom: -5, left: 110, fontSize: 11, fontWeight: '600', letterSpacing: 2, color: 'rgba(255,255,255,0.4)' }}>VATA</Text>
-
-                          <Svg width={220} height={220} viewBox="0 0 220 220">
-                            {/* Inner ambient ring */}
-                            <SvgCircle cx={110} cy={110} r={95} stroke="rgba(255,255,255,0.03)" strokeWidth={30} fill="none"  />
-                            <SvgCircle cx={110} cy={110} r={80} stroke="rgba(212, 175, 55, 0.1)" strokeWidth={1} fill="none"  />
-                            <SvgCircle cx={110} cy={110} r={110} stroke="rgba(212, 175, 55, 0.2)" strokeWidth={1} fill="none"  />
+                        {/* 1. Header Info (Single Line Glass Pill) */}
+                        <View style={{ alignItems: 'center', marginBottom: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <View style={{ width: 140, height: 16, justifyContent: 'center', alignItems: 'flex-end' }}>
+                              <RotatingHeaderText 
+                                text1="BIO-STATE"
+                                text2={`${currentPeriod.dosha} PHASE`} 
+                                text3={currentPeriod.englishLabel} 
+                                color={activeColor} 
+                              />
+                            </View>
                             
-                            <G transform="rotate(-90 110 110)">
-                              {/* Pitta (10am-2pm, 10pm-2am) */}
-                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-261.8"  />
-                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="52.35 575.9" strokeDashoffset="0"  />
-                              <SvgCircle cx={110} cy={110} r={95} stroke={pittaColor} strokeWidth={isPitta ? 8 : 4} fill="none" strokeDasharray="52.35 575.9" strokeDashoffset="-575.9"  />
-
-                              {/* Vata (2pm-6pm, 2am-6am) */}
-                              <SvgCircle cx={110} cy={110} r={95} stroke={vataColor} strokeWidth={isVata ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-52.35"  />
-                              <SvgCircle cx={110} cy={110} r={95} stroke={vataColor} strokeWidth={isVata ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-366.5"  />
-
-                              {/* Kapha (6am-10am, 6pm-10pm) */}
-                              <SvgCircle cx={110} cy={110} r={95} stroke={kaphaColor} strokeWidth={isKapha ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-157.0"  />
-                              <SvgCircle cx={110} cy={110} r={95} stroke={kaphaColor} strokeWidth={isKapha ? 8 : 4} fill="none" strokeDasharray="104.7 523.6" strokeDashoffset="-471.2"  />
-                              
-                              {/* Time Pointer */}
-                              <G rotation={timeRotation + 90} origin="110,110">
-                                {/* Thin elegant line from center to edge */}
-                                <SvgLine x1={110} y1={110} x2={110} y2={15} stroke={activeColor} strokeWidth={2} strokeOpacity={0.8}  />
-                                <SvgCircle cx={110} cy={15} r={4} fill={activeColor}  />
-                                <SvgCircle cx={110} cy={15} r={10} stroke={activeColor} strokeWidth={1} fill="none" strokeOpacity={0.5}  />
-                              </G>
-                            </G>
-                          </Svg>
-                          
-                          {/* Inner Data Centerpiece */}
-                          <View style={{ position: 'absolute', width: 150, height: 150, borderRadius: 75, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10, 8, 5, 0.7)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.1)' }}>
-                            <Text style={{ fontSize: 10, fontWeight: '700', color: activeColor, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-                              {currentPeriod.dosha} PHASE
-                            </Text>
-                            <Text style={{ fontSize: 18, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '700', color: '#FFF', textAlign: 'center', paddingHorizontal: 12, lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4 }}>
-                              {currentPeriod.englishLabel}
-                            </Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.3)', marginHorizontal: 8 }}>•</Text>
                             
-                            <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 175, 55, 0.3)', marginVertical: 10 }}  />
-                            
-                            <Text style={{ fontSize: 16, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '600', color: '#FFF' }}>{timeStr}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginTop: 2, textTransform: 'uppercase' }}>Remaining</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                              <Text style={{ fontSize: 12, fontWeight: '700', color: '#4ADE80' }}>{timeStr}</Text>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#4ADE80', letterSpacing: 1, textTransform: 'uppercase' }}>Left</Text>
+                            </View>
                           </View>
                         </View>
+                        
+                        {/* 2. Enhanced Ayurvedic Clock */}
+                        <View style={{ width: SZ, height: SZ, justifyContent: 'center', alignItems: 'center' }}>
+                          <Svg width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}>
+                            <Defs>
+                              {/* Dynamic Theme Color inside hollow clock */}
+                              <SvgLinearGradient id="innerGradient" x1="0" y1="0" x2="1" y2="1">
+                                <Stop offset="0" stopColor={activeColor} stopOpacity="0.25" />
+                                <Stop offset="1" stopColor="transparent" stopOpacity="0" />
+                              </SvgLinearGradient>
+                              
+                              {/* Paths for the curved dosha text (Radius = R + 26) */}
+                              {periods.map(p => (
+                                <SvgPath 
+                                  key={`text-path-${p.id}`} 
+                                  id={`text-path-${p.id}`} 
+                                  d={getArcPath(CX, CY, R + 26, p.startH, p.endH)} 
+                                />
+                              ))}
+                            </Defs>
+                            
+                            {/* Inner Soft Glowing Hollow Center */}
+                            <SvgCircle cx={CX} cy={CY} r={R - 12} fill="url(#innerGradient)" />
+                            
+                            {/* Thin Continuous Background Ring */}
+                            <SvgCircle cx={CX} cy={CY} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={1} fill="none" />
+                            
+                            <SvgG transform={`rotate(-90 ${CX} ${CY})`}>
+                              {/* Elegant Colored Arcs */}
+                              {periods.map(period => {
+                                const innerC = 2 * Math.PI * R;
+                                let durH = period.endH - period.startH;
+                                if (durH < 0) durH += 24; 
+                                const blockLen = (durH / 24) * innerC;
+                                const offset = - ((period.startH % 24) / 24) * innerC;
+                                
+                                const isActive = period.id === currentPeriod.id;
+                                const baseColor = period.dosha === 'pitta' ? pColor : period.dosha === 'vata' ? vColor : kColor;
+                                
+                                return (
+                                  <AnimatedG key={`arc-${period.id}`} opacity={isActive ? doshaPulseAnim : 0.25}>
+                                    <SvgCircle 
+                                      cx={CX} cy={CY} r={R} 
+                                      stroke={baseColor} 
+                                      strokeWidth={isActive ? 2.5 : 1.5} 
+                                      fill="none" 
+                                      strokeDasharray={`${Math.max(0, blockLen - gap)} ${innerC - Math.max(0, blockLen - gap)}`} 
+                                      strokeDashoffset={offset} 
+                                      strokeLinecap="round" 
+                                    />
+                                  </AnimatedG>
+                                );
+                              })}
+                            </SvgG>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 24 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Tap to explore cycle</Text>
-                          <Ionicons name="chevron-forward" size={9} color="rgba(255,255,255,0.4)" style={{ marginLeft: 4 }}  />
+                            {/* Time Labels (Radius = R + 10) */}
+                            {[
+                              { label: '12 AM', angle: 0 },
+                              { label: '3 AM', angle: 45 },
+                              { label: '6 AM', angle: 90 },
+                              { label: '9 AM', angle: 135 },
+                              { label: '12 PM', angle: 180 },
+                              { label: '3 PM', angle: 225 },
+                              { label: '6 PM', angle: 270 },
+                              { label: '9 PM', angle: 315 },
+                            ].map(l => {
+                              const rad = (l.angle - 90) * Math.PI / 180;
+                              const rTime = R + 10;
+                              const x = CX + rTime * Math.cos(rad);
+                              const y = CY + rTime * Math.sin(rad);
+                              return (
+                                <SvgText 
+                                  key={l.label} 
+                                  x={x} 
+                                  y={y} 
+                                  fill="rgba(255,255,255,0.45)" 
+                                  fontSize="7.5" 
+                                  fontWeight="700" 
+                                  textAnchor="middle" 
+                                  alignmentBaseline="middle"
+                                >
+                                  {l.label}
+                                </SvgText>
+                              );
+                            })}
+
+                            {/* Curved Dosha Names around the ring (Radius = R + 26) */}
+                            {periods.map(p => {
+                              // We use a Set in the map to prevent duplicates? Actually wait, periods has duplicates if we loop over all.
+                              // Let's just render all of them, they will perfectly trace their own arcs.
+                              const baseColor = p.dosha === 'pitta' ? pColor : p.dosha === 'vata' ? vColor : kColor;
+                              return (
+                                <SvgText key={`curved-text-${p.id}`} fill={baseColor} fontSize="12" fontWeight="800" letterSpacing="3" opacity="0.95" alignmentBaseline="middle">
+                                  <SvgTextPath href={`#text-path-${p.id}`} startOffset="50%" textAnchor="middle">
+                                    {p.dosha.toUpperCase()}
+                                  </SvgTextPath>
+                                </SvgText>
+                              );
+                            })}
+                            
+                            {/* Elegant Central Dot & Dial (3rd Screenshot Style) */}
+                            <SvgG rotation={pointerRotation} origin={`${CX},${CY}`}>
+                              <SvgLine x1={CX} y1={CY} x2={CX} y2={CY - R + 20} stroke="#D4AF37" strokeWidth={1.2} strokeLinecap="round" opacity="1" />
+                            </SvgG>
+                            <SvgCircle cx={CX} cy={CY} r={2.5} fill="#D4AF37" />
+
+                          </Svg>
                         </View>
+                        
+
                       </BlurView>
                     </TouchableOpacity>
                   );
                  })()}
                 </View>
+                {/* 1. Daily Intention (Floating, transparent, elegant) */}
+                <View style={{ width: '100%', alignItems: 'center' }}>
+                  <DailyIntentionCard  />
+                </View>
+
               </View>
 
         </ScrollView>
@@ -8179,7 +8300,7 @@ const SD = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000088' },
   sheet: {
     backgroundColor: 'rgba(6,15,40,0.72)', borderTopLeftRadius: 30, borderTopRightRadius: 30,
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, maxHeight: '85%',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, maxHeight: '85%',
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)',
   },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF18', alignSelf: 'center', marginBottom: 16 },
@@ -8657,73 +8778,182 @@ const PremiumBreatheCard = ({ children, onPress }: any) => {
 };
 
 
-const AmbientAura = ({ color }: { color: string }) => {
-  const { bgUri } = useBgContext();
-  const breatheAnim = React.useRef(new Animated.Value(0)).current;
-  const driftAnim = React.useRef(new Animated.Value(0)).current;
+
+// ── CrossfadingText: Premium Transmuting Text Component ──────────────────────
+
+const RotatingHeaderText = ({ text1, text2, text3, color }: { text1: string, text2: string, text3: string, color: string }) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(breatheAnim, { toValue: 1, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(breatheAnim, { toValue: 0, duration: 8000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.delay(3000),
+        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.delay(3000),
+        Animated.timing(anim, { toValue: 2, duration: 800, useNativeDriver: true }),
+        Animated.delay(3000),
+        Animated.timing(anim, { toValue: 3, duration: 800, useNativeDriver: true }),
       ])
-    ).start();
-
-    Animated.loop(
-      Animated.timing(driftAnim, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, []);
 
-  const bgOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.4] });
-  
-  // Create 15 particles
-  const particles = Array.from({ length: 15 }).map((_, i) => {
-    const startY = 800 + (i * 50);
-    const endY = -200;
-    const xOffset = Math.sin(i) * 150;
-    const size = 10 + (i % 3) * 10;
-    const delay = (i * 1000) % 15000;
-    
-    const translateY = driftAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [startY, endY]
-    });
-    
-    return (
-      <Animated.View
-        key={i}
-        style={{
-          position: 'absolute',
-          width: size, height: size, borderRadius: size / 2,
-          backgroundColor: i % 2 === 0 ? '#FCD34D' : '#38BDF8',
-          opacity: 0.3,
-          left: '50%',
-          marginLeft: xOffset,
-          transform: [{ translateY }],
-          shadowColor: i % 2 === 0 ? '#FCD34D' : '#38BDF8',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 1,
-          shadowRadius: 20,
-        }}
-       />
-    );
-  });
+  const op1 = anim.interpolate({ inputRange: [0, 0.5, 1, 2, 2.5, 3], outputRange: [1, 0, 0, 0, 0, 1] });
+  const op2 = anim.interpolate({ inputRange: [0, 0.5, 1, 1.5, 2], outputRange: [0, 0, 1, 0, 0] });
+  const op3 = anim.interpolate({ inputRange: [1, 1.5, 2, 2.5, 3], outputRange: [0, 0, 1, 0, 0] });
 
   return (
-    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000' }]} pointerEvents="none">
-      <Animated.Image 
-        source={bgUri ? { uri: bgUri } : undefined} 
-        style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]} 
-        resizeMode="cover"
-       />
-      
-      {/* ── Bioluminescent Swarm (Option 3 Demo) ── */}
-      <View style={StyleSheet.absoluteFillObject}>
-        {particles}
-      </View>
+    <View style={{ justifyContent: 'center', alignItems: 'flex-end', width: '100%', height: 16 }}>
+      <Animated.Text style={{ position: 'absolute', opacity: op1, fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5, textTransform: 'uppercase' }} numberOfLines={1}>{text1}</Animated.Text>
+      <Animated.Text style={{ position: 'absolute', opacity: op2, fontSize: 11, fontWeight: '800', color: color, letterSpacing: 1.5, textTransform: 'uppercase' }} numberOfLines={1}>{text2}</Animated.Text>
+      <Animated.Text style={{ position: 'absolute', opacity: op3, fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 1, textTransform: 'uppercase' }} numberOfLines={1}>{text3}</Animated.Text>
     </View>
   );
 };
+
+const CrossfadingText = ({ text1, text2, color }: { text1: string, text2: string, color: string }) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(4000), // Hold Text 1
+        Animated.timing(anim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.delay(4000), // Hold Text 2
+        Animated.timing(anim, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const op1 = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const op2 = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+
+  return (
+    <View style={{ justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+      <Animated.Text 
+        style={{ 
+          position: 'absolute', opacity: op1, 
+          fontSize: 11, fontWeight: '700', color: color, letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center'
+        }}
+        numberOfLines={1}
+      >
+        {text1}
+      </Animated.Text>
+      
+      <Animated.Text 
+        style={{ 
+          position: 'absolute', opacity: op2, 
+          fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontSize: 16, fontWeight: '400', color: '#FFF', textAlign: 'center'
+        }}
+        numberOfLines={1}
+      >
+        {text2}
+      </Animated.Text>
+    </View>
+  );
+};
+
+// ── BreathingText: Calming pulse effect ──────────────────────
+const BreathingText = ({ text, subtext }: { text: string, subtext: string }) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.15, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.Text style={{ opacity: anim, fontSize: 13, fontWeight: '700', color: '#FFF', textAlign: 'center', letterSpacing: 0.5 }}>
+      {text} <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }}>{subtext}</Text>
+    </Animated.Text>
+  );
+};
+
+// ── Cosmic Ripple: Ultra-Premium Concentric Waves (Option 1) ──────────────────────
+const Ripple = ({ color, delay }: { color: string, delay: number }) => {
+  const anim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.loop(
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 12000,
+          easing: Easing.out(Easing.sin),
+          useNativeDriver: true
+        })
+      ).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 4] });
+  // Fade in softly, then fade out smoothly as it expands
+  const opacity = anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.15, 0, 0] });
+  
+  return (
+    <Animated.View style={{
+      position: 'absolute',
+      width: 300, height: 300,
+      borderRadius: 150,
+      borderWidth: 1.5,
+      borderColor: color,
+      opacity: opacity,
+      transform: [{ scale }]
+    }} />
+  );
+};
+
+const AmbientAura = ({ color }: { color: string }) => {
+  const { bgUri } = useBgContext();
+  
+  // Image background breathe
+  const breatheAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, { toValue: 1, duration: 10000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 0, duration: 10000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  // Premium visibility: not too dark, not too light.
+  const bgOpacity = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0.9] });
+
+  return (
+    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#0A0A0A' }]} pointerEvents="none">
+      
+      {/* 1. Underlying crisp image (breathing slowly) */}
+      <Animated.Image
+        source={bgUri ? { uri: bgUri } : undefined}
+        style={[StyleSheet.absoluteFillObject, { opacity: bgOpacity }]}
+        resizeMode="cover"
+      />
+
+      {/* 2. Premium Dark Tint (Subtle wash over the image) */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
+
+      {/* 3. Cosmic Ripples (Centered) */}
+      <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Ripple color={color} delay={0} />
+        <Ripple color={color} delay={4000} />
+        <Ripple color={color} delay={8000} />
+      </View>
+      
+      {/* 4. Deep contrast vignette so text remains perfectly legible (edges only) */}
+      <LinearGradient 
+        colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.0)', 'rgba(0,0,0,0.5)']} 
+        locations={[0, 0.4, 1]}
+        start={{x:0, y:0}} end={{x:0, y:1}} 
+        style={StyleSheet.absoluteFillObject} 
+      />
+    </View>
+  );
+};
+
 
 export default withScreenBoundary(DailyTab, 'Home');

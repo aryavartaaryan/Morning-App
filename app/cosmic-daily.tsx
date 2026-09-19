@@ -26,8 +26,8 @@ import {
 const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const GLASS  = 'rgba(255,255,255,0.06)';
-const BORDER = 'rgba(255,255,255,0.10)';
+const GLASS  = 'rgba(255,255,255,0.035)';
+const BORDER = 'rgba(255,255,255,0.07)';
 const TEAL   = '#00D4B8';
 const PURPLE = '#a78bfa';
 
@@ -47,8 +47,8 @@ function fmtSolar(dec: number): string {
 const STARS = Array.from({ length: 50 }, (_, i) => ({
   x: ((i * 137.508) % 100),
   y: ((i * 97.333) % 100),
-  r: i % 5 === 0 ? 1.2 : 0.6,
-  opacity: 0.10 + (i % 7) * 0.06,
+  r: i % 5 === 0 ? 1.0 : 0.5,
+  opacity: 0.04 + (i % 7) * 0.03,
 }));
 function StarField() {
   return (
@@ -110,7 +110,7 @@ function MoonPhaseDial({ currentTithi, size = 280 }: { currentTithi: number; siz
   const MOON_EMOJIS = ['🌑','🌒','🌒','🌒','🌓','🌔','🌔','🌔','🌔','🌔','🌔','🌔','🌔','🌔','🌕','🌖','🌖','🌖','🌖','🌖','🌖','🌖','🌖','🌖','🌗','🌘','🌘','🌘','🌘','🌑'];
   return (
     <Svg width={size} height={size}>
-      <SvgCircle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+      <SvgCircle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={1} />
       {phases.map((t) => {
         const angle = ((t - 1) / 30) * 2 * Math.PI - Math.PI / 2;
         const px = cx + R * Math.cos(angle);
@@ -119,15 +119,15 @@ function MoonPhaseDial({ currentTithi, size = 280 }: { currentTithi: number; siz
         return (
           <G key={t}>
             <SvgCircle cx={px} cy={py} r={isCurrent ? 7 : 3}
-              fill={isCurrent ? '#FFFFFF' : t <= 15 ? 'rgba(255,220,120,0.35)' : 'rgba(150,160,220,0.25)'}
-              stroke={isCurrent ? 'rgba(255,255,255,0.60)' : 'none'}
+              fill={isCurrent ? '#FFFFFF' : t <= 15 ? 'rgba(255,220,120,0.30)' : 'rgba(150,160,220,0.20)'}
+              stroke={isCurrent ? 'rgba(255,255,255,0.50)' : 'none'}
               strokeWidth={isCurrent ? 1 : 0} />
           </G>
         );
       })}
       {/* Center moon display */}
       <G>
-        <SvgCircle cx={cx} cy={cy} r={40} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)" strokeWidth={1} />
+        <SvgCircle cx={cx} cy={cy} r={40} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
       </G>
     </Svg>
   );
@@ -224,10 +224,10 @@ export default function CosmicDailyPage() {
   return (
     <ImageBackground
       source={bgUri ? { uri: bgUri } : undefined}
-      style={{ flex: 1, backgroundColor: '#030a1c' }}
+      style={{ flex: 1, backgroundColor: '#000000' }}
       resizeMode="cover">
       <LinearGradient
-        colors={['rgba(3,8,30,0.88)', 'rgba(5,2,18,0.92)', 'rgba(3,8,30,0.96)']}
+        colors={['rgba(0,0,0,0.90)', 'rgba(6,7,10,0.96)', 'rgba(0,0,0,1)']}
         style={StyleSheet.absoluteFillObject} />
       <StarField />
 
@@ -251,8 +251,8 @@ export default function CosmicDailyPage() {
         <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
 
           {/* ── Hero: Moon + Date ── */}
-          <View style={{ borderRadius: 24, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden', marginBottom: 14, padding: 20 }}>
-            <LinearGradient colors={['rgba(167,139,250,0.10)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View style={{ borderRadius: 24, borderWidth: 1, borderColor: BORDER, backgroundColor: GLASS, overflow: 'hidden', marginBottom: 14, padding: 20 }}>
+            <LinearGradient colors={['rgba(167,139,250,0.05)', 'transparent']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFillObject} />
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <View style={{ flex: 1 }}>
@@ -291,12 +291,12 @@ export default function CosmicDailyPage() {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.04)', padding: 12, alignItems: 'center', gap: 3 }}>
+              <View style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.02)', padding: 12, alignItems: 'center', gap: 3 }}>
                 <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5 }}>NEXT EVENT</Text>
                 <Text style={{ fontSize: 14 }}>{nextEvent.icon}</Text>
                 <Text style={{ fontSize: 11, fontWeight: '800', color: nextEvent.color, textAlign: 'center' }}>{nextEvent.label}</Text>
               </View>
-              <View style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: scoreMeta.color + '20', backgroundColor: scoreMeta.color + '06', padding: 12, alignItems: 'center', gap: 3 }}>
+              <View style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: scoreMeta.color + '15', backgroundColor: scoreMeta.color + '04', padding: 12, alignItems: 'center', gap: 3 }}>
                 <Text style={{ fontSize: 8, fontWeight: '900', color: scoreMeta.color + 'AA', letterSpacing: 1.5 }}>COSMIC SCORE</Text>
                 <Text style={{ fontSize: 16 }}>{scoreMeta.emoji}</Text>
                 <Text style={{ fontSize: 11, fontWeight: '800', color: scoreMeta.color, textAlign: 'center' }}>{scoreMeta.label}</Text>
@@ -325,11 +325,11 @@ export default function CosmicDailyPage() {
               {TITHI_ENERGY[p.tithiName] ?? 'Sacred cosmic alignment'}
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 8, paddingHorizontal: 12, flex: 1 }}>
+              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.02)', paddingVertical: 8, paddingHorizontal: 12, flex: 1 }}>
                 <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, marginBottom: 4 }}>DEITY</Text>
                 <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFDD' }}>{tithiDeity}</Text>
               </View>
-              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 8, paddingHorizontal: 12, flex: 1 }}>
+              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.02)', paddingVertical: 8, paddingHorizontal: 12, flex: 1 }}>
                 <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(255,255,255,0.30)', letterSpacing: 1.5, marginBottom: 4 }}>PAKSHA</Text>
                 <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFDD' }}>{p.paksha === 'Shukla' ? 'Waxing Moon (Shukla)' : 'Waning Moon (Krishna)'}</Text>
               </View>
@@ -337,7 +337,7 @@ export default function CosmicDailyPage() {
           </View>
 
           {/* ── Moon Ritual ── */}
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.20)', backgroundColor: 'rgba(167,139,250,0.07)', padding: 18, marginBottom: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.15)', backgroundColor: 'rgba(167,139,250,0.03)', padding: 18, marginBottom: 14 }}>
             <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(167,139,250,0.55)', letterSpacing: 2, marginBottom: 8 }}>✦  MOON RITUAL</Text>
             <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(167,139,250,0.75)', marginBottom: 6 }}>{ritual.prompt}</Text>
             <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', lineHeight: 22 }}>{ritual.action}</Text>
@@ -345,9 +345,9 @@ export default function CosmicDailyPage() {
 
           {/* ── NAKSHATRA ── */}
           <SectionLabel text="NAKSHATRA  ·  LUNAR MANSION" />
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,212,184,0.15)', backgroundColor: 'rgba(0,212,184,0.05)', padding: 18, marginBottom: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,212,184,0.12)', backgroundColor: 'rgba(0,212,184,0.03)', padding: 18, marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(0,212,184,0.12)', borderWidth: 1, borderColor: 'rgba(0,212,184,0.30)', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(0,212,184,0.06)', borderWidth: 1, borderColor: 'rgba(0,212,184,0.20)', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 28 }}>{nakshatra.emoji}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -366,7 +366,7 @@ export default function CosmicDailyPage() {
                 { label: 'DEITY', val: nakshatra.deity },
                 { label: 'RULING PLANET', val: nakshatra.planet },
               ].map((item, i) => (
-                <View key={i} style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.04)', padding: 12 }}>
+                <View key={i} style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderColor: BORDER, backgroundColor: 'rgba(255,255,255,0.02)', padding: 12 }}>
                   <Text style={{ fontSize: 7, fontWeight: '900', color: 'rgba(0,212,184,0.50)', letterSpacing: 1.5, marginBottom: 5 }}>{item.label}</Text>
                   <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFFEE', lineHeight: 16 }}>{item.val}</Text>
                 </View>
@@ -379,9 +379,9 @@ export default function CosmicDailyPage() {
 
           {/* ── YOGA ── */}
           <SectionLabel text="YOGA  ·  AUSPICIOUS QUALITY" />
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: (yoga.auspicious ? 'rgba(52,211,153,0.18)' : 'rgba(248,113,113,0.18)'), backgroundColor: (yoga.auspicious ? 'rgba(52,211,153,0.06)' : 'rgba(248,113,113,0.06)'), padding: 18, marginBottom: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: (yoga.auspicious ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'), backgroundColor: (yoga.auspicious ? 'rgba(52,211,153,0.03)' : 'rgba(248,113,113,0.03)'), padding: 18, marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
-              <View style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: (yoga.auspicious ? 'rgba(52,211,153,0.35)' : 'rgba(248,113,113,0.35)'), backgroundColor: (yoga.auspicious ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)') }}>
+              <View style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: (yoga.auspicious ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'), backgroundColor: (yoga.auspicious ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)') }}>
                 <Text style={{ fontSize: 10, fontWeight: '900', color: (yoga.auspicious ? '#34d399' : '#f87171'), letterSpacing: 1 }}>
                   {yoga.auspicious ? '✨ AUSPICIOUS' : '⚠ INAUSPICIOUS'}
                 </Text>
@@ -400,9 +400,9 @@ export default function CosmicDailyPage() {
 
           {/* ── VAAR ── */}
           <SectionLabel text="VAAR  ·  DAY RULER" />
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: vaar.color + '20', backgroundColor: vaar.color + '07', padding: 18, marginBottom: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: vaar.color + '15', backgroundColor: vaar.color + '04', padding: 18, marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 14 }}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: vaar.color + '15', borderWidth: 1, borderColor: vaar.color + '40', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: vaar.color + '08', borderWidth: 1, borderColor: vaar.color + '20', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 28 }}>{vaar.emoji}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -412,11 +412,11 @@ export default function CosmicDailyPage() {
               </View>
             </View>
             <Text style={{ fontSize: 13, color: '#FFFFFFCC', fontWeight: '700', lineHeight: 20, marginBottom: 14 }}>{vaar.energy}</Text>
-            <View style={{ borderRadius: 14, borderWidth: 1, borderColor: vaar.color + '20', backgroundColor: 'rgba(255,255,255,0.03)', padding: 14, marginBottom: 12 }}>
+            <View style={{ borderRadius: 14, borderWidth: 1, borderColor: vaar.color + '15', backgroundColor: 'rgba(255,255,255,0.02)', padding: 14, marginBottom: 12 }}>
               <Text style={{ fontSize: 8, fontWeight: '900', color: vaar.color + 'AA', letterSpacing: 2, marginBottom: 8 }}>PLANETARY SCIENCE</Text>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.60)', lineHeight: 18 }}>{vaar.science}</Text>
             </View>
-            <View style={{ borderRadius: 14, borderWidth: 1, borderColor: vaar.color + '30', backgroundColor: vaar.color + '10', padding: 16 }}>
+            <View style={{ borderRadius: 14, borderWidth: 1, borderColor: vaar.color + '20', backgroundColor: vaar.color + '08', padding: 16 }}>
               <Text style={{ fontSize: 8, fontWeight: '900', color: vaar.color + 'BB', letterSpacing: 2, marginBottom: 8 }}>✦  TODAY'S ACTION</Text>
               <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 21 }}>{vaarAction}</Text>
             </View>
@@ -424,7 +424,7 @@ export default function CosmicDailyPage() {
 
           {/* ── VEDIC MONTH ── */}
           <SectionLabel text="VEDIC MONTH  ·  SOLAR CALENDAR" />
-          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.15)', backgroundColor: 'rgba(167,139,250,0.06)', padding: 18, marginBottom: 14 }}>
+          <View style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.12)', backgroundColor: 'rgba(167,139,250,0.03)', padding: 18, marginBottom: 14 }}>
             <Text style={{ fontSize: 8, fontWeight: '900', color: 'rgba(167,139,250,0.45)', letterSpacing: 2, marginBottom: 8 }}>
               {vedicMonth.rashi.toUpperCase()} RASHI
             </Text>
@@ -436,8 +436,8 @@ export default function CosmicDailyPage() {
             {/* All 12 months mini strip */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {RASHI_TO_VEDIC_MONTH.map((m, i) => (
-                <View key={i} style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: m.name === vedicMonth.name ? 'rgba(167,139,250,0.50)' : 'rgba(255,255,255,0.08)', backgroundColor: m.name === vedicMonth.name ? 'rgba(167,139,250,0.18)' : 'transparent' }}>
-                  <Text style={{ fontSize: 10, fontWeight: m.name === vedicMonth.name ? '900' : '600', color: m.name === vedicMonth.name ? PURPLE : 'rgba(255,255,255,0.35)' }}>
+                <View key={i} style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: m.name === vedicMonth.name ? 'rgba(167,139,250,0.40)' : 'rgba(255,255,255,0.06)', backgroundColor: m.name === vedicMonth.name ? 'rgba(167,139,250,0.12)' : 'transparent' }}>
+                  <Text style={{ fontSize: 10, fontWeight: m.name === vedicMonth.name ? '900' : '600', color: m.name === vedicMonth.name ? PURPLE : 'rgba(255,255,255,0.30)' }}>
                     {m.name}
                   </Text>
                 </View>
@@ -501,7 +501,7 @@ export default function CosmicDailyPage() {
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/cosmic-explore' as never); }}
             activeOpacity={0.82}
             style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 8 }}>
-            <LinearGradient colors={['#0a0035', '#1a0050', '#0d0030']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)', borderRadius: 18 }}>
+            <LinearGradient colors={['rgba(10,0,53,0.8)', 'rgba(26,0,80,0.6)', 'rgba(13,0,48,0.8)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.15)', borderRadius: 18 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Text style={{ fontSize: 22 }}>🌌</Text>
                 <View>

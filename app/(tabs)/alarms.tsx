@@ -128,7 +128,7 @@ const ALARM_SOUNDS = [
 ];
 
 
-const LALITHA_IMG = { uri: 'https://images.pexels.com/photos/33834247/pexels-photo-33834247.jpeg?auto=compress&cs=tinysrgb&w=400' };
+const LALITHA_IMG = { uri: 'https://images.pexels.com/photos/35004458/pexels-photo-35004458.jpeg?auto=compress&cs=tinysrgb&w=800&q=90' };
 
 const ALARM_BUNDLED: Record<string, any> = {
   // Only truly bundled sounds (require() module IDs = numbers), not CDN URI objects
